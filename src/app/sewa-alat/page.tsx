@@ -24,6 +24,8 @@ export default function SewaAlatPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [availability, setAvailability] = useState('all')
+  const [priceRange, setPriceRange] = useState('')
+  const [sortBy, setSortBy] = useState('popular')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -41,6 +43,47 @@ export default function SewaAlatPage() {
       if (searchQuery) params.set('search', searchQuery)
       if (availability !== 'all') params.set('availability', availability)
 
+      // Add sorting
+      if (sortBy) {
+        switch (sortBy) {
+          case 'price-low':
+            params.set('sortBy', 'pricePerDay')
+            params.set('sortOrder', 'asc')
+            break
+          case 'price-high':
+            params.set('sortBy', 'pricePerDay')
+            params.set('sortOrder', 'desc')
+            break
+          case 'rating':
+            params.set('sortBy', 'rating')
+            params.set('sortOrder', 'desc')
+            break
+          default:
+            // popular - default sorting
+            break
+        }
+      }
+
+      // Add price range filter
+      if (priceRange) {
+        switch (priceRange) {
+          case 'under-50k':
+            params.set('maxPrice', '50000')
+            break
+          case '50k-100k':
+            params.set('minPrice', '50000')
+            params.set('maxPrice', '100000')
+            break
+          case '100k-200k':
+            params.set('minPrice', '100000')
+            params.set('maxPrice', '200000')
+            break
+          case 'above-200k':
+            params.set('minPrice', '200000')
+            break
+        }
+      }
+
       const res = await fetch(`/api/rental-items?${params}`)
       if (!res.ok) throw new Error('Failed to fetch rental items')
 
@@ -54,29 +97,39 @@ export default function SewaAlatPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, searchQuery, availability])
+  }, [page, searchQuery, availability, priceRange, sortBy])
 
   useEffect(() => {
     fetchRentalItems()
   }, [fetchRentalItems])
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [page])
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
     setPage(1)
   }
 
-  const handleSort = () => {
-    // TODO: Implement sorting
+  const handleSort = (value: string) => {
+    setSortBy(value)
+    setPage(1)
   }
 
   const handleFilterChange = (filters: Record<string, string[]>) => {
     const ketersediaan = filters['Ketersediaan']?.[0] || 'all'
+    const harga = filters['Harga']?.[0] || ''
+
     setAvailability(ketersediaan)
+    setPriceRange(harga)
     setPage(1)
   }
 
   const handleClearFilters = () => {
     setAvailability('all')
+    setPriceRange('')
     setPage(1)
   }
 
@@ -93,10 +146,30 @@ export default function SewaAlatPage() {
         },
       ],
     },
+    {
+      title: 'Harga',
+      type: 'radio' as const,
+      options: [
+        { value: 'under-50k', label: 'Di bawah 50rb/hari' },
+        { value: '50k-100k', label: '50rb - 100rb/hari' },
+        { value: '100k-200k', label: '100rb - 200rb/hari' },
+        { value: 'above-200k', label: 'Di atas 200rb/hari' },
+      ],
+    },
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/40">
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Background Image with Gradient Overlay */}
+      <div className="fixed inset-0 -z-10">
+        <img
+          src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1920&q=80"
+          alt="Background"
+          className="h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95"></div>
+      </div>
+
       <Navbar variant="light" />
 
       <main className="mx-auto max-w-7xl px-4 pb-8 pt-24 sm:px-6 lg:px-8">
@@ -110,8 +183,8 @@ export default function SewaAlatPage() {
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Stats Cards - Hidden on mobile */}
+        <div className="mb-8 hidden grid-cols-1 gap-4 sm:grid sm:grid-cols-3">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <p className="text-sm text-gray-500">Total Alat</p>
             <p className="mt-1 text-3xl font-bold text-gray-900">
@@ -265,6 +338,7 @@ export default function SewaAlatPage() {
               <div className="mt-8 flex justify-center">
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={() => setPage(Math.max(1, page - 1))}
                     disabled={page === 1}
                     className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50 disabled:opacity-50"
@@ -275,6 +349,7 @@ export default function SewaAlatPage() {
                     const pageNum = i + 1
                     return (
                       <button
+                        type="button"
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
                         className={`rounded-lg px-4 py-2 ${
@@ -288,6 +363,7 @@ export default function SewaAlatPage() {
                     )
                   })}
                   <button
+                    type="button"
                     onClick={() => setPage(Math.min(totalPages, page + 1))}
                     disabled={page === totalPages}
                     className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50 disabled:opacity-50"

@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
     const maxPrice = searchParams.get('maxPrice')
       ? parseFloat(searchParams.get('maxPrice')!)
       : undefined
+    const sortBy = searchParams.get('sortBy') || 'createdAt'
+    const sortOrder = searchParams.get('sortOrder') || 'desc'
 
     const skip = (page - 1) * limit
 
@@ -45,11 +47,15 @@ export async function GET(request: NextRequest) {
       if (maxPrice !== undefined) where.price.lte = maxPrice
     }
 
+    // Build orderBy clause
+    const orderBy: Record<string, 'asc' | 'desc'> = {}
+    orderBy[sortBy] = sortOrder as 'asc' | 'desc'
+
     // Fetch products
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip,
         take: limit,
       }),

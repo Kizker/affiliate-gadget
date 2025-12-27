@@ -39,7 +39,7 @@ const services = [
       'Jaringan mitra terpercaya di seluruh Indonesia siap melayani kebutuhan teknologi Anda',
     shortDesc: 'Jaringan mitra terpercaya',
     gradient: 'from-pink-500 to-cyan-500',
-    href: '/teknisi',
+    href: '/rekomendasi',
   },
 ]
 

@@ -106,7 +106,17 @@ export default function TeknisiPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/40">
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Background Image with Gradient Overlay */}
+      <div className="fixed inset-0 -z-10">
+        <img
+          src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1920&q=80"
+          alt="Background"
+          className="h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95"></div>
+      </div>
+
       <Navbar variant="light" />
 
       <main className="mx-auto max-w-7xl px-4 pb-8 pt-24 sm:px-6 lg:px-8">
@@ -210,33 +220,80 @@ export default function TeknisiPage() {
                 <div className="mb-4 text-sm text-gray-600">
                   Menampilkan {technicians.length} teknisi
                 </div>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                  {technicians.map((tech) => {
-                    // Get lowest service price
-                    const lowestPrice =
-                      tech.services.length > 0
-                        ? Math.min(...tech.services.map((s) => s.price))
-                        : 0
+                <div className="columns-2 gap-4 lg:columns-1">
+                  <div className="hidden lg:grid lg:grid-cols-4 lg:gap-6">
+                    {technicians.map((tech) => {
+                      // Get price range from all services
+                      const prices = tech.services.map((s) => s.price)
+                      const minPrice =
+                        prices.length > 0 ? Math.min(...prices) : 0
+                      const maxPrice =
+                        prices.length > 0 ? Math.max(...prices) : 0
 
-                    return (
-                      <ProductCard
-                        key={tech.id}
-                        id={tech.id}
-                        title={tech.user.name || 'Teknisi'}
-                        image={
-                          tech.user.image ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(tech.user.name || 'T')}&background=3b82f6&color=fff&size=400`
-                        }
-                        description={tech.specialties.join(', ')}
-                        rating={tech.rating}
-                        reviewCount={tech.totalReview}
-                        price={lowestPrice}
-                        badge={tech.isAvailable ? 'Tersedia' : 'Tidak Tersedia'}
-                        badgeColor={tech.isAvailable ? 'green' : 'red'}
-                        href={`/teknisi/${tech.id}`}
-                      />
-                    )
-                  })}
+                      return (
+                        <ProductCard
+                          key={tech.id}
+                          id={tech.id}
+                          title={tech.user.name || 'Teknisi'}
+                          image={
+                            tech.user.image ||
+                            `https://ui-avatars.com/api/?name=${encodeURIComponent(tech.user.name || 'T')}&background=3b82f6&color=fff&size=400`
+                          }
+                          description={tech.specialties.join(', ')}
+                          rating={tech.rating}
+                          reviewCount={tech.totalReview}
+                          priceRange={
+                            prices.length > 0
+                              ? { min: minPrice, max: maxPrice }
+                              : undefined
+                          }
+                          badge={
+                            tech.isAvailable ? 'Tersedia' : 'Tidak Tersedia'
+                          }
+                          badgeColor={tech.isAvailable ? 'green' : 'red'}
+                          href={`/teknisi/${tech.id}`}
+                        />
+                      )
+                    })}
+                  </div>
+
+                  {/* Mobile Masonry */}
+                  <div className="lg:hidden">
+                    {technicians.map((tech) => {
+                      // Get price range from all services
+                      const prices = tech.services.map((s) => s.price)
+                      const minPrice =
+                        prices.length > 0 ? Math.min(...prices) : 0
+                      const maxPrice =
+                        prices.length > 0 ? Math.max(...prices) : 0
+
+                      return (
+                        <div key={tech.id} className="mb-4 break-inside-avoid">
+                          <ProductCard
+                            id={tech.id}
+                            title={tech.user.name || 'Teknisi'}
+                            image={
+                              tech.user.image ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(tech.user.name || 'T')}&background=3b82f6&color=fff&size=400`
+                            }
+                            description={tech.specialties.join(', ')}
+                            rating={tech.rating}
+                            reviewCount={tech.totalReview}
+                            priceRange={
+                              prices.length > 0
+                                ? { min: minPrice, max: maxPrice }
+                                : undefined
+                            }
+                            badge={
+                              tech.isAvailable ? 'Tersedia' : 'Tidak Tersedia'
+                            }
+                            badgeColor={tech.isAvailable ? 'green' : 'red'}
+                            href={`/teknisi/${tech.id}`}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </>
             )}

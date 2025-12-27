@@ -1,14 +1,8 @@
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
+import RentalActions from '@/components/rental/rental-actions'
 import ImageGallery from '@/components/catalog/image-gallery'
-import {
-  Calendar,
-  Package,
-  Shield,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-} from 'lucide-react'
+import { Package, Shield, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import prisma from '@/lib/db'
@@ -25,7 +19,18 @@ async function getRentalItem(id: string) {
 
     if (!item) return null
 
-    return item
+    // Get related rental items
+    const relatedItems = await prisma.rentalItem.findMany({
+      where: {
+        id: { not: id },
+        isActive: true,
+        stock: { gt: 0 },
+      },
+      take: 6,
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return { item, relatedItems }
   } catch (error) {
     console.error('Error fetching rental item:', error)
     return null
@@ -38,19 +43,26 @@ export default async function SewaAlatDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const item = await getRentalItem(id)
+  const data = await getRentalItem(id)
 
-  if (!item) {
+  if (!data) {
     notFound()
   }
 
+  const { item, relatedItems } = data
+
   const isAvailable = item.stock > 0
 
-  // Calculate rental rates
+  // Calculate rental rates using configured discounts
   const dailyRate = item.pricePerDay
-  const weeklyRate = Math.round(dailyRate * 5 * 0.9) // 10% discount
-  const monthlyRate = Math.round(dailyRate * 20 * 0.8) // 20% discount
-  const depositAmount = Math.round(dailyRate * 10) // 10x daily rate as deposit
+  const weeklyDiscountPct = item.weeklyDiscountPct ?? 10
+  const monthlyDiscountPct = item.monthlyDiscountPct ?? 20
+  const weeklyRate = Math.round(dailyRate * 5 * (1 - weeklyDiscountPct / 100))
+  const monthlyRate = Math.round(
+    dailyRate * 20 * (1 - monthlyDiscountPct / 100)
+  )
+  const depositAmount = item.depositAmount ?? 0
+  const terms: string[] = item.terms ?? []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/40">
@@ -74,7 +86,7 @@ export default async function SewaAlatDetailPage({
           {/* Left Column - Images */}
           <div className="space-y-4">
             {item.images.length > 0 ? (
-              <ImageGallery images={item.images} />
+              <ImageGallery images={item.images} productName={item.name} />
             ) : (
               <div className="flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
                 <Package className="h-24 w-24 text-gray-300" />
@@ -125,7 +137,12 @@ export default async function SewaAlatDetailPage({
                 <div className="flex items-center justify-between border-t border-blue-200 pt-3">
                   <div>
                     <p className="font-semibold text-gray-900">Mingguan</p>
-                    <p className="text-sm text-gray-600">5 hari (hemat 10%)</p>
+                    <p className="text-sm text-gray-600">
+                      5 hari{' '}
+                      {weeklyDiscountPct > 0
+                        ? `(hemat ${weeklyDiscountPct}%)`
+                        : ''}
+                    </p>
                   </div>
                   <p className="text-xl font-bold text-green-600">
                     Rp {weeklyRate.toLocaleString('id-ID')}
@@ -134,7 +151,12 @@ export default async function SewaAlatDetailPage({
                 <div className="flex items-center justify-between border-t border-blue-200 pt-3">
                   <div>
                     <p className="font-semibold text-gray-900">Bulanan</p>
-                    <p className="text-sm text-gray-600">20 hari (hemat 20%)</p>
+                    <p className="text-sm text-gray-600">
+                      20 hari{' '}
+                      {monthlyDiscountPct > 0
+                        ? `(hemat ${monthlyDiscountPct}%)`
+                        : ''}
+                    </p>
                   </div>
                   <p className="text-xl font-bold text-green-600">
                     Rp {monthlyRate.toLocaleString('id-ID')}
@@ -161,33 +183,48 @@ export default async function SewaAlatDetailPage({
                 Syarat & Ketentuan
               </h2>
               <div className="space-y-3 text-sm text-gray-700">
+                {/* Deposit - always show */}
                 <div className="flex items-start gap-2">
                   <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
                   <span>
-                    Deposit Rp {depositAmount.toLocaleString('id-ID')}{' '}
-                    (dikembalikan setelah pengembalian)
+                    {depositAmount > 0
+                      ? `Deposit Rp ${depositAmount.toLocaleString('id-ID')} (dikembalikan setelah pengembalian)`
+                      : 'Deposit Gratis'}
                   </span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
-                  <span>Minimal sewa 1 hari</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
-                  <span>Gratis antar-jemput area Jakarta</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
-                  <span>Pengembalian maksimal jam 18:00</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-600" />
-                  <span>Denda keterlambatan Rp 50.000/jam</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
-                  <span>Kerusakan ditanggung penyewa</span>
-                </div>
+                {/* Custom terms from database */}
+                {terms.length > 0 ? (
+                  terms.map((term, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+                      <span>{term}</span>
+                    </div>
+                  ))
+                ) : (
+                  /* Default terms if none configured */
+                  <>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+                      <span>Minimal sewa 1 hari</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+                      <span>Gratis antar-jemput area Jakarta</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+                      <span>Pengembalian maksimal jam 18:00</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-600" />
+                      <span>Denda keterlambatan Rp 50.000/jam</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
+                      <span>Kerusakan ditanggung penyewa</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -232,53 +269,112 @@ export default async function SewaAlatDetailPage({
             </div>
 
             {/* Actions */}
-            <div className="sticky bottom-0 space-y-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
-              {isAvailable ? (
-                <>
-                  <Link
-                    href={`/booking/rental?item=${item.id}`}
-                    className="block w-full rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 py-3 text-center font-semibold text-white transition-all hover:shadow-lg"
-                  >
-                    <Calendar className="mr-2 inline h-5 w-5" />
-                    Booking Sekarang
-                  </Link>
-                  <Link
-                    href="/sewa-alat"
-                    className="block w-full rounded-lg border-2 border-blue-600 py-3 text-center font-semibold text-blue-600 transition-all hover:bg-blue-50"
-                  >
-                    Lihat Alat Lainnya
-                  </Link>
-                </>
-              ) : (
-                <button
-                  disabled
-                  className="w-full cursor-not-allowed rounded-lg bg-gray-300 py-3 text-center font-semibold text-gray-500"
-                >
-                  Tidak Tersedia
-                </button>
-              )}
-              <p className="text-center text-xs text-gray-500">
-                Hubungi kami untuk informasi lebih lanjut
-              </p>
-            </div>
+            <RentalActions
+              rentalItem={{
+                id: item.id,
+                name: item.name,
+                pricePerDay: item.pricePerDay,
+                stock: item.stock,
+                images: item.images,
+              }}
+              isAvailable={isAvailable}
+            />
           </div>
         </div>
 
         {/* Related Items */}
-        <div className="mt-12">
-          <h2 className="mb-6 text-2xl font-bold text-gray-900">
-            Alat Sewa Lainnya
-          </h2>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {/* Placeholder - could implement related items later */}
-            <p className="col-span-full py-8 text-center text-gray-500">
-              Lihat alat sewa lainnya di{' '}
-              <Link href="/sewa-alat" className="text-blue-600 hover:underline">
-                katalog sewa alat
+        {relatedItems.length > 0 && (
+          <section className="mt-12 rounded-2xl bg-gray-50 p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Alat Sewa Lainnya
+              </h2>
+              <Link
+                href="/sewa-alat"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                Lihat Semua →
               </Link>
-            </p>
-          </div>
-        </div>
+            </div>
+
+            {/* Mobile: Masonry, Desktop: Grid */}
+            <div className="columns-2 gap-4 lg:columns-1">
+              {/* Desktop Grid */}
+              <div className="hidden lg:grid lg:grid-cols-4 lg:gap-6">
+                {relatedItems.map((rentalItem) => (
+                  <Link
+                    key={rentalItem.id}
+                    href={`/sewa-alat/${rentalItem.id}`}
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-blue-300 hover:shadow-lg"
+                  >
+                    <div className="aspect-square overflow-hidden bg-blue-50">
+                      <img
+                        src={
+                          rentalItem.images[0] ||
+                          'https://images.unsplash.com/photo-1484788984921-03950022c9ef?w=400&q=80'
+                        }
+                        alt={rentalItem.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="mb-1 truncate font-semibold text-gray-900">
+                        {rentalItem.name}
+                      </h3>
+                      <p className="mb-2 truncate text-xs text-gray-600">
+                        {rentalItem.description || 'Alat sewa berkualitas'}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-blue-600">
+                          Rp {rentalItem.pricePerDay.toLocaleString('id-ID')}
+                          /hari
+                        </p>
+                        <span className="hidden rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700 md:inline-block">
+                          {rentalItem.stock} unit
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {/* Mobile Masonry */}
+              <div className="lg:hidden">
+                {relatedItems.map((rentalItem) => (
+                  <div key={rentalItem.id} className="mb-4 break-inside-avoid">
+                    <Link
+                      href={`/sewa-alat/${rentalItem.id}`}
+                      className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-blue-300 hover:shadow-lg"
+                    >
+                      <div className="aspect-square overflow-hidden bg-blue-50">
+                        <img
+                          src={
+                            rentalItem.images[0] ||
+                            'https://images.unsplash.com/photo-1484788984921-03950022c9ef?w=400&q=80'
+                          }
+                          alt={rentalItem.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="p-4">
+                        <h3 className="mb-1 truncate font-semibold text-gray-900">
+                          {rentalItem.name}
+                        </h3>
+                        <p className="mb-2 truncate text-xs text-gray-600">
+                          {rentalItem.description || 'Alat sewa berkualitas'}
+                        </p>
+                        <p className="text-sm font-bold text-blue-600">
+                          Rp {rentalItem.pricePerDay.toLocaleString('id-ID')}
+                          /hari
+                        </p>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       <Footer variant="light" />

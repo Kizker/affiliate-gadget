@@ -1,63 +1,36 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  extensions = [postgis]
-}
-
-// ============================================
-// AUTHENTICATION & USERS
-// ============================================
-
-enum UserRole {
-  CUSTOMER
-  ADMIN
-  SUPER_ADMIN
-  MITRA
-}
-
-enum MitraStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String         @unique
   emailVerified DateTime?
   image         String?
   password      String?
-  role          UserRole     @default(CUSTOMER)
+  role          UserRole       @default(CUSTOMER)
   phone         String?
-  address       String?      // Street address
-  city          String?      // City/Regency
-  province      String?      // Province
-  postalCode    String?      // Postal code
-  isActive      Boolean      @default(true)
-  mitraStatus   MitraStatus? // Only for MITRA role, null for others
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  // Relations
+  isActive      Boolean        @default(true)
+  mitraStatus   MitraStatus?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   accounts      Account[]
-  sessions      Session[]
-  technician    Technician?
-  mitra         Mitra?
   carts         Cart[]
+  chats         chats[]
+  messages      messages[]
+  mitra         Mitra?
+  notifications Notification[]
   orders        Order[]
   reviews       Review[]
-  chatRooms     ChatRoom[]    @relation("CustomerChats")
-  sentMessages  ChatMessage[] @relation("SentMessages")
-  notifications Notification[]
+  sessions      Session[]
+  technician    Technician?
   tickets       Ticket[]
 
   @@index([email])
@@ -77,11 +50,9 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([provider, providerAccountId])
   @@map("accounts")
@@ -91,10 +62,9 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   @@map("sessions")
 }
@@ -108,41 +78,24 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-// ============================================
-// TECHNICIANS
-// ============================================
-
 model Technician {
-  id          String   @id @default(cuid())
-  userId      String   @unique
+  id          String    @id @default(cuid())
+  userId      String    @unique
   bio         String?
-  experience  Int      @default(0) // in years
-  specialties String[] // e.g., ["LCD", "Mesin", "Software"]
-  rating      Float    @default(0)
-  totalReview Int      @default(0)
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  services  Service[]
-  orders    Order[]
-  chatRooms ChatRoom[]
+  experience  Int       @default(0)
+  specialties String[]
+  rating      Float     @default(0)
+  totalReview Int       @default(0)
+  isAvailable Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  orders      Order[]
+  services    Service[]
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([rating])
   @@map("technicians")
-}
-
-// ============================================
-// SERVICES & PRODUCTS
-// ============================================
-
-enum ServiceCategory {
-  KONSULTASI
-  CEK_BONGKAR
-  SERVIS_LENGKAP
 }
 
 model Service {
@@ -151,18 +104,14 @@ model Service {
   name         String
   description  String?
   category     ServiceCategory
-  price        Float           // Base/average price (for backward compatibility)
-  minPrice     Float?          // Minimum price for range
-  maxPrice     Float?          // Maximum price for range
-  duration     Int?            // in minutes
+  price        Float
+  duration     Int?
   isActive     Boolean         @default(true)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
-
-  // Relations
-  technician    Technician  @relation(fields: [technicianId], references: [id], onDelete: Cascade)
-  cartItems     CartItem[]  @relation("CartItemToService")
-  orderItems    OrderItem[] @relation("OrderItemToService")
+  cartItems    CartItem[]      @relation("CartItemToService")
+  orderItems   OrderItem[]     @relation("OrderItemToService")
+  technician   Technician      @relation(fields: [technicianId], references: [id], onDelete: Cascade)
 
   @@index([technicianId])
   @@index([category])
@@ -170,22 +119,20 @@ model Service {
 }
 
 model Product {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
   description String?
-  category    String // e.g., "LCD", "Baterai", "Kamera"
+  category    String
   brand       String?
   model       String?
   price       Float
-  stock       Int      @default(0)
-  images      String[] // URLs
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  cartItems  CartItem[]  @relation("CartItemToProduct")
-  orderItems OrderItem[] @relation("OrderItemToProduct")
+  stock       Int         @default(0)
+  images      String[]
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  cartItems   CartItem[]  @relation("CartItemToProduct")
+  orderItems  OrderItem[] @relation("OrderItemToProduct")
 
   @@index([category])
   @@index([stock])
@@ -193,46 +140,36 @@ model Product {
 }
 
 model RentalItem {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  pricePerDay Float
-  stock       Int      @default(0)
-  images      String[]
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  cartItems  CartItem[]  @relation("CartItemToRental")
-  orderItems OrderItem[] @relation("OrderItemToRental")
+  id                 String      @id @default(cuid())
+  name               String
+  description        String?
+  pricePerDay        Float
+  weeklyDiscountPct  Float       @default(10)
+  monthlyDiscountPct Float       @default(20)
+  depositAmount      Float?
+  terms              String[]    @default([])
+  stock              Int         @default(0)
+  images             String[]
+  isActive           Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  cartItems          CartItem[]  @relation("CartItemToRental")
+  orderItems         OrderItem[] @relation("OrderItemToRental")
 
   @@index([stock])
   @@map("rental_items")
 }
 
-// ============================================
-// CART & ORDERS
-// ============================================
-
 model Cart {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("carts")
-}
-
-enum CartItemType {
-  SERVICE
-  PRODUCT
-  RENTAL
 }
 
 model CartItem {
@@ -243,26 +180,16 @@ model CartItem {
   productId    String?
   rentalItemId String?
   quantity     Int          @default(1)
-  rentalDays   Int? // for rental items
+  rentalDays   Int?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-
-  // Relations
-  cart       Cart        @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  service    Service?    @relation("CartItemToService", fields: [serviceId], references: [id])
-  product    Product?    @relation("CartItemToProduct", fields: [productId], references: [id])
-  rentalItem RentalItem? @relation("CartItemToRental", fields: [rentalItemId], references: [id])
+  cart         Cart         @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product      Product?     @relation("CartItemToProduct", fields: [productId], references: [id])
+  rentalItem   RentalItem?  @relation("CartItemToRental", fields: [rentalItemId], references: [id])
+  service      Service?     @relation("CartItemToService", fields: [serviceId], references: [id])
 
   @@index([cartId])
   @@map("cart_items")
-}
-
-enum OrderStatus {
-  PENDING_PAYMENT
-  PAID
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
 }
 
 model Order {
@@ -277,16 +204,14 @@ model Order {
   notes        String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
-
-  // Relations
-  user       User        @relation(fields: [userId], references: [id])
-  technician Technician? @relation(fields: [technicianId], references: [id])
-  items      OrderItem[]
-  payment    Payment?
-  invoice    Invoice?
-  warranty   Warranty?
-  reviews    Review[]
-  tickets    Ticket[]
+  invoice      Invoice?
+  items        OrderItem[]
+  technician   Technician? @relation(fields: [technicianId], references: [id])
+  user         User        @relation(fields: [userId], references: [id])
+  payment      Payment?
+  reviews      Review[]
+  tickets      Ticket[]
+  warranty     Warranty?
 
   @@index([userId])
   @@index([orderNumber])
@@ -307,30 +232,13 @@ model OrderItem {
   subtotal     Float
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-
-  // Relations
-  order      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  service    Service?    @relation("OrderItemToService", fields: [serviceId], references: [id])
-  product    Product?    @relation("OrderItemToProduct", fields: [productId], references: [id])
-  rentalItem RentalItem? @relation("OrderItemToRental", fields: [rentalItemId], references: [id])
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product?     @relation("OrderItemToProduct", fields: [productId], references: [id])
+  rentalItem   RentalItem?  @relation("OrderItemToRental", fields: [rentalItemId], references: [id])
+  service      Service?     @relation("OrderItemToService", fields: [serviceId], references: [id])
 
   @@index([orderId])
   @@map("order_items")
-}
-
-// ============================================
-// PAYMENT & INVOICES
-// ============================================
-
-enum PaymentMethod {
-  MANUAL_TRANSFER
-  MIDTRANS
-}
-
-enum PaymentStatus {
-  PENDING
-  VERIFIED
-  REJECTED
 }
 
 model Payment {
@@ -340,26 +248,18 @@ model Payment {
   status        PaymentStatus @default(PENDING)
   amount        Float
   bankAccountId String?
-  proofImage    String? // URL to uploaded proof
-  verifiedBy    String? // Admin user ID
+  proofImage    String?
+  verifiedBy    String?
   verifiedAt    DateTime?
   notes         String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-
-  // Relations
-  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
+  bankAccount   BankAccount?  @relation(fields: [bankAccountId], references: [id])
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([status])
   @@map("payments")
-}
-
-enum BankAccountCategory {
-  JASA
-  SEWA
-  SPAREPART
 }
 
 model BankAccount {
@@ -371,57 +271,38 @@ model BankAccount {
   isActive      Boolean             @default(true)
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
-
-  // Relations
-  payments Payment[]
+  payments      Payment[]
 
   @@map("bank_accounts")
 }
 
 model Invoice {
-  id          String   @id @default(cuid())
-  orderId     String   @unique
-  invoiceNumber String @unique
-  pdfUrl      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  orderId       String   @unique
+  invoiceNumber String   @unique
+  pdfUrl        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([invoiceNumber])
   @@map("invoices")
 }
 
-// ============================================
-// WARRANTY & TICKETS
-// ============================================
-
 model Warranty {
-  id         String    @id @default(cuid())
-  orderId    String    @unique
-  startDate  DateTime  @default(now())
-  endDate    DateTime
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  // Relations
-  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  tickets Ticket[]
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  startDate DateTime @default(now())
+  endDate   DateTime
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tickets   Ticket[]
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([endDate])
   @@map("warranties")
-}
-
-enum TicketStatus {
-  OPEN
-  PENDING_APPROVAL
-  APPROVED
-  REJECTED
-  RESOLVED
-  CLOSED
 }
 
 model Ticket {
@@ -435,11 +316,9 @@ model Ticket {
   resolvedAt  DateTime?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-
-  // Relations
-  order    Order     @relation(fields: [orderId], references: [id])
-  warranty Warranty? @relation(fields: [warrantyId], references: [id])
-  user     User      @relation(fields: [userId], references: [id])
+  order       Order        @relation(fields: [orderId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  warranty    Warranty?    @relation(fields: [warrantyId], references: [id])
 
   @@index([orderId])
   @@index([userId])
@@ -447,44 +326,38 @@ model Ticket {
   @@map("tickets")
 }
 
-// ============================================
-// MITRA (PARTNERS)
-// ============================================
-
 model Mitra {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  businessName String
-  tagline     String?  // Short tagline for the business
-  description String?
-  banner      String?  // Main banner image URL
-  address     String
-  city        String
-  province    String
-  latitude    Float?
-  longitude   Float?
-  phone       String
-  whatsapp    String?
-  email       String?  // Contact email
-  website     String?  // Website URL
-  features    String[] // Array of business features/strengths
-  weekdayHours String? // e.g., "09:00 - 18:00"
-  weekendHours String? // e.g., "10:00 - 16:00"
-  rating      Float    @default(0)
-  totalReview Int      @default(0)
-  totalViews  Int      @default(0) // Track profile page visits
-  totalInquiries Int   @default(0) // Track phone/WhatsApp clicks
-  isApproved  Boolean  @default(false)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  services  MitraService[]
-  images    MitraImage[]
-  schedules MitraSchedule[]
-  reviews   Review[]
+  id             String          @id @default(cuid())
+  userId         String          @unique
+  businessName   String
+  tagline        String?
+  description    String?
+  banner         String?
+  address        String
+  city           String
+  province       String
+  latitude       Float?
+  longitude      Float?
+  phone          String
+  whatsapp       String?
+  email          String?
+  website        String?
+  features       String[]
+  weekdayHours   String?
+  weekendHours   String?
+  rating         Float           @default(0)
+  totalReview    Int             @default(0)
+  totalViews     Int             @default(0)
+  totalInquiries Int             @default(0)
+  isApproved     Boolean         @default(false)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  images         MitraImage[]
+  schedules      MitraSchedule[]
+  services       MitraService[]
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews        Review[]
 
   @@index([userId])
   @@index([city])
@@ -497,13 +370,11 @@ model MitraService {
   mitraId     String
   name        String
   description String?
-  icon        String?  // Emoji icon for the service
-  price       String?  // Price display (flexible string format)
+  icon        String?
+  price       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  // Relations
-  mitra Mitra @relation(fields: [mitraId], references: [id], onDelete: Cascade)
+  mitra       Mitra    @relation(fields: [mitraId], references: [id], onDelete: Cascade)
 
   @@index([mitraId])
   @@map("mitra_services")
@@ -516,86 +387,45 @@ model MitraImage {
   isBanner  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relations
-  mitra Mitra @relation(fields: [mitraId], references: [id], onDelete: Cascade)
+  mitra     Mitra    @relation(fields: [mitraId], references: [id], onDelete: Cascade)
 
   @@index([mitraId])
   @@map("mitra_images")
-}
-
-enum DayOfWeek {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
-  SUNDAY
 }
 
 model MitraSchedule {
   id        String    @id @default(cuid())
   mitraId   String
   day       DayOfWeek
-  openTime  String // HH:mm format
-  closeTime String // HH:mm format
+  openTime  String
+  closeTime String
   isClosed  Boolean   @default(false)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-
-  // Relations
-  mitra Mitra @relation(fields: [mitraId], references: [id], onDelete: Cascade)
+  mitra     Mitra     @relation(fields: [mitraId], references: [id], onDelete: Cascade)
 
   @@index([mitraId])
   @@map("mitra_schedules")
 }
 
-// ============================================
-// REVIEWS
-// ============================================
-
-enum ReviewType {
-  TECHNICIAN
-  PRODUCT
-  RENTAL
-  MITRA
-}
-
 model Review {
-  id          String     @id @default(cuid())
-  userId      String
-  orderId     String?
-  mitraId     String?
-  type        ReviewType
-  rating      Int // 1-5
-  comment     String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  // Relations
-  user  User   @relation(fields: [userId], references: [id])
-  order Order? @relation(fields: [orderId], references: [id])
-  mitra Mitra? @relation(fields: [mitraId], references: [id])
+  id        String     @id @default(cuid())
+  userId    String
+  orderId   String?
+  mitraId   String?
+  type      ReviewType
+  rating    Int
+  comment   String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  mitra     Mitra?     @relation(fields: [mitraId], references: [id])
+  order     Order?     @relation(fields: [orderId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([orderId])
   @@index([mitraId])
   @@map("reviews")
-}
-
-
-// ============================================
-// NOTIFICATIONS
-// ============================================
-
-enum NotificationType {
-  ORDER_CREATED
-  PAYMENT_VERIFIED
-  ORDER_STATUS_CHANGED
-  NEW_MESSAGE
-  NEW_REVIEW
-  MITRA_APPROVED
 }
 
 model Notification {
@@ -608,80 +438,140 @@ model Notification {
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
-
-  // Relations
-  user User @relation(fields: [userId], references: [id])
+  user      User             @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([isRead])
   @@map("notifications")
 }
 
-// ============================================
-// BLOG/ARTICLES
-// ============================================
-
 model Article {
-  id          String   @id @default(cuid())
-  slug        String   @unique
+  id          String    @id @default(cuid())
+  slug        String    @unique
   title       String
   excerpt     String?
   content     String
   coverImage  String?
   category    String?
   tags        String[]
-  isPublished Boolean  @default(false)
+  isPublished Boolean   @default(false)
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([slug])
   @@index([isPublished])
   @@map("articles")
 }
 
-// ============================================
-// CHAT SYSTEM
-// ============================================
+model chats {
+  id        String     @id
+  userId    String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime
+  users     User       @relation(fields: [userId], references: [id])
+  messages  messages[]
 
-model ChatRoom {
-  id            String   @id @default(cuid())
-  customerId    String
-  technicianId  String
-  lastMessageAt DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  customer   User         @relation("CustomerChats", fields: [customerId], references: [id], onDelete: Cascade)
-  technician Technician   @relation(fields: [technicianId], references: [id], onDelete: Cascade)
-  messages   ChatMessage[]
-
-  @@unique([customerId, technicianId])
-  @@index([customerId])
-  @@index([technicianId])
-  @@index([lastMessageAt])
-  @@map("chat_rooms")
+  @@index([userId])
 }
 
-model ChatMessage {
-  id        String   @id @default(cuid())
-  roomId    String
+model messages {
+  id        String   @id
+  chatId    String
   senderId  String
   content   String
-  mediaUrl  String?  // Base64 data or external URL
-  mediaType String?  // MIME type (image/jpeg, video/mp4, application/pdf, etc)
-  mediaSize Int?     // File size in bytes
-  mediaName String?  // Original filename
+  fileUrl   String?
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+  updatedAt DateTime
+  chats     chats    @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  users     User     @relation(fields: [senderId], references: [id])
 
-  // Relations
-  room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  sender User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-
-  @@index([roomId])
+  @@index([chatId])
   @@index([senderId])
-  @@index([createdAt])
-  @@map("chat_messages")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  SUPER_ADMIN
+  MITRA
+}
+
+enum MitraStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ServiceCategory {
+  KONSULTASI
+  CEK_BONGKAR
+  SERVIS_LENGKAP
+}
+
+enum CartItemType {
+  SERVICE
+  PRODUCT
+  RENTAL
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  MANUAL_TRANSFER
+  MIDTRANS
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum BankAccountCategory {
+  JASA
+  SEWA
+  SPAREPART
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  RESOLVED
+  CLOSED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum ReviewType {
+  TECHNICIAN
+  PRODUCT
+  RENTAL
+  MITRA
+}
+
+enum NotificationType {
+  ORDER_CREATED
+  PAYMENT_VERIFIED
+  ORDER_STATUS_CHANGED
+  NEW_MESSAGE
+  NEW_REVIEW
+  MITRA_APPROVED
 }

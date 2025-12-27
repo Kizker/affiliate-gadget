@@ -73,6 +73,7 @@ export default function TechniciansPage() {
   const [mitras, setMitras] = useState<MitraData[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
   const [stats, setStats] = useState({
     totalTechnicians: 0,
     totalMitra: 0,
@@ -84,7 +85,7 @@ export default function TechniciansPage() {
   useEffect(() => {
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
+  }, [activeTab, refreshKey])
 
   const fetchData = async () => {
     setLoading(true)
@@ -144,7 +145,7 @@ export default function TechniciansPage() {
       if (!res.ok) throw new Error('Failed to delete')
 
       toast.success('Technician deleted successfully')
-      fetchData()
+      setRefreshKey((prev) => prev + 1)
     } catch (error) {
       console.error('Error deleting technician:', error)
       toast.error('Failed to delete technician')
@@ -169,7 +170,7 @@ export default function TechniciansPage() {
       if (!res.ok) throw new Error('Failed to delete')
 
       toast.success('Mitra deleted successfully')
-      fetchData()
+      setRefreshKey((prev) => prev + 1)
     } catch (error) {
       console.error('Error deleting mitra:', error)
       toast.error('Failed to delete mitra')
@@ -177,7 +178,10 @@ export default function TechniciansPage() {
   }
 
   // Toggle technician availability
-  const handleToggleAvailability = async (id: string, currentStatus: boolean) => {
+  const handleToggleAvailability = async (
+    id: string,
+    currentStatus: boolean
+  ) => {
     try {
       const res = await fetch(`/api/admin/technicians/${id}`, {
         method: 'PUT',
@@ -188,7 +192,7 @@ export default function TechniciansPage() {
       if (!res.ok) throw new Error('Failed to update')
 
       toast.success('Availability updated successfully')
-      fetchData()
+      setRefreshKey((prev) => prev + 1)
     } catch (error) {
       console.error('Error updating availability:', error)
       toast.error('Failed to update availability')
@@ -207,7 +211,7 @@ export default function TechniciansPage() {
       if (!res.ok) throw new Error('Failed to update')
 
       toast.success(`Mitra ${approve ? 'approved' : 'rejected'} successfully`)
-      fetchData()
+      setRefreshKey((prev) => prev + 1)
     } catch (error) {
       console.error('Error updating mitra status:', error)
       toast.error('Failed to update mitra status')
@@ -322,20 +326,22 @@ export default function TechniciansPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab('technicians')}
-            className={`rounded-lg px-6 py-2 font-medium transition-all ${activeTab === 'technicians'
-              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
-              : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
+            className={`rounded-lg px-6 py-2 font-medium transition-all ${
+              activeTab === 'technicians'
+                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
           >
             <Shield className="mr-2 inline h-5 w-5" />
             Teknisi ({stats.totalTechnicians})
           </button>
           <button
             onClick={() => setActiveTab('mitra')}
-            className={`rounded-lg px-6 py-2 font-medium transition-all ${activeTab === 'mitra'
-              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
-              : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
+            className={`rounded-lg px-6 py-2 font-medium transition-all ${
+              activeTab === 'mitra'
+                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
           >
             <Store className="mr-2 inline h-5 w-5" />
             Mitra ({stats.totalMitra})
@@ -404,10 +410,11 @@ export default function TechniciansPage() {
                       </div>
                     </div>
                     <span
-                      className={`rounded-full px-2 py-1 text-xs ${tech.isAvailable
+                      className={`rounded-full px-2 py-1 text-xs ${
+                        tech.isAvailable
                           ? 'bg-green-100 text-green-700'
                           : 'bg-gray-100 text-gray-700'
-                        }`}
+                      }`}
                     >
                       {tech.isAvailable ? 'Available' : 'Unavailable'}
                     </span>
@@ -451,12 +458,17 @@ export default function TechniciansPage() {
                     View Details
                   </Link>
                   <button
-                    onClick={() => handleToggleAvailability(tech.id, tech.isAvailable)}
-                    className={`rounded-lg px-4 py-2 text-sm font-medium ${tech.isAvailable
-                      ? 'bg-green-50 text-green-600 hover:bg-green-100'
-                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                      }`}
-                    title={tech.isAvailable ? 'Set Unavailable' : 'Set Available'}
+                    onClick={() =>
+                      handleToggleAvailability(tech.id, tech.isAvailable)
+                    }
+                    className={`rounded-lg px-4 py-2 text-sm font-medium ${
+                      tech.isAvailable
+                        ? 'bg-green-50 text-green-600 hover:bg-green-100'
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                    title={
+                      tech.isAvailable ? 'Set Unavailable' : 'Set Available'
+                    }
                   >
                     {tech.isAvailable ? (
                       <Eye className="h-4 w-4" />
@@ -513,12 +525,13 @@ export default function TechniciansPage() {
                     </div>
                   </div>
                   <span
-                    className={`rounded-full px-2 py-1 text-xs ${!mitra.isApproved
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : mitra.isActive
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
-                      }`}
+                    className={`rounded-full px-2 py-1 text-xs ${
+                      !mitra.isApproved
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : mitra.isActive
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                    }`}
                   >
                     {!mitra.isApproved
                       ? 'Pending'

@@ -59,6 +59,12 @@
   }
 
   /* Smooth snap scroll with slower transition */
+  .snap-container {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .snap-y {
     scroll-snap-type: y mandatory;
     scroll-behavior: smooth;
@@ -70,13 +76,22 @@
     scroll-snap-stop: always;
   }
 
-  /* Custom smooth scrolling */
+  /* Custom smooth scrolling - slower duration */
   html {
     scroll-behavior: smooth;
   }
 
+  /* Slow scroll container for landing page */
+  .slow-snap-scroll {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Make scroll transitions feel slower */
   @media (prefers-reduced-motion: no-preference) {
-    * {
+    .snap-y,
+    .slow-snap-scroll {
       scroll-behavior: smooth;
     }
   }

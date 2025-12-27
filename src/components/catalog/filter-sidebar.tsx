@@ -1,7 +1,7 @@
 'use client'
 
 import { X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface FilterOption {
   value: string
@@ -30,6 +30,19 @@ export function FilterSidebar({
     Record<string, string[]>
   >({})
 
+  // Track if this is the first render to avoid calling onFilterChange on mount
+  const isFirstRender = useState(true)
+
+  // Call onFilterChange when selectedFilters changes (but not on mount)
+  useEffect(() => {
+    if (isFirstRender[0]) {
+      isFirstRender[1](false)
+      return
+    }
+    onFilterChange?.(selectedFilters)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFilters])
+
   const handleFilterToggle = (
     groupTitle: string,
     value: string,
@@ -49,7 +62,6 @@ export function FilterSidebar({
         }
       }
 
-      onFilterChange?.(newFilters)
       return newFilters
     })
   }

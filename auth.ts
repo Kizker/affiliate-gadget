@@ -77,21 +77,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string
         session.user.role = token.role as UserRole
 
-        // Get fresh user data including image
-        const user = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { image: true },
-        })
-        if (user?.image) {
-          session.user.image = user.image
-        }
+        try {
+          // Get fresh user data including image and mitraStatus
+          const user = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: {
+              image: true,
+              mitraStatus: true,
+            },
+          })
+          if (user?.image) {
+            session.user.image = user.image
+          }
+          if (user?.mitraStatus) {
+            session.user.mitraStatus = user.mitraStatus
+          }
 
-        // Check if user is a technician
-        const technician = await prisma.technician.findUnique({
-          where: { userId: token.id as string },
-          select: { id: true },
-        })
-        session.user.isTechnician = !!technician
+          // Check if user is a technician
+          const technician = await prisma.technician.findUnique({
+            where: { userId: token.id as string },
+            select: { id: true },
+          })
+          session.user.isTechnician = !!technician
+        } catch (error) {
+          console.error('Error fetching user data in session:', error)
+          // Continue with session even if database query fails
+        }
       }
       return session
     },

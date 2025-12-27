@@ -86,7 +86,10 @@ export default function TeknisiDetailPage({
   const serviceParam = searchParams.get('service')
   const [activeService, setActiveService] = useState<
     'konsultasi' | 'cek-bongkar' | 'jasa-servis'
-  >((serviceParam as 'konsultasi' | 'cek-bongkar' | 'jasa-servis') || 'konsultasi')
+  >(
+    (serviceParam as 'konsultasi' | 'cek-bongkar' | 'jasa-servis') ||
+      'konsultasi'
+  )
 
   useEffect(() => {
     fetchTechnician()
@@ -170,7 +173,11 @@ export default function TeknisiDetailPage({
       window.location.href = `/booking-confirmation/${data.order.id}`
     } catch (error) {
       console.error('Error creating booking:', error)
-      alert(error instanceof Error ? error.message : 'Terjadi kesalahan saat membuat booking')
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Terjadi kesalahan saat membuat booking'
+      )
     } finally {
       setLoading(false)
     }
@@ -225,10 +232,11 @@ export default function TeknisiDetailPage({
         <div className="mb-6 flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-2">
           <button
             onClick={() => setActiveService('konsultasi')}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all sm:px-4 ${activeService === 'konsultasi'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 hover:bg-gray-100'
-              }`}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all sm:px-4 ${
+              activeService === 'konsultasi'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
           >
             <MessageCircle className="h-4 w-4" />
             <span>Konsultasi</span>
@@ -236,10 +244,11 @@ export default function TeknisiDetailPage({
           <ChevronRight className="hidden h-5 w-5 self-center text-gray-300 sm:block" />
           <button
             onClick={() => setActiveService('cek-bongkar')}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all sm:px-4 ${activeService === 'cek-bongkar'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 hover:bg-gray-100'
-              }`}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all sm:px-4 ${
+              activeService === 'cek-bongkar'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
           >
             <Wrench className="h-4 w-4" />
             <span className="sm:hidden">Cek</span>
@@ -248,10 +257,11 @@ export default function TeknisiDetailPage({
           <ChevronRight className="hidden h-5 w-5 self-center text-gray-300 sm:block" />
           <button
             onClick={() => setActiveService('jasa-servis')}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all sm:px-4 ${activeService === 'jasa-servis'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 hover:bg-gray-100'
-              }`}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all sm:px-4 ${
+              activeService === 'jasa-servis'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
           >
             <Settings className="h-4 w-4" />
             <span className="sm:hidden">Servis</span>
@@ -281,10 +291,11 @@ export default function TeknisiDetailPage({
                       </h1>
                       <div className="mb-3 flex items-center gap-2">
                         <span
-                          className={`rounded-full px-3 py-1 text-sm font-semibold ${technician.isAvailable
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                            }`}
+                          className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                            technician.isAvailable
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
                         >
                           {technician.isAvailable
                             ? '🟢 Tersedia'
@@ -297,10 +308,13 @@ export default function TeknisiDetailPage({
                   <div className="mb-4 flex items-center gap-2">
                     <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
                     <span className="text-lg font-bold">
-                      {reviews.averageRating > 0 ? reviews.averageRating.toFixed(1) : '0.0'}
+                      {reviews.averageRating > 0
+                        ? reviews.averageRating.toFixed(1)
+                        : '0.0'}
                     </span>
                     <span className="text-gray-600">
-                      ({reviews.totalReviews} review{reviews.totalReviews !== 1 ? 's' : ''})
+                      ({reviews.totalReviews} review
+                      {reviews.totalReviews !== 1 ? 's' : ''})
                     </span>
                   </div>
 
@@ -424,21 +438,25 @@ export default function TeknisiDetailPage({
                           </span>
                         </div>
                         <span className="text-sm text-gray-500">
-                          {new Date(review.createdAt).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
+                          {new Date(review.createdAt).toLocaleDateString(
+                            'id-ID',
+                            {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            }
+                          )}
                         </span>
                       </div>
                       <div className="mb-2 flex items-center gap-1">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`h-4 w-4 ${i < review.rating
-                              ? 'fill-yellow-500 text-yellow-500'
-                              : 'text-gray-300'
-                              }`}
+                            className={`h-4 w-4 ${
+                              i < review.rating
+                                ? 'fill-yellow-500 text-yellow-500'
+                                : 'text-gray-300'
+                            }`}
                           />
                         ))}
                       </div>
@@ -464,17 +482,21 @@ export default function TeknisiDetailPage({
                     </h3>
                   </div>
                   <p className="mb-4 text-sm text-gray-600">
-                    Chat langsung dengan {technician.user.name} untuk konsultasi masalah gadget Anda
+                    Chat langsung dengan {technician.user.name} untuk konsultasi
+                    masalah gadget Anda
                   </p>
                   {/* Only show button for customers */}
-                  {session?.user?.role === 'CUSTOMER' && !session.user.isTechnician ? (
+                  {session?.user?.role === 'CUSTOMER' &&
+                  !session.user.isTechnician ? (
                     <button
                       onClick={async () => {
                         try {
                           const res = await fetch('/api/chat/rooms', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ technicianId: technician.id }),
+                            body: JSON.stringify({
+                              technicianId: technician.id,
+                            }),
                           })
                           if (res.ok) {
                             const data = await res.json()
@@ -491,10 +513,37 @@ export default function TeknisiDetailPage({
                       Mulai Konsultasi
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-gray-300 bg-gray-50 p-4 text-center">
-                      <p className="text-sm text-gray-600">
-                        {!session ? 'Login sebagai customer untuk memulai konsultasi' : 'Hanya customer yang dapat melakukan booking'}
-                      </p>
+                    <div className="space-y-4 rounded-lg border border-gray-300 bg-gray-50 p-6 text-center">
+                      {!session ? (
+                        <>
+                          <p className="text-sm text-gray-600">
+                            Login sebagai customer untuk memulai konsultasi
+                          </p>
+                          <Link
+                            href="/auth/login"
+                            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 font-semibold text-white transition-all hover:shadow-lg"
+                          >
+                            <svg
+                              className="h-5 w-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                              />
+                            </svg>
+                            Login Sekarang
+                          </Link>
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-600">
+                          Hanya customer yang dapat melakukan booking
+                        </p>
+                      )}
                     </div>
                   )}
                 </>
@@ -502,153 +551,188 @@ export default function TeknisiDetailPage({
 
               {(activeService === 'cek-bongkar' ||
                 activeService === 'jasa-servis') && (
-                  <>
-                    <div className="mb-4 flex items-center gap-2">
-                      {activeService === 'cek-bongkar' ? (
-                        <Wrench className="h-5 w-5 text-orange-600" />
-                      ) : (
-                        <Settings className="h-5 w-5 text-blue-600" />
-                      )}
-                      <h3 className="text-lg font-bold text-gray-900">
-                        {activeService === 'cek-bongkar'
-                          ? 'Booking Cek/Bongkar'
-                          : 'Booking Servis'}
-                      </h3>
-                    </div>
-                    {/* Only show form for customers */}
-                    {session?.user?.role === 'CUSTOMER' && !session.user.isTechnician ? (
-                      <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-gray-700">
-                            Pilih Layanan
-                          </label>
-                          <select
-                            value={formData.service}
-                            onChange={(e) =>
-                              setFormData({ ...formData, service: e.target.value })
-                            }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                            required
-                          >
-                            <option value="">-- Pilih Layanan --</option>
-                            {technician.services
-                              .filter((service) => {
-                                // Filter based on active tab
-                                if (activeService === 'konsultasi') {
-                                  return service.category === 'KONSULTASI'
-                                } else if (activeService === 'cek-bongkar') {
-                                  return service.category === 'CEK_BONGKAR'
-                                } else if (activeService === 'jasa-servis') {
-                                  return service.category === 'SERVIS_LENGKAP'
-                                }
-                                return true
-                              })
-                              .map((service) => (
-                                <option key={service.id} value={service.id}>
-                                  {service.name} - Rp {service.price.toLocaleString('id-ID')}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-gray-700">
-                            Jenis HP/Gadget
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.phoneType}
-                            onChange={(e) =>
-                              setFormData({ ...formData, phoneType: e.target.value })
-                            }
-                            placeholder="Contoh: iPhone 13 Pro, Samsung Galaxy S21"
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-gray-700">
-                            Jadwal
-                          </label>
-                          <div className="flex gap-4">
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="scheduleType"
-                                value="asap"
-                                checked={formData.scheduleType === 'asap'}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    scheduleType: e.target.value,
-                                  })
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">Segera</span>
-                            </label>
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="scheduleType"
-                                value="scheduled"
-                                checked={formData.scheduleType === 'scheduled'}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    scheduleType: e.target.value,
-                                  })
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">Pilih Tanggal</span>
-                            </label>
-                          </div>
-                        </div>
-                        {formData.scheduleType === 'scheduled' && (
-                          <div>
-                            <input
-                              type="date"
-                              value={formData.date}
-                              onChange={(e) =>
-                                setFormData({ ...formData, date: e.target.value })
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                            />
-                          </div>
-                        )}
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-gray-700">
-                            Deskripsi Masalah
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={formData.description}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                description: e.target.value,
-                              })
-                            }
-                            placeholder="Jelaskan masalah gadget Anda..."
-                            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                          />
-                        </div>
-                        <button
-                          type="submit"
-                          className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 py-3 font-semibold text-white transition-all hover:shadow-lg"
-                        >
-                          Booking Sekarang
-                        </button>
-                      </form>
+                <>
+                  <div className="mb-4 flex items-center gap-2">
+                    {activeService === 'cek-bongkar' ? (
+                      <Wrench className="h-5 w-5 text-orange-600" />
                     ) : (
-                      <div className="rounded-lg border border-gray-300 bg-gray-50 p-4 text-center">
-                        <p className="text-sm text-gray-600">
-                          {!session ? 'Login sebagai customer untuk melakukan booking' : 'Hanya customer yang dapat melakukan booking'}
-                        </p>
-                      </div>
+                      <Settings className="h-5 w-5 text-blue-600" />
                     )}
-                  </>
-                )}
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {activeService === 'cek-bongkar'
+                        ? 'Booking Cek/Bongkar'
+                        : 'Booking Servis'}
+                    </h3>
+                  </div>
+                  {/* Only show form for customers */}
+                  {session?.user?.role === 'CUSTOMER' &&
+                  !session.user.isTechnician ? (
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                          Pilih Layanan
+                        </label>
+                        <select
+                          value={formData.service}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              service: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                          required
+                        >
+                          <option value="">-- Pilih Layanan --</option>
+                          {technician.services
+                            .filter((service) => {
+                              // Filter based on active tab
+                              if (activeService === 'konsultasi') {
+                                return service.category === 'KONSULTASI'
+                              } else if (activeService === 'cek-bongkar') {
+                                return service.category === 'CEK_BONGKAR'
+                              } else if (activeService === 'jasa-servis') {
+                                return service.category === 'SERVIS_LENGKAP'
+                              }
+                              return true
+                            })
+                            .map((service) => (
+                              <option key={service.id} value={service.id}>
+                                {service.name} - Rp{' '}
+                                {service.price.toLocaleString('id-ID')}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                          Jenis HP/Gadget
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.phoneType}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              phoneType: e.target.value,
+                            })
+                          }
+                          placeholder="Contoh: iPhone 13 Pro, Samsung Galaxy S21"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                          Jadwal
+                        </label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="scheduleType"
+                              value="asap"
+                              checked={formData.scheduleType === 'asap'}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  scheduleType: e.target.value,
+                                })
+                              }
+                              className="text-blue-600"
+                            />
+                            <span className="text-sm">Segera</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="scheduleType"
+                              value="scheduled"
+                              checked={formData.scheduleType === 'scheduled'}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  scheduleType: e.target.value,
+                                })
+                              }
+                              className="text-blue-600"
+                            />
+                            <span className="text-sm">Pilih Tanggal</span>
+                          </label>
+                        </div>
+                      </div>
+                      {formData.scheduleType === 'scheduled' && (
+                        <div>
+                          <input
+                            type="date"
+                            value={formData.date}
+                            onChange={(e) =>
+                              setFormData({ ...formData, date: e.target.value })
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                          Deskripsi Masalah
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={formData.description}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              description: e.target.value,
+                            })
+                          }
+                          placeholder="Jelaskan masalah gadget Anda..."
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 py-3 font-semibold text-white transition-all hover:shadow-lg"
+                      >
+                        Booking Sekarang
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="space-y-4 rounded-lg border border-gray-300 bg-gray-50 p-6 text-center">
+                      {!session ? (
+                        <>
+                          <p className="text-sm text-gray-600">
+                            Login sebagai customer untuk melakukan booking
+                          </p>
+                          <Link
+                            href="/auth/login"
+                            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 font-semibold text-white transition-all hover:shadow-lg"
+                          >
+                            <svg
+                              className="h-5 w-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                              />
+                            </svg>
+                            Login Sekarang
+                          </Link>
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-600">
+                          Hanya customer yang dapat melakukan booking
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -96,6 +96,18 @@ export async function PATCH(
         ...(body.pricePerDay !== undefined && {
           pricePerDay: parseFloat(body.pricePerDay),
         }),
+        ...(body.weeklyDiscountPct !== undefined && {
+          weeklyDiscountPct: parseFloat(body.weeklyDiscountPct),
+        }),
+        ...(body.monthlyDiscountPct !== undefined && {
+          monthlyDiscountPct: parseFloat(body.monthlyDiscountPct),
+        }),
+        ...(body.depositAmount !== undefined && {
+          depositAmount: body.depositAmount
+            ? parseFloat(body.depositAmount)
+            : null,
+        }),
+        ...(body.terms !== undefined && { terms: body.terms }),
         ...(body.stock !== undefined && { stock: parseInt(body.stock) }),
         ...(body.images && { images: body.images }),
         ...(body.isActive !== undefined && { isActive: body.isActive }),

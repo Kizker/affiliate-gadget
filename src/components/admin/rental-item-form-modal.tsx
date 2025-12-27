@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Loader2, Upload, Trash2 } from 'lucide-react'
+import { X, Loader2, Upload, Trash2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface RentalItemFormModalProps {
@@ -9,11 +9,15 @@ interface RentalItemFormModalProps {
   rentalItem: {
     id?: string
     name?: string
-    description?: string
-    price?: number
+    description?: string | null
+    pricePerDay?: number
+    weeklyDiscountPct?: number
+    monthlyDiscountPct?: number
+    depositAmount?: number | null
+    terms?: string[]
     stock?: number
-    category?: string
     images?: string[]
+    isActive?: boolean
   } | null
   onClose: () => void
   onSuccess: () => void
@@ -30,6 +34,10 @@ export default function RentalItemFormModal({
     name: '',
     description: '',
     pricePerDay: '',
+    weeklyDiscountPct: '10',
+    monthlyDiscountPct: '20',
+    depositAmount: '',
+    terms: [] as string[],
     stock: '',
     images: [] as string[],
     isActive: true,
@@ -41,6 +49,10 @@ export default function RentalItemFormModal({
         name: rentalItem.name || '',
         description: rentalItem.description || '',
         pricePerDay: rentalItem.pricePerDay?.toString() || '',
+        weeklyDiscountPct: rentalItem.weeklyDiscountPct?.toString() || '10',
+        monthlyDiscountPct: rentalItem.monthlyDiscountPct?.toString() || '20',
+        depositAmount: rentalItem.depositAmount?.toString() || '',
+        terms: rentalItem.terms || [],
         stock: rentalItem.stock?.toString() || '',
         images: rentalItem.images || [],
         isActive:
@@ -51,6 +63,10 @@ export default function RentalItemFormModal({
         name: '',
         description: '',
         pricePerDay: '',
+        weeklyDiscountPct: '10',
+        monthlyDiscountPct: '20',
+        depositAmount: '',
+        terms: [],
         stock: '',
         images: [],
         isActive: true,
@@ -116,6 +132,11 @@ export default function RentalItemFormModal({
         body: JSON.stringify({
           ...formData,
           pricePerDay: parseFloat(formData.pricePerDay),
+          weeklyDiscountPct: parseFloat(formData.weeklyDiscountPct),
+          monthlyDiscountPct: parseFloat(formData.monthlyDiscountPct),
+          depositAmount: formData.depositAmount
+            ? parseFloat(formData.depositAmount)
+            : null,
           stock: parseInt(formData.stock),
         }),
       })
@@ -131,7 +152,9 @@ export default function RentalItemFormModal({
       onSuccess()
       onClose()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save rental item')
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to save rental item'
+      )
     } finally {
       setLoading(false)
     }
@@ -221,6 +244,121 @@ export default function RentalItemFormModal({
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
                   placeholder="5"
                 />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Diskon Mingguan (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.weeklyDiscountPct}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      weeklyDiscountPct: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                  placeholder="10"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Diskon untuk sewa 5 hari (default: 10%)
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Diskon Bulanan (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.monthlyDiscountPct}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      monthlyDiscountPct: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                  placeholder="20"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Diskon untuk sewa 20 hari (default: 20%)
+                </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Deposit (Rp)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.depositAmount}
+                  onChange={(e) =>
+                    setFormData({ ...formData, depositAmount: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                  placeholder="Kosongkan untuk auto (10x harga harian)"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Kosongkan untuk otomatis 10x harga harian
+                </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Syarat & Ketentuan
+                </label>
+                <div className="space-y-2">
+                  {formData.terms.map((term, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={term}
+                        onChange={(e) => {
+                          const newTerms = [...formData.terms]
+                          newTerms[index] = e.target.value
+                          setFormData({ ...formData, terms: newTerms })
+                        }}
+                        className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                        placeholder="Contoh: Minimal sewa 1 hari"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTerms = formData.terms.filter(
+                            (_, i) => i !== index
+                          )
+                          setFormData({ ...formData, terms: newTerms })
+                        }}
+                        className="rounded-lg bg-red-100 p-2 text-red-600 hover:bg-red-200"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        terms: [...formData.terms, ''],
+                      })
+                    }}
+                    className="flex items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Tambah Syarat
+                  </button>
+                </div>
               </div>
 
               <div>

@@ -52,7 +52,19 @@ async function getProduct(id: string) {
       take: 10,
     })
 
-    return { product, reviews }
+    // Get related products from same category
+    const relatedProducts = await prisma.product.findMany({
+      where: {
+        category: product.category,
+        id: { not: id },
+        isActive: true,
+        stock: { gt: 0 },
+      },
+      take: 6,
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return { product, reviews, relatedProducts }
   } catch (error) {
     console.error('Error fetching product:', error)
     return null
@@ -71,7 +83,7 @@ export default async function SparepartDetailPage({
     notFound()
   }
 
-  const { product, reviews } = data
+  const { product, reviews, relatedProducts } = data
   const isInStock = product.stock > 0
 
   // Calculate average rating
@@ -103,7 +115,10 @@ export default async function SparepartDetailPage({
           <div className="space-y-6">
             {/* Images */}
             {product.images.length > 0 ? (
-              <ImageGallery images={product.images} productName={product.name} />
+              <ImageGallery
+                images={product.images}
+                productName={product.name}
+              />
             ) : (
               <div className="flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
                 <Package className="h-24 w-24 text-gray-300" />
@@ -113,17 +128,20 @@ export default async function SparepartDetailPage({
             {/* Reviews Section */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900">Ulasan Produk</h3>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Ulasan Produk
+                </h3>
                 {reviews.length > 0 && (
                   <div className="flex items-center gap-2">
                     <div className="flex items-center">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`h-5 w-5 ${i < Math.round(averageRating)
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
-                            }`}
+                          className={`h-5 w-5 ${
+                            i < Math.round(averageRating)
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
                         />
                       ))}
                     </div>
@@ -161,11 +179,14 @@ export default async function SparepartDetailPage({
                               {review.user.name || 'Pengguna'}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {new Date(review.createdAt).toLocaleDateString('id-ID', {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
-                              })}
+                              {new Date(review.createdAt).toLocaleDateString(
+                                'id-ID',
+                                {
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric',
+                                }
+                              )}
                             </p>
                           </div>
                         </div>
@@ -173,16 +194,19 @@ export default async function SparepartDetailPage({
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
-                              className={`h-4 w-4 ${i < review.rating
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-gray-300'
-                                }`}
+                              className={`h-4 w-4 ${
+                                i < review.rating
+                                  ? 'fill-yellow-400 text-yellow-400'
+                                  : 'text-gray-300'
+                              }`}
                             />
                           ))}
                         </div>
                       </div>
                       {review.comment && (
-                        <p className="text-sm text-gray-700">{review.comment}</p>
+                        <p className="text-sm text-gray-700">
+                          {review.comment}
+                        </p>
                       )}
                     </div>
                   ))}
@@ -190,7 +214,9 @@ export default async function SparepartDetailPage({
               ) : (
                 <div className="py-8 text-center">
                   <Star className="mx-auto mb-2 h-12 w-12 text-gray-300" />
-                  <p className="text-gray-500">Belum ada ulasan untuk produk ini</p>
+                  <p className="text-gray-500">
+                    Belum ada ulasan untuk produk ini
+                  </p>
                 </div>
               )}
             </div>
@@ -350,20 +376,96 @@ export default async function SparepartDetailPage({
         </div>
 
         {/* Related Products */}
-        <div className="mt-12">
-          <h2 className="mb-6 text-2xl font-bold text-gray-900">
-            Produk Terkait
-          </h2>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {/* Placeholder - could implement related products later */}
-            <p className="col-span-full py-8 text-center text-gray-500">
-              Lihat produk lainnya di{' '}
-              <Link href="/sparepart" className="text-blue-600 hover:underline">
-                katalog sparepart
+        {relatedProducts.length > 0 && (
+          <section className="mt-12 rounded-2xl bg-gray-50 p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Produk Terkait
+              </h2>
+              <Link
+                href="/sparepart"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                Lihat Semua →
               </Link>
-            </p>
-          </div>
-        </div>
+            </div>
+
+            {/* Mobile: Masonry, Desktop: Grid */}
+            <div className="columns-2 gap-4 lg:columns-1">
+              {/* Desktop Grid */}
+              <div className="hidden lg:grid lg:grid-cols-4 lg:gap-6">
+                {relatedProducts.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/sparepart/${item.id}`}
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-blue-300 hover:shadow-lg"
+                  >
+                    <div className="aspect-square overflow-hidden bg-blue-50">
+                      <img
+                        src={
+                          item.images[0] ||
+                          'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400&q=80'
+                        }
+                        alt={item.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="mb-1 truncate font-semibold text-gray-900">
+                        {item.name}
+                      </h3>
+                      <p className="mb-2 truncate text-xs text-gray-600">
+                        {item.brand || 'Original'} • {item.category}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-blue-600">
+                          Rp {item.price.toLocaleString('id-ID')}
+                        </p>
+                        <span className="hidden rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700 md:inline-block">
+                          Stok {item.stock}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {/* Mobile Masonry */}
+              <div className="lg:hidden">
+                {relatedProducts.map((item) => (
+                  <div key={item.id} className="mb-4 break-inside-avoid">
+                    <Link
+                      href={`/sparepart/${item.id}`}
+                      className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-blue-300 hover:shadow-lg"
+                    >
+                      <div className="aspect-square overflow-hidden bg-blue-50">
+                        <img
+                          src={
+                            item.images[0] ||
+                            'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400&q=80'
+                          }
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="p-4">
+                        <h3 className="mb-1 truncate font-semibold text-gray-900">
+                          {item.name}
+                        </h3>
+                        <p className="mb-2 truncate text-xs text-gray-600">
+                          {item.brand || 'Original'} • {item.category}
+                        </p>
+                        <p className="text-sm font-bold text-blue-600">
+                          Rp {item.price.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       <Footer variant="light" />
