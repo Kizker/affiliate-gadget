@@ -5,6 +5,7 @@ import { Calendar, LogIn } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import BookingModal from '@/components/rental/booking-modal'
+import AddToCartButton from '@/components/cart/add-to-cart-button'
 
 interface RentalActionsProps {
   rentalItem: {
@@ -53,14 +54,6 @@ export default function RentalActions({
           Login untuk Booking
         </Link>
 
-        {/* Lihat Alat Lainnya - Secondary Button */}
-        <Link
-          href="/sewa-alat"
-          className="block w-full rounded-lg border-2 border-blue-600 py-3 text-center font-semibold text-blue-600 transition-all hover:bg-blue-50"
-        >
-          Lihat Alat Lainnya
-        </Link>
-
         <p className="text-center text-xs text-gray-500">
           Login terlebih dahulu untuk melakukan booking
         </p>
@@ -80,13 +73,18 @@ export default function RentalActions({
           Booking Sekarang
         </button>
 
-        {/* Lihat Alat Lainnya - Secondary Button */}
-        <Link
-          href="/sewa-alat"
-          className="block w-full rounded-lg border-2 border-blue-600 py-3 text-center font-semibold text-blue-600 transition-all hover:bg-blue-50"
-        >
-          Lihat Alat Lainnya
-        </Link>
+        {/* Masukkan ke Keranjang - Secondary Button */}
+        <AddToCartButton
+          product={{
+            id: rentalItem.id,
+            name: rentalItem.name,
+            price: rentalItem.pricePerDay,
+            image: rentalItem.images[0] || '',
+            type: 'RENTAL',
+            stock: rentalItem.stock,
+          }}
+          className="w-full"
+        />
 
         <p className="text-center text-xs text-gray-500">
           Hubungi kami untuk informasi lebih lanjut
