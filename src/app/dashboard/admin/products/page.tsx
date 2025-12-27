@@ -38,6 +38,10 @@ interface RentalItem {
   name: string
   description: string | null
   pricePerDay: number
+  weeklyDiscountPct: number
+  monthlyDiscountPct: number
+  depositAmount: number | null
+  terms: string[]
   stock: number
   images: string[]
   isActive: boolean
@@ -173,7 +177,15 @@ export default function ProductsPage() {
     } else {
       fetchRentalItems()
     }
-  }, [page, searchQuery, categoryFilter, stockStatusFilter, activeTab, fetchProducts, fetchRentalItems])
+  }, [
+    page,
+    searchQuery,
+    categoryFilter,
+    stockStatusFilter,
+    activeTab,
+    fetchProducts,
+    fetchRentalItems,
+  ])
 
   // Delete product
   const handleDeleteProduct = async (id: string) => {

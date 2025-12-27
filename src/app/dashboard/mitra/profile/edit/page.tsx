@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 import ImageUpload from '@/components/upload/image-upload'
 import MultiImageUpload from '@/components/upload/multi-image-upload'
 import GoogleMapsAutocomplete from '@/components/maps/google-maps-autocomplete'
+import GoogleMapsProvider from '@/components/maps/google-maps-provider'
 
 interface Service {
   name: string
@@ -111,6 +112,16 @@ export default function MitraDashboard() {
   const MAX_FEATURE_LENGTH = 30 // Character limit for custom features
   const [mitraId, setMitraId] = useState<string | null>(null)
 
+  // Redirect pending mitra FIRST - before any other logic
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.role === 'MITRA') {
+      const mitraStatus = (session.user as { mitraStatus?: string }).mitraStatus
+      if (mitraStatus === 'PENDING') {
+        router.push('/dashboard/mitra/pending')
+      }
+    }
+  }, [status, session, router])
+
   // Fetch existing profile
   useEffect(() => {
     const fetchProfile = async () => {
@@ -137,11 +148,13 @@ export default function MitraDashboard() {
             banner: data.banner || '',
             gallery: data.images?.map((img: { url: string }) => img.url) || [],
             services:
-              data.services?.map((svc: { name: string; price?: number; icon?: string }) => ({
-                name: svc.name,
-                price: svc.price || '',
-                icon: svc.icon || '💻',
-              })) || [],
+              data.services?.map(
+                (svc: { name: string; price?: number; icon?: string }) => ({
+                  name: svc.name,
+                  price: svc.price || '',
+                  icon: svc.icon || '💻',
+                })
+              ) || [],
             features: data.features || [],
             hours: {
               weekday: data.weekdayHours || 'Senin - Sabtu: 09:00 - 18:00',
@@ -162,19 +175,18 @@ export default function MitraDashboard() {
     }
 
     if (status === 'authenticated') {
+      // Don't fetch profile if pending mitra
+      if (session?.user?.role === 'MITRA') {
+        const mitraStatus = (session.user as { mitraStatus?: string })
+          .mitraStatus
+        if (mitraStatus === 'PENDING') {
+          setFetchingProfile(false)
+          return
+        }
+      }
       fetchProfile()
     }
-  }, [status])
-
-  // Redirect pending mitra
-  useEffect(() => {
-    if (session?.user?.role === 'MITRA') {
-      const mitraStatus = (session.user as { mitraStatus?: string }).mitraStatus
-      if (mitraStatus === 'PENDING') {
-        router.push('/dashboard/mitra/pending')
-      }
-    }
-  }, [session, router])
+  }, [status, session])
 
   // Calculate profile completion
   const getProfileCompletion = () => {
@@ -192,6 +204,28 @@ export default function MitraDashboard() {
     if (profile.features.length > 0) completed++
     return Math.round((completed / total) * 100)
   }
+
+  if (status === 'loading' || fetchingProfile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
+  // Don't render if pending mitra (will redirect)
+  if (session?.user?.role === 'MITRA') {
+    const mitraStatus = (session.user as { mitraStatus?: string }).mitraStatus
+    if (mitraStatus === 'PENDING') {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      )
+    }
+  }
+
+  const completion = getProfileCompletion()
 
   const handleSave = async () => {
     // Validation
@@ -256,7 +290,9 @@ export default function MitraDashboard() {
       )
     } catch (error) {
       console.error('Error saving profile:', error)
-      toast.error(error instanceof Error ? error.message : 'Gagal menyimpan profil')
+      toast.error(
+        error instanceof Error ? error.message : 'Gagal menyimpan profil'
+      )
     } finally {
       setLoading(false)
     }
@@ -320,16 +356,6 @@ export default function MitraDashboard() {
       features: profile.features.filter((f) => f !== feature),
     })
   }
-
-  if (status === 'loading' || fetchingProfile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    )
-  }
-
-  const completion = getProfileCompletion()
 
   return (
     <div className="min-h-screen">
@@ -527,22 +553,24 @@ export default function MitraDashboard() {
               <p className="mb-2 text-xs text-gray-500">
                 Gunakan Google Maps untuk memilih lokasi yang akurat
               </p>
-              <GoogleMapsAutocomplete
-                defaultValue={profile.address}
-                placeholder="Cari alamat menggunakan Google Maps..."
-                onPlaceSelected={(place) => {
-                  setProfile({
-                    ...profile,
-                    address: place.address,
-                    city: place.city,
-                    latitude: place.latitude,
-                    longitude: place.longitude,
-                  })
-                  toast.success(`Lokasi dipilih: ${place.city}`, {
-                    description: place.address,
-                  })
-                }}
-              />
+              <GoogleMapsProvider>
+                <GoogleMapsAutocomplete
+                  defaultValue={profile.address}
+                  placeholder="Cari alamat menggunakan Google Maps..."
+                  onPlaceSelected={(place) => {
+                    setProfile({
+                      ...profile,
+                      address: place.address,
+                      city: place.city,
+                      latitude: place.latitude,
+                      longitude: place.longitude,
+                    })
+                    toast.success(`Lokasi dipilih: ${place.city}`, {
+                      description: place.address,
+                    })
+                  }}
+                />
+              </GoogleMapsProvider>
               {profile.address && (
                 <p className="mt-2 text-xs text-gray-600">
                   📍 {profile.address}

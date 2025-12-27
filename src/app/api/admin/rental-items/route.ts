@@ -98,7 +98,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, pricePerDay, stock, images, isActive } = body
+    const {
+      name,
+      description,
+      pricePerDay,
+      weeklyDiscountPct,
+      monthlyDiscountPct,
+      depositAmount,
+      terms,
+      stock,
+      images,
+      isActive,
+    } = body
 
     // Validation
     if (!name || pricePerDay === undefined || stock === undefined) {
@@ -121,6 +132,14 @@ export async function POST(request: NextRequest) {
         name,
         description,
         pricePerDay: parseFloat(pricePerDay),
+        weeklyDiscountPct:
+          weeklyDiscountPct !== undefined ? parseFloat(weeklyDiscountPct) : 10,
+        monthlyDiscountPct:
+          monthlyDiscountPct !== undefined
+            ? parseFloat(monthlyDiscountPct)
+            : 20,
+        depositAmount: depositAmount ? parseFloat(depositAmount) : null,
+        terms: terms || [],
         stock: parseInt(stock),
         images: images || [],
         isActive: isActive !== undefined ? isActive : true,

@@ -34,6 +34,21 @@ interface Technician {
   responseTime: string
 }
 
+// API Response Technician interface
+interface ApiTechnician {
+  id: string
+  user?: {
+    id: string
+    name: string | null
+    image: string | null
+  }
+  specialties?: string[]
+  rating?: number
+  totalReview?: number
+  experience?: number
+  isAvailable?: boolean
+}
+
 const filterGroups = [
   {
     title: 'Spesialisasi',
@@ -87,7 +102,7 @@ export default function ServiceTechnicianList({
         if (data.technicians) {
           // Transform API data to match our interface
           const transformedData: Technician[] = data.technicians.map(
-            (tech: any) => ({
+            (tech: ApiTechnician) => ({
               id: tech.user?.id || tech.id,
               name: tech.user?.name || 'Teknisi',
               photo:

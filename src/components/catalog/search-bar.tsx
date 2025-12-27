@@ -51,8 +51,8 @@ export function SearchBar({
           </div>
         </form>
 
-        {/* Sort Dropdown */}
-        <div className="flex items-center gap-2">
+        {/* Sort Dropdown - Hidden on mobile */}
+        <div className="hidden items-center gap-2 md:flex">
           <SlidersHorizontal className="h-5 w-5 text-gray-600" />
           <select
             value={sort}

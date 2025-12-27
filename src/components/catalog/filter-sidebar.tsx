@@ -30,10 +30,18 @@ export function FilterSidebar({
     Record<string, string[]>
   >({})
 
-  // Call onFilterChange when selectedFilters changes
+  // Track if this is the first render to avoid calling onFilterChange on mount
+  const isFirstRender = useState(true)
+
+  // Call onFilterChange when selectedFilters changes (but not on mount)
   useEffect(() => {
+    if (isFirstRender[0]) {
+      isFirstRender[1](false)
+      return
+    }
     onFilterChange?.(selectedFilters)
-  }, [selectedFilters, onFilterChange])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFilters])
 
   const handleFilterToggle = (
     groupTitle: string,

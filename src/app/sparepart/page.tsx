@@ -123,6 +123,11 @@ export default function SparepartPage() {
     fetchProducts()
   }, [fetchProducts])
 
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [page])
+
   const handleSearch = (query: string) => {
     setSearchQuery(query)
     setPage(1)
@@ -176,7 +181,17 @@ export default function SparepartPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/40">
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Background Image with Gradient Overlay */}
+      <div className="fixed inset-0 -z-10">
+        <img
+          src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1920&q=80"
+          alt="Background"
+          className="h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95"></div>
+      </div>
+
       <Navbar variant="light" />
 
       <main className="mx-auto max-w-7xl px-4 pb-8 pt-24 sm:px-6 lg:px-8">
@@ -321,6 +336,7 @@ export default function SparepartPage() {
               <div className="mt-8 flex justify-center">
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={() => setPage(Math.max(1, page - 1))}
                     disabled={page === 1}
                     className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50 disabled:opacity-50"
@@ -331,6 +347,7 @@ export default function SparepartPage() {
                     const pageNum = i + 1
                     return (
                       <button
+                        type="button"
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
                         className={`rounded-lg px-4 py-2 ${
@@ -344,6 +361,7 @@ export default function SparepartPage() {
                     )
                   })}
                   <button
+                    type="button"
                     onClick={() => setPage(Math.min(totalPages, page + 1))}
                     disabled={page === totalPages}
                     className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50 disabled:opacity-50"

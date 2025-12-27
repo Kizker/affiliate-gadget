@@ -513,12 +513,37 @@ export default function TeknisiDetailPage({
                       Mulai Konsultasi
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-gray-300 bg-gray-50 p-4 text-center">
-                      <p className="text-sm text-gray-600">
-                        {!session
-                          ? 'Login sebagai customer untuk memulai konsultasi'
-                          : 'Hanya customer yang dapat melakukan booking'}
-                      </p>
+                    <div className="space-y-4 rounded-lg border border-gray-300 bg-gray-50 p-6 text-center">
+                      {!session ? (
+                        <>
+                          <p className="text-sm text-gray-600">
+                            Login sebagai customer untuk memulai konsultasi
+                          </p>
+                          <Link
+                            href="/auth/login"
+                            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 font-semibold text-white transition-all hover:shadow-lg"
+                          >
+                            <svg
+                              className="h-5 w-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                              />
+                            </svg>
+                            Login Sekarang
+                          </Link>
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-600">
+                          Hanya customer yang dapat melakukan booking
+                        </p>
+                      )}
                     </div>
                   )}
                 </>

@@ -1,7 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Package, CheckCircle, XCircle, Loader2, User } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import {
+  Package,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  User,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -55,27 +64,72 @@ export default function AdminOrdersPage() {
   const { toast } = useToast()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchLoading, setSearchLoading] = useState(false)
   const [filter, setFilter] = useState<
     'all' | 'service' | 'sparepart' | 'rental'
   >('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [updating, setUpdating] = useState<string | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const limit = 10
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchInput, setSearchInput] = useState('')
 
   useEffect(() => {
     fetchOrders()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filter, statusFilter, searchQuery])
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput)
+      setPage(1) // Reset to first page on search
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  // Scroll to top on page change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [page])
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch('/api/admin/orders')
+      // Only show full loading on initial load
+      if (orders.length === 0) {
+        setLoading(true)
+      } else {
+        setSearchLoading(true)
+      }
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...(searchQuery && { search: searchQuery }),
+        ...(filter !== 'all' && { type: filter }),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+      })
+
+      const res = await fetch(`/api/admin/orders?${params}`)
       if (res.ok) {
         const data = await res.json()
         setOrders(data.orders)
+        setTotalPages(data.pagination.totalPages)
+        setTotal(data.pagination.total)
       }
     } catch (error) {
       console.error('Error fetching orders:', error)
     } finally {
       setLoading(false)
+      setSearchLoading(false)
     }
   }
 
@@ -114,26 +168,6 @@ export default function AdminOrdersPage() {
     }
   }
 
-  const filteredOrders = orders.filter((order) => {
-    // Filter by type
-    if (filter !== 'all') {
-      const hasProduct = order.items.some((item) => item.product)
-      const hasService = order.items.some((item) => item.service)
-      const hasRental = order.items.some((item) => item.rentalItem)
-
-      if (filter === 'sparepart' && !hasProduct) return false
-      if (filter === 'service' && !hasService) return false
-      if (filter === 'rental' && !hasRental) return false
-    }
-
-    // Filter by status
-    if (statusFilter !== 'all' && order.status !== statusFilter) {
-      return false
-    }
-
-    return true
-  })
-
   const getOrderType = (order: Order) => {
     const hasProduct = order.items.some((item) => item.product)
     const hasRental = order.items.some((item) => item.rentalItem)
@@ -142,7 +176,23 @@ export default function AdminOrdersPage() {
     return 'Service'
   }
 
-  if (loading) {
+  const handleFilterChange = (
+    newFilter: 'all' | 'service' | 'sparepart' | 'rental'
+  ) => {
+    setFilter(newFilter)
+    setPage(1)
+  }
+
+  const handleStatusChange = (newStatus: string) => {
+    setStatusFilter(newStatus)
+    setPage(1)
+  }
+
+  // Pagination helpers
+  const startIndex = (page - 1) * limit + 1
+  const endIndex = Math.min(page * limit, total)
+
+  if (loading && page === 1) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -162,6 +212,27 @@ export default function AdminOrdersPage() {
         </p>
       </div>
 
+      {/* Search Bar */}
+      {searchLoading && (
+        <div className="fixed right-4 top-20 z-50 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+          Mencari...
+        </div>
+      )}
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Cari nomor pesanan, nama, atau email..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-blue-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          />
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="mb-6 flex flex-wrap gap-3">
         {/* Filter by Type */}
@@ -172,7 +243,7 @@ export default function AdminOrdersPage() {
           <select
             value={filter}
             onChange={(e) =>
-              setFilter(
+              handleFilterChange(
                 e.target.value as 'all' | 'service' | 'sparepart' | 'rental'
               )
             }
@@ -192,7 +263,7 @@ export default function AdminOrdersPage() {
           </label>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => handleStatusChange(e.target.value)}
             className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-blue-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
           >
             <option value="all">Semua Status</option>
@@ -205,17 +276,30 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
+      {/* Results Counter */}
+      {total > 0 && (
+        <div className="text-sm text-gray-600">
+          Menampilkan {startIndex}-{endIndex} dari {total} pesanan
+        </div>
+      )}
+
       {/* Orders List */}
       <div className="space-y-4">
-        {filteredOrders.length === 0 ? (
+        {loading && orders.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          </div>
+        ) : orders.length === 0 ? (
           <div className="rounded-2xl bg-white p-12 text-center shadow-lg">
             <Package className="mx-auto mb-4 h-16 w-16 text-gray-300" />
             <p className="text-xl font-medium text-gray-600">
-              Belum ada pesanan
+              {searchQuery
+                ? 'Tidak ada pesanan yang cocok'
+                : 'Belum ada pesanan'}
             </p>
           </div>
         ) : (
-          filteredOrders.map((order) => (
+          orders.map((order) => (
             <div
               key={order.id}
               className="overflow-hidden rounded-xl bg-white shadow-md transition-all hover:shadow-lg"
@@ -400,6 +484,61 @@ export default function AdminOrdersPage() {
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && !loading && (
+        <div className="mt-8 flex items-center justify-center gap-2 px-4">
+          {/* Previous Button */}
+          <button
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+            className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Previous</span>
+          </button>
+
+          {/* Page Numbers */}
+          <div className="flex gap-1 sm:gap-2">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum
+              if (totalPages <= 5) {
+                pageNum = i + 1
+              } else if (page <= 3) {
+                pageNum = i + 1
+              } else if (page >= totalPages - 2) {
+                pageNum = totalPages - 4 + i
+              } else {
+                pageNum = page - 2 + i
+              }
+
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-all sm:px-4 ${
+                    page === pageNum
+                      ? 'bg-blue-600 text-white'
+                      : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Next Button */}
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+            className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <Toaster />
     </div>

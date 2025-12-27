@@ -219,11 +219,17 @@ export default async function CustomerDashboard() {
                     className="absolute inset-0 h-full w-full object-cover opacity-60 transition-opacity group-hover:opacity-70"
                     loading="eager"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-50/60">
-                    <Headphones className="relative z-10 h-16 w-16 text-blue-500 transition-transform group-hover:scale-110" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-blue-50/60">
+                    <Headphones className="relative z-10 mb-2 h-12 w-12 text-blue-500 transition-transform group-hover:scale-110 md:mb-0 md:h-16 md:w-16" />
+                    <div className="relative z-10 text-center md:hidden">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Konsultasi Servis
+                      </h3>
+                      <p className="text-xs text-gray-600">Gratis</p>
+                    </div>
                   </div>
                 </div>
-                <div className="p-3">
+                <div className="hidden p-3 md:block">
                   <h3 className="text-sm font-semibold text-gray-900">
                     Konsultasi Servis
                   </h3>
@@ -243,11 +249,17 @@ export default async function CustomerDashboard() {
                     className="absolute inset-0 h-full w-full object-cover opacity-60 transition-opacity group-hover:opacity-70"
                     loading="eager"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-50/60">
-                    <Wrench className="relative z-10 h-16 w-16 text-blue-500 transition-transform group-hover:scale-110" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-blue-50/60">
+                    <Wrench className="relative z-10 mb-2 h-12 w-12 text-blue-500 transition-transform group-hover:scale-110 md:mb-0 md:h-16 md:w-16" />
+                    <div className="relative z-10 text-center md:hidden">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Jasa Cek/Bongkar
+                      </h3>
+                      <p className="text-xs text-gray-600">Mulai 50rb</p>
+                    </div>
                   </div>
                 </div>
-                <div className="p-3">
+                <div className="hidden p-3 md:block">
                   <h3 className="text-sm font-semibold text-gray-900">
                     Jasa Cek/Bongkar
                   </h3>
@@ -267,11 +279,17 @@ export default async function CustomerDashboard() {
                     className="absolute inset-0 h-full w-full object-cover opacity-60 transition-opacity group-hover:opacity-70"
                     loading="eager"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-50/60">
-                    <Smartphone className="relative z-10 h-16 w-16 text-blue-500 transition-transform group-hover:scale-110" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-blue-50/60">
+                    <Smartphone className="relative z-10 mb-2 h-12 w-12 text-blue-500 transition-transform group-hover:scale-110 md:mb-0 md:h-16 md:w-16" />
+                    <div className="relative z-10 text-center md:hidden">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Jasa Servis
+                      </h3>
+                      <p className="text-xs text-gray-600">Bergaransi</p>
+                    </div>
                   </div>
                 </div>
-                <div className="p-3">
+                <div className="hidden p-3 md:block">
                   <h3 className="text-sm font-semibold text-gray-900">
                     Jasa Servis
                   </h3>
@@ -291,11 +309,17 @@ export default async function CustomerDashboard() {
                     className="absolute inset-0 h-full w-full object-cover opacity-60 transition-opacity group-hover:opacity-70"
                     loading="eager"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-50/60">
-                    <Clock className="relative z-10 h-16 w-16 text-blue-500 transition-transform group-hover:scale-110" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-blue-50/60">
+                    <Clock className="relative z-10 mb-2 h-12 w-12 text-blue-500 transition-transform group-hover:scale-110 md:mb-0 md:h-16 md:w-16" />
+                    <div className="relative z-10 text-center md:hidden">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Sewa Alat Ditempat
+                      </h3>
+                      <p className="text-xs text-gray-600">Harian</p>
+                    </div>
                   </div>
                 </div>
-                <div className="p-3">
+                <div className="hidden p-3 md:block">
                   <h3 className="text-sm font-semibold text-gray-900">
                     Sewa Alat Ditempat
                   </h3>
@@ -315,11 +339,19 @@ export default async function CustomerDashboard() {
                     className="absolute inset-0 h-full w-full object-cover opacity-60 transition-opacity group-hover:opacity-70"
                     loading="eager"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-50/60">
-                    <Package className="relative z-10 h-16 w-16 text-blue-500 transition-transform group-hover:scale-110" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-blue-50/60">
+                    <Package className="relative z-10 mb-2 h-12 w-12 text-blue-500 transition-transform group-hover:scale-110 md:mb-0 md:h-16 md:w-16" />
+                    <div className="relative z-10 text-center md:hidden">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Jual Sparepart
+                      </h3>
+                      <p className="text-xs text-gray-600">
+                        {stats.totalProducts}+ Item
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="p-3">
+                <div className="hidden p-3 md:block">
                   <h3 className="text-sm font-semibold text-gray-900">
                     Jual Sparepart
                   </h3>
@@ -341,11 +373,17 @@ export default async function CustomerDashboard() {
                     className="absolute inset-0 h-full w-full object-cover opacity-60 transition-opacity group-hover:opacity-70"
                     loading="eager"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-50/60">
-                    <ShoppingBag className="relative z-10 h-16 w-16 text-blue-500 transition-transform group-hover:scale-110" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-blue-50/60">
+                    <ShoppingBag className="relative z-10 mb-2 h-12 w-12 text-blue-500 transition-transform group-hover:scale-110 md:mb-0 md:h-16 md:w-16" />
+                    <div className="relative z-10 text-center md:hidden">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Rekomendasi Tempat
+                      </h3>
+                      <p className="text-xs text-gray-600">Terpercaya</p>
+                    </div>
                   </div>
                 </div>
-                <div className="p-3">
+                <div className="hidden p-3 md:block">
                   <h3 className="text-sm font-semibold text-gray-900">
                     Rekomendasi Tempat
                   </h3>
@@ -464,7 +502,7 @@ export default async function CustomerDashboard() {
                           Rp {product.price.toLocaleString('id-ID')}
                         </p>
                         <span
-                          className={`rounded px-2 py-1 text-xs ${
+                          className={`hidden rounded px-2 py-1 text-xs md:inline-block ${
                             product.stock > 5
                               ? 'bg-green-100 text-green-700'
                               : product.stock > 0
@@ -532,7 +570,7 @@ export default async function CustomerDashboard() {
                           Rp {item.pricePerDay.toLocaleString('id-ID')}/hari
                         </p>
                         <span
-                          className={`rounded px-2 py-1 text-xs ${
+                          className={`hidden rounded px-2 py-1 text-xs md:inline-block ${
                             item.stock > 0
                               ? 'bg-green-100 text-green-700'
                               : 'bg-red-100 text-red-700'

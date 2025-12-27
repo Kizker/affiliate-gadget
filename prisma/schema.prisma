@@ -140,17 +140,21 @@ model Product {
 }
 
 model RentalItem {
-  id          String      @id @default(cuid())
-  name        String
-  description String?
-  pricePerDay Float
-  stock       Int         @default(0)
-  images      String[]
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  cartItems   CartItem[]  @relation("CartItemToRental")
-  orderItems  OrderItem[] @relation("OrderItemToRental")
+  id                 String      @id @default(cuid())
+  name               String
+  description        String?
+  pricePerDay        Float
+  weeklyDiscountPct  Float       @default(10)
+  monthlyDiscountPct Float       @default(20)
+  depositAmount      Float?
+  terms              String[]    @default([])
+  stock              Int         @default(0)
+  images             String[]
+  isActive           Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  cartItems          CartItem[]  @relation("CartItemToRental")
+  orderItems         OrderItem[] @relation("OrderItemToRental")
 
   @@index([stock])
   @@map("rental_items")

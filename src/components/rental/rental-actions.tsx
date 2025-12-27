@@ -61,6 +61,19 @@ export default function RentalActions({
     )
   }
 
+  // Show restriction message for non-customers (MITRA, TEKNISI, ADMIN)
+  if (session?.user?.role !== 'CUSTOMER' || session.user.isTechnician) {
+    return (
+      <div className="sticky bottom-0 space-y-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+        <div className="rounded-lg border border-gray-300 bg-gray-50 p-6 text-center">
+          <p className="text-sm text-gray-600">
+            Hanya customer yang dapat melakukan booking
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="sticky bottom-0 space-y-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">

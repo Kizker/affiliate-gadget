@@ -6,7 +6,7 @@ import { ArrowRight } from 'lucide-react'
 
 export default function Hero() {
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden pb-16 pt-20">
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden pb-16 pt-20 lg:snap-start">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0">
         <div

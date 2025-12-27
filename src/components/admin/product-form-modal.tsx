@@ -9,12 +9,14 @@ interface ProductFormModalProps {
   product: {
     id?: string
     name?: string
-    description?: string
+    description?: string | null
     price?: number
     stock?: number
     category?: string
-    brand?: string
+    brand?: string | null
+    model?: string | null
     images?: string[]
+    isActive?: boolean
   } | null
   onClose: () => void
   onSuccess: () => void
@@ -138,7 +140,9 @@ export default function ProductFormModal({
       onSuccess()
       onClose()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save product')
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to save product'
+      )
     } finally {
       setLoading(false)
     }

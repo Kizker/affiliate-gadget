@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Loader2, X, Info } from 'lucide-react'
+import { Calendar, Loader2, X } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface BookingModalProps {
