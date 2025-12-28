@@ -17,7 +17,12 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    const dateFilter: any = {}
+    const dateFilter: {
+      createdAt?: {
+        gte: Date
+        lte: Date
+      }
+    } = {}
     if (startDate && endDate) {
       dateFilter.createdAt = {
         gte: new Date(startDate),
@@ -25,7 +30,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    let data: any[] = []
+    type ReportRow = Record<string, string | number>
+    let data: ReportRow[] = []
     const filename = `report_${type}_${new Date().toISOString().split('T')[0]}`
 
     switch (type) {

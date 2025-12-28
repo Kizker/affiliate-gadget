@@ -22,11 +22,16 @@ export async function GET(
             name: true,
             email: true,
             phone: true,
-            address: true,
           },
         },
         items: {
-          include: {
+          select: {
+            id: true,
+            type: true,
+            quantity: true,
+            price: true,
+            subtotal: true,
+            rentalDays: true,
             service: {
               select: {
                 name: true,
@@ -38,6 +43,7 @@ export async function GET(
                 id: true,
                 name: true,
                 images: true,
+                price: true,
               },
             },
             rentalItem: {

@@ -271,60 +271,66 @@ export default function TechniciansPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {/* Total Teknisi Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <Shield className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <Shield className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-orange-100">Total Teknisi</p>
-            <p className="mt-2 text-3xl font-bold text-white">
+            <p className="text-xs font-medium text-orange-100 lg:text-sm">
+              Total Teknisi
+            </p>
+            <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
               {stats.totalTechnicians}
             </p>
           </div>
         </div>
 
         {/* Total Mitra Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <Store className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <Store className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-green-100">Total Mitra</p>
-            <p className="mt-2 text-3xl font-bold text-white">
+            <p className="text-xs font-medium text-green-100 lg:text-sm">
+              Total Mitra
+            </p>
+            <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
               {stats.totalMitra}
             </p>
           </div>
         </div>
 
         {/* Pending Approval Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <Users className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <Users className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-yellow-100">
-              Pending Approval
+            <p className="text-xs font-medium text-yellow-100 lg:text-sm">
+              Pending
             </p>
-            <p className="mt-2 text-3xl font-bold text-white">
+            <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
               {stats.pendingMitra}
             </p>
           </div>
         </div>
 
         {/* Mitra Aktif Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <Store className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <Store className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-cyan-100">Mitra Aktif</p>
-            <p className="mt-2 text-3xl font-bold text-white">
+            <p className="text-xs font-medium text-cyan-100 lg:text-sm">
+              Mitra Aktif
+            </p>
+            <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
               {stats.activeMitra}
             </p>
           </div>

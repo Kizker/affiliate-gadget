@@ -7,9 +7,6 @@ import {
   ShoppingCart,
   Wrench,
   Package,
-  FileText,
-  Settings,
-  TrendingUp,
   Clock,
   UserCheck,
 } from 'lucide-react'
@@ -61,7 +58,15 @@ interface RecentUser {
   technician?: { id: string } | null
 }
 
-// Stat Card Component
+interface ChartData {
+  monthlyData: Record<string, { revenue: number; orders: number }>
+  topProducts: Array<{ name: string; sold: number; revenue: number }>
+  topServices: Array<{ name: string; orders: number; revenue: number }>
+  topRentals: Array<{ name: string; rentals: number; revenue: number }>
+}
+
+// Stat Card Component (currently unused, kept for future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function StatCard({
   icon: Icon,
   label,
@@ -94,28 +99,8 @@ function StatCard({
   )
 }
 
-// Helper functions for role display
-function getRoleLabel(user: RecentUser) {
-  if (user.technician) return 'TEKNISI'
-  return user.role
-}
-
-function getRoleBadgeColor(user: RecentUser) {
-  if (user.technician) return 'bg-orange-100 text-orange-700'
-
-  switch (user.role) {
-    case 'SUPER_ADMIN':
-      return 'bg-purple-100 text-purple-700'
-    case 'ADMIN':
-      return 'bg-blue-100 text-blue-700'
-    case 'MITRA':
-      return 'bg-green-100 text-green-700'
-    default:
-      return 'bg-gray-100 text-gray-700'
-  }
-}
-
-// Quick Action Card
+// Quick Action Card (currently unused, kept for future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function QuickActionCard({
   icon: Icon,
   title,
@@ -150,7 +135,8 @@ function QuickActionCard({
 export default function AdminDashboard() {
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([])
+  const [, setRecentUsers] = useState<RecentUser[]>([])
+  const [chartData, setChartData] = useState<ChartData | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchDashboardData = async () => {
@@ -167,6 +153,7 @@ export default function AdminDashboard() {
       const data = await res.json()
       setStats(data.stats)
       setRecentUsers(data.recentUsers || [])
+      setChartData(data.charts || null)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
@@ -205,19 +192,21 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {/* Total Users Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <Users className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <Users className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-purple-100">Total Users</p>
+            <p className="text-xs font-medium text-purple-100 lg:text-sm">
+              Total Users
+            </p>
             {loading ? (
-              <div className="mt-2 h-8 w-20 animate-pulse rounded bg-white/20" />
+              <div className="mt-1 h-6 w-14 animate-pulse rounded bg-white/20 lg:mt-2 lg:h-8 lg:w-20" />
             ) : (
-              <p className="mt-2 text-3xl font-bold text-white">
+              <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
                 {stats?.totalUsers || 0}
               </p>
             )}
@@ -225,17 +214,19 @@ export default function AdminDashboard() {
         </div>
 
         {/* Total Teknisi Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <Wrench className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <Wrench className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-orange-100">Total Teknisi</p>
+            <p className="text-xs font-medium text-orange-100 lg:text-sm">
+              Total Teknisi
+            </p>
             {loading ? (
-              <div className="mt-2 h-8 w-20 animate-pulse rounded bg-white/20" />
+              <div className="mt-1 h-6 w-14 animate-pulse rounded bg-white/20 lg:mt-2 lg:h-8 lg:w-20" />
             ) : (
-              <p className="mt-2 text-3xl font-bold text-white">
+              <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
                 {stats?.totalTechnicians || 0}
               </p>
             )}
@@ -243,17 +234,19 @@ export default function AdminDashboard() {
         </div>
 
         {/* Total Produk Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <Package className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <Package className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-green-100">Total Produk</p>
+            <p className="text-xs font-medium text-green-100 lg:text-sm">
+              Total Produk
+            </p>
             {loading ? (
-              <div className="mt-2 h-8 w-20 animate-pulse rounded bg-white/20" />
+              <div className="mt-1 h-6 w-14 animate-pulse rounded bg-white/20 lg:mt-2 lg:h-8 lg:w-20" />
             ) : (
-              <p className="mt-2 text-3xl font-bold text-white">
+              <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
                 {stats?.totalProducts || 0}
               </p>
             )}
@@ -261,17 +254,19 @@ export default function AdminDashboard() {
         </div>
 
         {/* Pending Mitra Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <UserCheck className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <UserCheck className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-yellow-100">Pending Mitra</p>
+            <p className="text-xs font-medium text-yellow-100 lg:text-sm">
+              Pending Mitra
+            </p>
             {loading ? (
-              <div className="mt-2 h-8 w-20 animate-pulse rounded bg-white/20" />
+              <div className="mt-1 h-6 w-14 animate-pulse rounded bg-white/20 lg:mt-2 lg:h-8 lg:w-20" />
             ) : (
-              <p className="mt-2 text-3xl font-bold text-white">
+              <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
                 {stats?.pendingMitras || 0}
               </p>
             )}
@@ -314,10 +309,11 @@ export default function AdminDashboard() {
                     datasets: [
                       {
                         label: 'Pengunjung',
-                        data: [
-                          1200, 1900, 1500, 2100, 1800, 2400, 2200, 2600, 2300,
-                          2800, 2500, 3000,
-                        ],
+                        data: chartData
+                          ? Object.values(chartData.monthlyData)
+                              .slice(-12)
+                              .map((d) => d.orders)
+                          : [],
                         borderColor: '#8B5CF6',
                         backgroundColor: 'rgba(139, 92, 246, 0.1)',
                         tension: 0.4,
@@ -358,7 +354,11 @@ export default function AdminDashboard() {
                     datasets: [
                       {
                         label: 'Revenue (Juta)',
-                        data: [45, 52, 48, 65, 58, 72],
+                        data: chartData
+                          ? Object.values(chartData.monthlyData)
+                              .slice(-6)
+                              .map((d) => Math.round(d.revenue / 1000000))
+                          : [],
                         backgroundColor: '#10B981',
                       },
                     ],
@@ -399,7 +399,11 @@ export default function AdminDashboard() {
                     datasets: [
                       {
                         label: 'Orders',
-                        data: [85, 92, 88, 105, 98, 112],
+                        data: chartData
+                          ? Object.values(chartData.monthlyData)
+                              .slice(-6)
+                              .map((d) => d.orders)
+                          : [],
                         borderColor: '#F59E0B',
                         backgroundColor: 'rgba(245, 158, 11, 0.1)',
                         tension: 0.4,
@@ -434,17 +438,7 @@ export default function AdminDashboard() {
                 Top Produk Terjual
               </h3>
               <div className="flex-1 space-y-4">
-                {[
-                  { name: 'LCD iPhone 12', sold: 145, revenue: 'Rp 72.5 Jt' },
-                  {
-                    name: 'Baterai Samsung A52',
-                    sold: 98,
-                    revenue: 'Rp 29.4 Jt',
-                  },
-                  { name: 'Charger Type-C', sold: 87, revenue: 'Rp 13.05 Jt' },
-                  { name: 'Tempered Glass', sold: 76, revenue: 'Rp 7.6 Jt' },
-                  { name: 'Casing iPhone', sold: 65, revenue: 'Rp 9.75 Jt' },
-                ].map((product, index) => (
+                {(chartData?.topProducts || []).map((product, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: -20 }}
@@ -466,7 +460,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <p className="font-semibold text-green-600">
-                      {product.revenue}
+                      Rp {(product.revenue / 1000000).toFixed(1)} Jt
                     </p>
                   </motion.div>
                 ))}
@@ -488,24 +482,7 @@ export default function AdminDashboard() {
                 Top Jasa Servis
               </h3>
               <div className="space-y-4">
-                {[
-                  {
-                    name: 'Servis LCD Pecah',
-                    orders: 234,
-                    revenue: 'Rp 117 Jt',
-                  },
-                  { name: 'Ganti Baterai', orders: 189, revenue: 'Rp 56.7 Jt' },
-                  {
-                    name: 'Service Charging',
-                    orders: 156,
-                    revenue: 'Rp 31.2 Jt',
-                  },
-                  {
-                    name: 'Cleaning & Maintenance',
-                    orders: 98,
-                    revenue: 'Rp 14.7 Jt',
-                  },
-                ].map((service, index) => (
+                {(chartData?.topServices || []).map((service, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: -20 }}
@@ -527,7 +504,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <p className="font-semibold text-green-600">
-                      {service.revenue}
+                      Rp {(service.revenue / 1000000).toFixed(1)} Jt
                     </p>
                   </motion.div>
                 ))}
@@ -546,20 +523,7 @@ export default function AdminDashboard() {
                 Top Alat Sewa
               </h3>
               <div className="space-y-4">
-                {[
-                  {
-                    name: 'Laptop Dell XPS 13',
-                    rentals: 45,
-                    revenue: 'Rp 22.5 Jt',
-                  },
-                  { name: 'iPhone 13 Pro', rentals: 38, revenue: 'Rp 19 Jt' },
-                  { name: 'iPad Pro 11"', rentals: 32, revenue: 'Rp 12.8 Jt' },
-                  {
-                    name: 'MacBook Air M1',
-                    rentals: 28,
-                    revenue: 'Rp 16.8 Jt',
-                  },
-                ].map((rental, index) => (
+                {(chartData?.topRentals || []).map((rental, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: -20 }}
@@ -581,7 +545,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <p className="font-semibold text-green-600">
-                      {rental.revenue}
+                      Rp {(rental.revenue / 1000000).toFixed(1)} Jt
                     </p>
                   </motion.div>
                 ))}

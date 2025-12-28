@@ -96,3 +96,18 @@
     }
   }
 }
+
+/* TinyMCE Fullscreen Mode - Adjust for admin sidebar */
+.tox.tox-tinymce.tox-fullscreen {
+  left: 256px !important;
+  /* Width of admin sidebar (w-64 = 16rem = 256px) */
+  width: calc(100% - 256px) !important;
+}
+
+/* For smaller screens where sidebar might be hidden or smaller */
+@media (max-width: 768px) {
+  .tox.tox-tinymce.tox-fullscreen {
+    left: 0 !important;
+    width: 100% !important;
+  }
+}

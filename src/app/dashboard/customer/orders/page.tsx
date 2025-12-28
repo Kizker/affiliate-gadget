@@ -16,6 +16,7 @@ import {
   User,
   Calendar,
   Star,
+  MessageCircle,
 } from 'lucide-react'
 import { RatingModal } from '@/components/modals/rating-modal'
 
@@ -27,6 +28,7 @@ interface Order {
   createdAt: string
   notes: string | null
   items: Array<{
+    type: string
     service?: {
       name: string
       category: string
@@ -360,6 +362,28 @@ export default function CustomerOrdersPage() {
                                 Beri Rating
                               </button>
                             ))}
+                          {/* Chat button based on order type */}
+                          {order.items[0]?.type === 'SERVICE' ? (
+                            <Link
+                              href={`/dashboard/customer/chat/teknisi/${order.id}`}
+                              className="flex items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 sm:px-4 sm:py-2 sm:text-sm"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                              <span className="hidden sm:inline">
+                                Chat Teknisi
+                              </span>
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/dashboard/customer/chat/admin/${order.id}`}
+                              className="flex items-center gap-1 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 sm:px-4 sm:py-2 sm:text-sm"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                              <span className="hidden sm:inline">
+                                Chat Admin
+                              </span>
+                            </Link>
+                          )}
                           <Link
                             href={`/booking-confirmation/${order.id}`}
                             className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 sm:px-4 sm:py-2 sm:text-sm"

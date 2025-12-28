@@ -258,64 +258,66 @@ export default function ProductsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {/* Total Sparepart Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <Package className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <Package className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-green-100">
-              Total Sparepart
+            <p className="text-xs font-medium text-green-100 lg:text-sm">
+              Sparepart
             </p>
-            <p className="mt-2 text-3xl font-bold text-white">
+            <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
               {productStats.total}
             </p>
           </div>
         </div>
 
         {/* Total Alat Sewa Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <Wrench className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <Wrench className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-purple-100">
-              Total Alat Sewa
+            <p className="text-xs font-medium text-purple-100 lg:text-sm">
+              Alat Sewa
             </p>
-            <p className="mt-2 text-3xl font-bold text-white">
+            <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
               {rentalStats.total}
             </p>
           </div>
         </div>
 
         {/* Low Stock Alert Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <AlertTriangle className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <AlertTriangle className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-yellow-100">
-              Low Stock Alert
+            <p className="text-xs font-medium text-yellow-100 lg:text-sm">
+              Low Stock
             </p>
-            <p className="mt-2 text-3xl font-bold text-white">
+            <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
               {productStats.lowStock}
             </p>
           </div>
         </div>
 
         {/* Out of Stock Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-red-700 p-6 shadow-lg transition-all hover:shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+        <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-700 p-4 shadow-lg transition-all hover:shadow-xl lg:rounded-2xl lg:p-6">
+          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8"></div>
           <div className="relative">
-            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-              <ShoppingBag className="h-6 w-6 text-white" />
+            <div className="mb-2 inline-flex rounded-lg bg-white/20 p-2 backdrop-blur-sm lg:mb-4 lg:rounded-xl lg:p-3">
+              <ShoppingBag className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
-            <p className="text-sm font-medium text-red-100">Out of Stock</p>
-            <p className="mt-2 text-3xl font-bold text-white">
+            <p className="text-xs font-medium text-red-100 lg:text-sm">
+              Out of Stock
+            </p>
+            <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
               {productStats.outOfStock}
             </p>
           </div>

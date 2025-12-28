@@ -122,6 +122,14 @@ export async function POST(req: NextRequest) {
         },
       })
 
+      // Create admin chat room for this order
+      await tx.adminChatRoom.create({
+        data: {
+          customerId: user.id,
+          orderId: newOrder.id,
+        },
+      })
+
       return newOrder
     })
 

@@ -32,6 +32,10 @@ model User {
   sessions      Session[]
   technician    Technician?
   tickets       Ticket[]
+  chatRooms     ChatRoom[]    @relation("CustomerChatRooms")
+  sentMessages  ChatMessage[] @relation("ChatMessageSender")
+  adminChatRooms      AdminChatRoom[]    @relation("CustomerAdminChats")
+  adminChatMessages   AdminChatMessage[] @relation("AdminChatMessageSender")
 
   @@index([email])
   @@index([role])
@@ -91,6 +95,7 @@ model Technician {
   updatedAt   DateTime  @updatedAt
   orders      Order[]
   services    Service[]
+  chatRooms   ChatRoom[] @relation("TechnicianChatRooms")
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -209,9 +214,10 @@ model Order {
   technician   Technician? @relation(fields: [technicianId], references: [id])
   user         User        @relation(fields: [userId], references: [id])
   payment      Payment?
-  reviews      Review[]
-  tickets      Ticket[]
-  warranty     Warranty?
+  reviews       Review[]
+  tickets       Ticket[]
+  warranty      Warranty?
+  adminChatRoom AdminChatRoom?
 
   @@index([userId])
   @@index([orderNumber])
@@ -445,6 +451,39 @@ model Notification {
   @@map("notifications")
 }
 
+model ChatRoom {
+  id            String        @id @default(cuid())
+  customerId    String
+  technicianId  String
+  lastMessageAt DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  customer      User          @relation("CustomerChatRooms", fields: [customerId], references: [id], onDelete: Cascade)
+  technician    Technician    @relation("TechnicianChatRooms", fields: [technicianId], references: [id], onDelete: Cascade)
+  messages      ChatMessage[]
+
+  @@unique([customerId, technicianId])
+  @@index([customerId])
+  @@index([technicianId])
+  @@map("chat_rooms")
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  roomId     String
+  senderId   String
+  content    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  room       ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender     User     @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([senderId])
+  @@map("chat_messages")
+}
+
 model Article {
   id          String    @id @default(cuid())
   slug        String    @unique
@@ -462,6 +501,42 @@ model Article {
   @@index([slug])
   @@index([isPublished])
   @@map("articles")
+}
+
+model AdminChatRoom {
+  id            String             @id @default(cuid())
+  customerId    String
+  orderId       String?            @unique
+  lastMessageAt DateTime           @default(now())
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  customer      User               @relation("CustomerAdminChats", fields: [customerId], references: [id], onDelete: Cascade)
+  order         Order?             @relation(fields: [orderId], references: [id])
+  messages      AdminChatMessage[]
+
+  @@index([customerId])
+  @@index([orderId])
+  @@map("admin_chat_rooms")
+}
+
+model AdminChatMessage {
+  id           String        @id @default(cuid())
+  roomId       String
+  senderId     String
+  content      String
+  messageType  String        @default("text")
+  attachmentId String?
+  mediaUrl     String?
+  mediaType    String?
+  isRead       Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  room         AdminChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender       User          @relation("AdminChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([senderId])
+  @@map("admin_chat_messages")
 }
 
 model chats {

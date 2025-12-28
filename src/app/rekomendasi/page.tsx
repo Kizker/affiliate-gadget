@@ -1,17 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import {
-  Search,
-  MapPin,
-  Star,
-  Clock,
-  Phone,
-  Filter,
-  ChevronDown,
-  Loader2,
-} from 'lucide-react'
+import { Search, MapPin, Star, Clock, Filter, ChevronDown } from 'lucide-react'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 
@@ -58,20 +49,57 @@ const SERVICE_TYPES = [
   'Upgrade Hardware',
 ]
 
+// Skeleton Loading Component for Mitra
+function MitraSkeleton() {
+  return (
+    <div className="mb-4 break-inside-avoid">
+      <div className="relative animate-pulse overflow-hidden rounded-xl bg-gray-200">
+        <div className="aspect-[4/5] w-full" />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-gray-300 to-transparent p-4">
+          <div className="mb-2 h-5 w-3/4 rounded bg-gray-400/50" />
+          <div className="mb-2 h-3 w-full rounded bg-gray-400/40" />
+          <div className="mb-2 flex items-center gap-1">
+            <div className="h-3 w-3 rounded bg-gray-400/50" />
+            <div className="h-3 w-20 rounded bg-gray-400/40" />
+          </div>
+          <div className="flex gap-1">
+            <div className="h-5 w-16 rounded-full bg-gray-400/40" />
+            <div className="h-5 w-16 rounded-full bg-gray-400/40" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function RekomendasiPage() {
   const [mitras, setMitras] = useState<Mitra[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCity, setSelectedCity] = useState('all')
   const [selectedService, setSelectedService] = useState('all')
   const [showFilters, setShowFilters] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [total, setTotal] = useState(0)
+
+  const loaderRef = useRef<HTMLDivElement>(null)
 
   // Fetch mitras from API
-  useEffect(() => {
-    const fetchMitras = async () => {
-      setLoading(true)
+  const fetchMitras = useCallback(
+    async (pageNum: number, append: boolean = false) => {
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
+
       try {
-        const params = new URLSearchParams()
+        const params = new URLSearchParams({
+          page: pageNum.toString(),
+          limit: '12',
+        })
         if (selectedCity !== 'all') params.append('city', selectedCity)
         if (searchQuery) params.append('search', searchQuery)
         if (selectedService !== 'all') params.append('service', selectedService)
@@ -79,17 +107,67 @@ export default function RekomendasiPage() {
         const response = await fetch(`/api/mitra/list?${params.toString()}`)
         if (response.ok) {
           const data = await response.json()
-          setMitras(data.mitras || [])
+          const newMitras = data.mitras || []
+          const totalPages = data.pagination?.totalPages || 1
+
+          if (append) {
+            setMitras((prev) => {
+              const existingIds = new Set(prev.map((m) => m.id))
+              const uniqueNew = newMitras.filter(
+                (m: Mitra) => !existingIds.has(m.id)
+              )
+              return [...prev, ...uniqueNew]
+            })
+          } else {
+            setMitras(newMitras)
+          }
+
+          setTotal(data.pagination?.total || newMitras.length)
+          setHasMore(pageNum < totalPages)
         }
       } catch (error) {
         console.error('Error fetching mitras:', error)
       } finally {
         setLoading(false)
+        setLoadingMore(false)
       }
+    },
+    [selectedCity, searchQuery, selectedService]
+  )
+
+  // Initial load
+  useEffect(() => {
+    setPage(1)
+    setMitras([])
+    fetchMitras(1, false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCity, searchQuery, selectedService])
+
+  // Infinite scroll with IntersectionObserver
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          setPage((prev) => prev + 1)
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    )
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current)
     }
 
-    fetchMitras()
-  }, [selectedCity, searchQuery, selectedService])
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore])
+
+  // Load more when page changes
+  useEffect(() => {
+    if (page > 1) {
+      fetchMitras(page, true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
 
   return (
     <>
@@ -176,100 +254,20 @@ export default function RekomendasiPage() {
               </select>
 
               <div className="w-full text-center text-sm text-gray-600 sm:ml-auto sm:w-auto sm:text-left">
-                {mitras.length} mitra ditemukan
+                Menampilkan{' '}
+                <span className="font-semibold">{mitras.length}</span> dari{' '}
+                <span className="font-semibold">{total}</span> mitra
               </div>
             </div>
 
-            {/* Loading State */}
-            {loading && (
-              <div className="flex justify-center py-16">
-                <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-              </div>
-            )}
-
-            {/* Mitra Grid */}
-            {!loading && (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {mitras.map((mitra) => (
-                  <Link
-                    key={mitra.id}
-                    href={`/rekomendasi/${mitra.id}`}
-                    className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md transition-all hover:-translate-y-1 hover:shadow-2xl"
-                  >
-                    {/* Image */}
-                    <div className="relative h-48 overflow-hidden">
-                      <img
-                        src={
-                          mitra.banner ||
-                          'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=800&q=80'
-                        }
-                        alt={mitra.businessName}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                      />
-                      <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white px-3 py-1 shadow-lg">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-semibold text-gray-900">
-                          {mitra.rating.toFixed(1)}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          ({mitra.reviewCount})
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-5">
-                      <h3 className="mb-2 text-xl font-bold text-gray-900 group-hover:text-blue-600">
-                        {mitra.businessName}
-                      </h3>
-
-                      <p className="mb-4 line-clamp-2 text-sm text-gray-600">
-                        {mitra.tagline ||
-                          mitra.description ||
-                          'Mitra terpercaya untuk kebutuhan servis Anda'}
-                      </p>
-
-                      <div className="mb-3 flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4 text-blue-600" />
-                        <span>{mitra.city}</span>
-                      </div>
-
-                      <div className="mb-3 flex items-center gap-2 text-sm text-gray-600">
-                        <Clock className="h-4 w-4 text-green-600" />
-                        <span>
-                          {mitra.weekdayHours || 'Lihat jam operasional'}
-                        </span>
-                      </div>
-
-                      {/* Services Tags */}
-                      <div className="mb-4 flex flex-wrap gap-2">
-                        {mitra.services.slice(0, 3).map((service) => (
-                          <span
-                            key={service.id}
-                            className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
-                          >
-                            {service.icon} {service.name}
-                          </span>
-                        ))}
-                        {mitra.services.length > 3 && (
-                          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                            +{mitra.services.length - 3} lainnya
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Phone className="h-4 w-4 text-gray-400" />
-                        <span>{mitra.phone}</span>
-                      </div>
-                    </div>
-                  </Link>
+            {/* Initial Loading State with Skeletons */}
+            {loading ? (
+              <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <MitraSkeleton key={i} />
                 ))}
               </div>
-            )}
-
-            {/* Empty State */}
-            {!loading && mitras.length === 0 && (
+            ) : mitras.length === 0 ? (
               <div className="py-16 text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
                   <Search className="h-8 w-8 text-gray-400" />
@@ -281,6 +279,107 @@ export default function RekomendasiPage() {
                   Coba ubah filter atau kata kunci pencarian Anda
                 </p>
               </div>
+            ) : (
+              <>
+                {/* Masonry Layout - All Screen Sizes */}
+                <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
+                  {mitras.map((mitra) => (
+                    <div key={mitra.id} className="mb-4 break-inside-avoid">
+                      <Link
+                        href={`/rekomendasi/${mitra.id}`}
+                        className="group relative block overflow-hidden rounded-xl shadow-md transition-all hover:shadow-xl"
+                      >
+                        <img
+                          src={
+                            mitra.banner ||
+                            'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=800&q=80'
+                          }
+                          alt={mitra.businessName}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+
+                        {/* Rating Badge */}
+                        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 shadow-lg backdrop-blur-sm">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          <span className="text-xs font-semibold text-gray-900">
+                            {mitra.rating.toFixed(1)}
+                          </span>
+                        </div>
+
+                        {/* Gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+
+                        {/* Content overlay */}
+                        <div className="absolute inset-x-0 bottom-0 p-4">
+                          <h3 className="mb-1 line-clamp-2 text-base font-bold text-white">
+                            {mitra.businessName}
+                          </h3>
+
+                          <p className="mb-2 line-clamp-2 text-xs text-gray-200">
+                            {mitra.tagline ||
+                              mitra.description ||
+                              'Mitra terpercaya'}
+                          </p>
+
+                          <div className="mb-2 flex items-center gap-1 text-xs text-gray-300">
+                            <MapPin className="h-3 w-3" />
+                            <span>{mitra.city}</span>
+                          </div>
+
+                          <div className="mb-2 flex items-center gap-1 text-xs text-gray-300">
+                            <Clock className="h-3 w-3" />
+                            <span>{mitra.weekdayHours || 'Lihat jam'}</span>
+                          </div>
+
+                          {/* Services Tags */}
+                          <div className="flex flex-wrap gap-1">
+                            {mitra.services.slice(0, 2).map((service) => (
+                              <span
+                                key={service.id}
+                                className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm"
+                              >
+                                {service.name}
+                              </span>
+                            ))}
+                            {mitra.services.length > 2 && (
+                              <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-gray-300">
+                                +{mitra.services.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
+                  ))}
+
+                  {/* Loading More Skeletons */}
+                  {loadingMore && (
+                    <>
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <MitraSkeleton key={`loading-${i}`} />
+                      ))}
+                    </>
+                  )}
+                </div>
+
+                {/* Infinite Scroll Trigger */}
+                <div
+                  ref={loaderRef}
+                  className="mt-8 flex h-10 items-center justify-center"
+                >
+                  {loadingMore && (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                      <span>Memuat lebih banyak...</span>
+                    </div>
+                  )}
+                  {!hasMore && mitras.length > 0 && (
+                    <p className="text-sm text-gray-500">
+                      Semua mitra sudah ditampilkan
+                    </p>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>

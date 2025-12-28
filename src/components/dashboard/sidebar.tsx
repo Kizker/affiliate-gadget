@@ -16,7 +16,6 @@ import {
   Wrench,
   Calendar,
   DollarSign,
-  FileText,
   Heart,
   MapPin,
   MessageSquare,

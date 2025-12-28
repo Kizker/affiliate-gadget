@@ -14,6 +14,7 @@ interface RentalActionsProps {
     pricePerDay: number
     stock: number
     images: string[]
+    depositAmount: number
   }
   isAvailable: boolean
 }
@@ -112,6 +113,7 @@ export default function RentalActions({
           pricePerDay: rentalItem.pricePerDay,
           stock: rentalItem.stock,
           image: rentalItem.images[0] || '',
+          depositAmount: rentalItem.depositAmount,
         }}
         isOpen={showBookingModal}
         onClose={() => setShowBookingModal(false)}

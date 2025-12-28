@@ -20,7 +20,12 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
 
     // Build date filter
-    const dateFilter: any = {}
+    const dateFilter: {
+      createdAt?: {
+        gte: Date
+        lte: Date
+      }
+    } = {}
     if (startDate && endDate) {
       dateFilter.createdAt = {
         gte: new Date(startDate),

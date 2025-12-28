@@ -3,18 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  TrendingUp,
   ShoppingCart,
   Users,
   Package,
-  Store,
   Download,
   Calendar,
   Loader2,
   AlertTriangle,
   DollarSign,
   Wrench,
-  BarChart3,
 } from 'lucide-react'
 import {
   Chart as ChartJS,
@@ -28,7 +25,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
-import { Bar, Doughnut, Line } from 'react-chartjs-2'
+import { Bar, Doughnut } from 'react-chartjs-2'
 
 // Register ChartJS components
 ChartJS.register(
@@ -143,7 +140,22 @@ interface ReportData {
       }
     }>
   }
-  recentActivity: any[]
+  recentActivity: Array<{
+    id: string
+    orderNumber: string
+    status: string
+    total: number
+    createdAt: Date
+    user: {
+      name: string | null
+      email: string
+    }
+    items: Array<{
+      product?: { name: string } | null
+      service?: { name: string } | null
+      rentalItem?: { name: string } | null
+    }>
+  }>
 }
 
 export default function ReportsPage() {
@@ -249,10 +261,7 @@ export default function ReportsPage() {
 
   if (!data) return null
 
-  // Debug logging
-  console.log('Report Data:', data)
-  console.log('Revenue Data:', data.revenue)
-  console.log('Revenue by Category:', data.revenue.byCategory)
+  // Debug logging removed for production
 
   // Check if there's any revenue data
   const hasRevenueData =
@@ -331,75 +340,87 @@ export default function ReportsPage() {
       </div>
 
       {/* Revenue Overview Cards */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6">
         {/* Total Revenue */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 text-white shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 p-4 text-white shadow-lg lg:rounded-2xl lg:p-6">
+          <div className="mb-2 flex items-center justify-between lg:mb-4">
             <div>
-              <p className="text-sm font-medium text-white/80">Total Revenue</p>
-              <p className="mt-1 text-3xl font-bold">
+              <p className="text-xs font-medium text-white/80 lg:text-sm">
+                Revenue
+              </p>
+              <p className="mt-1 text-lg font-bold lg:text-3xl">
                 Rp {(data.revenue.total / 1000000).toFixed(1)}jt
               </p>
-              <p className="mt-2 text-xs text-white/60">Semua kategori</p>
+              <p className="mt-1 text-xs text-white/60 lg:mt-2">
+                Semua kategori
+              </p>
             </div>
-            <div className="rounded-xl bg-white/15 p-3">
-              <DollarSign className="h-6 w-6" />
+            <div className="rounded-lg bg-white/15 p-2 lg:rounded-xl lg:p-3">
+              <DollarSign className="h-4 w-4 lg:h-6 lg:w-6" />
             </div>
           </div>
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/10 lg:h-20 lg:w-20" />
         </div>
 
         {/* Total Orders */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 p-6 text-white shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 p-4 text-white shadow-lg lg:rounded-2xl lg:p-6">
+          <div className="mb-2 flex items-center justify-between lg:mb-4">
             <div>
-              <p className="text-sm font-medium text-white/80">Total Orders</p>
-              <p className="mt-1 text-3xl font-bold">{data.orders.total}</p>
-              <p className="mt-2 text-xs text-white/60">Semua status</p>
+              <p className="text-xs font-medium text-white/80 lg:text-sm">
+                Orders
+              </p>
+              <p className="mt-1 text-lg font-bold lg:text-3xl">
+                {data.orders.total}
+              </p>
+              <p className="mt-1 text-xs text-white/60 lg:mt-2">Semua status</p>
             </div>
-            <div className="rounded-xl bg-white/15 p-3">
-              <ShoppingCart className="h-6 w-6" />
+            <div className="rounded-lg bg-white/15 p-2 lg:rounded-xl lg:p-3">
+              <ShoppingCart className="h-4 w-4 lg:h-6 lg:w-6" />
             </div>
           </div>
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/10 lg:h-20 lg:w-20" />
         </div>
 
         {/* Total Customers */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-700 p-6 text-white shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-700 p-4 text-white shadow-lg lg:rounded-2xl lg:p-6">
+          <div className="mb-2 flex items-center justify-between lg:mb-4">
             <div>
-              <p className="text-sm font-medium text-white/80">
-                Total Customers
+              <p className="text-xs font-medium text-white/80 lg:text-sm">
+                Customers
               </p>
-              <p className="mt-1 text-3xl font-bold">{data.customers.total}</p>
-              <p className="mt-2 text-xs text-white/60">
+              <p className="mt-1 text-lg font-bold lg:text-3xl">
+                {data.customers.total}
+              </p>
+              <p className="mt-1 text-xs text-white/60 lg:mt-2">
                 {data.customers.activeRate}% aktif
               </p>
             </div>
-            <div className="rounded-xl bg-white/15 p-3">
-              <Users className="h-6 w-6" />
+            <div className="rounded-lg bg-white/15 p-2 lg:rounded-xl lg:p-3">
+              <Users className="h-4 w-4 lg:h-6 lg:w-6" />
             </div>
           </div>
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/10 lg:h-20 lg:w-20" />
         </div>
 
         {/* Low Stock Alert */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 p-6 text-white shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 p-4 text-white shadow-lg lg:rounded-2xl lg:p-6">
+          <div className="mb-2 flex items-center justify-between lg:mb-4">
             <div>
-              <p className="text-sm font-medium text-white/80">
-                Low Stock Alert
+              <p className="text-xs font-medium text-white/80 lg:text-sm">
+                Low Stock
               </p>
-              <p className="mt-1 text-3xl font-bold">
+              <p className="mt-1 text-lg font-bold lg:text-3xl">
                 {data.products.lowStockCount}
               </p>
-              <p className="mt-2 text-xs text-white/60">Produk perlu restock</p>
+              <p className="mt-1 text-xs text-white/60 lg:mt-2">
+                Perlu restock
+              </p>
             </div>
-            <div className="rounded-xl bg-white/15 p-3">
-              <AlertTriangle className="h-6 w-6" />
+            <div className="rounded-lg bg-white/15 p-2 lg:rounded-xl lg:p-3">
+              <AlertTriangle className="h-4 w-4 lg:h-6 lg:w-6" />
             </div>
           </div>
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/10 lg:h-20 lg:w-20" />
         </div>
       </div>
 

@@ -14,7 +14,9 @@ export async function GET() {
       where: { userId: session.user.id },
       include: {
         items: {
-          include: {
+          select: {
+            id: true,
+            type: true,
             service: {
               select: {
                 name: true,

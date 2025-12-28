@@ -139,45 +139,45 @@ export default function BlogAdminPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm lg:rounded-2xl lg:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Total Articles</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
+              <p className="text-xs text-gray-500 lg:text-sm">Total Articles</p>
+              <p className="mt-1 text-xl font-bold text-gray-900 lg:text-3xl">
                 {stats.total}
               </p>
             </div>
-            <div className="rounded-xl bg-blue-500 p-3">
-              <FileText className="h-6 w-6 text-white" />
+            <div className="rounded-lg bg-blue-500 p-2 lg:rounded-xl lg:p-3">
+              <FileText className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm lg:rounded-2xl lg:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Published</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
+              <p className="text-xs text-gray-500 lg:text-sm">Published</p>
+              <p className="mt-1 text-xl font-bold text-gray-900 lg:text-3xl">
                 {stats.published}
               </p>
             </div>
-            <div className="rounded-xl bg-green-500 p-3">
-              <Eye className="h-6 w-6 text-white" />
+            <div className="rounded-lg bg-green-500 p-2 lg:rounded-xl lg:p-3">
+              <Eye className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:col-span-1 lg:rounded-2xl lg:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Drafts</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
+              <p className="text-xs text-gray-500 lg:text-sm">Drafts</p>
+              <p className="mt-1 text-xl font-bold text-gray-900 lg:text-3xl">
                 {stats.drafts}
               </p>
             </div>
-            <div className="rounded-xl bg-yellow-500 p-3">
-              <FileText className="h-6 w-6 text-white" />
+            <div className="rounded-lg bg-yellow-500 p-2 lg:rounded-xl lg:p-3">
+              <FileText className="h-4 w-4 text-white lg:h-6 lg:w-6" />
             </div>
           </div>
         </div>

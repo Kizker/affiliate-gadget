@@ -48,21 +48,23 @@ function StatCard({
   iconBg?: string
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md lg:rounded-2xl lg:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-gray-500">{label}</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900">{value}</p>
+          <p className="text-xs text-gray-500 lg:text-sm">{label}</p>
+          <p className="mt-1 text-xl font-bold text-gray-900 lg:text-3xl">
+            {value}
+          </p>
           {trend && (
             <p
-              className={`mt-1 text-sm ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}
+              className={`mt-1 text-xs lg:text-sm ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}
             >
               {trend.isPositive ? '↑' : '↓'} {trend.value}%
             </p>
           )}
         </div>
-        <div className={`rounded-xl ${iconBg} p-3`}>
-          <Icon className="h-6 w-6 text-white" />
+        <div className={`rounded-lg lg:rounded-xl ${iconBg} p-2 lg:p-3`}>
+          <Icon className="h-4 w-4 text-white lg:h-6 lg:w-6" />
         </div>
       </div>
     </div>
@@ -203,7 +205,7 @@ export default function MitraDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatCard
           icon={Eye}
           label="Total Views"

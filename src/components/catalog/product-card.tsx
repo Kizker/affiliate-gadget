@@ -27,7 +27,6 @@ export function ProductCard({
   badgeColor = 'green',
   description,
   href,
-  actionLabel = 'Lihat Detail',
 }: ProductCardProps) {
   const badgeColors = {
     green: 'bg-green-100 text-green-700',
@@ -37,123 +36,58 @@ export function ProductCard({
   }
 
   return (
-    <>
-      {/* Mobile: Overlay style - image with text overlay at bottom */}
-      <div className="group relative overflow-hidden rounded-xl md:hidden">
-        <Link href={href} className="block">
-          <img
-            src={image}
-            alt={title}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-          {/* Content overlay */}
-          <div className="absolute inset-x-0 bottom-0 p-3">
-            <h3 className="mb-1 line-clamp-2 text-sm font-semibold text-white">
-              {title}
-            </h3>
-            {description && (
-              <p className="mb-1 line-clamp-1 text-xs text-gray-200">
-                {description}
-              </p>
-            )}
-            {/* Rating */}
-            {rating !== undefined && (
-              <div className="mb-1 flex items-center gap-1">
-                <span className="text-yellow-400">★</span>
-                <span className="text-xs font-medium text-white">
-                  {rating.toFixed(1)}
-                </span>
-                {reviewCount !== undefined && (
-                  <span className="text-xs text-gray-300">({reviewCount})</span>
-                )}
-              </div>
-            )}
-            {/* Price */}
-            {priceRange ? (
-              <p className="text-sm font-bold text-cyan-400">
-                Rp {priceRange.min.toLocaleString('id-ID')} -{' '}
-                {priceRange.max.toLocaleString('id-ID')}
-              </p>
-            ) : price !== undefined ? (
-              <p className="text-sm font-bold text-cyan-400">
-                Rp {price.toLocaleString('id-ID')}
-              </p>
-            ) : null}
+    <div className="group relative overflow-hidden rounded-xl shadow-md transition-shadow hover:shadow-xl">
+      <Link href={href} className="block">
+        <img
+          src={image}
+          alt={title}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+        {/* Badge */}
+        {badge && (
+          <div
+            className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-sm ${badgeColors[badgeColor]}`}
+          >
+            {badge}
           </div>
-        </Link>
-      </div>
-
-      {/* Desktop: Regular card style */}
-      <div className="group hidden overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-blue-300 hover:shadow-lg md:block">
-        {/* Image */}
-        <Link
-          href={href}
-          className="relative block aspect-square overflow-hidden bg-gray-100"
-        >
-          <img
-            src={image}
-            alt={title}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-          {badge && (
-            <div
-              className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${badgeColors[badgeColor]}`}
-            >
-              {badge}
-            </div>
-          )}
-        </Link>
-
-        {/* Content */}
-        <div className="p-4">
-          <Link href={href}>
-            <h3 className="mb-1 line-clamp-2 font-semibold text-gray-900 transition-colors hover:text-blue-600">
-              {title}
-            </h3>
-          </Link>
-
+        )}
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        {/* Content overlay */}
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <h3 className="mb-1.5 line-clamp-2 text-base font-bold text-white">
+            {title}
+          </h3>
           {description && (
-            <p className="mb-2 line-clamp-2 text-xs text-gray-600">
+            <p className="mb-2 line-clamp-1 text-sm text-gray-200">
               {description}
             </p>
           )}
-
           {/* Rating */}
           {rating !== undefined && (
             <div className="mb-2 flex items-center gap-1">
-              <span className="text-yellow-500">★</span>
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-yellow-400">★</span>
+              <span className="text-sm font-medium text-white">
                 {rating.toFixed(1)}
               </span>
               {reviewCount !== undefined && (
-                <span className="text-xs text-gray-500">({reviewCount})</span>
+                <span className="text-xs text-gray-300">({reviewCount})</span>
               )}
             </div>
           )}
-
           {/* Price */}
           {priceRange ? (
-            <p className="mb-3 text-lg font-bold text-blue-600">
-              Rp {priceRange.min.toLocaleString('id-ID')} - Rp{' '}
+            <p className="text-base font-bold text-cyan-400">
+              Rp {priceRange.min.toLocaleString('id-ID')} -{' '}
               {priceRange.max.toLocaleString('id-ID')}
             </p>
           ) : price !== undefined ? (
-            <p className="mb-3 text-lg font-bold text-blue-600">
+            <p className="text-base font-bold text-cyan-400">
               Rp {price.toLocaleString('id-ID')}
             </p>
           ) : null}
-
-          {/* Action Button */}
-          <Link
-            href={href}
-            className="block w-full rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 py-2 text-center font-medium text-white transition-all hover:from-blue-600 hover:to-cyan-600"
-          >
-            {actionLabel}
-          </Link>
         </div>
-      </div>
-    </>
+      </Link>
+    </div>
   )
 }

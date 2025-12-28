@@ -161,7 +161,6 @@ export default function TechnicianDashboard() {
     }
   }
 
-
   const handleAddService = async () => {
     try {
       const minPrice = parseFloat(serviceMinPrice || '0')
@@ -170,7 +169,8 @@ export default function TechnicianDashboard() {
       if (!serviceName || serviceMinPrice === '') {
         toast({
           title: 'Validasi Gagal',
-          description: 'Nama layanan dan harga minimum harus diisi (gunakan 0 untuk gratis)',
+          description:
+            'Nama layanan dan harga minimum harus diisi (gunakan 0 untuk gratis)',
           variant: 'destructive',
         })
         return
@@ -188,7 +188,8 @@ export default function TechnicianDashboard() {
       if (serviceMaxPrice && (maxPrice < 0 || maxPrice < minPrice)) {
         toast({
           title: 'Validasi Gagal',
-          description: 'Harga maksimum harus lebih besar dari atau sama dengan harga minimum',
+          description:
+            'Harga maksimum harus lebih besar dari atau sama dengan harga minimum',
           variant: 'destructive',
         })
         return
@@ -290,7 +291,8 @@ export default function TechnicianDashboard() {
       if (!serviceName || serviceMinPrice === '') {
         toast({
           title: 'Validasi Gagal',
-          description: 'Nama layanan dan harga minimum harus diisi (gunakan 0 untuk gratis)',
+          description:
+            'Nama layanan dan harga minimum harus diisi (gunakan 0 untuk gratis)',
           variant: 'destructive',
         })
         return
@@ -308,28 +310,34 @@ export default function TechnicianDashboard() {
       if (serviceMaxPrice && (maxPrice < 0 || maxPrice < minPrice)) {
         toast({
           title: 'Validasi Gagal',
-          description: 'Harga maksimum harus lebih besar dari atau sama dengan harga minimum',
+          description:
+            'Harga maksimum harus lebih besar dari atau sama dengan harga minimum',
           variant: 'destructive',
         })
         return
       }
 
-      const res = await fetch(`/api/technicians/me/services/${editingServiceId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: serviceName,
-          category: serviceCategory,
-          price: minPrice,
-          minPrice: minPrice,
-          maxPrice: serviceMaxPrice ? maxPrice : null,
-          description: serviceDescription,
-        }),
-      })
+      const res = await fetch(
+        `/api/technicians/me/services/${editingServiceId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: serviceName,
+            category: serviceCategory,
+            price: minPrice,
+            minPrice: minPrice,
+            maxPrice: serviceMaxPrice ? maxPrice : null,
+            description: serviceDescription,
+          }),
+        }
+      )
 
       if (res.ok) {
         const data = await res.json()
-        setServices(services.map((s) => (s.id === editingServiceId ? data.service : s)))
+        setServices(
+          services.map((s) => (s.id === editingServiceId ? data.service : s))
+        )
         setEditingServiceId(null)
         setServiceName('')
         setServiceMinPrice('')
@@ -407,54 +415,63 @@ export default function TechnicianDashboard() {
         </div>
 
         {/* Stats Grid */}
-
-
-        {/* Stats Grid */}
-        <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6">
           {/* Total Orders */}
-          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg transition-all hover:scale-105">
-            <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-white/10" />
-            <Package className="mb-4 h-8 w-8" />
-            <p className="text-sm font-medium opacity-90">Total Pesanan</p>
-            <p className="text-3xl font-bold">{stats?.totalOrders || 0}</p>
-            <p className="mt-2 text-xs opacity-75">
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg transition-all hover:scale-105 lg:rounded-2xl lg:p-6">
+            <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8" />
+            <Package className="mb-2 h-6 w-6 lg:mb-4 lg:h-8 lg:w-8" />
+            <p className="text-xs font-medium opacity-90 lg:text-sm">
+              Total Pesanan
+            </p>
+            <p className="text-xl font-bold lg:text-3xl">
+              {stats?.totalOrders || 0}
+            </p>
+            <p className="mt-1 text-xs opacity-75 lg:mt-2">
               {stats?.activeOrders || 0} aktif
             </p>
           </div>
 
           {/* Revenue */}
-          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-600 p-6 text-white shadow-lg transition-all hover:scale-105">
-            <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-white/10" />
-            <DollarSign className="mb-4 h-8 w-8" />
-            <p className="text-sm font-medium opacity-90">Total Pendapatan</p>
-            <p className="text-3xl font-bold">
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-600 p-4 text-white shadow-lg transition-all hover:scale-105 lg:rounded-2xl lg:p-6">
+            <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8" />
+            <DollarSign className="mb-2 h-6 w-6 lg:mb-4 lg:h-8 lg:w-8" />
+            <p className="text-xs font-medium opacity-90 lg:text-sm">
+              Pendapatan
+            </p>
+            <p className="text-lg font-bold lg:text-3xl">
               {formatCurrency(stats?.totalRevenue || 0)}
             </p>
-            <p className="mt-2 text-xs opacity-75">
+            <p className="mt-1 text-xs opacity-75 lg:mt-2">
               {stats?.completedOrders || 0} selesai
             </p>
           </div>
 
           {/* Rating */}
-          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-600 p-6 text-white shadow-lg transition-all hover:scale-105">
-            <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-white/10" />
-            <Star className="mb-4 h-8 w-8" />
-            <p className="text-sm font-medium opacity-90">Rating</p>
-            <p className="text-3xl font-bold">{stats?.averageRating || 0}</p>
-            <p className="mt-2 text-xs opacity-75">
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 p-4 text-white shadow-lg transition-all hover:scale-105 lg:rounded-2xl lg:p-6">
+            <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8" />
+            <Star className="mb-2 h-6 w-6 lg:mb-4 lg:h-8 lg:w-8" />
+            <p className="text-xs font-medium opacity-90 lg:text-sm">Rating</p>
+            <p className="text-xl font-bold lg:text-3xl">
+              {stats?.averageRating || 0}
+            </p>
+            <p className="mt-1 text-xs opacity-75 lg:mt-2">
               {stats?.totalReviews || 0} ulasan
             </p>
           </div>
 
           {/* Messages */}
-          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-white shadow-lg transition-all hover:scale-105">
-            <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-white/10" />
-            <MessageCircle className="mb-4 h-8 w-8" />
-            <p className="text-sm font-medium opacity-90">Pesan Baru</p>
-            <p className="text-3xl font-bold">{stats?.unreadMessages || 0}</p>
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 text-white shadow-lg transition-all hover:scale-105 lg:rounded-2xl lg:p-6">
+            <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8" />
+            <MessageCircle className="mb-2 h-6 w-6 lg:mb-4 lg:h-8 lg:w-8" />
+            <p className="text-xs font-medium opacity-90 lg:text-sm">
+              Pesan Baru
+            </p>
+            <p className="text-xl font-bold lg:text-3xl">
+              {stats?.unreadMessages || 0}
+            </p>
             <Link
               href="/chat"
-              className="mt-2 inline-block text-xs opacity-75 hover:opacity-100"
+              className="mt-1 inline-block text-xs opacity-75 hover:opacity-100 lg:mt-2"
             >
               Lihat semua →
             </Link>
@@ -495,10 +512,13 @@ export default function TechnicianDashboard() {
                   <option value="CEK_BONGKAR">Cek & Bongkar</option>
                   <option value="SERVIS_LENGKAP">Servis Lengkap</option>
                 </select>
-                <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 md:col-span-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Harga Minimum * <span className="text-xs text-gray-500">(0 untuk gratis)</span>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Harga Minimum *{' '}
+                      <span className="text-xs text-gray-500">
+                        (0 untuk gratis)
+                      </span>
                     </label>
                     <input
                       type="number"
@@ -511,7 +531,7 @@ export default function TechnicianDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
                       Harga Maksimum (opsional)
                     </label>
                     <input
@@ -624,8 +644,12 @@ export default function TechnicianDashboard() {
                   <>
                     <div className="mb-2 flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{service.name}</h3>
-                        <p className="text-sm text-gray-500">{service.category}</p>
+                        <h3 className="font-semibold text-gray-900">
+                          {service.name}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {service.category}
+                        </p>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -643,13 +667,17 @@ export default function TechnicianDashboard() {
                       </div>
                     </div>
                     <p className="text-lg font-bold text-blue-600">
-                      {service.minPrice !== null && service.minPrice !== undefined && service.maxPrice !== null && service.maxPrice !== undefined
+                      {service.minPrice !== null &&
+                      service.minPrice !== undefined &&
+                      service.maxPrice !== null &&
+                      service.maxPrice !== undefined
                         ? service.minPrice === 0 && service.maxPrice === 0
                           ? 'Gratis'
                           : service.minPrice === 0
                             ? `Gratis - ${formatCurrency(service.maxPrice)}`
                             : `${formatCurrency(service.minPrice)} - ${formatCurrency(service.maxPrice)}`
-                        : service.minPrice !== null && service.minPrice !== undefined
+                        : service.minPrice !== null &&
+                            service.minPrice !== undefined
                           ? service.minPrice === 0
                             ? 'Gratis'
                             : `Mulai dari ${formatCurrency(service.minPrice)}`
@@ -658,7 +686,9 @@ export default function TechnicianDashboard() {
                             : formatCurrency(service.price)}
                     </p>
                     {service.description && (
-                      <p className="mt-2 text-sm text-gray-600">{service.description}</p>
+                      <p className="mt-2 text-sm text-gray-600">
+                        {service.description}
+                      </p>
                     )}
                   </>
                 )}
@@ -666,19 +696,19 @@ export default function TechnicianDashboard() {
             ))}
           </div>
 
-          {
-            services.length === 0 && !addingService && (
-              <div className="py-12 text-center text-gray-500">
-                <Package className="mx-auto mb-4 h-12 w-12 opacity-50" />
-                <p>Belum ada layanan. Tambahkan layanan pertama Anda!</p>
-              </div>
-            )
-          }
+          {services.length === 0 && !addingService && (
+            <div className="py-12 text-center text-gray-500">
+              <Package className="mx-auto mb-4 h-12 w-12 opacity-50" />
+              <p>Belum ada layanan. Tambahkan layanan pertama Anda!</p>
+            </div>
+          )}
         </div>
 
         {/* Recent Orders */}
         <div className="rounded-2xl bg-white p-6 shadow-lg">
-          <h2 className="mb-4 text-xl font-bold text-gray-900">Pesanan Terbaru</h2>
+          <h2 className="mb-4 text-xl font-bold text-gray-900">
+            Pesanan Terbaru
+          </h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -706,7 +736,9 @@ export default function TechnicianDashboard() {
                         <span className="font-medium">{order.user.name}</span>
                       </div>
                     </td>
-                    <td className="py-3">{order.items[0]?.service.name || '-'}</td>
+                    <td className="py-3">
+                      {order.items[0]?.service.name || '-'}
+                    </td>
                     <td className="py-3">
                       <span
                         className={`rounded-full px-2 py-1 text-xs font-medium ${getStatusBadge(order.status)}`}

@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import { SearchBar } from '@/components/catalog/search-bar'
 import { FilterSidebar } from '@/components/catalog/filter-sidebar'
 import { ProductCard } from '@/components/catalog/product-card'
-import { SlidersHorizontal, X, Loader2 } from 'lucide-react'
+import { SlidersHorizontal, X } from 'lucide-react'
 
 interface Product {
   id: string
@@ -26,120 +26,186 @@ interface FilterOption {
   count?: number
 }
 
+// Skeleton Loading Component
+function ProductSkeleton() {
+  return (
+    <div className="mb-4 break-inside-avoid">
+      <div className="relative animate-pulse overflow-hidden rounded-xl bg-gray-200">
+        {/* Random height untuk masonry effect */}
+        <div className="aspect-[3/4] w-full" />
+        {/* Content skeleton */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-gray-300 to-transparent p-4">
+          <div className="mb-2 h-4 w-3/4 rounded bg-gray-400/50" />
+          <div className="mb-2 h-3 w-1/2 rounded bg-gray-400/40" />
+          <div className="h-5 w-2/3 rounded bg-gray-400/50" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SparepartPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [brandFilter, setBrandFilter] = useState('')
   const [priceRange, setPriceRange] = useState('')
   const [sortBy, setSortBy] = useState('popular')
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
   const [total, setTotal] = useState(0)
   const [categoryOptions, setCategoryOptions] = useState<FilterOption[]>([])
   const [brandOptions, setBrandOptions] = useState<FilterOption[]>([])
 
+  const loaderRef = useRef<HTMLDivElement>(null)
+
   // Fetch products from API
-  const fetchProducts = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '12',
-      })
+  const fetchProducts = useCallback(
+    async (pageNum: number, append: boolean = false) => {
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
 
-      if (searchQuery) params.set('search', searchQuery)
-      if (categoryFilter) params.set('category', categoryFilter)
-      if (brandFilter) params.set('brand', brandFilter)
+      try {
+        const params = new URLSearchParams({
+          page: pageNum.toString(),
+          limit: '12',
+        })
 
-      // Add sorting
-      if (sortBy) {
-        switch (sortBy) {
-          case 'price-low':
-            params.set('sortBy', 'price')
-            params.set('sortOrder', 'asc')
-            break
-          case 'price-high':
-            params.set('sortBy', 'price')
-            params.set('sortOrder', 'desc')
-            break
-          case 'rating':
-            params.set('sortBy', 'rating')
-            params.set('sortOrder', 'desc')
-            break
-          case 'sold':
-            params.set('sortBy', 'sold')
-            params.set('sortOrder', 'desc')
-            break
-          default:
-            // popular - default sorting
-            break
+        if (searchQuery) params.set('search', searchQuery)
+        if (categoryFilter) params.set('category', categoryFilter)
+        if (brandFilter) params.set('brand', brandFilter)
+
+        // Add sorting
+        if (sortBy) {
+          switch (sortBy) {
+            case 'price-low':
+              params.set('sortBy', 'price')
+              params.set('sortOrder', 'asc')
+              break
+            case 'price-high':
+              params.set('sortBy', 'price')
+              params.set('sortOrder', 'desc')
+              break
+            case 'rating':
+              params.set('sortBy', 'rating')
+              params.set('sortOrder', 'desc')
+              break
+            case 'sold':
+              params.set('sortBy', 'sold')
+              params.set('sortOrder', 'desc')
+              break
+            default:
+              // popular - default sorting
+              break
+          }
         }
-      }
 
-      // Add price range filter
-      if (priceRange) {
-        switch (priceRange) {
-          case 'under-500k':
-            params.set('maxPrice', '500000')
-            break
-          case '500k-1m':
-            params.set('minPrice', '500000')
-            params.set('maxPrice', '1000000')
-            break
-          case '1m-2m':
-            params.set('minPrice', '1000000')
-            params.set('maxPrice', '2000000')
-            break
-          case 'above-2m':
-            params.set('minPrice', '2000000')
-            break
+        // Add price range filter
+        if (priceRange) {
+          switch (priceRange) {
+            case 'under-500k':
+              params.set('maxPrice', '500000')
+              break
+            case '500k-1m':
+              params.set('minPrice', '500000')
+              params.set('maxPrice', '1000000')
+              break
+            case '1m-2m':
+              params.set('minPrice', '1000000')
+              params.set('maxPrice', '2000000')
+              break
+            case 'above-2m':
+              params.set('minPrice', '2000000')
+              break
+          }
         }
+
+        const res = await fetch(`/api/products?${params}`)
+        if (!res.ok) throw new Error('Failed to fetch products')
+
+        const data = await res.json()
+        const newProducts = data.products || []
+        const totalPages = data.pagination?.totalPages || 1
+
+        if (append) {
+          setProducts((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id))
+            const uniqueNew = newProducts.filter(
+              (p: Product) => !existingIds.has(p.id)
+            )
+            return [...prev, ...uniqueNew]
+          })
+        } else {
+          setProducts(newProducts)
+        }
+
+        setTotal(data.pagination?.total || 0)
+        setHasMore(pageNum < totalPages)
+
+        // Set filter options from API
+        if (data.filters) {
+          setCategoryOptions(data.filters.categories || [])
+          setBrandOptions(data.filters.brands || [])
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error)
+      } finally {
+        setLoading(false)
+        setLoadingMore(false)
       }
+    },
+    [searchQuery, categoryFilter, brandFilter, priceRange, sortBy]
+  )
 
-      const res = await fetch(`/api/products?${params}`)
-      if (!res.ok) throw new Error('Failed to fetch products')
+  // Initial load
+  useEffect(() => {
+    setPage(1)
+    setProducts([])
+    fetchProducts(1, false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, categoryFilter, brandFilter, priceRange, sortBy])
 
-      const data = await res.json()
-      setProducts(data.products || [])
-      setTotalPages(data.pagination?.totalPages || 1)
-      setTotal(data.pagination?.total || 0)
+  // Infinite scroll with IntersectionObserver
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          setPage((prev) => prev + 1)
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    )
 
-      // Set filter options from API
-      if (data.filters) {
-        setCategoryOptions(data.filters.categories || [])
-        setBrandOptions(data.filters.brands || [])
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error)
-    } finally {
-      setLoading(false)
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current)
     }
-  }, [page, searchQuery, categoryFilter, brandFilter, priceRange, sortBy])
 
-  useEffect(() => {
-    fetchProducts()
-  }, [fetchProducts])
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore])
 
-  // Scroll to top when page changes
+  // Load more when page changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (page > 1) {
+      fetchProducts(page, true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
-    setPage(1)
   }
 
   const handleSort = (value: string) => {
     setSortBy(value)
-    setPage(1)
   }
 
   const handleFilterChange = (filters: Record<string, string[]>) => {
-    // Update filters based on FilterSidebar callback
     const kategori = filters['Kategori']?.[0] || ''
     const brand = filters['Brand']?.[0] || ''
     const harga = filters['Harga']?.[0] || ''
@@ -147,14 +213,12 @@ export default function SparepartPage() {
     setCategoryFilter(kategori)
     setBrandFilter(brand)
     setPriceRange(harga)
-    setPage(1)
   }
 
   const handleClearFilters = () => {
     setCategoryFilter('')
     setBrandFilter('')
     setPriceRange('')
-    setPage(1)
   }
 
   const filterGroups = [
@@ -276,15 +340,18 @@ export default function SparepartPage() {
           <div className="lg:col-span-3">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-gray-600">
-                Menampilkan <span className="font-semibold">{total}</span>{' '}
-                produk
+                Menampilkan{' '}
+                <span className="font-semibold">{products.length}</span> dari{' '}
+                <span className="font-semibold">{total}</span> produk
               </p>
             </div>
 
-            {/* Loading State */}
+            {/* Initial Loading State with Skeletons */}
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <ProductSkeleton key={i} />
+                ))}
               </div>
             ) : products.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
@@ -292,10 +359,10 @@ export default function SparepartPage() {
               </div>
             ) : (
               <>
-                {/* Mobile: Masonry 2 columns */}
-                <div className="columns-2 gap-6 space-y-6 md:hidden">
+                {/* Masonry Layout - All Screen Sizes */}
+                <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
                   {products.map((item) => (
-                    <div key={item.id} className="mb-6 break-inside-avoid">
+                    <div key={item.id} className="mb-4 break-inside-avoid">
                       <ProductCard
                         id={item.id}
                         title={item.name}
@@ -309,67 +376,35 @@ export default function SparepartPage() {
                       />
                     </div>
                   ))}
+
+                  {/* Loading More Skeletons */}
+                  {loadingMore && (
+                    <>
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <ProductSkeleton key={`loading-${i}`} />
+                      ))}
+                    </>
+                  )}
                 </div>
 
-                {/* Desktop: Regular grid 3 columns */}
-                <div className="hidden gap-6 md:grid md:grid-cols-2 xl:grid-cols-3">
-                  {products.map((item) => (
-                    <ProductCard
-                      key={item.id}
-                      id={item.id}
-                      title={item.name}
-                      image={item.images[0] || '/placeholder.png'}
-                      description={`${item.brand || 'No Brand'} • ${item.category}`}
-                      price={item.price}
-                      badge={item.stock > 0 ? `Stok: ${item.stock}` : 'Habis'}
-                      badgeColor={item.stock > 0 ? 'green' : 'red'}
-                      href={`/sparepart/${item.id}`}
-                      actionLabel="Lihat Detail"
-                    />
-                  ))}
+                {/* Infinite Scroll Trigger */}
+                <div
+                  ref={loaderRef}
+                  className="mt-8 flex h-10 items-center justify-center"
+                >
+                  {loadingMore && (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                      <span>Memuat lebih banyak...</span>
+                    </div>
+                  )}
+                  {!hasMore && products.length > 0 && (
+                    <p className="text-sm text-gray-500">
+                      Semua produk sudah ditampilkan
+                    </p>
+                  )}
                 </div>
               </>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && !loading && (
-              <div className="mt-8 flex justify-center">
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page === 1}
-                    className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = i + 1
-                    return (
-                      <button
-                        type="button"
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className={`rounded-lg px-4 py-2 ${
-                          page === pageNum
-                            ? 'bg-blue-600 text-white'
-                            : 'border border-gray-300 transition-colors hover:bg-gray-50'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    )
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.min(totalPages, page + 1))}
-                    disabled={page === totalPages}
-                    className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
             )}
           </div>
         </div>

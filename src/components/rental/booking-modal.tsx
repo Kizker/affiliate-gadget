@@ -12,6 +12,7 @@ interface BookingModalProps {
     pricePerDay: number
     stock: number
     image: string
+    depositAmount: number
   }
   isOpen: boolean
   onClose: () => void
@@ -50,7 +51,8 @@ export default function BookingModal({
     const basePrice = rentalItem.pricePerDay * actualDays
     discount = Math.round(basePrice * (discountPercentage / 100))
     const subtotal = basePrice - discount
-    const deposit = rentalItem.pricePerDay * 10
+    // Use depositAmount from props (0 if gratis)
+    const deposit = rentalItem.depositAmount || 0
     const total = subtotal + deposit
 
     return {
@@ -62,7 +64,7 @@ export default function BookingModal({
       deposit,
       total,
     }
-  }, [duration, durationType, rentalItem.pricePerDay])
+  }, [duration, durationType, rentalItem.pricePerDay, rentalItem.depositAmount])
 
   const handleDurationTypeChange = (type: DurationType) => {
     setDurationType(type)
@@ -309,7 +311,15 @@ export default function BookingModal({
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Deposit</span>
-                <span>Rp {pricing.deposit.toLocaleString('id-ID')}</span>
+                <span
+                  className={
+                    pricing.deposit === 0 ? 'font-semibold text-green-600' : ''
+                  }
+                >
+                  {pricing.deposit > 0
+                    ? `Rp ${pricing.deposit.toLocaleString('id-ID')}`
+                    : 'Gratis'}
+                </span>
               </div>
               <div className="flex justify-between border-t border-blue-200 pt-1.5 sm:pt-2">
                 <span className="font-bold text-gray-900">Total</span>
@@ -318,9 +328,11 @@ export default function BookingModal({
                 </span>
               </div>
             </div>
-            <p className="mt-2 text-[10px] text-gray-600 sm:text-xs">
-              * Deposit dikembalikan setelah alat dikembalikan
-            </p>
+            {pricing.deposit > 0 && (
+              <p className="mt-2 text-[10px] text-gray-600 sm:text-xs">
+                * Deposit dikembalikan setelah alat dikembalikan
+              </p>
+            )}
           </div>
 
           {/* Submit Button */}

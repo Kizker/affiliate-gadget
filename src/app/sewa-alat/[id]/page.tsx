@@ -276,6 +276,7 @@ export default async function SewaAlatDetailPage({
                 pricePerDay: item.pricePerDay,
                 stock: item.stock,
                 images: item.images,
+                depositAmount: depositAmount,
               }}
               isAvailable={isAvailable}
             />

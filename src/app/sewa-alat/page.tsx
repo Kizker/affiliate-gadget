@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import { SearchBar } from '@/components/catalog/search-bar'
 import { FilterSidebar } from '@/components/catalog/filter-sidebar'
 import { ProductCard } from '@/components/catalog/product-card'
-import { SlidersHorizontal, X, Loader2 } from 'lucide-react'
+import { SlidersHorizontal, X } from 'lucide-react'
 
 interface RentalItem {
   id: string
@@ -18,104 +18,168 @@ interface RentalItem {
   isActive: boolean
 }
 
+// Skeleton Loading Component
+function ProductSkeleton() {
+  return (
+    <div className="mb-4 break-inside-avoid">
+      <div className="relative animate-pulse overflow-hidden rounded-xl bg-gray-200">
+        <div className="aspect-[3/4] w-full" />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-gray-300 to-transparent p-4">
+          <div className="mb-2 h-4 w-3/4 rounded bg-gray-400/50" />
+          <div className="mb-2 h-3 w-1/2 rounded bg-gray-400/40" />
+          <div className="h-5 w-2/3 rounded bg-gray-400/50" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SewaAlatPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [rentalItems, setRentalItems] = useState<RentalItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [availability, setAvailability] = useState('all')
   const [priceRange, setPriceRange] = useState('')
   const [sortBy, setSortBy] = useState('popular')
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
   const [total, setTotal] = useState(0)
   const [stats, setStats] = useState({ total: 0, available: 0, unavailable: 0 })
 
+  const loaderRef = useRef<HTMLDivElement>(null)
+
   // Fetch rental items from API
-  const fetchRentalItems = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '12',
-      })
-
-      if (searchQuery) params.set('search', searchQuery)
-      if (availability !== 'all') params.set('availability', availability)
-
-      // Add sorting
-      if (sortBy) {
-        switch (sortBy) {
-          case 'price-low':
-            params.set('sortBy', 'pricePerDay')
-            params.set('sortOrder', 'asc')
-            break
-          case 'price-high':
-            params.set('sortBy', 'pricePerDay')
-            params.set('sortOrder', 'desc')
-            break
-          case 'rating':
-            params.set('sortBy', 'rating')
-            params.set('sortOrder', 'desc')
-            break
-          default:
-            // popular - default sorting
-            break
-        }
+  const fetchRentalItems = useCallback(
+    async (pageNum: number, append: boolean = false) => {
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
       }
 
-      // Add price range filter
-      if (priceRange) {
-        switch (priceRange) {
-          case 'under-50k':
-            params.set('maxPrice', '50000')
-            break
-          case '50k-100k':
-            params.set('minPrice', '50000')
-            params.set('maxPrice', '100000')
-            break
-          case '100k-200k':
-            params.set('minPrice', '100000')
-            params.set('maxPrice', '200000')
-            break
-          case 'above-200k':
-            params.set('minPrice', '200000')
-            break
+      try {
+        const params = new URLSearchParams({
+          page: pageNum.toString(),
+          limit: '12',
+        })
+
+        if (searchQuery) params.set('search', searchQuery)
+        if (availability !== 'all') params.set('availability', availability)
+
+        // Add sorting
+        if (sortBy) {
+          switch (sortBy) {
+            case 'price-low':
+              params.set('sortBy', 'pricePerDay')
+              params.set('sortOrder', 'asc')
+              break
+            case 'price-high':
+              params.set('sortBy', 'pricePerDay')
+              params.set('sortOrder', 'desc')
+              break
+            case 'rating':
+              params.set('sortBy', 'rating')
+              params.set('sortOrder', 'desc')
+              break
+            default:
+              break
+          }
         }
+
+        // Add price range filter
+        if (priceRange) {
+          switch (priceRange) {
+            case 'under-50k':
+              params.set('maxPrice', '50000')
+              break
+            case '50k-100k':
+              params.set('minPrice', '50000')
+              params.set('maxPrice', '100000')
+              break
+            case '100k-200k':
+              params.set('minPrice', '100000')
+              params.set('maxPrice', '200000')
+              break
+            case 'above-200k':
+              params.set('minPrice', '200000')
+              break
+          }
+        }
+
+        const res = await fetch(`/api/rental-items?${params}`)
+        if (!res.ok) throw new Error('Failed to fetch rental items')
+
+        const data = await res.json()
+        const newItems = data.rentalItems || []
+        const totalPages = data.pagination?.totalPages || 1
+
+        if (append) {
+          setRentalItems((prev) => {
+            const existingIds = new Set(prev.map((r) => r.id))
+            const uniqueNew = newItems.filter(
+              (r: RentalItem) => !existingIds.has(r.id)
+            )
+            return [...prev, ...uniqueNew]
+          })
+        } else {
+          setRentalItems(newItems)
+        }
+
+        setTotal(data.pagination?.total || 0)
+        setHasMore(pageNum < totalPages)
+        setStats(data.stats || { total: 0, available: 0, unavailable: 0 })
+      } catch (error) {
+        console.error('Error fetching rental items:', error)
+      } finally {
+        setLoading(false)
+        setLoadingMore(false)
       }
+    },
+    [searchQuery, availability, priceRange, sortBy]
+  )
 
-      const res = await fetch(`/api/rental-items?${params}`)
-      if (!res.ok) throw new Error('Failed to fetch rental items')
+  // Initial load
+  useEffect(() => {
+    setPage(1)
+    setRentalItems([])
+    fetchRentalItems(1, false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, availability, priceRange, sortBy])
 
-      const data = await res.json()
-      setRentalItems(data.rentalItems || [])
-      setTotalPages(data.pagination?.totalPages || 1)
-      setTotal(data.pagination?.total || 0)
-      setStats(data.stats || { total: 0, available: 0, unavailable: 0 })
-    } catch (error) {
-      console.error('Error fetching rental items:', error)
-    } finally {
-      setLoading(false)
+  // Infinite scroll with IntersectionObserver
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          setPage((prev) => prev + 1)
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    )
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current)
     }
-  }, [page, searchQuery, availability, priceRange, sortBy])
 
-  useEffect(() => {
-    fetchRentalItems()
-  }, [fetchRentalItems])
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore])
 
-  // Scroll to top when page changes
+  // Load more when page changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (page > 1) {
+      fetchRentalItems(page, true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
-    setPage(1)
   }
 
   const handleSort = (value: string) => {
     setSortBy(value)
-    setPage(1)
   }
 
   const handleFilterChange = (filters: Record<string, string[]>) => {
@@ -124,13 +188,11 @@ export default function SewaAlatPage() {
 
     setAvailability(ketersediaan)
     setPriceRange(harga)
-    setPage(1)
   }
 
   const handleClearFilters = () => {
     setAvailability('all')
     setPriceRange('')
-    setPage(1)
   }
 
   const filterGroups = [
@@ -176,7 +238,7 @@ export default function SewaAlatPage() {
         {/* Hero Section */}
         <div className="mb-8">
           <h1 className="mb-3 text-4xl font-bold text-gray-900">
-            Sewa Alat & Gadget
+            Sewa Alat &amp; Gadget
           </h1>
           <p className="text-lg text-gray-600">
             Sewa perangkat berkualitas untuk kebutuhan Anda
@@ -275,14 +337,18 @@ export default function SewaAlatPage() {
           <div className="lg:col-span-3">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-gray-600">
-                Menampilkan <span className="font-semibold">{total}</span> alat
+                Menampilkan{' '}
+                <span className="font-semibold">{rentalItems.length}</span> dari{' '}
+                <span className="font-semibold">{total}</span> alat
               </p>
             </div>
 
-            {/* Loading State */}
+            {/* Initial Loading State with Skeletons */}
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <ProductSkeleton key={i} />
+                ))}
               </div>
             ) : rentalItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
@@ -290,10 +356,10 @@ export default function SewaAlatPage() {
               </div>
             ) : (
               <>
-                {/* Mobile: Masonry 2 columns */}
-                <div className="columns-2 gap-6 space-y-6 md:hidden">
+                {/* Masonry Layout - All Screen Sizes */}
+                <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
                   {rentalItems.map((item) => (
-                    <div key={item.id} className="mb-6 break-inside-avoid">
+                    <div key={item.id} className="mb-4 break-inside-avoid">
                       <ProductCard
                         id={item.id}
                         title={item.name}
@@ -302,7 +368,6 @@ export default function SewaAlatPage() {
                           item.description || 'Alat sewa berkualitas'
                         }
                         price={item.pricePerDay}
-                        priceLabel="/ hari"
                         badge={item.stock > 0 ? 'Tersedia' : 'Tidak Tersedia'}
                         badgeColor={item.stock > 0 ? 'green' : 'red'}
                         href={`/sewa-alat/${item.id}`}
@@ -310,68 +375,35 @@ export default function SewaAlatPage() {
                       />
                     </div>
                   ))}
+
+                  {/* Loading More Skeletons */}
+                  {loadingMore && (
+                    <>
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <ProductSkeleton key={`loading-${i}`} />
+                      ))}
+                    </>
+                  )}
                 </div>
 
-                {/* Desktop: Regular grid 3 columns */}
-                <div className="hidden gap-6 md:grid md:grid-cols-2 xl:grid-cols-3">
-                  {rentalItems.map((item) => (
-                    <ProductCard
-                      key={item.id}
-                      id={item.id}
-                      title={item.name}
-                      image={item.images[0] || '/placeholder.png'}
-                      description={item.description || 'Alat sewa berkualitas'}
-                      price={item.pricePerDay}
-                      priceLabel="/ hari"
-                      badge={item.stock > 0 ? 'Tersedia' : 'Tidak Tersedia'}
-                      badgeColor={item.stock > 0 ? 'green' : 'red'}
-                      href={`/sewa-alat/${item.id}`}
-                      actionLabel="Sewa Sekarang"
-                    />
-                  ))}
+                {/* Infinite Scroll Trigger */}
+                <div
+                  ref={loaderRef}
+                  className="mt-8 flex h-10 items-center justify-center"
+                >
+                  {loadingMore && (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                      <span>Memuat lebih banyak...</span>
+                    </div>
+                  )}
+                  {!hasMore && rentalItems.length > 0 && (
+                    <p className="text-sm text-gray-500">
+                      Semua alat sudah ditampilkan
+                    </p>
+                  )}
                 </div>
               </>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && !loading && (
-              <div className="mt-8 flex justify-center">
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page === 1}
-                    className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = i + 1
-                    return (
-                      <button
-                        type="button"
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className={`rounded-lg px-4 py-2 ${
-                          page === pageNum
-                            ? 'bg-blue-600 text-white'
-                            : 'border border-gray-300 transition-colors hover:bg-gray-50'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    )
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.min(totalPages, page + 1))}
-                    disabled={page === totalPages}
-                    className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
             )}
           </div>
         </div>
