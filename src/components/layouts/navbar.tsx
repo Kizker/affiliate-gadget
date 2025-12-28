@@ -18,9 +18,15 @@ import CartIcon from '@/components/cart/cart-icon'
 
 interface NavbarProps {
   variant?: 'dark' | 'light'
+  hideLogo?: boolean
+  fullWidth?: boolean
 }
 
-export function Navbar({ variant = 'dark' }: NavbarProps) {
+export function Navbar({
+  variant = 'dark',
+  hideLogo = false,
+  fullWidth = false,
+}: NavbarProps) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [layananOpen, setLayananOpen] = useState(false)
@@ -61,18 +67,26 @@ export function Navbar({ variant = 'dark' }: NavbarProps) {
             : 'bg-transparent'
       }`}
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div
+        className={
+          fullWidth
+            ? 'mx-auto max-w-[calc(100vw-16rem)] px-4 sm:px-6 lg:px-8'
+            : 'mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'
+        }
+      >
         <div className="flex h-16 items-center justify-between sm:h-20">
-          <Link
-            href="/"
-            className={`bg-gradient-to-r text-2xl font-bold sm:text-3xl ${
-              isLight
-                ? 'from-cyan-600 to-blue-600'
-                : 'from-cyan-400 to-blue-500'
-            } bg-clip-text text-transparent`}
-          >
-            HaloTekno
-          </Link>
+          {!hideLogo && (
+            <Link
+              href="/"
+              className={`bg-gradient-to-r text-2xl font-bold sm:text-3xl ${
+                isLight
+                  ? 'from-cyan-600 to-blue-600'
+                  : 'from-cyan-400 to-blue-500'
+              } bg-clip-text text-transparent`}
+            >
+              HaloTekno
+            </Link>
+          )}
 
           {/* Spacer to push everything to the right */}
           <div className="flex-1"></div>

@@ -202,14 +202,22 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="mb-2 text-4xl font-bold text-gray-900">
-          Kelola Pesanan
-        </h1>
-        <p className="text-lg text-gray-600">
-          Kelola semua pesanan service dan sparepart
-        </p>
+      {/* Header Banner */}
+      <div className="mb-8 rounded-2xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-8 text-white shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">🛒 Kelola Pesanan</h1>
+            <p className="mt-2 text-blue-100">
+              Kelola semua pesanan service dan sparepart
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-white/20 px-4 py-2 backdrop-blur-sm">
+              <p className="text-sm font-medium">Total Orders</p>
+              <p className="text-2xl font-bold">{total}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Search Bar */}

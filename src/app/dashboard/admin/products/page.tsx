@@ -236,70 +236,88 @@ export default function ProductsPage() {
   const categories = Object.keys(productStats.byCategory || {})
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Kelola Produk</h1>
-        <p className="mt-2 text-gray-600">
-          Manage sparepart and rental items inventory
-        </p>
+    <div className="overflow-x-hidden">
+      {/* Header Banner */}
+      <div className="mb-8 rounded-2xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-8 text-white shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">📦 Kelola Produk</h1>
+            <p className="mt-2 text-blue-100">
+              Manage sparepart and rental items inventory
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-white/20 px-4 py-2 backdrop-blur-sm">
+              <p className="text-sm font-medium">Total Products</p>
+              <p className="text-2xl font-bold">
+                {productStats.total + rentalStats.total}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Sparepart</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
-                {productStats.total}
-              </p>
-            </div>
-            <div className="rounded-xl bg-blue-500 p-3">
+        {/* Total Sparepart Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
               <Package className="h-6 w-6 text-white" />
             </div>
+            <p className="text-sm font-medium text-green-100">
+              Total Sparepart
+            </p>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {productStats.total}
+            </p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Alat Sewa</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
-                {rentalStats.total}
-              </p>
-            </div>
-            <div className="rounded-xl bg-green-500 p-3">
+        {/* Total Alat Sewa Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
               <Wrench className="h-6 w-6 text-white" />
             </div>
+            <p className="text-sm font-medium text-purple-100">
+              Total Alat Sewa
+            </p>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {rentalStats.total}
+            </p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Low Stock Alert</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
-                {productStats.lowStock}
-              </p>
-            </div>
-            <div className="rounded-xl bg-yellow-500 p-3">
+        {/* Low Stock Alert Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
               <AlertTriangle className="h-6 w-6 text-white" />
             </div>
+            <p className="text-sm font-medium text-yellow-100">
+              Low Stock Alert
+            </p>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {productStats.lowStock}
+            </p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Out of Stock</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
-                {productStats.outOfStock}
-              </p>
-            </div>
-            <div className="rounded-xl bg-red-500 p-3">
+        {/* Out of Stock Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-red-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
               <ShoppingBag className="h-6 w-6 text-white" />
             </div>
+            <p className="text-sm font-medium text-red-100">Out of Stock</p>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {productStats.outOfStock}
+            </p>
           </div>
         </div>
       </div>
@@ -356,7 +374,7 @@ export default function ProductsPage() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none sm:w-auto"
             >
               <option value="ALL">All Categories</option>
               {categories.map((cat) => (
@@ -371,7 +389,7 @@ export default function ProductsPage() {
           <select
             value={stockStatusFilter}
             onChange={(e) => setStockStatusFilter(e.target.value)}
-            className="rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none sm:w-auto"
           >
             <option value="ALL">All Stock Status</option>
             <option value="in_stock">In Stock</option>
@@ -380,7 +398,7 @@ export default function ProductsPage() {
           </select>
 
           {/* Search */}
-          <div className="relative min-w-[200px] flex-1">
+          <div className="relative w-full flex-1 sm:min-w-[200px]">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
@@ -392,7 +410,7 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex w-full gap-2 sm:w-auto">
           <button
             onClick={() => {
               if (activeTab === 'sparepart') {
@@ -403,10 +421,13 @@ export default function ProductsPage() {
                 setShowRentalModal(true)
               }
             }}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2 font-medium text-white transition-all hover:shadow-lg"
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2 font-medium text-white transition-all hover:shadow-lg sm:flex-initial"
           >
             <Plus className="h-5 w-5" />
-            Add {activeTab === 'sparepart' ? 'Sparepart' : 'Rental Item'}
+            <span className="hidden sm:inline">
+              Add {activeTab === 'sparepart' ? 'Sparepart' : 'Rental Item'}
+            </span>
+            <span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
@@ -424,34 +445,16 @@ export default function ProductsPage() {
               <p className="mt-4 text-gray-500">No products found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Product
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Price
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Stock
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
+            <>
+              {/* Mobile Card View */}
+              <div className="block lg:hidden">
+                <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
                   {products.map((product) => (
-                    <tr key={product.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
+                    <div
+                      key={product.id}
+                      className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md"
+                    >
+                      <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           {product.images[0] ? (
                             <img
@@ -464,30 +467,17 @@ export default function ProductsPage() {
                               <Package className="h-6 w-6 text-gray-400" />
                             </div>
                           )}
-                          <div>
-                            <div className="font-medium text-gray-900">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="truncate font-semibold text-gray-900">
                               {product.name}
-                            </div>
+                            </h3>
                             {product.brand && (
-                              <div className="text-sm text-gray-500">
+                              <p className="truncate text-sm text-gray-600">
                                 {product.brand}
-                              </div>
+                              </p>
                             )}
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
-                          {product.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {formatPrice(product.price)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <StockBadge stock={product.stock} />
-                      </td>
-                      <td className="px-6 py-4">
                         <span
                           className={`rounded-full px-2 py-1 text-xs ${
                             product.isActive
@@ -497,33 +487,147 @@ export default function ProductsPage() {
                         >
                           {product.isActive ? 'Active' : 'Inactive'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingProduct(product)
-                              setShowProductModal(true)
-                            }}
-                            className="rounded-lg bg-blue-100 p-2 text-blue-600 hover:bg-blue-200"
-                            title="Edit"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="rounded-lg bg-red-100 p-2 text-red-600 hover:bg-red-200"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                      </div>
+
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
+                            {product.category}
+                          </span>
+                          <span className="font-semibold text-gray-900">
+                            {formatPrice(product.price)}
+                          </span>
                         </div>
-                      </td>
-                    </tr>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Stock:</span>
+                          <StockBadge stock={product.stock} />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingProduct(product)
+                            setShowProductModal(true)
+                          }}
+                          className="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2 text-sm font-medium text-white hover:shadow-lg"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(product.id)}
+                          className="rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Product
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Category
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Price
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Stock
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {products.map((product) => (
+                      <tr key={product.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {product.images[0] ? (
+                              <img
+                                src={product.images[0]}
+                                alt={product.name}
+                                className="h-12 w-12 rounded-lg object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-200">
+                                <Package className="h-6 w-6 text-gray-400" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {product.name}
+                              </div>
+                              {product.brand && (
+                                <div className="text-sm text-gray-500">
+                                  {product.brand}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
+                            {product.category}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {formatPrice(product.price)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <StockBadge stock={product.stock} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs ${
+                              product.isActive
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {product.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingProduct(product)
+                                setShowProductModal(true)
+                              }}
+                              className="rounded-lg bg-blue-100 p-2 text-blue-600 hover:bg-blue-200"
+                              title="Edit"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(product.id)}
+                              className="rounded-lg bg-red-100 p-2 text-red-600 hover:bg-red-200"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )
         ) : rentalItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
@@ -531,31 +635,16 @@ export default function ProductsPage() {
             <p className="mt-4 text-gray-500">No rental items found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Item
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Price/Day
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Available
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
+          <>
+            {/* Mobile Card View */}
+            <div className="block lg:hidden">
+              <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
                 {rentalItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         {item.images[0] ? (
                           <img
@@ -568,25 +657,17 @@ export default function ProductsPage() {
                             <Wrench className="h-6 w-6 text-gray-400" />
                           </div>
                         )}
-                        <div>
-                          <div className="font-medium text-gray-900">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate font-semibold text-gray-900">
                             {item.name}
-                          </div>
+                          </h3>
                           {item.description && (
-                            <div className="line-clamp-1 text-sm text-gray-500">
+                            <p className="line-clamp-1 truncate text-sm text-gray-600">
                               {item.description}
-                            </div>
+                            </p>
                           )}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {formatPrice(item.pricePerDay)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <StockBadge stock={item.stock} />
-                    </td>
-                    <td className="px-6 py-4">
                       <span
                         className={`rounded-full px-2 py-1 text-xs ${
                           item.isActive
@@ -596,33 +677,139 @@ export default function ProductsPage() {
                       >
                         {item.isActive ? 'Active' : 'Inactive'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => {
-                            setEditingRental(item)
-                            setShowRentalModal(true)
-                          }}
-                          className="rounded-lg bg-blue-100 p-2 text-blue-600 hover:bg-blue-200"
-                          title="Edit"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRental(item.id)}
-                          className="rounded-lg bg-red-100 p-2 text-red-600 hover:bg-red-200"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">
+                          Price/Day:
+                        </span>
+                        <span className="font-semibold text-gray-900">
+                          {formatPrice(item.pricePerDay)}
+                        </span>
                       </div>
-                    </td>
-                  </tr>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Available:</span>
+                        <StockBadge stock={item.stock} />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingRental(item)
+                          setShowRentalModal(true)
+                        }}
+                        className="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2 text-sm font-medium text-white hover:shadow-lg"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRental(item.id)}
+                        className="rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Item
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Price/Day
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Available
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {rentalItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {item.images[0] ? (
+                            <img
+                              src={item.images[0]}
+                              alt={item.name}
+                              className="h-12 w-12 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-200">
+                              <Wrench className="h-6 w-6 text-gray-400" />
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {item.name}
+                            </div>
+                            {item.description && (
+                              <div className="line-clamp-1 text-sm text-gray-500">
+                                {item.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {formatPrice(item.pricePerDay)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <StockBadge stock={item.stock} />
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs ${
+                            item.isActive
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                        >
+                          {item.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingRental(item)
+                              setShowRentalModal(true)
+                            }}
+                            className="rounded-lg bg-blue-100 p-2 text-blue-600 hover:bg-blue-200"
+                            title="Edit"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRental(item.id)}
+                            className="rounded-lg bg-red-100 p-2 text-red-600 hover:bg-red-200"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

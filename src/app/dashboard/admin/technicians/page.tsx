@@ -236,93 +236,103 @@ export default function TechniciansPage() {
   )
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Kelola Teknisi & Mitra
-          </h1>
-          <p className="mt-2 text-gray-600">
-            Kelola teknisi internal dan mitra bisnis
-          </p>
+    <div className="overflow-x-hidden">
+      {/* Header Banner */}
+      <div className="mb-8 rounded-2xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-8 text-white shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">🔧 Kelola Teknisi & Mitra</h1>
+            <p className="mt-2 text-blue-100">
+              Kelola teknisi internal dan mitra bisnis
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-white/20 px-4 py-2 backdrop-blur-sm">
+              <p className="text-sm font-medium">Total Teknisi</p>
+              <p className="text-2xl font-bold">{stats.totalTechnicians}</p>
+            </div>
+            <div className="rounded-xl bg-white/20 px-4 py-2 backdrop-blur-sm">
+              <p className="text-sm font-medium">Total Mitra</p>
+              <p className="text-2xl font-bold">{stats.totalMitra}</p>
+            </div>
+            <Link
+              href={
+                activeTab === 'technicians'
+                  ? '/dashboard/admin/technicians/create'
+                  : '/dashboard/admin/mitras/create'
+              }
+              className="flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 font-medium backdrop-blur-sm transition-all hover:bg-white/30"
+            >
+              <Plus className="h-5 w-5" />
+              {activeTab === 'technicians' ? 'Tambah Teknisi' : 'Tambah Mitra'}
+            </Link>
+          </div>
         </div>
-
-        {/* Add New Button */}
-        <Link
-          href={
-            activeTab === 'technicians'
-              ? '/dashboard/admin/technicians/create'
-              : '/dashboard/admin/mitras/create'
-          }
-          className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 font-medium text-white shadow-lg transition-all hover:shadow-xl"
-        >
-          <Plus className="h-5 w-5" />
-          {activeTab === 'technicians' ? 'Tambah Teknisi' : 'Tambah Mitra'}
-        </Link>
       </div>
 
       {/* Stats Cards */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Teknisi</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
-                {stats.totalTechnicians}
-              </p>
-            </div>
-            <div className="rounded-xl bg-blue-500 p-3">
+        {/* Total Teknisi Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
               <Shield className="h-6 w-6 text-white" />
             </div>
+            <p className="text-sm font-medium text-orange-100">Total Teknisi</p>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {stats.totalTechnicians}
+            </p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Mitra</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
-                {stats.totalMitra}
-              </p>
-            </div>
-            <div className="rounded-xl bg-green-500 p-3">
+        {/* Total Mitra Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
               <Store className="h-6 w-6 text-white" />
             </div>
+            <p className="text-sm font-medium text-green-100">Total Mitra</p>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {stats.totalMitra}
+            </p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Pending Approval</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
-                {stats.pendingMitra}
-              </p>
-            </div>
-            <div className="rounded-xl bg-yellow-500 p-3">
+        {/* Pending Approval Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
               <Users className="h-6 w-6 text-white" />
             </div>
+            <p className="text-sm font-medium text-yellow-100">
+              Pending Approval
+            </p>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {stats.pendingMitra}
+            </p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Mitra Aktif</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">
-                {stats.activeMitra}
-              </p>
-            </div>
-            <div className="rounded-xl bg-cyan-500 p-3">
+        {/* Mitra Aktif Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
               <Store className="h-6 w-6 text-white" />
             </div>
+            <p className="text-sm font-medium text-cyan-100">Mitra Aktif</p>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {stats.activeMitra}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-6 flex items-center justify-between">
+      {/* Tabs & Search */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab('technicians')}
@@ -349,7 +359,7 @@ export default function TechniciansPage() {
         </div>
 
         {/* Search */}
-        <div className="relative w-64">
+        <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
@@ -401,11 +411,11 @@ export default function TechniciansPage() {
                         </div>
                       )}
                       <div>
-                        <h3 className="font-semibold text-gray-900 hover:text-blue-600">
+                        <h3 className="max-w-[200px] truncate font-semibold text-gray-900 hover:text-blue-600">
                           {tech.user.name || 'N/A'}
                         </h3>
-                        <p className="text-sm text-gray-500">
-                          {tech.experience} tahun pengalaman
+                        <p className="truncate text-sm text-gray-600">
+                          {tech.user.email}
                         </p>
                       </div>
                     </div>
@@ -518,7 +528,7 @@ export default function TechniciansPage() {
                       <Store className="h-6 w-6 text-green-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="max-w-[200px] truncate font-semibold text-gray-900">
                         {mitra.businessName}
                       </h3>
                       <p className="text-sm text-gray-500">{mitra.city}</p>
@@ -542,9 +552,9 @@ export default function TechniciansPage() {
                 </div>
 
                 <div className="mt-4 space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Mail className="h-4 w-4" />
-                    {mitra.user.email}
+                  <div className="flex items-center gap-2 truncate text-sm text-gray-600">
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{mitra.user.email}</span>
                   </div>
                   {mitra.user.phone && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">

@@ -805,7 +805,7 @@ main (production-ready)
 | Nama                     | NIM             | Role                 | Institusi             |
 | ------------------------ | --------------- | -------------------- | --------------------- |
 | Hafiyan Al Muqaffi Umary | 225150207111117 | Full Stack Developer | Universitas Brawijaya |
-| [Nama]                   | [NIM]           | Full Stack Developer | [Institusi]           |
+| Fauzan Amirudin Basith   | 2213025041      | Full Stack Developer | Universitas Lampung   |
 
 ## **Supervisor:** Bayu Priyambadha, S.Kom., M.Kom., Ph.D.
 

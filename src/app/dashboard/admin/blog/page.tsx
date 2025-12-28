@@ -109,21 +109,33 @@ export default function BlogAdminPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Blog Management</h1>
-          <p className="mt-2 text-gray-600">
-            Create and manage your blog articles
-          </p>
+      {/* Header Banner */}
+      <div className="mb-8 rounded-2xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-8 text-white shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">📝 Blog Management</h1>
+            <p className="mt-2 text-blue-100">
+              Create and manage your blog articles
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-white/20 px-4 py-2 backdrop-blur-sm">
+              <p className="text-sm font-medium">Total Articles</p>
+              <p className="text-2xl font-bold">{stats.total}</p>
+            </div>
+            <div className="rounded-xl bg-white/20 px-4 py-2 backdrop-blur-sm">
+              <p className="text-sm font-medium">Published</p>
+              <p className="text-2xl font-bold">{stats.published}</p>
+            </div>
+            <button
+              onClick={() => router.push('/dashboard/admin/blog/new')}
+              className="flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 font-medium backdrop-blur-sm transition-all hover:bg-white/30"
+            >
+              <Plus className="h-5 w-5" />
+              New Article
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => router.push('/dashboard/admin/blog/new')}
-          className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 font-medium text-white shadow-lg transition-all hover:shadow-xl"
-        >
-          <Plus className="h-5 w-5" />
-          New Article
-        </button>
       </div>
 
       {/* Stats Cards */}

@@ -19,6 +19,9 @@ import {
   FileText,
   Heart,
   MapPin,
+  MessageSquare,
+  PenSquare,
+  BarChart3,
 } from 'lucide-react'
 
 const customerMenuItems = [
@@ -36,14 +39,16 @@ const customerMenuItems = [
 const adminMenuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/admin' },
   { icon: Users, label: 'Kelola User', href: '/dashboard/admin/users' },
+  { icon: Wrench, label: 'Teknisi', href: '/dashboard/admin/technicians' },
   { icon: Package, label: 'Kelola Produk', href: '/dashboard/admin/products' },
   {
     icon: ShoppingCart,
     label: 'Kelola Order',
     href: '/dashboard/admin/orders',
   },
-  { icon: FileText, label: 'Laporan', href: '/dashboard/admin/reports' },
-  { icon: Settings, label: 'Pengaturan', href: '/dashboard/admin/settings' },
+  { icon: MessageSquare, label: 'Chat', href: '/dashboard/admin/chat' },
+  { icon: PenSquare, label: 'Blog', href: '/dashboard/admin/blog' },
+  { icon: BarChart3, label: 'Laporan', href: '/dashboard/admin/reports' },
 ]
 
 const mitraMenuItems = [
@@ -56,17 +61,21 @@ const mitraMenuItems = [
 
 interface SidebarProps {
   variant?: 'dark' | 'light'
+  forceRole?: 'ADMIN' | 'CUSTOMER' | 'MITRA' // Add prop to force specific menu
 }
 
-export function Sidebar({ variant = 'dark' }: SidebarProps) {
+export function Sidebar({ variant = 'dark', forceRole }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const { data: session } = useSession()
 
+  // Use forceRole if provided, otherwise use session role
+  const effectiveRole = forceRole || session?.user.role
+
   const menuItems =
-    session?.user.role === 'ADMIN'
+    effectiveRole === 'ADMIN' || effectiveRole === 'SUPER_ADMIN'
       ? adminMenuItems
-      : session?.user.role === 'MITRA'
+      : effectiveRole === 'MITRA'
         ? mitraMenuItems
         : customerMenuItems
 
@@ -100,77 +109,92 @@ export function Sidebar({ variant = 'dark' }: SidebarProps) {
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${
           isLight
-            ? 'border-gray-200 bg-white'
+            ? 'border-gray-200 bg-white shadow-sm'
             : 'border-gray-700/50 bg-gray-800/50 backdrop-blur-xl'
         }`}
       >
-        <div className="flex h-full flex-col p-6">
+        <div className="flex h-full flex-col">
           {/* Logo */}
-          <Link
-            href="/"
-            className="mb-8 bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-2xl font-bold text-transparent"
-          >
-            HaloTekno
-          </Link>
-
-          {/* User Info */}
-          {session?.user && (
-            <div
-              className={`mb-8 rounded-xl p-4 ${
-                isLight ? 'border border-gray-200 bg-gray-50' : 'bg-gray-700/30'
-              }`}
+          <div className="border-b border-gray-200 px-6 py-5">
+            <Link
+              href="/"
+              className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-2xl font-bold text-transparent"
             >
-              <p
-                className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}
+              HaloTekno
+            </Link>
+          </div>
+
+          {/* User Profile Section */}
+          {session?.user && (
+            <div className="border-b border-gray-200 px-6 py-4">
+              <div
+                className={`rounded-lg p-3 ${isLight ? 'bg-gray-50' : 'bg-gray-700/30'}`}
               >
-                Logged in as
-              </p>
-              <p
-                className={`truncate font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}
-              >
-                {session.user.name}
-              </p>
-              <p className="mt-1 text-xs text-cyan-600">{session.user.role}</p>
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${isLight ? 'text-gray-500' : 'text-gray-400'}`}
+                >
+                  Admin
+                </p>
+                <p
+                  className={`mt-1 truncate text-sm font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}
+                >
+                  {session.user.name}
+                </p>
+                <p
+                  className={`truncate text-xs ${isLight ? 'text-gray-500' : 'text-gray-400'}`}
+                >
+                  {session.user.email}
+                </p>
+                <span className="mt-2 inline-block rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                  {session.user.role}
+                </span>
+              </div>
             </div>
           )}
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all ${
-                    isActive
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
-                      : isLight
-                        ? 'text-gray-700 hover:bg-gray-100'
-                        : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              )
-            })}
+          <nav className="flex-1 overflow-y-auto px-4 py-4">
+            <div className="space-y-1">
+              {menuItems.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                        : isLight
+                          ? 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                          : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                    }`}
+                  >
+                    <Icon
+                      className={`h-5 w-5 flex-shrink-0 ${isActive ? 'text-white' : ''}`}
+                    />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
           </nav>
 
           {/* Logout */}
-          <button
-            onClick={() => signOut({ callbackUrl: '/' })}
-            className={`mt-4 flex items-center gap-3 rounded-xl px-4 py-3 transition-all ${
-              isLight
-                ? 'text-red-600 hover:bg-red-50'
-                : 'text-red-400 hover:bg-red-500/10'
-            }`}
-          >
-            <LogOut className="h-5 w-5" />
-            <span className="font-medium">Keluar</span>
-          </button>
+          <div className="border-t border-gray-200 p-4">
+            <button
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                isLight
+                  ? 'text-red-600 hover:bg-red-50'
+                  : 'text-red-400 hover:bg-red-500/10'
+              }`}
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Keluar</span>
+            </button>
+          </div>
         </div>
       </aside>
     </>

@@ -14,6 +14,33 @@ import {
   UserCheck,
 } from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js'
+import { Line, Bar } from 'react-chartjs-2'
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+)
 
 interface DashboardStats {
   totalUsers: number
@@ -163,7 +190,7 @@ export default function AdminDashboard() {
               Kelola seluruh sistem HaloTekno dari satu tempat
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 backdrop-blur-sm">
+          <div className="hidden items-center gap-2 rounded-xl bg-white/10 px-4 py-2 backdrop-blur-sm md:flex">
             <Clock className="h-5 w-5" />
             <span className="text-sm">
               {new Date().toLocaleDateString('id-ID', {
@@ -179,128 +206,390 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          icon={Users}
-          label="Total Users"
-          value={stats?.totalUsers || 0}
-          iconBg="bg-blue-500"
-          loading={loading}
-        />
-        <StatCard
-          icon={Wrench}
-          label="Total Teknisi"
-          value={stats?.totalTechnicians || 0}
-          iconBg="bg-orange-500"
-          loading={loading}
-        />
-        <StatCard
-          icon={Package}
-          label="Total Produk"
-          value={stats?.totalProducts || 0}
-          iconBg="bg-green-500"
-          loading={loading}
-        />
-        <StatCard
-          icon={UserCheck}
-          label="Pending Mitra"
-          value={stats?.pendingMitras || 0}
-          iconBg="bg-yellow-500"
-          loading={loading}
-        />
-      </div>
-
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">Menu Admin</h2>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <QuickActionCard
-            icon={Users}
-            title="Kelola User"
-            description="Lihat dan kelola semua pengguna"
-            href="/dashboard/admin/users"
-            iconBg="bg-blue-100"
-            iconColor="text-blue-600"
-          />
-          <QuickActionCard
-            icon={Wrench}
-            title="Kelola Teknisi"
-            description="Kelola data teknisi dan mitra"
-            href="/dashboard/admin/technicians"
-            iconBg="bg-purple-100"
-            iconColor="text-purple-600"
-          />
-          <QuickActionCard
-            icon={Package}
-            title="Kelola Produk"
-            description="Sparepart dan alat sewa"
-            href="/dashboard/admin/products"
-            iconBg="bg-green-100"
-            iconColor="text-green-600"
-          />
-          <QuickActionCard
-            icon={ShoppingCart}
-            title="Kelola Order"
-            description="Pesanan dan transaksi"
-            href="/dashboard/admin/orders"
-            iconBg="bg-orange-100"
-            iconColor="text-orange-600"
-          />
-          <QuickActionCard
-            icon={FileText}
-            title="Kelola Blog"
-            description="Artikel dan konten"
-            href="/dashboard/admin/blog"
-            iconBg="bg-pink-100"
-            iconColor="text-pink-600"
-          />
-          <QuickActionCard
-            icon={TrendingUp}
-            title="Laporan"
-            description="Statistik dan analitik"
-            href="/dashboard/admin/reports"
-            iconBg="bg-cyan-100"
-            iconColor="text-cyan-600"
-          />
-          <QuickActionCard
-            icon={Settings}
-            title="Pengaturan"
-            description="Konfigurasi sistem"
-            href="/dashboard/admin/settings"
-            iconBg="bg-gray-100"
-            iconColor="text-gray-600"
-          />
-        </div>
-      </div>
-
-      {/* Recent Users */}
-      {!loading && recentUsers.length > 0 && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-xl font-bold text-gray-900">User Terbaru</h2>
-          <div className="space-y-3">
-            {recentUsers.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0"
-              >
-                <div>
-                  <p className="font-medium text-gray-900">{user.name || 'N/A'}</p>
-                  <p className="text-sm text-gray-500">{user.email}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${getRoleBadgeColor(user)}`}>
-                    {getRoleLabel(user)}
-                  </span>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {new Date(user.createdAt).toLocaleDateString('id-ID')}
-                  </p>
-                </div>
-              </div>
-            ))}
+        {/* Total Users Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+              <Users className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-sm font-medium text-purple-100">Total Users</p>
+            {loading ? (
+              <div className="mt-2 h-8 w-20 animate-pulse rounded bg-white/20" />
+            ) : (
+              <p className="mt-2 text-3xl font-bold text-white">
+                {stats?.totalUsers || 0}
+              </p>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Total Teknisi Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+              <Wrench className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-sm font-medium text-orange-100">Total Teknisi</p>
+            {loading ? (
+              <div className="mt-2 h-8 w-20 animate-pulse rounded bg-white/20" />
+            ) : (
+              <p className="mt-2 text-3xl font-bold text-white">
+                {stats?.totalTechnicians || 0}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Total Produk Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+              <Package className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-sm font-medium text-green-100">Total Produk</p>
+            {loading ? (
+              <div className="mt-2 h-8 w-20 animate-pulse rounded bg-white/20" />
+            ) : (
+              <p className="mt-2 text-3xl font-bold text-white">
+                {stats?.totalProducts || 0}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Pending Mitra Card */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-6 shadow-lg transition-all hover:shadow-xl">
+          <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="mb-4 inline-flex rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+              <UserCheck className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-sm font-medium text-yellow-100">Pending Mitra</p>
+            {loading ? (
+              <div className="mt-2 h-8 w-20 animate-pulse rounded bg-white/20" />
+            ) : (
+              <p className="mt-2 text-3xl font-bold text-white">
+                {stats?.pendingMitras || 0}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics Dashboard */}
+      <div className="space-y-6">
+        {/* Row 1: Website Visitors (Large) + Revenue (Medium) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Website Visitors Chart - 2 columns */}
+          <motion.div
+            className="lg:col-span-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-6 text-lg font-bold text-gray-900">
+                Pengunjung Website
+              </h3>
+              <div className="h-80">
+                <Line
+                  data={{
+                    labels: [
+                      'Jan',
+                      'Feb',
+                      'Mar',
+                      'Apr',
+                      'Mei',
+                      'Jun',
+                      'Jul',
+                      'Agu',
+                      'Sep',
+                      'Okt',
+                      'Nov',
+                      'Des',
+                    ],
+                    datasets: [
+                      {
+                        label: 'Pengunjung',
+                        data: [
+                          1200, 1900, 1500, 2100, 1800, 2400, 2200, 2600, 2300,
+                          2800, 2500, 3000,
+                        ],
+                        borderColor: '#8B5CF6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                    },
+                    scales: {
+                      y: { beginAtZero: true },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Monthly Revenue - 1 column */}
+          <motion.div
+            className="lg:col-span-1"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-6 text-lg font-bold text-gray-900">
+                Revenue Bulanan
+              </h3>
+              <div className="h-80">
+                <Bar
+                  data={{
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                    datasets: [
+                      {
+                        label: 'Revenue (Juta)',
+                        data: [45, 52, 48, 65, 58, 72],
+                        backgroundColor: '#10B981',
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                    },
+                    scales: {
+                      y: { beginAtZero: true },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Row 2: Order Trends (Medium) + Top Products (Small) + Top Services (Small) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Order Trends - 1 column */}
+          <motion.div
+            className="lg:col-span-1"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <div className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-6 text-lg font-bold text-gray-900">
+                Perkembangan Order
+              </h3>
+              <div className="flex-1">
+                <Line
+                  data={{
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                    datasets: [
+                      {
+                        label: 'Orders',
+                        data: [85, 92, 88, 105, 98, 112],
+                        borderColor: '#F59E0B',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                    },
+                    scales: {
+                      y: { beginAtZero: true },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Top Products - 2 columns */}
+          <motion.div
+            className="lg:col-span-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+          >
+            <div className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-6 text-lg font-bold text-gray-900">
+                Top Produk Terjual
+              </h3>
+              <div className="flex-1 space-y-4">
+                {[
+                  { name: 'LCD iPhone 12', sold: 145, revenue: 'Rp 72.5 Jt' },
+                  {
+                    name: 'Baterai Samsung A52',
+                    sold: 98,
+                    revenue: 'Rp 29.4 Jt',
+                  },
+                  { name: 'Charger Type-C', sold: 87, revenue: 'Rp 13.05 Jt' },
+                  { name: 'Tempered Glass', sold: 76, revenue: 'Rp 7.6 Jt' },
+                  { name: 'Casing iPhone', sold: 65, revenue: 'Rp 9.75 Jt' },
+                ].map((product, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: 0.6 + index * 0.1 }}
+                    className="flex items-center justify-between rounded-lg border border-gray-100 p-4 transition-colors hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+                        <Package className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {product.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {product.sold} terjual
+                        </p>
+                      </div>
+                    </div>
+                    <p className="font-semibold text-green-600">
+                      {product.revenue}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Row 3: Top Services + Top Rental Equipment */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Top Services */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+          >
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-6 text-lg font-bold text-gray-900">
+                Top Jasa Servis
+              </h3>
+              <div className="space-y-4">
+                {[
+                  {
+                    name: 'Servis LCD Pecah',
+                    orders: 234,
+                    revenue: 'Rp 117 Jt',
+                  },
+                  { name: 'Ganti Baterai', orders: 189, revenue: 'Rp 56.7 Jt' },
+                  {
+                    name: 'Service Charging',
+                    orders: 156,
+                    revenue: 'Rp 31.2 Jt',
+                  },
+                  {
+                    name: 'Cleaning & Maintenance',
+                    orders: 98,
+                    revenue: 'Rp 14.7 Jt',
+                  },
+                ].map((service, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: 0.7 + index * 0.1 }}
+                    className="flex items-center justify-between rounded-lg border border-gray-100 p-4 transition-colors hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
+                        <Wrench className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {service.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {service.orders} order
+                        </p>
+                      </div>
+                    </div>
+                    <p className="font-semibold text-green-600">
+                      {service.revenue}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Top Rental Equipment */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+          >
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-6 text-lg font-bold text-gray-900">
+                Top Alat Sewa
+              </h3>
+              <div className="space-y-4">
+                {[
+                  {
+                    name: 'Laptop Dell XPS 13',
+                    rentals: 45,
+                    revenue: 'Rp 22.5 Jt',
+                  },
+                  { name: 'iPhone 13 Pro', rentals: 38, revenue: 'Rp 19 Jt' },
+                  { name: 'iPad Pro 11"', rentals: 32, revenue: 'Rp 12.8 Jt' },
+                  {
+                    name: 'MacBook Air M1',
+                    rentals: 28,
+                    revenue: 'Rp 16.8 Jt',
+                  },
+                ].map((rental, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: 0.8 + index * 0.1 }}
+                    className="flex items-center justify-between rounded-lg border border-gray-100 p-4 transition-colors hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100">
+                        <ShoppingCart className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {rental.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {rental.rentals} sewa
+                        </p>
+                      </div>
+                    </div>
+                    <p className="font-semibold text-green-600">
+                      {rental.revenue}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
     </div>
   )
 }
