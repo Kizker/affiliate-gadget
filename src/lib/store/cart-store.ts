@@ -11,6 +11,7 @@ interface CartStore {
   removeItem: (id: string) => void
   updateQuantity: (id: string, quantity: number) => void
   clearCart: () => void
+  removeSelectedItems: () => void
   getTotalItems: () => number
   getTotalPrice: () => number
   getCartSummary: () => CartSummary
@@ -90,6 +91,14 @@ export const useCartStore = create<CartStore>()(
 
       clearCart: () => {
         set({ items: [], selectedItems: [] })
+      },
+
+      removeSelectedItems: () => {
+        const selectedIds = get().selectedItems
+        set({
+          items: get().items.filter((item) => !selectedIds.includes(item.id)),
+          selectedItems: [],
+        })
       },
 
       toggleItemSelection: (id) => {

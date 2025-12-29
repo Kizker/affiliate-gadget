@@ -84,6 +84,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             select: {
               image: true,
               mitraStatus: true,
+              role: true,
             },
           })
           if (user?.image) {
@@ -91,6 +92,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
           if (user?.mitraStatus) {
             session.user.mitraStatus = user.mitraStatus
+          }
+
+          // If user is MITRA, get businessName from Mitra table
+          if (user?.role === 'MITRA') {
+            const mitra = await prisma.mitra.findUnique({
+              where: { userId: token.id as string },
+              select: { businessName: true },
+            })
+            if (mitra?.businessName) {
+              session.user.name = mitra.businessName
+            }
           }
 
           // Check if user is a technician

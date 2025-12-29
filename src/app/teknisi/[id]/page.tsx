@@ -101,12 +101,35 @@ export default function TeknisiDetailPage({
     setLoading(true)
     try {
       const res = await fetch(`/api/technicians/${resolvedParams.id}`)
-      if (!res.ok) throw new Error('Failed to fetch')
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        const errorMessage =
+          errorData.error || 'Failed to fetch technician data'
+
+        console.error('Error response:', {
+          status: res.status,
+          message: errorMessage,
+        })
+
+        // Set technician to null so the "not found" UI is shown
+        setTechnician(null)
+        return
+      }
 
       const data = await res.json()
+
+      // Validate that we have the minimum required data
+      if (!data || !data.user) {
+        console.error('Invalid technician data received:', data)
+        setTechnician(null)
+        return
+      }
+
       setTechnician(data)
     } catch (error) {
       console.error('Error fetching technician:', error)
+      setTechnician(null)
     } finally {
       setLoading(false)
     }

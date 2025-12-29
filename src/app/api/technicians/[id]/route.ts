@@ -9,6 +9,14 @@ export async function GET(
   try {
     const { id } = await params
 
+    // Validate ID format
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid technician ID' },
+        { status: 400 }
+      )
+    }
+
     const technician = await db.technician.findUnique({
       where: {
         id,
@@ -42,7 +50,15 @@ export async function GET(
       )
     }
 
-    // Check if user is active
+    // Check if user exists and is active
+    if (!technician.user) {
+      console.error(`Technician ${id} has no associated user`)
+      return NextResponse.json(
+        { error: 'Technician data is incomplete' },
+        { status: 404 }
+      )
+    }
+
     if (!technician.user.isActive) {
       return NextResponse.json(
         { error: 'Technician not available' },
@@ -50,34 +66,62 @@ export async function GET(
       )
     }
 
-    // Get reviews for this technician (from orders)
-    const reviews = await db.review.findMany({
-      where: {
-        type: 'TECHNICIAN',
-        order: {
-          technicianId: id,
-        },
-      },
-      take: 10,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            image: true,
+    // Get reviews for this technician (from orders) with better error handling
+    let reviews = []
+    try {
+      reviews = await db.review.findMany({
+        where: {
+          type: 'TECHNICIAN',
+          order: {
+            technicianId: id,
           },
         },
-      },
-    })
+        take: 10,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              image: true,
+            },
+          },
+        },
+      })
+    } catch (reviewError) {
+      console.error(`Error fetching reviews for technician ${id}:`, reviewError)
+      // Continue without reviews rather than failing the entire request
+      reviews = []
+    }
 
-    return NextResponse.json({
+    // Ensure all required fields have fallback values
+    const safeResponse = {
       ...technician,
-      reviews,
-    })
+      user: {
+        ...technician.user,
+        name: technician.user.name || 'Teknisi',
+        image: technician.user.image || null,
+        phone: technician.user.phone || null,
+      },
+      bio: technician.bio || null,
+      specialties: technician.specialties || [],
+      services: technician.services || [],
+      reviews: reviews || [],
+    }
+
+    return NextResponse.json(safeResponse)
   } catch (error) {
     console.error('Error fetching technician:', error)
+
+    // Log detailed error for debugging
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+      })
+    }
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
