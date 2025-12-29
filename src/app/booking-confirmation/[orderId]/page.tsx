@@ -219,9 +219,6 @@ export default function BookingConfirmationPage({
                   <p className="text-2xl font-bold text-blue-600">
                     {formatCurrency(order.total)}
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    Sudah termasuk PPN 11%
-                  </p>
                 </div>
               </div>
             </div>

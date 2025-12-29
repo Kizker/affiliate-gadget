@@ -133,8 +133,8 @@ export const useCartStore = create<CartStore>()(
             : item.price * item.quantity
           return total + itemPrice
         }, 0)
-        const tax = subtotal * 0.11 // 11% PPN
-        const total = subtotal + tax
+        const tax = 0 // No tax
+        const total = subtotal
         const itemCount = selectedItems.reduce(
           (count, item) => count + item.quantity,
           0
@@ -163,8 +163,8 @@ export const useCartStore = create<CartStore>()(
 
       getCartSummary: () => {
         const subtotal = get().getTotalPrice()
-        const tax = subtotal * 0.11 // 11% PPN
-        const total = subtotal + tax
+        const tax = 0 // No tax
+        const total = subtotal
         const itemCount = get().getTotalItems()
 
         return {

@@ -7,7 +7,7 @@ export default function CartSummary() {
   const getSelectedSummary = useCartStore((state) => state.getSelectedSummary)
   const selectedItems = useCartStore((state) => state.selectedItems)
 
-  const { subtotal, tax, total, itemCount } = getSelectedSummary()
+  const { subtotal, total, itemCount } = getSelectedSummary()
   const hasSelectedItems = selectedItems.length > 0
 
   return (
@@ -20,11 +20,6 @@ export default function CartSummary() {
         <div className="flex justify-between text-gray-600">
           <span>Subtotal ({itemCount} item)</span>
           <span>Rp {subtotal.toLocaleString('id-ID')}</span>
-        </div>
-
-        <div className="flex justify-between text-gray-600">
-          <span>Pajak (PPN 11%)</span>
-          <span>Rp {tax.toLocaleString('id-ID')}</span>
         </div>
 
         <div className="border-t border-gray-200 pt-3">
@@ -55,7 +50,7 @@ export default function CartSummary() {
 
       <p className="mt-4 text-center text-xs text-gray-500">
         {hasSelectedItems
-          ? 'Harga sudah termasuk PPN 11%'
+          ? 'Pilih minimal 1 item untuk melanjutkan'
           : 'Pilih minimal 1 item untuk melanjutkan'}
       </p>
     </div>

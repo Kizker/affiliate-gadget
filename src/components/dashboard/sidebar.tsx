@@ -35,7 +35,8 @@ const customerMenuItems = [
   { icon: Settings, label: 'Pengaturan', href: '/dashboard/customer/settings' },
 ]
 
-const adminMenuItems = [
+// Full admin menu for SUPER_ADMIN only
+const superAdminMenuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/admin' },
   { icon: Users, label: 'Kelola User', href: '/dashboard/admin/users' },
   { icon: Wrench, label: 'Teknisi', href: '/dashboard/admin/technicians' },
@@ -48,6 +49,19 @@ const adminMenuItems = [
   { icon: MessageSquare, label: 'Chat', href: '/dashboard/admin/chat' },
   { icon: PenSquare, label: 'Blog', href: '/dashboard/admin/blog' },
   { icon: BarChart3, label: 'Laporan', href: '/dashboard/admin/reports' },
+  { icon: Settings, label: 'Pengaturan', href: '/dashboard/admin/settings' },
+]
+
+// Limited menu for ADMIN (Admin Chat) - only orders and chat
+const adminChatMenuItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/admin' },
+  {
+    icon: ShoppingCart,
+    label: 'Kelola Order',
+    href: '/dashboard/admin/orders',
+  },
+  { icon: MessageSquare, label: 'Chat', href: '/dashboard/admin/chat' },
+  { icon: Settings, label: 'Pengaturan', href: '/dashboard/admin/settings' },
 ]
 
 const mitraMenuItems = [
@@ -60,7 +74,7 @@ const mitraMenuItems = [
 
 interface SidebarProps {
   variant?: 'dark' | 'light'
-  forceRole?: 'ADMIN' | 'CUSTOMER' | 'MITRA' // Add prop to force specific menu
+  forceRole?: 'ADMIN' | 'SUPER_ADMIN' | 'CUSTOMER' | 'MITRA'
 }
 
 export function Sidebar({ variant = 'dark', forceRole }: SidebarProps) {
@@ -71,12 +85,15 @@ export function Sidebar({ variant = 'dark', forceRole }: SidebarProps) {
   // Use forceRole if provided, otherwise use session role
   const effectiveRole = forceRole || session?.user.role
 
+  // Determine menu based on role
   const menuItems =
-    effectiveRole === 'ADMIN' || effectiveRole === 'SUPER_ADMIN'
-      ? adminMenuItems
-      : effectiveRole === 'MITRA'
-        ? mitraMenuItems
-        : customerMenuItems
+    effectiveRole === 'SUPER_ADMIN'
+      ? superAdminMenuItems
+      : effectiveRole === 'ADMIN'
+        ? adminChatMenuItems
+        : effectiveRole === 'MITRA'
+          ? mitraMenuItems
+          : customerMenuItems
 
   const isLight = variant === 'light'
 

@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Starting seed...')
 
-  // Create Admin
+  // Create Super Admin
   const adminPassword = await bcrypt.hash('admin123', 12)
   const admin = await prisma.user.upsert({
     where: { email: 'admin@halotekno.com' },
@@ -19,7 +19,35 @@ async function main() {
       phone: '081234567890',
     },
   })
-  console.log('✅ Created admin:', admin.email)
+  console.log('✅ Created super admin:', admin.email)
+
+  // Create Admin Chat 1
+  const adminChat1 = await prisma.user.upsert({
+    where: { email: 'adminchat1@halotekno.com' },
+    update: {},
+    create: {
+      email: 'adminchat1@halotekno.com',
+      name: 'Admin Chat 1',
+      password: adminPassword,
+      role: 'ADMIN',
+      phone: '081234567801',
+    },
+  })
+  console.log('✅ Created admin chat 1:', adminChat1.email)
+
+  // Create Admin Chat 2
+  const adminChat2 = await prisma.user.upsert({
+    where: { email: 'adminchat2@halotekno.com' },
+    update: {},
+    create: {
+      email: 'adminchat2@halotekno.com',
+      name: 'Admin Chat 2',
+      password: adminPassword,
+      role: 'ADMIN',
+      phone: '081234567802',
+    },
+  })
+  console.log('✅ Created admin chat 2:', adminChat2.email)
 
   // Create Customer
   const customerPassword = await bcrypt.hash('customer123', 12)

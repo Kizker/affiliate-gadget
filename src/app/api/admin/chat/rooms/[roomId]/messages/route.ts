@@ -154,6 +154,23 @@ export async function POST(
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
+    // Check if room is claimed by current admin
+    // @ts-expect-error - claimedById is new field, will be available after restart
+    if (!room.claimedById) {
+      return NextResponse.json(
+        { error: 'Room must be claimed before sending messages' },
+        { status: 403 }
+      )
+    }
+
+    // @ts-expect-error - claimedById is new field
+    if (room.claimedById !== session.user.id) {
+      return NextResponse.json(
+        { error: 'You are not the owner of this chat room' },
+        { status: 403 }
+      )
+    }
+
     // Create message and update room lastMessageAt
     const [message] = await prisma.$transaction([
       prisma.adminChatMessage.create({

@@ -14,6 +14,9 @@ import {
   Search,
   RefreshCw,
   ChevronLeft,
+  Check,
+  CheckCheck,
+  Clock,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
@@ -58,6 +61,10 @@ interface AdminChatRoom {
   }
   messages: Array<{
     content: string
+    sender?: {
+      role?: string
+      image?: string | null
+    }
   }>
   _count: {
     messages: number
@@ -72,9 +79,11 @@ interface Message {
   messageType?: string
   mediaUrl?: string
   createdAt: string
+  isRead?: boolean
   sender: {
     id: string
     name: string | null
+    image?: string | null
     role?: string
   }
 }
@@ -98,6 +107,7 @@ export default function FloatingChatButton() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showMobileChat, setShowMobileChat] = useState(false) // Control mobile view
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -114,6 +124,121 @@ export default function FloatingChatButton() {
       document.body.style.overflow = ''
     }
   }, [isOpen])
+
+  // Listen for custom event to open chat with specific order
+  useEffect(() => {
+    const handleOpenChat = async (event: CustomEvent<{ orderId: string }>) => {
+      const { orderId } = event.detail
+      setIsOpen(true)
+
+      // Fetch rooms and find the matching one
+      try {
+        const [technicianRes, adminRes] = await Promise.all([
+          fetch('/api/chat/rooms'),
+          fetch('/api/customer/chat/all-rooms'),
+        ])
+
+        const allRooms: ChatRoom[] = []
+
+        if (technicianRes.ok) {
+          const techData = await technicianRes.json()
+          const techRooms = (techData.rooms || []).map(
+            (r: TechnicianChatRoom) => ({
+              ...r,
+              type: 'technician' as const,
+            })
+          )
+          allRooms.push(...techRooms)
+        }
+
+        if (adminRes.ok) {
+          const adminData = await adminRes.json()
+          const adminRooms = (adminData.rooms || []).map(
+            (r: AdminChatRoom) => ({
+              ...r,
+              type: 'admin' as const,
+            })
+          )
+          allRooms.push(...adminRooms)
+        }
+
+        // Set rooms first
+        setRooms(allRooms)
+
+        // Find room matching orderId
+        let matchingRoom = allRooms.find(
+          (room) =>
+            room.type === 'admin' && (room as AdminChatRoom).orderId === orderId
+        )
+
+        // If room doesn't exist, create it
+        if (!matchingRoom) {
+          try {
+            const createRes = await fetch(
+              `/api/customer/chat/room?orderId=${orderId}`
+            )
+            if (createRes.ok) {
+              const createData = await createRes.json()
+              // Create a ChatRoom object from the response
+              matchingRoom = {
+                id: createData.room.id,
+                type: 'admin' as const,
+                orderId: orderId,
+                lastMessageAt: new Date().toISOString(),
+                order: createData.room.order,
+                messages: [],
+                _count: { messages: 0 },
+              }
+              // Add to rooms list
+              setRooms([matchingRoom, ...allRooms])
+            }
+          } catch (error) {
+            console.error('Error creating room:', error)
+            toast.error('Gagal membuat chat room')
+            return
+          }
+        }
+
+        if (matchingRoom) {
+          // Set active room and fetch messages
+          setActiveRoom(matchingRoom)
+          setShowMobileChat(true) // Force mobile view to show chat
+          setLoadingMessages(true)
+
+          // Use correct endpoint based on room type
+          let msgRes
+          if (matchingRoom.type === 'admin') {
+            const adminRoom = matchingRoom as AdminChatRoom
+            msgRes = await fetch(
+              `/api/customer/chat/room?orderId=${adminRoom.orderId}`
+            )
+          } else {
+            msgRes = await fetch(`/api/chat/rooms/${matchingRoom.id}/messages`)
+          }
+
+          if (msgRes.ok) {
+            const msgData = await msgRes.json()
+            setMessages(msgData.messages || [])
+            setShouldScrollToBottom(true)
+          }
+          setLoadingMessages(false)
+        }
+      } catch (error) {
+        console.error('Error opening chat:', error)
+      }
+    }
+
+    window.addEventListener(
+      'openFloatingChat',
+      handleOpenChat as unknown as EventListener
+    )
+    return () => {
+      window.removeEventListener(
+        'openFloatingChat',
+        handleOpenChat as unknown as EventListener
+      )
+    }
+  }, [])
 
   useEffect(() => {
     if (isOpen && status === 'authenticated') {
@@ -214,18 +339,20 @@ export default function FloatingChatButton() {
     } finally {
       if (!isPolling) {
         setLoadingMessages(false)
+        setShouldScrollToBottom(true) // Scroll after messages loaded
       }
     }
   }
 
   const handleSelectRoom = (room: ChatRoom) => {
     setActiveRoom(room)
-    setShouldScrollToBottom(true)
+    setShowMobileChat(true) // Show chat on mobile
     fetchMessages(room)
   }
 
   const handleBackToRooms = () => {
     setActiveRoom(null)
+    setShowMobileChat(false) // Show room list on mobile
     setMessages([])
   }
 
@@ -451,10 +578,9 @@ export default function FloatingChatButton() {
       {/* Chat Widget */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex flex-col overflow-hidden border-0 border-gray-200 bg-white shadow-2xl md:inset-auto md:bottom-24 md:right-6 md:h-[550px] md:w-[800px] md:flex-row md:rounded-2xl md:border">
-          {/* Mobile: Show rooms OR chat. Desktop: Show both */}
           {/* Left Sidebar - Room List */}
           <div
-            className={`${activeRoom ? 'hidden md:flex' : 'flex'} h-full min-h-0 w-full flex-col border-r border-gray-200 bg-gray-50 md:w-[280px]`}
+            className={`${showMobileChat ? 'hidden md:flex' : 'flex'} h-full min-h-0 w-full flex-col border-r border-gray-200 bg-gray-50 md:w-[280px]`}
           >
             {/* Header */}
             <div className="safe-area-top flex-shrink-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-4">
@@ -543,19 +669,34 @@ export default function FloatingChatButton() {
                       className={`w-full border-b border-gray-100 p-4 text-left transition-all hover:bg-white active:bg-blue-50 ${isActive ? 'border-l-4 border-l-blue-600 bg-blue-50' : ''}`}
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full shadow-md ${
-                            room.type === 'admin'
-                              ? 'bg-gradient-to-br from-green-400 to-emerald-600'
-                              : 'bg-gradient-to-br from-blue-400 to-indigo-600'
-                          }`}
-                        >
-                          {room.type === 'admin' ? (
-                            <ShoppingBag className="h-5 w-5 text-white" />
-                          ) : (
-                            <Wrench className="h-5 w-5 text-white" />
-                          )}
-                        </div>
+                        {/* Admin/Technician Avatar */}
+                        {room.type === 'admin' ? (
+                          (() => {
+                            // Get admin info from room messages
+                            const adminMessage = room.messages?.find(
+                              (m) =>
+                                m.sender?.role === 'ADMIN' ||
+                                m.sender?.role === 'SUPER_ADMIN'
+                            )
+                            const adminImage = adminMessage?.sender?.image
+
+                            return adminImage ? (
+                              <img
+                                src={adminImage}
+                                alt="Admin"
+                                className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-green-200"
+                              />
+                            ) : (
+                              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md">
+                                <ShoppingBag className="h-5 w-5 text-white" />
+                              </div>
+                            )
+                          })()
+                        ) : (
+                          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 shadow-md">
+                            <Wrench className="h-5 w-5" />
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <p className="truncate font-semibold text-gray-900">
@@ -599,7 +740,7 @@ export default function FloatingChatButton() {
 
           {/* Right Side - Chat Area */}
           <div
-            className={`${!activeRoom ? 'hidden md:flex' : 'flex'} h-full min-h-0 flex-1 flex-col bg-white`}
+            className={`${!showMobileChat ? 'hidden md:flex' : 'flex'} h-full min-h-0 flex-1 flex-col bg-white`}
           >
             {activeRoom ? (
               <>
@@ -619,19 +760,46 @@ export default function FloatingChatButton() {
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm`}
-                    >
-                      {activeRoom.type === 'admin' ? (
-                        <ShoppingBag className="h-5 w-5" />
-                      ) : (
+                    {/* Admin/Technician Avatar */}
+                    {activeRoom.type === 'admin' ? (
+                      // Get admin info from messages
+                      (() => {
+                        const adminMessage = messages.find(
+                          (m) =>
+                            m.sender.role === 'ADMIN' ||
+                            m.sender.role === 'SUPER_ADMIN'
+                        )
+                        const adminName = adminMessage?.sender.name || 'Admin'
+                        const adminImage = adminMessage?.sender.image
+
+                        return adminImage ? (
+                          <img
+                            src={adminImage}
+                            alt={adminName}
+                            className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                            <ShoppingBag className="h-5 w-5" />
+                          </div>
+                        )
+                      })()
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
                         <Wrench className="h-5 w-5" />
-                      )}
-                    </div>
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <h3 className="truncate font-bold">
                         {activeRoom.type === 'admin'
-                          ? 'Chat Admin'
+                          ? (() => {
+                              const adminMessage = messages.find(
+                                (m) =>
+                                  m.sender.role === 'ADMIN' ||
+                                  m.sender.role === 'SUPER_ADMIN'
+                              )
+                              return adminMessage?.sender.name || 'Chat Admin'
+                            })()
                           : (activeRoom as TechnicianChatRoom).technician?.user
                               ?.name || 'Teknisi'}
                       </h3>
@@ -701,11 +869,12 @@ export default function FloatingChatButton() {
                               >
                                 {msg.sender.role === 'ADMIN' ||
                                 msg.sender.role === 'SUPER_ADMIN'
-                                  ? '🛡️ Admin'
+                                  ? msg.sender.name || 'Admin'
                                   : msg.sender.name || 'Teknisi'}
                               </p>
                             )}
 
+                            {/* Render based on message type */}
                             {isImage ? (
                               <div
                                 className="group relative cursor-pointer"
@@ -722,23 +891,230 @@ export default function FloatingChatButton() {
                                   <ZoomIn className="h-8 w-8 text-white" />
                                 </div>
                               </div>
+                            ) : msg.messageType === 'product' ||
+                              msg.messageType === 'rental' ? (
+                              // Product/Rental Card
+                              (() => {
+                                try {
+                                  const data = JSON.parse(msg.content)
+                                  return (
+                                    <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                      <div className="flex gap-2 p-2">
+                                        {data.image && (
+                                          <img
+                                            src={data.image}
+                                            alt={data.name}
+                                            className="h-14 w-14 rounded-lg object-cover"
+                                          />
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-sm font-semibold text-gray-900">
+                                            {data.name}
+                                          </p>
+                                          <p className="text-sm font-bold text-blue-600">
+                                            Rp{' '}
+                                            {data.price?.toLocaleString(
+                                              'id-ID'
+                                            )}
+                                            {msg.messageType === 'rental' && (
+                                              <span className="text-xs font-normal">
+                                                /hari
+                                              </span>
+                                            )}
+                                          </p>
+                                          <p className="text-xs text-gray-500">
+                                            Stock: {data.stock}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="border-t border-gray-100 bg-gray-50 px-2 py-1">
+                                        <p className="text-xs text-gray-600">
+                                          📦{' '}
+                                          {msg.messageType === 'product'
+                                            ? 'Rekomendasi Produk'
+                                            : 'Rekomendasi Sewa'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )
+                                } catch {
+                                  return (
+                                    <p className="text-sm text-gray-500">
+                                      Invalid product data
+                                    </p>
+                                  )
+                                }
+                              })()
+                            ) : msg.messageType === 'order' ? (
+                              // Order Card
+                              (() => {
+                                try {
+                                  const data = JSON.parse(msg.content)
+                                  return (
+                                    <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                      <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-2 text-white">
+                                        <p className="text-xs opacity-90">
+                                          Order Number
+                                        </p>
+                                        <p className="font-bold">
+                                          {data.orderNumber}
+                                        </p>
+                                      </div>
+                                      <div className="p-2">
+                                        <p className="text-sm font-bold text-gray-900">
+                                          Rp{' '}
+                                          {data.total?.toLocaleString('id-ID')}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          {data.items?.length} item(s)
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )
+                                } catch {
+                                  return (
+                                    <p className="text-sm text-gray-500">
+                                      Invalid order data
+                                    </p>
+                                  )
+                                }
+                              })()
+                            ) : msg.messageType === 'technician' ? (
+                              // Technician Card
+                              (() => {
+                                try {
+                                  const data = JSON.parse(msg.content)
+                                  return (
+                                    <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                      <div className="flex gap-2 p-2">
+                                        {data.image ? (
+                                          <img
+                                            src={data.image}
+                                            alt={data.name}
+                                            className="h-12 w-12 rounded-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-red-500 text-white">
+                                            <span className="text-sm font-bold">
+                                              {(data.name || 'T').charAt(0)}
+                                            </span>
+                                          </div>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-sm font-semibold text-gray-900">
+                                            {data.name}
+                                          </p>
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-xs text-yellow-500">
+                                              ⭐
+                                            </span>
+                                            <span className="text-xs font-medium">
+                                              {data.rating?.toFixed(1)}
+                                            </span>
+                                          </div>
+                                          <p className="truncate text-xs text-gray-500">
+                                            {data.specialties
+                                              ?.slice(0, 2)
+                                              .join(', ')}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="border-t border-gray-100 bg-orange-50 px-2 py-1">
+                                        <p className="text-xs text-orange-600">
+                                          🔧 Rekomendasi Teknisi
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )
+                                } catch {
+                                  return (
+                                    <p className="text-sm text-gray-500">
+                                      Invalid technician data
+                                    </p>
+                                  )
+                                }
+                              })()
+                            ) : msg.messageType === 'mitra' ? (
+                              // Mitra Card
+                              (() => {
+                                try {
+                                  const data = JSON.parse(msg.content)
+                                  return (
+                                    <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                      <div className="flex gap-2 p-2">
+                                        {data.image ? (
+                                          <img
+                                            src={data.image}
+                                            alt={data.name}
+                                            className="h-12 w-12 rounded-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white">
+                                            <span className="text-sm font-bold">
+                                              {(data.name || 'M').charAt(0)}
+                                            </span>
+                                          </div>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-sm font-semibold text-gray-900">
+                                            {data.name}
+                                          </p>
+                                          <p className="truncate text-xs text-gray-500">
+                                            {data.email}
+                                          </p>
+                                          {data.phone && (
+                                            <p className="text-xs text-gray-400">
+                                              {data.phone}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="border-t border-gray-100 bg-purple-50 px-2 py-1">
+                                        <p className="text-xs text-purple-600">
+                                          👥 Rekomendasi Mitra
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )
+                                } catch {
+                                  return (
+                                    <p className="text-sm text-gray-500">
+                                      Invalid mitra data
+                                    </p>
+                                  )
+                                }
+                              })()
                             ) : (
+                              // Default text message
                               <p className="whitespace-pre-wrap text-sm leading-relaxed">
                                 {msg.content}
                               </p>
                             )}
 
-                            <p
-                              className={`mt-1.5 text-xs ${isImage ? 'px-3 pb-2' : ''} ${isMe ? 'text-white/70' : 'text-gray-400'}`}
+                            <div
+                              className={`mt-1.5 flex items-center gap-1 text-xs ${isImage ? 'px-3 pb-2' : ''} ${isMe ? 'text-white/70' : 'text-gray-400'}`}
                             >
-                              {new Date(msg.createdAt).toLocaleTimeString(
-                                'id-ID',
-                                {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                }
+                              <span>
+                                {new Date(msg.createdAt).toLocaleTimeString(
+                                  'id-ID',
+                                  {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  }
+                                )}
+                              </span>
+                              {isMe && (
+                                <>
+                                  {msg.isRead ? (
+                                    <CheckCheck className="h-3.5 w-3.5" />
+                                  ) : msg.id ? (
+                                    <Check className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Clock className="h-3.5 w-3.5" />
+                                  )}
+                                </>
                               )}
-                            </p>
+                            </div>
                           </div>
                         </div>
                       )

@@ -5,7 +5,7 @@ import { Calendar, LogIn } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import BookingModal from '@/components/rental/booking-modal'
-import AddToCartButton from '@/components/cart/add-to-cart-button'
+import AddToCartModal from '@/components/cart/add-to-cart-modal'
 
 interface RentalActionsProps {
   rentalItem: {
@@ -24,6 +24,7 @@ export default function RentalActions({
   isAvailable,
 }: RentalActionsProps) {
   const [showBookingModal, setShowBookingModal] = useState(false)
+  const [showCartModal, setShowCartModal] = useState(false)
   const { data: session, status } = useSession()
 
   if (!isAvailable) {
@@ -88,17 +89,12 @@ export default function RentalActions({
         </button>
 
         {/* Masukkan ke Keranjang - Secondary Button */}
-        <AddToCartButton
-          product={{
-            id: rentalItem.id,
-            name: rentalItem.name,
-            price: rentalItem.pricePerDay,
-            image: rentalItem.images[0] || '',
-            type: 'RENTAL',
-            stock: rentalItem.stock,
-          }}
-          className="w-full"
-        />
+        <button
+          onClick={() => setShowCartModal(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-blue-600 py-3 font-semibold text-blue-600 transition-all hover:bg-blue-50"
+        >
+          Tambah ke Keranjang
+        </button>
 
         <p className="text-center text-xs text-gray-500">
           Hubungi kami untuk informasi lebih lanjut
@@ -117,6 +113,22 @@ export default function RentalActions({
         }}
         isOpen={showBookingModal}
         onClose={() => setShowBookingModal(false)}
+      />
+
+      {/* Add to Cart Modal */}
+      <AddToCartModal
+        item={{
+          id: rentalItem.id,
+          name: rentalItem.name,
+          price: rentalItem.pricePerDay,
+          pricePerDay: rentalItem.pricePerDay,
+          image: rentalItem.images[0] || '',
+          type: 'RENTAL',
+          stock: rentalItem.stock,
+          depositAmount: rentalItem.depositAmount,
+        }}
+        isOpen={showCartModal}
+        onClose={() => setShowCartModal(false)}
       />
     </>
   )

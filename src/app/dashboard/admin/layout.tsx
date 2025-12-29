@@ -9,8 +9,8 @@ export default function AdminLayout({
 }) {
   return (
     <div className="relative flex min-h-screen">
-      {/* Sidebar - Force ADMIN menu */}
-      <Sidebar variant="light" forceRole="ADMIN" />
+      {/* Sidebar - Shows menu based on actual role (ADMIN vs SUPER_ADMIN) */}
+      <Sidebar variant="light" />
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col">

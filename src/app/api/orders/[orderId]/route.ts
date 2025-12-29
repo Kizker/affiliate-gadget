@@ -52,6 +52,7 @@ export async function GET(
                 name: true,
                 images: true,
                 pricePerDay: true,
+                depositAmount: true,
               },
             },
           },

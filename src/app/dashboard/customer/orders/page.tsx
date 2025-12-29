@@ -29,6 +29,7 @@ interface Order {
   notes: string | null
   items: Array<{
     type: string
+    notes?: string | null
     service?: {
       name: string
       category: string
@@ -319,6 +320,28 @@ export default function CustomerOrdersPage() {
                         </div>
                       )}
 
+                      {/* Item Notes - Show each item's notes */}
+                      {order.items.some((item) => item.notes) && (
+                        <div className="mt-4 hidden rounded-lg bg-blue-50 p-3 sm:block">
+                          <p className="text-xs font-medium text-gray-500">
+                            Catatan Item
+                          </p>
+                          <div className="mt-2 space-y-2">
+                            {order.items.map((item, idx) => {
+                              if (!item.notes) return null
+                              return (
+                                <div
+                                  key={idx}
+                                  className="text-sm text-gray-700"
+                                >
+                                  {item.notes}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Footer */}
                       <div className="flex flex-col gap-3 border-t border-gray-200 pt-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:pt-4">
                         <div>
@@ -374,15 +397,21 @@ export default function CustomerOrdersPage() {
                               </span>
                             </Link>
                           ) : (
-                            <Link
-                              href={`/dashboard/customer/chat/admin/${order.id}`}
+                            <button
+                              onClick={() => {
+                                window.dispatchEvent(
+                                  new CustomEvent('openFloatingChat', {
+                                    detail: { orderId: order.id },
+                                  })
+                                )
+                              }}
                               className="flex items-center gap-1 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 sm:px-4 sm:py-2 sm:text-sm"
                             >
                               <MessageCircle className="h-4 w-4" />
                               <span className="hidden sm:inline">
                                 Chat Admin
                               </span>
-                            </Link>
+                            </button>
                           )}
                           <Link
                             href={`/booking-confirmation/${order.id}`}

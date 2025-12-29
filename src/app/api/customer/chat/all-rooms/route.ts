@@ -33,6 +33,14 @@ export async function GET() {
           take: 1,
           select: {
             content: true,
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+                role: true,
+              },
+            },
           },
         },
         _count: {

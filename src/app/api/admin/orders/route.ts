@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/../auth'
 import prisma from '@/lib/db'
 
-// GET - Get all orders for admin with pagination and search
+// GET - Get all orders for admin with pagination, search, and claim filter
 export async function GET(request: Request) {
   try {
     const session = await auth()
@@ -26,11 +26,12 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || ''
     const type = searchParams.get('type') || ''
     const status = searchParams.get('status') || ''
+    const claimFilter = searchParams.get('claim') || 'all' // 'mine', 'unclaimed', 'all'
 
     const skip = (page - 1) * limit
 
     // Build where clause
-    const where: {
+    interface OrderWhereInput {
       OR?: Array<{
         orderNumber?: { contains: string; mode: 'insensitive' }
         user?: {
@@ -39,7 +40,18 @@ export async function GET(request: Request) {
         }
       }>
       status?: string
-    } = {}
+      claimedById?: string | null
+      paymentRequestedById?: { not: null } | null
+      items?: {
+        some: {
+          serviceId?: { not: null }
+          productId?: { not: null }
+          rentalItemId?: { not: null }
+        }
+      }
+    }
+
+    const where: OrderWhereInput = {}
 
     // Search filter (order number, user name, user email)
     if (search) {
@@ -55,35 +67,44 @@ export async function GET(request: Request) {
       where.status = status
     }
 
-    // Type filter (requires checking order items)
-    let typeFilter: {
-      items?: {
-        some: {
-          serviceId?: { not: null } | { not: null }
-          productId?: { not: null } | { not: null }
-          rentalItemId?: { not: null } | { not: null }
-        }
+    // Claim filter (only for ADMIN, SUPER_ADMIN sees all)
+    if (user.role === 'ADMIN') {
+      if (claimFilter === 'mine') {
+        where.claimedById = user.id
+      } else if (claimFilter === 'unclaimed') {
+        where.claimedById = null
       }
-    } = {}
-    if (type && type !== 'all') {
-      if (type === 'service') {
-        typeFilter = { items: { some: { serviceId: { not: null } } } }
-      } else if (type === 'sparepart') {
-        typeFilter = { items: { some: { productId: { not: null } } } }
-      } else if (type === 'rental') {
-        typeFilter = { items: { some: { rentalItemId: { not: null } } } }
+      // 'all' shows everything for admin - they can see but not edit others' orders
+    } else if (user.role === 'SUPER_ADMIN') {
+      // SUPER_ADMIN can filter but sees all by default
+      if (claimFilter === 'mine') {
+        where.claimedById = user.id
+      } else if (claimFilter === 'unclaimed') {
+        where.claimedById = null
+      } else if (claimFilter === 'payment_requests') {
+        // Filter for pending payment requests (SUPER_ADMIN only)
+        where.paymentRequestedById = { not: null }
       }
     }
 
-    const finalWhere = { ...where, ...typeFilter }
+    // Type filter (requires checking order items)
+    if (type && type !== 'all') {
+      if (type === 'service') {
+        where.items = { some: { serviceId: { not: null } } }
+      } else if (type === 'sparepart') {
+        where.items = { some: { productId: { not: null } } }
+      } else if (type === 'rental') {
+        where.items = { some: { rentalItemId: { not: null } } }
+      }
+    }
 
     // Get total count for pagination
-    const total = await prisma.order.count({ where: finalWhere })
+    const total = await prisma.order.count({ where })
     const totalPages = Math.ceil(total / limit)
 
     // Get orders with pagination
     const orders = await prisma.order.findMany({
-      where: finalWhere,
+      where,
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
@@ -93,6 +114,20 @@ export async function GET(request: Request) {
             name: true,
             email: true,
             phone: true,
+          },
+        },
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        paymentRequestedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
         items: {
@@ -119,6 +154,15 @@ export async function GET(request: Request) {
       },
     })
 
+    // Get stats for tabs
+    const [totalOrders, myOrders, unclaimedOrders, pendingPaymentRequests] =
+      await Promise.all([
+        prisma.order.count({}),
+        prisma.order.count({ where: { claimedById: user.id } }),
+        prisma.order.count({ where: { claimedById: null } }),
+        prisma.order.count({ where: { paymentRequestedById: { not: null } } }),
+      ])
+
     return NextResponse.json({
       orders,
       pagination: {
@@ -127,6 +171,14 @@ export async function GET(request: Request) {
         total,
         totalPages,
       },
+      stats: {
+        total: totalOrders,
+        mine: myOrders,
+        unclaimed: unclaimedOrders,
+        pendingPaymentRequests: pendingPaymentRequests,
+      },
+      currentUserId: user.id,
+      currentUserRole: user.role,
     })
   } catch (error) {
     console.error('Error fetching orders:', error)

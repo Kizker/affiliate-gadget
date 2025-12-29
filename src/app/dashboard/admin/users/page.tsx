@@ -38,12 +38,17 @@ interface User {
 interface Stats {
   byRole: Record<string, number>
   pendingMitra: number
+  technicians: number
 }
 
 export default function UsersPage() {
   const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
-  const [stats, setStats] = useState<Stats>({ byRole: {}, pendingMitra: 0 })
+  const [stats, setStats] = useState<Stats>({
+    byRole: {},
+    pendingMitra: 0,
+    technicians: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set())
 
@@ -91,7 +96,7 @@ export default function UsersPage() {
 
       const data = JSON.parse(text)
       setUsers(data.users || [])
-      setStats(data.stats || { byRole: {}, pendingMitra: 0 })
+      setStats(data.stats || { byRole: {}, pendingMitra: 0, technicians: 0 })
       setTotalPages(data.pagination?.totalPages || 1)
     } catch (error) {
       console.error('Error fetching users:', error)
@@ -305,7 +310,7 @@ export default function UsersPage() {
               Teknisi
             </p>
             <p className="mt-1 text-xl font-bold text-white lg:mt-2 lg:text-3xl">
-              {stats.byRole.ADMIN || 0}
+              {stats.technicians || 0}
             </p>
           </div>
         </div>

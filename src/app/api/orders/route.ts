@@ -17,6 +17,7 @@ export async function GET() {
           select: {
             id: true,
             type: true,
+            notes: true,
             service: {
               select: {
                 name: true,

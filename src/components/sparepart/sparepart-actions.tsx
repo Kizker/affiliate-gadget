@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ShoppingBag, LogIn } from 'lucide-react'
+import { ShoppingBag, LogIn, ShoppingCart } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import AddToCartButton from '@/components/cart/add-to-cart-button'
 import PurchaseModal from '@/components/sparepart/purchase-modal'
+import AddToCartModal from '@/components/cart/add-to-cart-modal'
 
 interface SparepartActionsProps {
   product: {
@@ -23,6 +23,7 @@ export default function SparepartActions({
   isInStock,
 }: SparepartActionsProps) {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [showCartModal, setShowCartModal] = useState(false)
   const { data: session, status } = useSession()
 
   if (!isInStock) {
@@ -87,17 +88,13 @@ export default function SparepartActions({
         </button>
 
         {/* Tambahkan ke Keranjang - Secondary Button */}
-        <AddToCartButton
-          product={{
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            image: product.images[0] || '',
-            type: 'PRODUCT',
-            stock: product.stock,
-          }}
-          className="w-full"
-        />
+        <button
+          onClick={() => setShowCartModal(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-blue-600 py-3 font-semibold text-blue-600 transition-all hover:bg-blue-50"
+        >
+          <ShoppingCart className="h-5 w-5" />
+          Tambah ke Keranjang
+        </button>
 
         <p className="text-center text-xs text-gray-500">
           Hubungi kami untuk informasi lebih lanjut
@@ -115,6 +112,20 @@ export default function SparepartActions({
         }}
         isOpen={showPurchaseModal}
         onClose={() => setShowPurchaseModal(false)}
+      />
+
+      {/* Add to Cart Modal */}
+      <AddToCartModal
+        item={{
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.images[0] || '',
+          type: 'PRODUCT',
+          stock: product.stock,
+        }}
+        isOpen={showCartModal}
+        onClose={() => setShowCartModal(false)}
       />
     </>
   )

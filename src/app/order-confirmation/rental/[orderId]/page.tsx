@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layouts/navbar'
 import Link from 'next/link'
 import {
-  CheckCircle,
   Calendar,
   CreditCard,
   ArrowRight,
@@ -36,6 +35,7 @@ interface OrderDetails {
       name: string
       images: string[]
       pricePerDay: number
+      depositAmount?: number
     }
   }>
 }
@@ -121,7 +121,7 @@ export default function RentalConfirmationPage({
   const rentalItem = order.items[0]
   const equipment = rentalItem?.rentalItem
   const rentalDays = rentalItem?.rentalDays || 1
-  const deposit = (equipment?.pricePerDay || 0) * 10
+  const deposit = equipment?.depositAmount || (equipment?.pricePerDay || 0) * 10
 
   const startDate = new Date(order.createdAt)
   const endDate = new Date(startDate)
@@ -131,32 +131,16 @@ export default function RentalConfirmationPage({
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-purple-50 via-white to-blue-50">
       <Navbar variant="light" />
 
-      <main className="container mx-auto flex flex-1 items-center justify-center px-4 py-6">
+      <main className="container mx-auto flex flex-1 items-center justify-center px-3 py-4 pt-16">
         <div className="w-full max-w-md">
-          {/* Success Header - Compact */}
-          <div className="mb-4 text-center">
-            <div className="relative mx-auto mb-3 h-16 w-16">
-              <div className="absolute inset-0 animate-ping rounded-full bg-purple-400 opacity-20" />
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg">
-                <CheckCircle className="h-8 w-8 text-white" />
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Sewa Berhasil! 🛠️
-            </h1>
-            <p className="text-sm text-gray-600">
-              Pesanan sewa alat Anda sedang diproses
-            </p>
-          </div>
-
           {/* Main Card */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
             {/* Order Number Header */}
-            <div className="bg-gradient-to-r from-purple-500 to-indigo-500 p-4">
+            <div className="bg-gradient-to-r from-purple-500 to-indigo-500 p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-purple-100">Nomor Pesanan</p>
-                  <p className="text-lg font-bold text-white">
+                  <p className="text-base font-bold text-white">
                     {order.orderNumber}
                   </p>
                 </div>
@@ -175,8 +159,8 @@ export default function RentalConfirmationPage({
             </div>
 
             {/* Equipment Info */}
-            <div className="border-b border-gray-100 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <div className="border-b border-gray-100 p-3">
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <Hammer className="h-4 w-4 text-purple-600" />
                 Alat Sewa
               </div>
@@ -210,12 +194,12 @@ export default function RentalConfirmationPage({
             </div>
 
             {/* Rental Period */}
-            <div className="border-b border-gray-100 p-4">
+            <div className="border-b border-gray-100 p-3">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <Calendar className="h-4 w-4 text-blue-600" />
                 Periode Sewa
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-lg bg-green-50 p-2 text-center">
                   <p className="text-xs text-gray-500">Mulai</p>
                   <p className="text-sm font-bold text-green-700">
@@ -238,7 +222,7 @@ export default function RentalConfirmationPage({
             </div>
 
             {/* Payment Summary */}
-            <div className="bg-gray-50 p-4">
+            <div className="bg-gray-50 p-3">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <CreditCard className="h-4 w-4 text-green-600" />
                 Pembayaran
@@ -268,26 +252,96 @@ export default function RentalConfirmationPage({
             </div>
 
             {/* Status Badge */}
-            <div className="border-t border-yellow-100 bg-yellow-50 px-4 py-3">
-              <div className="flex items-center gap-2 text-sm text-yellow-800">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
-                <span className="font-medium">Menunggu Pembayaran</span>
+            <div
+              className={`border-t px-3 py-2 ${
+                order.status === 'PENDING_PAYMENT'
+                  ? 'border-yellow-100 bg-yellow-50'
+                  : order.status === 'PAID'
+                    ? 'border-blue-100 bg-blue-50'
+                    : order.status === 'IN_PROGRESS'
+                      ? 'border-purple-100 bg-purple-50'
+                      : order.status === 'SHIPPED'
+                        ? 'border-orange-100 bg-orange-50'
+                        : order.status === 'RENTED'
+                          ? 'border-cyan-100 bg-cyan-50'
+                          : order.status === 'RETURNED'
+                            ? 'border-indigo-100 bg-indigo-50'
+                            : order.status === 'COMPLETED'
+                              ? 'border-green-100 bg-green-50'
+                              : 'border-red-100 bg-red-50'
+              }`}
+            >
+              <div
+                className={`flex items-center gap-2 text-sm ${
+                  order.status === 'PENDING_PAYMENT'
+                    ? 'text-yellow-800'
+                    : order.status === 'PAID'
+                      ? 'text-blue-800'
+                      : order.status === 'IN_PROGRESS'
+                        ? 'text-purple-800'
+                        : order.status === 'SHIPPED'
+                          ? 'text-orange-800'
+                          : order.status === 'RENTED'
+                            ? 'text-cyan-800'
+                            : order.status === 'RETURNED'
+                              ? 'text-indigo-800'
+                              : order.status === 'COMPLETED'
+                                ? 'text-green-800'
+                                : 'text-red-800'
+                }`}
+              >
+                <div
+                  className={`h-2 w-2 animate-pulse rounded-full ${
+                    order.status === 'PENDING_PAYMENT'
+                      ? 'bg-yellow-500'
+                      : order.status === 'PAID'
+                        ? 'bg-blue-500'
+                        : order.status === 'IN_PROGRESS'
+                          ? 'bg-purple-500'
+                          : order.status === 'SHIPPED'
+                            ? 'bg-orange-500'
+                            : order.status === 'RENTED'
+                              ? 'bg-cyan-500'
+                              : order.status === 'RETURNED'
+                                ? 'bg-indigo-500'
+                                : order.status === 'COMPLETED'
+                                  ? 'bg-green-500'
+                                  : 'bg-red-500'
+                  }`}
+                />
+                <span className="font-medium">
+                  {order.status === 'PENDING_PAYMENT'
+                    ? 'Menunggu Pembayaran'
+                    : order.status === 'PAID'
+                      ? 'Sudah Dibayar'
+                      : order.status === 'IN_PROGRESS'
+                        ? 'Sedang Diproses'
+                        : order.status === 'SHIPPED'
+                          ? 'Terkirim'
+                          : order.status === 'RENTED'
+                            ? 'Sedang Disewa'
+                            : order.status === 'RETURNED'
+                              ? 'Sudah Dikembalikan'
+                              : order.status === 'COMPLETED'
+                                ? 'Selesai'
+                                : 'Dibatalkan'}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-4 flex gap-3">
+          <div className="mt-3 flex gap-2">
             <Link
               href="/dashboard/customer/orders"
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-3 text-sm font-bold text-white shadow-lg"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 px-3 py-2.5 text-sm font-bold text-white shadow-lg"
             >
               Lihat Pesanan
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/sewa-alat"
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-purple-200 bg-white px-4 py-3 text-sm font-bold text-purple-600"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-purple-200 bg-white px-3 py-2.5 text-sm font-bold text-purple-600"
             >
               Sewa Lagi
             </Link>

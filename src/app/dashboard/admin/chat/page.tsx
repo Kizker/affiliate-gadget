@@ -7,7 +7,6 @@ import {
   Send,
   ShoppingBag,
   Package,
-  Clock,
   Check,
   CheckCheck,
   X,
@@ -25,6 +24,8 @@ interface ChatRoom {
   id: string
   customerId: string
   orderId: string | null
+  claimedById: string | null
+  claimedAt: string | null
   lastMessageAt: string
   customer: {
     id: string
@@ -33,6 +34,11 @@ interface ChatRoom {
     image: string | null
     phone: string | null
   }
+  claimedBy: {
+    id: string
+    name: string | null
+    image: string | null
+  } | null
   order: {
     id: string
     orderNumber: string
@@ -215,6 +221,7 @@ export default function AdminChatPage() {
       } finally {
         if (!isPolling) {
           setMessagesLoading(false)
+          setShouldScrollToBottom(true) // Scroll after messages loaded
         }
       }
     },
@@ -262,7 +269,6 @@ export default function AdminChatPage() {
   const handleSelectRoom = (room: ChatRoom) => {
     setSelectedRoom(room)
     setShowChatOnMobile(true)
-    setShouldScrollToBottom(true)
     fetchMessages(room.id)
   }
 
@@ -535,9 +541,12 @@ export default function AdminChatPage() {
       },
       PAID: { label: 'Paid', color: 'bg-blue-100 text-blue-700' },
       IN_PROGRESS: {
-        label: 'In Progress',
+        label: 'Progress',
         color: 'bg-purple-100 text-purple-700',
       },
+      SHIPPED: { label: 'Terkirim', color: 'bg-orange-100 text-orange-700' },
+      RENTED: { label: 'Disewa', color: 'bg-cyan-100 text-cyan-700' },
+      RETURNED: { label: 'Kembali', color: 'bg-indigo-100 text-indigo-700' },
       COMPLETED: { label: 'Selesai', color: 'bg-green-100 text-green-700' },
       CANCELLED: { label: 'Batal', color: 'bg-red-100 text-red-700' },
     }
@@ -924,6 +933,19 @@ export default function AdminChatPage() {
                           </div>
                         )}
 
+                        {/* Claim Status */}
+                        <div className="mt-1">
+                          {room.claimedById ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                              ✓ {room.claimedBy?.name || 'Claimed'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">
+                              ⏳ Menunggu Diambil
+                            </span>
+                          )}
+                        </div>
+
                         <div className="mt-1 flex items-center justify-between">
                           <p className="truncate text-sm text-gray-600">
                             {room.messages[0]?.content || 'Tidak ada pesan'}
@@ -1047,7 +1069,6 @@ export default function AdminChatPage() {
                               isAdmin ? 'justify-end' : 'justify-start'
                             }`}
                           >
-                            <Clock className="h-3 w-3" />
                             <span>{formatTime(message.createdAt)}</span>
                             {isAdmin && (
                               <span>
@@ -1069,7 +1090,7 @@ export default function AdminChatPage() {
 
               {/* Message Input */}
               <div className="border-t border-gray-200 p-4">
-                <div className="flex items-end gap-2">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={openCatalogModal}
                     className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
@@ -1101,7 +1122,7 @@ export default function AdminChatPage() {
                   </div>
                   <button
                     onClick={() => handleSendMessage('text')}
-                    className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 p-2 text-white hover:shadow-lg disabled:opacity-50"
+                    className="self-start rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 p-2 text-white hover:shadow-lg disabled:opacity-50"
                     disabled={!messageInput.trim() || sending}
                   >
                     {sending ? (

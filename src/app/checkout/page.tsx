@@ -66,7 +66,6 @@ export default function CheckoutPage() {
   }, [items, selectedItemIds])
 
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
-  const [notes, setNotes] = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -89,21 +88,6 @@ export default function CheckoutPage() {
       fetchBankAccounts(categories)
     }
   }, [selectedItems])
-
-  // Load notes from localStorage
-  useEffect(() => {
-    const savedNotes = localStorage.getItem('checkout_notes')
-    if (savedNotes) {
-      setNotes(savedNotes)
-    }
-  }, [])
-
-  // Auto-save notes to localStorage
-  useEffect(() => {
-    if (notes) {
-      localStorage.setItem('checkout_notes', notes)
-    }
-  }, [notes])
 
   const getCartCategories = (items: CartItem[]): string[] => {
     const categories = new Set<string>()
@@ -139,8 +123,7 @@ export default function CheckoutPage() {
   }
 
   const subtotal = calculateSubtotal()
-  const tax = subtotal * 0.11
-  const total = subtotal + tax
+  const total = subtotal
 
   const handleCopyAccount = async (
     accountNumber: string,
@@ -151,7 +134,7 @@ export default function CheckoutPage() {
       setCopiedAccount(accountId)
       toast.success('Nomor rekening berhasil disalin')
       setTimeout(() => setCopiedAccount(null), 2000)
-    } catch (error) {
+    } catch {
       toast.error('Gagal menyalin nomor rekening')
     }
   }
@@ -174,7 +157,6 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: selectedItems,
-          notes,
           paymentMethod: 'MANUAL_TRANSFER',
         }),
       })
@@ -186,15 +168,22 @@ export default function CheckoutPage() {
 
       const data = await res.json()
 
-      // Clear notes from localStorage
-      localStorage.removeItem('checkout_notes')
-
       // Remove only selected items from cart
       removeSelectedItems()
 
-      // Redirect to order confirmation
-      router.push(`/order-confirmation/${data.order.id}`)
-      toast.success('Pesanan berhasil dibuat!')
+      // Get order IDs for redirect
+      interface OrderResponse {
+        order: {
+          id: string
+        }
+      }
+      const orderIds = (data.orders as OrderResponse[])
+        .map((o) => o.order.id)
+        .join(',')
+
+      // Redirect to multi-order confirmation page with all order IDs
+      router.push(`/order-confirmation/multiple?orders=${orderIds}`)
+      toast.success(`${data.orders.length} pesanan berhasil dibuat!`)
     } catch (error) {
       console.error('Checkout error:', error)
       toast.error(
@@ -311,27 +300,6 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Customer Notes */}
-              <div className="rounded-2xl border border-gray-200 bg-white p-6">
-                <h2 className="mb-4 text-xl font-bold text-gray-900">
-                  Catatan (Opsional)
-                </h2>
-                <textarea
-                  value={notes}
-                  onChange={(e) => {
-                    if (e.target.value.length <= 500) {
-                      setNotes(e.target.value)
-                    }
-                  }}
-                  placeholder="Tambahkan catatan untuk teknisi/admin..."
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  rows={4}
-                />
-                <div className="mt-2 text-right text-sm text-gray-500">
-                  {notes.length}/500 karakter
-                </div>
-              </div>
-
               {/* Payment Method */}
               <div className="rounded-2xl border border-gray-200 bg-white p-6">
                 <h2 className="mb-4 text-xl font-bold text-gray-900">
@@ -436,10 +404,6 @@ export default function CheckoutPage() {
                     <div className="flex justify-between text-gray-600">
                       <span>Subtotal</span>
                       <span>Rp {subtotal.toLocaleString('id-ID')}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>PPN (11%)</span>
-                      <span>Rp {tax.toLocaleString('id-ID')}</span>
                     </div>
                     <div className="border-t border-gray-200 pt-3">
                       <div className="flex justify-between text-lg font-bold text-gray-900">

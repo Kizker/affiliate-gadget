@@ -222,10 +222,80 @@ export default function SparepartConfirmationPage({
             </div>
 
             {/* Status Badge */}
-            <div className="border-t border-yellow-100 bg-yellow-50 px-4 py-3">
-              <div className="flex items-center gap-2 text-sm text-yellow-800">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
-                <span className="font-medium">Menunggu Pembayaran</span>
+            <div
+              className={`border-t px-4 py-3 ${
+                order.status === 'PENDING_PAYMENT'
+                  ? 'border-yellow-100 bg-yellow-50'
+                  : order.status === 'PAID'
+                    ? 'border-blue-100 bg-blue-50'
+                    : order.status === 'IN_PROGRESS'
+                      ? 'border-purple-100 bg-purple-50'
+                      : order.status === 'SHIPPED'
+                        ? 'border-orange-100 bg-orange-50'
+                        : order.status === 'RENTED'
+                          ? 'border-cyan-100 bg-cyan-50'
+                          : order.status === 'RETURNED'
+                            ? 'border-indigo-100 bg-indigo-50'
+                            : order.status === 'COMPLETED'
+                              ? 'border-green-100 bg-green-50'
+                              : 'border-red-100 bg-red-50'
+              }`}
+            >
+              <div
+                className={`flex items-center gap-2 text-sm ${
+                  order.status === 'PENDING_PAYMENT'
+                    ? 'text-yellow-800'
+                    : order.status === 'PAID'
+                      ? 'text-blue-800'
+                      : order.status === 'IN_PROGRESS'
+                        ? 'text-purple-800'
+                        : order.status === 'SHIPPED'
+                          ? 'text-orange-800'
+                          : order.status === 'RENTED'
+                            ? 'text-cyan-800'
+                            : order.status === 'RETURNED'
+                              ? 'text-indigo-800'
+                              : order.status === 'COMPLETED'
+                                ? 'text-green-800'
+                                : 'text-red-800'
+                }`}
+              >
+                <div
+                  className={`h-2 w-2 animate-pulse rounded-full ${
+                    order.status === 'PENDING_PAYMENT'
+                      ? 'bg-yellow-500'
+                      : order.status === 'PAID'
+                        ? 'bg-blue-500'
+                        : order.status === 'IN_PROGRESS'
+                          ? 'bg-purple-500'
+                          : order.status === 'SHIPPED'
+                            ? 'bg-orange-500'
+                            : order.status === 'RENTED'
+                              ? 'bg-cyan-500'
+                              : order.status === 'RETURNED'
+                                ? 'bg-indigo-500'
+                                : order.status === 'COMPLETED'
+                                  ? 'bg-green-500'
+                                  : 'bg-red-500'
+                  }`}
+                />
+                <span className="font-medium">
+                  {order.status === 'PENDING_PAYMENT'
+                    ? 'Menunggu Pembayaran'
+                    : order.status === 'PAID'
+                      ? 'Sudah Dibayar'
+                      : order.status === 'IN_PROGRESS'
+                        ? 'Sedang Diproses'
+                        : order.status === 'SHIPPED'
+                          ? 'Terkirim'
+                          : order.status === 'RENTED'
+                            ? 'Sedang Disewa'
+                            : order.status === 'RETURNED'
+                              ? 'Sudah Dikembalikan'
+                              : order.status === 'COMPLETED'
+                                ? 'Selesai'
+                                : 'Dibatalkan'}
+                </span>
               </div>
             </div>
           </div>

@@ -2,6 +2,52 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/../auth'
 import prisma from '@/lib/db'
 
+interface CartItem {
+  type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
+  productId?: string
+  rentalItemId?: string
+  serviceId?: string
+  quantity: number
+  rentalDays?: number
+  name?: string
+}
+
+interface ProductItem extends CartItem {
+  product: {
+    id: string
+    name: string
+    price: number
+    stock: number
+    isActive: boolean
+  }
+}
+
+interface RentalItem extends CartItem {
+  rentalItem: {
+    id: string
+    name: string
+    pricePerDay: number
+    depositAmount?: number
+    stock: number
+    isActive: boolean
+  }
+}
+
+interface ServiceItem extends CartItem {
+  service: {
+    id: string
+    name: string
+    price: number
+    isActive: boolean
+    technicianId: string | null
+    technician?: {
+      id: string
+    }
+  }
+}
+
+type OrderItem = ProductItem | RentalItem | ServiceItem
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
@@ -20,19 +66,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { items, notes, paymentMethod = 'MANUAL_TRANSFER' } = body
+    const { items } = body
 
     // 3. Validate items
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
     }
 
-    // 4. Validate cart items and fetch full data
+    // 4. Group items by type and validate
+    const productItems: ProductItem[] = []
+    const rentalItems: RentalItem[] = []
+    const serviceItems: ServiceItem[] = []
     const validationErrors: string[] = []
-    const categories = new Set<string>()
-    const fullItems: any[] = []
 
-    for (const item of items) {
+    for (const item of items as CartItem[]) {
       // Fetch product data
       if (item.type === 'PRODUCT' && item.productId) {
         const product = await prisma.product.findUnique({
@@ -49,8 +96,7 @@ export async function POST(request: NextRequest) {
           )
           continue
         }
-        categories.add('SPAREPART')
-        fullItems.push({ ...item, product })
+        productItems.push({ ...item, product })
       }
 
       // Fetch rental data
@@ -71,8 +117,7 @@ export async function POST(request: NextRequest) {
           )
           continue
         }
-        categories.add('SEWA')
-        fullItems.push({ ...item, rentalItem })
+        rentalItems.push({ ...item, rentalItem })
       }
 
       // Fetch service data
@@ -88,8 +133,7 @@ export async function POST(request: NextRequest) {
           validationErrors.push(`Service "${item.name}" is no longer available`)
           continue
         }
-        categories.add('JASA')
-        fullItems.push({ ...item, service })
+        serviceItems.push({ ...item, service })
       }
     }
 
@@ -100,110 +144,197 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 5. Calculate pricing
-    let subtotal = 0
-    for (const item of fullItems) {
-      let itemPrice = 0
-
-      if (item.type === 'PRODUCT' && item.product) {
-        itemPrice = item.product.price * item.quantity
-      } else if (item.type === 'RENTAL' && item.rentalItem) {
-        const days = item.rentalDays || 1
-        itemPrice = item.rentalItem.pricePerDay * days * item.quantity
-      } else if (item.type === 'SERVICE' && item.service) {
-        itemPrice = item.service.price
+    // 5. Create separate orders for each type
+    interface CreatedOrder {
+      order: {
+        id: string
+        orderNumber: string
+        status: string
+        total: number
+        items: unknown[]
+        user: {
+          name: string | null
+          email: string
+        }
       }
-
-      subtotal += itemPrice
+      type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
     }
+    const createdOrders: CreatedOrder[] = []
 
-    const tax = subtotal * 0.11 // 11% PPN
-    const total = subtotal + tax
+    // Helper function to create order
+    const createOrder = async (
+      orderItems: OrderItem[],
+      orderType: 'PRODUCT' | 'RENTAL' | 'SERVICE',
+      prefix: string
+    ) => {
+      if (orderItems.length === 0) return null
 
-    // 6. Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-
-    // 7. Create order with items in a transaction
-    const order = await prisma.$transaction(async (tx) => {
-      // Create order
-      const newOrder = await tx.order.create({
-        data: {
-          orderNumber,
-          userId: session.user.id,
-          technicianId: fullItems.find((item) => item.type === 'SERVICE')
-            ?.service?.technicianId,
-          status: 'PENDING_PAYMENT',
-          subtotal,
-          tax,
-          total,
-          notes: notes || null,
-        },
-      })
-
-      // Create order items
-      for (const item of fullItems) {
+      // Calculate subtotal for this order
+      let subtotal = 0
+      for (const item of orderItems) {
         let itemPrice = 0
-        let itemSubtotal = 0
 
         if (item.type === 'PRODUCT' && item.product) {
-          itemPrice = item.product.price
-          itemSubtotal = itemPrice * item.quantity
+          itemPrice = item.product.price * item.quantity
         } else if (item.type === 'RENTAL' && item.rentalItem) {
           const days = item.rentalDays || 1
-          itemPrice = item.rentalItem.pricePerDay * days
-          itemSubtotal = itemPrice * item.quantity
+          const rentalFee = item.rentalItem.pricePerDay * days * item.quantity
+          const deposit = item.rentalItem.depositAmount || 0
+          itemPrice = rentalFee + deposit
         } else if (item.type === 'SERVICE' && item.service) {
           itemPrice = item.service.price
-          itemSubtotal = itemPrice
         }
 
-        await tx.orderItem.create({
+        subtotal += itemPrice
+      }
+
+      const total = subtotal // No tax
+
+      // Generate order number with type prefix
+      const orderNumber = `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+
+      // Create order in transaction
+      const order = await prisma.$transaction(async (tx) => {
+        const newOrder = await tx.order.create({
           data: {
-            orderId: newOrder.id,
-            type: item.type,
-            serviceId: item.serviceId,
-            productId: item.productId,
-            rentalItemId: item.rentalItemId,
-            quantity: item.quantity,
-            rentalDays: item.rentalDays,
-            price: itemPrice,
-            subtotal: itemSubtotal,
+            orderNumber,
+            userId: session.user.id,
+            technicianId:
+              orderType === 'SERVICE'
+                ? orderItems[0]?.service?.technicianId
+                : null,
+            status: 'PENDING_PAYMENT',
+            subtotal,
+            tax: 0,
+            total,
+            notes: null,
           },
         })
 
-        // Reduce stock for products
-        if (item.type === 'PRODUCT' && item.productId) {
-          await tx.product.update({
-            where: { id: item.productId },
+        // Create order items
+        for (const item of orderItems) {
+          let itemPrice = 0
+          let itemSubtotal = 0
+
+          if (item.type === 'PRODUCT' && item.product) {
+            itemPrice = item.product.price
+            itemSubtotal = itemPrice * item.quantity
+          } else if (item.type === 'RENTAL' && item.rentalItem) {
+            const days = item.rentalDays || 1
+            const rentalFee = item.rentalItem.pricePerDay * days
+            const deposit = item.rentalItem.depositAmount || 0
+            itemPrice = rentalFee + deposit
+            itemSubtotal = itemPrice * item.quantity
+          } else if (item.type === 'SERVICE' && item.service) {
+            itemPrice = item.service.price
+            itemSubtotal = itemPrice
+          }
+
+          await tx.orderItem.create({
             data: {
-              stock: {
-                decrement: item.quantity,
-              },
+              orderId: newOrder.id,
+              type: item.type,
+              serviceId: item.serviceId || null,
+              productId: item.productId || null,
+              rentalItemId: item.rentalItemId || null,
+              quantity: item.quantity,
+              rentalDays: item.rentalDays || null,
+              price: itemPrice,
+              subtotal: itemSubtotal,
+              notes: item.notes || null,
             },
           })
+
+          // Reduce stock for products
+          if (item.type === 'PRODUCT' && item.productId) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stock: {
+                  decrement: item.quantity,
+                },
+              },
+            })
+          }
+
+          // Reduce stock for rentals
+          if (item.type === 'RENTAL' && item.rentalItemId) {
+            await tx.rentalItem.update({
+              where: { id: item.rentalItemId },
+              data: {
+                stock: {
+                  decrement: item.quantity,
+                },
+              },
+            })
+          }
         }
 
-        // Reduce stock for rentals
-        if (item.type === 'RENTAL' && item.rentalItemId) {
-          await tx.rentalItem.update({
-            where: { id: item.rentalItemId },
-            data: {
-              stock: {
-                decrement: item.quantity,
+        return newOrder
+      })
+
+      // Fetch complete order with items
+      const completeOrder = await prisma.order.findUnique({
+        where: { id: order.id },
+        include: {
+          items: {
+            include: {
+              service: {
+                select: {
+                  name: true,
+                  category: true,
+                },
+              },
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  images: true,
+                  price: true,
+                },
+              },
+              rentalItem: {
+                select: {
+                  id: true,
+                  name: true,
+                  images: true,
+                  pricePerDay: true,
+                  depositAmount: true,
+                },
               },
             },
-          })
-        }
-      }
+          },
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      })
 
-      return newOrder
-    })
+      return { order: completeOrder, type: orderType }
+    }
 
-    // 8. Fetch relevant bank accounts
+    // Create orders for each type
+    const productOrder = await createOrder(productItems, 'PRODUCT', 'SPR')
+    const rentalOrder = await createOrder(rentalItems, 'RENTAL', 'RNT')
+    const serviceOrder = await createOrder(serviceItems, 'SERVICE', 'SVC')
+
+    if (productOrder) createdOrders.push(productOrder)
+    if (rentalOrder) createdOrders.push(rentalOrder)
+    if (serviceOrder) createdOrders.push(serviceOrder)
+
+    // 6. Fetch relevant bank accounts
+    const categories: string[] = []
+    if (productItems.length > 0) categories.push('SPAREPART')
+    if (rentalItems.length > 0) categories.push('SEWA')
+    if (serviceItems.length > 0) categories.push('JASA')
+
     const bankAccounts = await prisma.bankAccount.findMany({
       where: {
         category: {
-          in: Array.from(categories),
+          in: categories,
         },
         isActive: true,
       },
@@ -212,44 +343,9 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 9. Fetch complete order with items
-    const completeOrder = await prisma.order.findUnique({
-      where: { id: order.id },
-      include: {
-        items: {
-          include: {
-            service: {
-              select: {
-                name: true,
-                category: true,
-              },
-            },
-            product: {
-              select: {
-                name: true,
-                images: true,
-              },
-            },
-            rentalItem: {
-              select: {
-                name: true,
-                images: true,
-              },
-            },
-          },
-        },
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
-
     return NextResponse.json({
       success: true,
-      order: completeOrder,
+      orders: createdOrders,
       bankAccounts,
     })
   } catch (error) {

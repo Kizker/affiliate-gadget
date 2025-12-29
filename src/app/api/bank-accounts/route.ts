@@ -19,7 +19,13 @@ export async function GET(request: NextRequest) {
       : []
 
     // Build where clause
-    const where: any = {
+    interface WhereClause {
+      isActive: boolean
+      category?: {
+        in: string[]
+      }
+    }
+    const where: WhereClause = {
       isActive: true,
     }
 
