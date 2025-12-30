@@ -124,19 +124,41 @@ export async function GET(request: NextRequest) {
           },
         })
 
-        data = technicians.map((tech) => ({
-          Name: tech.user.name || '-',
-          Email: tech.user.email,
-          Specialties: tech.specialties.join(', '),
+        // Map and sort technicians by total orders, then by total reviews
+        const technicianData = technicians
+          .map((tech) => ({
+            name: tech.user.name || '-',
+            email: tech.user.email,
+            specialties: tech.specialties.join(', '),
+            experience: tech.experience,
+            totalOrders: tech._count.orders,
+            totalRevenue: tech.orders.reduce(
+              (sum, order) => sum + order.total,
+              0
+            ),
+            rating: tech.rating.toFixed(2),
+            totalReviews: tech.totalReview,
+            available: tech.isAvailable ? 'Yes' : 'No',
+          }))
+          .sort((a, b) => {
+            // Sort by total orders first (descending)
+            if (b.totalOrders !== a.totalOrders) {
+              return b.totalOrders - a.totalOrders
+            }
+            // If orders are equal, sort by total reviews (descending)
+            return b.totalReviews - a.totalReviews
+          })
+
+        data = technicianData.map((tech) => ({
+          Name: tech.name,
+          Email: tech.email,
+          Specialties: tech.specialties,
           'Experience (years)': tech.experience,
-          'Total Orders': tech._count.orders,
-          'Total Revenue (Rp)': tech.orders.reduce(
-            (sum, order) => sum + order.total,
-            0
-          ),
-          Rating: tech.rating.toFixed(2),
-          'Total Reviews': tech.totalReview,
-          Available: tech.isAvailable ? 'Yes' : 'No',
+          'Total Orders': tech.totalOrders,
+          'Total Revenue (Rp)': tech.totalRevenue,
+          Rating: tech.rating,
+          'Total Reviews': tech.totalReviews,
+          Available: tech.available,
         }))
         break
 

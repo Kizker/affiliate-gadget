@@ -130,7 +130,14 @@ export async function GET(request: NextRequest) {
         rating: tech.rating,
         totalReviews: tech.totalReview,
       }))
-      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .sort((a, b) => {
+        // Sort by total orders first (descending)
+        if (b.totalOrders !== a.totalOrders) {
+          return b.totalOrders - a.totalOrders
+        }
+        // If orders are equal, sort by total reviews (descending)
+        return b.totalReviews - a.totalReviews
+      })
       .slice(0, 10)
 
     // 4. CUSTOMER ANALYTICS

@@ -78,15 +78,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as UserRole
 
         try {
-          // Get fresh user data including image and mitraStatus
+          // Get fresh user data including name, image and mitraStatus
           const user = await prisma.user.findUnique({
             where: { id: token.id as string },
             select: {
+              name: true,
               image: true,
               mitraStatus: true,
               role: true,
             },
           })
+
+          // Update session with fresh data from database
+          if (user?.name) {
+            session.user.name = user.name
+          }
           if (user?.image) {
             session.user.image = user.image
           }

@@ -191,6 +191,79 @@ export default function ReportsPage() {
       case 'thisYear':
         startDate = new Date(now.getFullYear(), 0, 1)
         break
+      // Monthly filters (January - December)
+      case 'january':
+        startDate = new Date(now.getFullYear(), 0, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 1, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'february':
+        startDate = new Date(now.getFullYear(), 1, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 2, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'march':
+        startDate = new Date(now.getFullYear(), 2, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 3, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'april':
+        startDate = new Date(now.getFullYear(), 3, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 4, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'may':
+        startDate = new Date(now.getFullYear(), 4, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 5, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'june':
+        startDate = new Date(now.getFullYear(), 5, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 6, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'july':
+        startDate = new Date(now.getFullYear(), 6, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 7, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'august':
+        startDate = new Date(now.getFullYear(), 7, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 8, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'september':
+        startDate = new Date(now.getFullYear(), 8, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 9, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'october':
+        startDate = new Date(now.getFullYear(), 9, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 10, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'november':
+        startDate = new Date(now.getFullYear(), 10, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 11, 0, 23, 59, 59, 999).getTime()
+        )
+        break
+      case 'december':
+        startDate = new Date(now.getFullYear(), 11, 1)
+        endDate.setTime(
+          new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999).getTime()
+        )
+        break
       default:
         startDate = new Date(now.getFullYear(), now.getMonth(), 1)
     }
@@ -334,6 +407,44 @@ export default function ReportsPage() {
               <option value="thisYear" className="text-gray-900">
                 Tahun Ini
               </option>
+              <optgroup label="Per Bulan" className="text-gray-900">
+                <option value="january" className="text-gray-900">
+                  Januari
+                </option>
+                <option value="february" className="text-gray-900">
+                  Februari
+                </option>
+                <option value="march" className="text-gray-900">
+                  Maret
+                </option>
+                <option value="april" className="text-gray-900">
+                  April
+                </option>
+                <option value="may" className="text-gray-900">
+                  Mei
+                </option>
+                <option value="june" className="text-gray-900">
+                  Juni
+                </option>
+                <option value="july" className="text-gray-900">
+                  Juli
+                </option>
+                <option value="august" className="text-gray-900">
+                  Agustus
+                </option>
+                <option value="september" className="text-gray-900">
+                  September
+                </option>
+                <option value="october" className="text-gray-900">
+                  Oktober
+                </option>
+                <option value="november" className="text-gray-900">
+                  November
+                </option>
+                <option value="december" className="text-gray-900">
+                  Desember
+                </option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -525,9 +636,7 @@ export default function ReportsPage() {
             <h3 className="text-lg font-semibold text-gray-800">
               Top Technician Performance
             </h3>
-            <p className="text-sm text-gray-500">
-              Berdasarkan revenue dan rating
-            </p>
+            <p className="text-sm text-gray-500">Berdasarkan total order</p>
           </div>
           <button
             onClick={() => handleExport('technicians', 'xlsx')}

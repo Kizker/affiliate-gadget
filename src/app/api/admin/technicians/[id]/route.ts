@@ -118,7 +118,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/admin/technicians/[id] - Delete technician
+// DELETE /api/admin/technicians/[id] - Delete technician (hard delete)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -134,6 +134,7 @@ export async function DELETE(
     // Check if technician exists
     const existing = await db.technician.findUnique({
       where: { id: resolvedParams.id },
+      include: { user: true },
     })
 
     if (!existing) {
@@ -143,10 +144,17 @@ export async function DELETE(
       )
     }
 
-    // Soft delete - set user as inactive instead of hard delete
+    // Hard delete - actually remove technician from database
+    await db.technician.delete({
+      where: { id: resolvedParams.id },
+    })
+
+    // Reset user role to CUSTOMER
     await db.user.update({
       where: { id: existing.userId },
-      data: { isActive: false },
+      data: {
+        role: 'CUSTOMER',
+      },
     })
 
     return NextResponse.json({ message: 'Technician deleted successfully' })

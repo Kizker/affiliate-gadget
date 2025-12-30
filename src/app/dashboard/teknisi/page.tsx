@@ -94,6 +94,8 @@ export default function TechnicianDashboard() {
   const [services, setServices] = useState<Service[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [orderStatusFilter, setOrderStatusFilter] = useState('ALL')
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [, setEditingProfile] = useState(false)
   const [addingService, setAddingService] = useState(false)
@@ -122,13 +124,23 @@ export default function TechnicianDashboard() {
     }
   }, [status, router])
 
+  // Auto-refresh when order status filter changes
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderStatusFilter])
+
   const fetchData = async () => {
     try {
+      const statusParam =
+        orderStatusFilter !== 'ALL' ? `&status=${orderStatusFilter}` : ''
       const [statsRes, profileRes, servicesRes, ordersRes] = await Promise.all([
         fetch('/api/technicians/me/stats'),
         fetch('/api/technicians/me/profile'),
         fetch('/api/technicians/me/services'),
-        fetch('/api/technicians/me/orders?limit=5'),
+        fetch(`/api/technicians/me/orders?limit=10${statusParam}`),
       ])
 
       if (statsRes.ok) {
@@ -158,6 +170,44 @@ export default function TechnicianDashboard() {
       console.error('Error fetching data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUpdateOrderStatus = async (
+    orderId: string,
+    newStatus: string
+  ) => {
+    try {
+      setUpdatingOrderId(orderId)
+      const res = await fetch(`/api/technicians/me/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      if (res.ok) {
+        toast({
+          title: 'Berhasil!',
+          description: `Status pesanan berhasil diupdate ke ${newStatus}`,
+        })
+        fetchData() // Refresh orders
+      } else {
+        const error = await res.json()
+        toast({
+          title: 'Gagal',
+          description: error.error || 'Gagal mengupdate status pesanan',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error)
+      toast({
+        title: 'Error',
+        description: 'Terjadi kesalahan saat mengupdate status',
+        variant: 'destructive',
+      })
+    } finally {
+      setUpdatingOrderId(null)
     }
   }
 
@@ -706,9 +756,21 @@ export default function TechnicianDashboard() {
 
         {/* Recent Orders */}
         <div className="rounded-2xl bg-white p-6 shadow-lg">
-          <h2 className="mb-4 text-xl font-bold text-gray-900">
-            Pesanan Terbaru
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">Pesanan</h2>
+            <select
+              value={orderStatusFilter}
+              onChange={(e) => setOrderStatusFilter(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            >
+              <option value="ALL">Semua Status</option>
+              <option value="PENDING_PAYMENT">Menunggu Pembayaran</option>
+              <option value="PAID">Sudah Dibayar</option>
+              <option value="IN_PROGRESS">Sedang Dikerjakan</option>
+              <option value="COMPLETED">Selesai</option>
+              <option value="CANCELLED">Dibatalkan</option>
+            </select>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -718,6 +780,7 @@ export default function TechnicianDashboard() {
                   <th className="pb-3">Status</th>
                   <th className="pb-3">Harga</th>
                   <th className="pb-3">Tanggal</th>
+                  <th className="pb-3">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -751,6 +814,39 @@ export default function TechnicianDashboard() {
                     </td>
                     <td className="py-3 text-sm text-gray-600">
                       {new Date(order.createdAt).toLocaleDateString('id-ID')}
+                    </td>
+                    <td className="py-3">
+                      {order.status === 'PAID' && (
+                        <button
+                          onClick={() =>
+                            handleUpdateOrderStatus(order.id, 'IN_PROGRESS')
+                          }
+                          disabled={updatingOrderId === order.id}
+                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {updatingOrderId === order.id
+                            ? 'Loading...'
+                            : 'Mulai Kerjakan'}
+                        </button>
+                      )}
+                      {order.status === 'IN_PROGRESS' && (
+                        <button
+                          onClick={() =>
+                            handleUpdateOrderStatus(order.id, 'COMPLETED')
+                          }
+                          disabled={updatingOrderId === order.id}
+                          className="rounded-lg bg-green-600 px-3 py-1.5 text-xs text-white hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {updatingOrderId === order.id
+                            ? 'Loading...'
+                            : 'Selesai'}
+                        </button>
+                      )}
+                      {(order.status === 'COMPLETED' ||
+                        order.status === 'CANCELLED' ||
+                        order.status === 'PENDING_PAYMENT') && (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
                     </td>
                   </tr>
                 ))}

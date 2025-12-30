@@ -67,6 +67,16 @@ export async function GET(req: NextRequest) {
       },
     })
 
+    // Calculate stats for all mitras (not just current page)
+    const [approvedCount, pendingCount, uniqueCities] = await Promise.all([
+      db.mitra.count({ where: { isApproved: true } }),
+      db.mitra.count({ where: { isApproved: false } }),
+      db.mitra.findMany({
+        select: { city: true },
+        distinct: ['city'],
+      }),
+    ])
+
     return NextResponse.json({
       mitras,
       pagination: {
@@ -74,6 +84,12 @@ export async function GET(req: NextRequest) {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
+      },
+      stats: {
+        total,
+        approved: approvedCount,
+        pending: pendingCount,
+        cities: uniqueCities.length,
       },
     })
   } catch (error) {

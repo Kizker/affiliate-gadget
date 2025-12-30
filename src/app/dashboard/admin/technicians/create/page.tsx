@@ -55,21 +55,45 @@ export default function CreateTechnicianPage() {
     setLoading(true)
 
     try {
+      // Validate required fields
+      if (!formData.name || !formData.email) {
+        toast.error('Nama dan email wajib diisi')
+        setLoading(false)
+        return
+      }
+
+      if (formData.specialties.length === 0) {
+        toast.error('Minimal satu spesialisasi harus diisi')
+        setLoading(false)
+        return
+      }
+
       const res = await fetch('/api/admin/technicians', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
 
+      const responseData = await res.json()
+
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Failed to create technician')
+        console.error('Technician creation error:', responseData)
+        throw new Error(responseData.error || 'Gagal membuat teknisi')
       }
 
-      toast.success('Technician created successfully')
+      console.log('Technician created successfully:', responseData)
+      toast.success('Teknisi berhasil dibuat!')
+
+      // Wait a bit before redirecting to ensure database transaction completes
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      router.refresh() // Refresh to get latest data
       router.push('/dashboard/admin/technicians')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create technician')
+      console.error('Error in handleSubmit:', error)
+      toast.error(
+        error instanceof Error ? error.message : 'Gagal membuat teknisi'
+      )
     } finally {
       setLoading(false)
     }

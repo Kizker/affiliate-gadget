@@ -153,12 +153,13 @@ export async function PUT(
       },
     })
 
-    // Update user mitraStatus if approval changed
+    // Update user mitraStatus and role if approval changed
     if (isApproved !== undefined) {
       await db.user.update({
         where: { id: mitra.userId },
         data: {
-          mitraStatus: isApproved ? 'APPROVED' : 'PENDING',
+          mitraStatus: isApproved ? 'APPROVED' : 'REJECTED',
+          role: isApproved ? 'MITRA' : 'CUSTOMER',
         },
       })
     }
@@ -173,7 +174,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/admin/mitras/[id] - Delete mitra
+// DELETE /api/admin/mitras/[id] - Delete mitra (hard delete)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -188,22 +189,25 @@ export async function DELETE(
     // Check if mitra exists
     const existing = await db.mitra.findUnique({
       where: { id: params.id },
+      include: { user: true },
     })
 
     if (!existing) {
       return NextResponse.json({ error: 'Mitra not found' }, { status: 404 })
     }
 
-    // Soft delete - set as inactive
-    await db.mitra.update({
+    // Hard delete - actually remove from database
+    await db.mitra.delete({
       where: { id: params.id },
-      data: { isActive: false },
     })
 
-    // Update user mitraStatus
+    // Update user mitraStatus to null (remove mitra status)
     await db.user.update({
       where: { id: existing.userId },
-      data: { mitraStatus: 'REJECTED' },
+      data: {
+        mitraStatus: null,
+        role: 'CUSTOMER', // Reset role to CUSTOMER
+      },
     })
 
     return NextResponse.json({ message: 'Mitra deleted successfully' })

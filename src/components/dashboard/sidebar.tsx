@@ -21,6 +21,7 @@ import {
   MessageSquare,
   PenSquare,
   BarChart3,
+  Store,
 } from 'lucide-react'
 
 const customerMenuItems = [
@@ -40,6 +41,7 @@ const superAdminMenuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/admin' },
   { icon: Users, label: 'Kelola User', href: '/dashboard/admin/users' },
   { icon: Wrench, label: 'Teknisi', href: '/dashboard/admin/technicians' },
+  { icon: Store, label: 'Mitra', href: '/dashboard/admin/mitras' },
   { icon: Package, label: 'Kelola Produk', href: '/dashboard/admin/products' },
   {
     icon: ShoppingCart,
