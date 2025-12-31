@@ -139,6 +139,40 @@ export default function MitraDashboard() {
     }
   }, [status, router])
 
+  // Auto-refresh analytics every 30 seconds for real-time updates
+  useEffect(() => {
+    if (!hasProfile || status !== 'authenticated') return
+
+    const refreshAnalytics = async () => {
+      try {
+        const analyticsResponse = await fetch('/api/mitra/analytics')
+        if (analyticsResponse.ok) {
+          const analyticsData = await analyticsResponse.json()
+
+          setAnalytics((prev) => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              profileViews: analyticsData.totalViews || 0,
+              totalReviews: analyticsData.totalReviews || 0,
+              averageRating: analyticsData.averageRating || 0,
+              inquiries: analyticsData.totalInquiries || 0,
+              recentReviews: analyticsData.recentReviews || [],
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Error refreshing analytics:', error)
+      }
+    }
+
+    // Set up polling interval (30 seconds)
+    const intervalId = setInterval(refreshAnalytics, 30000)
+
+    // Cleanup on unmount
+    return () => clearInterval(intervalId)
+  }, [hasProfile, status])
+
   // Redirect pending mitra
   useEffect(() => {
     if (session?.user?.role === 'MITRA') {
@@ -359,7 +393,7 @@ export default function MitraDashboard() {
       {/* Quick Actions */}
       <div className="mt-8">
         <h2 className="mb-4 text-xl font-bold text-gray-900">Aksi Cepat</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             href="/dashboard/mitra/profile/edit"
             className="group rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
@@ -389,14 +423,6 @@ export default function MitraDashboard() {
               Lihat bagaimana pelanggan melihat profil Anda
             </p>
           </Link>
-
-          <div className="group rounded-2xl border border-gray-200 bg-white p-6 opacity-50 shadow-sm">
-            <div className="mb-4 inline-flex rounded-xl bg-purple-100 p-3">
-              <BarChart3 className="h-6 w-6 text-purple-600" />
-            </div>
-            <h3 className="font-semibold text-gray-900">Laporan Detail</h3>
-            <p className="mt-1 text-sm text-gray-500">Segera hadir</p>
-          </div>
         </div>
       </div>
     </div>

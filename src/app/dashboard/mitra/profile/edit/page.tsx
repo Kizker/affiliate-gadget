@@ -18,6 +18,7 @@ import {
   Edit3,
   Image as ImageIcon,
   Eye,
+  ArrowLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import ImageUpload from '@/components/upload/image-upload'
@@ -370,6 +371,14 @@ export default function MitraDashboard() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link
+            href="/dashboard/mitra"
+            className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span className="hidden sm:inline">Kembali ke Dashboard</span>
+            <span className="sm:hidden">Kembali</span>
+          </Link>
           <button
             onClick={handleSave}
             disabled={loading}
