@@ -17,6 +17,8 @@ import {
   Calendar,
   Star,
   MessageCircle,
+  ChevronDown,
+  Filter,
 } from 'lucide-react'
 import { RatingModal } from '@/components/modals/rating-modal'
 
@@ -87,6 +89,8 @@ export default function CustomerOrdersPage() {
   const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [ratingModal, setRatingModal] = useState<{
     isOpen: boolean
     orderId: string
@@ -94,6 +98,57 @@ export default function CustomerOrdersPage() {
     existingRating?: number
     existingComment?: string
   }>({ isOpen: false, orderId: '', orderNumber: '' })
+
+  // Filter options
+  const filterOptions = [
+    {
+      value: 'ALL',
+      label: 'Semua Pesanan',
+      color: 'bg-gray-100 text-gray-700',
+    },
+    {
+      value: 'PENDING_PAYMENT',
+      label: 'Menunggu Pembayaran',
+      color: 'bg-yellow-100 text-yellow-700',
+    },
+    {
+      value: 'PAID',
+      label: 'Sudah Dibayar',
+      color: 'bg-blue-100 text-blue-700',
+    },
+    {
+      value: 'IN_PROGRESS',
+      label: 'Sedang Diproses',
+      color: 'bg-purple-100 text-purple-700',
+    },
+    {
+      value: 'COMPLETED',
+      label: 'Selesai',
+      color: 'bg-green-100 text-green-700',
+    },
+    {
+      value: 'CANCELLED',
+      label: 'Dibatalkan',
+      color: 'bg-red-100 text-red-700',
+    },
+  ]
+
+  // Calculate order counts for each status
+  const orderCounts = {
+    ALL: orders.length,
+    PENDING_PAYMENT: orders.filter((o) => o.status === 'PENDING_PAYMENT')
+      .length,
+    PAID: orders.filter((o) => o.status === 'PAID').length,
+    IN_PROGRESS: orders.filter((o) => o.status === 'IN_PROGRESS').length,
+    COMPLETED: orders.filter((o) => o.status === 'COMPLETED').length,
+    CANCELLED: orders.filter((o) => o.status === 'CANCELLED').length,
+  }
+
+  // Filter orders based on selected status
+  const filteredOrders =
+    selectedStatus === 'ALL'
+      ? orders
+      : orders.filter((order) => order.status === selectedStatus)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -177,6 +232,105 @@ export default function CustomerOrdersPage() {
             </p>
           </div>
 
+          {/* Filter Section */}
+          <div className="mb-6">
+            {/* Mobile: Dropdown Menu */}
+            <div className="sm:hidden">
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium text-gray-700">
+                    {
+                      filterOptions.find((f) => f.value === selectedStatus)
+                        ?.label
+                    }
+                  </span>
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    {orderCounts[selectedStatus as keyof typeof orderCounts]}
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`h-5 w-5 text-gray-400 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {isFilterOpen && (
+                <div className="mt-2 rounded-lg border border-gray-200 bg-white shadow-lg">
+                  {filterOptions.map((option) => {
+                    const count =
+                      orderCounts[option.value as keyof typeof orderCounts]
+                    const isActive = selectedStatus === option.value
+
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setSelectedStatus(option.value)
+                          setIsFilterOpen(false)
+                        }}
+                        className={`flex w-full items-center justify-between px-4 py-3 text-left transition-colors ${
+                          isActive ? 'bg-blue-50' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <span
+                          className={`font-medium ${
+                            isActive ? 'text-blue-700' : 'text-gray-700'
+                          }`}
+                        >
+                          {option.label}
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            isActive
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop: Tabs */}
+            <div className="hidden overflow-x-auto sm:block">
+              <div className="flex gap-2 pb-2">
+                {filterOptions.map((option) => {
+                  const count =
+                    orderCounts[option.value as keyof typeof orderCounts]
+                  const isActive = selectedStatus === option.value
+
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => setSelectedStatus(option.value)}
+                      className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                        isActive
+                          ? 'scale-105 bg-blue-600 text-white shadow-lg'
+                          : `${option.color} hover:scale-105 hover:shadow-md`
+                      }`}
+                    >
+                      {option.label}
+                      <span
+                        className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                          isActive ? 'bg-blue-500' : 'bg-white/50'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
           {/* Orders List */}
           {orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl bg-white p-12 text-center shadow-lg">
@@ -194,9 +348,28 @@ export default function CustomerOrdersPage() {
                 Cari Teknisi
               </Link>
             </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-white p-12 text-center shadow-lg">
+              <Package className="h-16 w-16 text-gray-300" />
+              <h3 className="mt-4 text-xl font-semibold text-gray-900">
+                Tidak ada pesanan
+              </h3>
+              <p className="mt-2 text-gray-500">
+                Tidak ada pesanan dengan status{' '}
+                {filterOptions
+                  .find((f) => f.value === selectedStatus)
+                  ?.label.toLowerCase()}
+              </p>
+              <button
+                onClick={() => setSelectedStatus('ALL')}
+                className="mt-6 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
+              >
+                Lihat Semua Pesanan
+              </button>
+            </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order) => {
+              {filteredOrders.map((order) => {
                 const StatusIcon =
                   statusConfig[order.status as keyof typeof statusConfig]
                     ?.icon || Package
