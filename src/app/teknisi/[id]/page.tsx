@@ -609,15 +609,14 @@ export default function TeknisiDetailPage({
                           <option value="">-- Pilih Layanan --</option>
                           {technician.services
                             .filter((service) => {
-                              // Filter based on active tab
-                              if (activeService === 'konsultasi') {
-                                return service.category === 'KONSULTASI'
-                              } else if (activeService === 'cek-bongkar') {
-                                return service.category === 'CEK_BONGKAR'
-                              } else if (activeService === 'jasa-servis') {
-                                return service.category === 'SERVIS_LENGKAP'
+                              switch (activeService) {
+                                case 'cek-bongkar':
+                                  return service.category === 'CEK_BONGKAR'
+                                case 'jasa-servis':
+                                  return service.category === 'SERVIS_LENGKAP'
+                                default:
+                                  return true
                               }
-                              return true
                             })
                             .map((service) => (
                               <option key={service.id} value={service.id}>

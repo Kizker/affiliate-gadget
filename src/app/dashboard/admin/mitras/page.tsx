@@ -126,8 +126,12 @@ export default function MitrasPage() {
 
       // Extract unique cities for filter
       const allCities = Array.from(
-        new Set(data.mitras.map((m: Mitra) => m.city))
-      ).sort()
+        new Set(
+          data.mitras
+            .map((m: Mitra) => m.city)
+            .filter((c: string | null) => !!c)
+        )
+      ).sort() as string[]
       setCities(allCities)
     } catch (error) {
       console.error('Error fetching mitras:', error)

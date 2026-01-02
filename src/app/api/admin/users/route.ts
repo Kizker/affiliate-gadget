@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/../auth'
+import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
 
@@ -26,12 +26,12 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const where: {
-      role?: string
-      mitraStatus?: string
+      role?: 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'MITRA'
+      mitraStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'
       technician?: { isNot: null }
       OR?: Array<{
-        name?: { contains: string; mode: string }
-        email?: { contains: string; mode: string }
+        name?: { contains: string; mode: 'insensitive' }
+        email?: { contains: string; mode: 'insensitive' }
       }>
     } = {}
 
@@ -40,12 +40,12 @@ export async function GET(request: NextRequest) {
         // Filter users who have technician profile
         where.technician = { isNot: null }
       } else {
-        where.role = role
+        where.role = role as 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'MITRA'
       }
     }
 
     if (mitraStatus !== 'ALL' && role === 'MITRA') {
-      where.mitraStatus = mitraStatus
+      where.mitraStatus = mitraStatus as 'PENDING' | 'APPROVED' | 'REJECTED'
     }
 
     if (search) {

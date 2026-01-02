@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/../auth'
+import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
 interface CartItem {
@@ -27,7 +27,7 @@ interface RentalItem extends CartItem {
     id: string
     name: string
     pricePerDay: number
-    depositAmount?: number
+    depositAmount?: number | null
     stock: number
     isActive: boolean
   }
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       orderItems: OrderItem[],
       orderType: 'PRODUCT' | 'RENTAL' | 'SERVICE',
       prefix: string
-    ) => {
+    ): Promise<CreatedOrder | null> => {
       if (orderItems.length === 0) return null
 
       // Calculate subtotal for this order
@@ -174,15 +174,16 @@ export async function POST(request: NextRequest) {
       for (const item of orderItems) {
         let itemPrice = 0
 
-        if (item.type === 'PRODUCT' && item.product) {
-          itemPrice = item.product.price * item.quantity
-        } else if (item.type === 'RENTAL' && item.rentalItem) {
+        if (item.type === 'PRODUCT' && (item as ProductItem).product) {
+          itemPrice = (item as ProductItem).product.price * item.quantity
+        } else if (item.type === 'RENTAL' && (item as RentalItem).rentalItem) {
           const days = item.rentalDays || 1
-          const rentalFee = item.rentalItem.pricePerDay * days * item.quantity
-          const deposit = item.rentalItem.depositAmount || 0
+          const rentalFee =
+            (item as RentalItem).rentalItem.pricePerDay * days * item.quantity
+          const deposit = (item as RentalItem).rentalItem.depositAmount || 0
           itemPrice = rentalFee + deposit
-        } else if (item.type === 'SERVICE' && item.service) {
-          itemPrice = item.service.price
+        } else if (item.type === 'SERVICE' && (item as ServiceItem).service) {
+          itemPrice = (item as ServiceItem).service.price
         }
 
         subtotal += itemPrice
@@ -201,7 +202,7 @@ export async function POST(request: NextRequest) {
             userId: session.user.id,
             technicianId:
               orderType === 'SERVICE'
-                ? orderItems[0]?.service?.technicianId
+                ? (orderItems[0] as ServiceItem)?.service?.technicianId
                 : null,
             status: 'PENDING_PAYMENT',
             subtotal,
@@ -216,17 +217,20 @@ export async function POST(request: NextRequest) {
           let itemPrice = 0
           let itemSubtotal = 0
 
-          if (item.type === 'PRODUCT' && item.product) {
-            itemPrice = item.product.price
+          if (item.type === 'PRODUCT' && (item as ProductItem).product) {
+            itemPrice = (item as ProductItem).product.price
             itemSubtotal = itemPrice * item.quantity
-          } else if (item.type === 'RENTAL' && item.rentalItem) {
+          } else if (
+            item.type === 'RENTAL' &&
+            (item as RentalItem).rentalItem
+          ) {
             const days = item.rentalDays || 1
-            const rentalFee = item.rentalItem.pricePerDay * days
-            const deposit = item.rentalItem.depositAmount || 0
+            const rentalFee = (item as RentalItem).rentalItem.pricePerDay * days
+            const deposit = (item as RentalItem).rentalItem.depositAmount || 0
             itemPrice = rentalFee + deposit
             itemSubtotal = itemPrice * item.quantity
-          } else if (item.type === 'SERVICE' && item.service) {
-            itemPrice = item.service.price
+          } else if (item.type === 'SERVICE' && (item as ServiceItem).service) {
+            itemPrice = (item as ServiceItem).service.price
             itemSubtotal = itemPrice
           }
 
@@ -241,7 +245,7 @@ export async function POST(request: NextRequest) {
               rentalDays: item.rentalDays || null,
               price: itemPrice,
               subtotal: itemSubtotal,
-              notes: item.notes || null,
+              notes: null,
             },
           })
 
@@ -313,7 +317,7 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      return { order: completeOrder, type: orderType }
+      return { order: completeOrder!, type: orderType }
     }
 
     // Create orders for each type
@@ -334,7 +338,7 @@ export async function POST(request: NextRequest) {
     const bankAccounts = await prisma.bankAccount.findMany({
       where: {
         category: {
-          in: categories,
+          in: categories as any,
         },
         isActive: true,
       },

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/../auth'
+import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
 // GET - Get all orders for admin with pagination, search, and claim filter
@@ -39,7 +39,12 @@ export async function GET(request: Request) {
           email?: { contains: string; mode: 'insensitive' }
         }
       }>
-      status?: string
+      status?:
+        | 'PENDING_PAYMENT'
+        | 'PAID'
+        | 'IN_PROGRESS'
+        | 'COMPLETED'
+        | 'CANCELLED'
       claimedById?: string | null
       paymentRequestedById?: { not: null } | null
       items?: {
@@ -64,7 +69,12 @@ export async function GET(request: Request) {
 
     // Status filter
     if (status && status !== 'all') {
-      where.status = status
+      where.status = status as
+        | 'PENDING_PAYMENT'
+        | 'PAID'
+        | 'IN_PROGRESS'
+        | 'COMPLETED'
+        | 'CANCELLED'
     }
 
     // Claim filter (only for ADMIN, SUPER_ADMIN sees all)

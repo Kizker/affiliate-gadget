@@ -5,9 +5,10 @@ import { db } from '@/lib/db'
 // GET /api/admin/mitras/[id] - Get mitra detail
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession()
 
     if (!session || session.user.role !== 'SUPER_ADMIN') {
@@ -15,7 +16,7 @@ export async function GET(
     }
 
     const mitra = await db.mitra.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: {
           select: {
@@ -76,9 +77,10 @@ export async function GET(
 // PUT /api/admin/mitras/[id] - Update mitra
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession()
 
     if (!session || session.user.role !== 'SUPER_ADMIN') {
@@ -109,7 +111,7 @@ export async function PUT(
 
     // Check if mitra exists
     const existing = await db.mitra.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existing) {
@@ -139,7 +141,7 @@ export async function PUT(
 
     // Update mitra
     const mitra = await db.mitra.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         user: {
@@ -177,9 +179,10 @@ export async function PUT(
 // DELETE /api/admin/mitras/[id] - Delete mitra (hard delete)
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession()
 
     if (!session || session.user.role !== 'SUPER_ADMIN') {
@@ -188,7 +191,7 @@ export async function DELETE(
 
     // Check if mitra exists
     const existing = await db.mitra.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { user: true },
     })
 
@@ -198,7 +201,7 @@ export async function DELETE(
 
     // Hard delete - actually remove from database
     await db.mitra.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     // Update user mitraStatus to null (remove mitra status)

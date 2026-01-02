@@ -19,6 +19,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 // Technician interface
 interface Technician {
@@ -47,6 +48,7 @@ interface ApiTechnician {
   totalReview?: number
   experience?: number
   isAvailable?: boolean
+  location?: string
 }
 
 const filterGroups = [
@@ -296,11 +298,15 @@ export default function ServiceTechnicianList({
                         className="group rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-blue-300 hover:shadow-lg"
                       >
                         <div className="mb-3 flex items-start gap-3">
-                          <img
-                            src={tech.photo}
-                            alt={tech.name}
-                            className="h-14 w-14 rounded-full object-cover"
-                          />
+                          <div className="relative h-14 w-14 flex-shrink-0">
+                            <Image
+                              src={tech.photo}
+                              alt={tech.name}
+                              fill
+                              className="rounded-full object-cover"
+                              sizes="56px"
+                            />
+                          </div>
                           <div className="flex-1">
                             <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
                               {tech.name}

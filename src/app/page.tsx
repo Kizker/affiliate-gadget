@@ -1,13 +1,59 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import Hero from '@/components/shared/hero'
-import SectionServices from '@/components/landing/section-services'
-import SectionSparepart from '@/components/landing/section-sparepart'
-import SectionRental from '@/components/landing/section-rental'
-import SectionPartners from '@/components/landing/section-partners'
 import { useEffect, useRef, useState, useCallback } from 'react'
+
+// Dynamically import below-fold components for better performance
+const SectionServices = dynamic(
+  () => import('@/components/landing/section-services'),
+  {
+    loading: () => (
+      <div className="flex min-h-screen items-center justify-center">
+        <span className="text-gray-400">Loading...</span>
+      </div>
+    ),
+    ssr: false,
+  }
+)
+
+const SectionSparepart = dynamic(
+  () => import('@/components/landing/section-sparepart'),
+  {
+    loading: () => (
+      <div className="flex min-h-screen items-center justify-center">
+        <span className="text-gray-400">Loading...</span>
+      </div>
+    ),
+    ssr: false,
+  }
+)
+
+const SectionRental = dynamic(
+  () => import('@/components/landing/section-rental'),
+  {
+    loading: () => (
+      <div className="flex min-h-screen items-center justify-center">
+        <span className="text-gray-400">Loading...</span>
+      </div>
+    ),
+    ssr: false,
+  }
+)
+
+const SectionPartners = dynamic(
+  () => import('@/components/landing/section-partners'),
+  {
+    loading: () => (
+      <div className="flex min-h-screen items-center justify-center">
+        <span className="text-gray-400">Loading...</span>
+      </div>
+    ),
+    ssr: false,
+  }
+)
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null)

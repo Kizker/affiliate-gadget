@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface ProductCardProps {
   id: string
@@ -14,6 +15,8 @@ interface ProductCardProps {
   href: string
   actionLabel?: string
   onAction?: () => void
+  imageAspect?: string // Optional aspect ratio prop
+  priority?: boolean // New prop for LCP optimization
 }
 
 export function ProductCard({
@@ -27,6 +30,8 @@ export function ProductCard({
   badgeColor = 'green',
   description,
   href,
+  imageAspect = 'aspect-[3/4]', // Default layout stability
+  priority = false, // Default to lazy loading
 }: ProductCardProps) {
   const badgeColors = {
     green: 'bg-green-100 text-green-700',
@@ -36,17 +41,23 @@ export function ProductCard({
   }
 
   return (
-    <div className="group relative overflow-hidden rounded-xl shadow-md transition-shadow hover:shadow-xl">
-      <Link href={href} className="block">
-        <img
+    <div
+      className={`group relative overflow-hidden rounded-xl shadow-md transition-shadow hover:shadow-xl ${imageAspect}`}
+    >
+      <Link href={href} className="block h-full w-full">
+        <Image
           src={image}
           alt={title}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          fill
+          priority={priority} // Use priority for LCP images
+          quality={60} // Reduce quality for thumbnails
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" // Optimized for 2-col mobile, 3-col tablet, 4-col desktop
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
         {/* Badge */}
         {badge && (
           <div
-            className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-sm ${badgeColors[badgeColor]}`}
+            className={`absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-sm ${badgeColors[badgeColor]}`}
           >
             {badge}
           </div>

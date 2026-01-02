@@ -560,6 +560,7 @@ export default function FloatingChatButton() {
       <button
         onClick={handleClick}
         className="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-xl transition-all hover:scale-110 hover:shadow-2xl active:scale-95 md:bottom-6 md:right-6"
+        aria-label={isOpen ? 'Tutup chat' : 'Buka chat'}
       >
         {isOpen ? (
           <X className="h-6 w-6" />
@@ -1136,7 +1137,7 @@ export default function FloatingChatButton() {
                           {uploadingImage ? (
                             <Loader2 className="h-5 w-5 animate-spin text-white" />
                           ) : (
-                            <Image className="h-5 w-5 text-white" alt="" />
+                            <Image className="h-5 w-5 text-white" />
                           )}
                         </div>
                         <div>
@@ -1159,6 +1160,11 @@ export default function FloatingChatButton() {
                           ? 'rotate-45 bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300'
                       }`}
+                      aria-label={
+                        showAttachMenu
+                          ? 'Tutup menu lampiran'
+                          : 'Buka menu lampiran'
+                      }
                     >
                       <Plus className="h-6 w-6" />
                     </button>
@@ -1176,6 +1182,7 @@ export default function FloatingChatButton() {
                       onClick={handleSendMessage}
                       disabled={!newMessage.trim() || sending}
                       className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg transition-shadow hover:shadow-xl active:scale-95 disabled:opacity-50"
+                      aria-label="Kirim pesan"
                     >
                       {sending ? (
                         <Loader2 className="h-5 w-5 animate-spin" />

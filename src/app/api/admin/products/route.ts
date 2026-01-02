@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/../auth'
+import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -88,10 +88,13 @@ export async function GET(request: NextRequest) {
         total: totalProducts,
         lowStock: lowStockCount,
         outOfStock: outOfStockCount,
-        byCategory: categoryStats.reduce((acc: Record<string, number>, stat) => {
-          acc[stat.category] = stat._count
-          return acc
-        }, {}),
+        byCategory: categoryStats.reduce(
+          (acc: Record<string, number>, stat) => {
+            acc[stat.category] = stat._count
+            return acc
+          },
+          {}
+        ),
       },
     })
   } catch (error) {

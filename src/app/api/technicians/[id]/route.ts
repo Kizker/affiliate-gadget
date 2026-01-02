@@ -67,7 +67,7 @@ export async function GET(
     }
 
     // Get reviews for this technician (from orders) with better error handling
-    let reviews = []
+    let reviews: any[] = []
     try {
       reviews = await db.review.findMany({
         where: {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/../auth'
+import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -19,13 +19,7 @@ export async function GET(request: NextRequest) {
       : []
 
     // Build where clause
-    interface WhereClause {
-      isActive: boolean
-      category?: {
-        in: string[]
-      }
-    }
-    const where: WhereClause = {
+    const where: any = {
       isActive: true,
     }
 

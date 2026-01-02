@@ -1,12 +1,12 @@
 import Link from 'next/link'
 import { AlertCircle } from 'lucide-react'
 
-export default function AuthErrorPage({
+export default async function AuthErrorPage({
   searchParams,
 }: {
-  searchParams: { error?: string }
+  searchParams: Promise<{ error?: string }>
 }) {
-  const error = searchParams.error
+  const { error } = await searchParams
 
   const errorMessages: Record<string, string> = {
     Configuration: 'Terjadi kesalahan konfigurasi server',

@@ -52,7 +52,7 @@ export default function ReviewForm({ mitraId, onSuccess }: ReviewFormProps) {
       }
     } catch (error) {
       console.error('Error submitting review:', error)
-      toast.error(error.message || 'Gagal mengirim review')
+      toast.error((error as any).message || 'Gagal mengirim review')
     } finally {
       setLoading(false)
     }

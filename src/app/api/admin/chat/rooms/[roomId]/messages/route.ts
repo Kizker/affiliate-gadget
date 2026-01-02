@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/../auth'
+import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
 // GET - Get messages in a room
@@ -155,7 +155,6 @@ export async function POST(
     }
 
     // Check if room is claimed by current admin
-    // @ts-expect-error - claimedById is new field, will be available after restart
     if (!room.claimedById) {
       return NextResponse.json(
         { error: 'Room must be claimed before sending messages' },
@@ -163,7 +162,6 @@ export async function POST(
       )
     }
 
-    // @ts-expect-error - claimedById is new field
     if (room.claimedById !== session.user.id) {
       return NextResponse.json(
         { error: 'You are not the owner of this chat room' },

@@ -101,9 +101,11 @@ export function Navbar({
                     ? 'text-gray-700 hover:text-blue-600'
                     : 'text-gray-100 hover:text-cyan-400'
                 }`}
+                aria-label="Layanan"
+                aria-haspopup="true"
               >
                 Layanan
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </button>
               {/* Dropdown Menu */}
               <div
@@ -197,16 +199,21 @@ export function Navbar({
                       ? 'text-gray-700 hover:bg-gray-100'
                       : 'text-gray-100 hover:bg-gray-800'
                   }`}
+                  aria-label={session.user.name || 'Akun Saya'}
+                  aria-haspopup="true"
                 >
                   {session.user.image ? (
                     <img
                       src={session.user.image}
-                      alt={session.user.name || 'User'}
+                      alt=""
                       className="h-8 w-8 rounded-full object-cover"
+                      width={32}
+                      height={32}
                     />
                   ) : (
                     <div
                       className={`flex h-8 w-8 items-center justify-center rounded-full ${isLight ? 'bg-blue-100' : 'bg-gray-700'}`}
+                      aria-hidden="true"
                     >
                       <User
                         className={`h-4 w-4 ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}
@@ -216,7 +223,7 @@ export function Navbar({
                   <span className="max-w-[120px] truncate">
                     {session.user.name || 'Akun Saya'}
                   </span>
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
                 </button>
                 {/* Profile Dropdown */}
                 <div
@@ -271,8 +278,7 @@ export function Navbar({
                     </Link>
                   )}
                   {/* Technician-only menu items */}
-                  {(session.user.role === 'TEKNISI' ||
-                    session.user.isTechnician) && (
+                  {session.user.isTechnician && (
                     <Link
                       href="/dashboard/teknisi/orders"
                       className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
@@ -576,8 +582,7 @@ export function Navbar({
               )}
 
               {/* Technician-only menu items */}
-              {(session.user.role === 'TEKNISI' ||
-                session.user.isTechnician) && (
+              {session.user.isTechnician && (
                 <Link
                   href="/dashboard/teknisi/orders"
                   onClick={() => setMobileMenuOpen(false)}

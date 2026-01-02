@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     orderBy[sortBy] = sortOrder as 'asc' | 'desc'
 
     // Fetch rental items
-    const [rentalItems, total] = await Promise.all([
+    const [rawRentalItems, total] = await Promise.all([
       prisma.rentalItem.findMany({
         where,
         orderBy,
@@ -58,6 +58,16 @@ export async function GET(request: NextRequest) {
       }),
       prisma.rentalItem.count({ where }),
     ])
+
+    // Sanitize images (Hotfix for broken seed data)
+    const rentalItems = rawRentalItems.map((item) => ({
+      ...item,
+      images: item.images.map((img) =>
+        img.includes('photo-1582719471384-894fbb16f7ce')
+          ? 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=550&fit=crop'
+          : img
+      ),
+    }))
 
     const totalPages = Math.ceil(total / limit)
 

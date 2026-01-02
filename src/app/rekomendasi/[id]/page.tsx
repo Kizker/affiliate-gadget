@@ -102,7 +102,8 @@ export default function MitraDetailPage({
 
       if (response.ok && data.reviews) {
         const userReview = data.reviews.find(
-          (review: { user: { id: string } }) => review.user.id === session.user.id
+          (review: { user: { id: string } }) =>
+            review.user.id === session.user.id
         )
         setUserHasReview(!!userReview)
       }
@@ -329,7 +330,7 @@ export default function MitraDetailPage({
                 Keunggulan Kami
               </h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-                {mitra.features.map((feature) => (
+                {mitra.features?.map((feature) => (
                   <div
                     key={feature}
                     className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-4"

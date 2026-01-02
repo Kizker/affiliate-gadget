@@ -7,6 +7,8 @@ import { SearchBar } from '@/components/catalog/search-bar'
 import { FilterSidebar } from '@/components/catalog/filter-sidebar'
 import { ProductCard } from '@/components/catalog/product-card'
 import { SlidersHorizontal, X, Shield } from 'lucide-react'
+import Image from 'next/image'
+import Masonry from 'react-masonry-css'
 
 interface TechnicianData {
   id: string
@@ -62,11 +64,16 @@ const filterGroups = [
 ]
 
 // Skeleton Loading Component for Technician
-function TechnicianSkeleton() {
+// Skeleton Loading Component for Technician
+function TechnicianSkeleton({
+  imageAspect = 'aspect-[3/4]',
+}: {
+  imageAspect?: string
+}) {
   return (
     <div className="mb-4 break-inside-avoid">
       <div className="relative animate-pulse overflow-hidden rounded-xl bg-gray-200">
-        <div className="aspect-[3/4] w-full" />
+        <div className={`${imageAspect} w-full`} />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-gray-300 to-transparent p-4">
           <div className="mb-2 h-4 w-2/3 rounded bg-gray-400/50" />
           <div className="mb-2 h-3 w-1/2 rounded bg-gray-400/40" />
@@ -205,10 +212,13 @@ export default function TeknisiPage() {
     <div className="relative min-h-screen overflow-hidden">
       {/* Background Image with Gradient Overlay */}
       <div className="fixed inset-0 -z-10">
-        <img
+        <Image
           src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1920&q=80"
-          alt="Background"
-          className="h-full w-full object-cover"
+          alt=""
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95"></div>
       </div>
@@ -243,6 +253,8 @@ export default function TeknisiPage() {
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-700 transition-colors hover:bg-gray-50"
+            aria-label="Toggle filters"
+            aria-expanded={isFilterOpen}
           >
             <SlidersHorizontal className="h-5 w-5" />
             <span className="font-medium">Filter</span>
@@ -266,8 +278,15 @@ export default function TeknisiPage() {
               <div
                 className="absolute inset-0 bg-black/50"
                 onClick={() => setIsFilterOpen(false)}
+                role="button"
+                aria-label="Close filters"
               ></div>
-              <div className="absolute inset-y-0 left-0 w-80 max-w-[85vw] overflow-y-auto bg-white shadow-xl">
+              <div
+                className="absolute inset-y-0 left-0 w-80 max-w-[85vw] overflow-y-auto bg-white shadow-xl"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Filter options"
+              >
                 <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
                   <h3 className="text-lg font-bold text-gray-900">Filter</h3>
                   <button
@@ -303,11 +322,23 @@ export default function TeknisiPage() {
 
             {/* Initial Loading State with Skeletons */}
             {loading ? (
-              <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <TechnicianSkeleton key={i} />
-                ))}
-              </div>
+              <Masonry
+                breakpointCols={{ default: 4, 1280: 4, 1024: 3, 640: 2, 0: 2 }}
+                className="-ml-4 flex w-auto"
+                columnClassName="pl-4 bg-clip-padding"
+              >
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const aspects = [
+                    'aspect-[3/4]',
+                    'aspect-[4/5]',
+                    'aspect-[3/5]',
+                  ]
+                  const aspectClass = aspects[i % aspects.length]
+                  return (
+                    <TechnicianSkeleton key={i} imageAspect={aspectClass} />
+                  )
+                })}
+              </Masonry>
             ) : technicians.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <Shield className="h-16 w-16 text-gray-300" />
@@ -321,14 +352,32 @@ export default function TeknisiPage() {
             ) : (
               <>
                 {/* Masonry Layout - All Screen Sizes */}
-                <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
-                  {technicians.map((tech) => {
+                <Masonry
+                  breakpointCols={{
+                    default: 4,
+                    1280: 4,
+                    1024: 3,
+                    640: 2,
+                    0: 2,
+                  }}
+                  className="-ml-4 flex w-auto"
+                  columnClassName="pl-4 bg-clip-padding"
+                >
+                  {technicians.map((tech, index) => {
                     const prices = tech.services.map((s) => s.price)
                     const minPrice = prices.length > 0 ? Math.min(...prices) : 0
                     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0
 
+                    // Create masonry effect with deterministic varied aspect ratios
+                    const aspects = [
+                      'aspect-[3/4]',
+                      'aspect-[4/5]',
+                      'aspect-[3/5]',
+                    ]
+                    const aspectClass = aspects[index % aspects.length]
+
                     return (
-                      <div key={tech.id} className="mb-4 break-inside-avoid">
+                      <div key={tech.id} className="mb-4">
                         <ProductCard
                           id={tech.id}
                           title={tech.user.name || 'Teknisi'}
@@ -349,20 +398,19 @@ export default function TeknisiPage() {
                           }
                           badgeColor={tech.isAvailable ? 'green' : 'red'}
                           href={`/teknisi/${tech.id}`}
+                          imageAspect={aspectClass}
+                          priority={index < 4} // Prioritize first 4 images for LCP
                         />
                       </div>
                     )
                   })}
 
                   {/* Loading More Skeletons */}
-                  {loadingMore && (
-                    <>
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <TechnicianSkeleton key={`loading-${i}`} />
-                      ))}
-                    </>
-                  )}
-                </div>
+                  {loadingMore &&
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <TechnicianSkeleton key={`loading-${i}`} />
+                    ))}
+                </Masonry>
 
                 {/* Infinite Scroll Trigger */}
                 <div

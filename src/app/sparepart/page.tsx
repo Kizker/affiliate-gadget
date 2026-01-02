@@ -7,6 +7,8 @@ import { SearchBar } from '@/components/catalog/search-bar'
 import { FilterSidebar } from '@/components/catalog/filter-sidebar'
 import { ProductCard } from '@/components/catalog/product-card'
 import { SlidersHorizontal, X } from 'lucide-react'
+import Image from 'next/image'
+import Masonry from 'react-masonry-css'
 
 interface Product {
   id: string
@@ -27,12 +29,16 @@ interface FilterOption {
 }
 
 // Skeleton Loading Component
-function ProductSkeleton() {
+// Skeleton Loading Component
+function ProductSkeleton({
+  imageAspect = 'aspect-[3/4]',
+}: {
+  imageAspect?: string
+}) {
   return (
     <div className="mb-4 break-inside-avoid">
       <div className="relative animate-pulse overflow-hidden rounded-xl bg-gray-200">
-        {/* Random height untuk masonry effect */}
-        <div className="aspect-[3/4] w-full" />
+        <div className={`${imageAspect} w-full`} />
         {/* Content skeleton */}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-gray-300 to-transparent p-4">
           <div className="mb-2 h-4 w-3/4 rounded bg-gray-400/50" />
@@ -248,10 +254,13 @@ export default function SparepartPage() {
     <div className="relative min-h-screen overflow-hidden">
       {/* Background Image with Gradient Overlay */}
       <div className="fixed inset-0 -z-10">
-        <img
+        <Image
           src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1920&q=80"
-          alt="Background"
-          className="h-full w-full object-cover"
+          alt=""
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95"></div>
       </div>
@@ -348,11 +357,21 @@ export default function SparepartPage() {
 
             {/* Initial Loading State with Skeletons */}
             {loading ? (
-              <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <ProductSkeleton key={i} />
-                ))}
-              </div>
+              <Masonry
+                breakpointCols={{ default: 4, 1280: 4, 1024: 3, 640: 2, 0: 2 }}
+                className="-ml-4 flex w-auto"
+                columnClassName="pl-4 bg-clip-padding"
+              >
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const aspects = [
+                    'aspect-[3/4]',
+                    'aspect-[4/5]',
+                    'aspect-[3/5]',
+                  ]
+                  const aspectClass = aspects[i % aspects.length]
+                  return <ProductSkeleton key={i} imageAspect={aspectClass} />
+                })}
+              </Masonry>
             ) : products.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <p className="text-gray-500">Tidak ada produk ditemukan</p>
@@ -360,32 +379,53 @@ export default function SparepartPage() {
             ) : (
               <>
                 {/* Masonry Layout - All Screen Sizes */}
-                <div className="columns-2 gap-4 space-y-4 sm:columns-3 lg:columns-3 xl:columns-4">
-                  {products.map((item) => (
-                    <div key={item.id} className="mb-4 break-inside-avoid">
-                      <ProductCard
-                        id={item.id}
-                        title={item.name}
-                        image={item.images[0] || '/placeholder.png'}
-                        description={`${item.brand || 'No Brand'} • ${item.category}`}
-                        price={item.price}
-                        badge={item.stock > 0 ? `Stok: ${item.stock}` : 'Habis'}
-                        badgeColor={item.stock > 0 ? 'green' : 'red'}
-                        href={`/sparepart/${item.id}`}
-                        actionLabel="Lihat Detail"
-                      />
-                    </div>
-                  ))}
+                <Masonry
+                  breakpointCols={{
+                    default: 4,
+                    1280: 4,
+                    1024: 3,
+                    640: 2,
+                    0: 2,
+                  }}
+                  className="-ml-4 flex w-auto"
+                  columnClassName="pl-4 bg-clip-padding"
+                >
+                  {products.map((item, index) => {
+                    // Create masonry effect with deterministic varied aspect ratios
+                    const aspects = [
+                      'aspect-[3/4]',
+                      'aspect-[4/5]',
+                      'aspect-[3/5]',
+                    ]
+                    const aspectClass = aspects[index % aspects.length]
+
+                    return (
+                      <div key={item.id} className="mb-4">
+                        <ProductCard
+                          id={item.id}
+                          title={item.name}
+                          image={item.images[0] || '/placeholder.png'}
+                          description={`${item.brand || 'No Brand'} • ${item.category}`}
+                          price={item.price}
+                          badge={
+                            item.stock > 0 ? `Stok: ${item.stock}` : 'Habis'
+                          }
+                          badgeColor={item.stock > 0 ? 'green' : 'red'}
+                          href={`/sparepart/${item.id}`}
+                          actionLabel="Lihat Detail"
+                          imageAspect={aspectClass}
+                          priority={index < 4} // Prioritize first 4 images for LCP
+                        />
+                      </div>
+                    )
+                  })}
 
                   {/* Loading More Skeletons */}
-                  {loadingMore && (
-                    <>
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <ProductSkeleton key={`loading-${i}`} />
-                      ))}
-                    </>
-                  )}
-                </div>
+                  {loadingMore &&
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <ProductSkeleton key={`loading-${i}`} />
+                    ))}
+                </Masonry>
 
                 {/* Infinite Scroll Trigger */}
                 <div

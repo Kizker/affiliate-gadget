@@ -282,12 +282,7 @@ export default function AdminChatPage() {
   const handleSendMessage = async (
     messageType = 'text',
     attachmentId?: string,
-    attachmentData?: {
-      mediaUrl?: string
-      mediaType?: string
-      mediaSize?: number
-      mediaName?: string
-    }
+    attachmentData?: any
   ) => {
     if (messageType === 'text' && !messageInput.trim()) return
     if (!selectedRoom) return

@@ -367,7 +367,7 @@ async function main() {
       stock: 5,
       description: 'Mikroskop USB untuk inspeksi PCB',
       image:
-        'https://images.unsplash.com/photo-1582719471384-894fbb16f7ce?w=300&h=450&fit=crop',
+        'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=300&h=450&fit=crop',
     },
     {
       name: 'Oscilloscope Digital 100MHz',
@@ -535,7 +535,7 @@ async function main() {
       stock: 2,
       description: 'Kamera thermal untuk diagnosa',
       image:
-        'https://images.unsplash.com/photo-1582719471384-894fbb16f7ce?w=400&h=300&fit=crop',
+        'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop',
     },
   ]
 

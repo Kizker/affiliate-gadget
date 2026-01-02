@@ -57,7 +57,7 @@ export default function ReviewList({
       setReviews(data.reviews)
     } catch (error) {
       console.error('Error fetching reviews:', error)
-      setError(error.message)
+      setError((error as any).message)
     } finally {
       setLoading(false)
     }

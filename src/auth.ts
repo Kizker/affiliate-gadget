@@ -7,17 +7,12 @@ import bcrypt from 'bcryptjs'
 import { loginSchema } from '@/lib/validations/auth'
 import { UserRole } from '@prisma/client'
 
+import { authConfig } from './auth.config'
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  ...authConfig,
+  adapter: PrismaAdapter(prisma) as any, // Type assertion to bypass @auth/core version conflict
   trustHost: true,
-  session: {
-    strategy: 'jwt',
-    maxAge: 24 * 60 * 60, // 1 day
-  },
-  pages: {
-    signIn: '/login',
-    error: '/auth/error',
-  },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -62,6 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user) {
         // Only store essential data in JWT to keep it small

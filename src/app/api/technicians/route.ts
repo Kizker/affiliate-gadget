@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit
 
     // Build where clause - only active technicians with active users
-    const where: Record<string, unknown> = {
+    const where: any = {
       isAvailable: true,
       user: {
         isActive: true,
@@ -89,8 +89,12 @@ export async function GET(req: NextRequest) {
           },
         })
 
-        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0)
-        const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0
+        const totalRating = reviews.reduce(
+          (sum, review) => sum + review.rating,
+          0
+        )
+        const averageRating =
+          reviews.length > 0 ? totalRating / reviews.length : 0
 
         return {
           ...tech,

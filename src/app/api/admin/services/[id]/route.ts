@@ -5,9 +5,10 @@ import { db } from '@/lib/db'
 // GET /api/admin/services/[id] - Get service by ID
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession()
 
     if (
@@ -18,7 +19,7 @@ export async function GET(
     }
 
     const service = await db.service.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         technician: {
           include: {
@@ -50,9 +51,10 @@ export async function GET(
 // PUT /api/admin/services/[id] - Update service
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession()
 
     if (
@@ -67,7 +69,7 @@ export async function PUT(
 
     // Check if service exists
     const existing = await db.service.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existing) {
@@ -76,7 +78,7 @@ export async function PUT(
 
     // Update service
     const service = await db.service.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: name || existing.name,
         description:
@@ -106,9 +108,10 @@ export async function PUT(
 // DELETE /api/admin/services/[id] - Delete service
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession()
 
     if (
@@ -120,7 +123,7 @@ export async function DELETE(
 
     // Check if service exists
     const existing = await db.service.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existing) {
@@ -129,7 +132,7 @@ export async function DELETE(
 
     // Delete service
     await db.service.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: 'Service deleted successfully' })

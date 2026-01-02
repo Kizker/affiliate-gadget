@@ -46,6 +46,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                       ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
                       : 'bg-gray-800 hover:bg-cyan-500'
                   }`}
+                  aria-label="Facebook"
                 >
                   <Facebook className="h-5 w-5" />
                 </a>
@@ -56,6 +57,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                       ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
                       : 'bg-gray-800 hover:bg-cyan-500'
                   }`}
+                  aria-label="Instagram"
                 >
                   <Instagram className="h-5 w-5" />
                 </a>
@@ -66,6 +68,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                       ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
                       : 'bg-gray-800 hover:bg-cyan-500'
                   }`}
+                  aria-label="Twitter"
                 >
                   <Twitter className="h-5 w-5" />
                 </a>
@@ -91,7 +94,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                   <li>
                     <Link
                       href="/teknisi"
-                      className={`transition-colors ${
+                      className={`block py-1.5 transition-colors ${
                         isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                       }`}
                     >
@@ -101,7 +104,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                   <li>
                     <Link
                       href="/sparepart"
-                      className={`transition-colors ${
+                      className={`block py-1.5 transition-colors ${
                         isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                       }`}
                     >
@@ -111,7 +114,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                   <li>
                     <Link
                       href="/sewa-alat"
-                      className={`transition-colors ${
+                      className={`block py-1.5 transition-colors ${
                         isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                       }`}
                     >
@@ -121,7 +124,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                   <li>
                     <Link
                       href="/rekomendasi"
-                      className={`transition-colors ${
+                      className={`block py-1.5 transition-colors ${
                         isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                       }`}
                     >
@@ -148,7 +151,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                   <li>
                     <Link
                       href="/about"
-                      className={`transition-colors ${
+                      className={`block py-1.5 transition-colors ${
                         isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                       }`}
                     >
@@ -158,7 +161,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                   <li>
                     <Link
                       href="/blog"
-                      className={`transition-colors ${
+                      className={`block py-1.5 transition-colors ${
                         isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                       }`}
                     >
@@ -168,7 +171,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                   <li>
                     <a
                       href="#"
-                      className={`transition-colors ${
+                      className={`block py-1.5 transition-colors ${
                         isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                       }`}
                     >
@@ -178,7 +181,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                   <li>
                     <a
                       href="#"
-                      className={`transition-colors ${
+                      className={`block py-1.5 transition-colors ${
                         isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                       }`}
                     >
@@ -260,6 +263,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                       ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
                       : 'bg-gray-800 hover:bg-cyan-500'
                   }`}
+                  aria-label="Facebook"
                 >
                   <Facebook className="h-5 w-5" />
                 </a>
@@ -270,6 +274,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                       ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
                       : 'bg-gray-800 hover:bg-cyan-500'
                   }`}
+                  aria-label="Instagram"
                 >
                   <Instagram className="h-5 w-5" />
                 </a>
@@ -280,6 +285,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                       ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
                       : 'bg-gray-800 hover:bg-cyan-500'
                   }`}
+                  aria-label="Twitter"
                 >
                   <Twitter className="h-5 w-5" />
                 </a>
@@ -303,7 +309,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                 <li>
                   <Link
                     href="/teknisi"
-                    className={`transition-colors ${
+                    className={`block py-1.5 transition-colors ${
                       isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                     }`}
                   >
@@ -313,7 +319,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                 <li>
                   <Link
                     href="/sparepart"
-                    className={`transition-colors ${
+                    className={`block py-1.5 transition-colors ${
                       isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                     }`}
                   >
@@ -323,7 +329,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                 <li>
                   <Link
                     href="/sewa-alat"
-                    className={`transition-colors ${
+                    className={`block py-1.5 transition-colors ${
                       isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                     }`}
                   >
@@ -333,7 +339,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                 <li>
                   <Link
                     href="/rekomendasi"
-                    className={`transition-colors ${
+                    className={`block py-1.5 transition-colors ${
                       isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                     }`}
                   >
@@ -360,7 +366,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                 <li>
                   <Link
                     href="/about"
-                    className={`transition-colors ${
+                    className={`block py-1.5 transition-colors ${
                       isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                     }`}
                   >
@@ -370,7 +376,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                 <li>
                   <Link
                     href="/blog"
-                    className={`transition-colors ${
+                    className={`block py-1.5 transition-colors ${
                       isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                     }`}
                   >
@@ -380,7 +386,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                 <li>
                   <a
                     href="#"
-                    className={`transition-colors ${
+                    className={`block py-1.5 transition-colors ${
                       isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                     }`}
                   >
@@ -390,7 +396,7 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                 <li>
                   <a
                     href="#"
-                    className={`transition-colors ${
+                    className={`block py-1.5 transition-colors ${
                       isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
                     }`}
                   >

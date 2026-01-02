@@ -81,8 +81,6 @@ async function exportDatabase() {
         description: true,
         category: true,
         price: true,
-        minPrice: true,
-        maxPrice: true,
         duration: true,
         isActive: true,
         createdAt: true,

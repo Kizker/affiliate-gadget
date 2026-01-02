@@ -169,8 +169,6 @@ async function seedFromBackup() {
             | 'CEK_BONGKAR'
             | 'SERVIS_LENGKAP',
           price: service.price as number,
-          minPrice: service.minPrice as number | null,
-          maxPrice: service.maxPrice as number | null,
           duration:
             typeof service.duration === 'number' ? service.duration : null,
           isActive: (service.isActive ?? true) as boolean,
@@ -270,10 +268,6 @@ async function seedFromBackup() {
             roomId: msg.roomId as string,
             senderId: msg.senderId as string,
             content: msg.content as string,
-            mediaUrl: msg.mediaUrl as string | null,
-            mediaType: msg.mediaType as string | null,
-            mediaSize: msg.mediaSize as number | null,
-            mediaName: msg.mediaName as string | null,
             isRead: (msg.isRead ?? false) as boolean,
             createdAt: new Date(msg.createdAt as string),
           },

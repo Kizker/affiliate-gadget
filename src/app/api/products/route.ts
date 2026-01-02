@@ -42,9 +42,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (minPrice !== undefined || maxPrice !== undefined) {
-      where.price = {}
-      if (minPrice !== undefined) where.price.gte = minPrice
-      if (maxPrice !== undefined) where.price.lte = maxPrice
+      where.price = {} as any
+      if (minPrice !== undefined) (where.price as any).gte = minPrice
+      if (maxPrice !== undefined) (where.price as any).lte = maxPrice
     }
 
     // Build orderBy clause

@@ -59,7 +59,7 @@ export default function ReviewCard({
       }
     } catch (error) {
       console.error('Error deleting review:', error)
-      toast.error(error.message || 'Gagal menghapus review')
+      toast.error((error as any).message || 'Gagal menghapus review')
     } finally {
       setDeleting(false)
     }
@@ -123,7 +123,7 @@ export default function ReviewCard({
                     })
                   }
                   className="rounded-lg p-1.5 text-blue-600 transition-colors hover:bg-blue-50"
-                  title="Edit review"
+                  aria-label="Edit review"
                 >
                   <Edit2 className="h-4 w-4" />
                 </button>
@@ -131,7 +131,7 @@ export default function ReviewCard({
                   onClick={handleDelete}
                   disabled={deleting}
                   className="rounded-lg p-1.5 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                  title="Hapus review"
+                  aria-label="Hapus review"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
