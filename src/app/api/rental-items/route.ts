@@ -71,27 +71,36 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(total / limit)
 
-    // Get stats
+    // Optimized: Calculate stats from already fetched data instead of 3 separate queries
+    const allActiveItems = await prisma.rentalItem.findMany({
+      where: { isActive: true },
+      select: { stock: true },
+    })
+
     const stats = {
-      total: await prisma.rentalItem.count({ where: { isActive: true } }),
-      available: await prisma.rentalItem.count({
-        where: { isActive: true, stock: { gt: 0 } },
-      }),
-      unavailable: await prisma.rentalItem.count({
-        where: { isActive: true, stock: 0 },
-      }),
+      total: allActiveItems.length,
+      available: allActiveItems.filter((item) => item.stock > 0).length,
+      unavailable: allActiveItems.filter((item) => item.stock === 0).length,
     }
 
-    return NextResponse.json({
-      rentalItems,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
+    // Cache response for 60 seconds, serve stale for up to 5 minutes while revalidating
+    const headers = {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+    }
+
+    return NextResponse.json(
+      {
+        rentalItems,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+        stats,
       },
-      stats,
-    })
+      { headers }
+    )
   } catch (error) {
     console.error('Error fetching rental items:', error)
     return NextResponse.json(

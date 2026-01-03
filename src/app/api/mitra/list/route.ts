@@ -108,10 +108,18 @@ export async function GET(request: NextRequest) {
       weekendHours: mitra.weekendHours,
     }))
 
-    return NextResponse.json({
-      mitras: transformedMitras,
-      total: transformedMitras.length,
-    })
+    // Cache response for 60 seconds, serve stale for up to 5 minutes while revalidating
+    const headers = {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+    }
+
+    return NextResponse.json(
+      {
+        mitras: transformedMitras,
+        total: transformedMitras.length,
+      },
+      { headers }
+    )
   } catch (error) {
     console.error('Error fetching mitra list:', error)
     return NextResponse.json(

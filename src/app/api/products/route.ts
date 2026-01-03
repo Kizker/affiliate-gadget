@@ -78,27 +78,35 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(total / limit)
 
-    return NextResponse.json({
-      products,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
+    // Cache response for 60 seconds, serve stale for up to 5 minutes while revalidating
+    const headers = {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+    }
+
+    return NextResponse.json(
+      {
+        products,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+        filters: {
+          categories: categories.map((c) => ({
+            value: c.category,
+            label: c.category,
+            count: c._count,
+          })),
+          brands: brands.map((b) => ({
+            value: b.brand,
+            label: b.brand,
+            count: b._count,
+          })),
+        },
       },
-      filters: {
-        categories: categories.map((c) => ({
-          value: c.category,
-          label: c.category,
-          count: c._count,
-        })),
-        brands: brands.map((b) => ({
-          value: b.brand,
-          label: b.brand,
-          count: b._count,
-        })),
-      },
-    })
+      { headers }
+    )
   } catch (error) {
     console.error('Error fetching products:', error)
     return NextResponse.json(

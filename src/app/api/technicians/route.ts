@@ -132,15 +132,23 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    return NextResponse.json({
-      technicians: techniciansWithRealRatings,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+    // Cache response for 60 seconds, serve stale for up to 5 minutes while revalidating
+    const headers = {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+    }
+
+    return NextResponse.json(
+      {
+        technicians: techniciansWithRealRatings,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
       },
-    })
+      { headers }
+    )
   } catch (error) {
     console.error('Error fetching technicians:', error)
     return NextResponse.json(
