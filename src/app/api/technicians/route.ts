@@ -77,32 +77,60 @@ export async function GET(req: NextRequest) {
       orderBy,
     })
 
-    // Calculate real ratings from reviews for each technician
-    const techniciansWithRealRatings = await Promise.all(
-      technicians.map(async (tech) => {
-        const reviews = await db.review.findMany({
-          where: {
-            order: {
-              technicianId: tech.id,
-            },
-            type: 'TECHNICIAN',
+    // Fetch all reviews for these technicians in a single query
+    const technicianIds = technicians.map((t) => t.id)
+    const allReviews = await db.review.findMany({
+      where: {
+        type: 'TECHNICIAN',
+        order: {
+          technicianId: { in: technicianIds },
+        },
+      },
+      select: {
+        rating: true,
+        order: {
+          select: {
+            technicianId: true,
           },
-        })
+        },
+      },
+    })
 
-        const totalRating = reviews.reduce(
-          (sum, review) => sum + review.rating,
-          0
-        )
-        const averageRating =
-          reviews.length > 0 ? totalRating / reviews.length : 0
+    // Group reviews by technician ID in memory
+    const reviewsByTechnician = new Map<
+      string,
+      { totalRating: number; count: number }
+    >()
 
-        return {
-          ...tech,
-          rating: averageRating,
-          totalReview: reviews.length,
-        }
+    allReviews.forEach((review) => {
+      const techId = review.order?.technicianId
+      if (!techId) return
+
+      const existing = reviewsByTechnician.get(techId) || {
+        totalRating: 0,
+        count: 0,
+      }
+      reviewsByTechnician.set(techId, {
+        totalRating: existing.totalRating + review.rating,
+        count: existing.count + 1,
       })
-    )
+    })
+
+    // Calculate ratings for each technician
+    const techniciansWithRealRatings = technicians.map((tech) => {
+      const reviewData = reviewsByTechnician.get(tech.id) || {
+        totalRating: 0,
+        count: 0,
+      }
+      const averageRating =
+        reviewData.count > 0 ? reviewData.totalRating / reviewData.count : 0
+
+      return {
+        ...tech,
+        rating: averageRating,
+        totalReview: reviewData.count,
+      }
+    })
 
     return NextResponse.json({
       technicians: techniciansWithRealRatings,
