@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
 import sharp from 'sharp'
+import { v2 as cloudinary } from 'cloudinary'
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,19 +51,30 @@ export async function POST(request: NextRequest) {
       .jpeg({ quality: 90 })
       .toBuffer()
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'avatars')
-    await mkdir(uploadsDir, { recursive: true })
-
-    // Generate unique filename
-    const filename = `${session.user.id}-${Date.now()}.jpg`
-    const filepath = join(uploadsDir, filename)
-
-    // Save file
-    await writeFile(filepath, processedImage)
+    // Upload to Cloudinary
+    const uploadResult = await new Promise<{ secure_url: string }>(
+      (resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            {
+              folder: 'avatars',
+              public_id: `${session.user.id}-${Date.now()}`,
+              resource_type: 'image',
+              transformation: [
+                { width: 400, height: 400, crop: 'fill', gravity: 'face' },
+              ],
+            },
+            (error, result) => {
+              if (error) reject(error)
+              else resolve(result as { secure_url: string })
+            }
+          )
+          .end(processedImage)
+      }
+    )
 
     // Update user avatar in database
-    const avatarUrl = `/uploads/avatars/${filename}`
+    const avatarUrl = uploadResult.secure_url
     await prisma.user.update({
       where: { id: session.user.id },
       data: { image: avatarUrl },
