@@ -110,7 +110,11 @@ export async function GET(
       reviews: reviews || [],
     }
 
-    return NextResponse.json(safeResponse)
+    return NextResponse.json(safeResponse, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    })
   } catch (error) {
     console.error('Error fetching technician:', error)
 

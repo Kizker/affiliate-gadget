@@ -7,8 +7,25 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import prisma from '@/lib/db'
 
+// Enable ISR - revalidate every 60 seconds
+export const revalidate = 60
+
 export const metadata = {
   title: 'Detail Sewa Alat - HaloTekno',
+}
+
+// Pre-generate popular rental item pages at build time
+export async function generateStaticParams() {
+  const items = await prisma.rentalItem.findMany({
+    where: { isActive: true, stock: { gt: 0 } },
+    take: 20,
+    select: { id: true },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return items.map((item) => ({
+    id: item.id,
+  }))
 }
 
 async function getRentalItem(id: string) {

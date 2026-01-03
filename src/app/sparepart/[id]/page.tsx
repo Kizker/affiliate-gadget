@@ -14,8 +14,25 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import prisma from '@/lib/db'
 
+// Enable ISR - revalidate every 60 seconds
+export const revalidate = 60
+
 export const metadata = {
   title: 'Detail Sparepart - HaloTekno',
+}
+
+// Pre-generate popular product pages at build time
+export async function generateStaticParams() {
+  const products = await prisma.product.findMany({
+    where: { isActive: true, stock: { gt: 0 } },
+    take: 30,
+    select: { id: true },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return products.map((product) => ({
+    id: product.id,
+  }))
 }
 
 async function getProduct(id: string) {
