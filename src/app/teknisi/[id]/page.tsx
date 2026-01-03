@@ -543,7 +543,7 @@ export default function TeknisiDetailPage({
                             Login sebagai customer untuk memulai konsultasi
                           </p>
                           <Link
-                            href="/auth/login"
+                            href="/api/auth/signin"
                             className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 font-semibold text-white transition-all hover:shadow-lg"
                           >
                             <svg
@@ -727,7 +727,7 @@ export default function TeknisiDetailPage({
                             Login sebagai customer untuk melakukan booking
                           </p>
                           <Link
-                            href="/auth/login"
+                            href="/api/auth/signin"
                             className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 font-semibold text-white transition-all hover:shadow-lg"
                           >
                             <svg

@@ -49,7 +49,7 @@ export default function RentalActions({
       <div className="sticky bottom-0 space-y-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
         {/* Login Button - Primary */}
         <Link
-          href="/auth/login"
+          href="/api/auth/signin"
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 py-3 font-semibold text-white transition-all hover:shadow-lg"
         >
           <LogIn className="h-5 w-5" />
