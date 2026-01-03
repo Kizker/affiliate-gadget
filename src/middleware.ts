@@ -116,7 +116,7 @@ export default auth((req) => {
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://utfs.io https://lh3.googleusercontent.com https://images.unsplash.com https://res.cloudinary.com https://ui-avatars.com; media-src 'self' https://videos.pexels.com; font-src 'self'; connect-src 'self' https://utfs.io; frame-ancestors 'none'; require-trusted-types-for 'script';"
+    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://maps.google.com https://widget.cloudinary.com https://upload-widget.cloudinary.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://widget.cloudinary.com; img-src 'self' blob: data: https://utfs.io https://lh3.googleusercontent.com https://images.unsplash.com https://res.cloudinary.com https://ui-avatars.com https://maps.gstatic.com https://maps.googleapis.com; media-src 'self' https://videos.pexels.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://utfs.io https://api.cloudinary.com https://res.cloudinary.com https://maps.googleapis.com; frame-ancestors 'none';"
   )
   response.headers.set(
     'Permissions-Policy',

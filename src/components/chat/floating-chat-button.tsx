@@ -17,8 +17,11 @@ import {
   Check,
   CheckCheck,
   Clock,
+  Maximize2,
+  Package,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 
 interface TechnicianChatRoom {
@@ -78,6 +81,7 @@ interface Message {
   content: string
   messageType?: string
   mediaUrl?: string
+  mediaType?: string
   createdAt: string
   isRead?: boolean
   sender: {
@@ -88,11 +92,26 @@ interface Message {
   }
 }
 
+interface Product {
+  id: string
+  name: string
+  price: number
+  images: string[]
+  slug: string
+  stock: number
+  category: {
+    name: string
+  } | null
+}
+
 export default function FloatingChatButton() {
   const { data: session, status } = useSession()
+  const pathname = usePathname()
+
   const [isOpen, setIsOpen] = useState(false)
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [loading, setLoading] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   // Active chat state
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null)
@@ -109,9 +128,23 @@ export default function FloatingChatButton() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showMobileChat, setShowMobileChat] = useState(false) // Control mobile view
 
+  // Product recommendation state (for technicians)
+  const [showProductPicker, setShowProductPicker] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [productSearchQuery, setProductSearchQuery] = useState('')
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Detect mobile screen
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Prevent body scroll when chat is open (mobile fullscreen)
   useEffect(() => {
@@ -458,6 +491,70 @@ export default function FloatingChatButton() {
     }
   }
 
+  // Fetch products for recommendation (technicians only)
+  const fetchProducts = async (search: string = '') => {
+    setLoadingProducts(true)
+    try {
+      const res = await fetch(
+        `/api/products?search=${encodeURIComponent(search)}&limit=20`
+      )
+      if (res.ok) {
+        const data = await res.json()
+        setProducts(data.products || [])
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error)
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
+
+  // Send product recommendation
+  const sendProductRecommendation = async (product: Product) => {
+    if (!activeRoom) return
+
+    setSending(true)
+    try {
+      // Create recommendation JSON content
+      const recommendationContent = JSON.stringify({
+        type: 'product',
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0] || null,
+        slug: product.slug,
+        stock: product.stock,
+        category: product.category?.name || 'Sparepart',
+      })
+
+      const endpoint =
+        activeRoom.type === 'admin'
+          ? `/api/customer/chat/room?orderId=${(activeRoom as AdminChatRoom).orderId}`
+          : `/api/chat/rooms/${activeRoom.id}/messages`
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: recommendationContent }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.message) {
+          setMessages((prev) => [...prev, data.message])
+          setShouldScrollToBottom(true)
+        }
+        setShowProductPicker(false)
+        setShowAttachMenu(false)
+        toast.success('Rekomendasi terkirim!')
+      }
+    } catch (error) {
+      console.error('Error sending recommendation:', error)
+      toast.error('Gagal mengirim rekomendasi')
+    } finally {
+      setSending(false)
+    }
+  }
+
   const handleClick = () => {
     if (status !== 'authenticated') {
       window.location.href = '/login'
@@ -498,6 +595,57 @@ export default function FloatingChatButton() {
     }
   }
 
+  // Helper to format preview message (detect JSON product recommendations)
+  const formatPreviewMessage = (
+    message:
+      | {
+          content?: string
+          mediaUrl?: string
+          mediaType?: string
+          messageType?: string
+        }
+      | undefined
+  ): string => {
+    if (!message) return 'Tidak ada pesan'
+
+    // Check if it's an image (technician or admin chat)
+    if (
+      message.mediaUrl &&
+      (message.mediaType?.startsWith('image/') ||
+        message.messageType === 'image')
+    ) {
+      return '📷 Mengirim gambar'
+    }
+
+    const content = message.content
+    if (!content) return 'Tidak ada pesan'
+
+    // Check if content starts with { - likely JSON (product/rental recommendation or order)
+    if (content.trim().startsWith('{')) {
+      try {
+        const data = JSON.parse(content)
+        if (data.name && data.type === 'product') {
+          return `📦 Rekomendasi: ${data.name}`
+        } else if (data.name && data.type === 'rental') {
+          return `🔧 Rekomendasi Rental: ${data.name}`
+        } else if (
+          data.orderNumber ||
+          data.id?.startsWith('RNT-') ||
+          data.id?.startsWith('ORD-')
+        ) {
+          return '📋 Mengirim info pesanan'
+        } else if (data.name) {
+          return `📦 ${data.name}`
+        }
+      } catch {
+        // Not valid JSON, return truncated original
+        return content.length > 50 ? content.substring(0, 50) + '...' : content
+      }
+    }
+
+    return content.length > 50 ? content.substring(0, 50) + '...' : content
+  }
+
   const filteredRooms = rooms.filter((room) => {
     if (room.type === 'admin') {
       const adminRoom = room as AdminChatRoom
@@ -513,16 +661,29 @@ export default function FloatingChatButton() {
       )
     } else {
       const techRoom = room as TechnicianChatRoom
-      return techRoom.technician?.user?.name
-        ?.toLowerCase()
-        .includes(searchQuery.toLowerCase())
+      const isTechnicianRole = (session?.user?.role as string) === 'TECHNICIAN'
+      const searchName = isTechnicianRole
+        ? techRoom.customer?.name
+        : techRoom.technician?.user?.name
+
+      return (
+        searchName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false
+      )
     }
   })
 
   // Don't show for non-customers
   if (status === 'loading') return null
-  if (session?.user?.role && !['CUSTOMER', 'USER'].includes(session.user.role))
+  if (
+    session?.user?.role &&
+    !['CUSTOMER', 'USER', 'TECHNICIAN', 'ADMIN', 'SUPER_ADMIN'].includes(
+      session.user.role
+    )
+  )
     return null
+
+  // Hide floating button on chat detail pages ONLY on mobile
+  if (isMobile && pathname?.startsWith('/chat/')) return null
 
   return (
     <>
@@ -553,6 +714,92 @@ export default function FloatingChatButton() {
             className="max-h-full max-w-full rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {/* Product Picker Modal */}
+      {showProductPicker && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowProductPicker(false)}
+        >
+          <div
+            className="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b p-4">
+              <h3 className="text-lg font-bold text-gray-900">
+                Pilih Sparepart
+              </h3>
+              <button
+                onClick={() => setShowProductPicker(false)}
+                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="border-b p-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari sparepart..."
+                  value={productSearchQuery}
+                  onChange={(e) => {
+                    setProductSearchQuery(e.target.value)
+                    fetchProducts(e.target.value)
+                  }}
+                  className="w-full rounded-lg border bg-gray-50 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+            </div>
+
+            {/* Product List */}
+            <div className="flex-1 overflow-y-auto p-3">
+              {loadingProducts ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                </div>
+              ) : products.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">
+                  <Package className="mx-auto h-12 w-12 text-gray-300" />
+                  <p className="mt-2">Tidak ada produk ditemukan</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {products.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => sendProductRecommendation(product)}
+                      disabled={sending}
+                      className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50"
+                    >
+                      <img
+                        src={product.images?.[0] || '/placeholder-product.png'}
+                        alt={product.name}
+                        className="h-14 w-14 rounded-lg object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-gray-900">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {product.category?.name || 'Sparepart'}
+                        </p>
+                        <p className="text-sm font-semibold text-blue-600">
+                          Rp {product.price.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                      <Send className="h-5 w-5 flex-shrink-0 text-blue-500" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -658,7 +905,14 @@ export default function FloatingChatButton() {
                       'Pesanan'
                   } else {
                     const techRoom = room as TechnicianChatRoom
-                    itemName = techRoom.technician?.user?.name || 'Teknisi'
+                    // If I am the technician, show customer name. If I am customer, show technician name.
+                    const isTechnicianRole =
+                      (session?.user?.role as string) === 'TECHNICIAN'
+                    if (isTechnicianRole) {
+                      itemName = techRoom.customer?.name || 'Customer'
+                    } else {
+                      itemName = techRoom.technician?.user?.name || 'Teknisi'
+                    }
                   }
 
                   const isActive = activeRoom?.id === room.id
@@ -671,33 +925,59 @@ export default function FloatingChatButton() {
                     >
                       <div className="flex items-center gap-3">
                         {/* Admin/Technician Avatar */}
-                        {room.type === 'admin' ? (
-                          (() => {
-                            // Get admin info from room messages
-                            const adminMessage = room.messages?.find(
-                              (m) =>
-                                m.sender?.role === 'ADMIN' ||
-                                m.sender?.role === 'SUPER_ADMIN'
-                            )
-                            const adminImage = adminMessage?.sender?.image
+                        {room.type === 'admin'
+                          ? (() => {
+                              // Get admin info from room messages
+                              const adminMessage = room.messages?.find(
+                                (m) =>
+                                  (m.sender?.role as string) === 'ADMIN' ||
+                                  (m.sender?.role as string) === 'SUPER_ADMIN'
+                              )
+                              const adminImage = adminMessage?.sender?.image
 
-                            return adminImage ? (
-                              <img
-                                src={adminImage}
-                                alt="Admin"
-                                className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-green-200"
-                              />
-                            ) : (
-                              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md">
-                                <ShoppingBag className="h-5 w-5 text-white" />
-                              </div>
-                            )
-                          })()
-                        ) : (
-                          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 shadow-md">
-                            <Wrench className="h-5 w-5" />
-                          </div>
-                        )}
+                              return adminImage ? (
+                                <img
+                                  src={adminImage}
+                                  alt="Admin"
+                                  className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-green-200"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md">
+                                  <ShoppingBag className="h-5 w-5 text-white" />
+                                </div>
+                              )
+                            })()
+                          : (() => {
+                              const techRoom = room as TechnicianChatRoom
+                              // Logic for avatar display
+                              const isTechnicianRole =
+                                (session?.user?.role as string) === 'TECHNICIAN'
+                              let displayImage, displayName
+
+                              if (isTechnicianRole) {
+                                displayImage = techRoom.customer?.image
+                                displayName =
+                                  techRoom.customer?.name || 'Customer'
+                              } else {
+                                displayImage = techRoom.technician?.user?.image
+                                displayName =
+                                  techRoom.technician?.user?.name || 'Teknisi'
+                              }
+
+                              return displayImage ? (
+                                <img
+                                  src={displayImage}
+                                  alt={displayName}
+                                  className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-blue-200"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 shadow-md">
+                                  <span className="text-lg font-bold text-white">
+                                    {displayName.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                              )
+                            })()}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <p className="truncate font-semibold text-gray-900">
@@ -721,7 +1001,7 @@ export default function FloatingChatButton() {
                             </span>
                           </div>
                           <p className="mt-1.5 truncate text-sm text-gray-500">
-                            {room.messages?.[0]?.content || 'Tidak ada pesan'}
+                            {formatPreviewMessage(room.messages?.[0])}
                           </p>
                         </div>
                         {(room._count?.messages || 0) > 0 && (
@@ -762,34 +1042,47 @@ export default function FloatingChatButton() {
                       <ChevronLeft className="h-5 w-5" />
                     </button>
                     {/* Admin/Technician Avatar */}
-                    {activeRoom.type === 'admin' ? (
-                      // Get admin info from messages
-                      (() => {
-                        const adminMessage = messages.find(
-                          (m) =>
-                            m.sender.role === 'ADMIN' ||
-                            m.sender.role === 'SUPER_ADMIN'
-                        )
-                        const adminName = adminMessage?.sender.name || 'Admin'
-                        const adminImage = adminMessage?.sender.image
+                    {activeRoom.type === 'admin'
+                      ? // Get admin info from messages
+                        (() => {
+                          const adminMessage = messages.find(
+                            (m) =>
+                              m.sender.role === 'ADMIN' ||
+                              m.sender.role === 'SUPER_ADMIN'
+                          )
+                          const adminName = adminMessage?.sender.name || 'Admin'
+                          const adminImage = adminMessage?.sender.image
 
-                        return adminImage ? (
-                          <img
-                            src={adminImage}
-                            alt={adminName}
-                            className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                            <ShoppingBag className="h-5 w-5" />
-                          </div>
-                        )
-                      })()
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                        <Wrench className="h-5 w-5" />
-                      </div>
-                    )}
+                          return adminImage ? (
+                            <img
+                              src={adminImage}
+                              alt={adminName}
+                              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                              <ShoppingBag className="h-5 w-5" />
+                            </div>
+                          )
+                        })()
+                      : (() => {
+                          const techRoom = activeRoom as TechnicianChatRoom
+                          const techImage = techRoom.technician?.user?.image
+                          const techName =
+                            techRoom.technician?.user?.name || 'Teknisi'
+
+                          return techImage ? (
+                            <img
+                              src={techImage}
+                              alt={techName}
+                              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                              <Wrench className="h-5 w-5 text-white" />
+                            </div>
+                          )
+                        })()}
                     <div className="min-w-0 flex-1">
                       <h3 className="truncate font-bold">
                         {activeRoom.type === 'admin'
@@ -809,12 +1102,23 @@ export default function FloatingChatButton() {
                           (activeRoom as AdminChatRoom).order?.orderNumber}
                       </p>
                     </div>
-                    <button
-                      onClick={closeWidget}
-                      className="rounded-full p-2 transition-colors hover:bg-white/20"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          (window.location.href = `/chat/${activeRoom.id}`)
+                        }
+                        className="rounded-full p-2 transition-colors hover:bg-white/20"
+                        title="Buka di halaman penuh"
+                      >
+                        <Maximize2 className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={closeWidget}
+                        className="rounded-full p-2 transition-colors hover:bg-white/20"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -850,7 +1154,8 @@ export default function FloatingChatButton() {
                     messages.map((msg) => {
                       const isMe = msg.sender.id === session?.user?.id
                       const isImage =
-                        msg.messageType === 'image' && msg.mediaUrl
+                        (msg.messageType === 'image' && msg.mediaUrl) || // Admin chat
+                        (msg.mediaType?.startsWith('image/') && msg.mediaUrl) // Technician chat
 
                       return (
                         <div
@@ -893,7 +1198,21 @@ export default function FloatingChatButton() {
                                 </div>
                               </div>
                             ) : msg.messageType === 'product' ||
-                              msg.messageType === 'rental' ? (
+                              msg.messageType === 'rental' ||
+                              (msg.content.trim().startsWith('{') &&
+                                (() => {
+                                  try {
+                                    const data = JSON.parse(msg.content)
+                                    return (
+                                      data.name &&
+                                      (data.type === 'product' ||
+                                        data.type === 'rental' ||
+                                        data.price !== undefined)
+                                    )
+                                  } catch {
+                                    return false
+                                  }
+                                })()) ? (
                               // Product/Rental Card
                               (() => {
                                 try {
@@ -1149,6 +1468,31 @@ export default function FloatingChatButton() {
                           </p>
                         </div>
                       </button>
+
+                      {/* Product Recommendation Button - Only for Technicians */}
+                      {((session?.user?.role as string) === 'TECHNICIAN' ||
+                        activeRoom?.type === 'technician') && (
+                        <button
+                          onClick={() => {
+                            setShowProductPicker(true)
+                            fetchProducts()
+                            setShowAttachMenu(false)
+                          }}
+                          className="mt-2 flex w-full items-center gap-3 rounded-xl bg-white p-3 text-left shadow-sm transition-colors hover:bg-gray-50"
+                        >
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-md">
+                            <Package className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              Rekomendasi Sparepart
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Kirim rekomendasi produk
+                            </p>
+                          </div>
+                        </button>
+                      )}
                     </div>
                   )}
 

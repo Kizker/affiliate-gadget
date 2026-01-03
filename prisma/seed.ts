@@ -75,6 +75,8 @@ async function main() {
       password: techPassword,
       role: 'CUSTOMER', // Role is CUSTOMER but has technician profile
       phone: '081234567892',
+      image:
+        'https://ui-avatars.com/api/?name=Budi+Teknisi&background=3b82f6&color=fff&size=200',
     },
   })
 

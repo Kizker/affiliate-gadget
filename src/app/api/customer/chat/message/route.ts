@@ -41,11 +41,17 @@ export async function POST(req: NextRequest) {
         messageType,
         mediaUrl: mediaUrl || null,
       },
-      include: {
+      select: {
+        id: true,
+        content: true,
+        messageType: true,
+        mediaUrl: true,
+        createdAt: true,
         sender: {
           select: {
             id: true,
             name: true,
+            image: true,
             role: true,
           },
         },

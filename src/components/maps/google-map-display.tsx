@@ -1,9 +1,8 @@
 'use client'
 
-import { useLoadScript, GoogleMap, Marker } from '@react-google-maps/api'
-import { MapPin, Loader2 } from 'lucide-react'
-
-const libraries: 'places'[] = ['places']
+import { GoogleMap, Marker } from '@react-google-maps/api'
+import { MapPin } from 'lucide-react'
+import { useGoogleMaps } from './google-maps-provider'
 
 interface GoogleMapDisplayProps {
   latitude: number
@@ -22,10 +21,7 @@ export default function GoogleMapDisplay({
   longitude,
   businessName,
 }: GoogleMapDisplayProps) {
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries,
-  })
+  const { isLoaded, loadError } = useGoogleMaps()
 
   const center = {
     lat: latitude,
@@ -46,7 +42,7 @@ export default function GoogleMapDisplay({
   if (!isLoaded) {
     return (
       <div className="flex h-full items-center justify-center rounded-2xl bg-gray-100">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
       </div>
     )
   }

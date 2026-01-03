@@ -28,7 +28,6 @@ export async function GET() {
         rating: true,
         totalReview: true,
         reviews: {
-          take: 5,
           orderBy: { createdAt: 'desc' },
           select: {
             id: true,

@@ -66,7 +66,19 @@ export default function MitraLayout({
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
       <Footer variant="light" />
-      <Toaster position="top-right" richColors />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            padding: '12px 16px',
+            fontSize: '14px',
+          },
+          classNames: {
+            success: 'bg-green-500 text-white border-green-500',
+            error: 'bg-red-500 text-white border-red-500',
+          },
+        }}
+      />
     </div>
   )
 }

@@ -47,6 +47,7 @@ export async function GET(request: Request) {
         | 'CANCELLED'
       claimedById?: string | null
       paymentRequestedById?: { not: null } | null
+      technicianPaymentRequestedById?: { not: null } | null
       items?: {
         some: {
           serviceId?: { not: null }
@@ -94,6 +95,9 @@ export async function GET(request: Request) {
       } else if (claimFilter === 'payment_requests') {
         // Filter for pending payment requests (SUPER_ADMIN only)
         where.paymentRequestedById = { not: null }
+      } else if (claimFilter === 'technician_payment_requests') {
+        // Filter for pending technician payment requests (SUPER_ADMIN only)
+        where.technicianPaymentRequestedById = { not: null }
       }
     }
 
@@ -140,6 +144,22 @@ export async function GET(request: Request) {
             email: true,
           },
         },
+        technicianPaymentRequestedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        technician: {
+          include: {
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
         items: {
           include: {
             product: {
@@ -165,13 +185,21 @@ export async function GET(request: Request) {
     })
 
     // Get stats for tabs
-    const [totalOrders, myOrders, unclaimedOrders, pendingPaymentRequests] =
-      await Promise.all([
-        prisma.order.count({}),
-        prisma.order.count({ where: { claimedById: user.id } }),
-        prisma.order.count({ where: { claimedById: null } }),
-        prisma.order.count({ where: { paymentRequestedById: { not: null } } }),
-      ])
+    const [
+      totalOrders,
+      myOrders,
+      unclaimedOrders,
+      pendingPaymentRequests,
+      pendingTechnicianPaymentRequests,
+    ] = await Promise.all([
+      prisma.order.count({}),
+      prisma.order.count({ where: { claimedById: user.id } }),
+      prisma.order.count({ where: { claimedById: null } }),
+      prisma.order.count({ where: { paymentRequestedById: { not: null } } }),
+      prisma.order.count({
+        where: { technicianPaymentRequestedById: { not: null } },
+      }),
+    ])
 
     return NextResponse.json({
       orders,
@@ -186,6 +214,7 @@ export async function GET(request: Request) {
         mine: myOrders,
         unclaimed: unclaimedOrders,
         pendingPaymentRequests: pendingPaymentRequests,
+        pendingTechnicianPaymentRequests: pendingTechnicianPaymentRequests,
       },
       currentUserId: user.id,
       currentUserRole: user.role,

@@ -39,6 +39,18 @@ interface Order {
     name: string | null
     email: string
   } | null
+  technicianPaymentRequestedById: string | null
+  technicianPaymentRequestedAt: string | null
+  technicianPaymentRequestedBy: {
+    id: string
+    name: string | null
+    email: string
+  } | null
+  technician?: {
+    user: {
+      name: string | null
+    }
+  }
   user: {
     name: string | null
     email: string
@@ -68,6 +80,7 @@ interface Stats {
   mine: number
   unclaimed: number
   pendingPaymentRequests: number
+  pendingTechnicianPaymentRequests: number
 }
 
 const statusColors: Record<string, string> = {
@@ -123,6 +136,7 @@ export default function AdminOrdersPage() {
     mine: 0,
     unclaimed: 0,
     pendingPaymentRequests: 0,
+    pendingTechnicianPaymentRequests: 0,
   })
   const [currentUserId, setCurrentUserId] = useState<string>('')
   const [currentUserRole, setCurrentUserRole] = useState<string>('')
@@ -363,6 +377,43 @@ export default function AdminOrdersPage() {
     }
   }
 
+  // Approve/Reject TECHNICIAN payment request (Super Admin only)
+  const handleTechnicianPaymentRequest = async (
+    orderId: string,
+    action: 'approve' | 'reject'
+  ) => {
+    setUpdating(orderId)
+    try {
+      const res = await fetch('/api/technician/orders/payment-request', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, action }),
+      })
+
+      if (res.ok) {
+        toast({
+          title: 'Berhasil',
+          description:
+            action === 'approve'
+              ? 'Pembayaran teknisi dikonfirmasi'
+              : 'Request teknisi ditolak',
+        })
+        fetchOrders()
+      } else {
+        const error = await res.json()
+        toast({
+          title: 'Gagal',
+          description: error.error || 'Gagal memproses request',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error handling technician payment request:', error)
+    } finally {
+      setUpdating(null)
+    }
+  }
+
   const handleClaimFilterChange = (
     newFilter: 'all' | 'mine' | 'unclaimed' | 'payment_requests'
   ) => {
@@ -463,6 +514,26 @@ export default function AdminOrdersPage() {
             {stats.pendingPaymentRequests > 0 && (
               <span className="animate-pulse rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-600">
                 {stats.pendingPaymentRequests}
+              </span>
+            )}
+          </button>
+        )}
+        {currentUserRole === 'SUPER_ADMIN' && (
+          <button
+            onClick={() =>
+              handleClaimFilterChange('technician_payment_requests' as any)
+            }
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+              claimFilter === ('technician_payment_requests' as any)
+                ? 'bg-white text-cyan-600 shadow-md'
+                : 'text-gray-600 hover:bg-white/50'
+            }`}
+          >
+            <User className="h-4 w-4" />
+            Konfirmasi Bayar Teknisi
+            {stats.pendingTechnicianPaymentRequests > 0 && (
+              <span className="animate-pulse rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-bold text-cyan-600">
+                {stats.pendingTechnicianPaymentRequests}
               </span>
             )}
           </button>
@@ -646,33 +717,6 @@ export default function AdminOrdersPage() {
                   </p>
 
                   <div className="flex flex-wrap gap-2">
-                    {/* Claim/Unclaim Button */}
-                    {!order.claimedById && (
-                      <button
-                        onClick={() => claimOrder(order.id)}
-                        disabled={claiming === order.id}
-                        className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
-                      >
-                        {claiming === order.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Hand className="h-4 w-4" />
-                        )}
-                        Ambil Pesanan
-                      </button>
-                    )}
-
-                    {order.claimedById === currentUserId && (
-                      <button
-                        onClick={() => unclaimOrder(order.id)}
-                        disabled={claiming === order.id}
-                        className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        <Unlock className="h-4 w-4" />
-                        Lepas
-                      </button>
-                    )}
-
                     {/* Status Actions - only if can edit */}
                     {canEditOrder(order) && (
                       <>
@@ -707,6 +751,7 @@ export default function AdminOrdersPage() {
                             {/* SUPER_ADMIN: Direct confirm or approve pending request */}
                             {currentUserRole === 'SUPER_ADMIN' && (
                               <>
+                                {/* Admin Chat Payment Request */}
                                 {order.paymentRequestedById ? (
                                   <>
                                     <button
@@ -733,6 +778,36 @@ export default function AdminOrdersPage() {
                                       Tolak
                                     </button>
                                   </>
+                                ) : order.technicianPaymentRequestedById ? (
+                                  /* Technician Payment Request */
+                                  <>
+                                    <button
+                                      onClick={() =>
+                                        handleTechnicianPaymentRequest(
+                                          order.id,
+                                          'approve'
+                                        )
+                                      }
+                                      disabled={updating === order.id}
+                                      className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50"
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleTechnicianPaymentRequest(
+                                          order.id,
+                                          'reject'
+                                        )
+                                      }
+                                      disabled={updating === order.id}
+                                      className="flex items-center gap-1 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                      Tolak
+                                    </button>
+                                  </>
                                 ) : (
                                   <button
                                     onClick={() =>
@@ -745,6 +820,17 @@ export default function AdminOrdersPage() {
                                     Konfirmasi Bayar
                                   </button>
                                 )}
+                                {/* Cancel button for all PENDING_PAYMENT orders */}
+                                <button
+                                  onClick={() =>
+                                    updateOrderStatus(order.id, 'CANCELLED')
+                                  }
+                                  disabled={updating === order.id}
+                                  className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                  Batal
+                                </button>
                               </>
                             )}
                           </>
@@ -810,19 +896,6 @@ export default function AdminOrdersPage() {
                             Selesaikan
                           </button>
                         )}
-                        {order.status !== 'CANCELLED' &&
-                          order.status !== 'COMPLETED' && (
-                            <button
-                              onClick={() =>
-                                updateOrderStatus(order.id, 'CANCELLED')
-                              }
-                              disabled={updating === order.id}
-                              className="flex items-center gap-1 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                            >
-                              <XCircle className="h-4 w-4" />
-                              Batal
-                            </button>
-                          )}
                       </>
                     )}
 

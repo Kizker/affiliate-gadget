@@ -59,11 +59,18 @@ export async function GET(req: NextRequest) {
     // Get messages for this room
     const messages = await prisma.adminChatMessage.findMany({
       where: { roomId: room.id },
-      include: {
+      select: {
+        id: true,
+        content: true,
+        messageType: true,
+        mediaUrl: true,
+        mediaType: true,
+        createdAt: true,
         sender: {
           select: {
             id: true,
             name: true,
+            image: true,
             role: true,
           },
         },
@@ -88,6 +95,8 @@ export async function GET(req: NextRequest) {
           id: order.id,
           orderNumber: order.orderNumber,
           status: order.status,
+          total: order.total,
+          createdAt: order.createdAt,
           items: order.items,
         },
       },

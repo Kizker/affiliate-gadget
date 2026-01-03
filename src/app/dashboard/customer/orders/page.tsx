@@ -44,6 +44,7 @@ interface Order {
     }
   }>
   technician?: {
+    id: string
     user: {
       name: string
       phone: string | null
@@ -560,15 +561,69 @@ export default function CustomerOrdersPage() {
                             ))}
                           {/* Chat button based on order type */}
                           {order.items[0]?.type === 'SERVICE' ? (
-                            <Link
-                              href={`/dashboard/customer/chat/teknisi/${order.id}`}
+                            <button
+                              onClick={async () => {
+                                if (!order.technician?.id) {
+                                  alert(
+                                    'Teknisi belum ditugaskan untuk order ini'
+                                  )
+                                  return
+                                }
+
+                                try {
+                                  const technicianId = order.technician.id
+
+                                  // Try to get existing chat room
+                                  const roomsRes =
+                                    await fetch('/api/chat/rooms')
+                                  if (roomsRes.ok) {
+                                    const roomsData = await roomsRes.json()
+                                    const existingRoom = roomsData.rooms?.find(
+                                      (room: any) =>
+                                        room.type === 'technician' &&
+                                        room.technician?.id === technicianId
+                                    )
+
+                                    if (existingRoom?.id) {
+                                      router.push(`/chat/${existingRoom.id}`)
+                                      return
+                                    }
+                                  }
+
+                                  // Create new room with technicianId
+                                  const createRes = await fetch(
+                                    '/api/chat/rooms',
+                                    {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({ technicianId }),
+                                    }
+                                  )
+
+                                  if (createRes.ok) {
+                                    const createData = await createRes.json()
+                                    if (createData.room?.id) {
+                                      router.push(`/chat/${createData.room.id}`)
+                                    }
+                                  } else {
+                                    alert('Gagal membuat chat room')
+                                  }
+                                } catch (error) {
+                                  console.error('Error opening chat:', error)
+                                  alert(
+                                    'Gagal membuka chat. Silakan coba lagi.'
+                                  )
+                                }
+                              }}
                               className="flex items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 sm:px-4 sm:py-2 sm:text-sm"
                             >
                               <MessageCircle className="h-4 w-4" />
                               <span className="hidden sm:inline">
                                 Chat Teknisi
                               </span>
-                            </Link>
+                            </button>
                           ) : (
                             <button
                               onClick={() => {

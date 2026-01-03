@@ -9,40 +9,41 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  name          String?
-  email         String         @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          UserRole       @default(CUSTOMER)
-  phone         String?
-  address       String?
-  city          String?
-  province      String?
-  postalCode    String?
-  isActive      Boolean        @default(true)
-  mitraStatus   MitraStatus?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  accounts      Account[]
-  carts         Cart[]
-  chats         chats[]
-  messages      messages[]
-  mitra         Mitra?
-  notifications Notification[]
-  orders        Order[]
-  reviews       Review[]
-  sessions      Session[]
-  technician    Technician?
-  tickets       Ticket[]
-  chatRooms     ChatRoom[]    @relation("CustomerChatRooms")
-  sentMessages  ChatMessage[] @relation("ChatMessageSender")
-  adminChatRooms      AdminChatRoom[]    @relation("CustomerAdminChats")
-  adminChatMessages   AdminChatMessage[] @relation("AdminChatMessageSender")
-  claimedOrders            Order[]            @relation("ClaimedOrders")
-  paymentRequestedOrders   Order[]            @relation("PaymentRequestedOrders")
-  claimedAdminChats        AdminChatRoom[]    @relation("AdminChatClaims")
+  id                     String             @id @default(cuid())
+  name                   String?
+  email                  String             @unique
+  emailVerified          DateTime?
+  image                  String?
+  password               String?
+  role                   UserRole           @default(CUSTOMER)
+  phone                  String?
+  address                String?
+  city                   String?
+  province               String?
+  postalCode             String?
+  isActive               Boolean            @default(true)
+  mitraStatus            MitraStatus?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  accounts               Account[]
+  adminChatMessages      AdminChatMessage[] @relation("AdminChatMessageSender")
+  claimedAdminChats      AdminChatRoom[]    @relation("AdminChatClaims")
+  adminChatRooms         AdminChatRoom[]    @relation("CustomerAdminChats")
+  carts                  Cart[]
+  sentMessages           ChatMessage[]      @relation("ChatMessageSender")
+  chatRooms              ChatRoom[]         @relation("CustomerChatRooms")
+  chats                  chats[]
+  messages               messages[]
+  mitra                  Mitra?
+  notifications          Notification[]
+  claimedOrders                     Order[]            @relation("ClaimedOrders")
+  paymentRequestedOrders             Order[]            @relation("PaymentRequestedOrders")
+  technicianPaymentRequestedOrders   Order[]            @relation("TechnicianPaymentRequestedOrders")
+  orders                             Order[]
+  reviews                Review[]
+  sessions               Session[]
+  technician             Technician?
+  tickets                Ticket[]
 
   @@index([email])
   @@index([role])
@@ -90,20 +91,20 @@ model VerificationToken {
 }
 
 model Technician {
-  id          String    @id @default(cuid())
-  userId      String    @unique
+  id          String     @id @default(cuid())
+  userId      String     @unique
   bio         String?
-  experience  Int       @default(0)
+  experience  Int        @default(0)
   specialties String[]
-  rating      Float     @default(0)
-  totalReview Int       @default(0)
-  isAvailable Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  rating      Float      @default(0)
+  totalReview Int        @default(0)
+  isAvailable Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  chatRooms   ChatRoom[] @relation("TechnicianChatRooms")
   orders      Order[]
   services    Service[]
-  chatRooms   ChatRoom[] @relation("TechnicianChatRooms")
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([rating])
@@ -205,38 +206,42 @@ model CartItem {
 }
 
 model Order {
-  id                    String      @id @default(cuid())
-  orderNumber           String      @unique
-  userId                String
-  technicianId          String?
-  claimedById           String?
-  claimedAt             DateTime?
-  paymentRequestedById  String?
-  paymentRequestedAt    DateTime?
-  status                OrderStatus @default(PENDING_PAYMENT)
-  subtotal              Float
-  tax                   Float       @default(0)
-  total                 Float
-  notes                 String?
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
-  invoice               Invoice?
-  items                 OrderItem[]
-  technician            Technician? @relation(fields: [technicianId], references: [id])
-  user                  User        @relation(fields: [userId], references: [id])
-  claimedBy             User?       @relation("ClaimedOrders", fields: [claimedById], references: [id])
-  paymentRequestedBy    User?       @relation("PaymentRequestedOrders", fields: [paymentRequestedById], references: [id])
-  payment               Payment?
-  reviews               Review[]
-  tickets               Ticket[]
-  warranty              Warranty?
-  adminChatRoom         AdminChatRoom?
+  id                   String         @id @default(cuid())
+  orderNumber          String         @unique
+  userId               String
+  technicianId         String?
+  claimedById          String?
+  claimedAt            DateTime?
+  paymentRequestedById            String?
+  paymentRequestedAt              DateTime?
+  technicianPaymentRequestedById  String?
+  technicianPaymentRequestedAt    DateTime?
+  status                          OrderStatus    @default(PENDING_PAYMENT)
+  subtotal                        Float
+  tax                             Float          @default(0)
+  total                           Float
+  notes                           String?
+  createdAt                       DateTime       @default(now())
+  updatedAt                       DateTime       @updatedAt
+  adminChatRoom                   AdminChatRoom?
+  invoice                         Invoice?
+  items                           OrderItem[]
+  claimedBy                       User?          @relation("ClaimedOrders", fields: [claimedById], references: [id])
+  paymentRequestedBy              User?          @relation("PaymentRequestedOrders", fields: [paymentRequestedById], references: [id])
+  technicianPaymentRequestedBy    User?          @relation("TechnicianPaymentRequestedOrders", fields: [technicianPaymentRequestedById], references: [id])
+  technician                      Technician?    @relation(fields: [technicianId], references: [id])
+  user                            User           @relation(fields: [userId], references: [id])
+  payment                         Payment?
+  reviews                         Review[]
+  tickets                         Ticket[]
+  warranty                        Warranty?
 
   @@index([userId])
   @@index([orderNumber])
   @@index([status])
   @@index([claimedById])
   @@index([paymentRequestedById])
+  @@index([technicianPaymentRequestedById])
   @@map("orders")
 }
 
@@ -474,9 +479,9 @@ model ChatRoom {
   lastMessageAt DateTime      @default(now())
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  messages      ChatMessage[]
   customer      User          @relation("CustomerChatRooms", fields: [customerId], references: [id], onDelete: Cascade)
   technician    Technician    @relation("TechnicianChatRooms", fields: [technicianId], references: [id], onDelete: Cascade)
-  messages      ChatMessage[]
 
   @@unique([customerId, technicianId])
   @@index([customerId])
@@ -485,15 +490,21 @@ model ChatRoom {
 }
 
 model ChatMessage {
-  id         String   @id @default(cuid())
-  roomId     String
-  senderId   String
-  content    String
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  room       ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  sender     User     @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  roomId    String
+  senderId  String
+  content   String
+  mediaUrl  String?
+  mediaType String?
+  mediaSize Int?
+  mediaName String?
+  isRead    Boolean  @default(false)
+  isEdited  Boolean  @default(false)
+  editedAt  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender    User     @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([roomId])
   @@index([senderId])
@@ -528,10 +539,10 @@ model AdminChatRoom {
   lastMessageAt DateTime           @default(now())
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
-  customer      User               @relation("CustomerAdminChats", fields: [customerId], references: [id], onDelete: Cascade)
-  claimedBy     User?              @relation("AdminChatClaims", fields: [claimedById], references: [id])
-  order         Order?             @relation(fields: [orderId], references: [id])
   messages      AdminChatMessage[]
+  claimedBy     User?              @relation("AdminChatClaims", fields: [claimedById], references: [id])
+  customer      User               @relation("CustomerAdminChats", fields: [customerId], references: [id], onDelete: Cascade)
+  order         Order?             @relation(fields: [orderId], references: [id])
 
   @@index([customerId])
   @@index([orderId])
@@ -615,9 +626,9 @@ enum OrderStatus {
   PENDING_PAYMENT
   PAID
   IN_PROGRESS
-  SHIPPED      // Rental: item shipped to customer
-  RENTED       // Rental: customer is using the item
-  RETURNED     // Rental: item returned by customer
+  SHIPPED
+  RENTED
+  RETURNED
   COMPLETED
   CANCELLED
 }

@@ -77,6 +77,7 @@ export default function MitraDashboard() {
   const [analytics, setAnalytics] = useState<MitraAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [hasProfile, setHasProfile] = useState(false)
+  const [mitraId, setMitraId] = useState<string>('')
 
   // Check if profile exists and fetch analytics
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function MitraDashboard() {
         if (profileResponse.ok) {
           setHasProfile(true)
           const profileData = await profileResponse.json()
+          setMitraId(profileData.id || '')
 
           // Calculate analytics from profile data
           const completion = calculateCompletion(profileData)
@@ -339,12 +341,14 @@ export default function MitraDashboard() {
         {/* Recent Reviews */}
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">Ulasan Terbaru</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              Ulasan Pelanggan ({analytics.recentReviews.length})
+            </h2>
             <MessageSquare className="h-6 w-6 text-blue-600" />
           </div>
 
           {analytics.recentReviews.length > 0 ? (
-            <div className="space-y-4">
+            <div className="max-h-96 space-y-4 overflow-y-auto pr-2">
               {analytics.recentReviews.map((review) => (
                 <div
                   key={review.id}
@@ -410,7 +414,7 @@ export default function MitraDashboard() {
           </Link>
 
           <Link
-            href="/rekomendasi"
+            href={mitraId ? `/rekomendasi/${mitraId}` : '/rekomendasi'}
             className="group rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-green-300 hover:shadow-md"
           >
             <div className="mb-4 inline-flex rounded-xl bg-green-100 p-3">

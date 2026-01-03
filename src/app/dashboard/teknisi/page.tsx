@@ -55,6 +55,7 @@ interface Order {
   status: string
   total: number
   createdAt: string
+  technicianPaymentRequestedById?: string | null
   user: {
     name: string | null
     email: string
@@ -96,6 +97,9 @@ export default function TechnicianDashboard() {
   const [loading, setLoading] = useState(true)
   const [orderStatusFilter, setOrderStatusFilter] = useState('ALL')
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const [requestingPaymentId, setRequestingPaymentId] = useState<string | null>(
+    null
+  )
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [, setEditingProfile] = useState(false)
   const [addingService, setAddingService] = useState(false)
@@ -208,6 +212,43 @@ export default function TechnicianDashboard() {
       })
     } finally {
       setUpdatingOrderId(null)
+    }
+  }
+
+  // Request payment confirmation from superadmin
+  const handleRequestPayment = async (orderId: string) => {
+    try {
+      setRequestingPaymentId(orderId)
+      const res = await fetch('/api/technician/orders/payment-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      })
+
+      if (res.ok) {
+        toast({
+          title: 'Request Terkirim!',
+          description:
+            'Permintaan konfirmasi pembayaran sudah dikirim ke Super Admin',
+        })
+        fetchData() // Refresh orders
+      } else {
+        const error = await res.json()
+        toast({
+          title: 'Gagal',
+          description: error.error || 'Gagal mengirim request pembayaran',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error requesting payment:', error)
+      toast({
+        title: 'Error',
+        description: 'Terjadi kesalahan',
+        variant: 'destructive',
+      })
+    } finally {
+      setRequestingPaymentId(null)
     }
   }
 
@@ -842,9 +883,25 @@ export default function TechnicianDashboard() {
                             : 'Selesai'}
                         </button>
                       )}
+                      {order.status === 'PENDING_PAYMENT' &&
+                        (order.technicianPaymentRequestedById ? (
+                          <span className="flex items-center gap-1 rounded-lg bg-yellow-100 px-3 py-1.5 text-xs font-medium text-yellow-700">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Menunggu Approval
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleRequestPayment(order.id)}
+                            disabled={requestingPaymentId === order.id}
+                            className="rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1.5 text-xs text-white shadow hover:from-blue-600 hover:to-blue-700 disabled:opacity-50"
+                          >
+                            {requestingPaymentId === order.id
+                              ? 'Loading...'
+                              : 'Request Pembayaran'}
+                          </button>
+                        ))}
                       {(order.status === 'COMPLETED' ||
-                        order.status === 'CANCELLED' ||
-                        order.status === 'PENDING_PAYMENT') && (
+                        order.status === 'CANCELLED') && (
                         <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>

@@ -1,6 +1,5 @@
 'use client'
 
-import { CldUploadWidget } from 'next-cloudinary'
 import { Plus, X } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
@@ -20,6 +19,7 @@ export default function MultiImageUpload({
   folder = 'halotekno/gallery',
 }: MultiImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Use ref to store current images - this persists across re-renders
   const imagesRef = useRef<string[]>(value || [])
@@ -29,43 +29,55 @@ export default function MultiImageUpload({
     imagesRef.current = value || []
   }, [value])
 
-  // Fix scroll issue after Cloudinary widget closes
-  useEffect(() => {
-    return () => {
-      document.body.style.overflow = 'unset'
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append(
+        'upload_preset',
+        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || ''
+      )
+      formData.append('folder', folder)
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      )
+
+      const data = await response.json()
+
+      if (data.secure_url) {
+        const updatedImages = [...imagesRef.current, data.secure_url]
+        imagesRef.current = updatedImages
+        onChange(updatedImages)
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload image. Please try again.')
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
-  }, [])
-
-  const handleUploadSuccess = (result: unknown) => {
-    const uploadResult = result as { info?: { secure_url?: string } }
-    const newUrl = uploadResult.info?.secure_url
-
-    if (!newUrl) return
-
-    // Add to ref
-    const updatedImages = [...imagesRef.current, newUrl]
-    imagesRef.current = updatedImages
-
-    // Call parent onChange
-    onChange(updatedImages)
-
-    setIsUploading(false)
-    setTimeout(() => {
-      document.body.style.overflow = 'unset'
-    }, 100)
-  }
-
-  const handleUploadEnd = () => {
-    setIsUploading(false)
-    setTimeout(() => {
-      document.body.style.overflow = 'unset'
-    }, 100)
   }
 
   const handleRemove = (urlToRemove: string) => {
     const filtered = imagesRef.current.filter((url) => url !== urlToRemove)
     imagesRef.current = filtered
     onChange(filtered)
+  }
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
   }
 
   // Use ref value for rendering
@@ -84,6 +96,14 @@ export default function MultiImageUpload({
           </span>
         </div>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {/* Existing Images */}
@@ -111,41 +131,23 @@ export default function MultiImageUpload({
 
         {/* Upload Button */}
         {canAddMore && (
-          <CldUploadWidget
-            uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
-            options={{
-              folder: folder,
-              maxFiles: 1,
-              resourceType: 'image',
-            }}
-            onSuccess={handleUploadSuccess}
-            onQueuesEnd={handleUploadEnd}
+          <button
+            type="button"
+            onClick={triggerFileInput}
+            disabled={isUploading}
+            className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50"
           >
-            {({ open }) => (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsUploading(true)
-                  open()
-                }}
-                disabled={isUploading}
-                className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50"
-              >
-                {isUploading ? (
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-                ) : (
-                  <>
-                    <div className="rounded-full bg-blue-100 p-3">
-                      <Plus className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <p className="text-xs font-medium text-gray-600">
-                      Add Image
-                    </p>
-                  </>
-                )}
-              </button>
+            {isUploading ? (
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+            ) : (
+              <>
+                <div className="rounded-full bg-blue-100 p-3">
+                  <Plus className="h-6 w-6 text-blue-600" />
+                </div>
+                <p className="text-xs font-medium text-gray-600">Add Image</p>
+              </>
             )}
-          </CldUploadWidget>
+          </button>
         )}
       </div>
 

@@ -9,6 +9,10 @@ import {
   X,
   FileText,
   Video,
+  Package,
+  Plus,
+  Search,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import {
@@ -19,10 +23,12 @@ import {
 import ImageLightbox from '@/components/gallery/image-lightbox'
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 interface Message {
   id: string
   content: string
   createdAt: string
+  messageType?: string | null
   mediaUrl?: string | null
   mediaType?: string | null
   mediaSize?: number | null
@@ -34,11 +40,25 @@ interface Message {
   }
 }
 
+interface Product {
+  id: string
+  name: string
+  price: number
+  images: string[]
+  slug: string
+  stock: number
+  category: {
+    name: string
+  } | null
+}
+
 interface ChatWindowProps {
   roomId: string
   currentUserId: string
   otherUserName: string
   otherUserImage: string | null
+  roomType?: 'technician' | 'admin'
+  orderId?: string | null
 }
 
 export default function ChatWindow({
@@ -46,9 +66,12 @@ export default function ChatWindow({
   currentUserId,
   otherUserName,
   otherUserImage,
+  roomType = 'technician',
+  orderId,
 }: ChatWindowProps) {
   const router = useRouter()
   const { toast } = useToast()
+  const { confirm, ConfirmDialog } = useConfirm()
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
@@ -60,9 +83,30 @@ export default function ChatWindow({
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxImages, setLightboxImages] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState(0)
+
+  // Context menu and edit states
+  const [contextMenu, setContextMenu] = useState<{
+    messageId: string
+    x: number
+    y: number
+  } | null>(null)
+  const [editingMessage, setEditingMessage] = useState<{
+    id: string
+    content: string
+  } | null>(null)
+  const [editContent, setEditContent] = useState('')
+
+  // Attachment menu and product picker states
+  const [showAttachMenu, setShowAttachMenu] = useState(false)
+  const [showProductPicker, setShowProductPicker] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [productSearchQuery, setProductSearchQuery] = useState('')
+
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     fetchMessages()
@@ -79,7 +123,13 @@ export default function ChatWindow({
 
   const fetchMessages = async (silent = false) => {
     try {
-      const res = await fetch(`/api/chat/rooms/${roomId}/messages`)
+      let res
+      if (roomType === 'admin' && orderId) {
+        res = await fetch(`/api/customer/chat/room?orderId=${orderId}`)
+      } else {
+        res = await fetch(`/api/chat/rooms/${roomId}/messages`)
+      }
+
       if (res.ok) {
         const data = await res.json()
         setMessages(data.messages || [])
@@ -141,6 +191,7 @@ export default function ChatWindow({
       mediaType?: string
       mediaSize?: number
       mediaName?: string
+      messageType?: string
     } = {}
 
     // Process file if selected
@@ -148,11 +199,23 @@ export default function ChatWindow({
       try {
         setUploadProgress('Memproses file...')
         const processed = await processFileForUpload(selectedFile)
+
+        // Determine messageType based on file type (for admin chat)
+        let messageType = 'text'
+        if (processed.type.startsWith('image/')) {
+          messageType = 'image'
+        } else if (processed.type.startsWith('video/')) {
+          messageType = 'video'
+        } else {
+          messageType = 'document'
+        }
+
         mediaData = {
           mediaUrl: processed.base64,
           mediaType: processed.type,
           mediaSize: processed.size,
           mediaName: processed.name,
+          ...(roomType === 'admin' && { messageType }), // Add messageType for admin chat
         }
         setUploadProgress('Mengirim...')
       } catch (error) {
@@ -189,11 +252,20 @@ export default function ChatWindow({
     cancelFileSelection()
 
     try {
-      const res = await fetch(`/api/chat/rooms/${roomId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, ...mediaData }),
-      })
+      let res
+      if (roomType === 'admin') {
+        res = await fetch('/api/customer/chat/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId, content, ...mediaData }),
+        })
+      } else {
+        res = await fetch(`/api/chat/rooms/${roomId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, ...mediaData }),
+        })
+      }
 
       if (res.ok) {
         // Fetch latest messages to replace temp message
@@ -229,6 +301,72 @@ export default function ChatWindow({
     }
   }
 
+  // Fetch products for recommendation (technicians only)
+  const fetchProducts = async (search: string = '') => {
+    setLoadingProducts(true)
+    try {
+      const res = await fetch(
+        `/api/products?search=${encodeURIComponent(search)}&limit=20`
+      )
+      if (res.ok) {
+        const data = await res.json()
+        setProducts(data.products || [])
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error)
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
+
+  // Send product recommendation
+  const sendProductRecommendation = async (product: Product) => {
+    setSending(true)
+    try {
+      // Create recommendation JSON content
+      const recommendationContent = JSON.stringify({
+        type: 'product',
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0] || null,
+        slug: product.slug,
+        stock: product.stock,
+        category: product.category?.name || 'Sparepart',
+      })
+
+      const endpoint =
+        roomType === 'admin'
+          ? `/api/customer/chat/room?orderId=${orderId}`
+          : `/api/chat/rooms/${roomId}/messages`
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: recommendationContent }),
+      })
+
+      if (res.ok) {
+        await fetchMessages(true)
+        setShowProductPicker(false)
+        setShowAttachMenu(false)
+        toast({
+          title: 'Berhasil',
+          description: 'Rekomendasi terkirim!',
+        })
+        setTimeout(() => scrollToBottom(), 50)
+      }
+    } catch (error) {
+      console.error('Error sending recommendation:', error)
+      toast({
+        title: 'Error',
+        description: 'Gagal mengirim rekomendasi',
+        variant: 'destructive',
+      })
+    } finally {
+      setSending(false)
+    }
+  }
+
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop =
@@ -244,27 +382,183 @@ export default function ChatWindow({
     })
   }
 
+  // Context menu handlers
+  const handleContextMenu = (e: React.MouseEvent, message: Message) => {
+    e.preventDefault()
+    // Only show menu for own messages
+    if (message.sender.id !== currentUserId) return
+
+    setContextMenu({
+      messageId: message.id,
+      x: e.clientX,
+      y: e.clientY,
+    })
+  }
+
+  const handleLongPressStart = (message: Message) => {
+    // Only for own messages
+    if (message.sender.id !== currentUserId) return
+
+    longPressTimer.current = setTimeout(() => {
+      // Show context menu at center of screen for mobile
+      const rect = messagesContainerRef.current?.getBoundingClientRect()
+      setContextMenu({
+        messageId: message.id,
+        x: rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
+        y: rect ? rect.top + rect.height / 2 : window.innerHeight / 2,
+      })
+    }, 500) // 500ms long press
+  }
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  const handleEdit = () => {
+    if (!contextMenu) return
+
+    const message = messages.find((m) => m.id === contextMenu.messageId)
+    if (message) {
+      setEditingMessage({ id: message.id, content: message.content })
+      setEditContent(message.content)
+    }
+    setContextMenu(null)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingMessage || !editContent.trim()) return
+
+    try {
+      const endpoint =
+        roomType === 'admin'
+          ? `/api/customer/chat/message/${editingMessage.id}`
+          : `/api/chat/rooms/${roomId}/messages/${editingMessage.id}`
+
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent.trim() }),
+      })
+
+      if (res.ok) {
+        // Update message in local state
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === editingMessage.id
+              ? { ...m, content: editContent.trim() }
+              : m
+          )
+        )
+        setEditingMessage(null)
+        setEditContent('')
+        toast({
+          title: 'Berhasil',
+          description: 'Pesan berhasil diedit',
+        })
+      } else {
+        const errorData = await res.json()
+        toast({
+          title: 'Gagal',
+          description: errorData.error || 'Gagal mengedit pesan',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error editing message:', error)
+      toast({
+        title: 'Error',
+        description: 'Gagal mengedit pesan',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingMessage(null)
+    setEditContent('')
+  }
+
+  const handleDelete = async () => {
+    if (!contextMenu) return
+
+    confirm(
+      'Hapus Pesan',
+      'Apakah Anda yakin ingin menghapus pesan ini?',
+      async () => {
+        try {
+          const endpoint =
+            roomType === 'admin'
+              ? `/api/customer/chat/message/${contextMenu.messageId}`
+              : `/api/chat/rooms/${roomId}/messages/${contextMenu.messageId}`
+
+          const res = await fetch(endpoint, { method: 'DELETE' })
+
+          if (res.ok) {
+            setMessages((prev) =>
+              prev.filter((m) => m.id !== contextMenu.messageId)
+            )
+            toast({
+              title: 'Berhasil',
+              description: 'Pesan berhasil dihapus',
+            })
+          } else {
+            toast({
+              title: 'Gagal',
+              description: 'Gagal menghapus pesan',
+              variant: 'destructive',
+            })
+          }
+        } catch (error) {
+          console.error('Error deleting message:', error)
+          toast({
+            title: 'Error',
+            description: 'Terjadi kesalahan',
+            variant: 'destructive',
+          })
+        } finally {
+          setContextMenu(null)
+        }
+      },
+      'danger'
+    )
+  }
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null)
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [contextMenu])
+
   const renderMedia = (message: Message) => {
-    if (!message.mediaUrl || !message.mediaType) return null
+    // Handle admin chat images (messageType === 'image') and technician chat images (mediaType)
+    if (!message.mediaUrl) return null
 
-    const mediaType = getMediaType(message.mediaType)
+    // Check if it's an image - either by mediaType or messageType
+    const isImage =
+      message.mediaType?.startsWith('image/') || message.messageType === 'image'
 
-    if (mediaType === 'image') {
+    if (isImage) {
       return (
         <div className="mt-2">
           <img
             src={message.mediaUrl}
             alt={message.mediaName || 'Image'}
             className="max-w-full cursor-pointer rounded-lg transition-opacity hover:opacity-90"
-            style={{ maxHeight: '300px' }}
+            style={{ maxHeight: '150px' }}
             onClick={() => {
-              // Collect all image URLs from messages
+              // Collect all image URLs from messages (both admin and technician chat)
               const imageUrls = messages
                 .filter(
                   (m) =>
                     m.mediaUrl &&
-                    m.mediaType &&
-                    getMediaType(m.mediaType) === 'image'
+                    (m.messageType === 'image' ||
+                      (m.mediaType && getMediaType(m.mediaType) === 'image'))
                 )
                 .map((m) => m.mediaUrl!)
               const currentImageIndex = imageUrls.indexOf(message.mediaUrl!)
@@ -280,7 +574,12 @@ export default function ChatWindow({
       )
     }
 
-    if (mediaType === 'video') {
+    // For video and document, we still need mediaType
+    const mediaTypeValue = message.mediaType
+      ? getMediaType(message.mediaType)
+      : null
+
+    if (mediaTypeValue === 'video') {
       return (
         <div className="mt-2">
           <video
@@ -296,7 +595,7 @@ export default function ChatWindow({
       )
     }
 
-    if (mediaType === 'document') {
+    if (mediaTypeValue === 'document') {
       return (
         <div className="mt-2 flex items-center gap-2 rounded-lg bg-white/10 p-3">
           <FileText className="h-5 w-5" />
@@ -357,7 +656,14 @@ export default function ChatWindow({
       {/* Messages */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto bg-gray-50 p-4"
+        className="flex-1 overflow-y-auto p-4"
+        style={{
+          backgroundImage:
+            'linear-gradient(to bottom right, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 0.9), rgba(238, 242, 255, 0.95)), url(https://images.unsplash.com/photo-1556656793-08538906a9f8?w=1920&q=80)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+        }}
       >
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-gray-500">
@@ -367,6 +673,46 @@ export default function ChatWindow({
           <div className="space-y-4">
             {messages.map((message) => {
               const isOwn = message.sender.id === currentUserId
+
+              // Check if content is JSON product/rental data
+              const isProductJson =
+                message.content?.trim().startsWith('{') &&
+                (() => {
+                  try {
+                    const data = JSON.parse(message.content)
+                    return (
+                      data.name &&
+                      (data.type === 'product' ||
+                        data.type === 'rental' ||
+                        data.price !== undefined)
+                    )
+                  } catch {
+                    return false
+                  }
+                })()
+
+              // Check if this is an image message (hide "📷 Gambar" text)
+              // Admin chat uses messageType === 'image', technician chat uses mediaType
+              const isImageMessage =
+                message.messageType === 'image' ||
+                message.mediaType?.startsWith('image/') ||
+                (message.content === '📷 Gambar' && message.mediaUrl)
+
+              // Parse product data if needed
+              let productData: {
+                name?: string
+                price?: number
+                image?: string
+                type?: string
+                stock?: number
+              } | null = null
+              if (isProductJson) {
+                try {
+                  productData = JSON.parse(message.content)
+                } catch {
+                  productData = null
+                }
+              }
 
               return (
                 <div
@@ -379,18 +725,91 @@ export default function ChatWindow({
                         ? 'bg-blue-600 text-white'
                         : 'bg-white text-gray-900'
                     }`}
+                    onContextMenu={(e) => handleContextMenu(e, message)}
+                    onTouchStart={() => handleLongPressStart(message)}
+                    onTouchEnd={handleLongPressEnd}
+                    onTouchMove={handleLongPressEnd}
                   >
-                    {message.content && (
-                      <p className="break-words">{message.content}</p>
+                    {/* Edit Mode */}
+                    {editingMessage?.id === message.id ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit()
+                            if (e.key === 'Escape') handleCancelEdit()
+                          }}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSaveEdit}
+                            className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700"
+                          >
+                            Simpan
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="rounded bg-gray-500 px-3 py-1 text-xs text-white hover:bg-gray-600"
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Product Card */}
+                        {productData ? (
+                          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                            <div className="flex gap-3 p-3">
+                              {productData.image && (
+                                <img
+                                  src={productData.image}
+                                  alt={productData.name}
+                                  className="h-16 w-16 rounded-lg object-cover"
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-gray-900">
+                                  {productData.name}
+                                </p>
+                                <p className="text-sm font-bold text-blue-600">
+                                  Rp{' '}
+                                  {productData.price?.toLocaleString('id-ID')}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Stock: {productData.stock || 0}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="border-t border-gray-100 bg-gray-50 px-3 py-1.5">
+                              <p className="text-xs text-gray-600">
+                                {productData.type === 'rental'
+                                  ? '🔧 Rekomendasi Sewa'
+                                  : '📦 Rekomendasi Produk'}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Normal text message - hide if it's just image placeholder */
+                          message.content &&
+                          !isImageMessage && (
+                            <p className="break-words">{message.content}</p>
+                          )
+                        )}
+                        {renderMedia(message)}
+                        <p
+                          className={`mt-1 text-xs ${
+                            isOwn ? 'text-blue-100' : 'text-gray-500'
+                          }`}
+                        >
+                          {formatTime(message.createdAt)}
+                        </p>
+                      </>
                     )}
-                    {renderMedia(message)}
-                    <p
-                      className={`mt-1 text-xs ${
-                        isOwn ? 'text-blue-100' : 'text-gray-500'
-                      }`}
-                    >
-                      {formatTime(message.createdAt)}
-                    </p>
                   </div>
                 </div>
               )
@@ -451,6 +870,53 @@ export default function ChatWindow({
         onSubmit={sendMessage}
         className="border-t border-gray-200 bg-white p-4"
       >
+        {/* Attachment Menu */}
+        {showAttachMenu && (
+          <div className="mb-3 space-y-2 rounded-xl bg-gray-50 p-3">
+            <button
+              type="button"
+              onClick={() => {
+                fileInputRef.current?.click()
+                setShowAttachMenu(false)
+              }}
+              className="flex w-full items-center gap-3 rounded-lg bg-white p-3 text-left shadow-sm transition-colors hover:bg-gray-100"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500">
+                <ImageIcon className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">Kirim Gambar</p>
+                <p className="text-xs text-gray-500">Pilih dari galeri</p>
+              </div>
+            </button>
+
+            {/* Product Recommendation Button - Only for Technicians */}
+            {roomType === 'technician' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProductPicker(true)
+                  fetchProducts()
+                  setShowAttachMenu(false)
+                }}
+                className="flex w-full items-center gap-3 rounded-lg bg-white p-3 text-left shadow-sm transition-colors hover:bg-gray-100"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600">
+                  <Package className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    Rekomendasi Sparepart
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Kirim rekomendasi produk
+                  </p>
+                </div>
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2">
           <input
             ref={fileInputRef}
@@ -461,11 +927,11 @@ export default function ChatWindow({
           />
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            onClick={() => setShowAttachMenu(!showAttachMenu)}
+            className={`rounded-lg p-2 transition-all ${showAttachMenu ? 'rotate-45 bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'} disabled:opacity-50`}
             disabled={sending}
           >
-            <Paperclip className="h-5 w-5" />
+            <Plus className="h-5 w-5" />
           </button>
           <input
             ref={inputRef}
@@ -490,6 +956,34 @@ export default function ChatWindow({
         </div>
       </form>
 
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 min-w-[150px] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
+          style={{
+            top: `${contextMenu.y}px`,
+            left: `${contextMenu.x}px`,
+            transform: 'translate(-80%, -50%)', // Shift more to left to prevent cutoff on mobile
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={handleEdit}
+            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+          >
+            <span>✏️</span>
+            <span>Edit</span>
+          </button>
+          <button
+            onClick={handleDelete}
+            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+          >
+            <span>🗑️</span>
+            <span>Hapus</span>
+          </button>
+        </div>
+      )}
+
       {/* Image Lightbox */}
       <ImageLightbox
         images={lightboxImages}
@@ -498,8 +992,97 @@ export default function ChatWindow({
         onClose={() => setLightboxOpen(false)}
       />
 
+      {/* Product Picker Modal */}
+      {showProductPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowProductPicker(false)}
+        >
+          <div
+            className="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b p-4">
+              <h3 className="text-lg font-bold text-gray-900">
+                Pilih Sparepart
+              </h3>
+              <button
+                onClick={() => setShowProductPicker(false)}
+                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="border-b p-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari sparepart..."
+                  value={productSearchQuery}
+                  onChange={(e) => {
+                    setProductSearchQuery(e.target.value)
+                    fetchProducts(e.target.value)
+                  }}
+                  className="w-full rounded-lg border bg-gray-50 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+            </div>
+
+            {/* Product List */}
+            <div className="flex-1 overflow-y-auto p-3">
+              {loadingProducts ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                </div>
+              ) : products.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">
+                  <Package className="mx-auto h-12 w-12 text-gray-300" />
+                  <p className="mt-2">Tidak ada produk ditemukan</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {products.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => sendProductRecommendation(product)}
+                      disabled={sending}
+                      className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50"
+                    >
+                      <img
+                        src={product.images?.[0] || '/placeholder-product.png'}
+                        alt={product.name}
+                        className="h-14 w-14 rounded-lg object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-gray-900">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {product.category?.name || 'Sparepart'}
+                        </p>
+                        <p className="text-sm font-semibold text-blue-600">
+                          Rp {product.price.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                      <Send className="h-5 w-5 flex-shrink-0 text-blue-500" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notifications */}
       <Toaster />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog />
     </div>
   )
 }

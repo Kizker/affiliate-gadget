@@ -20,6 +20,7 @@ import ReviewModal from '@/components/reviews/review-modal'
 import ReviewList from '@/components/reviews/review-list'
 import ImageLightbox from '@/components/gallery/image-lightbox'
 import GoogleMapDisplay from '@/components/maps/google-map-display'
+import GoogleMapsProvider from '@/components/maps/google-maps-provider'
 import { useSession } from 'next-auth/react'
 
 interface MitraDetail {
@@ -483,12 +484,14 @@ export default function MitraDetailPage({
                   {/* Right: Google Maps */}
                   <div className="h-64 sm:h-80 lg:h-full lg:min-h-[400px]">
                     {mitra.latitude && mitra.longitude ? (
-                      <GoogleMapDisplay
-                        latitude={mitra.latitude}
-                        longitude={mitra.longitude}
-                        address={mitra.address}
-                        businessName={mitra.businessName}
-                      />
+                      <GoogleMapsProvider>
+                        <GoogleMapDisplay
+                          latitude={mitra.latitude}
+                          longitude={mitra.longitude}
+                          address={mitra.address}
+                          businessName={mitra.businessName}
+                        />
+                      </GoogleMapsProvider>
                     ) : (
                       <div className="flex h-full items-center justify-center bg-gray-100">
                         <div className="text-center">

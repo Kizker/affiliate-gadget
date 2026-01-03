@@ -333,10 +333,7 @@ function StatsSection() {
   ]
 
   return (
-    <section className="relative flex h-screen w-full snap-start items-center justify-center bg-slate-50">
-      {/* Switched to light background matching system */}
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
-
+    <section className="relative flex h-screen w-full snap-start items-center justify-center">
       <div className="relative z-10 flex w-full max-w-6xl flex-col items-center justify-center gap-12 px-4 text-center sm:grid sm:grid-cols-3 sm:gap-16">
         {stats.map((stat, i) => (
           <div key={i} className="flex flex-col items-center">

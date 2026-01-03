@@ -33,7 +33,19 @@ export default function AdminLayout({
           </div>
         </main>
         <Footer variant="light" />
-        <Toaster position="top-right" richColors />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              padding: '12px 16px',
+              fontSize: '14px',
+            },
+            classNames: {
+              success: 'bg-green-500 text-white border-green-500',
+              error: 'bg-red-500 text-white border-red-500',
+            },
+          }}
+        />
       </div>
     </div>
   )

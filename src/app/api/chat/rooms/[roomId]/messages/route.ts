@@ -47,7 +47,14 @@ export async function GET(
           createdAt: { lt: new Date(before) },
         }),
       },
-      include: {
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        senderId: true,
+        isRead: true,
+        mediaUrl: true,
+        mediaType: true,
         sender: {
           select: {
             id: true,
@@ -132,8 +139,17 @@ export async function POST(
           roomId,
           senderId: session.user.id,
           content: content?.trim() || '',
+          mediaUrl: mediaUrl || null,
+          mediaType: mediaType || null,
+          mediaSize: mediaSize || null,
+          mediaName: mediaName || null,
         },
-        include: {
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          senderId: true,
+          isRead: true,
           sender: {
             select: {
               id: true,
