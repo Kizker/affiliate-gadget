@@ -1067,14 +1067,21 @@ export default function FloatingChatButton() {
                         })()
                       : (() => {
                           const techRoom = activeRoom as TechnicianChatRoom
-                          const techImage = techRoom.technician?.user?.image
-                          const techName =
-                            techRoom.technician?.user?.name || 'Teknisi'
+                          const isTechnicianRole =
+                            (session?.user?.role as string) === 'TECHNICIAN'
 
-                          return techImage ? (
+                          // If user is technician, show customer. Otherwise show technician.
+                          const displayImage = isTechnicianRole
+                            ? techRoom.customer?.image
+                            : techRoom.technician?.user?.image
+                          const displayName = isTechnicianRole
+                            ? techRoom.customer?.name || 'Customer'
+                            : techRoom.technician?.user?.name || 'Teknisi'
+
+                          return displayImage ? (
                             <img
-                              src={techImage}
-                              alt={techName}
+                              src={displayImage}
+                              alt={displayName}
                               className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
                             />
                           ) : (
@@ -1094,8 +1101,14 @@ export default function FloatingChatButton() {
                               )
                               return adminMessage?.sender.name || 'Chat Admin'
                             })()
-                          : (activeRoom as TechnicianChatRoom).technician?.user
-                              ?.name || 'Teknisi'}
+                          : (() => {
+                              const techRoom = activeRoom as TechnicianChatRoom
+                              const isTechnicianRole =
+                                (session?.user?.role as string) === 'TECHNICIAN'
+                              return isTechnicianRole
+                                ? techRoom.customer?.name || 'Customer'
+                                : techRoom.technician?.user?.name || 'Teknisi'
+                            })()}
                       </h3>
                       <p className="truncate text-xs text-white/80">
                         {activeRoom.type === 'admin' &&

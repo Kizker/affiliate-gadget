@@ -15,6 +15,8 @@ import {
   Unlock,
   UserCheck,
   Users,
+  UserPlus,
+  UserMinus,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
@@ -717,6 +719,42 @@ export default function AdminOrdersPage() {
                   </p>
 
                   <div className="flex flex-wrap gap-2">
+                    {/* Claim/Unclaim buttons - only for rental/sparepart orders (NOT service) */}
+                    {!order.items.some((item) => item.service) && (
+                      <>
+                        {/* Show "Ambil Pesanan" if order is unclaimed */}
+                        {!order.claimedById && (
+                          <button
+                            onClick={() => claimOrder(order.id)}
+                            disabled={claiming === order.id}
+                            className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50"
+                          >
+                            {claiming === order.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <UserPlus className="h-4 w-4" />
+                            )}
+                            Ambil Pesanan
+                          </button>
+                        )}
+                        {/* Show "Lepas" if order is claimed by current user */}
+                        {order.claimedById === currentUserId && (
+                          <button
+                            onClick={() => unclaimOrder(order.id)}
+                            disabled={claiming === order.id}
+                            className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            {claiming === order.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <UserMinus className="h-4 w-4" />
+                            )}
+                            Lepas
+                          </button>
+                        )}
+                      </>
+                    )}
+
                     {/* Status Actions - only if can edit */}
                     {canEditOrder(order) && (
                       <>
