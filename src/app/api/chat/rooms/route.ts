@@ -139,7 +139,15 @@ export async function GET() {
       })
     }
 
-    return NextResponse.json({ rooms })
+    // Short cache for chat rooms list - frequently polled but doesn't need to be real-time
+    return NextResponse.json(
+      { rooms },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=5, stale-while-revalidate=10',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching chat rooms:', error)
     return NextResponse.json(

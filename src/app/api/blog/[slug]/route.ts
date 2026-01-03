@@ -19,7 +19,15 @@ export async function GET(
       return NextResponse.json({ error: 'Article not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ article })
+    // Blog content is public and rarely changes - cache for 5 minutes
+    return NextResponse.json(
+      { article },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching article:', error)
     return NextResponse.json(
