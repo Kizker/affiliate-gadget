@@ -37,7 +37,15 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ accounts: bankAccounts })
+    // Bank accounts data rarely changes, cache for 5 minutes
+    return NextResponse.json(
+      { accounts: bankAccounts },
+      {
+        headers: {
+          'Cache-Control': 'private, s-maxage=300, stale-while-revalidate=600',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching bank accounts:', error)
     return NextResponse.json(

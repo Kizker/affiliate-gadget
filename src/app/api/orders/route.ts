@@ -55,7 +55,15 @@ export async function GET() {
       },
     })
 
-    return NextResponse.json({ orders })
+    // Cache for 15 seconds - order list can change frequently but benefit from short cache
+    return NextResponse.json(
+      { orders },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=15, stale-while-revalidate=30',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching orders:', error)
     return NextResponse.json(
