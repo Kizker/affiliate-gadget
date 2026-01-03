@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import {

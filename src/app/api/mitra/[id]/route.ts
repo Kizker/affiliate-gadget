@@ -74,31 +74,39 @@ export async function GET(
       isOpen = true // For now, assume open if hours are set
     }
 
-    return NextResponse.json({
-      id: mitra.id,
-      businessName: mitra.businessName,
-      tagline: mitra.tagline,
-      description: mitra.description,
-      banner: mitra.banner,
-      address: mitra.address,
-      city: mitra.city,
-      province: mitra.province,
-      phone: mitra.phone,
-      whatsapp: mitra.whatsapp,
-      email: mitra.email,
-      website: mitra.website,
-      features: mitra.features,
-      weekdayHours: mitra.weekdayHours,
-      weekendHours: mitra.weekendHours,
-      latitude: mitra.latitude,
-      longitude: mitra.longitude,
-      rating: mitra.rating,
-      totalReview: mitra.totalReview,
-      isOpen,
-      services: mitra.services,
-      images: mitra.images,
-      reviews: transformedReviews,
-    })
+    // Cache mitra details for 2 minutes - semi-static content
+    return NextResponse.json(
+      {
+        id: mitra.id,
+        businessName: mitra.businessName,
+        tagline: mitra.tagline,
+        description: mitra.description,
+        banner: mitra.banner,
+        address: mitra.address,
+        city: mitra.city,
+        province: mitra.province,
+        phone: mitra.phone,
+        whatsapp: mitra.whatsapp,
+        email: mitra.email,
+        website: mitra.website,
+        features: mitra.features,
+        weekdayHours: mitra.weekdayHours,
+        weekendHours: mitra.weekendHours,
+        latitude: mitra.latitude,
+        longitude: mitra.longitude,
+        rating: mitra.rating,
+        totalReview: mitra.totalReview,
+        isOpen,
+        services: mitra.services,
+        images: mitra.images,
+        reviews: transformedReviews,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching mitra detail:', error)
     return NextResponse.json(

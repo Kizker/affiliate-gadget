@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all orders for this user
+    // Get all orders for this user with reviews included (fixes N+1 problem)
     const orders = await prisma.order.findMany({
       where: { userId: session.user.id },
       include: {
@@ -47,6 +47,18 @@ export async function GET() {
                 image: true,
               },
             },
+          },
+        },
+        // Include reviews directly - fixes N+1 query problem
+        reviews: {
+          where: {
+            type: 'TECHNICIAN',
+          },
+          take: 1,
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
           },
         },
       },

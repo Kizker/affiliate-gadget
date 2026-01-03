@@ -164,17 +164,16 @@ export default function CustomerOrdersPage() {
       const res = await fetch('/api/orders')
       if (res.ok) {
         const data = await res.json()
-        // Fetch reviews for each order
-        const ordersWithReviews = await Promise.all(
-          data.orders.map(async (order: Order) => {
-            if (order.status === 'COMPLETED') {
-              const reviewRes = await fetch(`/api/orders/${order.id}/review`)
-              if (reviewRes.ok) {
-                const reviewData = await reviewRes.json()
-                return { ...order, review: reviewData.review }
-              }
+        // Reviews are now included in the response - no more N+1 queries!
+        // Transform reviews array to review object for compatibility
+        const ordersWithReviews = data.orders.map(
+          (
+            order: Order & {
+              reviews?: Array<{ rating: number; comment: string | null }>
             }
-            return order
+          ) => ({
+            ...order,
+            review: order.reviews?.[0] || null, // Get first review
           })
         )
         setOrders(ordersWithReviews)
