@@ -77,11 +77,9 @@ export default function CreateTechnicianPage() {
       const responseData = await res.json()
 
       if (!res.ok) {
-        console.error('Technician creation error:', responseData)
         throw new Error(responseData.error || 'Gagal membuat teknisi')
       }
 
-      console.log('Technician created successfully:', responseData)
       toast.success('Teknisi berhasil dibuat!')
 
       // Wait a bit before redirecting to ensure database transaction completes

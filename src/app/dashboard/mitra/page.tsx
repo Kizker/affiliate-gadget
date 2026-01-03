@@ -13,7 +13,6 @@ import {
   Clock,
   Award,
   Loader2,
-  BarChart3,
 } from 'lucide-react'
 
 interface MitraAnalytics {

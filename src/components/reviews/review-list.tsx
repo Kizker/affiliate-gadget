@@ -61,6 +61,7 @@ export default function ReviewList({
       setCurrentPage(1) // Reset to first page on new fetch
     } catch (error) {
       console.error('Error fetching reviews:', error)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setError((error as any).message)
     } finally {
       setLoading(false)

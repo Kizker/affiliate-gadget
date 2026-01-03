@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   User,
@@ -19,33 +18,14 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
-interface MitraProfile {
-  id: string
-  name: string | null
-  email: string
-  image: string | null
-  phone: string | null
-  role: string
-  mitra?: {
-    id: string
-    businessName: string
-    address: string
-    city: string
-    province: string
-    whatsapp: string | null
-  }
-}
-
 type Tab = 'profile' | 'security'
 
 export default function MitraSettingsPage() {
   const { update } = useSession()
-  const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [profile, setProfile] = useState<MitraProfile | null>(null)
 
   // Profile form data
   const [formData, setFormData] = useState({
@@ -75,7 +55,6 @@ export default function MitraSettingsPage() {
       const res = await fetch('/api/mitra/settings')
       if (res.ok) {
         const data = await res.json()
-        setProfile(data.user)
         setFormData({
           name: data.user.name || '',
           phone: data.user.phone || '',

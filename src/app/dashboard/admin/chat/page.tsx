@@ -282,6 +282,7 @@ export default function AdminChatPage() {
   const handleSendMessage = async (
     messageType = 'text',
     attachmentId?: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     attachmentData?: any
   ) => {
     if (messageType === 'text' && !messageInput.trim()) return

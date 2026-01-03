@@ -21,11 +21,6 @@ export async function GET() {
     let rooms
 
     if (technician) {
-      // DEBUG: Log technician info
-      console.log('[DEBUG /api/chat/rooms] User is TECHNICIAN')
-      console.log('[DEBUG] userId:', userId)
-      console.log('[DEBUG] technician.id:', technician.id)
-
       // Get rooms where user is the technician
       rooms = await prisma.chatRoom.findMany({
         where: { technicianId: technician.id },
@@ -75,12 +70,6 @@ export async function GET() {
         },
         orderBy: { lastMessageAt: 'desc' },
       })
-
-      // DEBUG: Log rooms found
-      console.log('[DEBUG] Rooms found for technician:', rooms.length)
-      if (rooms.length > 0) {
-        console.log('[DEBUG] First room customer:', rooms[0].customer)
-      }
     } else {
       // Get rooms where user is the customer
       rooms = await prisma.chatRoom.findMany({

@@ -1469,6 +1469,7 @@ export default function FloatingChatButton() {
                           {uploadingImage ? (
                             <Loader2 className="h-5 w-5 animate-spin text-white" />
                           ) : (
+                            // eslint-disable-next-line jsx-a11y/alt-text
                             <Image className="h-5 w-5 text-white" />
                           )}
                         </div>

@@ -523,9 +523,11 @@ export default function AdminOrdersPage() {
         {currentUserRole === 'SUPER_ADMIN' && (
           <button
             onClick={() =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               handleClaimFilterChange('technician_payment_requests' as any)
             }
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               claimFilter === ('technician_payment_requests' as any)
                 ? 'bg-white text-cyan-600 shadow-md'
                 : 'text-gray-600 hover:bg-white/50'

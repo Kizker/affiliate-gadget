@@ -59,6 +59,7 @@ export default function ReviewCard({
       }
     } catch (error) {
       console.error('Error deleting review:', error)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       toast.error((error as any).message || 'Gagal menghapus review')
     } finally {
       setDeleting(false)

@@ -1,10 +1,8 @@
 'use client'
 
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useEffect } from 'react'
 import {
   motion,
-  useScroll,
-  useTransform,
   useSpring,
   useMotionValue,
   useMotionTemplate,
@@ -13,12 +11,8 @@ import {
   ArrowLeft,
   ArrowRight,
   Cpu,
-  Wrench,
   Shield,
   Zap,
-  Globe,
-  Star,
-  CheckCircle2,
   MoveRight,
 } from 'lucide-react'
 import Link from 'next/link'

@@ -11,6 +11,7 @@ import { authConfig } from './auth.config'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adapter: PrismaAdapter(prisma) as any, // Type assertion to bypass @auth/core version conflict
   trustHost: true,
   providers: [
@@ -130,9 +131,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           await prisma.session.deleteMany({
             where: { userId: user.id },
           })
-        } catch (error) {
+        } catch {
           // Ignore errors - sessions table might not exist
-          console.log('Could not clear old sessions')
         }
       }
     },

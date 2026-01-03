@@ -413,6 +413,7 @@ export default function EditTechnicianPage({
                     onChange={(e) =>
                       setServiceForm({
                         ...serviceForm,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         category: e.target.value as any,
                       })
                     }

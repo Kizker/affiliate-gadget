@@ -5,7 +5,6 @@ import {
   Send,
   Loader2,
   ArrowLeft,
-  Paperclip,
   X,
   FileText,
   Video,
@@ -221,6 +220,7 @@ export default function ChatWindow({
       } catch (error) {
         toast({
           title: 'Error',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           description: (error as any).message || 'Gagal memproses file',
           variant: 'destructive',
         })

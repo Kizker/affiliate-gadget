@@ -25,6 +25,7 @@ export const authConfig = {
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         session.user.role = token.role as any
         // Note: Full user data fetching (name, image, mitraStatus)
         // is handled in the Node.js runtime auth.ts

@@ -338,6 +338,7 @@ export async function POST(request: NextRequest) {
     const bankAccounts = await prisma.bankAccount.findMany({
       where: {
         category: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           in: categories as any,
         },
         isActive: true,

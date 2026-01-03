@@ -13,7 +13,6 @@ import {
   Mail,
   Phone,
   ShoppingBag,
-  Package,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 

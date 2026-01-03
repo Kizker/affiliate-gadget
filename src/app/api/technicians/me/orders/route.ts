@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const orders = await prisma.order.findMany({
       where: {
         technicianId: technician.id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...(status && { status: status as any }),
       },
       include: {

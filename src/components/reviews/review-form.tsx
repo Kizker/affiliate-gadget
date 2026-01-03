@@ -52,6 +52,7 @@ export default function ReviewForm({ mitraId, onSuccess }: ReviewFormProps) {
       }
     } catch (error) {
       console.error('Error submitting review:', error)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       toast.error((error as any).message || 'Gagal mengirim review')
     } finally {
       setLoading(false)

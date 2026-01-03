@@ -42,8 +42,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (minPrice !== undefined || maxPrice !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       where.price = {} as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (minPrice !== undefined) (where.price as any).gte = minPrice
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (maxPrice !== undefined) (where.price as any).lte = maxPrice
     }
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, Upload, X, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Upload, X } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -96,17 +96,6 @@ export default function CreateMitraPage() {
     setFormData({ ...formData, banner: '' })
   }
 
-  const handleUserImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setFormData({ ...formData, userImage: reader.result as string })
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
   const generatePassword = () => {
     const password =
       Math.random().toString(36).slice(-10) +
@@ -193,16 +182,13 @@ export default function CreateMitraPage() {
 
         if (!userRes.ok) {
           const error = await userRes.json()
-          console.error('User creation error:', error)
           throw new Error(error.error || 'Gagal membuat user')
         }
 
         const userData = await userRes.json()
-        console.log('User created:', userData)
 
         // API returns { user: {...} } not {...} directly
         if (!userData.user || !userData.user.id) {
-          console.error('Invalid user data structure:', userData)
           throw new Error('User ID tidak ditemukan setelah pembuatan user')
         }
 
@@ -220,7 +206,7 @@ export default function CreateMitraPage() {
         throw new Error('User ID tidak valid')
       }
 
-      console.log('Creating mitra with payload:', payload)
+      // Creating mitra with payload
 
       // Create mitra
       const res = await fetch('/api/admin/mitras', {
@@ -236,7 +222,7 @@ export default function CreateMitraPage() {
         throw new Error(responseData.error || 'Gagal membuat mitra')
       }
 
-      console.log('Mitra created successfully:', responseData)
+      // Mitra created successfully
       toast.success('Mitra berhasil dibuat!')
 
       // Wait a bit before redirecting to ensure data is saved

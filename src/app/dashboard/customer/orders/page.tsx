@@ -578,6 +578,7 @@ export default function CustomerOrdersPage() {
                                   if (roomsRes.ok) {
                                     const roomsData = await roomsRes.json()
                                     const existingRoom = roomsData.rooms?.find(
+                                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                       (room: any) =>
                                         room.type === 'technician' &&
                                         room.technician?.id === technicianId
