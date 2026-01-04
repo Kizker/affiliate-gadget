@@ -209,31 +209,73 @@ export default function BookingConfirmationPage({
                 </div>
               </div>
 
-              {/* Total */}
-              <div className="flex items-start gap-3 rounded-lg bg-blue-50 p-3">
-                <DollarSign className="mt-0.5 h-5 w-5 text-blue-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-700">
-                    Total Pembayaran
-                  </p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(order.total)}
-                  </p>
+              {/* Total - Show only if technician has set price */}
+              {order.status === 'IN_PROGRESS' ? (
+                <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-3">
+                  <DollarSign className="mt-0.5 h-5 w-5 text-amber-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-700">
+                      Total Pembayaran
+                    </p>
+                    <p className="text-lg font-bold text-amber-600">
+                      Menunggu Teknisi
+                    </p>
+                    <p className="mt-1 text-xs text-amber-600">
+                      Teknisi akan menentukan harga setelah diagnosa
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-start gap-3 rounded-lg bg-blue-50 p-3">
+                  <DollarSign className="mt-0.5 h-5 w-5 text-blue-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-700">
+                      Total Pembayaran
+                    </p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {formatCurrency(order.total)}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Payment Instructions */}
-            <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-              <h3 className="mb-1 text-sm font-semibold text-yellow-900">
-                Instruksi Pembayaran
-              </h3>
-              <ol className="list-inside list-decimal space-y-0.5 text-xs text-yellow-800">
-                <li>Teknisi akan menghubungi Anda untuk konfirmasi jadwal</li>
-                <li>Pembayaran dilakukan setelah servis selesai</li>
-                <li>Anda dapat membayar secara tunai atau transfer</li>
-              </ol>
-            </div>
+            {/* Instructions - Show different message based on status */}
+            {order.status === 'IN_PROGRESS' ? (
+              <div className="mt-4 rounded-lg border border-purple-200 bg-purple-50 p-3">
+                <h3 className="mb-1 text-sm font-semibold text-purple-900">
+                  Pesanan Sedang Diproses
+                </h3>
+                <ol className="list-inside list-decimal space-y-0.5 text-xs text-purple-800">
+                  <li>Teknisi akan mendiagnosa perangkat Anda</li>
+                  <li>Setelah diagnosa, teknisi akan menentukan harga final</li>
+                  <li>Anda akan diberitahu saat harga sudah ditentukan</li>
+                </ol>
+              </div>
+            ) : order.status === 'PENDING_PAYMENT' ? (
+              <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                <h3 className="mb-1 text-sm font-semibold text-yellow-900">
+                  Instruksi Pembayaran
+                </h3>
+                <ol className="list-inside list-decimal space-y-0.5 text-xs text-yellow-800">
+                  <li>Teknisi sudah menentukan harga final</li>
+                  <li>Silakan lakukan pembayaran via transfer atau tunai</li>
+                  <li>Admin akan mengkonfirmasi pembayaran Anda</li>
+                </ol>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3">
+                <h3 className="mb-1 text-sm font-semibold text-green-900">
+                  Status Pesanan
+                </h3>
+                <p className="text-xs text-green-800">
+                  {order.status === 'PAID' &&
+                    'Pembayaran terkonfirmasi. Pesanan akan segera diselesaikan.'}
+                  {order.status === 'COMPLETED' &&
+                    'Pesanan telah selesai. Terima kasih!'}
+                </p>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">

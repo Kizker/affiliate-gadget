@@ -41,52 +41,69 @@ export async function GET(request: Request) {
     // Parse URL for order status filter
     const { searchParams } = new URL(request.url)
     const statusFilter = searchParams.get('status')
-    const orderLimit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '5') // Default 5 items per page for dashboard
+    const search = searchParams.get('q') || ''
 
     // Build order where clause
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const orderWhere: any = { technicianId: technician.id }
+
     if (statusFilter && statusFilter !== 'ALL') {
       orderWhere.status = statusFilter
     }
 
+    if (search) {
+      orderWhere.OR = [
+        { orderNumber: { contains: search, mode: 'insensitive' } },
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+      ]
+    }
+
+    const skip = (page - 1) * limit
+
     // Parallel fetch: stats + orders (profile & services already loaded above)
-    const [orders, statsData, reviewStats] = await Promise.all([
-      // Recent orders
-      prisma.order.findMany({
-        where: orderWhere,
-        orderBy: { createdAt: 'desc' },
-        take: orderLimit,
-        include: {
-          user: {
-            select: { name: true, email: true, image: true },
-          },
-          items: {
-            include: {
-              service: {
-                select: { name: true, category: true },
+    // Parallel fetch: stats + orders (profile & services already loaded above)
+    const [orders, totalFilteredOrders, statsData, reviewStats] =
+      await Promise.all([
+        // Recent orders with pagination
+        prisma.order.findMany({
+          where: orderWhere,
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          skip: skip,
+          include: {
+            user: {
+              select: { name: true, email: true, image: true },
+            },
+            items: {
+              include: {
+                service: {
+                  select: { name: true, category: true },
+                },
               },
             },
           },
-        },
-      }),
-      // Order stats aggregation
-      prisma.order.groupBy({
-        by: ['status'],
-        where: { technicianId: technician.id },
-        _count: { id: true },
-        _sum: { total: true },
-      }),
-      // Review stats
-      prisma.review.aggregate({
-        where: {
-          type: 'TECHNICIAN',
-          order: { technicianId: technician.id },
-        },
-        _avg: { rating: true },
-        _count: { id: true },
-      }),
-    ])
+        }),
+        // Total count for current filter (pagination)
+        prisma.order.count({ where: orderWhere }),
+        // Order stats aggregation
+        prisma.order.groupBy({
+          by: ['status'],
+          where: { technicianId: technician.id },
+          _count: { id: true },
+          _sum: { total: true },
+        }),
+        // Review stats
+        prisma.review.aggregate({
+          where: {
+            type: 'TECHNICIAN',
+            order: { technicianId: technician.id },
+          },
+          _avg: { rating: true },
+          _count: { id: true },
+        }),
+      ])
 
     // Process stats
     const ordersByStatus = {
@@ -104,7 +121,6 @@ export async function GET(request: Request) {
       const count = stat._count.id
       const revenue = stat._sum.total || 0
       totalOrders += count
-      totalRevenue += revenue
 
       switch (stat.status) {
         case 'PENDING_PAYMENT':
@@ -119,6 +135,8 @@ export async function GET(request: Request) {
         case 'COMPLETED':
           ordersByStatus.completed += count
           completedOrders += count
+          // Only count revenue from COMPLETED orders
+          totalRevenue += revenue
           break
         case 'CANCELLED':
           ordersByStatus.cancelled += count
@@ -152,6 +170,12 @@ export async function GET(request: Request) {
         },
         services: technician.services,
         orders,
+        pagination: {
+          page,
+          limit,
+          total: totalFilteredOrders,
+          totalPages: Math.ceil(totalFilteredOrders / limit),
+        },
         stats,
       },
       {

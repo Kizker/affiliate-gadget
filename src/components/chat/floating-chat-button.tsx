@@ -35,6 +35,7 @@ interface TechnicianChatRoom {
   }
   technician?: {
     id: string
+    isAvailable?: boolean
     user: {
       name: string | null
       image: string | null
@@ -661,7 +662,8 @@ export default function FloatingChatButton() {
       )
     } else {
       const techRoom = room as TechnicianChatRoom
-      const isTechnicianRole = (session?.user?.role as string) === 'TECHNICIAN'
+      const isTechnicianRole =
+        (session?.user as { isTechnician?: boolean })?.isTechnician === true
       const searchName = isTechnicianRole
         ? techRoom.customer?.name
         : techRoom.technician?.user?.name
@@ -907,7 +909,8 @@ export default function FloatingChatButton() {
                     const techRoom = room as TechnicianChatRoom
                     // If I am the technician, show customer name. If I am customer, show technician name.
                     const isTechnicianRole =
-                      (session?.user?.role as string) === 'TECHNICIAN'
+                      (session?.user as { isTechnician?: boolean })
+                        ?.isTechnician === true
                     if (isTechnicianRole) {
                       itemName = techRoom.customer?.name || 'Customer'
                     } else {
@@ -951,7 +954,8 @@ export default function FloatingChatButton() {
                               const techRoom = room as TechnicianChatRoom
                               // Logic for avatar display
                               const isTechnicianRole =
-                                (session?.user?.role as string) === 'TECHNICIAN'
+                                (session?.user as { isTechnician?: boolean })
+                                  ?.isTechnician === true
                               let displayImage, displayName
 
                               if (isTechnicianRole) {
@@ -964,17 +968,37 @@ export default function FloatingChatButton() {
                                   techRoom.technician?.user?.name || 'Teknisi'
                               }
 
-                              return displayImage ? (
-                                <img
-                                  src={displayImage}
-                                  alt={displayName}
-                                  className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-blue-200"
-                                />
-                              ) : (
-                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 shadow-md">
-                                  <span className="text-lg font-bold text-white">
-                                    {displayName.charAt(0).toUpperCase()}
-                                  </span>
+                              // Show status indicator only for technician (when customer views)
+                              const showStatusIndicator = !isTechnicianRole
+                              const isOnline =
+                                techRoom.technician?.isAvailable ?? false
+
+                              return (
+                                <div className="relative flex-shrink-0">
+                                  {displayImage ? (
+                                    <img
+                                      src={displayImage}
+                                      alt={displayName}
+                                      className="h-12 w-12 rounded-full object-cover ring-2 ring-blue-200"
+                                    />
+                                  ) : (
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 shadow-md">
+                                      <span className="text-lg font-bold text-white">
+                                        {displayName.charAt(0).toUpperCase()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {/* Online/Offline Status Indicator */}
+                                  {showStatusIndicator && (
+                                    <div
+                                      className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
+                                        isOnline
+                                          ? 'bg-emerald-500'
+                                          : 'bg-gray-400'
+                                      }`}
+                                      title={isOnline ? 'Online' : 'Offline'}
+                                    />
+                                  )}
                                 </div>
                               )
                             })()}
@@ -1068,7 +1092,8 @@ export default function FloatingChatButton() {
                       : (() => {
                           const techRoom = activeRoom as TechnicianChatRoom
                           const isTechnicianRole =
-                            (session?.user?.role as string) === 'TECHNICIAN'
+                            (session?.user as { isTechnician?: boolean })
+                              ?.isTechnician === true
 
                           // If user is technician, show customer. Otherwise show technician.
                           const displayImage = isTechnicianRole
@@ -1078,15 +1103,33 @@ export default function FloatingChatButton() {
                             ? techRoom.customer?.name || 'Customer'
                             : techRoom.technician?.user?.name || 'Teknisi'
 
-                          return displayImage ? (
-                            <img
-                              src={displayImage}
-                              alt={displayName}
-                              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                              <Wrench className="h-5 w-5 text-white" />
+                          // Show status indicator only for technician (when customer views)
+                          const showStatusIndicator = !isTechnicianRole
+                          const isOnline =
+                            techRoom.technician?.isAvailable ?? false
+
+                          return (
+                            <div className="relative">
+                              {displayImage ? (
+                                <img
+                                  src={displayImage}
+                                  alt={displayName}
+                                  className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
+                                />
+                              ) : (
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                                  <Wrench className="h-5 w-5 text-white" />
+                                </div>
+                              )}
+                              {/* Online/Offline Status Indicator */}
+                              {showStatusIndicator && (
+                                <div
+                                  className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
+                                    isOnline ? 'bg-emerald-400' : 'bg-gray-400'
+                                  }`}
+                                  title={isOnline ? 'Online' : 'Offline'}
+                                />
+                              )}
                             </div>
                           )
                         })()}
@@ -1104,7 +1147,8 @@ export default function FloatingChatButton() {
                           : (() => {
                               const techRoom = activeRoom as TechnicianChatRoom
                               const isTechnicianRole =
-                                (session?.user?.role as string) === 'TECHNICIAN'
+                                (session?.user as { isTechnician?: boolean })
+                                  ?.isTechnician === true
                               return isTechnicianRole
                                 ? techRoom.customer?.name || 'Customer'
                                 : techRoom.technician?.user?.name || 'Teknisi'

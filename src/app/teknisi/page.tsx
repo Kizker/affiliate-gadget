@@ -10,8 +10,8 @@ async function getInitialTechnicians() {
     const limit = 12
     const page = 1
 
+    // Show all technicians (online and offline) with active user accounts
     const where = {
-      isAvailable: true,
       user: {
         isActive: true,
       },

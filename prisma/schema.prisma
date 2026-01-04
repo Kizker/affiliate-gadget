@@ -117,7 +117,9 @@ model Service {
   name         String
   description  String?
   category     ServiceCategory
-  price        Float
+  price        Float           // Base/default price (can use minPrice for display)
+  minPrice     Float?          // Minimum price range
+  maxPrice     Float?          // Maximum price range
   duration     Int?
   isActive     Boolean         @default(true)
   createdAt    DateTime        @default(now())
@@ -256,6 +258,7 @@ model OrderItem {
   rentalDays   Int?
   price        Float
   subtotal     Float
+  finalPrice   Float?       // Final price set by technician (for services)
   notes        String?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt

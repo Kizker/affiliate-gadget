@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import Image from 'next/image'
@@ -18,13 +18,18 @@ import {
   CheckCircle2,
   Calendar,
   ChevronRight,
-  AlertCircle,
   ArrowUpRight,
   Zap,
+  Search,
+  ChevronLeft,
+  LogOut,
+  type LucideIcon,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Navbar } from '@/components/layouts/navbar'
+import { Footer } from '@/components/layouts/footer'
 
 // --- Types ---
 
@@ -83,6 +88,12 @@ interface DashboardData {
       cancelled: number
     }
   }
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
 }
 
 // --- Animation Variants ---
@@ -120,7 +131,7 @@ const StatCard = ({
   title: string
   value: string | number
   subtitle?: string
-  icon: any
+  icon: LucideIcon
   color: 'indigo' | 'emerald' | 'amber' | 'rose'
   trend?: string
 }) => {
@@ -230,7 +241,13 @@ const SkeletonLoader = () => (
   </div>
 )
 
-const Header = ({ user, profile }: { user: any; profile: any }) => {
+const Header = ({
+  user,
+  profile,
+}: {
+  user: { name: string | null; email: string | null; image: string | null }
+  profile: { isAvailable: boolean }
+}) => {
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 11) return 'Selamat Pagi'
@@ -315,6 +332,15 @@ const Header = ({ user, profile }: { user: any; profile: any }) => {
             Layanan Baru
           </motion.button>
         </Link>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50/80 px-5 py-3 text-sm font-semibold text-rose-600 shadow-sm backdrop-blur-sm transition-all hover:border-rose-300 hover:bg-rose-100 hover:shadow-md"
+        >
+          <LogOut className="h-4 w-4" />
+          Keluar
+        </motion.button>
       </div>
     </motion.div>
   )
@@ -331,10 +357,66 @@ export default function TechnicianDashboard() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('ALL')
 
+  // Search & Pagination State
+  const [searchQuery, setSearchQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const [isSearching, setIsSearching] = useState(false)
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false)
+
+  // Toggle Availability Status
+  const toggleAvailability = async () => {
+    if (!data) return
+
+    setIsTogglingStatus(true)
+    try {
+      const res = await fetch('/api/technicians/me/availability', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isAvailable: !data.profile.isAvailable }),
+      })
+
+      const result = await res.json()
+
+      if (res.ok) {
+        // Update local state
+        setData({
+          ...data,
+          profile: {
+            ...data.profile,
+            isAvailable: result.isAvailable,
+          },
+        })
+
+        toast({
+          title: result.isAvailable ? '🟢 Status Online' : '⚪ Status Offline',
+          description: result.message,
+        })
+      } else {
+        throw new Error(result.error || 'Gagal mengubah status')
+      }
+    } catch (error) {
+      console.error('Error toggling availability:', error)
+      toast({
+        title: 'Gagal mengubah status',
+        description: 'Terjadi kesalahan. Silakan coba lagi.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsTogglingStatus(false)
+    }
+  }
+
   const fetchDashboardData = useCallback(async () => {
     try {
-      const query = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
-      const res = await fetch(`/api/technicians/me/dashboard${query}`)
+      const queryParams = new URLSearchParams()
+      if (statusFilter !== 'ALL') queryParams.append('status', statusFilter)
+      if (searchQuery) queryParams.append('q', searchQuery)
+      queryParams.append('page', page.toString())
+      queryParams.append('limit', '5')
+
+      const res = await fetch(
+        `/api/technicians/me/dashboard?${queryParams.toString()}`
+      )
 
       if (!res.ok) throw new Error('Failed to fetch dashboard data')
 
@@ -348,17 +430,27 @@ export default function TechnicianDashboard() {
         variant: 'destructive',
       })
     } finally {
-      setTimeout(() => setLoading(false), 500) // Slightly longer for the initial seamless feel
+      setLoading(false)
+      setIsSearching(false)
     }
-  }, [statusFilter, toast])
+  }, [statusFilter, searchQuery, page, toast])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
-      fetchDashboardData()
+      // Small debounce for search
+      const timer = setTimeout(
+        () => {
+          if (searchQuery) setIsSearching(true)
+          fetchDashboardData()
+        },
+        searchQuery ? 500 : 0
+      )
+
+      return () => clearTimeout(timer)
     }
-  }, [status, router, fetchDashboardData])
+  }, [status, router, fetchDashboardData, searchQuery, page])
 
   if (status === 'loading' || loading) {
     return <SkeletonLoader />
@@ -366,7 +458,7 @@ export default function TechnicianDashboard() {
 
   if (!data) return null
 
-  const { profile, stats, orders, services } = data
+  const { profile, stats, orders, services, pagination } = data
   const user = profile.user
 
   return (
@@ -378,11 +470,13 @@ export default function TechnicianDashboard() {
         <div className="absolute bottom-[-10%] left-[20%] h-[500px] w-[500px] rounded-full bg-indigo-300/20 blur-[100px]" />
       </div>
 
+      <Navbar variant="light" />
+
       <motion.main
         initial="hidden"
         animate="visible"
         variants={containerVariants}
-        className="container relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
+        className="container relative z-10 mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6 lg:px-8"
       >
         <Header user={user} profile={profile} />
 
@@ -432,34 +526,64 @@ export default function TechnicianDashboard() {
             variants={itemVariants}
             className="space-y-8 lg:col-span-8"
           >
-            <div className="rounded-[2.5rem] border border-white/60 bg-white/60 p-8 shadow-xl shadow-indigo-100/20 backdrop-blur-xl">
-              <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Pesanan Masuk
-                  </h2>
-                  <p className="text-sm text-gray-500">
-                    Kelola dan pantau pesanan pelanggan Anda.
-                  </p>
+            <div className="relative overflow-hidden rounded-[2.5rem] border border-white/60 bg-white/60 shadow-xl shadow-indigo-100/20 backdrop-blur-xl">
+              <div className="border-b border-indigo-50/50 p-8 pb-6">
+                <div className="mb-6 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Pesanan Masuk
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      Kelola dan pantau pesanan pelanggan Anda.
+                    </p>
+                  </div>
+                  <div className="flex gap-1 rounded-2xl bg-gray-100/80 p-1.5 backdrop-blur-sm">
+                    {['ALL', 'IN_PROGRESS', 'COMPLETED'].map((filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => {
+                          setStatusFilter(filter)
+                          setPage(1)
+                        }}
+                        className={`rounded-xl px-4 py-2 text-xs font-bold transition-all duration-300 ${
+                          statusFilter === filter
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-500 hover:bg-gray-200/50 hover:text-gray-900'
+                        }`}
+                      >
+                        {filter === 'ALL' ? 'Semua' : filter.replace('_', ' ')}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-1 rounded-2xl bg-gray-100/80 p-1.5 backdrop-blur-sm">
-                  {['ALL', 'IN_PROGRESS', 'COMPLETED'].map((filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => setStatusFilter(filter)}
-                      className={`rounded-xl px-4 py-2 text-xs font-bold transition-all duration-300 ${
-                        statusFilter === filter
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-500 hover:bg-gray-200/50 hover:text-gray-900'
-                      }`}
-                    >
-                      {filter === 'ALL' ? 'Semua' : filter.replace('_', ' ')}
-                    </button>
-                  ))}
+
+                {/* Search Bar */}
+                <div className="group relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                    <Search
+                      className={`h-5 w-5 transition-colors duration-300 ${isSearching || searchQuery ? 'text-indigo-500' : 'text-gray-400 group-focus-within:text-indigo-500'}`}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    className="block w-full rounded-2xl border-0 bg-gray-50/50 py-4 pl-12 pr-4 text-gray-900 ring-1 ring-inset ring-gray-200 transition-all placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                    placeholder="Cari nomor pesanan (ORD...) atau nama pelanggan..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setPage(1)
+                    }}
+                  />
+                  {isSearching && (
+                    <div className="absolute inset-y-0 right-4 flex items-center">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"></div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="space-y-4">
+              {/* Order List Content */}
+              <div className="space-y-4 p-8 pt-6">
                 <AnimatePresence mode="wait">
                   {orders.length === 0 ? (
                     <motion.div
@@ -540,6 +664,48 @@ export default function TechnicianDashboard() {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* Pagination */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-indigo-50/50 p-6 px-8">
+                  <div className="text-sm text-gray-500">
+                    Menampilkan{' '}
+                    <span className="font-bold text-gray-900">
+                      {(pagination.page - 1) * pagination.limit + 1}-
+                      {Math.min(
+                        pagination.page * pagination.limit,
+                        pagination.total
+                      )}
+                    </span>{' '}
+                    dari{' '}
+                    <span className="font-bold text-gray-900">
+                      {pagination.total}
+                    </span>{' '}
+                    pesanan
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={pagination.page === 1}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-600 transition-all hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50 disabled:hover:bg-gray-50 disabled:hover:text-gray-600"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <div className="flex items-center gap-1 rounded-xl bg-gray-50 px-3 font-semibold text-gray-900">
+                      {pagination.page} / {pagination.totalPages}
+                    </div>
+                    <button
+                      onClick={() =>
+                        setPage((p) => Math.min(pagination.totalPages, p + 1))
+                      }
+                      disabled={pagination.page === pagination.totalPages}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-600 transition-all hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50 disabled:hover:bg-gray-50 disabled:hover:text-gray-600"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -586,15 +752,25 @@ export default function TechnicianDashboard() {
               </div>
 
               <button
-                onClick={() => router.push('/dashboard/teknisi/settings')}
-                className="mt-8 w-full rounded-2xl bg-white py-4 font-bold text-gray-900 shadow-lg transition-transform hover:scale-[1.02] active:scale-95"
+                onClick={toggleAvailability}
+                disabled={isTogglingStatus}
+                className="mt-8 w-full rounded-2xl bg-white py-4 font-bold text-gray-900 shadow-lg transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:hover:scale-100"
               >
-                {profile.isAvailable ? 'Matikan Status' : 'Aktifkan Status'}
+                {isTogglingStatus ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-900 border-t-transparent"></div>
+                    Mengubah...
+                  </span>
+                ) : profile.isAvailable ? (
+                  'Matikan Status'
+                ) : (
+                  'Aktifkan Status'
+                )}
               </button>
             </div>
 
             {/* Quick Services List */}
-            <div className="rounded-[2.5rem] border border-white/60 bg-white/60 p-8 shadow-xl shadow-indigo-100/10 backdrop-blur-xl">
+            <div className="flex flex-col rounded-[2.5rem] border border-white/60 bg-white/60 p-8 shadow-xl shadow-indigo-100/10 backdrop-blur-xl">
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900">
                   Katalog Layanan
@@ -606,7 +782,7 @@ export default function TechnicianDashboard() {
                   Lihat Semua <ArrowUpRight className="h-3 w-3" />
                 </Link>
               </div>
-              <div className="space-y-4">
+              <div className="flex-1 space-y-4">
                 {services.slice(0, 4).map((service) => (
                   <div
                     key={service.id}
@@ -645,28 +821,11 @@ export default function TechnicianDashboard() {
                 </button>
               </Link>
             </div>
-
-            {/* Help Widget */}
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-indigo-900 p-8 text-white">
-              <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-white/10 blur-2xl"></div>
-              <div className="relative z-10 flex gap-4">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
-                  <AlertCircle className="h-6 w-6 text-indigo-200" />
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold">Butuh Bantuan?</h4>
-                  <p className="mt-1 text-sm leading-relaxed text-indigo-200/80">
-                    Tim support kami siap membantu kendala teknis Anda 24/7.
-                  </p>
-                  <button className="mt-4 text-sm font-bold text-white underline decoration-indigo-400 underline-offset-4 transition-all hover:decoration-white">
-                    Hubungi Admin CS &rarr;
-                  </button>
-                </div>
-              </div>
-            </div>
           </motion.div>
         </div>
       </motion.main>
+
+      <Footer variant="light" />
     </div>
   )
 }

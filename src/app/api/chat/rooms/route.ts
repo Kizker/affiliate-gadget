@@ -36,6 +36,7 @@ export async function GET() {
           technician: {
             select: {
               id: true,
+              isAvailable: true,
               user: {
                 select: {
                   name: true,
@@ -86,6 +87,7 @@ export async function GET() {
           technician: {
             select: {
               id: true,
+              isAvailable: true,
               rating: true,
               totalReview: true,
               experience: true,

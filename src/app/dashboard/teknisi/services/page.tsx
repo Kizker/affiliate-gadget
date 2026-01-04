@@ -9,12 +9,8 @@ import {
   ArrowLeft,
   Plus,
   Search,
-  Laptop,
-  Smartphone,
   Wrench,
-  Monitor,
   Cpu,
-  Tv,
   Edit2,
   Trash2,
   X,
@@ -30,19 +26,16 @@ interface Service {
   name: string
   category: string
   price: number
-  minPrice?: number
+  minPrice?: number | null
+  maxPrice?: number | null
   description: string | null
   estimatedDuration: number
 }
 
 const SERVICE_CATEGORIES = [
-  'LAPTOP',
-  'HP_TABLET',
-  'KOMPUTER_RAKITAN',
-  'PRINTER',
-  'TV_MONITOR',
-  'NETWORK_CCTV',
-  'LAINNYA',
+  { value: 'KONSULTASI', label: 'Konsultasi' },
+  { value: 'CEK_BONGKAR', label: 'Cek & Bongkar' },
+  { value: 'SERVIS_LENGKAP', label: 'Servis Lengkap' },
 ] as const
 
 // --- Animation Variants ---
@@ -70,31 +63,21 @@ const itemVariants = {
 
 const CategoryIcon = ({ category }: { category: string }) => {
   switch (category) {
-    case 'LAPTOP':
-      return <Laptop className="h-6 w-6" />
-    case 'HP_TABLET':
-      return <Smartphone className="h-6 w-6" />
-    case 'KOMPUTER_RAKITAN':
+    case 'KONSULTASI':
+      return <Search className="h-6 w-6" />
+    case 'CEK_BONGKAR':
+      return <Wrench className="h-6 w-6" />
+    case 'SERVIS_LENGKAP':
       return <Cpu className="h-6 w-6" />
-    case 'PRINTER':
-      return <Wrench className="h-6 w-6" /> // Placeholder for printer
-    case 'TV_MONITOR':
-      return <Tv className="h-6 w-6" />
-    case 'NETWORK_CCTV':
-      return <Monitor className="h-6 w-6" /> // Placeholder
     default:
       return <Wrench className="h-6 w-6" />
   }
 }
 
 const categoryColors = {
-  LAPTOP: 'bg-indigo-100 text-indigo-600',
-  HP_TABLET: 'bg-rose-100 text-rose-600',
-  KOMPUTER_RAKITAN: 'bg-amber-100 text-amber-600',
-  PRINTER: 'bg-emerald-100 text-emerald-600',
-  TV_MONITOR: 'bg-blue-100 text-blue-600',
-  NETWORK_CCTV: 'bg-purple-100 text-purple-600',
-  LAINNYA: 'bg-gray-100 text-gray-600',
+  KONSULTASI: 'bg-indigo-100 text-indigo-600',
+  CEK_BONGKAR: 'bg-amber-100 text-amber-600',
+  SERVIS_LENGKAP: 'bg-emerald-100 text-emerald-600',
 }
 
 const formatPrice = (price: number) =>
@@ -103,6 +86,14 @@ const formatPrice = (price: number) =>
     currency: 'IDR',
     maximumFractionDigits: 0,
   }).format(price)
+
+const formatPriceRange = (service: Service) => {
+  const minPrice = service.minPrice ?? service.price
+  if (service.maxPrice && service.maxPrice > minPrice) {
+    return `${formatPrice(minPrice)} - ${formatPrice(service.maxPrice)}`
+  }
+  return formatPrice(minPrice)
+}
 
 export default function ServicesPage() {
   const { status } = useSession()
@@ -118,8 +109,9 @@ export default function ServicesPage() {
   // Form State
   const [formData, setFormData] = useState({
     name: '',
-    category: 'LAPTOP',
-    price: '',
+    category: 'KONSULTASI',
+    minPrice: '',
+    maxPrice: '',
     description: '',
     duration: '60',
   })
@@ -151,7 +143,8 @@ export default function ServicesPage() {
       setFormData({
         name: service.name,
         category: service.category,
-        price: service.price.toString(),
+        minPrice: (service.minPrice ?? service.price).toString(),
+        maxPrice: service.maxPrice?.toString() || '',
         description: service.description || '',
         duration: service.estimatedDuration.toString(),
       })
@@ -159,8 +152,9 @@ export default function ServicesPage() {
       setEditingService(null)
       setFormData({
         name: '',
-        category: 'LAPTOP',
-        price: '',
+        category: 'KONSULTASI',
+        minPrice: '',
+        maxPrice: '',
         description: '',
         duration: '60',
       })
@@ -207,10 +201,13 @@ export default function ServicesPage() {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price),
+          name: formData.name,
+          category: formData.category,
+          description: formData.description,
           duration: parseInt(formData.duration),
-          minPrice: parseFloat(formData.price), // Backend logic mapping
+          minPrice: formData.minPrice ? parseFloat(formData.minPrice) : null,
+          maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : null,
+          price: formData.minPrice ? parseFloat(formData.minPrice) : 0,
         }),
       })
 
@@ -332,7 +329,7 @@ export default function ServicesPage() {
             variants={containerVariants}
             className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           >
-            {filteredServices.map((service, i) => (
+            {filteredServices.map((service) => (
               <motion.div
                 key={service.id}
                 variants={itemVariants}
@@ -359,7 +356,7 @@ export default function ServicesPage() {
 
                 <div>
                   <div
-                    className={`flex h-14 w-14 items-center justify-center rounded-2xl ${categoryColors[service.category as keyof typeof categoryColors] || categoryColors.LAINNYA} transition-transform group-hover:scale-110`}
+                    className={`flex h-14 w-14 items-center justify-center rounded-2xl ${categoryColors[service.category as keyof typeof categoryColors] || categoryColors.KONSULTASI} transition-transform group-hover:scale-110`}
                   >
                     <CategoryIcon category={service.category} />
                   </div>
@@ -378,13 +375,15 @@ export default function ServicesPage() {
                   )}
                 </div>
 
-                <div className="mt-6 flex items-end justify-between border-t border-gray-100 pt-4">
-                  <div className="flex items-center gap-1.5 rounded-lg bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
-                    <Clock className="h-3.5 w-3.5" />
-                    {service.estimatedDuration} min
+                <div className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 rounded-lg bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
+                      <Clock className="h-3.5 w-3.5" />
+                      {service.estimatedDuration} min
+                    </div>
                   </div>
-                  <p className="text-lg font-bold text-indigo-600">
-                    {formatPrice(service.price)}
+                  <p className="text-left text-lg font-bold text-indigo-600">
+                    {formatPriceRange(service)}
                   </p>
                 </div>
               </motion.div>
@@ -463,8 +462,8 @@ export default function ServicesPage() {
                           }
                         >
                           {SERVICE_CATEGORIES.map((c) => (
-                            <option key={c} value={c}>
-                              {c.replace(/_/g, ' ')}
+                            <option key={c.value} value={c.value}>
+                              {c.label}
                             </option>
                           ))}
                         </select>
@@ -494,23 +493,49 @@ export default function ServicesPage() {
 
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-gray-700">
-                      Harga (Rp)
+                      Kisaran Harga (Rp)
                     </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">
-                        Rp
-                      </span>
-                      <input
-                        required
-                        type="number"
-                        className="w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-3 text-lg font-bold outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="0"
-                        value={formData.price}
-                        onChange={(e) =>
-                          setFormData({ ...formData, price: e.target.value })
-                        }
-                      />
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
+                          Min
+                        </span>
+                        <input
+                          required
+                          type="number"
+                          className="w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-3 text-base font-bold outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20"
+                          placeholder="0"
+                          value={formData.minPrice}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              minPrice: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <span className="text-gray-400">-</span>
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
+                          Max
+                        </span>
+                        <input
+                          type="number"
+                          className="w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-3 text-base font-bold outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20"
+                          placeholder="Opsional"
+                          value={formData.maxPrice}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              maxPrice: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
                     </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Harga fix akan ditentukan saat proses pengerjaan
+                    </p>
                   </div>
 
                   <div>

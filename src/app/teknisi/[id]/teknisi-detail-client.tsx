@@ -243,9 +243,7 @@ export default function TeknisiDetailClient({
                               : 'bg-red-100 text-red-700'
                           }`}
                         >
-                          {technician.isAvailable
-                            ? '🟢 Tersedia'
-                            : '⚫ Tidak Tersedia'}
+                          {technician.isAvailable ? '🟢 Online' : '⚫ Offline'}
                         </span>
                       </div>
                     </div>

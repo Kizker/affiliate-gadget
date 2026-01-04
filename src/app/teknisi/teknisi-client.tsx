@@ -69,7 +69,7 @@ const filterGroups = [
     title: 'Ketersediaan',
     type: 'radio' as const,
     options: [
-      { value: 'available', label: 'Tersedia Sekarang' },
+      { value: 'available', label: 'Online Sekarang' },
       { value: 'all', label: 'Semua' },
     ],
   },
@@ -416,9 +416,7 @@ export default function TeknisiClientPage({
                               ? { min: minPrice, max: maxPrice }
                               : undefined
                           }
-                          badge={
-                            tech.isAvailable ? 'Tersedia' : 'Tidak Tersedia'
-                          }
+                          badge={tech.isAvailable ? 'Online' : 'Offline'}
                           badgeColor={tech.isAvailable ? 'green' : 'red'}
                           href={`/teknisi/${tech.id}`}
                           imageAspect={aspectClass}

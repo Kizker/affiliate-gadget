@@ -15,7 +15,8 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { name, category, price, minPrice, description, duration } = body
+    const { name, category, price, minPrice, maxPrice, description, duration } =
+      body
 
     // Verify service belongs to technician
     const service = await prisma.service.findUnique({
@@ -35,13 +36,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Use minPrice if provided (frontend sends this), otherwise use price
-    const servicePrice =
+    // Parse prices
+    const parsedMinPrice =
       minPrice !== undefined && minPrice !== null && minPrice !== ''
         ? parseFloat(minPrice)
-        : price !== undefined && price !== null && price !== ''
-          ? parseFloat(price)
-          : undefined
+        : null
+    const parsedMaxPrice =
+      maxPrice !== undefined && maxPrice !== null && maxPrice !== ''
+        ? parseFloat(maxPrice)
+        : null
+
+    // Use minPrice as base price if available
+    const servicePrice =
+      parsedMinPrice ?? (price ? parseFloat(price) : undefined)
 
     // Update service
     const updatedService = await prisma.service.update({
@@ -50,6 +57,10 @@ export async function PATCH(
         ...(name !== undefined && { name }),
         ...(category !== undefined && { category }),
         ...(servicePrice !== undefined && { price: servicePrice }),
+        ...(parsedMinPrice !== null && { minPrice: parsedMinPrice }),
+        ...(parsedMaxPrice !== null
+          ? { maxPrice: parsedMaxPrice }
+          : { maxPrice: null }),
         ...(description !== undefined && { description }),
         ...(duration !== undefined && { duration }),
       },
@@ -61,8 +72,8 @@ export async function PATCH(
       name: updatedService.name,
       category: updatedService.category,
       price: updatedService.price,
-      minPrice: updatedService.price,
-      maxPrice: null,
+      minPrice: updatedService.minPrice ?? updatedService.price,
+      maxPrice: updatedService.maxPrice,
       description: updatedService.description,
       estimatedDuration: updatedService.duration || 60,
     }

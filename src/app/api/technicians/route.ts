@@ -13,10 +13,9 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit
 
-    // Build where clause - only active technicians with active users
+    // Build where clause - only technicians with active users (show all regardless of availability)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
-      isAvailable: true,
       user: {
         isActive: true,
       },

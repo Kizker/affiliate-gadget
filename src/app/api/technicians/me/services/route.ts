@@ -33,13 +33,20 @@ export async function GET() {
       name: service.name,
       category: service.category,
       price: service.price,
-      minPrice: service.price, // Map price to minPrice for frontend
-      maxPrice: null, // Not supported in DB
+      minPrice: service.minPrice ?? service.price,
+      maxPrice: service.maxPrice,
       description: service.description,
       estimatedDuration: service.duration || 60,
     }))
 
-    return NextResponse.json({ services: mappedServices })
+    return NextResponse.json(
+      { services: mappedServices },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching services:', error)
     return NextResponse.json(
@@ -70,15 +77,21 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, category, price, minPrice, description, duration } = body
+    const { name, category, price, minPrice, maxPrice, description, duration } =
+      body
 
-    // Use minPrice if provided (frontend sends this), otherwise use price
-    const servicePrice =
+    // Parse prices
+    const parsedMinPrice =
       minPrice !== undefined && minPrice !== null && minPrice !== ''
         ? parseFloat(minPrice)
-        : price !== undefined && price !== null && price !== ''
-          ? parseFloat(price)
-          : 0
+        : null
+    const parsedMaxPrice =
+      maxPrice !== undefined && maxPrice !== null && maxPrice !== ''
+        ? parseFloat(maxPrice)
+        : null
+
+    // Use minPrice as the base price if available
+    const servicePrice = parsedMinPrice ?? (price ? parseFloat(price) : 0)
 
     if (!name || !category) {
       return NextResponse.json(
@@ -93,6 +106,8 @@ export async function POST(request: NextRequest) {
         name,
         category,
         price: servicePrice,
+        minPrice: parsedMinPrice,
+        maxPrice: parsedMaxPrice,
         description: description || '',
         duration: duration || 60,
       },
@@ -104,8 +119,8 @@ export async function POST(request: NextRequest) {
       name: service.name,
       category: service.category,
       price: service.price,
-      minPrice: service.price,
-      maxPrice: null,
+      minPrice: service.minPrice ?? service.price,
+      maxPrice: service.maxPrice,
       description: service.description,
       estimatedDuration: service.duration || 60,
     }

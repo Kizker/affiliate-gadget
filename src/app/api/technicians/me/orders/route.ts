@@ -51,11 +51,18 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
       take: limit,
     })
 
-    return NextResponse.json({ orders })
+    return NextResponse.json(
+      { orders },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=5, stale-while-revalidate=30',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching orders:', error)
     return NextResponse.json(

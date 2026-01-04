@@ -7,7 +7,8 @@ const prismaClientSingleton = () => {
   // Add connection pooling params for Neon serverless
   if (dbUrl.includes('neon.tech') && !dbUrl.includes('connection_limit')) {
     const separator = dbUrl.includes('?') ? '&' : '?'
-    dbUrl = `${dbUrl}${separator}connection_limit=1&pool_timeout=20`
+    // Increase connection limit for build time, use pool timeout
+    dbUrl = `${dbUrl}${separator}connection_limit=10&pool_timeout=20&connect_timeout=10`
   }
 
   return new PrismaClient({
