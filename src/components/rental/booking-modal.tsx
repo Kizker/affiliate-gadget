@@ -116,43 +116,10 @@ export default function BookingModal({
 
     setLoading(true)
 
-    try {
-      const res = await fetch('/api/orders/rental', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rentalItemId: rentalItem.id,
-          duration: pricing.actualDays,
-          durationType,
-          notes,
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        toast({
-          title: 'Berhasil!',
-          description: 'Booking berhasil dibuat',
-        })
-        router.push(`/rental-confirmation/${data.orderId}`)
-      } else {
-        const error = await res.json()
-        toast({
-          title: 'Gagal',
-          description: error.error || 'Gagal membuat booking',
-          variant: 'destructive',
-        })
-      }
-    } catch (error) {
-      console.error('Error creating rental order:', error)
-      toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan saat membuat booking',
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
-    }
+    // Redirect to direct checkout with rental data
+    router.push(
+      `/checkout/direct?type=rental&id=${rentalItem.id}&qty=1&days=${pricing.actualDays}`
+    )
   }
 
   if (!isOpen) return null

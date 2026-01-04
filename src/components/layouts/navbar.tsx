@@ -277,20 +277,7 @@ export function Navbar({
                       Edit Profil
                     </Link>
                   )}
-                  {/* Technician-only menu items */}
-                  {session.user.isTechnician && (
-                    <Link
-                      href="/dashboard/teknisi/orders"
-                      className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                        isLight
-                          ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                          : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                      }`}
-                    >
-                      <ShoppingBag className="h-4 w-4" />
-                      Pesanan Saya
-                    </Link>
-                  )}
+
                   {/* Customer-only menu items (exclude technicians) */}
                   {session.user.role === 'CUSTOMER' &&
                     !session.user.isTechnician && (
@@ -578,22 +565,6 @@ export function Navbar({
                 >
                   <User className="h-5 w-5" />
                   Edit Profil
-                </Link>
-              )}
-
-              {/* Technician-only menu items */}
-              {session.user.isTechnician && (
-                <Link
-                  href="/dashboard/teknisi/orders"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-3 font-medium transition-colors ${
-                    isLight
-                      ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-100 hover:bg-gray-800 hover:text-cyan-400'
-                  }`}
-                >
-                  <ShoppingBag className="h-5 w-5" />
-                  Pesanan Saya
                 </Link>
               )}
 

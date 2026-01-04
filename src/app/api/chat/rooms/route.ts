@@ -307,12 +307,6 @@ export async function POST(request: NextRequest) {
 
       room = result.room
       orderReferenceMessage = result.message
-      console.log('✅ Order reference message created for room:', room.id)
-      console.log('📝 Message details:', {
-        id: orderReferenceMessage?.id,
-        mediaType: orderReferenceMessage?.mediaType,
-        contentPreview: orderReferenceMessage?.content?.substring(0, 100),
-      })
     } else {
       // Create room without order reference
       room = await prisma.chatRoom.create({
@@ -341,11 +335,7 @@ export async function POST(request: NextRequest) {
       room,
       messages: orderReferenceMessage ? [orderReferenceMessage] : [],
     }
-    console.log('📤 Sending response:', {
-      roomId: room.id,
-      messagesCount: response.messages.length,
-      firstMessageType: response.messages[0]?.mediaType,
-    })
+
     return NextResponse.json(response, { status: 201 })
   } catch (error) {
     console.error('Error creating chat room:', error)

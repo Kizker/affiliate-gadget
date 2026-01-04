@@ -157,7 +157,7 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: selectedItems,
-          paymentMethod: 'MANUAL_TRANSFER',
+          paymentMethod: 'CASH',
         }),
       })
 
@@ -316,10 +316,10 @@ export default function CheckoutPage() {
                     />
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900">
-                        Transfer Bank Manual
+                        Pembayaran Cash
                       </p>
                       <p className="text-sm text-gray-600">
-                        Lihat detail rekening setelah order
+                        Bayar langsung saat pengambilan barang
                       </p>
                     </div>
                   </label>

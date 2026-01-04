@@ -72,6 +72,13 @@ interface AdminChatRoom {
   type: 'admin'
   lastMessageAt: string
   orderId: string | null
+  customer?: {
+    id: string
+    name: string | null
+    image: string | null
+    phone?: string | null
+    email?: string
+  }
   order?: {
     id: string
     orderNumber: string
@@ -236,7 +243,6 @@ export default function FloatingChatButton() {
             )
             if (createRes.ok) {
               const createData = await createRes.json()
-              console.log('🆕 Room created:', createData)
 
               if (createData.room) {
                 // Create a ChatRoom object from the response
@@ -254,10 +260,6 @@ export default function FloatingChatButton() {
 
                 // Set messages immediately if provided
                 if (createData.messages && createData.messages.length > 0) {
-                  console.log(
-                    '📨 Using messages from POST response:',
-                    createData.messages
-                  )
                   setMessages(createData.messages)
                   setShouldScrollToBottom(true)
                 }
@@ -315,12 +317,14 @@ export default function FloatingChatButton() {
         handleOpenChat as unknown as EventListener
       )
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     if (isOpen && status === 'authenticated') {
       fetchRooms()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, status])
 
   useEffect(() => {
@@ -349,16 +353,14 @@ export default function FloatingChatButton() {
   const fetchRooms = async () => {
     setLoading(true)
     try {
-      const [technicianRes, adminRes] = await Promise.all([
-        fetch('/api/chat/rooms'),
-        fetch('/api/customer/chat/all-rooms'),
-      ])
-
       const allRooms: ChatRoom[] = []
+      const isAdmin =
+        session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN'
 
+      // Fetch technician chat rooms
+      const technicianRes = await fetch('/api/chat/rooms')
       if (technicianRes.ok) {
         const techData = await technicianRes.json()
-        console.log('🔧 Technician Rooms Response:', techData)
         const techRooms = (techData.rooms || []).map(
           (room: TechnicianChatRoom) => ({
             ...room,
@@ -368,16 +370,33 @@ export default function FloatingChatButton() {
         allRooms.push(...techRooms)
       }
 
-      if (adminRes.ok) {
-        const adminData = await adminRes.json()
-        console.log('👨‍💼 Admin Rooms Response:', adminData)
-        const adminRooms = (adminData.rooms || []).map(
-          (room: AdminChatRoom) => ({
-            ...room,
-            type: 'admin' as const,
-          })
-        )
-        allRooms.push(...adminRooms)
+      // Fetch admin chat rooms - use different API based on role
+      if (isAdmin) {
+        // Admin users: fetch from admin API to get all claimed/unclaimed rooms
+        const adminRes = await fetch('/api/admin/chat/rooms')
+        if (adminRes.ok) {
+          const adminData = await adminRes.json()
+          const adminRooms = (adminData.rooms || []).map(
+            (room: AdminChatRoom) => ({
+              ...room,
+              type: 'admin' as const,
+            })
+          )
+          allRooms.push(...adminRooms)
+        }
+      } else {
+        // Customer users: fetch from customer API
+        const adminRes = await fetch('/api/customer/chat/all-rooms')
+        if (adminRes.ok) {
+          const adminData = await adminRes.json()
+          const adminRooms = (adminData.rooms || []).map(
+            (room: AdminChatRoom) => ({
+              ...room,
+              type: 'admin' as const,
+            })
+          )
+          allRooms.push(...adminRooms)
+        }
       }
 
       allRooms.sort(
@@ -386,7 +405,6 @@ export default function FloatingChatButton() {
           new Date(a.lastMessageAt).getTime()
       )
 
-      console.log('📋 All Rooms Combined:', allRooms)
       setRooms(allRooms)
     } catch (error) {
       console.error('Error fetching rooms:', error)
@@ -412,7 +430,6 @@ export default function FloatingChatButton() {
 
       if (res.ok) {
         const data = await res.json()
-        console.log('📦 Fetch Messages Response:', data)
         setMessages(data.messages || [])
       }
     } catch (error) {
@@ -946,12 +963,21 @@ export default function FloatingChatButton() {
               ) : (
                 filteredRooms.map((room) => {
                   let itemName = ''
+                  const isAdminUser =
+                    session?.user?.role === 'ADMIN' ||
+                    session?.user?.role === 'SUPER_ADMIN'
+
                   if (room.type === 'admin') {
                     const adminRoom = room as AdminChatRoom
-                    itemName =
-                      adminRoom.order?.items?.[0]?.product?.name ||
-                      adminRoom.order?.items?.[0]?.rentalItem?.name ||
-                      'Pesanan'
+                    // If current user is admin, show customer name. Otherwise show product/order name
+                    if (isAdminUser) {
+                      itemName = adminRoom.customer?.name || 'Customer'
+                    } else {
+                      itemName =
+                        adminRoom.order?.items?.[0]?.product?.name ||
+                        adminRoom.order?.items?.[0]?.rentalItem?.name ||
+                        'Pesanan'
+                    }
                   } else {
                     const techRoom = room as TechnicianChatRoom
                     // If I am the technician, show customer name. If I am customer, show technician name.
@@ -977,25 +1003,46 @@ export default function FloatingChatButton() {
                         {/* Admin/Technician Avatar */}
                         {room.type === 'admin'
                           ? (() => {
-                              // Get admin info from room messages
-                              const adminMessage = room.messages?.find(
-                                (m) =>
-                                  (m.sender?.role as string) === 'ADMIN' ||
-                                  (m.sender?.role as string) === 'SUPER_ADMIN'
-                              )
-                              const adminImage = adminMessage?.sender?.image
+                              const adminRoom = room as AdminChatRoom
 
-                              return adminImage ? (
-                                <img
-                                  src={adminImage}
-                                  alt="Admin"
-                                  className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-green-200"
-                                />
-                              ) : (
-                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md">
-                                  <ShoppingBag className="h-5 w-5 text-white" />
-                                </div>
-                              )
+                              // If current user is admin, show customer avatar. Otherwise show admin avatar
+                              if (isAdminUser) {
+                                const customerImage = adminRoom.customer?.image
+                                const customerName =
+                                  adminRoom.customer?.name || 'Customer'
+                                return customerImage ? (
+                                  <img
+                                    src={customerImage}
+                                    alt={customerName}
+                                    className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-blue-200"
+                                  />
+                                ) : (
+                                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 shadow-md">
+                                    <span className="text-lg font-bold text-white">
+                                      {customerName.charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                )
+                              } else {
+                                // Customer view: show admin avatar
+                                const adminMessage = room.messages?.find(
+                                  (m) =>
+                                    (m.sender?.role as string) === 'ADMIN' ||
+                                    (m.sender?.role as string) === 'SUPER_ADMIN'
+                                )
+                                const adminImage = adminMessage?.sender?.image
+                                return adminImage ? (
+                                  <img
+                                    src={adminImage}
+                                    alt="Admin"
+                                    className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-green-200"
+                                  />
+                                ) : (
+                                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md">
+                                    <ShoppingBag className="h-5 w-5 text-white" />
+                                  </div>
+                                )
+                              }
                             })()
                           : (() => {
                               const techRoom = room as TechnicianChatRoom
@@ -1062,12 +1109,16 @@ export default function FloatingChatButton() {
                             <span
                               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                                 room.type === 'admin'
-                                  ? 'bg-green-100 text-green-700'
+                                  ? isAdminUser
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-green-100 text-green-700'
                                   : 'bg-blue-100 text-blue-700'
                               }`}
                             >
                               {room.type === 'admin'
-                                ? '🛒 Admin'
+                                ? isAdminUser
+                                  ? '👤 Customer'
+                                  : '🛒 Admin'
                                 : '🔧 Teknisi'}
                             </span>
                           </div>
@@ -1114,27 +1165,55 @@ export default function FloatingChatButton() {
                     </button>
                     {/* Admin/Technician Avatar */}
                     {activeRoom.type === 'admin'
-                      ? // Get admin info from messages
+                      ? // Dynamic: show customer for admin, show admin for customer
                         (() => {
-                          const adminMessage = messages.find(
-                            (m) =>
-                              m.sender.role === 'ADMIN' ||
-                              m.sender.role === 'SUPER_ADMIN'
-                          )
-                          const adminName = adminMessage?.sender.name || 'Admin'
-                          const adminImage = adminMessage?.sender.image
+                          const adminRoom = activeRoom as AdminChatRoom
+                          const isAdminUser =
+                            session?.user?.role === 'ADMIN' ||
+                            session?.user?.role === 'SUPER_ADMIN'
 
-                          return adminImage ? (
-                            <img
-                              src={adminImage}
-                              alt={adminName}
-                              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                              <ShoppingBag className="h-5 w-5" />
-                            </div>
-                          )
+                          if (isAdminUser) {
+                            // Admin viewing: show customer info
+                            const customerName =
+                              adminRoom.customer?.name || 'Customer'
+                            const customerImage = adminRoom.customer?.image
+
+                            return customerImage ? (
+                              <img
+                                src={customerImage}
+                                alt={customerName}
+                                className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
+                              />
+                            ) : (
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                                <span className="text-lg font-bold text-white">
+                                  {customerName.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )
+                          } else {
+                            // Customer viewing: show admin info
+                            const adminMessage = messages.find(
+                              (m) =>
+                                m.sender.role === 'ADMIN' ||
+                                m.sender.role === 'SUPER_ADMIN'
+                            )
+                            const adminName =
+                              adminMessage?.sender.name || 'Admin'
+                            const adminImage = adminMessage?.sender.image
+
+                            return adminImage ? (
+                              <img
+                                src={adminImage}
+                                alt={adminName}
+                                className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
+                              />
+                            ) : (
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                                <ShoppingBag className="h-5 w-5" />
+                              </div>
+                            )
+                          }
                         })()
                       : (() => {
                           const techRoom = activeRoom as TechnicianChatRoom
@@ -1184,12 +1263,23 @@ export default function FloatingChatButton() {
                       <h3 className="truncate font-bold">
                         {activeRoom.type === 'admin'
                           ? (() => {
-                              const adminMessage = messages.find(
-                                (m) =>
-                                  m.sender.role === 'ADMIN' ||
-                                  m.sender.role === 'SUPER_ADMIN'
-                              )
-                              return adminMessage?.sender.name || 'Chat Admin'
+                              const adminRoom = activeRoom as AdminChatRoom
+                              const isAdminUser =
+                                session?.user?.role === 'ADMIN' ||
+                                session?.user?.role === 'SUPER_ADMIN'
+
+                              if (isAdminUser) {
+                                // Admin viewing: show customer name
+                                return adminRoom.customer?.name || 'Customer'
+                              } else {
+                                // Customer viewing: show admin name
+                                const adminMessage = messages.find(
+                                  (m) =>
+                                    m.sender.role === 'ADMIN' ||
+                                    m.sender.role === 'SUPER_ADMIN'
+                                )
+                                return adminMessage?.sender.name || 'Chat Admin'
+                              }
                             })()
                           : (() => {
                               const techRoom = activeRoom as TechnicianChatRoom
@@ -1266,10 +1356,6 @@ export default function FloatingChatButton() {
                     </div>
                   ) : (
                     <>
-                      {(() => {
-                        console.log('💬 ALL MESSAGES:', messages)
-                        return null
-                      })()}
                       {messages.map((msg, index) => {
                         // Date separator logic
                         const currentDate = new Date(msg.createdAt)
@@ -1280,33 +1366,14 @@ export default function FloatingChatButton() {
                         const showDateSeparator =
                           !previousDate || !isSameDay(currentDate, previousDate)
 
-                        console.log(`📅 Message ${index}:`, {
-                          currentDate: currentDate.toISOString(),
-                          previousDate: previousDate?.toISOString(),
-                          showDateSeparator,
-                          isSameDay: previousDate
-                            ? isSameDay(currentDate, previousDate)
-                            : 'N/A',
-                        })
-
                         // Check if it's an order reference message
-                        console.log('🔍 Checking message type:', {
-                          id: msg.id,
-                          mediaType: msg.mediaType,
-                          messageType: (msg as any).messageType,
-                          contentPreview: msg.content?.substring(0, 50),
-                        })
-
                         if (
                           msg.mediaType === 'order_reference' ||
-                          (msg as any).messageType === 'order_reference'
+                          msg.messageType === 'order_reference'
                         ) {
-                          console.log('🎯 FOUND ORDER REFERENCE MESSAGE:', msg)
                           try {
                             const orderData = JSON.parse(msg.content)
-                            console.log('📦 Parsed Order Data:', orderData)
                             if (orderData.type === 'order_reference') {
-                              console.log('✅ Rendering OrderReferenceCard')
                               return (
                                 <React.Fragment key={msg.id}>
                                   {showDateSeparator && (
@@ -1341,13 +1408,6 @@ export default function FloatingChatButton() {
                         }
 
                         const isMe = msg.sender.id === session?.user?.id
-                        console.log('🔍 Message alignment:', {
-                          messageId: msg.id,
-                          senderId: msg.sender.id,
-                          sessionUserId: session?.user?.id,
-                          isMe,
-                          senderName: msg.sender.name,
-                        })
                         const isImage =
                           (msg.messageType === 'image' && msg.mediaUrl) || // Admin chat
                           (msg.mediaType?.startsWith('image/') && msg.mediaUrl) // Technician chat
@@ -1355,13 +1415,7 @@ export default function FloatingChatButton() {
                         return (
                           <React.Fragment key={msg.id}>
                             {showDateSeparator && (
-                              <>
-                                {console.log(
-                                  '✅ Rendering DateSeparator for:',
-                                  currentDate
-                                )}
-                                <DateSeparator date={currentDate} />
-                              </>
+                              <DateSeparator date={currentDate} />
                             )}
                             <div
                               className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}

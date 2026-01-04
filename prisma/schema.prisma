@@ -644,6 +644,7 @@ enum OrderStatus {
 enum PaymentMethod {
   MANUAL_TRANSFER
   MIDTRANS
+  CASH
 }
 
 enum PaymentStatus {

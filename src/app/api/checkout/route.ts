@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
+import { PaymentMethod } from '@prisma/client'
 
 interface CartItem {
   type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
@@ -66,12 +67,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { items } = body
+    const { items, paymentMethod = 'CASH' } = body
 
     // 3. Validate items
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
     }
+
+    // Validate payment method
+    const validPaymentMethods = ['CASH', 'MANUAL_TRANSFER', 'MIDTRANS']
+    const selectedPaymentMethod = validPaymentMethods.includes(paymentMethod)
+      ? paymentMethod
+      : 'CASH'
 
     // 4. Group items by type and validate
     const productItems: ProductItem[] = []
@@ -273,6 +280,16 @@ export async function POST(request: NextRequest) {
             })
           }
         }
+
+        // Create Payment record with selected method
+        await tx.payment.create({
+          data: {
+            orderId: newOrder.id,
+            method: selectedPaymentMethod as PaymentMethod,
+            status: 'PENDING',
+            amount: total,
+          },
+        })
 
         return newOrder
       })

@@ -721,6 +721,22 @@ export default function ChatWindow({
                   }
                 })()
 
+              // Check if content is JSON order reference data
+              const isOrderJson =
+                message.content?.trim().startsWith('{') &&
+                (() => {
+                  try {
+                    const data = JSON.parse(message.content)
+                    return (
+                      data.orderNumber !== undefined &&
+                      data.status !== undefined &&
+                      data.items !== undefined
+                    )
+                  } catch {
+                    return false
+                  }
+                })()
+
               // Check if this is an image message (hide "📷 Gambar" text)
               // Admin chat uses messageType === 'image', technician chat uses mediaType
               const isImageMessage =
@@ -741,6 +757,22 @@ export default function ChatWindow({
                   productData = JSON.parse(message.content)
                 } catch {
                   productData = null
+                }
+              }
+
+              // Parse order data if needed
+              let orderData: {
+                id?: string
+                orderNumber?: string
+                status?: string
+                total?: number
+                items?: Array<{ name?: string; qty?: number; price?: number }>
+              } | null = null
+              if (isOrderJson) {
+                try {
+                  orderData = JSON.parse(message.content)
+                } catch {
+                  orderData = null
                 }
               }
 
@@ -822,6 +854,67 @@ export default function ChatWindow({
                                     ? '🔧 Rekomendasi Sewa'
                                     : '📦 Rekomendasi Produk'}
                                 </p>
+                              </div>
+                            </div>
+                          ) : orderData ? (
+                            /* Order Reference Card */
+                            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-3 py-2">
+                                <p className="text-xs font-medium text-white/80">
+                                  Referensi Pesanan
+                                </p>
+                                <p className="truncate font-bold text-white">
+                                  {orderData.orderNumber}
+                                </p>
+                              </div>
+                              <div className="space-y-2 p-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-gray-500">
+                                    Status
+                                  </span>
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                      orderData.status === 'COMPLETED'
+                                        ? 'bg-green-100 text-green-700'
+                                        : orderData.status === 'IN_PROGRESS'
+                                          ? 'bg-blue-100 text-blue-700'
+                                          : orderData.status ===
+                                              'PENDING_PAYMENT'
+                                            ? 'bg-yellow-100 text-yellow-700'
+                                            : 'bg-gray-100 text-gray-700'
+                                    }`}
+                                  >
+                                    {orderData.status === 'COMPLETED'
+                                      ? 'Selesai'
+                                      : orderData.status === 'IN_PROGRESS'
+                                        ? 'Diproses'
+                                        : orderData.status === 'PENDING_PAYMENT'
+                                          ? 'Menunggu'
+                                          : orderData.status}
+                                  </span>
+                                </div>
+                                {orderData.items &&
+                                  orderData.items.length > 0 && (
+                                    <div className="text-sm text-gray-700">
+                                      {orderData.items.map((item, idx) => (
+                                        <p key={idx} className="truncate">
+                                          • {item.name}{' '}
+                                          {item.qty && item.qty > 1
+                                            ? `(x${item.qty})`
+                                            : ''}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )}
+                                <div className="flex items-center justify-between border-t border-gray-100 pt-2">
+                                  <span className="text-xs font-medium text-gray-500">
+                                    Total
+                                  </span>
+                                  <span className="font-bold text-blue-600">
+                                    Rp{' '}
+                                    {orderData.total?.toLocaleString('id-ID')}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           ) : (

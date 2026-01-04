@@ -77,10 +77,7 @@ export async function GET(req: NextRequest) {
             messageType: 'order_reference',
           },
         })
-        console.log(
-          '✅ Order reference message created for admin chat room:',
-          room.id
-        )
+        // Order reference message created successfully
       } catch (error) {
         console.error('Error creating order reference message:', error)
         // Don't fail room creation if order message fails
