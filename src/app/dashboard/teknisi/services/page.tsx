@@ -18,6 +18,8 @@ import {
   Clock,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Navbar } from '@/components/layouts/navbar'
+import { Footer } from '@/components/layouts/footer'
 
 // --- Types ---
 
@@ -252,11 +254,13 @@ export default function ServicesPage() {
         <div className="absolute right-[-10%] top-[10%] h-[600px] w-[600px] rounded-full bg-violet-400/20 blur-[100px]" />
       </div>
 
+      <Navbar variant="light" />
+
       <motion.main
         initial="hidden"
         animate="visible"
         variants={containerVariants}
-        className="container relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
+        className="container relative z-10 mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6 lg:px-8"
       >
         {/* Header */}
         <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
@@ -282,13 +286,13 @@ export default function ServicesPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 md:left-3 md:h-4 md:w-4" />
               <input
                 type="text"
                 placeholder="Cari layanan..."
-                className="h-11 rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none ring-offset-2 transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="h-9 w-32 rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs outline-none ring-offset-2 transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 sm:w-40 md:h-11 md:w-auto md:rounded-xl md:pl-10 md:pr-4 md:text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -297,9 +301,9 @@ export default function ServicesPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => handleOpenModal()}
-              className="flex h-11 items-center gap-2 rounded-xl bg-gray-900 px-5 text-sm font-bold text-white shadow-lg shadow-gray-900/20 transition-all hover:bg-gray-800"
+              className="flex h-9 items-center gap-1.5 rounded-lg bg-gray-900 px-3 text-xs font-bold text-white shadow-lg shadow-gray-900/20 transition-all hover:bg-gray-800 md:h-11 md:gap-2 md:rounded-xl md:px-5 md:text-sm"
             >
-              <Plus className="h-4 w-4" /> Tambah
+              <Plus className="h-3.5 w-3.5 md:h-4 md:w-4" /> Tambah
             </motion.button>
           </div>
         </div>
@@ -585,6 +589,8 @@ export default function ServicesPage() {
           </div>
         )}
       </AnimatePresence>
+
+      <Footer variant="light" />
     </div>
   )
 }

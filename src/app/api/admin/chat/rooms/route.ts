@@ -21,8 +21,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Build where clause - all admins only see rooms they claimed (via order claim)
-    const whereClause = { claimedById: session.user.id }
+    // Build where clause - show rooms claimed by this admin OR unclaimed rooms
+    const whereClause = {
+      OR: [
+        { claimedById: session.user.id }, // Rooms claimed by this admin
+        { claimedById: null }, // Unclaimed rooms (new customer chats)
+      ],
+    }
 
     // Fetch admin chat rooms with customer info and order info
     const rooms = await prisma.adminChatRoom.findMany({
@@ -43,6 +48,7 @@ export async function GET() {
             orderNumber: true,
             status: true,
             total: true,
+            createdAt: true,
             items: {
               include: {
                 product: {

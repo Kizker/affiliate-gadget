@@ -154,17 +154,19 @@ export async function POST(
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
-    // Check if room is claimed by current admin
+    // Auto-claim room if not claimed yet
     if (!room.claimedById) {
+      await prisma.adminChatRoom.update({
+        where: { id: roomId },
+        data: {
+          claimedById: session.user.id,
+          claimedAt: new Date(),
+        },
+      })
+    } else if (room.claimedById !== session.user.id) {
+      // If room is claimed by another admin, prevent sending
       return NextResponse.json(
-        { error: 'Room must be claimed before sending messages' },
-        { status: 403 }
-      )
-    }
-
-    if (room.claimedById !== session.user.id) {
-      return NextResponse.json(
-        { error: 'You are not the owner of this chat room' },
+        { error: 'This chat is already claimed by another admin' },
         { status: 403 }
       )
     }

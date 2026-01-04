@@ -21,6 +21,26 @@ export async function GET(
     // Verify user has access to this room
     const room = await prisma.chatRoom.findUnique({
       where: { id: roomId },
+      include: {
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            total: true,
+            createdAt: true,
+            items: {
+              select: {
+                type: true,
+                quantity: true,
+                product: { select: { name: true } },
+                service: { select: { name: true } },
+                rentalItem: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
     })
 
     if (!room) {
@@ -67,7 +87,10 @@ export async function GET(
       take: limit,
     })
 
-    return NextResponse.json({ messages: messages.reverse() })
+    return NextResponse.json({
+      messages: messages.reverse(),
+      order: room.order || null,
+    })
   } catch (error) {
     console.error('Error fetching messages:', error)
     return NextResponse.json(

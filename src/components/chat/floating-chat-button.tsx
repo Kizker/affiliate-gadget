@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   MessageCircle,
   X,
@@ -23,6 +23,9 @@ import {
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import { toast } from 'sonner'
+import OrderReferenceCard from './order-reference-card'
+import { DateSeparator } from './date-separator'
+import { isSameDay } from '@/utils/chat-helpers'
 
 interface TechnicianChatRoom {
   id: string
@@ -41,6 +44,20 @@ interface TechnicianChatRoom {
       image: string | null
     }
   }
+  order?: {
+    id: string
+    orderNumber: string
+    status: string
+    total: number
+    createdAt: string
+    items: Array<{
+      type: string
+      quantity: number
+      product?: { name: string }
+      service?: { name: string }
+      rentalItem?: { name: string }
+    }>
+  }
   messages: Array<{
     content: string
     createdAt: string
@@ -56,10 +73,16 @@ interface AdminChatRoom {
   lastMessageAt: string
   orderId: string | null
   order?: {
+    id: string
     orderNumber: string
     status: string
+    total: number
+    createdAt: string
     items: Array<{
+      type?: string
+      quantity: number
       product?: { name: string }
+      service?: { name: string }
       rentalItem?: { name: string }
     }>
   }
@@ -213,18 +236,32 @@ export default function FloatingChatButton() {
             )
             if (createRes.ok) {
               const createData = await createRes.json()
-              // Create a ChatRoom object from the response
-              matchingRoom = {
-                id: createData.room.id,
-                type: 'admin' as const,
-                orderId: orderId,
-                lastMessageAt: new Date().toISOString(),
-                order: createData.room.order,
-                messages: [],
-                _count: { messages: 0 },
+              console.log('🆕 Room created:', createData)
+
+              if (createData.room) {
+                // Create a ChatRoom object from the response
+                matchingRoom = {
+                  id: createData.room.id,
+                  type: 'admin' as const,
+                  orderId: orderId,
+                  lastMessageAt: new Date().toISOString(),
+                  order: createData.room.order,
+                  messages: createData.messages || [], // Use messages from response
+                  _count: { messages: createData.messages?.length || 0 },
+                }
+                // Add to rooms list
+                setRooms([matchingRoom, ...allRooms])
+
+                // Set messages immediately if provided
+                if (createData.messages && createData.messages.length > 0) {
+                  console.log(
+                    '📨 Using messages from POST response:',
+                    createData.messages
+                  )
+                  setMessages(createData.messages)
+                  setShouldScrollToBottom(true)
+                }
               }
-              // Add to rooms list
-              setRooms([matchingRoom, ...allRooms])
             }
           } catch (error) {
             console.error('Error creating room:', error)
@@ -237,25 +274,31 @@ export default function FloatingChatButton() {
           // Set active room and fetch messages
           setActiveRoom(matchingRoom)
           setShowMobileChat(true) // Force mobile view to show chat
-          setLoadingMessages(true)
 
-          // Use correct endpoint based on room type
-          let msgRes
-          if (matchingRoom.type === 'admin') {
-            const adminRoom = matchingRoom as AdminChatRoom
-            msgRes = await fetch(
-              `/api/customer/chat/room?orderId=${adminRoom.orderId}`
-            )
-          } else {
-            msgRes = await fetch(`/api/chat/rooms/${matchingRoom.id}/messages`)
-          }
+          // Only fetch messages if not already set from POST response
+          if (messages.length === 0) {
+            setLoadingMessages(true)
 
-          if (msgRes.ok) {
-            const msgData = await msgRes.json()
-            setMessages(msgData.messages || [])
-            setShouldScrollToBottom(true)
+            // Use correct endpoint based on room type
+            let msgRes
+            if (matchingRoom.type === 'admin') {
+              const adminRoom = matchingRoom as AdminChatRoom
+              msgRes = await fetch(
+                `/api/customer/chat/room?orderId=${adminRoom.orderId}`
+              )
+            } else {
+              msgRes = await fetch(
+                `/api/chat/rooms/${matchingRoom.id}/messages`
+              )
+            }
+
+            if (msgRes.ok) {
+              const msgData = await msgRes.json()
+              setMessages(msgData.messages || [])
+              setShouldScrollToBottom(true)
+            }
+            setLoadingMessages(false)
           }
-          setLoadingMessages(false)
         }
       } catch (error) {
         console.error('Error opening chat:', error)
@@ -315,6 +358,7 @@ export default function FloatingChatButton() {
 
       if (technicianRes.ok) {
         const techData = await technicianRes.json()
+        console.log('🔧 Technician Rooms Response:', techData)
         const techRooms = (techData.rooms || []).map(
           (room: TechnicianChatRoom) => ({
             ...room,
@@ -326,6 +370,7 @@ export default function FloatingChatButton() {
 
       if (adminRes.ok) {
         const adminData = await adminRes.json()
+        console.log('👨‍💼 Admin Rooms Response:', adminData)
         const adminRooms = (adminData.rooms || []).map(
           (room: AdminChatRoom) => ({
             ...room,
@@ -341,6 +386,7 @@ export default function FloatingChatButton() {
           new Date(a.lastMessageAt).getTime()
       )
 
+      console.log('📋 All Rooms Combined:', allRooms)
       setRooms(allRooms)
     } catch (error) {
       console.error('Error fetching rooms:', error)
@@ -366,6 +412,7 @@ export default function FloatingChatButton() {
 
       if (res.ok) {
         const data = await res.json()
+        console.log('📦 Fetch Messages Response:', data)
         setMessages(data.messages || [])
       }
     } catch (error) {
@@ -1179,6 +1226,16 @@ export default function FloatingChatButton() {
                   </div>
                 </div>
 
+                {/* Order Reference Card - Show if room has order */}
+                {activeRoom.order && (
+                  <div className="border-b border-gray-200 bg-white p-3">
+                    <OrderReferenceCard
+                      order={activeRoom.order}
+                      variant="compact"
+                    />
+                  </div>
+                )}
+
                 {/* Messages - with Wallpaper */}
                 <div
                   className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4"
@@ -1208,294 +1265,389 @@ export default function FloatingChatButton() {
                       </p>
                     </div>
                   ) : (
-                    messages.map((msg) => {
-                      const isMe = msg.sender.id === session?.user?.id
-                      const isImage =
-                        (msg.messageType === 'image' && msg.mediaUrl) || // Admin chat
-                        (msg.mediaType?.startsWith('image/') && msg.mediaUrl) // Technician chat
+                    <>
+                      {(() => {
+                        console.log('💬 ALL MESSAGES:', messages)
+                        return null
+                      })()}
+                      {messages.map((msg, index) => {
+                        // Date separator logic
+                        const currentDate = new Date(msg.createdAt)
+                        const previousDate =
+                          index > 0
+                            ? new Date(messages[index - 1].createdAt)
+                            : null
+                        const showDateSeparator =
+                          !previousDate || !isSameDay(currentDate, previousDate)
 
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div
-                            className={`max-w-[85%] rounded-2xl shadow-sm md:max-w-[70%] ${isImage ? 'p-1' : 'px-4 py-3'} ${
-                              isMe
-                                ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
-                                : 'border border-gray-200 bg-white text-gray-900'
-                            }`}
-                          >
-                            {!isMe && (
-                              <p
-                                className={`mb-1 text-xs font-semibold ${isImage ? 'px-3 pt-2' : ''} ${activeRoom.type === 'admin' ? 'text-green-600' : 'text-blue-600'}`}
-                              >
-                                {msg.sender.role === 'ADMIN' ||
-                                msg.sender.role === 'SUPER_ADMIN'
-                                  ? msg.sender.name || 'Admin'
-                                  : msg.sender.name || 'Teknisi'}
-                              </p>
+                        console.log(`📅 Message ${index}:`, {
+                          currentDate: currentDate.toISOString(),
+                          previousDate: previousDate?.toISOString(),
+                          showDateSeparator,
+                          isSameDay: previousDate
+                            ? isSameDay(currentDate, previousDate)
+                            : 'N/A',
+                        })
+
+                        // Check if it's an order reference message
+                        console.log('🔍 Checking message type:', {
+                          id: msg.id,
+                          mediaType: msg.mediaType,
+                          messageType: (msg as any).messageType,
+                          contentPreview: msg.content?.substring(0, 50),
+                        })
+
+                        if (
+                          msg.mediaType === 'order_reference' ||
+                          (msg as any).messageType === 'order_reference'
+                        ) {
+                          console.log('🎯 FOUND ORDER REFERENCE MESSAGE:', msg)
+                          try {
+                            const orderData = JSON.parse(msg.content)
+                            console.log('📦 Parsed Order Data:', orderData)
+                            if (orderData.type === 'order_reference') {
+                              console.log('✅ Rendering OrderReferenceCard')
+                              return (
+                                <React.Fragment key={msg.id}>
+                                  {showDateSeparator && (
+                                    <DateSeparator date={currentDate} />
+                                  )}
+                                  <div className="mb-4">
+                                    <OrderReferenceCard
+                                      order={orderData}
+                                      variant="full"
+                                    />
+                                    <p className="mt-1 text-center text-xs text-gray-400">
+                                      {new Date(
+                                        msg.createdAt
+                                      ).toLocaleDateString('id-ID', {
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </p>
+                                  </div>
+                                </React.Fragment>
+                              )
+                            }
+                          } catch (error) {
+                            console.error(
+                              '❌ Error parsing order reference:',
+                              error
+                            )
+                          }
+                        }
+
+                        const isMe = msg.sender.id === session?.user?.id
+                        console.log('🔍 Message alignment:', {
+                          messageId: msg.id,
+                          senderId: msg.sender.id,
+                          sessionUserId: session?.user?.id,
+                          isMe,
+                          senderName: msg.sender.name,
+                        })
+                        const isImage =
+                          (msg.messageType === 'image' && msg.mediaUrl) || // Admin chat
+                          (msg.mediaType?.startsWith('image/') && msg.mediaUrl) // Technician chat
+
+                        return (
+                          <React.Fragment key={msg.id}>
+                            {showDateSeparator && (
+                              <>
+                                {console.log(
+                                  '✅ Rendering DateSeparator for:',
+                                  currentDate
+                                )}
+                                <DateSeparator date={currentDate} />
+                              </>
                             )}
-
-                            {/* Render based on message type */}
-                            {isImage ? (
+                            <div
+                              className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                            >
                               <div
-                                className="group relative cursor-pointer"
-                                onClick={() =>
-                                  setFullscreenImage(msg.mediaUrl!)
-                                }
+                                className={`inline-block max-w-[85%] rounded-2xl shadow-sm md:max-w-[70%] ${isImage ? 'p-1' : 'px-4 py-3'} ${
+                                  isMe
+                                    ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
+                                    : 'border border-gray-200 bg-white text-gray-900'
+                                }`}
                               >
-                                <img
-                                  src={msg.mediaUrl!}
-                                  alt="Shared"
-                                  className="max-h-[150px] max-w-[200px] rounded-xl object-cover"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 transition-opacity active:opacity-100 group-hover:opacity-100">
-                                  <ZoomIn className="h-8 w-8 text-white" />
+                                {!isMe && (
+                                  <p
+                                    className={`mb-1 text-xs font-semibold ${isImage ? 'px-3 pt-2' : ''} ${activeRoom.type === 'admin' ? 'text-green-600' : 'text-blue-600'}`}
+                                  >
+                                    {msg.sender.role === 'ADMIN' ||
+                                    msg.sender.role === 'SUPER_ADMIN'
+                                      ? msg.sender.name || 'Admin'
+                                      : msg.sender.name || 'Teknisi'}
+                                  </p>
+                                )}
+
+                                {/* Render based on message type */}
+                                {isImage ? (
+                                  <div
+                                    className="group relative cursor-pointer"
+                                    onClick={() =>
+                                      setFullscreenImage(msg.mediaUrl!)
+                                    }
+                                  >
+                                    <img
+                                      src={msg.mediaUrl!}
+                                      alt="Shared"
+                                      className="max-h-[150px] max-w-[200px] rounded-xl object-cover"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 transition-opacity active:opacity-100 group-hover:opacity-100">
+                                      <ZoomIn className="h-8 w-8 text-white" />
+                                    </div>
+                                  </div>
+                                ) : msg.messageType === 'product' ||
+                                  msg.messageType === 'rental' ||
+                                  (msg.content.trim().startsWith('{') &&
+                                    (() => {
+                                      try {
+                                        const data = JSON.parse(msg.content)
+                                        return (
+                                          data.name &&
+                                          (data.type === 'product' ||
+                                            data.type === 'rental' ||
+                                            data.price !== undefined)
+                                        )
+                                      } catch {
+                                        return false
+                                      }
+                                    })()) ? (
+                                  // Product/Rental Card
+                                  (() => {
+                                    try {
+                                      const data = JSON.parse(msg.content)
+                                      return (
+                                        <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                          <div className="flex gap-2 p-2">
+                                            {data.image && (
+                                              <img
+                                                src={data.image}
+                                                alt={data.name}
+                                                className="h-14 w-14 rounded-lg object-cover"
+                                              />
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                              <p className="truncate text-sm font-semibold text-gray-900">
+                                                {data.name}
+                                              </p>
+                                              <p className="text-sm font-bold text-blue-600">
+                                                Rp{' '}
+                                                {data.price?.toLocaleString(
+                                                  'id-ID'
+                                                )}
+                                                {msg.messageType ===
+                                                  'rental' && (
+                                                  <span className="text-xs font-normal">
+                                                    /hari
+                                                  </span>
+                                                )}
+                                              </p>
+                                              <p className="text-xs text-gray-500">
+                                                Stock: {data.stock}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="border-t border-gray-100 bg-gray-50 px-2 py-1">
+                                            <p className="text-xs text-gray-600">
+                                              📦{' '}
+                                              {msg.messageType === 'product'
+                                                ? 'Rekomendasi Produk'
+                                                : 'Rekomendasi Sewa'}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )
+                                    } catch {
+                                      return (
+                                        <p className="text-sm text-gray-500">
+                                          Invalid product data
+                                        </p>
+                                      )
+                                    }
+                                  })()
+                                ) : msg.messageType === 'order' ? (
+                                  // Order Card
+                                  (() => {
+                                    try {
+                                      const data = JSON.parse(msg.content)
+                                      return (
+                                        <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                          <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-2 text-white">
+                                            <p className="text-xs opacity-90">
+                                              Order Number
+                                            </p>
+                                            <p className="font-bold">
+                                              {data.orderNumber}
+                                            </p>
+                                          </div>
+                                          <div className="p-2">
+                                            <p className="text-sm font-bold text-gray-900">
+                                              Rp{' '}
+                                              {data.total?.toLocaleString(
+                                                'id-ID'
+                                              )}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                              {data.items?.length} item(s)
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )
+                                    } catch {
+                                      return (
+                                        <p className="text-sm text-gray-500">
+                                          Invalid order data
+                                        </p>
+                                      )
+                                    }
+                                  })()
+                                ) : msg.messageType === 'technician' ? (
+                                  // Technician Card
+                                  (() => {
+                                    try {
+                                      const data = JSON.parse(msg.content)
+                                      return (
+                                        <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                          <div className="flex gap-2 p-2">
+                                            {data.image ? (
+                                              <img
+                                                src={data.image}
+                                                alt={data.name}
+                                                className="h-12 w-12 rounded-full object-cover"
+                                              />
+                                            ) : (
+                                              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-red-500 text-white">
+                                                <span className="text-sm font-bold">
+                                                  {(data.name || 'T').charAt(0)}
+                                                </span>
+                                              </div>
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                              <p className="text-sm font-semibold text-gray-900">
+                                                {data.name}
+                                              </p>
+                                              <div className="flex items-center gap-1">
+                                                <span className="text-xs text-yellow-500">
+                                                  ⭐
+                                                </span>
+                                                <span className="text-xs font-medium">
+                                                  {data.rating?.toFixed(1)}
+                                                </span>
+                                              </div>
+                                              <p className="truncate text-xs text-gray-500">
+                                                {data.specialties
+                                                  ?.slice(0, 2)
+                                                  .join(', ')}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="border-t border-gray-100 bg-orange-50 px-2 py-1">
+                                            <p className="text-xs text-orange-600">
+                                              🔧 Rekomendasi Teknisi
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )
+                                    } catch {
+                                      return (
+                                        <p className="text-sm text-gray-500">
+                                          Invalid technician data
+                                        </p>
+                                      )
+                                    }
+                                  })()
+                                ) : msg.messageType === 'mitra' ? (
+                                  // Mitra Card
+                                  (() => {
+                                    try {
+                                      const data = JSON.parse(msg.content)
+                                      return (
+                                        <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                          <div className="flex gap-2 p-2">
+                                            {data.image ? (
+                                              <img
+                                                src={data.image}
+                                                alt={data.name}
+                                                className="h-12 w-12 rounded-full object-cover"
+                                              />
+                                            ) : (
+                                              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white">
+                                                <span className="text-sm font-bold">
+                                                  {(data.name || 'M').charAt(0)}
+                                                </span>
+                                              </div>
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                              <p className="text-sm font-semibold text-gray-900">
+                                                {data.name}
+                                              </p>
+                                              <p className="truncate text-xs text-gray-500">
+                                                {data.email}
+                                              </p>
+                                              {data.phone && (
+                                                <p className="text-xs text-gray-400">
+                                                  {data.phone}
+                                                </p>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="border-t border-gray-100 bg-purple-50 px-2 py-1">
+                                            <p className="text-xs text-purple-600">
+                                              👥 Rekomendasi Mitra
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )
+                                    } catch {
+                                      return (
+                                        <p className="text-sm text-gray-500">
+                                          Invalid mitra data
+                                        </p>
+                                      )
+                                    }
+                                  })()
+                                ) : (
+                                  // Default text message
+                                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                                    {msg.content}
+                                  </p>
+                                )}
+
+                                <div
+                                  className={`mt-1.5 flex items-center gap-1 text-xs ${isImage ? 'px-3 pb-2' : ''} ${isMe ? 'text-white/70' : 'text-gray-400'}`}
+                                >
+                                  <span>
+                                    {new Date(msg.createdAt).toLocaleTimeString(
+                                      'id-ID',
+                                      {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      }
+                                    )}
+                                  </span>
+                                  {isMe && (
+                                    <>
+                                      {msg.isRead ? (
+                                        <CheckCheck className="h-3.5 w-3.5" />
+                                      ) : msg.id ? (
+                                        <Check className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <Clock className="h-3.5 w-3.5" />
+                                      )}
+                                    </>
+                                  )}
                                 </div>
                               </div>
-                            ) : msg.messageType === 'product' ||
-                              msg.messageType === 'rental' ||
-                              (msg.content.trim().startsWith('{') &&
-                                (() => {
-                                  try {
-                                    const data = JSON.parse(msg.content)
-                                    return (
-                                      data.name &&
-                                      (data.type === 'product' ||
-                                        data.type === 'rental' ||
-                                        data.price !== undefined)
-                                    )
-                                  } catch {
-                                    return false
-                                  }
-                                })()) ? (
-                              // Product/Rental Card
-                              (() => {
-                                try {
-                                  const data = JSON.parse(msg.content)
-                                  return (
-                                    <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                                      <div className="flex gap-2 p-2">
-                                        {data.image && (
-                                          <img
-                                            src={data.image}
-                                            alt={data.name}
-                                            className="h-14 w-14 rounded-lg object-cover"
-                                          />
-                                        )}
-                                        <div className="min-w-0 flex-1">
-                                          <p className="truncate text-sm font-semibold text-gray-900">
-                                            {data.name}
-                                          </p>
-                                          <p className="text-sm font-bold text-blue-600">
-                                            Rp{' '}
-                                            {data.price?.toLocaleString(
-                                              'id-ID'
-                                            )}
-                                            {msg.messageType === 'rental' && (
-                                              <span className="text-xs font-normal">
-                                                /hari
-                                              </span>
-                                            )}
-                                          </p>
-                                          <p className="text-xs text-gray-500">
-                                            Stock: {data.stock}
-                                          </p>
-                                        </div>
-                                      </div>
-                                      <div className="border-t border-gray-100 bg-gray-50 px-2 py-1">
-                                        <p className="text-xs text-gray-600">
-                                          📦{' '}
-                                          {msg.messageType === 'product'
-                                            ? 'Rekomendasi Produk'
-                                            : 'Rekomendasi Sewa'}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )
-                                } catch {
-                                  return (
-                                    <p className="text-sm text-gray-500">
-                                      Invalid product data
-                                    </p>
-                                  )
-                                }
-                              })()
-                            ) : msg.messageType === 'order' ? (
-                              // Order Card
-                              (() => {
-                                try {
-                                  const data = JSON.parse(msg.content)
-                                  return (
-                                    <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                                      <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-2 text-white">
-                                        <p className="text-xs opacity-90">
-                                          Order Number
-                                        </p>
-                                        <p className="font-bold">
-                                          {data.orderNumber}
-                                        </p>
-                                      </div>
-                                      <div className="p-2">
-                                        <p className="text-sm font-bold text-gray-900">
-                                          Rp{' '}
-                                          {data.total?.toLocaleString('id-ID')}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                          {data.items?.length} item(s)
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )
-                                } catch {
-                                  return (
-                                    <p className="text-sm text-gray-500">
-                                      Invalid order data
-                                    </p>
-                                  )
-                                }
-                              })()
-                            ) : msg.messageType === 'technician' ? (
-                              // Technician Card
-                              (() => {
-                                try {
-                                  const data = JSON.parse(msg.content)
-                                  return (
-                                    <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                                      <div className="flex gap-2 p-2">
-                                        {data.image ? (
-                                          <img
-                                            src={data.image}
-                                            alt={data.name}
-                                            className="h-12 w-12 rounded-full object-cover"
-                                          />
-                                        ) : (
-                                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-red-500 text-white">
-                                            <span className="text-sm font-bold">
-                                              {(data.name || 'T').charAt(0)}
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="min-w-0 flex-1">
-                                          <p className="text-sm font-semibold text-gray-900">
-                                            {data.name}
-                                          </p>
-                                          <div className="flex items-center gap-1">
-                                            <span className="text-xs text-yellow-500">
-                                              ⭐
-                                            </span>
-                                            <span className="text-xs font-medium">
-                                              {data.rating?.toFixed(1)}
-                                            </span>
-                                          </div>
-                                          <p className="truncate text-xs text-gray-500">
-                                            {data.specialties
-                                              ?.slice(0, 2)
-                                              .join(', ')}
-                                          </p>
-                                        </div>
-                                      </div>
-                                      <div className="border-t border-gray-100 bg-orange-50 px-2 py-1">
-                                        <p className="text-xs text-orange-600">
-                                          🔧 Rekomendasi Teknisi
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )
-                                } catch {
-                                  return (
-                                    <p className="text-sm text-gray-500">
-                                      Invalid technician data
-                                    </p>
-                                  )
-                                }
-                              })()
-                            ) : msg.messageType === 'mitra' ? (
-                              // Mitra Card
-                              (() => {
-                                try {
-                                  const data = JSON.parse(msg.content)
-                                  return (
-                                    <div className="max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                                      <div className="flex gap-2 p-2">
-                                        {data.image ? (
-                                          <img
-                                            src={data.image}
-                                            alt={data.name}
-                                            className="h-12 w-12 rounded-full object-cover"
-                                          />
-                                        ) : (
-                                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white">
-                                            <span className="text-sm font-bold">
-                                              {(data.name || 'M').charAt(0)}
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="min-w-0 flex-1">
-                                          <p className="text-sm font-semibold text-gray-900">
-                                            {data.name}
-                                          </p>
-                                          <p className="truncate text-xs text-gray-500">
-                                            {data.email}
-                                          </p>
-                                          {data.phone && (
-                                            <p className="text-xs text-gray-400">
-                                              {data.phone}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="border-t border-gray-100 bg-purple-50 px-2 py-1">
-                                        <p className="text-xs text-purple-600">
-                                          👥 Rekomendasi Mitra
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )
-                                } catch {
-                                  return (
-                                    <p className="text-sm text-gray-500">
-                                      Invalid mitra data
-                                    </p>
-                                  )
-                                }
-                              })()
-                            ) : (
-                              // Default text message
-                              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                                {msg.content}
-                              </p>
-                            )}
-
-                            <div
-                              className={`mt-1.5 flex items-center gap-1 text-xs ${isImage ? 'px-3 pb-2' : ''} ${isMe ? 'text-white/70' : 'text-gray-400'}`}
-                            >
-                              <span>
-                                {new Date(msg.createdAt).toLocaleTimeString(
-                                  'id-ID',
-                                  {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  }
-                                )}
-                              </span>
-                              {isMe && (
-                                <>
-                                  {msg.isRead ? (
-                                    <CheckCheck className="h-3.5 w-3.5" />
-                                  ) : msg.id ? (
-                                    <Check className="h-3.5 w-3.5" />
-                                  ) : (
-                                    <Clock className="h-3.5 w-3.5" />
-                                  )}
-                                </>
-                              )}
                             </div>
-                          </div>
-                        </div>
-                      )
-                    })
+                          </React.Fragment>
+                        )
+                      })}
+                    </>
                   )}
                   <div ref={messagesEndRef} />
                 </div>

@@ -259,7 +259,7 @@ const Header = ({
   return (
     <motion.div
       variants={itemVariants}
-      className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end"
+      className="mb-12 hidden flex-col justify-between gap-6 md:flex md:flex-row md:items-end"
     >
       <div className="flex items-center gap-6">
         <div className="group relative">

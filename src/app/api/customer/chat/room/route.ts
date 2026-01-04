@@ -54,6 +54,37 @@ export async function GET(req: NextRequest) {
           orderId: orderId,
         },
       })
+
+      // Create order reference message as first message
+      try {
+        await prisma.adminChatMessage.create({
+          data: {
+            roomId: room.id,
+            senderId: session.user.id,
+            content: JSON.stringify({
+              type: 'order_reference',
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              status: order.status,
+              total: order.total,
+              createdAt: order.createdAt.toISOString(),
+              items: order.items.map((item) => ({
+                type: item.type,
+                product: item.product,
+                rentalItem: item.rentalItem,
+              })),
+            }),
+            messageType: 'order_reference',
+          },
+        })
+        console.log(
+          '✅ Order reference message created for admin chat room:',
+          room.id
+        )
+      } catch (error) {
+        console.error('Error creating order reference message:', error)
+        // Don't fail room creation if order message fails
+      }
     }
 
     // Get messages for this room

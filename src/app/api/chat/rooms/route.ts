@@ -45,6 +45,24 @@ export async function GET() {
               },
             },
           },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              total: true,
+              createdAt: true,
+              items: {
+                select: {
+                  type: true,
+                  quantity: true,
+                  product: { select: { name: true } },
+                  service: { select: { name: true } },
+                  rentalItem: { select: { name: true } },
+                },
+              },
+            },
+          },
           messages: {
             orderBy: { createdAt: 'desc' },
             take: 1,
@@ -98,6 +116,24 @@ export async function GET() {
                   image: true,
                   email: true,
                   phone: true,
+                },
+              },
+            },
+          },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              total: true,
+              createdAt: true,
+              items: {
+                select: {
+                  type: true,
+                  quantity: true,
+                  product: { select: { name: true } },
+                  service: { select: { name: true } },
+                  rentalItem: { select: { name: true } },
                 },
               },
             },
@@ -157,7 +193,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { technicianId } = await request.json()
+    const { technicianId, orderId } = await request.json()
 
     if (!technicianId) {
       return NextResponse.json(
@@ -182,27 +218,135 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ room: existingRoom })
     }
 
-    // Create new room
-    const room = await prisma.chatRoom.create({
-      data: {
-        customerId,
-        technicianId,
-      },
-      include: {
-        technician: {
+    // Create new room with order reference message in transaction
+    let room
+    let orderReferenceMessage = null
+
+    if (orderId) {
+      // Use transaction to ensure message is created with room
+      const result = await prisma.$transaction(async (tx) => {
+        // Create room
+        const newRoom = await tx.chatRoom.create({
+          data: {
+            customerId,
+            technicianId,
+            orderId,
+          },
           include: {
-            user: {
+            technician: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                    image: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+
+        // Get order details
+        const order = await tx.order.findUnique({
+          where: { id: orderId },
+          include: {
+            items: {
+              include: {
+                product: { select: { name: true } },
+                service: { select: { name: true } },
+                rentalItem: { select: { name: true } },
+              },
+            },
+          },
+        })
+
+        if (!order) {
+          throw new Error('Order not found')
+        }
+
+        // Create order reference message
+        const message = await tx.chatMessage.create({
+          data: {
+            roomId: newRoom.id,
+            senderId: customerId,
+            content: JSON.stringify({
+              type: 'order_reference',
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              status: order.status,
+              total: order.total,
+              createdAt: order.createdAt.toISOString(),
+              items: order.items.map((item) => ({
+                type: item.type,
+                quantity: item.quantity,
+                product: item.product,
+                service: item.service,
+                rentalItem: item.rentalItem,
+              })),
+            }),
+            mediaType: 'order_reference',
+          },
+          select: {
+            id: true,
+            content: true,
+            mediaType: true,
+            createdAt: true,
+            senderId: true,
+            sender: {
               select: {
+                id: true,
                 name: true,
                 image: true,
               },
             },
           },
-        },
-      },
-    })
+        })
 
-    return NextResponse.json({ room }, { status: 201 })
+        return { room: newRoom, message }
+      })
+
+      room = result.room
+      orderReferenceMessage = result.message
+      console.log('✅ Order reference message created for room:', room.id)
+      console.log('📝 Message details:', {
+        id: orderReferenceMessage?.id,
+        mediaType: orderReferenceMessage?.mediaType,
+        contentPreview: orderReferenceMessage?.content?.substring(0, 100),
+      })
+    } else {
+      // Create room without order reference
+      room = await prisma.chatRoom.create({
+        data: {
+          customerId,
+          technicianId,
+          orderId: null,
+        },
+        include: {
+          technician: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+        },
+      })
+    }
+
+    // Return room with messages if order reference was created
+    const response = {
+      room,
+      messages: orderReferenceMessage ? [orderReferenceMessage] : [],
+    }
+    console.log('📤 Sending response:', {
+      roomId: room.id,
+      messagesCount: response.messages.length,
+      firstMessageType: response.messages[0]?.mediaType,
+    })
+    return NextResponse.json(response, { status: 201 })
   } catch (error) {
     console.error('Error creating chat room:', error)
     return NextResponse.json(

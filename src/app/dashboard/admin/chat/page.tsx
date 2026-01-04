@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   MessageSquare,
   Search,
@@ -19,6 +19,9 @@ import {
   Hammer,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { DateSeparator } from '@/components/chat/date-separator'
+import { isSameDay } from '@/utils/chat-helpers'
+import OrderReferenceCard from '@/components/chat/order-reference-card'
 
 interface ChatRoom {
   id: string
@@ -44,11 +47,13 @@ interface ChatRoom {
     orderNumber: string
     status: string
     total: number
+    createdAt?: string
     items: Array<{
+      type?: string
+      quantity: number
       product?: { name: string } | null
       rentalItem?: { name: string } | null
       service?: { name: string } | null
-      quantity: number
       price: number
     }>
   } | null
@@ -803,7 +808,11 @@ export default function AdminChatPage() {
 
     return (
       <div
-        className={`rounded-2xl px-4 py-2 ${isAdmin ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+        className={`inline-block max-w-[85%] rounded-2xl px-4 py-3 shadow-sm md:max-w-[70%] ${
+          isAdmin
+            ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
+            : 'border border-gray-200 bg-white text-gray-900'
+        }`}
       >
         <p className="text-sm">{message.content}</p>
       </div>
@@ -1020,6 +1029,31 @@ export default function AdminChatPage() {
                 )}
               </div>
 
+              {/* Order Reference Card - Show if room has order */}
+              {selectedRoom.order && (
+                <div className="border-b border-gray-200 bg-white p-3">
+                  <OrderReferenceCard
+                    order={{
+                      id: selectedRoom.order.id,
+                      orderNumber: selectedRoom.order.orderNumber,
+                      status: selectedRoom.order.status,
+                      total: selectedRoom.order.total,
+                      createdAt:
+                        selectedRoom.order.createdAt ||
+                        new Date().toISOString(),
+                      items: selectedRoom.order.items.map((item) => ({
+                        type: item.type,
+                        quantity: item.quantity,
+                        product: item.product || undefined,
+                        service: item.service || undefined,
+                        rentalItem: item.rentalItem || undefined,
+                      })),
+                    }}
+                    variant="compact"
+                  />
+                </div>
+              )}
+
               {/* Messages - with Wallpaper */}
               <div
                 className="flex-1 space-y-4 overflow-y-auto p-4"
@@ -1044,40 +1078,51 @@ export default function AdminChatPage() {
                     <p className="text-sm">Kirim pesan pertama!</p>
                   </div>
                 ) : (
-                  messages.map((message) => {
+                  messages.map((message, index) => {
+                    // Date separator logic
+                    const currentDate = new Date(message.createdAt)
+                    const previousDate =
+                      index > 0 ? new Date(messages[index - 1].createdAt) : null
+                    const showDateSeparator =
+                      !previousDate || !isSameDay(currentDate, previousDate)
+
                     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(
                       message.sender.role
                     )
 
                     return (
-                      <div
-                        key={message.id}
-                        className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
-                      >
+                      <React.Fragment key={message.id}>
+                        {showDateSeparator && (
+                          <DateSeparator date={currentDate} />
+                        )}
                         <div
-                          className={`max-w-[75%] ${isAdmin ? 'items-end' : 'items-start'}`}
+                          className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
                         >
-                          {renderMessageContent(message, isAdmin)}
-
-                          {/* Timestamp & Read Status */}
                           <div
-                            className={`mt-1 flex items-center gap-1 text-xs text-gray-500 ${
-                              isAdmin ? 'justify-end' : 'justify-start'
-                            }`}
+                            className={`max-w-[75%] ${isAdmin ? 'items-end' : 'items-start'}`}
                           >
-                            <span>{formatTime(message.createdAt)}</span>
-                            {isAdmin && (
-                              <span>
-                                {message.isRead ? (
-                                  <CheckCheck className="h-3 w-3 text-blue-600" />
-                                ) : (
-                                  <Check className="h-3 w-3" />
-                                )}
-                              </span>
-                            )}
+                            {renderMessageContent(message, isAdmin)}
+
+                            {/* Timestamp & Read Status */}
+                            <div
+                              className={`mt-1 flex items-center gap-1 text-xs text-gray-500 ${
+                                isAdmin ? 'justify-end' : 'justify-start'
+                              }`}
+                            >
+                              <span>{formatTime(message.createdAt)}</span>
+                              {isAdmin && (
+                                <span>
+                                  {message.isRead ? (
+                                    <CheckCheck className="h-3 w-3 text-blue-600" />
+                                  ) : (
+                                    <Check className="h-3 w-3" />
+                                  )}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </React.Fragment>
                     )
                   })
                 )}

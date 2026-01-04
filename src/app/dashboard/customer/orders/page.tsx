@@ -590,7 +590,7 @@ export default function CustomerOrdersPage() {
                                     }
                                   }
 
-                                  // Create new room with technicianId
+                                  // Create new room with technicianId and orderId
                                   const createRes = await fetch(
                                     '/api/chat/rooms',
                                     {
@@ -598,7 +598,10 @@ export default function CustomerOrdersPage() {
                                       headers: {
                                         'Content-Type': 'application/json',
                                       },
-                                      body: JSON.stringify({ technicianId }),
+                                      body: JSON.stringify({
+                                        technicianId,
+                                        orderId: order.id, // Include orderId for order reference
+                                      }),
                                     }
                                   )
 

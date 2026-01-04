@@ -53,12 +53,16 @@ interface AdminChatRoom {
     phone: string | null
   }
   order?: {
+    id: string
     orderNumber: string
     status: string
     total: number
     createdAt: string
     items: Array<{
+      type?: string
+      quantity: number
       product?: { name: string }
+      service?: { name: string }
       rentalItem?: { name: string }
     }>
   }
@@ -354,7 +358,18 @@ export default function ChatRoomPage({
                   otherUserName={otherUser.name || 'User'}
                   otherUserImage={otherUser.image}
                   roomType={room.type}
-                  orderId={room.type === 'admin' ? room.orderId : undefined}
+                  order={
+                    room.type === 'admin' && room.order
+                      ? {
+                          id: room.order.id,
+                          orderNumber: room.order.orderNumber,
+                          status: room.order.status,
+                          total: room.order.total,
+                          createdAt: room.order.createdAt,
+                          items: room.order.items,
+                        }
+                      : undefined
+                  }
                 />
               </div>
             </div>
@@ -371,7 +386,18 @@ export default function ChatRoomPage({
           otherUserName={otherUser.name || 'User'}
           otherUserImage={otherUser.image}
           roomType={room.type}
-          orderId={room.type === 'admin' ? room.orderId : undefined}
+          order={
+            room.type === 'admin' && room.order
+              ? {
+                  id: room.order.id,
+                  orderNumber: room.order.orderNumber,
+                  status: room.order.status,
+                  total: room.order.total,
+                  createdAt: room.order.createdAt,
+                  items: room.order.items,
+                }
+              : undefined
+          }
         />
       </div>
     </>

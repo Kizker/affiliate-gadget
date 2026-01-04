@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import {
   Send,
   Loader2,
@@ -23,6 +23,9 @@ import ImageLightbox from '@/components/gallery/image-lightbox'
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { DateSeparator } from './date-separator'
+import { isSameDay } from '@/utils/chat-helpers'
+import OrderReferenceCard from './order-reference-card'
 interface Message {
   id: string
   content: string
@@ -57,7 +60,20 @@ interface ChatWindowProps {
   otherUserName: string
   otherUserImage: string | null
   roomType?: 'technician' | 'admin'
-  orderId?: string | null
+  order?: {
+    id: string
+    orderNumber: string
+    status: string
+    total: number
+    createdAt: string
+    items: Array<{
+      type?: string
+      quantity: number
+      product?: { name: string }
+      service?: { name: string }
+      rentalItem?: { name: string }
+    }>
+  }
 }
 
 export default function ChatWindow({
@@ -66,7 +82,7 @@ export default function ChatWindow({
   otherUserName,
   otherUserImage,
   roomType = 'technician',
-  orderId,
+  order,
 }: ChatWindowProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -123,8 +139,8 @@ export default function ChatWindow({
   const fetchMessages = async (silent = false) => {
     try {
       let res
-      if (roomType === 'admin' && orderId) {
-        res = await fetch(`/api/customer/chat/room?orderId=${orderId}`)
+      if (roomType === 'admin' && order?.id) {
+        res = await fetch(`/api/customer/chat/room?orderId=${order.id}`)
       } else {
         res = await fetch(`/api/chat/rooms/${roomId}/messages`)
       }
@@ -336,7 +352,7 @@ export default function ChatWindow({
 
       const endpoint =
         roomType === 'admin'
-          ? `/api/customer/chat/room?orderId=${orderId}`
+          ? `/api/customer/chat/room?orderId=${order?.id}`
           : `/api/chat/rooms/${roomId}/messages`
 
       const res = await fetch(endpoint, {
@@ -653,6 +669,13 @@ export default function ChatWindow({
         </div>
       </div>
 
+      {/* Order Reference Card - Show if order exists */}
+      {order && (
+        <div className="border-b border-gray-200 bg-white p-3">
+          <OrderReferenceCard order={order} variant="compact" />
+        </div>
+      )}
+
       {/* Messages */}
       <div
         ref={messagesContainerRef}
@@ -671,7 +694,14 @@ export default function ChatWindow({
           </div>
         ) : (
           <div className="space-y-4">
-            {messages.map((message) => {
+            {messages.map((message, index) => {
+              // Date separator logic
+              const currentDate = new Date(message.createdAt)
+              const previousDate =
+                index > 0 ? new Date(messages[index - 1].createdAt) : null
+              const showDateSeparator =
+                !previousDate || !isSameDay(currentDate, previousDate)
+
               const isOwn = message.sender.id === currentUserId
 
               // Check if content is JSON product/rental data
@@ -715,103 +745,105 @@ export default function ChatWindow({
               }
 
               return (
-                <div
-                  key={message.id}
-                  className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-                >
+                <React.Fragment key={message.id}>
+                  {showDateSeparator && <DateSeparator date={currentDate} />}
                   <div
-                    className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                      isOwn
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-900'
-                    }`}
-                    onContextMenu={(e) => handleContextMenu(e, message)}
-                    onTouchStart={() => handleLongPressStart(message)}
-                    onTouchEnd={handleLongPressEnd}
-                    onTouchMove={handleLongPressEnd}
+                    className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                   >
-                    {/* Edit Mode */}
-                    {editingMessage?.id === message.id ? (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={editContent}
-                          onChange={(e) => setEditContent(e.target.value)}
-                          className="w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveEdit()
-                            if (e.key === 'Escape') handleCancelEdit()
-                          }}
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleSaveEdit}
-                            className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700"
-                          >
-                            Simpan
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="rounded bg-gray-500 px-3 py-1 text-xs text-white hover:bg-gray-600"
-                          >
-                            Batal
-                          </button>
+                    <div
+                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                        isOwn
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-900'
+                      }`}
+                      onContextMenu={(e) => handleContextMenu(e, message)}
+                      onTouchStart={() => handleLongPressStart(message)}
+                      onTouchEnd={handleLongPressEnd}
+                      onTouchMove={handleLongPressEnd}
+                    >
+                      {/* Edit Mode */}
+                      {editingMessage?.id === message.id ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveEdit()
+                              if (e.key === 'Escape') handleCancelEdit()
+                            }}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleSaveEdit}
+                              className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700"
+                            >
+                              Simpan
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="rounded bg-gray-500 px-3 py-1 text-xs text-white hover:bg-gray-600"
+                            >
+                              Batal
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Product Card */}
-                        {productData ? (
-                          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                            <div className="flex gap-3 p-3">
-                              {productData.image && (
-                                <img
-                                  src={productData.image}
-                                  alt={productData.name}
-                                  className="h-16 w-16 rounded-lg object-cover"
-                                />
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-semibold text-gray-900">
-                                  {productData.name}
-                                </p>
-                                <p className="text-sm font-bold text-blue-600">
-                                  Rp{' '}
-                                  {productData.price?.toLocaleString('id-ID')}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  Stock: {productData.stock || 0}
+                      ) : (
+                        <>
+                          {/* Product Card */}
+                          {productData ? (
+                            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                              <div className="flex gap-3 p-3">
+                                {productData.image && (
+                                  <img
+                                    src={productData.image}
+                                    alt={productData.name}
+                                    className="h-16 w-16 rounded-lg object-cover"
+                                  />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-gray-900">
+                                    {productData.name}
+                                  </p>
+                                  <p className="text-sm font-bold text-blue-600">
+                                    Rp{' '}
+                                    {productData.price?.toLocaleString('id-ID')}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Stock: {productData.stock || 0}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="border-t border-gray-100 bg-gray-50 px-3 py-1.5">
+                                <p className="text-xs text-gray-600">
+                                  {productData.type === 'rental'
+                                    ? '🔧 Rekomendasi Sewa'
+                                    : '📦 Rekomendasi Produk'}
                                 </p>
                               </div>
                             </div>
-                            <div className="border-t border-gray-100 bg-gray-50 px-3 py-1.5">
-                              <p className="text-xs text-gray-600">
-                                {productData.type === 'rental'
-                                  ? '🔧 Rekomendasi Sewa'
-                                  : '📦 Rekomendasi Produk'}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          /* Normal text message - hide if it's just image placeholder */
-                          message.content &&
-                          !isImageMessage && (
-                            <p className="break-words">{message.content}</p>
-                          )
-                        )}
-                        {renderMedia(message)}
-                        <p
-                          className={`mt-1 text-xs ${
-                            isOwn ? 'text-blue-100' : 'text-gray-500'
-                          }`}
-                        >
-                          {formatTime(message.createdAt)}
-                        </p>
-                      </>
-                    )}
+                          ) : (
+                            /* Normal text message - hide if it's just image placeholder */
+                            message.content &&
+                            !isImageMessage && (
+                              <p className="break-words">{message.content}</p>
+                            )
+                          )}
+                          {renderMedia(message)}
+                          <p
+                            className={`mt-1 text-xs ${
+                              isOwn ? 'text-blue-100' : 'text-gray-500'
+                            }`}
+                          >
+                            {formatTime(message.createdAt)}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </React.Fragment>
               )
             })}
           </div>

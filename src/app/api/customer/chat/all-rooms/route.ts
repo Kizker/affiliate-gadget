@@ -20,9 +20,15 @@ export async function GET() {
           select: {
             id: true,
             orderNumber: true,
+            status: true,
+            total: true,
+            createdAt: true,
             items: {
               select: {
+                type: true,
+                quantity: true,
                 product: { select: { name: true } },
+                service: { select: { name: true } },
                 rentalItem: { select: { name: true } },
               },
             },

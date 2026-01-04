@@ -226,6 +226,7 @@ model Order {
   createdAt                       DateTime       @default(now())
   updatedAt                       DateTime       @updatedAt
   adminChatRoom                   AdminChatRoom?
+  technicianChatRooms             ChatRoom[]     @relation("ChatRoomOrder")
   invoice                         Invoice?
   items                           OrderItem[]
   claimedBy                       User?          @relation("ClaimedOrders", fields: [claimedById], references: [id])
@@ -480,16 +481,19 @@ model ChatRoom {
   id            String        @id @default(cuid())
   customerId    String
   technicianId  String
+  orderId       String?
   lastMessageAt DateTime      @default(now())
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   messages      ChatMessage[]
   customer      User          @relation("CustomerChatRooms", fields: [customerId], references: [id], onDelete: Cascade)
   technician    Technician    @relation("TechnicianChatRooms", fields: [technicianId], references: [id], onDelete: Cascade)
+  order         Order?        @relation("ChatRoomOrder", fields: [orderId], references: [id])
 
   @@unique([customerId, technicianId])
   @@index([customerId])
   @@index([technicianId])
+  @@index([orderId])
   @@map("chat_rooms")
 }
 
