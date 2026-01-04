@@ -1,11 +1,20 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
+  // Optimize database URL for serverless
+  let dbUrl = process.env.DATABASE_URL || ''
+
+  // Add connection pooling params for Neon serverless
+  if (dbUrl.includes('neon.tech') && !dbUrl.includes('connection_limit')) {
+    const separator = dbUrl.includes('?') ? '&' : '?'
+    dbUrl = `${dbUrl}${separator}connection_limit=1&pool_timeout=20`
+  }
+
   return new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: dbUrl,
       },
     },
   })

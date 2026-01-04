@@ -35,6 +35,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email },
+          include: {
+            mitra: { select: { businessName: true } },
+            technician: { select: { id: true } },
+          },
         })
 
         if (!user || !user.password) {
@@ -47,92 +51,97 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null
         }
 
-        // Return minimal user data to keep JWT small
+        // Return user data including cached fields to store in JWT
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          name: user.mitra?.businessName || user.name,
+          image: user.image,
           role: user.role,
+          mitraStatus: user.mitraStatus,
+          isTechnician: !!user.technician,
         }
       },
     }),
   ],
   callbacks: {
     ...authConfig.callbacks,
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      // On initial login or sign up - cache all user data in token
       if (user) {
-        // Only store essential data in JWT to keep it small
         token.id = user.id
         token.role = user.role
+        token.name = user.name
+        token.image = user.image
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.mitraStatus = (user as any).mitraStatus
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.isTechnician = (user as any).isTechnician
       }
-      // Remove unnecessary fields that might bloat the token
+
+      // On session update trigger (e.g., after profile update), refresh data
+      if (trigger === 'update') {
+        try {
+          const freshUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            include: {
+              mitra: { select: { businessName: true } },
+              technician: { select: { id: true } },
+            },
+          })
+          if (freshUser) {
+            token.name = freshUser.mitra?.businessName || freshUser.name
+            token.image = freshUser.image
+            token.role = freshUser.role
+            token.mitraStatus = freshUser.mitraStatus
+            token.isTechnician = !!freshUser.technician
+          }
+        } catch {
+          // Continue with existing token data if DB query fails
+        }
+      }
+
+      // Remove unnecessary fields to keep token small
       delete token.picture
       return token
     },
     async session({ session, token }) {
+      // Simply read from token - NO DATABASE QUERIES
       if (session.user && token) {
         session.user.id = token.id as string
         session.user.role = token.role as UserRole
-
-        try {
-          // Get fresh user data including name, image and mitraStatus
-          const user = await prisma.user.findUnique({
-            where: { id: token.id as string },
-            select: {
-              name: true,
-              image: true,
-              mitraStatus: true,
-              role: true,
-            },
-          })
-
-          // Update session with fresh data from database
-          if (user?.name) {
-            session.user.name = user.name
-          }
-          if (user?.image) {
-            session.user.image = user.image
-          }
-          if (user?.mitraStatus) {
-            session.user.mitraStatus = user.mitraStatus
-          }
-
-          // If user is MITRA, get businessName from Mitra table
-          if (user?.role === 'MITRA') {
-            const mitra = await prisma.mitra.findUnique({
-              where: { userId: token.id as string },
-              select: { businessName: true },
-            })
-            if (mitra?.businessName) {
-              session.user.name = mitra.businessName
-            }
-          }
-
-          // Check if user is a technician
-          const technician = await prisma.technician.findUnique({
-            where: { userId: token.id as string },
-            select: { id: true },
-          })
-          session.user.isTechnician = !!technician
-        } catch (error) {
-          console.error('Error fetching user data in session:', error)
-          // Continue with session even if database query fails
-        }
+        session.user.name = token.name as string
+        session.user.image = token.image as string | null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(session.user as any).mitraStatus = token.mitraStatus
+        session.user.isTechnician = token.isTechnician as boolean
       }
       return session
     },
   },
   events: {
-    // Clear old sessions when user signs in
-    async signIn({ user }) {
-      if (user?.id) {
+    // Clear old sessions when user signs in (for Google OAuth)
+    async signIn({ user, account }) {
+      if (user?.id && account?.provider === 'google') {
         try {
-          // Delete old database sessions for this user
-          await prisma.session.deleteMany({
-            where: { userId: user.id },
+          // For Google OAuth, fetch additional data to cache
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            include: {
+              mitra: { select: { businessName: true } },
+              technician: { select: { id: true } },
+            },
           })
+          if (dbUser) {
+            // Update the user object with cached data for JWT
+            user.name = dbUser.mitra?.businessName || dbUser.name
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(user as any).mitraStatus = dbUser.mitraStatus
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(user as any).isTechnician = !!dbUser.technician
+          }
         } catch {
-          // Ignore errors - sessions table might not exist
+          // Continue even if query fails
         }
       }
     },
