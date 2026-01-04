@@ -1,928 +1,530 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
 import { useToast } from '@/hooks/use-toast'
-import { Toaster } from '@/components/ui/toaster'
-import { useConfirm } from '@/components/ui/confirm-dialog'
+import Image from 'next/image'
+import Link from 'next/link'
 import {
   Star,
   Package,
-  DollarSign,
-  MessageCircle,
-  Loader2,
-  Edit,
-  Plus,
-  Trash2,
-  Check,
-  X,
+  TrendingUp,
+  CheckCircle2,
   AlertCircle,
+  Calendar,
+  ChevronRight,
+  Settings,
+  Plus,
+  Briefcase,
+  XCircle,
+  Wallet,
 } from 'lucide-react'
-import Link from 'next/link'
+import { format } from 'date-fns'
+import { id } from 'date-fns/locale'
 
-interface Stats {
-  totalOrders: number
-  activeOrders: number
-  completedOrders: number
-  totalRevenue: number
-  averageRating: number
-  totalReviews: number
-  unreadMessages: number
-  ordersByStatus: {
-    pending: number
-    inProgress: number
-    completed: number
-    cancelled: number
-  }
-}
+// --- Types ---
 
-interface Service {
-  id: string
-  name: string
-  category: string
-  price: number
-  minPrice?: number | null
-  maxPrice?: number | null
-  description: string | null
-  estimatedDuration: number
-}
-
-interface Order {
-  id: string
-  status: string
-  total: number
-  createdAt: string
-  technicianPaymentRequestedById?: string | null
-  user: {
-    name: string | null
-    email: string
-    image: string | null
-  }
-  items: Array<{
-    service: {
-      name: string
-      category: string
+interface DashboardData {
+  profile: {
+    id: string
+    bio: string | null
+    experience: number
+    specialties: string[]
+    rating: number
+    totalReview: number
+    isAvailable: boolean
+    user: {
+      name: string | null
+      email: string | null
+      image: string | null
+      phone: string | null
     }
+  }
+  services: Array<{
+    id: string
+    name: string
+    category: string
+    price: number
+    estimatedDuration: number
   }>
-}
-
-interface TechnicianProfile {
-  id: string
-  bio: string | null
-  experience: number
-  specialties: string[]
-  rating: number
-  totalReview: number
-  isAvailable: boolean
-  user: {
-    name: string | null
-    email: string | null
-    image: string | null
-    phone: string | null
+  orders: Array<{
+    id: string
+    orderNumber: string
+    status: string
+    total: number
+    createdAt: string
+    user: {
+      name: string | null
+      image: string | null
+    }
+    items: Array<{
+      service: {
+        name: string
+        category: string
+      }
+    }>
+  }>
+  stats: {
+    totalOrders: number
+    activeOrders: number
+    completedOrders: number
+    totalRevenue: number
+    averageRating: number
+    totalReviews: number
+    unreadMessages: number
+    ordersByStatus: {
+      pending: number
+      inProgress: number
+      completed: number
+      cancelled: number
+    }
   }
 }
+
+// --- Components ---
+
+const StatCard = ({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  color,
+  trend,
+}: {
+  title: string
+  value: string | number
+  subtitle?: string
+  icon: any
+  color: 'blue' | 'green' | 'purple' | 'orange' | 'cyan'
+  trend?: string
+}) => {
+  const colorStyles = {
+    blue: 'bg-blue-50 text-blue-600',
+    green: 'bg-emerald-50 text-emerald-600',
+    purple: 'bg-violet-50 text-violet-600',
+    orange: 'bg-amber-50 text-amber-600',
+    cyan: 'bg-cyan-50 text-cyan-600',
+  }
+
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-500">{title}</p>
+          <h3 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+            {value}
+          </h3>
+          {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
+          {trend && (
+            <div className="mt-3 flex items-center gap-1 text-xs font-medium text-emerald-600">
+              <TrendingUp className="h-3 w-3" />
+              <span>{trend}</span>
+            </div>
+          )}
+        </div>
+        <div
+          className={`rounded-xl p-3 transition-transform group-hover:scale-110 ${colorStyles[color]}`}
+        >
+          <Icon className="h-6 w-6" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const OrderStatusBadge = ({ status }: { status: string }) => {
+  const styles = {
+    PENDING_PAYMENT: 'bg-amber-50 text-amber-700 border-amber-100',
+    PAID: 'bg-blue-50 text-blue-700 border-blue-100',
+    IN_PROGRESS: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+    COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    CANCELLED: 'bg-rose-50 text-rose-700 border-rose-100',
+    DEFAULT: 'bg-gray-50 text-gray-700 border-gray-100',
+  }
+
+  const style = styles[status as keyof typeof styles] || styles.DEFAULT
+  const label = status.replace(/_/g, ' ')
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${style}`}
+    >
+      {label.toLowerCase()}
+    </span>
+  )
+}
+
+const SkeletonLoader = () => (
+  <div className="container mx-auto max-w-7xl animate-pulse space-y-8 p-6">
+    <div className="h-48 w-full rounded-3xl bg-gray-200"></div>
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="h-32 rounded-2xl bg-gray-200"></div>
+      ))}
+    </div>
+    <div className="grid gap-8 lg:grid-cols-3">
+      <div className="h-96 rounded-2xl bg-gray-200 lg:col-span-2"></div>
+      <div className="h-96 rounded-2xl bg-gray-200"></div>
+    </div>
+  </div>
+)
+
+// --- Main Page Component ---
 
 export default function TechnicianDashboard() {
-  const { status } = useSession()
+  const { status, data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()
-  const { confirm, ConfirmDialog } = useConfirm()
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [profile, setProfile] = useState<TechnicianProfile | null>(null)
-  const [services, setServices] = useState<Service[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
+
+  const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [orderStatusFilter, setOrderStatusFilter] = useState('ALL')
-  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
-  const [requestingPaymentId, setRequestingPaymentId] = useState<string | null>(
-    null
-  )
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [, setEditingProfile] = useState(false)
-  const [addingService, setAddingService] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('ALL')
 
-  // Form states (currently unused, kept for future use)
-  const [, setBio] = useState('')
-  const [, setExperience] = useState(0)
-  const [, setSpecialtiesInput] = useState('')
-  const [, setIsAvailable] = useState(true)
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const query = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
+      const res = await fetch(`/api/technicians/me/dashboard${query}`)
 
-  // Service form (for both add and edit)
-  const [serviceName, setServiceName] = useState('')
-  const [serviceCategory, setServiceCategory] = useState('KONSULTASI')
-  const [serviceMinPrice, setServiceMinPrice] = useState('')
-  const [serviceMaxPrice, setServiceMaxPrice] = useState('')
-  const [serviceDescription, setServiceDescription] = useState('')
+      if (!res.ok) throw new Error('Failed to fetch dashboard data')
 
-  // Edit service state
-  const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
+      const dashboardData = await res.json()
+      setData(dashboardData)
+    } catch (error) {
+      console.error('Error:', error)
+      toast({
+        title: 'Gagal memuat data',
+        description: 'Terjadi kesalahan saat mengambil data dashboard.',
+        variant: 'destructive',
+      })
+    } finally {
+      // Small delay for smooth transition feeling
+      setTimeout(() => setLoading(false), 300)
+    }
+  }, [statusFilter, toast])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
-      fetchData()
+      fetchDashboardData()
     }
-  }, [status, router])
+  }, [status, router, fetchDashboardData])
 
-  // Auto-refresh when order status filter changes
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchData()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderStatusFilter])
-
-  const fetchData = async () => {
-    try {
-      const statusParam =
-        orderStatusFilter !== 'ALL' ? `&status=${orderStatusFilter}` : ''
-      const [statsRes, profileRes, servicesRes, ordersRes] = await Promise.all([
-        fetch('/api/technicians/me/stats'),
-        fetch('/api/technicians/me/profile'),
-        fetch('/api/technicians/me/services'),
-        fetch(`/api/technicians/me/orders?limit=10${statusParam}`),
-      ])
-
-      if (statsRes.ok) {
-        const data = await statsRes.json()
-        setStats(data)
-      }
-
-      if (profileRes.ok) {
-        const data = await profileRes.json()
-        setProfile(data.technician)
-        setBio(data.technician.bio || '')
-        setExperience(data.technician.experience)
-        setSpecialtiesInput(data.technician.specialties.join(', '))
-        setIsAvailable(data.technician.isAvailable)
-      }
-
-      if (servicesRes.ok) {
-        const data = await servicesRes.json()
-        setServices(data.services)
-      }
-
-      if (ordersRes.ok) {
-        const data = await ordersRes.json()
-        setOrders(data.orders)
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error)
-    } finally {
-      setLoading(false)
-    }
+  if (status === 'loading' || loading) {
+    return <SkeletonLoader />
   }
 
-  const handleUpdateOrderStatus = async (
-    orderId: string,
-    newStatus: string
-  ) => {
-    try {
-      setUpdatingOrderId(orderId)
-      const res = await fetch(`/api/technicians/me/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      })
+  if (!data) return null
 
-      if (res.ok) {
-        toast({
-          title: 'Berhasil!',
-          description: `Status pesanan berhasil diupdate ke ${newStatus}`,
-        })
-        fetchData() // Refresh orders
-      } else {
-        const error = await res.json()
-        toast({
-          title: 'Gagal',
-          description: error.error || 'Gagal mengupdate status pesanan',
-          variant: 'destructive',
-        })
-      }
-    } catch (error) {
-      console.error('Error updating order status:', error)
-      toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan saat mengupdate status',
-        variant: 'destructive',
-      })
-    } finally {
-      setUpdatingOrderId(null)
-    }
-  }
-
-  // Request payment confirmation from superadmin
-  const handleRequestPayment = async (orderId: string) => {
-    try {
-      setRequestingPaymentId(orderId)
-      const res = await fetch('/api/technician/orders/payment-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId }),
-      })
-
-      if (res.ok) {
-        toast({
-          title: 'Request Terkirim!',
-          description:
-            'Permintaan konfirmasi pembayaran sudah dikirim ke Super Admin',
-        })
-        fetchData() // Refresh orders
-      } else {
-        const error = await res.json()
-        toast({
-          title: 'Gagal',
-          description: error.error || 'Gagal mengirim request pembayaran',
-          variant: 'destructive',
-        })
-      }
-    } catch (error) {
-      console.error('Error requesting payment:', error)
-      toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan',
-        variant: 'destructive',
-      })
-    } finally {
-      setRequestingPaymentId(null)
-    }
-  }
-
-  const handleAddService = async () => {
-    try {
-      const minPrice = parseFloat(serviceMinPrice || '0')
-      const maxPrice = parseFloat(serviceMaxPrice || '0')
-
-      if (!serviceName || serviceMinPrice === '') {
-        toast({
-          title: 'Validasi Gagal',
-          description:
-            'Nama layanan dan harga minimum harus diisi (gunakan 0 untuk gratis)',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      if (minPrice < 0) {
-        toast({
-          title: 'Validasi Gagal',
-          description: 'Harga tidak boleh negatif',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      if (serviceMaxPrice && (maxPrice < 0 || maxPrice < minPrice)) {
-        toast({
-          title: 'Validasi Gagal',
-          description:
-            'Harga maksimum harus lebih besar dari atau sama dengan harga minimum',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      const res = await fetch('/api/technicians/me/services', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: serviceName,
-          category: serviceCategory,
-          price: minPrice, // Use minPrice as base price
-          minPrice: minPrice,
-          maxPrice: serviceMaxPrice ? maxPrice : null,
-          description: serviceDescription,
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        setServices([data.service, ...services])
-        setAddingService(false)
-        setServiceName('')
-        setServiceMinPrice('')
-        setServiceMaxPrice('')
-        setServiceDescription('')
-        toast({
-          title: 'Berhasil!',
-          description: 'Layanan berhasil ditambahkan',
-        })
-      } else {
-        toast({
-          title: 'Gagal',
-          description: 'Gagal menambahkan layanan',
-          variant: 'destructive',
-        })
-      }
-    } catch (error) {
-      console.error('Error adding service:', error)
-      toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan saat menambahkan layanan',
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const handleDeleteService = async (id: string) => {
-    confirm(
-      'Hapus Layanan',
-      'Yakin ingin menghapus layanan ini? Tindakan ini tidak dapat dibatalkan.',
-      async () => {
-        try {
-          const res = await fetch(`/api/technicians/me/services/${id}`, {
-            method: 'DELETE',
-          })
-
-          if (res.ok) {
-            setServices(services.filter((s) => s.id !== id))
-            toast({
-              title: 'Berhasil!',
-              description: 'Layanan berhasil dihapus',
-            })
-          } else {
-            toast({
-              title: 'Gagal',
-              description: 'Gagal menghapus layanan',
-              variant: 'destructive',
-            })
-          }
-        } catch (error) {
-          console.error('Error deleting service:', error)
-          toast({
-            title: 'Error',
-            description: 'Terjadi kesalahan saat menghapus layanan',
-            variant: 'destructive',
-          })
-        }
-      }
-    )
-  }
-
-  const handleEditService = (service: Service) => {
-    setEditingServiceId(service.id)
-    setServiceName(service.name)
-    setServiceCategory(service.category)
-    setServiceMinPrice(service.minPrice?.toString() || '')
-    setServiceMaxPrice(service.maxPrice?.toString() || '')
-    setServiceDescription(service.description || '')
-  }
-
-  const handleUpdateService = async () => {
-    if (!editingServiceId) return
-
-    try {
-      const minPrice = parseFloat(serviceMinPrice || '0')
-      const maxPrice = parseFloat(serviceMaxPrice || '0')
-
-      if (!serviceName || serviceMinPrice === '') {
-        toast({
-          title: 'Validasi Gagal',
-          description:
-            'Nama layanan dan harga minimum harus diisi (gunakan 0 untuk gratis)',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      if (minPrice < 0) {
-        toast({
-          title: 'Validasi Gagal',
-          description: 'Harga tidak boleh negatif',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      if (serviceMaxPrice && (maxPrice < 0 || maxPrice < minPrice)) {
-        toast({
-          title: 'Validasi Gagal',
-          description:
-            'Harga maksimum harus lebih besar dari atau sama dengan harga minimum',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      const res = await fetch(
-        `/api/technicians/me/services/${editingServiceId}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: serviceName,
-            category: serviceCategory,
-            price: minPrice,
-            minPrice: minPrice,
-            maxPrice: serviceMaxPrice ? maxPrice : null,
-            description: serviceDescription,
-          }),
-        }
-      )
-
-      if (res.ok) {
-        const data = await res.json()
-        setServices(
-          services.map((s) => (s.id === editingServiceId ? data.service : s))
-        )
-        setEditingServiceId(null)
-        setServiceName('')
-        setServiceMinPrice('')
-        setServiceMaxPrice('')
-        setServiceDescription('')
-        toast({
-          title: 'Berhasil!',
-          description: 'Layanan berhasil diupdate',
-        })
-      } else {
-        toast({
-          title: 'Gagal',
-          description: 'Gagal mengupdate layanan',
-          variant: 'destructive',
-        })
-      }
-    } catch (error) {
-      console.error('Error updating service:', error)
-      toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan saat mengupdate layanan',
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setEditingServiceId(null)
-    setServiceName('')
-    setServiceCategory('KONSULTASI')
-    setServiceMinPrice('')
-    setServiceMaxPrice('')
-    setServiceDescription('')
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
-
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      PENDING: 'bg-yellow-100 text-yellow-800',
-      IN_PROGRESS: 'bg-blue-100 text-blue-800',
-      COMPLETED: 'bg-green-100 text-green-800',
-      CANCELLED: 'bg-red-100 text-red-800',
-    }
-    return badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-800'
-  }
-
-  if (loading || status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-      </div>
-    )
-  }
+  const { profile, stats, orders, services } = data
+  const user = profile.user
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-      <Navbar variant="light" />
+    <div className="min-h-screen bg-gray-50/50 pb-12">
+      {/* Decorative Background */}
+      <div className="absolute inset-x-0 top-0 -z-10 h-96 bg-gradient-to-b from-indigo-50/50 to-transparent" />
 
-      <main className="mx-auto max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Selamat Datang, {profile?.user.name || 'Teknisi'}! 👋
-          </h1>
-          <p className="mt-1 text-gray-600">
-            Kelola layanan dan pesanan Anda di sini
-          </p>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6">
-          {/* Total Orders */}
-          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg transition-all hover:scale-105 lg:rounded-2xl lg:p-6">
-            <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8" />
-            <Package className="mb-2 h-6 w-6 lg:mb-4 lg:h-8 lg:w-8" />
-            <p className="text-xs font-medium opacity-90 lg:text-sm">
-              Total Pesanan
-            </p>
-            <p className="text-xl font-bold lg:text-3xl">
-              {stats?.totalOrders || 0}
-            </p>
-            <p className="mt-1 text-xs opacity-75 lg:mt-2">
-              {stats?.activeOrders || 0} aktif
-            </p>
+      <main className="container mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header Section */}
+        <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div className="flex items-center gap-5">
+            <div className="relative h-20 w-20 overflow-hidden rounded-2xl border-4 border-white shadow-lg">
+              {user.image ? (
+                <Image
+                  src={user.image}
+                  alt={user.name || 'Technician'}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-2xl font-bold text-white">
+                  {user.name?.charAt(0) || 'T'}
+                </div>
+              )}
+              <div
+                className={`absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white ${
+                  profile.isAvailable ? 'bg-emerald-500' : 'bg-gray-400'
+                }`}
+              />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                Halo, {user.name?.split(' ')[0]}! 👋
+              </h1>
+              <p className="text-gray-500">
+                Selamat datang kembali di dashboard teknisi Anda.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {profile.specialties.map((spec, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center rounded-md bg-white px-2 py-1 text-xs font-medium text-gray-600 shadow-sm ring-1 ring-inset ring-gray-200"
+                  >
+                    {spec}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Revenue */}
-          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-600 p-4 text-white shadow-lg transition-all hover:scale-105 lg:rounded-2xl lg:p-6">
-            <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8" />
-            <DollarSign className="mb-2 h-6 w-6 lg:mb-4 lg:h-8 lg:w-8" />
-            <p className="text-xs font-medium opacity-90 lg:text-sm">
-              Pendapatan
-            </p>
-            <p className="text-lg font-bold lg:text-3xl">
-              {formatCurrency(stats?.totalRevenue || 0)}
-            </p>
-            <p className="mt-1 text-xs opacity-75 lg:mt-2">
-              {stats?.completedOrders || 0} selesai
-            </p>
-          </div>
-
-          {/* Rating */}
-          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 p-4 text-white shadow-lg transition-all hover:scale-105 lg:rounded-2xl lg:p-6">
-            <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8" />
-            <Star className="mb-2 h-6 w-6 lg:mb-4 lg:h-8 lg:w-8" />
-            <p className="text-xs font-medium opacity-90 lg:text-sm">Rating</p>
-            <p className="text-xl font-bold lg:text-3xl">
-              {stats?.averageRating || 0}
-            </p>
-            <p className="mt-1 text-xs opacity-75 lg:mt-2">
-              {stats?.totalReviews || 0} ulasan
-            </p>
-          </div>
-
-          {/* Messages */}
-          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 text-white shadow-lg transition-all hover:scale-105 lg:rounded-2xl lg:p-6">
-            <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-white/10 lg:h-32 lg:w-32 lg:-translate-y-8 lg:translate-x-8" />
-            <MessageCircle className="mb-2 h-6 w-6 lg:mb-4 lg:h-8 lg:w-8" />
-            <p className="text-xs font-medium opacity-90 lg:text-sm">
-              Pesan Baru
-            </p>
-            <p className="text-xl font-bold lg:text-3xl">
-              {stats?.unreadMessages || 0}
-            </p>
-            <Link
-              href="/chat"
-              className="mt-1 inline-block text-xs opacity-75 hover:opacity-100 lg:mt-2"
-            >
-              Lihat semua →
+          <div className="flex gap-3">
+            <Link href="/dashboard/teknisi/settings">
+              <button className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md">
+                <Settings className="h-4 w-4" />
+                Pengaturan
+              </button>
+            </Link>
+            <Link href="/dashboard/teknisi/services">
+              {/* Assuming this route exists or uses settings, adding for design completeness */}
+              <button className="flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:bg-gray-800 hover:shadow-xl hover:shadow-gray-900/20 active:scale-95">
+                <Plus className="h-4 w-4" />
+                Layanan Baru
+              </button>
             </Link>
           </div>
         </div>
 
-        {/* Services Management */}
-        <div className="mb-8 rounded-2xl bg-white p-6 shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">Layanan Saya</h2>
-            <button
-              onClick={() => setAddingService(!addingService)}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              Tambah Layanan
-            </button>
-          </div>
+        {/* Stats Grid */}
+        <div className="mb-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total Pendapatan"
+            value={new Intl.NumberFormat('id-ID', {
+              style: 'currency',
+              currency: 'IDR',
+              maximumFractionDigits: 0,
+            }).format(stats.totalRevenue)}
+            icon={Wallet}
+            color="green"
+            trend="+12% bulan ini"
+          />
+          <StatCard
+            title="Pesanan Aktif"
+            value={stats.activeOrders}
+            subtitle={`${stats.ordersByStatus.pending} menunggu konfirmasi`}
+            icon={Briefcase}
+            color="blue"
+          />
+          <StatCard
+            title="Total Pesanan"
+            value={stats.totalOrders}
+            subtitle={`${stats.completedOrders} selesai`}
+            icon={Package}
+            color="purple"
+          />
+          <StatCard
+            title="Rating"
+            value={stats.averageRating.toFixed(1)}
+            subtitle={`Dari ${stats.totalReviews} ulasan`}
+            icon={Star}
+            color="orange"
+          />
+        </div>
 
-          {/* Add Service Form */}
-          {addingService && (
-            <div className="mb-4 rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <input
-                  type="text"
-                  placeholder="Nama Layanan"
-                  value={serviceName}
-                  onChange={(e) => setServiceName(e.target.value)}
-                  autoFocus
-                  className="rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
-                <select
-                  value={serviceCategory}
-                  onChange={(e) => setServiceCategory(e.target.value)}
-                  className="rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="KONSULTASI">Konsultasi</option>
-                  <option value="CEK_BONGKAR">Cek & Bongkar</option>
-                  <option value="SERVIS_LENGKAP">Servis Lengkap</option>
-                </select>
-                <div className="grid grid-cols-2 gap-4 md:col-span-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Harga Minimum *{' '}
-                      <span className="text-xs text-gray-500">
-                        (0 untuk gratis)
-                      </span>
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={serviceMinPrice}
-                      onChange={(e) => setServiceMinPrice(e.target.value)}
-                      min="0"
-                      className="w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Harga Maksimum (opsional)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="150000"
-                      value={serviceMaxPrice}
-                      onChange={(e) => setServiceMaxPrice(e.target.value)}
-                      min="0"
-                      className="w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    />
-                  </div>
-                </div>
-                <textarea
-                  placeholder="Deskripsi (opsional)"
-                  value={serviceDescription}
-                  onChange={(e) => setServiceDescription(e.target.value)}
-                  className="rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 md:col-span-2"
-                  rows={2}
-                />
-              </div>
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={handleAddService}
-                  className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
-                >
-                  <Check className="h-4 w-4" />
-                  Simpan
-                </button>
-                <button
-                  onClick={() => setAddingService(false)}
-                  className="flex items-center gap-2 rounded-lg bg-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-400"
-                >
-                  <X className="h-4 w-4" />
-                  Batal
-                </button>
+        {/* Main Content Grid */}
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Left Column: Orders */}
+          <div className="space-y-6 lg:col-span-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">
+                Pesanan Terbaru
+              </h2>
+              <div className="flex rounded-lg bg-gray-100 p-1">
+                {['ALL', 'IN_PROGRESS', 'COMPLETED'].map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setStatusFilter(filter)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                      statusFilter === filter
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    {filter === 'ALL' ? 'Semua' : filter.replace('_', ' ')}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
 
-          {/* Services List */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {services.map((service) => (
-              <div
-                key={service.id}
-                className="rounded-lg border border-gray-200 p-4 transition-all hover:shadow-md"
-              >
-                {editingServiceId === service.id ? (
-                  // Edit Form
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={serviceName}
-                      onChange={(e) => setServiceName(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                      placeholder="Nama Layanan"
-                    />
-                    <select
-                      value={serviceCategory}
-                      onChange={(e) => setServiceCategory(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    >
-                      <option value="KONSULTASI">Konsultasi</option>
-                      <option value="CEK_BONGKAR">Cek & Bongkar</option>
-                      <option value="SERVIS_LENGKAP">Servis Lengkap</option>
-                    </select>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        placeholder="Harga Min (0 = gratis)"
-                        value={serviceMinPrice}
-                        onChange={(e) => setServiceMinPrice(e.target.value)}
-                        min="0"
-                        className="w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Harga Max (opsional)"
-                        value={serviceMaxPrice}
-                        onChange={(e) => setServiceMaxPrice(e.target.value)}
-                        min="0"
-                        className="w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                      />
-                    </div>
-                    <textarea
-                      value={serviceDescription}
-                      onChange={(e) => setServiceDescription(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                      placeholder="Deskripsi"
-                      rows={2}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleUpdateService}
-                        className="flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
-                      >
-                        <Check className="h-4 w-4" />
-                        Simpan
-                      </button>
-                      <button
-                        onClick={handleCancelEdit}
-                        className="flex items-center gap-1 rounded-lg bg-gray-500 px-3 py-1.5 text-sm text-white hover:bg-gray-600"
-                      >
-                        <X className="h-4 w-4" />
-                        Batal
-                      </button>
-                    </div>
+            <div className="space-y-4">
+              {orders.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-12 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
+                    <Package className="h-6 w-6 text-gray-400" />
                   </div>
-                ) : (
-                  // Display Mode
-                  <>
-                    <div className="mb-2 flex items-start justify-between">
+                  <h3 className="mt-4 text-sm font-semibold text-gray-900">
+                    Belum ada pesanan
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Pesanan yang masuk akan muncul di sini.
+                  </p>
+                </div>
+              ) : (
+                orders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="group relative flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 transition-all hover:border-indigo-100 hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-600">
+                        {/* Placeholder icon based on category logic could go here */}
+                        <Briefcase className="h-5 w-5" />
+                      </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {service.name}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {service.category}
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900">
+                            #{order.orderNumber}
+                          </h3>
+                          <OrderStatusBadge status={order.status} />
+                        </div>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {order.items[0]?.service.name || 'Jasa Service'} •{' '}
+                          {order.user.name}
+                        </p>
+                        <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(
+                              new Date(order.createdAt),
+                              'dd MMM yyyy, HH:mm',
+                              { locale: id }
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 border-t border-gray-50 pt-4 sm:flex-col sm:items-end sm:border-0 sm:pt-0">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">
+                          {new Intl.NumberFormat('id-ID', {
+                            style: 'currency',
+                            currency: 'IDR',
+                            maximumFractionDigits: 0,
+                          }).format(order.total)}
                         </p>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditService(service)}
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteService(service.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      <Link
+                        href={`/dashboard/teknisi/orders/${order.id}`} // Assuming detailed view route
+                        className="flex items-center gap-1 text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-700"
+                      >
+                        Detail <ChevronRight className="h-4 w-4" />
+                      </Link>
                     </div>
-                    <p className="text-lg font-bold text-blue-600">
-                      {service.minPrice !== null &&
-                      service.minPrice !== undefined &&
-                      service.maxPrice !== null &&
-                      service.maxPrice !== undefined
-                        ? service.minPrice === 0 && service.maxPrice === 0
-                          ? 'Gratis'
-                          : service.minPrice === 0
-                            ? `Gratis - ${formatCurrency(service.maxPrice)}`
-                            : `${formatCurrency(service.minPrice)} - ${formatCurrency(service.maxPrice)}`
-                        : service.minPrice !== null &&
-                            service.minPrice !== undefined
-                          ? service.minPrice === 0
-                            ? 'Gratis'
-                            : `Mulai dari ${formatCurrency(service.minPrice)}`
-                          : service.price === 0
-                            ? 'Gratis'
-                            : formatCurrency(service.price)}
-                    </p>
-                    {service.description && (
-                      <p className="mt-2 text-sm text-gray-600">
-                        {service.description}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {orders.length > 0 && (
+              <div className="text-center">
+                <Link
+                  href="/dashboard/teknisi/orders"
+                  className="text-sm font-medium text-gray-500 hover:text-gray-900"
+                >
+                  Lihat semua pesanan history
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Sidebar */}
+          <div className="space-y-8">
+            {/* Availability Card */}
+            <div
+              className={`rounded-2xl bg-gradient-to-br p-6 text-white shadow-lg ${
+                profile.isAvailable
+                  ? 'from-indigo-500 to-purple-600'
+                  : 'from-gray-700 to-gray-900'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold">Status Teknisi</h3>
+                <div className="rounded-full bg-white/20 p-2 backdrop-blur-sm">
+                  {profile.isAvailable ? (
+                    <CheckCircle2 className="h-5 w-5" />
+                  ) : (
+                    <XCircle className="h-5 w-5" />
+                  )}
+                </div>
+              </div>
+              <p className="mt-2 text-indigo-100 opacity-90">
+                {profile.isAvailable
+                  ? 'Anda sedang online dan dapat menerima pesanan baru.'
+                  : 'Anda sedang offline. Aktifkan status untuk menerima pesanan.'}
+              </p>
+              <button
+                onClick={() => router.push('/dashboard/teknisi/settings')}
+                className="mt-6 w-full rounded-xl bg-white/10 py-2.5 text-sm font-semibold backdrop-blur-sm transition-colors hover:bg-white/20"
+              >
+                Ubah Status
+              </button>
+            </div>
+
+            {/* Quick Services List */}
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-bold text-gray-900">Layanan Anda</h3>
+                <Link
+                  href="/dashboard/teknisi/settings"
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                >
+                  Kelola
+                </Link>
+              </div>
+              <div className="space-y-4">
+                {services.slice(0, 5).map((service) => (
+                  <div
+                    key={service.id}
+                    className="flex items-center justify-between border-b border-gray-50 pb-2 last:border-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {service.name}
                       </p>
-                    )}
-                  </>
+                      <p className="text-xs text-gray-500">
+                        {service.category}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        maximumFractionDigits: 0,
+                      }).format(service.price)}
+                    </p>
+                  </div>
+                ))}
+                {services.length === 0 && (
+                  <p className="py-4 text-center text-sm text-gray-500">
+                    Belum ada layanan
+                  </p>
                 )}
               </div>
-            ))}
-          </div>
-
-          {services.length === 0 && !addingService && (
-            <div className="py-12 text-center text-gray-500">
-              <Package className="mx-auto mb-4 h-12 w-12 opacity-50" />
-              <p>Belum ada layanan. Tambahkan layanan pertama Anda!</p>
+              <Link href="/dashboard/teknisi/settings">
+                <button className="mt-4 w-full rounded-xl border border-dashed border-gray-300 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900">
+                  + Tambah Layanan
+                </button>
+              </Link>
             </div>
-          )}
-        </div>
 
-        {/* Recent Orders */}
-        <div className="rounded-2xl bg-white p-6 shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">Pesanan</h2>
-            <select
-              value={orderStatusFilter}
-              onChange={(e) => setOrderStatusFilter(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-            >
-              <option value="ALL">Semua Status</option>
-              <option value="PENDING_PAYMENT">Menunggu Pembayaran</option>
-              <option value="PAID">Sudah Dibayar</option>
-              <option value="IN_PROGRESS">Sedang Dikerjakan</option>
-              <option value="COMPLETED">Selesai</option>
-              <option value="CANCELLED">Dibatalkan</option>
-            </select>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-sm text-gray-600">
-                  <th className="pb-3">Customer</th>
-                  <th className="pb-3">Layanan</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3">Harga</th>
-                  <th className="pb-3">Tanggal</th>
-                  <th className="pb-3">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id} className="border-b border-gray-100">
-                    <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={
-                            order.user.image ||
-                            `https://ui-avatars.com/api/?name=${encodeURIComponent(order.user.name || 'U')}`
-                          }
-                          alt={order.user.name || 'Customer'}
-                          className="h-8 w-8 rounded-full"
-                        />
-                        <span className="font-medium">{order.user.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3">
-                      {order.items[0]?.service.name || '-'}
-                    </td>
-                    <td className="py-3">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${getStatusBadge(order.status)}`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="py-3 font-semibold">
-                      {formatCurrency(order.total)}
-                    </td>
-                    <td className="py-3 text-sm text-gray-600">
-                      {new Date(order.createdAt).toLocaleDateString('id-ID')}
-                    </td>
-                    <td className="py-3">
-                      {order.status === 'PAID' && (
-                        <button
-                          onClick={() =>
-                            handleUpdateOrderStatus(order.id, 'IN_PROGRESS')
-                          }
-                          disabled={updatingOrderId === order.id}
-                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
-                        >
-                          {updatingOrderId === order.id
-                            ? 'Loading...'
-                            : 'Mulai Kerjakan'}
-                        </button>
-                      )}
-                      {order.status === 'IN_PROGRESS' && (
-                        <button
-                          onClick={() =>
-                            handleUpdateOrderStatus(order.id, 'COMPLETED')
-                          }
-                          disabled={updatingOrderId === order.id}
-                          className="rounded-lg bg-green-600 px-3 py-1.5 text-xs text-white hover:bg-green-700 disabled:opacity-50"
-                        >
-                          {updatingOrderId === order.id
-                            ? 'Loading...'
-                            : 'Selesai'}
-                        </button>
-                      )}
-                      {order.status === 'PENDING_PAYMENT' &&
-                        (order.technicianPaymentRequestedById ? (
-                          <span className="flex items-center gap-1 rounded-lg bg-yellow-100 px-3 py-1.5 text-xs font-medium text-yellow-700">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Menunggu Approval
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleRequestPayment(order.id)}
-                            disabled={requestingPaymentId === order.id}
-                            className="rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1.5 text-xs text-white shadow hover:from-blue-600 hover:to-blue-700 disabled:opacity-50"
-                          >
-                            {requestingPaymentId === order.id
-                              ? 'Loading...'
-                              : 'Request Pembayaran'}
-                          </button>
-                        ))}
-                      {(order.status === 'COMPLETED' ||
-                        order.status === 'CANCELLED') && (
-                        <span className="text-xs text-gray-400">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {orders.length === 0 && (
-            <div className="py-12 text-center text-gray-500">
-              <AlertCircle className="mx-auto mb-4 h-12 w-12 opacity-50" />
-              <p>Belum ada pesanan</p>
+            {/* Support / Help */}
+            <div className="rounded-2xl bg-indigo-50 p-6">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <h4 className="font-semibold text-indigo-900">Butuh Bantuan?</h4>
+              <p className="mt-1 text-sm text-indigo-700/80">
+                Hubungi admin support jika Anda mengalami kendala dengan
+                pesanan.
+              </p>
+              <button className="mt-4 text-sm font-semibold text-indigo-700 hover:text-indigo-800">
+                Hubungi Admin &rarr;
+              </button>
             </div>
-          )}
+          </div>
         </div>
       </main>
-
-      <Footer variant="light" />
-      <ConfirmDialog />
-      <Toaster />
     </div>
   )
 }
