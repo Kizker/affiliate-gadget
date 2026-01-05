@@ -16,7 +16,6 @@ import {
   Wrench,
   Calendar,
   DollarSign,
-  Heart,
   MapPin,
   MessageSquare,
   PenSquare,
@@ -31,7 +30,6 @@ const customerMenuItems = [
     label: 'Pesanan Saya',
     href: '/dashboard/customer/orders',
   },
-  { icon: Heart, label: 'Wishlist', href: '/dashboard/customer/wishlist' },
   { icon: MapPin, label: 'Alamat', href: '/dashboard/customer/addresses' },
   { icon: Settings, label: 'Pengaturan', href: '/dashboard/customer/settings' },
 ]

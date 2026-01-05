@@ -8,17 +8,38 @@ import {
   Phone,
   Mail,
   Loader2,
-  Save,
+  Check,
   Lock,
-  Key,
   Building2,
   MapPin,
   MessageCircle,
   ArrowLeft,
 } from 'lucide-react'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type Tab = 'profile' | 'security'
+
+// Animation Variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: { type: 'spring', stiffness: 100, damping: 12 },
+  },
+}
 
 export default function MitraSettingsPage() {
   const { update } = useSession()
@@ -157,385 +178,381 @@ export default function MitraSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
-      <div className="mx-auto max-w-4xl">
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="relative"
+    >
+      {/* Background Mesh */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute left-[-10%] top-[-10%] h-[500px] w-[500px] rounded-full bg-cyan-400/20 blur-[100px]" />
+        <div className="absolute right-[-10%] top-[10%] h-[600px] w-[600px] rounded-full bg-blue-400/20 blur-[100px]" />
+        <div className="absolute bottom-[-10%] left-[20%] h-[500px] w-[500px] rounded-full bg-sky-300/20 blur-[100px]" />
+      </div>
+
+      <div className="relative z-10">
         {/* Header */}
-        <div className="mb-6">
+        <motion.div variants={itemVariants} className="mb-10">
           <Link
             href="/dashboard/mitra"
-            className="mb-4 inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-blue-600"
           >
             <ArrowLeft className="h-4 w-4" />
             Kembali ke Dashboard
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 lg:text-3xl">
-            Pengaturan Profil
+          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">
+            Pengaturan
           </h1>
-          <p className="mt-2 text-sm text-gray-600 lg:text-base">
-            Kelola profil dan informasi pribadi Anda
+          <p className="text-lg text-gray-600">
+            Kelola profil dan preferensi akun Anda
           </p>
+        </motion.div>
+
+        <div className="grid gap-8 lg:grid-cols-1">
+          {/* Single Card Container */}
+          <motion.div variants={itemVariants}>
+            <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/60 shadow-xl shadow-blue-100/10 backdrop-blur-xl">
+              <div className="grid gap-0 lg:grid-cols-4">
+                {/* Sidebar Tabs */}
+                <div className="border-b border-gray-200/60 p-6 lg:col-span-1 lg:border-b-0 lg:border-r">
+                  <nav className="space-y-2">
+                    <button
+                      onClick={() => setActiveTab('profile')}
+                      className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition-all ${
+                        activeTab === 'profile'
+                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-blue-600/30'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <User className="h-5 w-5" />
+                      <span>Profil</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('security')}
+                      className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition-all ${
+                        activeTab === 'security'
+                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-blue-600/30'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Lock className="h-5 w-5" />
+                      <span>Keamanan</span>
+                    </button>
+                  </nav>
+                </div>
+
+                {/* Content */}
+                <div className="p-8 lg:col-span-3">
+                  <AnimatePresence mode="wait">
+                    {/* Profile Tab */}
+                    {activeTab === 'profile' && (
+                      <motion.div
+                        key="profile"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-6"
+                      >
+                        <div>
+                          <h2 className="text-2xl font-bold text-gray-900">
+                            Profil Mitra
+                          </h2>
+                          <p className="text-sm text-gray-600">
+                            Update informasi profil dan bisnis Anda
+                          </p>
+                        </div>
+
+                        {/* Profile Form */}
+                        <div className="space-y-5">
+                          {/* Personal Information Section */}
+                          <div className="rounded-xl bg-gray-50 p-5">
+                            <h3 className="mb-4 text-sm font-bold text-gray-900">
+                              Informasi Pribadi
+                            </h3>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                  Nama Lengkap
+                                </label>
+                                <input
+                                  type="text"
+                                  value={formData.name}
+                                  onChange={(e) =>
+                                    setFormData({
+                                      ...formData,
+                                      name: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Masukkan nama lengkap"
+                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                              <div>
+                                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                  Email
+                                </label>
+                                <input
+                                  type="email"
+                                  value={formData.email}
+                                  onChange={(e) =>
+                                    setFormData({
+                                      ...formData,
+                                      email: e.target.value,
+                                    })
+                                  }
+                                  placeholder="mitra@example.com"
+                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                              <div>
+                                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                  Nomor Telepon
+                                </label>
+                                <input
+                                  type="tel"
+                                  value={formData.phone}
+                                  onChange={(e) =>
+                                    setFormData({
+                                      ...formData,
+                                      phone: e.target.value,
+                                    })
+                                  }
+                                  placeholder="08123456789"
+                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Business Information Section */}
+                          <div className="rounded-xl bg-gray-50 p-5">
+                            <h3 className="mb-4 text-sm font-bold text-gray-900">
+                              Informasi Bisnis
+                            </h3>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                  Nama Bisnis
+                                </label>
+                                <input
+                                  type="text"
+                                  value={formData.businessName}
+                                  onChange={(e) =>
+                                    setFormData({
+                                      ...formData,
+                                      businessName: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Nama bisnis Anda"
+                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                              <div>
+                                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                  Alamat
+                                </label>
+                                <textarea
+                                  value={formData.address}
+                                  onChange={(e) =>
+                                    setFormData({
+                                      ...formData,
+                                      address: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Alamat lengkap bisnis"
+                                  rows={3}
+                                  className="w-full resize-none rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                    Kota
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={formData.city}
+                                    onChange={(e) =>
+                                      setFormData({
+                                        ...formData,
+                                        city: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Kota"
+                                    className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                    Provinsi
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={formData.province}
+                                    onChange={(e) =>
+                                      setFormData({
+                                        ...formData,
+                                        province: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Provinsi"
+                                    className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                  WhatsApp
+                                </label>
+                                <input
+                                  type="tel"
+                                  value={formData.whatsapp}
+                                  onChange={(e) =>
+                                    setFormData({
+                                      ...formData,
+                                      whatsapp: e.target.value,
+                                    })
+                                  }
+                                  placeholder="08123456789"
+                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4">
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={handleSaveProfile}
+                            disabled={saving}
+                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:shadow-xl disabled:opacity-50"
+                          >
+                            {saving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Check className="h-4 w-4" />
+                            )}
+                            Simpan Perubahan
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Security Tab */}
+                    {activeTab === 'security' && (
+                      <motion.div
+                        key="security"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-6"
+                      >
+                        <div>
+                          <h2 className="text-2xl font-bold text-gray-900">
+                            Keamanan
+                          </h2>
+                          <p className="text-sm text-gray-600">
+                            Ubah password dan kelola keamanan akun Anda
+                          </p>
+                        </div>
+
+                        <div className="space-y-5">
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold text-gray-700">
+                              Password Saat Ini
+                            </label>
+                            <input
+                              type="password"
+                              value={passwordData.currentPassword}
+                              onChange={(e) =>
+                                setPasswordData({
+                                  ...passwordData,
+                                  currentPassword: e.target.value,
+                                })
+                              }
+                              placeholder="Masukkan password saat ini"
+                              className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold text-gray-700">
+                              Password Baru
+                            </label>
+                            <input
+                              type="password"
+                              value={passwordData.newPassword}
+                              onChange={(e) =>
+                                setPasswordData({
+                                  ...passwordData,
+                                  newPassword: e.target.value,
+                                })
+                              }
+                              placeholder="Minimal 6 karakter"
+                              className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-semibold text-gray-700">
+                              Konfirmasi Password Baru
+                            </label>
+                            <input
+                              type="password"
+                              value={passwordData.confirmPassword}
+                              onChange={(e) =>
+                                setPasswordData({
+                                  ...passwordData,
+                                  confirmPassword: e.target.value,
+                                })
+                              }
+                              placeholder="Ulangi password baru"
+                              className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Password minimal 6 karakter
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4">
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={handleChangePassword}
+                            disabled={
+                              saving ||
+                              !passwordData.currentPassword ||
+                              !passwordData.newPassword ||
+                              !passwordData.confirmPassword
+                            }
+                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:shadow-xl disabled:opacity-50"
+                          >
+                            {saving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Check className="h-4 w-4" />
+                            )}
+                            Ubah Password
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
-
-        {/* Tabs - Mobile Responsive */}
-        <div className="mb-6 flex gap-2 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all lg:px-6 lg:py-3 lg:text-base ${
-              activeTab === 'profile'
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <User className="h-4 w-4 lg:h-5 lg:w-5" />
-            Profil
-          </button>
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all lg:px-6 lg:py-3 lg:text-base ${
-              activeTab === 'security'
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Lock className="h-4 w-4 lg:h-5 lg:w-5" />
-            Keamanan
-          </button>
-        </div>
-
-        {/* Profile Tab */}
-        {activeTab === 'profile' && (
-          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="border-b border-gray-200 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 lg:p-6">
-              <h2 className="text-lg font-semibold text-white lg:text-xl">
-                Profil Saya
-              </h2>
-              <p className="mt-1 text-xs text-white/80 lg:text-sm">
-                Update foto profil dan informasi pribadi Anda
-              </p>
-            </div>
-
-            <div className="p-4 lg:p-6">
-              {/* Form Fields */}
-              <div className="space-y-4">
-                {/* Personal Information */}
-                <div className="rounded-lg bg-gray-50 p-4">
-                  <h3 className="mb-3 text-sm font-semibold text-gray-900 lg:text-base">
-                    Informasi Pribadi
-                  </h3>
-                  <div className="space-y-4">
-                    {/* Name */}
-                    <div>
-                      <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                        Nama Lengkap
-                      </label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 lg:h-5 lg:w-5" />
-                        <input
-                          type="text"
-                          value={formData.name}
-                          onChange={(e) =>
-                            setFormData({ ...formData, name: e.target.value })
-                          }
-                          placeholder="Masukkan nama lengkap"
-                          className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:pl-10 lg:text-base"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                        Email
-                      </label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 lg:h-5 lg:w-5" />
-                        <input
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) =>
-                            setFormData({ ...formData, email: e.target.value })
-                          }
-                          placeholder="mitra@example.com"
-                          className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:pl-10 lg:text-base"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Phone */}
-                    <div>
-                      <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                        Nomor Telepon
-                      </label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 lg:h-5 lg:w-5" />
-                        <input
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) =>
-                            setFormData({ ...formData, phone: e.target.value })
-                          }
-                          placeholder="08123456789"
-                          className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:pl-10 lg:text-base"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Business Information */}
-                <div className="rounded-lg bg-gray-50 p-4">
-                  <h3 className="mb-3 text-sm font-semibold text-gray-900 lg:text-base">
-                    Informasi Bisnis
-                  </h3>
-                  <div className="space-y-4">
-                    {/* Business Name */}
-                    <div>
-                      <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                        Nama Bisnis
-                      </label>
-                      <div className="relative">
-                        <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 lg:h-5 lg:w-5" />
-                        <input
-                          type="text"
-                          value={formData.businessName}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              businessName: e.target.value,
-                            })
-                          }
-                          placeholder="Nama bisnis Anda"
-                          className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:pl-10 lg:text-base"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Address */}
-                    <div>
-                      <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                        Alamat
-                      </label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400 lg:h-5 lg:w-5" />
-                        <textarea
-                          value={formData.address}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              address: e.target.value,
-                            })
-                          }
-                          placeholder="Alamat lengkap bisnis"
-                          rows={3}
-                          className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:pl-10 lg:text-base"
-                        />
-                      </div>
-                    </div>
-
-                    {/* City & Province */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                          Kota
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.city}
-                          onChange={(e) =>
-                            setFormData({ ...formData, city: e.target.value })
-                          }
-                          placeholder="Kota"
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:text-base"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                          Provinsi
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.province}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              province: e.target.value,
-                            })
-                          }
-                          placeholder="Provinsi"
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:text-base"
-                        />
-                      </div>
-                    </div>
-
-                    {/* WhatsApp */}
-                    <div>
-                      <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                        WhatsApp
-                      </label>
-                      <div className="relative">
-                        <MessageCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 lg:h-5 lg:w-5" />
-                        <input
-                          type="tel"
-                          value={formData.whatsapp}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              whatsapp: e.target.value,
-                            })
-                          }
-                          placeholder="08123456789"
-                          className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:pl-10 lg:text-base"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Save Button */}
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={saving}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-2.5 text-sm font-medium text-white shadow-lg hover:shadow-xl disabled:opacity-50 sm:w-auto lg:text-base"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin lg:h-5 lg:w-5" />
-                      Menyimpan...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 lg:h-5 lg:w-5" />
-                      Simpan Perubahan
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Security Tab */}
-        {activeTab === 'security' && (
-          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="border-b border-gray-200 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 lg:p-6">
-              <h2 className="text-lg font-semibold text-white lg:text-xl">
-                Keamanan
-              </h2>
-              <p className="mt-1 text-xs text-white/80 lg:text-sm">
-                Ubah password dan kelola keamanan akun Anda
-              </p>
-            </div>
-
-            <div className="p-4 lg:p-6">
-              <div className="space-y-4">
-                {/* Current Password */}
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                    Password Saat Ini
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 lg:h-5 lg:w-5" />
-                    <input
-                      type="password"
-                      value={passwordData.currentPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          currentPassword: e.target.value,
-                        })
-                      }
-                      placeholder="Masukkan password saat ini"
-                      className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:pl-10 lg:text-base"
-                    />
-                  </div>
-                </div>
-
-                {/* New Password */}
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                    Password Baru
-                  </label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 lg:h-5 lg:w-5" />
-                    <input
-                      type="password"
-                      value={passwordData.newPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          newPassword: e.target.value,
-                        })
-                      }
-                      placeholder="Minimal 6 karakter"
-                      className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:pl-10 lg:text-base"
-                    />
-                  </div>
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-gray-700 lg:text-sm">
-                    Konfirmasi Password Baru
-                  </label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 lg:h-5 lg:w-5" />
-                    <input
-                      type="password"
-                      value={passwordData.confirmPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          confirmPassword: e.target.value,
-                        })
-                      }
-                      placeholder="Ulangi password baru"
-                      className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 lg:pl-10 lg:text-base"
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Password minimal 6 karakter
-                  </p>
-                </div>
-              </div>
-
-              {/* Change Password Button */}
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={handleChangePassword}
-                  disabled={
-                    saving ||
-                    !passwordData.currentPassword ||
-                    !passwordData.newPassword ||
-                    !passwordData.confirmPassword
-                  }
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-2.5 text-sm font-medium text-white shadow-lg hover:shadow-xl disabled:opacity-50 sm:w-auto lg:text-base"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin lg:h-5 lg:w-5" />
-                      Mengubah...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 lg:h-5 lg:w-5" />
-                      Ubah Password
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+    </motion.div>
   )
 }

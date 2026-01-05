@@ -10,7 +10,6 @@ import {
   X,
   ChevronDown,
   ShoppingBag,
-  Heart,
   Settings,
   LayoutDashboard,
 } from 'lucide-react'
@@ -293,17 +292,6 @@ export function Navbar({
                           <ShoppingBag className="h-4 w-4" />
                           Pesanan Saya
                         </Link>
-                        <Link
-                          href="/dashboard/customer/wishlist"
-                          className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                            isLight
-                              ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                              : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                          }`}
-                        >
-                          <Heart className="h-4 w-4" />
-                          Wishlist
-                        </Link>
                       </>
                     )}
                   {/* Settings link for all users - moved to bottom */}
@@ -583,18 +571,6 @@ export function Navbar({
                     >
                       <ShoppingBag className="h-5 w-5" />
                       Pesanan Saya
-                    </Link>
-                    <Link
-                      href="/dashboard/customer/wishlist"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 rounded-lg px-4 py-3 font-medium transition-colors ${
-                        isLight
-                          ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                          : 'text-gray-100 hover:bg-gray-800 hover:text-cyan-400'
-                      }`}
-                    >
-                      <Heart className="h-5 w-5" />
-                      Wishlist
                     </Link>
                   </>
                 )}

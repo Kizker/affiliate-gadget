@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useState, useEffect, useCallback } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -13,7 +13,15 @@ import {
   Clock,
   Award,
   Loader2,
+  Settings,
+  LogOut,
+  Zap,
+  TrendingUp,
+  Building2,
+  type LucideIcon,
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 
 interface MitraAnalytics {
   profileViews: number
@@ -32,41 +40,216 @@ interface MitraAnalytics {
   }>
 }
 
-// Stat Card Component (matching admin dashboard style)
-function StatCard({
-  icon: Icon,
-  label,
+// Animation Variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: { type: 'spring', stiffness: 100, damping: 12 },
+  },
+}
+
+// Stat Card Component (matching teknisi dashboard style)
+const StatCard = ({
+  title,
   value,
+  subtitle,
+  icon: Icon,
+  color,
   trend,
-  iconBg = 'bg-blue-500',
 }: {
-  icon: React.ElementType
-  label: string
-  value: string
-  trend?: { value: number; isPositive: boolean }
-  iconBg?: string
-}) {
+  title: string
+  value: string | number
+  subtitle?: string
+  icon: LucideIcon
+  color: 'indigo' | 'emerald' | 'amber' | 'rose'
+  trend?: string
+}) => {
+  const gradients = {
+    indigo:
+      'from-indigo-500/10 to-blue-500/5 border-indigo-200/50 text-indigo-600',
+    emerald:
+      'from-emerald-500/10 to-teal-500/5 border-emerald-200/50 text-emerald-600',
+    amber:
+      'from-amber-500/10 to-orange-500/5 border-amber-200/50 text-amber-600',
+    rose: 'from-rose-500/10 to-pink-500/5 border-rose-200/50 text-rose-600',
+  }
+
+  const iconBg = {
+    indigo: 'bg-indigo-100 text-indigo-600',
+    emerald: 'bg-emerald-100 text-emerald-600',
+    amber: 'bg-amber-100 text-amber-600',
+    rose: 'bg-rose-100 text-rose-600',
+  }
+
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md lg:rounded-2xl lg:p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-gray-500 lg:text-sm">{label}</p>
-          <p className="mt-1 text-xl font-bold text-gray-900 lg:text-3xl">
-            {value}
-          </p>
-          {trend && (
-            <p
-              className={`mt-1 text-xs lg:text-sm ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}
-            >
-              {trend.isPositive ? '↑' : '↓'} {trend.value}%
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ y: -5, boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)' }}
+      className={`relative overflow-hidden rounded-3xl border bg-gradient-to-br p-6 backdrop-blur-sm transition-all ${gradients[color]}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="relative z-10">
+          <p className="text-sm font-semibold text-gray-500/90">{title}</p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <h3 className="text-3xl font-bold tracking-tight text-gray-900">
+              {value}
+            </h3>
+          </div>
+          {subtitle && (
+            <p className="mt-1 text-sm font-medium text-gray-500/80">
+              {subtitle}
             </p>
           )}
+          {trend && (
+            <div
+              className={`mt-3 flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${color === 'emerald' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}
+            >
+              <TrendingUp className="h-3 w-3" />
+              <span>{trend}</span>
+            </div>
+          )}
         </div>
-        <div className={`rounded-lg lg:rounded-xl ${iconBg} p-2 lg:p-3`}>
-          <Icon className="h-4 w-4 text-white lg:h-6 lg:w-6" />
+        <div
+          className={`relative z-10 rounded-2xl p-3.5 shadow-sm transition-transform duration-300 group-hover:scale-110 ${iconBg[color]}`}
+        >
+          <Icon className="h-6 w-6" />
         </div>
       </div>
+
+      {/* Decorative blurred circles */}
+      <div
+        className={`absolute -right-6 -top-6 h-32 w-32 rounded-full opacity-20 blur-3xl ${color === 'indigo' ? 'bg-indigo-400' : color === 'emerald' ? 'bg-emerald-400' : color === 'amber' ? 'bg-amber-400' : 'bg-rose-400'}`}
+      />
+    </motion.div>
+  )
+}
+
+const SkeletonLoader = () => (
+  <div className="container mx-auto max-w-7xl space-y-8 p-6">
+    <div className="flex animate-pulse gap-6">
+      <div className="h-24 w-24 rounded-full bg-gray-200"></div>
+      <div className="w-full space-y-4 pt-4">
+        <div className="h-8 w-1/3 rounded-lg bg-gray-200"></div>
+        <div className="h-4 w-1/4 rounded bg-gray-200"></div>
+      </div>
     </div>
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="h-40 animate-pulse rounded-3xl bg-gray-200"
+        ></div>
+      ))}
+    </div>
+    <div className="grid gap-8 lg:grid-cols-3">
+      <div className="h-96 animate-pulse rounded-3xl bg-gray-200 lg:col-span-2"></div>
+      <div className="h-96 animate-pulse rounded-3xl bg-gray-200"></div>
+    </div>
+  </div>
+)
+
+const Header = ({
+  user,
+}: {
+  user: { name: string | null; email: string | null; image: string | null }
+}) => {
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 11) return 'Selamat Pagi'
+    if (hour < 15) return 'Selamat Siang'
+    if (hour < 18) return 'Selamat Sore'
+    return 'Selamat Malam'
+  }
+
+  return (
+    <motion.div
+      variants={itemVariants}
+      className="mb-12 hidden flex-col justify-between gap-6 md:flex md:flex-row md:items-end"
+    >
+      <div className="flex items-center gap-6">
+        <div className="group relative">
+          <div className="relative h-24 w-24 overflow-hidden rounded-full border-[3px] border-white shadow-xl transition-transform hover:scale-105">
+            {user.image ? (
+              <Image
+                src={user.image}
+                alt={user.name || 'Mitra'}
+                fill
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-500 to-violet-600 text-3xl font-bold text-white">
+                {user.name?.charAt(0) || 'M'}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block rounded-full bg-white/60 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-indigo-600 backdrop-blur-md">
+              Mitra Dashboard
+            </span>
+          </div>
+          <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-gray-900 drop-shadow-sm">
+            {getGreeting()},{' '}
+            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+              {user.name?.split(' ')[0]}
+            </span>
+            !
+          </h1>
+          <p className="flex items-center gap-2 text-lg text-gray-600">
+            Semoga harimu produktif dan menyenangkan.{' '}
+            <Zap className="h-4 w-4 fill-amber-500 text-amber-500" />
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <Link href="/dashboard/mitra/settings">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/80 px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur-sm transition-all hover:border-gray-300 hover:bg-white hover:shadow-md"
+          >
+            <Settings className="h-4 w-4" />
+            Pengaturan
+          </motion.button>
+        </Link>
+        <Link href="/dashboard/mitra/profile/edit">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-gray-900/20 transition-all hover:bg-gray-800 hover:shadow-xl"
+          >
+            <Edit3 className="h-4 w-4" />
+            Edit Profil
+          </motion.button>
+        </Link>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50/80 px-5 py-3 text-sm font-semibold text-rose-600 shadow-sm backdrop-blur-sm transition-all hover:border-rose-300 hover:bg-rose-100 hover:shadow-md"
+        >
+          <LogOut className="h-4 w-4" />
+          Keluar
+        </motion.button>
+      </div>
+    </motion.div>
   )
 }
 
@@ -78,69 +261,86 @@ export default function MitraDashboard() {
   const [hasProfile, setHasProfile] = useState(false)
   const [mitraId, setMitraId] = useState<string>('')
 
-  // Check if profile exists and fetch analytics
-  useEffect(() => {
-    const checkProfileAndFetchAnalytics = async () => {
-      try {
-        // Check profile existence
-        const profileResponse = await fetch('/api/mitra/profile')
+  const calculateCompletion = (profile: Record<string, unknown>) => {
+    let completed = 0
+    const total = 10
+    if (profile.businessName) completed++
+    if (profile.tagline) completed++
+    if (profile.description) completed++
+    if (profile.address) completed++
+    if (profile.city) completed++
+    if (profile.phone) completed++
+    if (profile.banner) completed++
+    if (Array.isArray(profile.services) && profile.services.length > 0)
+      completed++
+    if (Array.isArray(profile.images) && profile.images.length > 0) completed++
+    if (Array.isArray(profile.features) && profile.features.length > 0)
+      completed++
+    return Math.round((completed / total) * 100)
+  }
 
-        if (profileResponse.status === 404) {
-          // No profile, redirect to edit
-          router.push('/dashboard/mitra/profile/edit')
-          return
-        }
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      // Check profile existence
+      const profileResponse = await fetch('/api/mitra/profile')
 
-        if (profileResponse.ok) {
-          setHasProfile(true)
-          const profileData = await profileResponse.json()
-          setMitraId(profileData.id || '')
-
-          // Calculate analytics from profile data
-          const completion = calculateCompletion(profileData)
-
-          // Fetch real analytics
-          const analyticsResponse = await fetch('/api/mitra/analytics')
-          if (analyticsResponse.ok) {
-            const analyticsData = await analyticsResponse.json()
-
-            setAnalytics({
-              profileViews: analyticsData.totalViews || 0,
-              totalReviews: analyticsData.totalReviews || 0,
-              averageRating: analyticsData.averageRating || 0,
-              inquiries: analyticsData.totalInquiries || 0,
-              servicesCount: profileData.services?.length || 0,
-              imagesCount: profileData.images?.length || 0,
-              profileCompletion: completion,
-              recentReviews: analyticsData.recentReviews || [],
-            })
-          } else {
-            // Fallback to profile data if analytics API fails
-            setAnalytics({
-              profileViews: 0,
-              totalReviews: profileData.totalReview || 0,
-              averageRating: profileData.rating || 0,
-              inquiries: 0,
-              servicesCount: profileData.services?.length || 0,
-              imagesCount: profileData.images?.length || 0,
-              profileCompletion: completion,
-              recentReviews: [],
-            })
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching analytics:', error)
-      } finally {
-        setLoading(false)
+      if (profileResponse.status === 404) {
+        // No profile, redirect to edit
+        router.push('/dashboard/mitra/profile/edit')
+        return
       }
-    }
 
+      if (profileResponse.ok) {
+        setHasProfile(true)
+        const profileData = await profileResponse.json()
+        setMitraId(profileData.id || '')
+
+        // Calculate analytics from profile data
+        const completion = calculateCompletion(profileData)
+
+        // Fetch real analytics
+        const analyticsResponse = await fetch('/api/mitra/analytics')
+        if (analyticsResponse.ok) {
+          const analyticsData = await analyticsResponse.json()
+
+          setAnalytics({
+            profileViews: analyticsData.totalViews || 0,
+            totalReviews: analyticsData.totalReviews || 0,
+            averageRating: analyticsData.averageRating || 0,
+            inquiries: analyticsData.totalInquiries || 0,
+            servicesCount: profileData.services?.length || 0,
+            imagesCount: profileData.images?.length || 0,
+            profileCompletion: completion,
+            recentReviews: analyticsData.recentReviews || [],
+          })
+        } else {
+          // Fallback to profile data if analytics API fails
+          setAnalytics({
+            profileViews: 0,
+            totalReviews: profileData.totalReview || 0,
+            averageRating: profileData.rating || 0,
+            inquiries: 0,
+            servicesCount: profileData.services?.length || 0,
+            imagesCount: profileData.images?.length || 0,
+            profileCompletion: completion,
+            recentReviews: [],
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [router])
+
+  useEffect(() => {
     if (status === 'authenticated') {
-      checkProfileAndFetchAnalytics()
+      fetchAnalytics()
     }
-  }, [status, router])
+  }, [status, fetchAnalytics])
 
-  // Auto-refresh analytics every 30 seconds for real-time updates
+  // Auto-refresh analytics every 30 seconds
   useEffect(() => {
     if (!hasProfile || status !== 'authenticated') return
 
@@ -167,10 +367,7 @@ export default function MitraDashboard() {
       }
     }
 
-    // Set up polling interval (30 seconds)
     const intervalId = setInterval(refreshAnalytics, 30000)
-
-    // Cleanup on unmount
     return () => clearInterval(intervalId)
   }, [hasProfile, status])
 
@@ -184,250 +381,269 @@ export default function MitraDashboard() {
     }
   }, [session, router])
 
-  const calculateCompletion = (profile: Record<string, unknown>) => {
-    let completed = 0
-    const total = 10
-    if (profile.businessName) completed++
-    if (profile.tagline) completed++
-    if (profile.description) completed++
-    if (profile.address) completed++
-    if (profile.city) completed++
-    if (profile.phone) completed++
-    if (profile.banner) completed++
-    if (Array.isArray(profile.services) && profile.services.length > 0)
-      completed++
-    if (Array.isArray(profile.images) && profile.images.length > 0) completed++
-    if (Array.isArray(profile.features) && profile.features.length > 0)
-      completed++
-    return Math.round((completed / total) * 100)
-  }
-
   if (status === 'loading' || loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    )
+    return <SkeletonLoader />
   }
 
   if (!hasProfile || !analytics) {
     return null // Will redirect to edit page
   }
 
+  const user = session?.user || { name: null, email: null, image: null }
+
   return (
-    <div>
-      {/* Header Banner */}
-      <div className="mb-8 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard Analytics</h1>
-            <p className="mt-2 text-blue-100">
-              Pantau performa dan aktivitas profil bisnis Anda
-            </p>
-          </div>
-          <div className="hidden items-center gap-2 rounded-xl bg-white/10 px-4 py-2 backdrop-blur-sm md:flex">
-            <Clock className="h-5 w-5" />
-            <span className="text-sm">
-              {new Date().toLocaleDateString('id-ID', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </span>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Abstract Background Mesh */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute left-[-10%] top-[-10%] h-[500px] w-[500px] rounded-full bg-blue-400/20 blur-[100px]" />
+        <div className="absolute right-[-10%] top-[10%] h-[600px] w-[600px] rounded-full bg-violet-400/20 blur-[100px]" />
+        <div className="absolute bottom-[-10%] left-[20%] h-[500px] w-[500px] rounded-full bg-indigo-300/20 blur-[100px]" />
       </div>
 
-      {/* Stats Grid */}
-      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        <StatCard
-          icon={Eye}
-          label="Total Views"
-          value={analytics.profileViews.toString()}
-          trend={{ value: 12, isPositive: true }}
-          iconBg="bg-blue-500"
-        />
-        <StatCard
-          icon={Star}
-          label="Rating Rata-rata"
-          value={analytics.averageRating.toFixed(1)}
-          trend={{ value: 5, isPositive: true }}
-          iconBg="bg-yellow-500"
-        />
-        <StatCard
-          icon={MessageSquare}
-          label="Total Ulasan"
-          value={analytics.totalReviews.toString()}
-          trend={{ value: 8, isPositive: true }}
-          iconBg="bg-green-500"
-        />
-        <StatCard
-          icon={Phone}
-          label="Inquiries"
-          value={analytics.inquiries.toString()}
-          trend={{ value: 15, isPositive: true }}
-          iconBg="bg-purple-500"
-        />
-      </div>
+      <motion.main
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+        className="container relative z-10 mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8"
+      >
+        <Header user={user} />
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Profile Status Card */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">Status Profil</h2>
-            <Award className="h-6 w-6 text-blue-600" />
-          </div>
+        {/* Stats Grid */}
+        <motion.div
+          variants={itemVariants}
+          className="mb-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <StatCard
+            title="Total Views"
+            value={analytics.profileViews}
+            icon={Eye}
+            color="indigo"
+            trend="+12%"
+          />
+          <StatCard
+            title="Rating Rata-rata"
+            value={analytics.averageRating.toFixed(1)}
+            subtitle={`Dari ${analytics.totalReviews} ulasan`}
+            icon={Star}
+            color="rose"
+          />
+          <StatCard
+            title="Total Ulasan"
+            value={analytics.totalReviews}
+            icon={MessageSquare}
+            color="emerald"
+            trend="+8%"
+          />
+          <StatCard
+            title="Inquiries"
+            value={analytics.inquiries}
+            icon={Phone}
+            color="amber"
+            trend="+15%"
+          />
+        </motion.div>
 
-          {/* Completion Circle */}
-          <div className="mb-6 flex justify-center">
-            <div className="relative h-32 w-32">
-              <svg className="h-full w-full -rotate-90 transform">
-                <circle
-                  cx="64"
-                  cy="64"
-                  r="56"
-                  fill="none"
-                  stroke="#e5e7eb"
-                  strokeWidth="12"
-                />
-                <circle
-                  cx="64"
-                  cy="64"
-                  r="56"
-                  fill="none"
-                  stroke="#3b82f6"
-                  strokeWidth="12"
-                  strokeDasharray={`${analytics.profileCompletion * 3.52} 352`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-3xl font-bold text-gray-900">
-                  {analytics.profileCompletion}%
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Layanan</span>
-              <span className="font-semibold text-gray-900">
-                {analytics.servicesCount} layanan
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Foto Galeri</span>
-              <span className="font-semibold text-gray-900">
-                {analytics.imagesCount} foto
-              </span>
-            </div>
-          </div>
-
-          {/* Edit Button */}
-          <Link
-            href="/dashboard/mitra/profile/edit"
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 font-semibold text-white transition-all hover:shadow-lg"
+        {/* Bento Grid Content */}
+        <div className="grid gap-8 lg:grid-cols-12">
+          {/* Main Column: Recent Reviews (8 cols) */}
+          <motion.div
+            variants={itemVariants}
+            className="space-y-8 lg:col-span-8"
           >
-            <Edit3 className="h-5 w-5" />
-            Edit Profil
-          </Link>
-        </div>
-
-        {/* Recent Reviews */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">
-              Ulasan Pelanggan ({analytics.recentReviews.length})
-            </h2>
-            <MessageSquare className="h-6 w-6 text-blue-600" />
-          </div>
-
-          {analytics.recentReviews.length > 0 ? (
-            <div className="max-h-96 space-y-4 overflow-y-auto pr-2">
-              {analytics.recentReviews.map((review) => (
-                <div
-                  key={review.id}
-                  className="rounded-xl border border-gray-200 bg-gray-50 p-4"
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        {review.userName}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(review.createdAt).toLocaleDateString(
-                          'id-ID',
-                          {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          }
-                        )}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {[...Array(review.rating)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-700">
-                    {review.comment || 'Tidak ada komentar'}
+            <div className="relative overflow-hidden rounded-[2.5rem] border border-white/60 bg-white/60 shadow-xl shadow-indigo-100/20 backdrop-blur-xl">
+              <div className="border-b border-indigo-50/50 p-8 pb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Ulasan Pelanggan
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    Lihat feedback dari pelanggan Anda
                   </p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-gray-400">
-              <MessageSquare className="mx-auto mb-3 h-12 w-12 opacity-50" />
-              <p>Belum ada ulasan</p>
-            </div>
-          )}
-        </div>
-      </div>
+              </div>
 
-      {/* Quick Actions */}
-      <div className="mt-8">
-        <h2 className="mb-4 text-xl font-bold text-gray-900">Aksi Cepat</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Link
-            href="/dashboard/mitra/profile/edit"
-            className="group rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
-          >
-            <div className="mb-4 inline-flex rounded-xl bg-blue-100 p-3">
-              <Edit3 className="h-6 w-6 text-blue-600" />
+              {/* Reviews List Content */}
+              <div className="space-y-4 p-8 pt-6">
+                <AnimatePresence mode="wait">
+                  {analytics.recentReviews.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-16 text-center"
+                    >
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
+                        <MessageSquare className="h-8 w-8 text-indigo-400" />
+                      </div>
+                      <h3 className="mt-4 text-lg font-bold text-gray-900">
+                        Belum ada ulasan
+                      </h3>
+                      <p className="mx-auto mt-2 max-w-xs text-gray-500">
+                        Ulasan dari pelanggan akan muncul di sini.
+                      </p>
+                    </motion.div>
+                  ) : (
+                    analytics.recentReviews.map((review, i) => (
+                      <motion.div
+                        key={review.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="group relative flex flex-col gap-4 rounded-3xl border border-gray-100 bg-white p-5 transition-all hover:border-indigo-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-bold text-gray-900">
+                              {review.userName}
+                            </h3>
+                            <p className="text-xs text-gray-500">
+                              {new Date(review.createdAt).toLocaleDateString(
+                                'id-ID',
+                                {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                }
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {[...Array(review.rating)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700">
+                          {review.comment || 'Tidak ada komentar'}
+                        </p>
+                      </motion.div>
+                    ))
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
-              Edit Profil
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Perbarui informasi bisnis Anda
-            </p>
-          </Link>
+          </motion.div>
 
-          <Link
-            href={mitraId ? `/rekomendasi/${mitraId}` : '/rekomendasi'}
-            className="group rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-green-300 hover:shadow-md"
+          {/* Right Column: Sidebar (4 cols) */}
+          <motion.div
+            variants={itemVariants}
+            className="space-y-8 lg:col-span-4"
           >
-            <div className="mb-4 inline-flex rounded-xl bg-green-100 p-3">
-              <Eye className="h-6 w-6 text-green-600" />
+            {/* Profile Status Card */}
+            <div className="hover:shadow-3xl relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-800 p-8 text-white shadow-2xl transition-all">
+              {/* Animated glow */}
+              <div className="absolute -right-20 -top-20 h-64 w-64 animate-pulse rounded-full bg-white/20 blur-3xl" />
+
+              <div className="relative z-10 mb-6 flex items-center justify-between">
+                <span className="text-sm font-bold uppercase tracking-widest opacity-80">
+                  Status Profil
+                </span>
+                <div className="rounded-full bg-emerald-400/30 p-2 text-emerald-100 backdrop-blur-md">
+                  <Award className="h-6 w-6" />
+                </div>
+              </div>
+
+              <div className="relative z-10 mb-6 flex justify-center">
+                <div className="relative h-32 w-32">
+                  <svg className="h-full w-full -rotate-90 transform">
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.2)"
+                      strokeWidth="12"
+                    />
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="12"
+                      strokeDasharray={`${analytics.profileCompletion * 3.52} 352`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-3xl font-bold">
+                      {analytics.profileCompletion}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative z-10 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-indigo-100/80">Layanan</span>
+                  <span className="font-semibold">
+                    {analytics.servicesCount} layanan
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-indigo-100/80">Foto Galeri</span>
+                  <span className="font-semibold">
+                    {analytics.imagesCount} foto
+                  </span>
+                </div>
+              </div>
+
+              <Link href="/dashboard/mitra/profile/edit">
+                <button className="mt-8 w-full rounded-2xl bg-white py-4 font-bold text-gray-900 shadow-lg transition-transform hover:scale-[1.02] active:scale-95">
+                  Edit Profil Lengkap
+                </button>
+              </Link>
             </div>
-            <h3 className="font-semibold text-gray-900 group-hover:text-green-600">
-              Lihat Profil Publik
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Lihat bagaimana pelanggan melihat profil Anda
-            </p>
-          </Link>
+
+            {/* Quick Actions */}
+            <div className="flex flex-col rounded-[2.5rem] border border-white/60 bg-white/60 p-8 shadow-xl shadow-indigo-100/10 backdrop-blur-xl">
+              <h3 className="mb-6 text-lg font-bold text-gray-900">
+                Aksi Cepat
+              </h3>
+              <div className="flex-1 space-y-4">
+                <Link
+                  href={mitraId ? `/rekomendasi/${mitraId}` : '/rekomendasi'}
+                  className="group flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-100 hover:shadow-md"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-indigo-100 p-2">
+                      <Eye className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900 transition-colors group-hover:text-indigo-600">
+                        Lihat Profil Publik
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Preview profil Anda
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/dashboard/mitra/settings"
+                  className="group flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-100 hover:shadow-md"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-emerald-100 p-2">
+                      <Settings className="h-5 w-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900 transition-colors group-hover:text-emerald-600">
+                        Pengaturan Akun
+                      </p>
+                      <p className="text-xs text-gray-500">Kelola akun Anda</p>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.main>
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layouts/navbar'
+import { Footer } from '@/components/layouts/footer'
 import Link from 'next/link'
 import {
   CheckCircle,
@@ -120,7 +121,7 @@ export default function SparepartConfirmationPage({
     <div className="flex min-h-screen flex-col bg-gray-50">
       <Navbar variant="light" />
 
-      <main className="flex flex-1 items-center justify-center px-4 pb-8 pt-16">
+      <main className="flex flex-1 items-center justify-center px-4 pb-8 pt-24">
         <div className="w-full max-w-lg">
           {/* Main Receipt Card */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-gray-100">
@@ -263,6 +264,8 @@ export default function SparepartConfirmationPage({
           </div>
         </div>
       </main>
+
+      <Footer variant="light" />
     </div>
   )
 }
