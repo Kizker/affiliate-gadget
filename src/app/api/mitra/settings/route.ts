@@ -30,6 +30,8 @@ export async function GET() {
             city: true,
             province: true,
             whatsapp: true,
+            latitude: true,
+            longitude: true,
           },
         },
       },
@@ -93,6 +95,8 @@ export async function PATCH(request: NextRequest) {
       city,
       province,
       whatsapp,
+      latitude,
+      longitude,
       currentPassword,
       newPassword,
     } = body
@@ -192,6 +196,8 @@ export async function PATCH(request: NextRequest) {
         city?: string
         province?: string
         whatsapp?: string
+        latitude?: number
+        longitude?: number
       }
       const mitraUpdateData: MitraUpdateData = {
         ...(businessName !== undefined && { businessName }),
@@ -199,6 +205,8 @@ export async function PATCH(request: NextRequest) {
         ...(city !== undefined && { city }),
         ...(province !== undefined && { province }),
         ...(whatsapp !== undefined && { whatsapp }),
+        ...(latitude !== undefined && { latitude }),
+        ...(longitude !== undefined && { longitude }),
       }
 
       if (Object.keys(mitraUpdateData).length > 0) {
@@ -212,6 +220,8 @@ export async function PATCH(request: NextRequest) {
             city: true,
             province: true,
             whatsapp: true,
+            latitude: true,
+            longitude: true,
           },
         })
       }

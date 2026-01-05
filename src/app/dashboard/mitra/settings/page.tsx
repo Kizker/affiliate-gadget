@@ -1,24 +1,32 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import {
   User,
-  Phone,
-  Mail,
   Loader2,
   Check,
   Lock,
   Building2,
   MapPin,
-  MessageCircle,
   ArrowLeft,
+  Search,
+  Navigation,
 } from 'lucide-react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  useLoadScript,
+  Autocomplete,
+  GoogleMap,
+  Marker,
+} from '@react-google-maps/api'
 
 type Tab = 'profile' | 'security'
+type ProfileSubTab = 'personal' | 'business'
+
+const libraries: 'places'[] = ['places']
 
 // Animation Variants
 const containerVariants = {
@@ -45,8 +53,17 @@ export default function MitraSettingsPage() {
   const { update } = useSession()
 
   const [activeTab, setActiveTab] = useState<Tab>('profile')
+  const [profileSubTab, setProfileSubTab] = useState<ProfileSubTab>('personal')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  // Google Maps
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  })
+
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
 
   // Profile form data
   const [formData, setFormData] = useState({
@@ -58,6 +75,8 @@ export default function MitraSettingsPage() {
     city: '',
     province: '',
     whatsapp: '',
+    latitude: 0,
+    longitude: 0,
   })
 
   // Password form data
@@ -85,6 +104,8 @@ export default function MitraSettingsPage() {
           city: data.user.mitra?.city || '',
           province: data.user.mitra?.province || '',
           whatsapp: data.user.mitra?.whatsapp || '',
+          latitude: data.user.mitra?.latitude || 0,
+          longitude: data.user.mitra?.longitude || 0,
         })
       } else {
         toast.error('Gagal memuat profil')
@@ -112,12 +133,14 @@ export default function MitraSettingsPage() {
           city: formData.city,
           province: formData.province,
           whatsapp: formData.whatsapp,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
         }),
       })
 
       if (res.ok) {
         toast.success('Profil berhasil diperbarui')
-        await update() // Update session
+        await update()
         fetchProfile()
       } else {
         const data = await res.json()
@@ -132,7 +155,6 @@ export default function MitraSettingsPage() {
   }
 
   const handleChangePassword = async () => {
-    // Validate password fields
     if (!passwordData.currentPassword) {
       toast.error('Masukkan password saat ini')
       return
@@ -176,6 +198,97 @@ export default function MitraSettingsPage() {
     }
   }
 
+  // Handle place selection from autocomplete
+  const handlePlaceSelect = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace()
+      if (place.geometry?.location) {
+        const lat = place.geometry.location.lat()
+        const lng = place.geometry.location.lng()
+        const address = place.formatted_address || ''
+
+        let city = ''
+        let province = ''
+
+        place.address_components?.forEach((component) => {
+          if (
+            component.types.includes('locality') ||
+            component.types.includes('administrative_area_level_2')
+          ) {
+            city = component.long_name
+          }
+          if (component.types.includes('administrative_area_level_1')) {
+            province = component.long_name
+          }
+        })
+
+        setFormData((prev) => ({
+          ...prev,
+          address,
+          city: city || prev.city,
+          province: province || prev.province,
+          latitude: lat,
+          longitude: lng,
+        }))
+      }
+    }
+  }
+
+  // Get current location
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Browser tidak mendukung geolocation')
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+
+        setFormData((prev) => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+        }))
+
+        if (isLoaded && google) {
+          const geocoder = new google.maps.Geocoder()
+          geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+            if (status === 'OK' && results && results[0]) {
+              let city = ''
+              let province = ''
+
+              results[0].address_components?.forEach((component) => {
+                if (
+                  component.types.includes('locality') ||
+                  component.types.includes('administrative_area_level_2')
+                ) {
+                  city = component.long_name
+                }
+                if (component.types.includes('administrative_area_level_1')) {
+                  province = component.long_name
+                }
+              })
+
+              setFormData((prev) => ({
+                ...prev,
+                address: results[0].formatted_address || '',
+                city: city || prev.city,
+                province: province || prev.province,
+              }))
+            }
+          })
+        }
+
+        toast.success('Lokasi berhasil didapatkan')
+      },
+      () => {
+        toast.error('Gagal mendapatkan lokasi')
+      }
+    )
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
@@ -193,9 +306,8 @@ export default function MitraSettingsPage() {
     >
       {/* Background Mesh */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute left-[-10%] top-[-10%] h-[500px] w-[500px] rounded-full bg-cyan-400/20 blur-[100px]" />
-        <div className="absolute right-[-10%] top-[10%] h-[600px] w-[600px] rounded-full bg-blue-400/20 blur-[100px]" />
-        <div className="absolute bottom-[-10%] left-[20%] h-[500px] w-[500px] rounded-full bg-sky-300/20 blur-[100px]" />
+        <div className="absolute left-[-10%] top-[-10%] h-[500px] w-[500px] rounded-full bg-blue-100/40 blur-[100px]" />
+        <div className="absolute right-[-10%] top-[10%] h-[600px] w-[600px] rounded-full bg-sky-100/30 blur-[100px]" />
       </div>
 
       <div className="relative z-10">
@@ -217,19 +329,18 @@ export default function MitraSettingsPage() {
         </motion.div>
 
         <div className="grid gap-8 lg:grid-cols-1">
-          {/* Single Card Container */}
           <motion.div variants={itemVariants}>
-            <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/60 shadow-xl shadow-blue-100/10 backdrop-blur-xl">
+            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
               <div className="grid gap-0 lg:grid-cols-4">
                 {/* Sidebar Tabs */}
-                <div className="border-b border-gray-200/60 p-6 lg:col-span-1 lg:border-b-0 lg:border-r">
+                <div className="border-b border-gray-200 p-6 lg:col-span-1 lg:border-b-0 lg:border-r">
                   <nav className="space-y-2">
                     <button
                       onClick={() => setActiveTab('profile')}
                       className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition-all ${
                         activeTab === 'profile'
-                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-blue-600/30'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                          : 'text-gray-700 hover:bg-blue-50'
                       }`}
                     >
                       <User className="h-5 w-5" />
@@ -239,8 +350,8 @@ export default function MitraSettingsPage() {
                       onClick={() => setActiveTab('security')}
                       className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition-all ${
                         activeTab === 'security'
-                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-blue-600/30'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                          : 'text-gray-700 hover:bg-blue-50'
                       }`}
                     >
                       <Lock className="h-5 w-5" />
@@ -270,163 +381,312 @@ export default function MitraSettingsPage() {
                           </p>
                         </div>
 
+                        {/* Sub-tabs for Profile */}
+                        <div className="flex gap-1 rounded-xl bg-blue-50 p-1">
+                          <button
+                            onClick={() => setProfileSubTab('personal')}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                              profileSubTab === 'personal'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-gray-600 hover:text-blue-600'
+                            }`}
+                          >
+                            <User className="h-4 w-4" />
+                            Informasi Pribadi
+                          </button>
+                          <button
+                            onClick={() => setProfileSubTab('business')}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                              profileSubTab === 'business'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-gray-600 hover:text-blue-600'
+                            }`}
+                          >
+                            <Building2 className="h-4 w-4" />
+                            Informasi Bisnis
+                          </button>
+                        </div>
+
                         {/* Profile Form */}
                         <div className="space-y-5">
-                          {/* Personal Information Section */}
-                          <div className="rounded-xl bg-gray-50 p-5">
-                            <h3 className="mb-4 text-sm font-bold text-gray-900">
-                              Informasi Pribadi
-                            </h3>
-                            <div className="space-y-4">
-                              <div>
-                                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                  Nama Lengkap
-                                </label>
-                                <input
-                                  type="text"
-                                  value={formData.name}
-                                  onChange={(e) =>
-                                    setFormData({
-                                      ...formData,
-                                      name: e.target.value,
-                                    })
-                                  }
-                                  placeholder="Masukkan nama lengkap"
-                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                                />
-                              </div>
-                              <div>
-                                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                  Email
-                                </label>
-                                <input
-                                  type="email"
-                                  value={formData.email}
-                                  onChange={(e) =>
-                                    setFormData({
-                                      ...formData,
-                                      email: e.target.value,
-                                    })
-                                  }
-                                  placeholder="mitra@example.com"
-                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                                />
-                              </div>
-                              <div>
-                                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                  Nomor Telepon
-                                </label>
-                                <input
-                                  type="tel"
-                                  value={formData.phone}
-                                  onChange={(e) =>
-                                    setFormData({
-                                      ...formData,
-                                      phone: e.target.value,
-                                    })
-                                  }
-                                  placeholder="08123456789"
-                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                                />
-                              </div>
-                            </div>
-                          </div>
+                          <AnimatePresence mode="wait">
+                            {/* Personal Information Tab */}
+                            {profileSubTab === 'personal' && (
+                              <motion.div
+                                key="personal"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-5"
+                              >
+                                <div>
+                                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                    Nama Lengkap
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={formData.name}
+                                    onChange={(e) =>
+                                      setFormData({
+                                        ...formData,
+                                        name: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Masukkan nama lengkap"
+                                    className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                  />
+                                </div>
 
-                          {/* Business Information Section */}
-                          <div className="rounded-xl bg-gray-50 p-5">
-                            <h3 className="mb-4 text-sm font-bold text-gray-900">
-                              Informasi Bisnis
-                            </h3>
-                            <div className="space-y-4">
-                              <div>
-                                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                  Nama Bisnis
-                                </label>
-                                <input
-                                  type="text"
-                                  value={formData.businessName}
-                                  onChange={(e) =>
-                                    setFormData({
-                                      ...formData,
-                                      businessName: e.target.value,
-                                    })
-                                  }
-                                  placeholder="Nama bisnis Anda"
-                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                                />
-                              </div>
-                              <div>
-                                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                  Alamat
-                                </label>
-                                <textarea
-                                  value={formData.address}
-                                  onChange={(e) =>
-                                    setFormData({
-                                      ...formData,
-                                      address: e.target.value,
-                                    })
-                                  }
-                                  placeholder="Alamat lengkap bisnis"
-                                  rows={3}
-                                  className="w-full resize-none rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                                />
-                              </div>
-                              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div>
-                                  <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                    Kota
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={formData.city}
-                                    onChange={(e) =>
-                                      setFormData({
-                                        ...formData,
-                                        city: e.target.value,
-                                      })
-                                    }
-                                    placeholder="Kota"
-                                    className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                                  />
+                                <div className="grid gap-4 md:grid-cols-2">
+                                  <div>
+                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                      Email
+                                    </label>
+                                    <input
+                                      type="email"
+                                      value={formData.email}
+                                      onChange={(e) =>
+                                        setFormData({
+                                          ...formData,
+                                          email: e.target.value,
+                                        })
+                                      }
+                                      placeholder="mitra@example.com"
+                                      className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                      Nomor Telepon
+                                    </label>
+                                    <input
+                                      type="tel"
+                                      value={formData.phone}
+                                      onChange={(e) =>
+                                        setFormData({
+                                          ...formData,
+                                          phone: e.target.value,
+                                        })
+                                      }
+                                      placeholder="08123456789"
+                                      className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                  </div>
                                 </div>
-                                <div>
-                                  <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                    Provinsi
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={formData.province}
-                                    onChange={(e) =>
-                                      setFormData({
-                                        ...formData,
-                                        province: e.target.value,
-                                      })
-                                    }
-                                    placeholder="Provinsi"
-                                    className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                                  />
+                              </motion.div>
+                            )}
+
+                            {/* Business Information Tab */}
+                            {profileSubTab === 'business' && (
+                              <motion.div
+                                key="business"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-5"
+                              >
+                                {/* Business Details */}
+                                <div className="grid gap-4 md:grid-cols-2">
+                                  <div>
+                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                      Nama Bisnis
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={formData.businessName}
+                                      onChange={(e) =>
+                                        setFormData({
+                                          ...formData,
+                                          businessName: e.target.value,
+                                        })
+                                      }
+                                      placeholder="Nama bisnis Anda"
+                                      className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                      WhatsApp Bisnis
+                                    </label>
+                                    <input
+                                      type="tel"
+                                      value={formData.whatsapp}
+                                      onChange={(e) =>
+                                        setFormData({
+                                          ...formData,
+                                          whatsapp: e.target.value,
+                                        })
+                                      }
+                                      placeholder="08123456789"
+                                      className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                              <div>
-                                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                  WhatsApp
-                                </label>
-                                <input
-                                  type="tel"
-                                  value={formData.whatsapp}
-                                  onChange={(e) =>
-                                    setFormData({
-                                      ...formData,
-                                      whatsapp: e.target.value,
-                                    })
-                                  }
-                                  placeholder="08123456789"
-                                  className="w-full rounded-xl border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                                />
-                              </div>
-                            </div>
-                          </div>
+
+                                {/* Location Section */}
+                                <div className="rounded-xl border border-gray-200 p-5">
+                                  <div className="mb-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                                        <MapPin className="h-5 w-5" />
+                                      </div>
+                                      <div>
+                                        <h3 className="font-bold text-gray-900">
+                                          Lokasi Bisnis
+                                        </h3>
+                                        <p className="text-xs text-gray-500">
+                                          Alamat lengkap dengan koordinat GPS
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={handleGetCurrentLocation}
+                                      className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700"
+                                    >
+                                      <Navigation className="h-4 w-4" />
+                                      Lokasi Saya
+                                    </button>
+                                  </div>
+
+                                  {/* Address Autocomplete */}
+                                  <div className="mb-4">
+                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                      Cari Alamat
+                                    </label>
+                                    {isLoaded ? (
+                                      <Autocomplete
+                                        onLoad={(autocomplete) => {
+                                          autocompleteRef.current = autocomplete
+                                        }}
+                                        onPlaceChanged={handlePlaceSelect}
+                                        options={{
+                                          componentRestrictions: {
+                                            country: 'id',
+                                          },
+                                        }}
+                                      >
+                                        <div className="relative">
+                                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                          <input
+                                            type="text"
+                                            placeholder="Ketik alamat untuk mencari..."
+                                            className="w-full rounded-xl border border-gray-200 bg-white p-3 pl-10 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                          />
+                                        </div>
+                                      </Autocomplete>
+                                    ) : (
+                                      <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-500">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <span className="text-sm">
+                                          Loading Google Maps...
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Full Address */}
+                                  <div className="mb-4">
+                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                      Alamat Lengkap
+                                    </label>
+                                    <textarea
+                                      value={formData.address}
+                                      onChange={(e) =>
+                                        setFormData({
+                                          ...formData,
+                                          address: e.target.value,
+                                        })
+                                      }
+                                      placeholder="Alamat lengkap bisnis"
+                                      rows={3}
+                                      className="w-full resize-none rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                  </div>
+
+                                  {/* City & Province */}
+                                  <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div>
+                                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                        Kota
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={formData.city}
+                                        onChange={(e) =>
+                                          setFormData({
+                                            ...formData,
+                                            city: e.target.value,
+                                          })
+                                        }
+                                        placeholder="Kota"
+                                        className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                        Provinsi
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={formData.province}
+                                        onChange={(e) =>
+                                          setFormData({
+                                            ...formData,
+                                            province: e.target.value,
+                                          })
+                                        }
+                                        placeholder="Provinsi"
+                                        className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Interactive Map Preview */}
+                                  {formData.latitude !== 0 &&
+                                    formData.longitude !== 0 &&
+                                    isLoaded && (
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-semibold text-gray-700">
+                                          Preview Lokasi
+                                        </label>
+                                        <div className="overflow-hidden rounded-xl border border-gray-200">
+                                          <GoogleMap
+                                            mapContainerStyle={{
+                                              width: '100%',
+                                              height: '250px',
+                                            }}
+                                            center={{
+                                              lat: formData.latitude,
+                                              lng: formData.longitude,
+                                            }}
+                                            zoom={15}
+                                            options={{
+                                              streetViewControl: false,
+                                              mapTypeControl: false,
+                                              fullscreenControl: false,
+                                              zoomControl: true,
+                                            }}
+                                          >
+                                            <Marker
+                                              position={{
+                                                lat: formData.latitude,
+                                                lng: formData.longitude,
+                                              }}
+                                            />
+                                          </GoogleMap>
+                                        </div>
+                                        <p className="text-center text-xs text-gray-500">
+                                          📍 {formData.latitude.toFixed(6)},{' '}
+                                          {formData.longitude.toFixed(6)}
+                                        </p>
+                                      </div>
+                                    )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
 
                         <div className="flex justify-end pt-4">
@@ -435,7 +695,7 @@ export default function MitraSettingsPage() {
                             whileTap={{ scale: 0.98 }}
                             onClick={handleSaveProfile}
                             disabled={saving}
-                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:shadow-xl disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 disabled:opacity-50"
                           >
                             {saving ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -481,7 +741,7 @@ export default function MitraSettingsPage() {
                                 })
                               }
                               placeholder="Masukkan password saat ini"
-                              className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                              className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             />
                           </div>
                           <div>
@@ -498,7 +758,7 @@ export default function MitraSettingsPage() {
                                 })
                               }
                               placeholder="Minimal 6 karakter"
-                              className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                              className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             />
                           </div>
                           <div>
@@ -515,7 +775,7 @@ export default function MitraSettingsPage() {
                                 })
                               }
                               placeholder="Ulangi password baru"
-                              className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 font-medium outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                              className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             />
                             <p className="mt-1 text-xs text-gray-500">
                               Password minimal 6 karakter
@@ -534,7 +794,7 @@ export default function MitraSettingsPage() {
                               !passwordData.newPassword ||
                               !passwordData.confirmPassword
                             }
-                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:shadow-xl disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 disabled:opacity-50"
                           >
                             {saving ? (
                               <Loader2 className="h-4 w-4 animate-spin" />

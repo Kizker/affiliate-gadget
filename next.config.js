@@ -31,6 +31,19 @@ const nextConfig = {
       bodySizeLimit: '5mb',
     },
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'geolocation=*',
+          },
+        ],
+      },
+    ]
+  },
 }
 
 export default nextConfig

@@ -25,7 +25,7 @@ import ImageUpload from '@/components/upload/image-upload'
 import MultiImageUpload from '@/components/upload/multi-image-upload'
 import GoogleMapsAutocomplete from '@/components/maps/google-maps-autocomplete'
 import GoogleMapsProvider from '@/components/maps/google-maps-provider'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 interface Service {
   name: string

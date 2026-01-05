@@ -5,17 +5,21 @@ import BlogDetailClient from './blog-detail-client'
 // Enable ISR - revalidate every 5 minutes
 export const revalidate = 300
 
-// Pre-generate all published blog posts at build time
-export async function generateStaticParams() {
-  const articles = await prisma.article.findMany({
-    where: { isPublished: true },
-    select: { slug: true },
-  })
+// Force dynamic rendering to prevent too many DB connections during build
+export const dynamic = 'force-dynamic'
 
-  return articles.map((article) => ({
-    slug: article.slug,
-  }))
-}
+// generateStaticParams disabled to prevent "too many clients" error during build
+// Blog pages will be generated on-demand with ISR instead
+// export async function generateStaticParams() {
+//   const articles = await prisma.article.findMany({
+//     where: { isPublished: true },
+//     select: { slug: true },
+//   })
+//
+//   return articles.map((article) => ({
+//     slug: article.slug,
+//   }))
+// }
 
 // Generate metadata for SEO
 export async function generateMetadata({

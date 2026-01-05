@@ -10,14 +10,11 @@ import {
   MessageSquare,
   Phone,
   Edit3,
-  Clock,
   Award,
-  Loader2,
   Settings,
   LogOut,
   Zap,
   TrendingUp,
-  Building2,
   type LucideIcon,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -134,6 +131,202 @@ const StatCard = ({
         className={`absolute -right-6 -top-6 h-32 w-32 rounded-full opacity-20 blur-3xl ${color === 'indigo' ? 'bg-indigo-400' : color === 'emerald' ? 'bg-emerald-400' : color === 'amber' ? 'bg-amber-400' : 'bg-rose-400'}`}
       />
     </motion.div>
+  )
+}
+
+// Reviews List with Pagination Component
+const ReviewsList = ({
+  reviews,
+}: {
+  reviews: Array<{
+    id: string
+    rating: number
+    comment?: string
+    createdAt: string
+    userName: string
+  }>
+}) => {
+  const [currentPage, setCurrentPage] = useState(1)
+  const reviewsPerPage = 5
+  const totalPages = Math.ceil(reviews.length / reviewsPerPage)
+
+  // Get current page reviews
+  const startIndex = (currentPage - 1) * reviewsPerPage
+  const endIndex = startIndex + reviewsPerPage
+  const currentReviews = reviews.slice(startIndex, endIndex)
+
+  // Generate page numbers to show
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = []
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalPages)
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(
+          1,
+          '...',
+          totalPages - 3,
+          totalPages - 2,
+          totalPages - 1,
+          totalPages
+        )
+      } else {
+        pages.push(
+          1,
+          '...',
+          currentPage - 1,
+          currentPage,
+          currentPage + 1,
+          '...',
+          totalPages
+        )
+      }
+    }
+    return pages
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <div className="space-y-4 p-8 pt-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-16 text-center"
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
+            <MessageSquare className="h-8 w-8 text-indigo-400" />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-gray-900">
+            Belum ada ulasan
+          </h3>
+          <p className="mx-auto mt-2 max-w-xs text-gray-500">
+            Ulasan dari pelanggan akan muncul di sini.
+          </p>
+        </motion.div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-8 pt-6">
+      {/* Reviews List */}
+      <div className="space-y-4">
+        <AnimatePresence mode="popLayout">
+          {currentReviews.map((review, i) => (
+            <motion.div
+              key={review.id}
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ delay: i * 0.05 }}
+              className="group relative flex flex-col gap-4 rounded-3xl border border-gray-100 bg-white p-5 transition-all hover:border-indigo-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-bold text-gray-900">{review.userName}</h3>
+                  <p className="text-xs text-gray-500">
+                    {new Date(review.createdAt).toLocaleDateString('id-ID', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {[...Array(review.rating)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                    />
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-gray-700">
+                {review.comment || 'Tidak ada komentar'}
+              </p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-2">
+          {/* Previous Button */}
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-gray-500"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+
+          {/* Page Numbers */}
+          <div className="flex items-center gap-1">
+            {getPageNumbers().map((page, idx) => (
+              <button
+                key={idx}
+                onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                disabled={page === '...'}
+                className={`flex h-10 min-w-[40px] items-center justify-center rounded-xl px-3 text-sm font-semibold transition-all ${
+                  page === currentPage
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-200'
+                    : page === '...'
+                      ? 'cursor-default text-gray-400'
+                      : 'border border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+
+          {/* Next Button */}
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-gray-500"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Page Info */}
+      {totalPages > 1 && (
+        <p className="mt-4 text-center text-sm text-gray-500">
+          Menampilkan {startIndex + 1}-{Math.min(endIndex, reviews.length)} dari{' '}
+          {reviews.length} ulasan
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -452,78 +645,25 @@ export default function MitraDashboard() {
           >
             <div className="relative overflow-hidden rounded-[2.5rem] border border-white/60 bg-white/60 shadow-xl shadow-indigo-100/20 backdrop-blur-xl">
               <div className="border-b border-indigo-50/50 p-8 pb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Ulasan Pelanggan
-                  </h2>
-                  <p className="text-sm text-gray-500">
-                    Lihat feedback dari pelanggan Anda
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Ulasan Pelanggan
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      Lihat feedback dari pelanggan Anda
+                    </p>
+                  </div>
+                  {analytics.recentReviews.length > 0 && (
+                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-600">
+                      {analytics.recentReviews.length} ulasan
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Reviews List Content */}
-              <div className="space-y-4 p-8 pt-6">
-                <AnimatePresence mode="wait">
-                  {analytics.recentReviews.length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-16 text-center"
-                    >
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
-                        <MessageSquare className="h-8 w-8 text-indigo-400" />
-                      </div>
-                      <h3 className="mt-4 text-lg font-bold text-gray-900">
-                        Belum ada ulasan
-                      </h3>
-                      <p className="mx-auto mt-2 max-w-xs text-gray-500">
-                        Ulasan dari pelanggan akan muncul di sini.
-                      </p>
-                    </motion.div>
-                  ) : (
-                    analytics.recentReviews.map((review, i) => (
-                      <motion.div
-                        key={review.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="group relative flex flex-col gap-4 rounded-3xl border border-gray-100 bg-white p-5 transition-all hover:border-indigo-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-bold text-gray-900">
-                              {review.userName}
-                            </h3>
-                            <p className="text-xs text-gray-500">
-                              {new Date(review.createdAt).toLocaleDateString(
-                                'id-ID',
-                                {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                }
-                              )}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {[...Array(review.rating)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-700">
-                          {review.comment || 'Tidak ada komentar'}
-                        </p>
-                      </motion.div>
-                    ))
-                  )}
-                </AnimatePresence>
-              </div>
+              {/* Reviews List Content with Pagination */}
+              <ReviewsList reviews={analytics.recentReviews} />
             </div>
           </motion.div>
 

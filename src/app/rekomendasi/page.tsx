@@ -57,6 +57,8 @@ async function getInitialMitras() {
       banner: mitra.banner,
       weekdayHours: mitra.weekdayHours,
       weekendHours: mitra.weekendHours,
+      latitude: mitra.latitude,
+      longitude: mitra.longitude,
     }))
 
     return {
