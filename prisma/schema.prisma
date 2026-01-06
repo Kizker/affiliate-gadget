@@ -607,6 +607,7 @@ model messages {
 
 enum UserRole {
   CUSTOMER
+  TECHNICIAN
   ADMIN
   SUPER_ADMIN
   MITRA

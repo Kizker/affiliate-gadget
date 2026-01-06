@@ -170,13 +170,6 @@ export default function TechniciansPage() {
               <p className="text-sm font-medium">Total Teknisi</p>
               <p className="text-2xl font-bold">{stats.totalTechnicians}</p>
             </div>
-            <Link
-              href="/dashboard/admin/technicians/create"
-              className="flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 font-medium backdrop-blur-sm transition-all hover:bg-white/30"
-            >
-              <Plus className="h-5 w-5" />
-              Tambah Teknisi
-            </Link>
           </div>
         </div>
       </div>
@@ -248,8 +241,8 @@ export default function TechniciansPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Search and Add Button */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
           <input
@@ -260,6 +253,13 @@ export default function TechniciansPage() {
             className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none"
           />
         </div>
+        <Link
+          href="/dashboard/admin/technicians/create"
+          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2 font-medium text-white shadow-md transition-all hover:shadow-lg sm:w-auto"
+        >
+          <Plus className="h-5 w-5" />
+          Tambah Teknisi
+        </Link>
       </div>
 
       {/* Technicians Grid */}

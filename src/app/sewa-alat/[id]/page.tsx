@@ -70,14 +70,8 @@ export default async function SewaAlatDetailPage({
 
   const isAvailable = item.stock > 0
 
-  // Calculate rental rates using configured discounts
+  // Calculate rental rates
   const dailyRate = item.pricePerDay
-  const weeklyDiscountPct = item.weeklyDiscountPct ?? 10
-  const monthlyDiscountPct = item.monthlyDiscountPct ?? 20
-  const weeklyRate = Math.round(dailyRate * 5 * (1 - weeklyDiscountPct / 100))
-  const monthlyRate = Math.round(
-    dailyRate * 20 * (1 - monthlyDiscountPct / 100)
-  )
   const depositAmount = item.depositAmount ?? 0
   const terms: string[] = item.terms ?? []
 
@@ -153,30 +147,17 @@ export default async function SewaAlatDetailPage({
                 </div>
                 <div className="flex items-center justify-between border-t border-blue-200 pt-3">
                   <div>
-                    <p className="font-semibold text-gray-900">Mingguan</p>
+                    <p className="font-semibold text-gray-900">Deposit</p>
                     <p className="text-sm text-gray-600">
-                      5 hari{' '}
-                      {weeklyDiscountPct > 0
-                        ? `(hemat ${weeklyDiscountPct}%)`
-                        : ''}
+                      Dikembalikan setelah alat kembali
                     </p>
                   </div>
-                  <p className="text-xl font-bold text-green-600">
-                    Rp {weeklyRate.toLocaleString('id-ID')}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between border-t border-blue-200 pt-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">Bulanan</p>
-                    <p className="text-sm text-gray-600">
-                      20 hari{' '}
-                      {monthlyDiscountPct > 0
-                        ? `(hemat ${monthlyDiscountPct}%)`
-                        : ''}
-                    </p>
-                  </div>
-                  <p className="text-xl font-bold text-green-600">
-                    Rp {monthlyRate.toLocaleString('id-ID')}
+                  <p
+                    className={`text-xl font-bold ${depositAmount > 0 ? 'text-orange-600' : 'text-green-600'}`}
+                  >
+                    {depositAmount > 0
+                      ? `Rp ${depositAmount.toLocaleString('id-ID')}`
+                      : 'Gratis'}
                   </p>
                 </div>
               </div>

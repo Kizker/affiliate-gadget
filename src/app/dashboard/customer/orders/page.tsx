@@ -645,7 +645,13 @@ export default function CustomerOrdersPage() {
                             </button>
                           )}
                           <Link
-                            href={`/booking-confirmation/${order.id}`}
+                            href={
+                              order.items[0]?.type === 'RENTAL'
+                                ? `/order-confirmation/rental/${order.id}`
+                                : order.items[0]?.type === 'PRODUCT'
+                                  ? `/order-confirmation/sparepart/${order.id}`
+                                  : `/booking-confirmation/${order.id}`
+                            }
                             className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 sm:px-4 sm:py-2 sm:text-sm"
                           >
                             Lihat Detail

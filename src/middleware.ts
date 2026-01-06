@@ -51,6 +51,9 @@ export default auth((req) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mitraStatus = (req.auth.user as any).mitraStatus
 
+    // Teknisi-only routes
+    const isTechniciansRoute = pathname.startsWith('/dashboard/teknisi')
+
     // Redirect pending mitra to pending page
     if (userRole === 'MITRA' && mitraStatus === 'PENDING') {
       if (!pathname.startsWith('/dashboard/mitra/pending')) {
@@ -69,8 +72,25 @@ export default auth((req) => {
       return NextResponse.redirect(new URL('/dashboard/customer', req.url)) // For now, redirect to customer
     }
 
+    // Technician-only routes - redirect non-technicians away
+    if (isTechniciansRoute && userRole !== 'TECHNICIAN') {
+      if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+        return NextResponse.redirect(new URL('/dashboard/admin', req.url))
+      } else if (userRole === 'MITRA') {
+        return NextResponse.redirect(new URL('/dashboard/mitra', req.url))
+      }
+      return NextResponse.redirect(new URL('/dashboard/customer', req.url))
+    }
+
+    // Note: We don't redirect TECHNICIAN from /dashboard/customer because
+    // login page handles redirect. Middleware redirect would cause a loop.
+    // Technicians CAN access customer dashboard if they navigate there directly.
+
     // Admin-only routes
     if (isAdminRoute && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+      if (userRole === 'TECHNICIAN') {
+        return NextResponse.redirect(new URL('/dashboard/teknisi', req.url))
+      }
       return NextResponse.redirect(new URL('/dashboard/customer', req.url))
     }
 
@@ -83,10 +103,13 @@ export default auth((req) => {
       if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
         return NextResponse.redirect(new URL('/dashboard/admin', req.url))
       }
+      if (userRole === 'TECHNICIAN') {
+        return NextResponse.redirect(new URL('/dashboard/teknisi', req.url))
+      }
       return NextResponse.redirect(new URL('/dashboard/customer', req.url))
     }
 
-    // Admin tidak boleh akses cart/checkout
+    // Admin dan Technician tidak boleh akses cart/checkout
     const isCartOrCheckout =
       pathname.startsWith('/cart') || pathname.startsWith('/checkout')
     if (
@@ -94,6 +117,10 @@ export default auth((req) => {
       (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN')
     ) {
       return NextResponse.redirect(new URL('/dashboard/admin', req.url))
+    }
+
+    if (isCartOrCheckout && userRole === 'TECHNICIAN') {
+      return NextResponse.redirect(new URL('/dashboard/teknisi', req.url))
     }
 
     // Mitra tidak boleh akses cart/checkout

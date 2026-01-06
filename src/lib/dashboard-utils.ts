@@ -2,8 +2,11 @@ import { UserRole } from '@prisma/client'
 
 export function getDashboardRoute(role: UserRole): string {
   switch (role) {
+    case 'SUPER_ADMIN':
     case 'ADMIN':
       return '/dashboard/admin'
+    case 'TECHNICIAN':
+      return '/dashboard/teknisi'
     case 'MITRA':
       return '/dashboard/mitra'
     case 'CUSTOMER':

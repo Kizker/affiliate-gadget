@@ -32,34 +32,26 @@ export default function BookingModal({
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Calculate pricing based on duration type
+  // Calculate pricing based on duration type (no discounts)
   const pricing = useMemo(() => {
     let actualDays = duration
-    let discount = 0
-    let discountPercentage = 0
 
     if (durationType === 'daily') {
       actualDays = 1
     } else if (durationType === 'weekly') {
-      actualDays = 5
-      discountPercentage = 10
+      actualDays = 7
     } else if (durationType === 'monthly') {
-      actualDays = 20
-      discountPercentage = 20
+      actualDays = 30
     }
 
     const basePrice = rentalItem.pricePerDay * actualDays
-    discount = Math.round(basePrice * (discountPercentage / 100))
-    const subtotal = basePrice - discount
-    // Use depositAmount from props (0 if gratis)
+    const subtotal = basePrice
     const deposit = rentalItem.depositAmount || 0
     const total = subtotal + deposit
 
     return {
       actualDays,
       basePrice,
-      discount,
-      discountPercentage,
       subtotal,
       deposit,
       total,
@@ -71,9 +63,9 @@ export default function BookingModal({
     if (type === 'daily') {
       setDuration(1)
     } else if (type === 'weekly') {
-      setDuration(5)
+      setDuration(7)
     } else if (type === 'monthly') {
-      setDuration(20)
+      setDuration(30)
     }
   }
 
@@ -187,7 +179,6 @@ export default function BookingModal({
                 <p className="text-xs font-semibold text-gray-900 sm:text-sm">
                   1 Hari
                 </p>
-                <p className="text-[10px] text-gray-600 sm:text-xs">Normal</p>
               </button>
               <button
                 type="button"
@@ -199,9 +190,8 @@ export default function BookingModal({
                 }`}
               >
                 <p className="text-xs font-semibold text-gray-900 sm:text-sm">
-                  5 Hari
+                  7 Hari
                 </p>
-                <p className="text-[10px] text-green-600 sm:text-xs">-10%</p>
               </button>
               <button
                 type="button"
@@ -213,9 +203,8 @@ export default function BookingModal({
                 }`}
               >
                 <p className="text-xs font-semibold text-gray-900 sm:text-sm">
-                  20 Hari
+                  30 Hari
                 </p>
-                <p className="text-[10px] text-green-600 sm:text-xs">-20%</p>
               </button>
             </div>
           </div>
@@ -234,11 +223,6 @@ export default function BookingModal({
               className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 sm:text-base"
               placeholder="Masukkan jumlah hari"
             />
-            {durationType === 'custom' && (
-              <p className="mt-1 text-[10px] text-gray-500 sm:text-xs">
-                Custom tidak dapat diskon
-              </p>
-            )}
           </div>
 
           {/* Notes */}
@@ -266,12 +250,6 @@ export default function BookingModal({
                 <span>Harga Sewa</span>
                 <span>Rp {pricing.basePrice.toLocaleString('id-ID')}</span>
               </div>
-              {pricing.discount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Diskon ({pricing.discountPercentage}%)</span>
-                  <span>- Rp {pricing.discount.toLocaleString('id-ID')}</span>
-                </div>
-              )}
               <div className="flex justify-between border-t border-blue-200 pt-1.5 text-gray-600 sm:pt-2">
                 <span>Subtotal</span>
                 <span>Rp {pricing.subtotal.toLocaleString('id-ID')}</span>

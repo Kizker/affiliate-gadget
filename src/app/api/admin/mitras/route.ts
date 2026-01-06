@@ -130,6 +130,8 @@ export async function POST(req: NextRequest) {
       weekdayHours,
       weekendHours,
       isApproved,
+      services,
+      images,
     } = body
 
     // Validate required fields
@@ -157,38 +159,78 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Create mitra
-    const mitra = await db.mitra.create({
-      data: {
-        userId,
-        businessName,
-        tagline: tagline || null,
-        description: description || null,
-        banner: banner || null,
-        address,
-        city,
-        province,
-        latitude: latitude || null,
-        longitude: longitude || null,
-        phone,
-        whatsapp: whatsapp || null,
-        email: email || null,
-        website: website || null,
-        features: features || [],
-        weekdayHours: weekdayHours || null,
-        weekendHours: weekendHours || null,
-        isApproved: isApproved || false,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
+    // Create mitra with services and images in a transaction
+    const mitra = await db.$transaction(async (tx) => {
+      // Create mitra
+      const newMitra = await tx.mitra.create({
+        data: {
+          userId,
+          businessName,
+          tagline: tagline || null,
+          description: description || null,
+          banner: banner || null,
+          address,
+          city,
+          province,
+          latitude: latitude || null,
+          longitude: longitude || null,
+          phone,
+          whatsapp: whatsapp || null,
+          email: email || null,
+          website: website || null,
+          features: features || [],
+          weekdayHours: weekdayHours || null,
+          weekendHours: weekendHours || null,
+          isApproved: isApproved || false,
         },
-      },
+      })
+
+      // Create services if provided
+      if (services && Array.isArray(services) && services.length > 0) {
+        await tx.mitraService.createMany({
+          data: services.map(
+            (svc: {
+              name: string
+              price: string
+              icon?: string
+              description?: string
+            }) => ({
+              mitraId: newMitra.id,
+              name: svc.name,
+              price: svc.price,
+              icon: svc.icon || '💻',
+              description: svc.description || null,
+            })
+          ),
+        })
+      }
+
+      // Create images if provided
+      if (images && Array.isArray(images) && images.length > 0) {
+        await tx.mitraImage.createMany({
+          data: images.map((img: { url: string }) => ({
+            mitraId: newMitra.id,
+            url: img.url,
+          })),
+        })
+      }
+
+      // Return mitra with related data
+      return tx.mitra.findUnique({
+        where: { id: newMitra.id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          services: true,
+          images: true,
+        },
+      })
     })
 
     // Update user mitraStatus if approved

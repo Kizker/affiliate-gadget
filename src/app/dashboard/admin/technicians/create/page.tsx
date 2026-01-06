@@ -20,7 +20,7 @@ export default function CreateTechnicianPage() {
     // Technician fields
     bio: '',
     experience: 0,
-    specialties: [] as string[],
+    specialtiesText: '', // Store as raw text for natural typing
     isAvailable: true,
   })
 
@@ -62,7 +62,13 @@ export default function CreateTechnicianPage() {
         return
       }
 
-      if (formData.specialties.length === 0) {
+      // Parse specialties from text
+      const specialtiesArray = formData.specialtiesText
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s)
+
+      if (specialtiesArray.length === 0) {
         toast.error('Minimal satu spesialisasi harus diisi')
         setLoading(false)
         return
@@ -71,7 +77,10 @@ export default function CreateTechnicianPage() {
       const res = await fetch('/api/admin/technicians', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          specialties: specialtiesArray, // Send parsed array
+        }),
       })
 
       const responseData = await res.json()
@@ -286,21 +295,18 @@ export default function CreateTechnicianPage() {
                   <input
                     type="text"
                     required
-                    value={formData.specialties.join(', ')}
+                    value={formData.specialtiesText}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        specialties: e.target.value
-                          .split(',')
-                          .map((s) => s.trim())
-                          .filter((s) => s),
+                        specialtiesText: e.target.value,
                       })
                     }
                     className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
                     placeholder="LCD, Mesin, Software"
                   />
                   <p className="mt-1 text-sm text-gray-500">
-                    Pisahkan dengan koma
+                    Pisahkan dengan koma (contoh: LCD, Monitor, PC)
                   </p>
                 </div>
               </div>

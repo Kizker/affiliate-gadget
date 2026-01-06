@@ -11,8 +11,6 @@ interface RentalItemFormModalProps {
     name?: string
     description?: string | null
     pricePerDay?: number
-    weeklyDiscountPct?: number
-    monthlyDiscountPct?: number
     depositAmount?: number | null
     terms?: string[]
     stock?: number
@@ -34,8 +32,6 @@ export default function RentalItemFormModal({
     name: '',
     description: '',
     pricePerDay: '',
-    weeklyDiscountPct: '10',
-    monthlyDiscountPct: '20',
     depositAmount: '',
     terms: [] as string[],
     stock: '',
@@ -49,8 +45,6 @@ export default function RentalItemFormModal({
         name: rentalItem.name || '',
         description: rentalItem.description || '',
         pricePerDay: rentalItem.pricePerDay?.toString() || '',
-        weeklyDiscountPct: rentalItem.weeklyDiscountPct?.toString() || '10',
-        monthlyDiscountPct: rentalItem.monthlyDiscountPct?.toString() || '20',
         depositAmount: rentalItem.depositAmount?.toString() || '',
         terms: rentalItem.terms || [],
         stock: rentalItem.stock?.toString() || '',
@@ -63,8 +57,6 @@ export default function RentalItemFormModal({
         name: '',
         description: '',
         pricePerDay: '',
-        weeklyDiscountPct: '10',
-        monthlyDiscountPct: '20',
         depositAmount: '',
         terms: [],
         stock: '',
@@ -132,8 +124,6 @@ export default function RentalItemFormModal({
         body: JSON.stringify({
           ...formData,
           pricePerDay: parseFloat(formData.pricePerDay),
-          weeklyDiscountPct: parseFloat(formData.weeklyDiscountPct),
-          monthlyDiscountPct: parseFloat(formData.monthlyDiscountPct),
           depositAmount: formData.depositAmount
             ? parseFloat(formData.depositAmount)
             : null,
@@ -244,54 +234,6 @@ export default function RentalItemFormModal({
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
                   placeholder="5"
                 />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Diskon Mingguan (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={formData.weeklyDiscountPct}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      weeklyDiscountPct: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
-                  placeholder="10"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Diskon untuk sewa 5 hari (default: 10%)
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Diskon Bulanan (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={formData.monthlyDiscountPct}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      monthlyDiscountPct: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
-                  placeholder="20"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Diskon untuk sewa 20 hari (default: 20%)
-                </p>
               </div>
 
               <div className="sm:col-span-2">

@@ -2,12 +2,10 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Mail, Lock, Chrome } from 'lucide-react'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -31,30 +29,38 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError('Email atau password salah')
-      } else {
-        // Fetch user data to check role
-        const userRes = await fetch('/api/auth/me')
-        if (userRes.ok) {
-          const userData = await userRes.json()
-          // Check technician first (priority over role)
-          if (userData.isTechnician) {
-            router.push('/dashboard/teknisi')
-          } else if (userData.role === 'ADMIN' || userData.role === 'SUPER_ADMIN') {
-            router.push('/dashboard/admin')
-          } else if (userData.role === 'MITRA') {
-            router.push('/dashboard/mitra')
-          } else {
-            router.push('/dashboard/customer')
-          }
-        } else {
-          router.push('/dashboard/customer')
-        }
-        router.refresh()
+        setIsLoading(false)
+        return
       }
-    } catch (error) {
-      console.error('Login error:', error)
+
+      // Wait a moment for session to be established
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      // Fetch user data to check role - use single redirect with window.location
+      const userRes = await fetch('/api/auth/me')
+      let redirectUrl = '/dashboard/customer'
+
+      if (userRes.ok) {
+        const userData = await userRes.json()
+
+        if (userData.role === 'TECHNICIAN' || userData.isTechnician) {
+          redirectUrl = '/dashboard/teknisi'
+        } else if (
+          userData.role === 'ADMIN' ||
+          userData.role === 'SUPER_ADMIN'
+        ) {
+          redirectUrl = '/dashboard/admin'
+        } else if (userData.role === 'MITRA') {
+          redirectUrl = '/dashboard/mitra'
+        }
+      } else {
+        console.error('Failed to fetch user data:', userRes.status)
+      }
+
+      window.location.replace(redirectUrl)
+    } catch (err) {
+      console.error('Login error:', err)
       setError('Terjadi kesalahan. Silakan coba lagi.')
-    } finally {
       setIsLoading(false)
     }
   }

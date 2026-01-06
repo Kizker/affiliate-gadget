@@ -23,6 +23,7 @@ interface RentalData {
   pricePerDay: number
   image: string
   stock?: number
+  depositAmount?: number
 }
 
 function DirectCheckoutContent() {
@@ -38,6 +39,7 @@ function DirectCheckoutContent() {
   const [item, setItem] = useState<ProductData | RentalData | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [itemLoading, setItemLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
   // Redirect if not logged in
@@ -52,8 +54,12 @@ function DirectCheckoutContent() {
   // Fetch item details
   useEffect(() => {
     const fetchItem = async () => {
-      if (!type || !itemId) return
+      if (!type || !itemId) {
+        setItemLoading(false)
+        return
+      }
 
+      setItemLoading(true)
       try {
         if (type === 'product') {
           const res = await fetch(`/api/products/${itemId}`)
@@ -77,11 +83,14 @@ function DirectCheckoutContent() {
               pricePerDay: data.pricePerDay,
               image: data.images?.[0] || '',
               stock: data.stock,
+              depositAmount: data.depositAmount || 0,
             })
           }
         }
       } catch (error) {
         console.error('Error fetching item:', error)
+      } finally {
+        setItemLoading(false)
       }
     }
 
@@ -99,7 +108,12 @@ function DirectCheckoutContent() {
     return 0
   }
 
-  const total = calculateTotal()
+  const subtotal = calculateTotal()
+  const depositAmount =
+    type === 'rental' && item && 'depositAmount' in item
+      ? item.depositAmount || 0
+      : 0
+  const total = subtotal + depositAmount
 
   const handleCheckout = async () => {
     if (!termsAccepted) {
@@ -171,7 +185,8 @@ function DirectCheckoutContent() {
     }
   }
 
-  if (loading || status === 'loading') {
+  // Show loading while auth or item is loading
+  if (loading || status === 'loading' || itemLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/40">
         <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
@@ -298,9 +313,30 @@ function DirectCheckoutContent() {
               </h2>
               <div className="space-y-3">
                 <div className="flex justify-between text-gray-600">
-                  <span>Subtotal</span>
-                  <span>Rp {total.toLocaleString('id-ID')}</span>
+                  <span>Subtotal Sewa</span>
+                  <span>Rp {subtotal.toLocaleString('id-ID')}</span>
                 </div>
+                {type === 'rental' && (
+                  <div className="flex justify-between text-gray-600">
+                    <div>
+                      <span>Deposit</span>
+                      <p className="text-xs text-gray-500">
+                        Dikembalikan setelah alat kembali
+                      </p>
+                    </div>
+                    <span
+                      className={
+                        depositAmount > 0
+                          ? 'font-medium text-orange-600'
+                          : 'font-medium text-green-600'
+                      }
+                    >
+                      {depositAmount > 0
+                        ? `Rp ${depositAmount.toLocaleString('id-ID')}`
+                        : 'Gratis'}
+                    </span>
+                  </div>
+                )}
                 <div className="border-t border-gray-200 pt-3">
                   <div className="flex justify-between text-lg font-bold text-gray-900">
                     <span>Total</span>

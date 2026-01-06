@@ -88,8 +88,12 @@ export async function GET(req: NextRequest) {
           },
         })
 
-        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0)
-        const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0
+        const totalRating = reviews.reduce(
+          (sum, review) => sum + review.rating,
+          0
+        )
+        const averageRating =
+          reviews.length > 0 ? totalRating / reviews.length : 0
 
         return {
           ...tech,
@@ -220,7 +224,7 @@ export async function POST(req: NextRequest) {
 
       // Create user and technician in a transaction
       const result = await db.$transaction(async (tx) => {
-        // Create user with role ADMIN (technician)
+        // Create user with role TECHNICIAN
         const newUser = await tx.user.create({
           data: {
             name,
@@ -228,7 +232,7 @@ export async function POST(req: NextRequest) {
             phone: phone || null,
             image: image || null,
             password: hashedPassword,
-            role: 'ADMIN',
+            role: 'TECHNICIAN',
             isActive: true,
           },
         })

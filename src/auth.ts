@@ -52,11 +52,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         // Return user data including cached fields to store in JWT
+        // DO NOT include image here - it can be a huge base64 that bloats the JWT
         return {
           id: user.id,
           email: user.email,
           name: user.mitra?.businessName || user.name,
-          image: user.image,
+          // image excluded intentionally - causes 431 error if base64
           role: user.role,
           mitraStatus: user.mitraStatus,
           isTechnician: !!user.technician,
@@ -65,55 +66,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    ...authConfig.callbacks,
-    async jwt({ token, user, trigger }) {
-      // On initial login or sign up - cache all user data in token
+    // Only include authorized callback from authConfig
+    authorized: authConfig.callbacks?.authorized,
+    async jwt({ token, user }) {
+      // Store essential user data in token
       if (user) {
         token.id = user.id
         token.role = user.role
         token.name = user.name
-        token.image = user.image
+        token.email = user.email
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        token.mitraStatus = (user as any).mitraStatus
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        token.isTechnician = (user as any).isTechnician
+        token.isTechnician = (user as any).isTechnician || false
       }
 
-      // On session update trigger (e.g., after profile update), refresh data
-      if (trigger === 'update') {
-        try {
-          const freshUser = await prisma.user.findUnique({
-            where: { id: token.id as string },
-            include: {
-              mitra: { select: { businessName: true } },
-              technician: { select: { id: true } },
-            },
-          })
-          if (freshUser) {
-            token.name = freshUser.mitra?.businessName || freshUser.name
-            token.image = freshUser.image
-            token.role = freshUser.role
-            token.mitraStatus = freshUser.mitraStatus
-            token.isTechnician = !!freshUser.technician
-          }
-        } catch {
-          // Continue with existing token data if DB query fails
-        }
-      }
-
-      // Remove unnecessary fields to keep token small
+      // Remove only picture/image to prevent bloat
       delete token.picture
+      delete token.image
+
       return token
     },
     async session({ session, token }) {
-      // Simply read from token - NO DATABASE QUERIES
+      // Include essential user data in session
       if (session.user && token) {
         session.user.id = token.id as string
         session.user.role = token.role as UserRole
         session.user.name = token.name as string
-        session.user.image = token.image as string | null
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ;(session.user as any).mitraStatus = token.mitraStatus
+        session.user.email = token.email as string
         session.user.isTechnician = token.isTechnician as boolean
       }
       return session

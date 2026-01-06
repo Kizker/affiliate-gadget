@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { UserRole, Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,22 +26,14 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Build where clause
-    const where: {
-      role?: 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'MITRA'
-      mitraStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'
-      technician?: { isNot: null }
-      OR?: Array<{
-        name?: { contains: string; mode: 'insensitive' }
-        email?: { contains: string; mode: 'insensitive' }
-      }>
-    } = {}
+    const where: Prisma.UserWhereInput = {}
 
     if (role !== 'ALL') {
       if (role === 'TECHNICIAN') {
         // Filter users who have technician profile
         where.technician = { isNot: null }
-      } else {
-        where.role = role as 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'MITRA'
+      } else if (Object.values(UserRole).includes(role as UserRole)) {
+        where.role = role as UserRole
       }
     }
 

@@ -349,7 +349,7 @@ const Header = ({
 // --- Main Page Component ---
 
 export default function TechnicianDashboard() {
-  const { status } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -413,9 +413,12 @@ export default function TechnicianDashboard() {
       if (searchQuery) queryParams.append('q', searchQuery)
       queryParams.append('page', page.toString())
       queryParams.append('limit', '5')
+      // Add cache buster to prevent stale data
+      queryParams.append('_t', Date.now().toString())
 
       const res = await fetch(
-        `/api/technicians/me/dashboard?${queryParams.toString()}`
+        `/api/technicians/me/dashboard?${queryParams.toString()}`,
+        { cache: 'no-store' }
       )
 
       if (!res.ok) throw new Error('Failed to fetch dashboard data')
@@ -435,10 +438,16 @@ export default function TechnicianDashboard() {
     }
   }, [statusFilter, searchQuery, page, toast])
 
+  // Reset data when user changes
+  useEffect(() => {
+    setData(null)
+    setLoading(true)
+  }, [session?.user?.id])
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
-    } else if (status === 'authenticated') {
+    } else if (status === 'authenticated' && session?.user?.id) {
       // Small debounce for search
       const timer = setTimeout(
         () => {
@@ -450,7 +459,7 @@ export default function TechnicianDashboard() {
 
       return () => clearTimeout(timer)
     }
-  }, [status, router, fetchDashboardData, searchQuery, page])
+  }, [status, router, fetchDashboardData, searchQuery, page, session?.user?.id])
 
   if (status === 'loading' || loading) {
     return <SkeletonLoader />

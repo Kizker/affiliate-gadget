@@ -38,8 +38,6 @@ interface RentalItem {
   name: string
   description: string | null
   pricePerDay: number
-  weeklyDiscountPct: number
-  monthlyDiscountPct: number
   depositAmount: number | null
   terms: string[]
   stock: number
