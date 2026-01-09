@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         orderNumber,
         userId: session.user.id,
         technicianId: service.technician.id,
-        status: 'IN_PROGRESS',
+        status: 'PENDING_PAYMENT',
         subtotal,
         tax,
         total,

@@ -48,3 +48,9 @@ prisma/migrations/**/migration.sql
 
 # Uploads
 uploads/
+
+# Logs
+logs/
+
+# Database exports
+database-exports/*.sql

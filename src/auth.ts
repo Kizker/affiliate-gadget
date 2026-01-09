@@ -77,6 +77,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.email = user.email
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.isTechnician = (user as any).isTechnician || false
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.mitraStatus = (user as any).mitraStatus || null
       }
 
       // Remove only picture/image to prevent bloat
@@ -93,6 +95,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.name = token.name as string
         session.user.email = token.email as string
         session.user.isTechnician = token.isTechnician as boolean
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(session.user as any).mitraStatus = token.mitraStatus as string | null
       }
       return session
     },

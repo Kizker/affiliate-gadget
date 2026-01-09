@@ -33,6 +33,8 @@ model User {
   sentMessages           ChatMessage[]      @relation("ChatMessageSender")
   chatRooms              ChatRoom[]         @relation("CustomerChatRooms")
   chats                  chats[]
+  complaints             Complaint[]        @relation("CustomerComplaints")
+  assignedComplaints     Complaint[]        @relation("ComplaintAssignee")
   messages               messages[]
   mitra                  Mitra?
   notifications          Notification[]
@@ -223,10 +225,13 @@ model Order {
   tax                             Float          @default(0)
   total                           Float
   notes                           String?
+  completedAt                     DateTime?      // When order was marked completed (for 7-day complaint window)
+  customerConfirmedAt             DateTime?      // When customer confirms completion (to show rating)
   createdAt                       DateTime       @default(now())
   updatedAt                       DateTime       @updatedAt
   adminChatRoom                   AdminChatRoom?
   technicianChatRooms             ChatRoom[]     @relation("ChatRoomOrder")
+  complaints                      Complaint[]
   invoice                         Invoice?
   items                           OrderItem[]
   claimedBy                       User?          @relation("ClaimedOrders", fields: [claimedById], references: [id])
@@ -639,6 +644,7 @@ enum OrderStatus {
   RENTED
   RETURNED
   COMPLETED
+  COMPLAINED
   CANCELLED
 }
 
@@ -693,4 +699,38 @@ enum NotificationType {
   NEW_MESSAGE
   NEW_REVIEW
   MITRA_APPROVED
+  NEW_COMPLAINT
+  COMPLAINT_RESOLVED
+}
+
+model Complaint {
+  id            String          @id @default(cuid())
+  orderId       String
+  userId        String
+  assignedToId  String?
+  subject       String
+  description   String
+  images        String[]
+  status        ComplaintStatus @default(OPEN)
+  resolution    String?
+  rejectionNote String?
+  resolvedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  order         Order           @relation(fields: [orderId], references: [id])
+  user          User            @relation("CustomerComplaints", fields: [userId], references: [id])
+  assignedTo    User?           @relation("ComplaintAssignee", fields: [assignedToId], references: [id])
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([assignedToId])
+  @@index([status])
+  @@map("complaints")
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
 }

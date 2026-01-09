@@ -378,17 +378,19 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-8 text-white">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-4 text-white sm:rounded-2xl sm:p-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold">📊 Laporan & Analitik</h1>
-            <p className="mt-2 text-blue-100">
+            <h1 className="text-xl font-bold sm:text-3xl">
+              📊 Laporan & Analitik
+            </h1>
+            <p className="mt-1 text-sm text-blue-100 sm:mt-2">
               Dashboard komprehensif untuk monitoring performa bisnis
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Calendar className="h-5 w-5" />
             <select
               value={dateRange}
@@ -451,7 +453,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Revenue Overview Cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-6">
         {/* Total Revenue */}
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 p-4 text-white shadow-lg lg:rounded-2xl lg:p-6">
           <div className="mb-2 flex items-center justify-between lg:mb-4">
@@ -536,11 +538,11 @@ export default function ReportsPage() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Revenue by Category */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-800">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+          <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
               Revenue by Category
             </h3>
             <button
@@ -590,9 +592,9 @@ export default function ReportsPage() {
         </div>
 
         {/* Orders by Status */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-800">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+          <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
               Orders by Status
             </h3>
             <button
@@ -630,13 +632,15 @@ export default function ReportsPage() {
       </div>
 
       {/* Top Technicians Performance */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="mb-6 flex items-center justify-between">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+        <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-800">
+            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
               Top Technician Performance
             </h3>
-            <p className="text-sm text-gray-500">Berdasarkan total order</p>
+            <p className="text-xs text-gray-500 sm:text-sm">
+              Berdasarkan total order
+            </p>
           </div>
           <button
             onClick={() => handleExport('technicians', 'xlsx')}
@@ -689,11 +693,11 @@ export default function ReportsPage() {
       </div>
 
       {/* Products & Mitras Row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Top Selling Products */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-800">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+          <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
               Top Selling Products
             </h3>
             <button
@@ -752,9 +756,9 @@ export default function ReportsPage() {
         </div>
 
         {/* Mitra Statistics */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+          <div className="mb-4 sm:mb-6">
+            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
               Mitra Statistics
             </h3>
             <p className="text-sm text-gray-500">Status dan performa mitra</p>
@@ -847,12 +851,12 @@ export default function ReportsPage() {
       )}
 
       {/* Warranty & Complaint Reports */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+        <div className="mb-4 sm:mb-6">
+          <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
             🛡️ Warranty & Complaint Reports
           </h3>
-          <p className="text-sm text-gray-500">
+          <p className="text-xs text-gray-500 sm:text-sm">
             Garansi aktif dan manajemen komplain
           </p>
         </div>
@@ -968,17 +972,17 @@ export default function ReportsPage() {
       </div>
 
       {/* Top Products, Services & Rentals */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Top Services & Top Rentals Row */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
           {/* Top Services */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-6 flex items-center justify-between">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+            <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">
+                <h3 className="text-base font-bold text-gray-900 sm:text-lg">
                   🔧 Top Jasa Servis
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs text-gray-500 sm:text-sm">
                   Layanan servis terpopuler
                 </p>
               </div>
@@ -1036,13 +1040,15 @@ export default function ReportsPage() {
           </div>
 
           {/* Top Rental Equipment */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-6 flex items-center justify-between">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+            <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">
+                <h3 className="text-base font-bold text-gray-900 sm:text-lg">
                   💻 Top Alat Sewa
                 </h3>
-                <p className="text-sm text-gray-500">Peralatan sewa terlaris</p>
+                <p className="text-xs text-gray-500 sm:text-sm">
+                  Peralatan sewa terlaris
+                </p>
               </div>
               <button
                 onClick={() => handleExport('rentals', 'xlsx')}
@@ -1096,10 +1102,12 @@ export default function ReportsPage() {
       </div>
 
       {/* Export All Section */}
-      <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 text-white shadow-lg">
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold">Export All Reports</h3>
-          <p className="text-sm text-white/60">
+      <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 shadow-sm sm:rounded-2xl sm:p-6">
+        <div className="mb-3 sm:mb-4">
+          <h3 className="text-base font-semibold text-gray-900 sm:text-lg">
+            Export All Reports
+          </h3>
+          <p className="text-sm text-gray-500">
             Download laporan lengkap dalam format Excel atau CSV
           </p>
         </div>
@@ -1107,7 +1115,7 @@ export default function ReportsPage() {
           <button
             onClick={() => handleExport('orders', 'xlsx')}
             disabled={exporting === 'orders'}
-            className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur-sm transition-all hover:bg-white/20 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg disabled:opacity-50"
           >
             {exporting === 'orders' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1119,7 +1127,7 @@ export default function ReportsPage() {
           <button
             onClick={() => handleExport('revenue', 'csv')}
             disabled={exporting === 'revenue'}
-            className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur-sm transition-all hover:bg-white/20 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-purple-700 hover:shadow-lg disabled:opacity-50"
           >
             {exporting === 'revenue' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1131,7 +1139,7 @@ export default function ReportsPage() {
           <button
             onClick={() => handleExport('customers', 'xlsx')}
             disabled={exporting === 'customers'}
-            className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur-sm transition-all hover:bg-white/20 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-green-700 hover:shadow-lg disabled:opacity-50"
           >
             {exporting === 'customers' ? (
               <Loader2 className="h-4 w-4 animate-spin" />

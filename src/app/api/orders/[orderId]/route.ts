@@ -112,12 +112,12 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Cache for 30 seconds - order data is personal but can be cached briefly
+    // No cache for order data to ensure price updates are reflected immediately
     return NextResponse.json(
       { order },
       {
         headers: {
-          'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+          'Cache-Control': 'no-store, must-revalidate',
         },
       }
     )

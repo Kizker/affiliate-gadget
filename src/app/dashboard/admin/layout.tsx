@@ -8,12 +8,12 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="relative flex min-h-screen">
+    <div className="relative flex min-h-screen overflow-hidden">
       {/* Sidebar - Shows menu based on actual role (ADMIN vs SUPER_ADMIN) */}
       <Sidebar variant="light" />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Background Image with Overlay */}
         <div className="fixed inset-0 -z-10 lg:left-64">
           <div
@@ -27,8 +27,8 @@ export default function AdminLayout({
         </div>
 
         {/* Main content - no navbar, start from top */}
-        <main className="relative z-10 min-h-screen pb-8 pt-20 lg:pt-8">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <main className="relative z-10 min-h-screen w-full overflow-x-hidden pb-8 pt-20 lg:pt-8">
+          <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-8">
             {children}
           </div>
         </main>

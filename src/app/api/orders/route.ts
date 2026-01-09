@@ -61,6 +61,30 @@ export async function GET() {
             comment: true,
           },
         },
+        // Include complaints with details for customer view
+        complaints: {
+          select: {
+            id: true,
+            status: true,
+            subject: true,
+            description: true,
+            images: true,
+            resolution: true,
+            rejectionNote: true,
+            createdAt: true,
+            resolvedAt: true,
+            assignedTo: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        },
       },
       orderBy: {
         createdAt: 'desc',

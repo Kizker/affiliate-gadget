@@ -21,6 +21,9 @@ import {
   PenSquare,
   BarChart3,
   Store,
+  ChevronDown,
+  FolderOpen,
+  AlertTriangle,
 } from 'lucide-react'
 
 const customerMenuItems = [
@@ -34,9 +37,8 @@ const customerMenuItems = [
   { icon: Settings, label: 'Pengaturan', href: '/dashboard/customer/settings' },
 ]
 
-// Full admin menu for SUPER_ADMIN only
-const superAdminMenuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/admin' },
+// Kelola dropdown items for SUPER_ADMIN
+const kelolaItems = [
   { icon: Users, label: 'Kelola User', href: '/dashboard/admin/users' },
   { icon: Wrench, label: 'Teknisi', href: '/dashboard/admin/technicians' },
   { icon: Store, label: 'Mitra', href: '/dashboard/admin/mitras' },
@@ -45,6 +47,22 @@ const superAdminMenuItems = [
     icon: ShoppingCart,
     label: 'Kelola Order',
     href: '/dashboard/admin/orders',
+  },
+  {
+    icon: AlertTriangle,
+    label: 'Komplain',
+    href: '/dashboard/admin/complaints',
+  },
+]
+
+// Full admin menu for SUPER_ADMIN only
+const superAdminMenuItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/admin' },
+  {
+    icon: FolderOpen,
+    label: 'Kelola',
+    isDropdown: true,
+    children: kelolaItems,
   },
   { icon: MessageSquare, label: 'Chat', href: '/dashboard/admin/chat' },
   { icon: PenSquare, label: 'Blog', href: '/dashboard/admin/blog' },
@@ -61,6 +79,11 @@ const adminChatMenuItems = [
     href: '/dashboard/admin/orders',
   },
   { icon: MessageSquare, label: 'Chat', href: '/dashboard/admin/chat' },
+  {
+    icon: AlertTriangle,
+    label: 'Komplain',
+    href: '/dashboard/admin/complaints',
+  },
   { icon: Settings, label: 'Pengaturan', href: '/dashboard/admin/settings' },
 ]
 
@@ -79,6 +102,7 @@ interface SidebarProps {
 
 export function Sidebar({ variant = 'dark', forceRole }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [kelolaOpen, setKelolaOpen] = useState(false)
   const pathname = usePathname()
   const { data: session } = useSession()
 
@@ -96,6 +120,11 @@ export function Sidebar({ variant = 'dark', forceRole }: SidebarProps) {
           : customerMenuItems
 
   const isLight = variant === 'light'
+
+  // Check if any kelola item is active
+  const isKelolaActive = kelolaItems.some(
+    (item) => pathname === item.href || pathname.startsWith(item.href + '/')
+  )
 
   return (
     <>
@@ -171,13 +200,79 @@ export function Sidebar({ variant = 'dark', forceRole }: SidebarProps) {
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto px-4 py-4">
             <div className="space-y-1">
-              {menuItems.map((item) => {
+              {menuItems.map((item, index) => {
                 const Icon = item.icon
+
+                // Handle dropdown menu
+                if (
+                  'isDropdown' in item &&
+                  item.isDropdown &&
+                  'children' in item
+                ) {
+                  return (
+                    <div key={`dropdown-${index}`}>
+                      <button
+                        onClick={() => setKelolaOpen(!kelolaOpen)}
+                        className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                          isKelolaActive
+                            ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                            : isLight
+                              ? 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                              : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon
+                            className={`h-5 w-5 flex-shrink-0 ${isKelolaActive ? 'text-white' : ''}`}
+                          />
+                          <span className="truncate">{item.label}</span>
+                        </div>
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${kelolaOpen ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+
+                      {/* Dropdown items */}
+                      {kelolaOpen && (
+                        <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 pl-4">
+                          {item.children.map((child) => {
+                            const ChildIcon = child.icon
+                            const isChildActive =
+                              pathname === child.href ||
+                              pathname.startsWith(child.href + '/')
+                            return (
+                              <Link
+                                key={child.href}
+                                href={child.href}
+                                onClick={() => setIsOpen(false)}
+                                className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                                  isChildActive
+                                    ? 'bg-blue-50 text-blue-600'
+                                    : isLight
+                                      ? 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                      : 'text-gray-400 hover:bg-gray-700/30 hover:text-white'
+                                }`}
+                              >
+                                <ChildIcon
+                                  className={`h-4 w-4 flex-shrink-0 ${isChildActive ? 'text-blue-600' : ''}`}
+                                />
+                                <span className="truncate">{child.label}</span>
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+
+                // Regular menu item
+                if (!('href' in item) || !item.href) return null
                 const isActive = pathname === item.href
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={item.href as string}
                     onClick={() => setIsOpen(false)}
                     className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                       isActive

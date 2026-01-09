@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Navbar } from '@/components/layouts/navbar'
@@ -13,6 +13,8 @@ import {
   Loader2,
   MessageCircle,
   Wrench,
+  ChevronDown,
+  Check,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -35,6 +37,8 @@ interface TechnicianDetail {
     name: string
     category: string
     price: number
+    minPrice?: number | null
+    maxPrice?: number | null
     description: string | null
   }>
   reviews: Array<{
@@ -91,6 +95,25 @@ export default function TeknisiDetailClient({
     (serviceParam as 'konsultasi' | 'cek-bongkar' | 'jasa-servis') ||
       'konsultasi'
   )
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+
+  const handleSelectService = (serviceId: string) => {
+    setFormData((prev) => ({ ...prev, service: serviceId }))
+    setIsDropdownOpen(false)
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.service-dropdown')) {
+        setIsDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -341,7 +364,13 @@ export default function TeknisiDetailClient({
                       </div>
                       <div className="ml-4 text-right">
                         <p className="font-bold text-blue-600">
-                          Rp {service.price.toLocaleString('id-ID')}
+                          {service.minPrice && service.maxPrice
+                            ? `Rp ${service.minPrice.toLocaleString('id-ID')} - Rp ${service.maxPrice.toLocaleString('id-ID')}`
+                            : service.minPrice
+                              ? `Mulai Rp ${service.minPrice.toLocaleString('id-ID')}`
+                              : service.maxPrice
+                                ? `Hingga Rp ${service.maxPrice.toLocaleString('id-ID')}`
+                                : `Rp ${service.price.toLocaleString('id-ID')}`}
                         </p>
                       </div>
                     </div>
@@ -516,36 +545,110 @@ export default function TeknisiDetailClient({
                         <label className="mb-2 block text-sm font-medium text-gray-700">
                           Pilih Layanan
                         </label>
-                        <select
-                          value={formData.service}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              service: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                          required
-                        >
-                          <option value="">-- Pilih Layanan --</option>
-                          {technician.services
-                            .filter((service) => {
-                              switch (activeService) {
-                                case 'cek-bongkar':
-                                  return service.category === 'CEK_BONGKAR'
-                                case 'jasa-servis':
-                                  return service.category === 'SERVIS_LENGKAP'
-                                default:
-                                  return true
-                              }
-                            })
-                            .map((service) => (
-                              <option key={service.id} value={service.id}>
-                                {service.name} - Rp{' '}
-                                {service.price.toLocaleString('id-ID')}
-                              </option>
-                            ))}
-                        </select>
+                        <div className="service-dropdown relative">
+                          <button
+                            type="button"
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 text-left text-sm transition-all hover:border-blue-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                          >
+                            <span
+                              className={`${!formData.service ? 'text-gray-500' : 'font-medium text-gray-900'}`}
+                            >
+                              {formData.service
+                                ? (() => {
+                                    const s = technician.services.find(
+                                      (s) => s.id === formData.service
+                                    )
+                                    if (!s) return 'Layanan tidak ditemukan'
+                                    const price =
+                                      s.minPrice && s.maxPrice
+                                        ? `Rp ${s.minPrice.toLocaleString('id-ID')} - Rp ${s.maxPrice.toLocaleString('id-ID')}`
+                                        : s.minPrice
+                                          ? `Mulai Rp ${s.minPrice.toLocaleString('id-ID')}`
+                                          : s.maxPrice
+                                            ? `Hingga Rp ${s.maxPrice.toLocaleString('id-ID')}`
+                                            : `Rp ${s.price.toLocaleString('id-ID')}`
+                                    return `${s.name} (${price})`
+                                  })()
+                                : '-- Pilih Layanan --'}
+                            </span>
+                            <ChevronDown
+                              className={`h-5 w-5 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+
+                          {isDropdownOpen && (
+                            <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-60 overflow-y-auto rounded-xl border border-gray-100 bg-white p-1 shadow-xl ring-1 ring-black/5">
+                              {technician.services
+                                .filter((service) => {
+                                  switch (activeService) {
+                                    case 'cek-bongkar':
+                                      return service.category === 'CEK_BONGKAR'
+                                    case 'jasa-servis':
+                                      return (
+                                        service.category === 'SERVIS_LENGKAP'
+                                      )
+                                    default:
+                                      return true
+                                  }
+                                })
+                                .map((service) => {
+                                  const isSelected =
+                                    formData.service === service.id
+                                  const price =
+                                    service.minPrice && service.maxPrice
+                                      ? `Rp ${service.minPrice.toLocaleString('id-ID')} - Rp ${service.maxPrice.toLocaleString('id-ID')}`
+                                      : service.minPrice
+                                        ? `Mulai Rp ${service.minPrice.toLocaleString('id-ID')}`
+                                        : service.maxPrice
+                                          ? `Hingga Rp ${service.maxPrice.toLocaleString('id-ID')}`
+                                          : `Rp ${service.price.toLocaleString('id-ID')}`
+
+                                  return (
+                                    <button
+                                      key={service.id}
+                                      type="button"
+                                      onClick={() =>
+                                        handleSelectService(service.id)
+                                      }
+                                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                                        isSelected
+                                          ? 'bg-blue-50 text-blue-700'
+                                          : 'text-gray-700 hover:bg-gray-50'
+                                      }`}
+                                    >
+                                      <div className="flex flex-col items-start gap-0.5">
+                                        <span
+                                          className={`font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}
+                                        >
+                                          {service.name}
+                                        </span>
+                                        <span
+                                          className={`text-xs ${isSelected ? 'text-blue-600' : 'text-gray-500'}`}
+                                        >
+                                          {price}
+                                        </span>
+                                      </div>
+                                      {isSelected && (
+                                        <Check className="h-4 w-4 text-blue-600" />
+                                      )}
+                                    </button>
+                                  )
+                                })}
+                            </div>
+                          )}
+                          <input
+                            type="hidden"
+                            name="service"
+                            value={formData.service}
+                            required
+                            onInvalid={(e) => {
+                              e.preventDefault()
+                              alert('Silakan pilih layanan terlebih dahulu')
+                              setIsDropdownOpen(true)
+                            }}
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">

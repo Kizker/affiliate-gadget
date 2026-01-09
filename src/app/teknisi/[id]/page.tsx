@@ -147,6 +147,8 @@ export default async function TeknisiDetailPage({
       name: s.name,
       category: s.category,
       price: s.price,
+      minPrice: s.minPrice,
+      maxPrice: s.maxPrice,
       description: s.description,
     })),
     reviews: [],

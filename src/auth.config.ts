@@ -46,6 +46,8 @@ export const authConfig = {
         token.email = user.email
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.isTechnician = (user as any).isTechnician || false
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.mitraStatus = (user as any).mitraStatus || null
       }
       // Remove picture/image to prevent bloat
       delete token.picture
@@ -62,6 +64,8 @@ export const authConfig = {
         session.user.email = token.email as string
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(session.user as any).isTechnician = token.isTechnician as boolean
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(session.user as any).mitraStatus = token.mitraStatus as string | null
       }
       return session
     },

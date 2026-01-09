@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()
 
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (
+      !session?.user ||
+      !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -30,12 +33,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    type ReportRow = Record<string, string | number>
-    let data: ReportRow[] = []
-    const filename = `report_${type}_${new Date().toISOString().split('T')[0]}`
+    // Create workbook
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = 'HaloTekno'
+    workbook.created = new Date()
+
+    const filename = `HaloTekno_${type}_${new Date().toISOString().split('T')[0]}`
+    let sheetName = type.toUpperCase()
+
+    // Get data based on type
+    let headers: string[] = []
+    let rows: (string | number)[][] = []
 
     switch (type) {
-      case 'orders':
+      case 'orders': {
         const orders = await prisma.order.findMany({
           where: dateFilter,
           include: {
@@ -53,26 +64,43 @@ export async function GET(request: NextRequest) {
           orderBy: { createdAt: 'desc' },
         })
 
-        data = orders.map((order) => ({
-          'Order Number': order.orderNumber,
-          'Customer Name': order.user.name || '-',
-          'Customer Email': order.user.email,
-          'Customer Phone': order.user.phone || '-',
-          Items: order.items
+        sheetName = 'ORDERS'
+        headers = [
+          'No',
+          'Order Number',
+          'Customer',
+          'Email',
+          'Phone',
+          'Items',
+          'Qty',
+          'Status',
+          'Total (Rp)',
+          'Created At',
+        ]
+        rows = orders.map((order, index) => [
+          index + 1,
+          order.orderNumber,
+          order.user.name || '-',
+          order.user.email,
+          order.user.phone || '-',
+          order.items
             .map(
               (item) =>
                 item.product?.name ||
                 item.service?.name ||
                 item.rentalItem?.name
             )
+            .filter(Boolean)
             .join(', '),
-          Status: order.status,
-          'Total (Rp)': order.total,
-          'Created At': new Date(order.createdAt).toLocaleString('id-ID'),
-        }))
+          order.items.reduce((sum, item) => sum + item.quantity, 0),
+          formatStatus(order.status),
+          order.total,
+          formatDate(order.createdAt),
+        ])
         break
+      }
 
-      case 'revenue':
+      case 'revenue': {
         const revenueOrders = await prisma.order.findMany({
           where: {
             status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
@@ -86,31 +114,46 @@ export async function GET(request: NextRequest) {
                 rentalItem: true,
               },
             },
+            user: { select: { name: true } },
           },
+          orderBy: { createdAt: 'desc' },
         })
 
-        data = revenueOrders.map((order) => {
+        sheetName = 'REVENUE'
+        headers = [
+          'No',
+          'Order Number',
+          'Customer',
+          'Category',
+          'Status',
+          'Revenue (Rp)',
+          'Date',
+        ]
+        rows = revenueOrders.map((order, index) => {
           const category = order.items.some((i) => i.service)
-            ? 'JASA'
+            ? 'Jasa Servis'
             : order.items.some((i) => i.product)
-              ? 'SPAREPART'
-              : 'SEWA'
+              ? 'Sparepart'
+              : 'Sewa Alat'
 
-          return {
-            'Order Number': order.orderNumber,
-            Category: category,
-            Status: order.status,
-            'Total (Rp)': order.total,
-            Date: new Date(order.createdAt).toLocaleDateString('id-ID'),
-          }
+          return [
+            index + 1,
+            order.orderNumber,
+            order.user.name || '-',
+            category,
+            formatStatus(order.status),
+            order.total,
+            formatDate(order.createdAt),
+          ]
         })
         break
+      }
 
-      case 'technicians':
+      case 'technicians': {
         const technicians = await prisma.technician.findMany({
           include: {
             user: {
-              select: { name: true, email: true },
+              select: { name: true, email: true, phone: true },
             },
             orders: {
               where: {
@@ -124,11 +167,26 @@ export async function GET(request: NextRequest) {
           },
         })
 
-        // Map and sort technicians by total orders, then by total reviews
+        sheetName = 'TECHNICIANS'
+        headers = [
+          'No',
+          'Name',
+          'Email',
+          'Phone',
+          'Specialties',
+          'Exp (Years)',
+          'Orders',
+          'Revenue (Rp)',
+          'Rating',
+          'Reviews',
+          'Available',
+        ]
+
         const technicianData = technicians
           .map((tech) => ({
             name: tech.user.name || '-',
             email: tech.user.email,
+            phone: tech.user.phone || '-',
             specialties: tech.specialties.join(', '),
             experience: tech.experience,
             totalOrders: tech._count.orders,
@@ -136,54 +194,65 @@ export async function GET(request: NextRequest) {
               (sum, order) => sum + order.total,
               0
             ),
-            rating: tech.rating.toFixed(2),
+            rating: tech.rating,
             totalReviews: tech.totalReview,
-            available: tech.isAvailable ? 'Yes' : 'No',
+            available: tech.isAvailable,
           }))
-          .sort((a, b) => {
-            // Sort by total orders first (descending)
-            if (b.totalOrders !== a.totalOrders) {
-              return b.totalOrders - a.totalOrders
-            }
-            // If orders are equal, sort by total reviews (descending)
-            return b.totalReviews - a.totalReviews
-          })
+          .sort((a, b) => b.totalOrders - a.totalOrders)
 
-        data = technicianData.map((tech) => ({
-          Name: tech.name,
-          Email: tech.email,
-          Specialties: tech.specialties,
-          'Experience (years)': tech.experience,
-          'Total Orders': tech.totalOrders,
-          'Total Revenue (Rp)': tech.totalRevenue,
-          Rating: tech.rating,
-          'Total Reviews': tech.totalReviews,
-          Available: tech.available,
-        }))
+        rows = technicianData.map((tech, index) => [
+          index + 1,
+          tech.name,
+          tech.email,
+          tech.phone,
+          tech.specialties,
+          tech.experience,
+          tech.totalOrders,
+          tech.totalRevenue,
+          Number(tech.rating.toFixed(2)),
+          tech.totalReviews,
+          tech.available ? 'Ya' : 'Tidak',
+        ])
         break
+      }
 
-      case 'products':
+      case 'products': {
         const products = await prisma.product.findMany({
           include: {
             _count: {
               select: { orderItems: true },
             },
           },
+          orderBy: { createdAt: 'desc' },
         })
 
-        data = products.map((product) => ({
-          Name: product.name,
-          Category: product.category,
-          Brand: product.brand || '-',
-          Model: product.model || '-',
-          'Price (Rp)': product.price,
-          Stock: product.stock,
-          'Times Sold': product._count.orderItems,
-          Active: product.isActive ? 'Yes' : 'No',
-        }))
+        sheetName = 'PRODUCTS'
+        headers = [
+          'No',
+          'Name',
+          'Category',
+          'Brand',
+          'Model',
+          'Price (Rp)',
+          'Stock',
+          'Sold',
+          'Status',
+        ]
+        rows = products.map((product, index) => [
+          index + 1,
+          product.name,
+          product.category,
+          product.brand || '-',
+          product.model || '-',
+          product.price,
+          product.stock,
+          product._count.orderItems,
+          product.isActive ? 'Aktif' : 'Nonaktif',
+        ])
         break
+      }
 
-      case 'customers':
+      case 'customers': {
         const customers = await prisma.user.findMany({
           where: {
             role: 'CUSTOMER',
@@ -202,23 +271,119 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          orderBy: { createdAt: 'desc' },
         })
 
-        data = customers.map((customer) => ({
-          Name: customer.name || '-',
-          Email: customer.email,
-          Phone: customer.phone || '-',
-          'Total Orders': customer._count.orders,
-          'Total Spending (Rp)': customer.orders.reduce(
-            (sum, order) => sum + order.total,
-            0
-          ),
-          'Joined Date': new Date(customer.createdAt).toLocaleDateString(
-            'id-ID'
-          ),
-          Active: customer.isActive ? 'Yes' : 'No',
-        }))
+        sheetName = 'CUSTOMERS'
+        headers = [
+          'No',
+          'Name',
+          'Email',
+          'Phone',
+          'Orders',
+          'Spending (Rp)',
+          'Joined',
+          'Status',
+        ]
+        rows = customers.map((customer, index) => [
+          index + 1,
+          customer.name || '-',
+          customer.email,
+          customer.phone || '-',
+          customer._count.orders,
+          customer.orders.reduce((sum, order) => sum + order.total, 0),
+          formatDate(customer.createdAt),
+          customer.isActive ? 'Aktif' : 'Nonaktif',
+        ])
         break
+      }
+
+      case 'services': {
+        const serviceOrders = await prisma.orderItem.findMany({
+          where: {
+            serviceId: { not: null },
+            order: {
+              status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
+              ...dateFilter,
+            },
+          },
+          include: {
+            service: true,
+          },
+        })
+
+        const serviceStats = new Map<
+          string,
+          { name: string; count: number; revenue: number }
+        >()
+        serviceOrders.forEach((item) => {
+          if (item.service) {
+            const existing = serviceStats.get(item.serviceId!) || {
+              name: item.service.name,
+              count: 0,
+              revenue: 0,
+            }
+            existing.count += item.quantity
+            existing.revenue += item.price * item.quantity
+            serviceStats.set(item.serviceId!, existing)
+          }
+        })
+
+        sheetName = 'SERVICES'
+        headers = ['No', 'Service Name', 'Total Orders', 'Revenue (Rp)']
+        rows = Array.from(serviceStats.entries())
+          .map(([, stats]) => ({
+            name: stats.name,
+            count: stats.count,
+            revenue: stats.revenue,
+          }))
+          .sort((a, b) => b.count - a.count)
+          .map((stats, index) => [
+            index + 1,
+            stats.name,
+            stats.count,
+            stats.revenue,
+          ])
+        break
+      }
+
+      case 'rentals': {
+        const rentalItems = await prisma.rentalItem.findMany({
+          include: {
+            _count: {
+              select: { orderItems: true },
+            },
+            orderItems: {
+              where: {
+                order: {
+                  status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
+                  ...dateFilter,
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+
+        sheetName = 'RENTALS'
+        headers = [
+          'No',
+          'Name',
+          'Price/Day (Rp)',
+          'Stock',
+          'Total Rentals',
+          'Revenue (Rp)',
+        ]
+        rows = rentalItems.map((item, index) => [
+          index + 1,
+          item.name,
+          item.pricePerDay,
+          item.stock,
+          item._count.orderItems,
+          item.orderItems.reduce((sum, oi) => sum + oi.price * oi.quantity, 0),
+        ])
+        break
+      }
 
       default:
         return NextResponse.json(
@@ -227,33 +392,103 @@ export async function GET(request: NextRequest) {
         )
     }
 
-    // Create workbook
-    const worksheet = XLSX.utils.json_to_sheet(data)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, type.toUpperCase())
+    // Create worksheet with styling
+    const worksheet = workbook.addWorksheet(sheetName)
+
+    // Add header row
+    worksheet.addRow(headers)
+
+    // Style header row
+    const headerRow = worksheet.getRow(1)
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF3B82F6' }, // Blue
+    }
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' }
+    headerRow.height = 25
+
+    // Add data rows
+    rows.forEach((row) => {
+      worksheet.addRow(row)
+    })
+
+    // Style all data rows - center aligned
+    for (let i = 2; i <= rows.length + 1; i++) {
+      const row = worksheet.getRow(i)
+      row.alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+        wrapText: true,
+      }
+      row.height = 22
+
+      // Alternate row colors
+      if (i % 2 === 0) {
+        row.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF8FAFC' }, // Light gray
+        }
+      }
+    }
+
+    // Auto-fit column widths
+    worksheet.columns.forEach((column, index) => {
+      let maxLength = headers[index]?.length || 10
+      rows.forEach((row) => {
+        const cellValue = row[index]
+        const cellLength = String(cellValue || '').length
+        if (cellLength > maxLength) {
+          maxLength = cellLength
+        }
+      })
+      column.width = Math.min(maxLength + 4, 50)
+    })
+
+    // Add borders to all cells
+    const lastRow = rows.length + 1
+    const lastCol = headers.length
+    for (let row = 1; row <= lastRow; row++) {
+      for (let col = 1; col <= lastCol; col++) {
+        const cell = worksheet.getCell(row, col)
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        }
+      }
+    }
 
     // Generate buffer
-    const buffer =
-      format === 'csv'
-        ? Buffer.from(XLSX.utils.sheet_to_csv(worksheet))
-        : Buffer.from(
-            XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
-          )
+    let buffer: Buffer
+
+    if (format === 'csv') {
+      const csvContent = await workbook.csv.writeBuffer()
+      buffer = Buffer.from(csvContent)
+    } else {
+      const xlsxContent = await workbook.xlsx.writeBuffer()
+      buffer = Buffer.from(xlsxContent)
+    }
 
     // Set headers
-    const headers = new Headers()
-    headers.set(
+    const responseHeaders = new Headers()
+    responseHeaders.set(
       'Content-Type',
       format === 'csv'
         ? 'text/csv'
         : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    headers.set(
+    responseHeaders.set(
       'Content-Disposition',
       `attachment; filename="${filename}.${format}"`
     )
 
-    return new NextResponse(buffer, { headers })
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: responseHeaders,
+    })
   } catch (error) {
     console.error('Error exporting report:', error)
     return NextResponse.json(
@@ -261,4 +496,23 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+function formatStatus(status: string): string {
+  const statusMap: Record<string, string> = {
+    PENDING_PAYMENT: 'Menunggu Pembayaran',
+    PAID: 'Dibayar',
+    IN_PROGRESS: 'Diproses',
+    COMPLETED: 'Selesai',
+    CANCELLED: 'Dibatalkan',
+  }
+  return statusMap[status] || status
+}
+
+function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
 }

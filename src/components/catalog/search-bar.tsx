@@ -1,13 +1,14 @@
 'use client'
 
 import { Search, SlidersHorizontal } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface SearchBarProps {
   placeholder?: string
   onSearch?: (query: string) => void
   onSortChange?: (sort: string) => void
   sortOptions?: { value: string; label: string }[]
+  debounceMs?: number
 }
 
 export function SearchBar({
@@ -20,13 +21,41 @@ export function SearchBar({
     { value: 'price-high', label: 'Harga Tertinggi' },
     { value: 'rating', label: 'Rating Tertinggi' },
   ],
+  debounceMs = 300,
 }: SearchBarProps) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('popular')
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+  const isFirstRender = useRef(true)
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSearch?.(query)
+  // Live search with debounce
+  useEffect(() => {
+    // Skip first render
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+
+    // Clear existing timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+    }
+
+    // Set new timer
+    debounceTimer.current = setTimeout(() => {
+      onSearch?.(query)
+    }, debounceMs)
+
+    // Cleanup
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+      }
+    }
+  }, [query, onSearch, debounceMs])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value)
   }
 
   const handleSortChange = (value: string) => {
@@ -34,22 +63,34 @@ export function SearchBar({
     onSortChange?.(value)
   }
 
+  // Also support Enter key for immediate search
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+      }
+      onSearch?.(query)
+    }
+  }
+
   return (
     <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex flex-col gap-4 md:flex-row">
-        {/* Search Input */}
-        <form onSubmit={handleSearch} className="flex-1">
+        {/* Search Input - Live Search */}
+        <div className="flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               placeholder={placeholder}
               className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-        </form>
+        </div>
 
         {/* Sort Dropdown - Hidden on mobile */}
         <div className="hidden items-center gap-2 md:flex">

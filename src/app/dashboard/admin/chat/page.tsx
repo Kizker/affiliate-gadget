@@ -585,6 +585,58 @@ export default function AdminChatPage() {
     return date.toLocaleDateString('id-ID')
   }
 
+  // Format message preview for room list (show friendly text instead of raw JSON)
+  const formatMessagePreview = (
+    message:
+      | { content: string; messageType: string; mediaUrl?: string | null }
+      | undefined
+  ) => {
+    if (!message) return 'Tidak ada pesan'
+
+    // Check for media/image
+    if (message.messageType === 'image' || message.mediaUrl) {
+      return '📷 Gambar'
+    }
+
+    // Check for special message types that contain JSON
+    if (message.messageType === 'order') {
+      return '📦 Mengirim info pesanan'
+    }
+
+    if (message.messageType === 'product') {
+      return '🛒 Mengirim rekomendasi produk'
+    }
+
+    if (message.messageType === 'rental') {
+      return '🔧 Mengirim rekomendasi sewa'
+    }
+
+    if (message.messageType === 'technician') {
+      return '👨‍🔧 Mengirim rekomendasi teknisi'
+    }
+
+    if (message.messageType === 'mitra') {
+      return '🏪 Mengirim rekomendasi mitra'
+    }
+
+    // Try to detect JSON content even if messageType is text
+    const content = message.content
+    if (content.startsWith('{') && content.includes('"id"')) {
+      try {
+        const parsed = JSON.parse(content)
+        if (parsed.orderNumber) return '📦 Mengirim info pesanan'
+        if (parsed.price !== undefined && parsed.name)
+          return '🛒 Mengirim info produk'
+        return '📄 Mengirim data'
+      } catch {
+        // Not valid JSON, continue to return content
+      }
+    }
+
+    // For regular text, return the content
+    return content
+  }
+
   // Render message content based on type
   const renderMessageContent = (message: Message, isAdmin: boolean) => {
     if (message.messageType === 'text') {
@@ -953,7 +1005,7 @@ export default function AdminChatPage() {
 
                         <div className="mt-1 flex items-center justify-between">
                           <p className="truncate text-sm text-gray-600">
-                            {room.messages[0]?.content || 'Tidak ada pesan'}
+                            {formatMessagePreview(room.messages[0])}
                           </p>
                           {room._count.messages > 0 && (
                             <span className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
