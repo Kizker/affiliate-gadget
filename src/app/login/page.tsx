@@ -33,28 +33,53 @@ export default function LoginPage() {
         return
       }
 
-      // Wait a moment for session to be established
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Wait for session to be established - longer delay for production
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      // Fetch user data to check role - use single redirect with window.location
-      const userRes = await fetch('/api/auth/me')
+      // Fetch user data with retry logic for production
       let redirectUrl = '/dashboard/customer'
+      let retries = 3
 
-      if (userRes.ok) {
-        const userData = await userRes.json()
+      while (retries > 0) {
+        try {
+          const userRes = await fetch('/api/auth/me', {
+            cache: 'no-store',
+            credentials: 'include',
+          })
 
-        if (userData.role === 'TECHNICIAN' || userData.isTechnician) {
-          redirectUrl = '/dashboard/teknisi'
-        } else if (
-          userData.role === 'ADMIN' ||
-          userData.role === 'SUPER_ADMIN'
-        ) {
-          redirectUrl = '/dashboard/admin'
-        } else if (userData.role === 'MITRA') {
-          redirectUrl = '/dashboard/mitra'
+          if (userRes.ok) {
+            const userData = await userRes.json()
+            console.log(
+              'User data fetched:',
+              userData.role,
+              userData.isTechnician
+            )
+
+            if (userData.role === 'TECHNICIAN' || userData.isTechnician) {
+              redirectUrl = '/dashboard/teknisi'
+            } else if (
+              userData.role === 'ADMIN' ||
+              userData.role === 'SUPER_ADMIN'
+            ) {
+              redirectUrl = '/dashboard/admin'
+            } else if (userData.role === 'MITRA') {
+              redirectUrl = '/dashboard/mitra'
+            }
+            break // Success, exit retry loop
+          } else if (userRes.status === 401) {
+            // Session not ready yet, wait and retry
+            console.log('Session not ready, retrying...', retries)
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            retries--
+          } else {
+            console.error('Failed to fetch user data:', userRes.status)
+            break
+          }
+        } catch (fetchErr) {
+          console.error('Fetch error:', fetchErr)
+          retries--
+          await new Promise((resolve) => setTimeout(resolve, 500))
         }
-      } else {
-        console.error('Failed to fetch user data:', userRes.status)
       }
 
       window.location.replace(redirectUrl)
