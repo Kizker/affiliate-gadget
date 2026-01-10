@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import {
   Search,
   MapPin,
@@ -14,6 +15,7 @@ import {
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import { motion } from 'framer-motion'
+import { useToast } from '@/hooks/use-toast'
 
 interface Mitra {
   id: string
@@ -105,6 +107,10 @@ export default function RekomendasiClientPage({
   const [total, setTotal] = useState(initialTotal)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
 
+  // Auth session for login check
+  const { data: session } = useSession()
+  const { toast } = useToast()
+
   // Location & sort states
   const [sortBy, setSortBy] = useState<'rating' | 'distance' | 'review'>(
     'rating'
@@ -140,9 +146,21 @@ export default function RekomendasiClientPage({
     )
   }, [])
 
-  // Handle sort change - get location if needed
+  // Handle sort change - get location if needed, check login for distance
   const handleSortChange = (value: string) => {
     const newSort = value as 'rating' | 'distance' | 'review'
+
+    // Check login for distance filter
+    if (newSort === 'distance' && !session) {
+      toast({
+        title: 'Login Diperlukan',
+        description:
+          'Silakan login terlebih dahulu untuk menggunakan fitur Jarak Terdekat',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setSortBy(newSort)
     if (newSort === 'distance' && !userLocation) {
       getUserLocation()

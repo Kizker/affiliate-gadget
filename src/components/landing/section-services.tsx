@@ -30,7 +30,7 @@ export default function SectionServices() {
   const [technicians, setTechnicians] = useState<Technician[]>([])
 
   useEffect(() => {
-    fetch('/api/technicians?limit=4')
+    fetch('/api/technicians?limit=4&sortBy=rating')
       .then((res) => res.json())
       .then((data) => setTechnicians(data.technicians || []))
       .catch(console.error)
@@ -204,35 +204,36 @@ export default function SectionServices() {
           >
             <div className="grid grid-cols-2 gap-3">
               {technicians.slice(0, 4).map((tech, idx) => (
-                <motion.div
-                  key={tech.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: idx * 0.08 }}
-                  className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
-                >
-                  <Image
-                    src={
-                      tech.user.image ||
-                      `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&${idx}`
-                    }
-                    alt={tech.user.name || 'Technician'}
-                    fill
-                    className="object-cover transition-transform group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-transparent p-3 opacity-0 transition-opacity group-hover:opacity-100">
-                    <span className="line-clamp-1 text-sm font-semibold text-white">
-                      {tech.user.name}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span className="text-xs text-white/90">
-                        {tech.rating.toFixed(1)} • {tech.experience}+ tahun
+                <Link key={tech.id} href={`/teknisi/${tech.id}`}>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: idx * 0.08 }}
+                    className="group relative aspect-[4/3] cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                  >
+                    <Image
+                      src={
+                        tech.user.image ||
+                        `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&${idx}`
+                      }
+                      alt={tech.user.name || 'Technician'}
+                      fill
+                      className="object-cover transition-transform group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-transparent p-3 opacity-0 transition-opacity group-hover:opacity-100">
+                      <span className="line-clamp-1 text-sm font-semibold text-white">
+                        {tech.user.name}
                       </span>
+                      <div className="flex items-center gap-1">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        <span className="text-xs text-white/90">
+                          {tech.rating.toFixed(1)} • {tech.experience}+ tahun
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                </Link>
               ))}
             </div>
           </motion.div>

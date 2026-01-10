@@ -18,6 +18,9 @@ interface RentalItem {
   stock: number
   images: string[]
   isActive: boolean
+  totalRented?: number
+  rating?: number
+  reviewCount?: number
 }
 
 interface SewaAlatClientPageProps {
@@ -98,24 +101,25 @@ export default function SewaAlatClientPage({
         if (searchQuery) params.set('search', searchQuery)
         if (availability !== 'all') params.set('availability', availability)
 
-        // Add sorting
-        if (sortBy) {
-          switch (sortBy) {
-            case 'price-low':
-              params.set('sortBy', 'pricePerDay')
-              params.set('sortOrder', 'asc')
-              break
-            case 'price-high':
-              params.set('sortBy', 'pricePerDay')
-              params.set('sortOrder', 'desc')
-              break
-            case 'rating':
-              params.set('sortBy', 'rating')
-              params.set('sortOrder', 'desc')
-              break
-            default:
-              break
-          }
+        // Add sorting - always send sortBy param
+        switch (sortBy) {
+          case 'price-low':
+            params.set('sortBy', 'pricePerDay')
+            params.set('sortOrder', 'asc')
+            break
+          case 'price-high':
+            params.set('sortBy', 'pricePerDay')
+            params.set('sortOrder', 'desc')
+            break
+          case 'rating':
+            params.set('sortBy', 'rating')
+            params.set('sortOrder', 'desc')
+            break
+          case 'popular':
+          default:
+            params.set('sortBy', 'popular')
+            params.set('sortOrder', 'desc')
+            break
         }
 
         // Add price range filter
@@ -431,15 +435,22 @@ export default function SewaAlatClientPage({
                           title={item.name}
                           image={item.images[0] || '/placeholder.png'}
                           description={
-                            item.description || 'Alat sewa berkualitas'
+                            item.description?.slice(0, 50) ||
+                            'Alat sewa berkualitas'
                           }
                           price={item.pricePerDay}
-                          badge={item.stock > 0 ? 'Tersedia' : 'Tidak Tersedia'}
+                          rating={item.rating}
+                          reviewCount={item.reviewCount}
+                          badge={
+                            item.stock > 0
+                              ? `Tersedia${item.totalRented ? ` | ${item.totalRented} disewa` : ''}`
+                              : 'Tidak Tersedia'
+                          }
                           badgeColor={item.stock > 0 ? 'green' : 'red'}
                           href={`/sewa-alat/${item.id}`}
                           actionLabel="Sewa Sekarang"
                           imageAspect={aspectClass}
-                          priority={index < 4} // Prioritize first 4 images for LCP
+                          priority={index < 4}
                         />
                       </div>
                     )

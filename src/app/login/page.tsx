@@ -49,11 +49,6 @@ export default function LoginPage() {
 
           if (userRes.ok) {
             const userData = await userRes.json()
-            console.log(
-              'User data fetched:',
-              userData.role,
-              userData.isTechnician
-            )
 
             if (userData.role === 'TECHNICIAN' || userData.isTechnician) {
               redirectUrl = '/dashboard/teknisi'
@@ -68,7 +63,6 @@ export default function LoginPage() {
             break // Success, exit retry loop
           } else if (userRes.status === 401) {
             // Session not ready yet, wait and retry
-            console.log('Session not ready, retrying...', retries)
             await new Promise((resolve) => setTimeout(resolve, 500))
             retries--
           } else {

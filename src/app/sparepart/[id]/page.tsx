@@ -39,9 +39,22 @@ async function getProduct(id: string) {
   try {
     const product = await prisma.product.findUnique({
       where: { id, isActive: true },
+      include: {
+        orderItems: {
+          select: {
+            quantity: true,
+          },
+        },
+      },
     })
 
     if (!product) return null
+
+    // Calculate total sold
+    const totalSold = product.orderItems.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    )
 
     // Get reviews for this product from orders
     const reviews = await prisma.review.findMany({
@@ -81,7 +94,7 @@ async function getProduct(id: string) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return { product, reviews, relatedProducts }
+    return { product: { ...product, totalSold }, reviews, relatedProducts }
   } catch (error) {
     console.error('Error fetching product:', error)
     return null
@@ -275,6 +288,14 @@ export default async function SparepartDetailPage({
                 <p className="mt-2 text-sm text-gray-600">
                   Stok tersedia:{' '}
                   <span className="font-semibold">{product.stock} unit</span>
+                </p>
+              )}
+              {product.totalSold > 0 && (
+                <p className="mt-1 text-sm text-gray-600">
+                  Terjual:{' '}
+                  <span className="font-semibold text-green-600">
+                    {product.totalSold} unit
+                  </span>
                 </p>
               )}
             </div>

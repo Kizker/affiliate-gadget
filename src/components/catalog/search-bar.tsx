@@ -9,6 +9,8 @@ interface SearchBarProps {
   onSortChange?: (sort: string) => void
   sortOptions?: { value: string; label: string }[]
   debounceMs?: number
+  defaultSort?: string
+  defaultSearch?: string
 }
 
 export function SearchBar({
@@ -22,9 +24,13 @@ export function SearchBar({
     { value: 'rating', label: 'Rating Tertinggi' },
   ],
   debounceMs = 300,
+  defaultSort,
+  defaultSearch = '',
 }: SearchBarProps) {
-  const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('popular')
+  const [query, setQuery] = useState(defaultSearch)
+  const [sort, setSort] = useState(
+    defaultSort || sortOptions[0]?.value || 'popular'
+  )
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
   const isFirstRender = useRef(true)
 

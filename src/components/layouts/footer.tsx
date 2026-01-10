@@ -168,26 +168,6 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                       Blog
                     </Link>
                   </li>
-                  <li>
-                    <a
-                      href="#"
-                      className={`block py-1.5 transition-colors ${
-                        isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                      }`}
-                    >
-                      Karir
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      className={`block py-1.5 transition-colors ${
-                        isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                      }`}
-                    >
-                      Hubungi Kami
-                    </a>
-                  </li>
                 </ul>
               </div>
 
@@ -382,26 +362,6 @@ export function Footer({ variant = 'dark' }: FooterProps) {
                   >
                     Blog
                   </Link>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className={`block py-1.5 transition-colors ${
-                      isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                    }`}
-                  >
-                    Karir
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className={`block py-1.5 transition-colors ${
-                      isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                    }`}
-                  >
-                    Hubungi Kami
-                  </a>
                 </li>
               </ul>
             </div>

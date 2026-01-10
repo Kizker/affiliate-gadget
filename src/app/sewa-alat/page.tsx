@@ -12,34 +12,111 @@ async function getInitialRentalItems() {
 
     const where = {
       isActive: true,
+      stock: { gt: 0 },
     }
 
-    const [rawRentalItems, total, allActiveItems] = await Promise.all([
+    const [rawRentalItems, allActiveItems] = await Promise.all([
       db.rentalItem.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
-        take: limit,
+        include: {
+          orderItems: {
+            select: {
+              quantity: true,
+              orderId: true,
+            },
+          },
+        },
       }),
-      db.rentalItem.count({ where }),
       db.rentalItem.findMany({
         where: { isActive: true },
         select: { stock: true },
       }),
     ])
 
-    // Sanitize images (Hotfix for broken seed data)
-    const rentalItems = rawRentalItems.map((item) => ({
-      ...item,
-      images: item.images.map((img) =>
-        img.includes('photo-1582719471384-894fbb16f7ce')
-          ? 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=550&fit=crop'
-          : img
-      ),
-    }))
+    // Get rental item IDs
+    const rentalItemIds = rawRentalItems.map((r) => r.id)
+
+    // Fetch all reviews for these rental items
+    const allReviews = await db.review.findMany({
+      where: {
+        type: 'RENTAL',
+        order: {
+          items: {
+            some: {
+              rentalItemId: { in: rentalItemIds },
+            },
+          },
+        },
+      },
+      select: {
+        rating: true,
+        order: {
+          select: {
+            items: {
+              select: {
+                rentalItemId: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    // Group reviews by rental item ID
+    const reviewsByRentalItem = new Map<
+      string,
+      { totalRating: number; count: number }
+    >()
+    allReviews.forEach((review) => {
+      review.order?.items.forEach((item) => {
+        if (item.rentalItemId) {
+          const existing = reviewsByRentalItem.get(item.rentalItemId) || {
+            totalRating: 0,
+            count: 0,
+          }
+          reviewsByRentalItem.set(item.rentalItemId, {
+            totalRating: existing.totalRating + review.rating,
+            count: existing.count + 1,
+          })
+        }
+      })
+    })
+
+    // Calculate totalRented and rating for each item
+    const rentalItemsWithStats = rawRentalItems.map((item) => {
+      const totalRented = item.orderItems.reduce(
+        (sum, orderItem) => sum + orderItem.quantity,
+        0
+      )
+      const reviewData = reviewsByRentalItem.get(item.id) || {
+        totalRating: 0,
+        count: 0,
+      }
+      const rating =
+        reviewData.count > 0 ? reviewData.totalRating / reviewData.count : 0
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { orderItems, ...itemWithoutOrderItems } = item
+      return {
+        ...itemWithoutOrderItems,
+        images: item.images.map((img) =>
+          img.includes('photo-1582719471384-894fbb16f7ce')
+            ? 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=550&fit=crop'
+            : img
+        ),
+        totalRented,
+        rating: Math.round(rating * 10) / 10,
+        reviewCount: reviewData.count,
+      }
+    })
+
+    // Sort by popularity (totalRented) and take first 12
+    rentalItemsWithStats.sort((a, b) => b.totalRented - a.totalRented)
+    const rentalItems = rentalItemsWithStats.slice(0, limit)
 
     // Calculate stats from fetched data
     const stats = {
-      total: allActiveItems.length,
+      total: rawRentalItems.length,
       available: allActiveItems.filter((item) => item.stock > 0).length,
       unavailable: allActiveItems.filter((item) => item.stock === 0).length,
     }
@@ -49,8 +126,8 @@ async function getInitialRentalItems() {
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: rawRentalItems.length,
+        totalPages: Math.ceil(rawRentalItems.length / limit),
       },
       stats,
     }

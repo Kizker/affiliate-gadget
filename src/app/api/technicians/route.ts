@@ -11,9 +11,7 @@ export async function GET(req: NextRequest) {
     const specialty = searchParams.get('specialty') || ''
     const sortBy = searchParams.get('sortBy') || 'rating' // rating, experience, reviews
 
-    const skip = (page - 1) * limit
-
-    // Build where clause - only technicians with active users (show all regardless of availability)
+    // Build where clause - only technicians with active users
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       user: {
@@ -37,20 +35,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Determine sort order
-    let orderBy: Record<string, 'asc' | 'desc'> = { rating: 'desc' }
+    // For rating/reviews sorting, we MUST fetch ALL technicians first
+    // because we need to calculate real ratings from reviews before sorting
+    const needsFullFetch = sortBy === 'rating' || sortBy === 'reviews'
+
+    // Determine database order (only for experience which doesn't need calculation)
+    let orderBy: Record<string, 'asc' | 'desc'> = { createdAt: 'desc' }
     if (sortBy === 'experience') {
       orderBy = { experience: 'desc' }
-    } else if (sortBy === 'reviews') {
-      orderBy = { totalReview: 'desc' }
     }
 
     const total = await db.technician.count({ where })
 
+    // Fetch technicians - either all (for rating/reviews) or paginated (for experience)
     const technicians = await db.technician.findMany({
       where,
-      skip,
-      take: limit,
+      ...(needsFullFetch ? {} : { skip: (page - 1) * limit, take: limit }),
       include: {
         user: {
           select: {
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
       orderBy,
     })
 
-    // Fetch all reviews for these technicians in a single query
+    // Fetch ALL reviews for technicians (need all for proper calculation)
     const technicianIds = technicians.map((t) => t.id)
     const allReviews = await db.review.findMany({
       where: {
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // Group reviews by technician ID in memory
+    // Group reviews by technician ID
     const reviewsByTechnician = new Map<
       string,
       { totalRating: number; count: number }
@@ -132,14 +132,55 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    // Cache response for 60 seconds, serve stale for up to 5 minutes while revalidating
+    // Calculate IMDB-style weighted rating
+    const m = 1 // Minimum reviews threshold
+    const allRatings = techniciansWithRealRatings.filter(
+      (t) => t.totalReview > 0
+    )
+    const C =
+      allRatings.length > 0
+        ? allRatings.reduce((sum, t) => sum + t.rating, 0) / allRatings.length
+        : 0
+
+    const techniciansWithWeightedRating = techniciansWithRealRatings.map(
+      (tech) => {
+        const v = tech.totalReview
+        const R = tech.rating
+        const weightedRating = v > 0 ? (v / (v + m)) * R + (m / (v + m)) * C : 0
+
+        return {
+          ...tech,
+          weightedRating,
+        }
+      }
+    )
+
+    // Sort based on sortBy parameter
+    let sortedTechnicians = techniciansWithWeightedRating
+    if (sortBy === 'rating') {
+      sortedTechnicians = [...techniciansWithWeightedRating].sort(
+        (a, b) => b.weightedRating - a.weightedRating
+      )
+    } else if (sortBy === 'reviews') {
+      sortedTechnicians = [...techniciansWithWeightedRating].sort(
+        (a, b) => b.totalReview - a.totalReview
+      )
+    }
+    // experience is already sorted by database orderBy
+
+    // Apply pagination manually for rating/reviews sort
+    const paginatedTechnicians = needsFullFetch
+      ? sortedTechnicians.slice((page - 1) * limit, page * limit)
+      : sortedTechnicians
+
+    // Cache response
     const headers = {
       'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
     }
 
     return NextResponse.json(
       {
-        technicians: techniciansWithRealRatings,
+        technicians: paginatedTechnicians,
         pagination: {
           page,
           limit,

@@ -29,6 +29,7 @@ export function Navbar({
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [layananOpen, setLayananOpen] = useState(false)
+  const [userImage, setUserImage] = useState<string | null>(null)
   const { data: session, status } = useSession()
 
   useEffect(() => {
@@ -44,6 +45,20 @@ export function Navbar({
     setMobileMenuOpen(false)
     setLayananOpen(false)
   }, [])
+
+  // Fetch user image from API (since session doesn't include image to avoid JWT bloat)
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetch('/api/auth/me')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.image) {
+            setUserImage(data.image)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [session?.user?.id])
 
   const isLight = variant === 'light'
 
@@ -201,9 +216,9 @@ export function Navbar({
                   aria-label={session.user.name || 'Akun Saya'}
                   aria-haspopup="true"
                 >
-                  {session.user.image ? (
+                  {userImage ? (
                     <img
-                      src={session.user.image}
+                      src={userImage}
                       alt=""
                       className="h-8 w-8 rounded-full object-cover"
                       width={32}

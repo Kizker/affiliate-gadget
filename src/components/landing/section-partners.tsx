@@ -20,7 +20,7 @@ export default function SectionPartners() {
   const [partners, setPartners] = useState<Mitra[]>([])
 
   useEffect(() => {
-    fetch('/api/mitra/list')
+    fetch('/api/mitra/list?sortBy=rating&sortOrder=desc&limit=4')
       .then((res) => res.json())
       .then((data) => setPartners(data.mitras || []))
       .catch(console.error)
@@ -90,39 +90,41 @@ export default function SectionPartners() {
 
             {/* Featured Image - After Content */}
             {partners[0] && (
-              <div className="mx-auto mb-6 max-w-sm overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xl">
-                <div className="relative h-48">
-                  <Image
-                    src={
-                      partners[0].banner ||
-                      'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=600&h=400&fit=crop'
-                    }
-                    alt={partners[0].businessName}
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-3 left-4 right-4">
-                    <div className="flex items-center gap-1.5">
-                      <span className="line-clamp-1 text-base font-bold text-white">
-                        {partners[0].businessName}
-                      </span>
-                      <BadgeCheck className="h-4 w-4 flex-shrink-0 text-blue-300" />
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-white/90">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                        {partners[0].rating.toFixed(1)}
+              <Link href={`/rekomendasi/${partners[0].id}`}>
+                <div className="mx-auto mb-6 max-w-sm cursor-pointer overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xl">
+                  <div className="relative h-48">
+                    <Image
+                      src={
+                        partners[0].banner ||
+                        'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=600&h=400&fit=crop'
+                      }
+                      alt={partners[0].businessName}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute bottom-3 left-4 right-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="line-clamp-1 text-base font-bold text-white">
+                          {partners[0].businessName}
+                        </span>
+                        <BadgeCheck className="h-4 w-4 flex-shrink-0 text-blue-300" />
                       </div>
-                      <span>•</span>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {partners[0].city}
+                      <div className="flex items-center gap-2 text-sm text-white/90">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                          {partners[0].rating.toFixed(1)}
+                        </div>
+                        <span>•</span>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {partners[0].city}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             )}
 
             <Link
@@ -145,43 +147,44 @@ export default function SectionPartners() {
           >
             <div className="grid grid-cols-2 gap-4">
               {partners.slice(0, 4).map((partner, idx) => (
-                <motion.div
-                  key={partner.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: idx * 0.08 }}
-                  className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
-                >
-                  <Image
-                    src={
-                      partner.banner ||
-                      `https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=400&h=300&fit=crop`
-                    }
-                    alt={partner.businessName}
-                    fill
-                    className="object-cover transition-transform group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-transparent p-3 opacity-0 transition-opacity group-hover:opacity-100">
-                    <div className="mb-1 flex items-center gap-1">
-                      <span className="line-clamp-1 text-sm font-semibold text-white">
-                        {partner.businessName}
-                      </span>
-                      <BadgeCheck className="h-4 w-4 flex-shrink-0 text-blue-300" />
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-white/90">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        <span>{partner.rating.toFixed(1)}</span>
+                <Link key={partner.id} href={`/rekomendasi/${partner.id}`}>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: idx * 0.08 }}
+                    className="group relative aspect-[4/3] cursor-pointer overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                  >
+                    <Image
+                      src={
+                        partner.banner ||
+                        `https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=400&h=300&fit=crop`
+                      }
+                      alt={partner.businessName}
+                      fill
+                      className="object-cover transition-transform group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-transparent p-3 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="mb-1 flex items-center gap-1">
+                        <span className="line-clamp-1 text-sm font-semibold text-white">
+                          {partner.businessName}
+                        </span>
+                        <BadgeCheck className="h-4 w-4 flex-shrink-0 text-blue-300" />
                       </div>
-                      <span>•</span>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        <span>{partner.city}</span>
+                      <div className="flex items-center gap-2 text-xs text-white/90">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          <span>{partner.rating.toFixed(1)}</span>
+                        </div>
+                        <span>•</span>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>{partner.city}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                </Link>
               ))}
             </div>
           </motion.div>

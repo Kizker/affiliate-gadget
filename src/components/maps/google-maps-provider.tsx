@@ -1,10 +1,16 @@
 'use client'
 
-import { useLoadScript } from '@react-google-maps/api'
-import { ReactNode, createContext, useContext } from 'react'
+import { useLoadScript, Libraries } from '@react-google-maps/api'
+import {
+  ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from 'react'
 import { Loader2 } from 'lucide-react'
 
-const libraries: ('places' | 'geometry')[] = ['places', 'geometry']
+const libraries: Libraries = ['places', 'geometry']
 
 interface GoogleMapsContextType {
   isLoaded: boolean
@@ -28,15 +34,42 @@ interface GoogleMapsProviderProps {
   children: ReactNode
 }
 
+// Track if Google Maps is already loaded globally
+let isGoogleMapsLoaded = false
+
 export default function GoogleMapsProvider({
   children,
 }: GoogleMapsProviderProps) {
-  const { isLoaded, loadError } = useLoadScript({
+  const [manuallyLoaded, setManuallyLoaded] = useState(false)
+
+  // Check if Google Maps is already available (loaded by another instance or external script)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.google?.maps?.places) {
+      isGoogleMapsLoaded = true
+      setManuallyLoaded(true)
+    }
+  }, [])
+
+  // Only use useLoadScript if not already loaded
+  const { isLoaded: hookLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries,
+    // Prevent loading if already loaded
+    ...(isGoogleMapsLoaded || manuallyLoaded
+      ? { preventGoogleFontsLoading: true }
+      : {}),
   })
 
-  if (loadError) {
+  const isLoaded = hookLoaded || manuallyLoaded || isGoogleMapsLoaded
+
+  // Update global flag when loaded
+  useEffect(() => {
+    if (hookLoaded) {
+      isGoogleMapsLoaded = true
+    }
+  }, [hookLoaded])
+
+  if (loadError && !isLoaded) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-4">
         <p className="text-sm text-red-600">

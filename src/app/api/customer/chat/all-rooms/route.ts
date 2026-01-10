@@ -23,6 +23,24 @@ export async function GET() {
             status: true,
             total: true,
             createdAt: true,
+            claimedBy: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+            technician: {
+              select: {
+                id: true,
+                user: {
+                  select: {
+                    name: true,
+                    image: true,
+                  },
+                },
+              },
+            },
             items: {
               select: {
                 type: true,

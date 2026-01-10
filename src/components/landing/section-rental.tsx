@@ -18,7 +18,7 @@ export default function SectionRental() {
   const [items, setItems] = useState<RentalItem[]>([])
 
   useEffect(() => {
-    fetch('/api/rental-items?limit=4')
+    fetch('/api/rental-items?limit=4&sortBy=rating')
       .then((res) => res.json())
       .then((data) => setItems(data.rentalItems || []))
       .catch(console.error)
@@ -94,28 +94,30 @@ export default function SectionRental() {
 
             {/* Featured Image - After Content */}
             {items[0] && (
-              <div className="mx-auto mb-6 max-w-sm overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xl">
-                <div className="relative h-48">
-                  <Image
-                    src={
-                      items[0].images[0] ||
-                      'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&h=400&fit=crop'
-                    }
-                    alt={items[0].name}
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-3 left-4 right-4">
-                    <div className="line-clamp-1 text-base font-bold text-white">
-                      {items[0].name}
-                    </div>
-                    <div className="text-sm font-bold text-cyan-300">
-                      Rp {items[0].pricePerDay.toLocaleString('id-ID')}/hari
+              <Link href={`/sewa-alat/${items[0].id}`}>
+                <div className="mx-auto mb-6 max-w-sm cursor-pointer overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xl">
+                  <div className="relative h-48">
+                    <Image
+                      src={
+                        items[0].images[0] ||
+                        'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&h=400&fit=crop'
+                      }
+                      alt={items[0].name}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute bottom-3 left-4 right-4">
+                      <div className="line-clamp-1 text-base font-bold text-white">
+                        {items[0].name}
+                      </div>
+                      <div className="text-sm font-bold text-cyan-300">
+                        Rp {items[0].pricePerDay.toLocaleString('id-ID')}/hari
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             )}
 
             <Link
@@ -182,32 +184,33 @@ export default function SectionRental() {
           >
             <div className="grid grid-cols-2 gap-4">
               {items.slice(0, 4).map((item, idx) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: idx * 0.08 }}
-                  className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
-                >
-                  <Image
-                    src={
-                      item.images[0] ||
-                      `https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=400&h=300&fit=crop`
-                    }
-                    alt={item.name}
-                    fill
-                    className="object-cover transition-transform group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-transparent p-3 opacity-0 transition-opacity group-hover:opacity-100">
-                    <span className="line-clamp-1 text-sm font-semibold text-white">
-                      {item.name}
-                    </span>
-                    <span className="text-xs font-bold text-cyan-300">
-                      Rp {item.pricePerDay.toLocaleString('id-ID')}/hari
-                    </span>
-                  </div>
-                </motion.div>
+                <Link key={item.id} href={`/sewa-alat/${item.id}`}>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: idx * 0.08 }}
+                    className="group relative aspect-[4/3] cursor-pointer overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                  >
+                    <Image
+                      src={
+                        item.images[0] ||
+                        `https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=400&h=300&fit=crop`
+                      }
+                      alt={item.name}
+                      fill
+                      className="object-cover transition-transform group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-transparent p-3 opacity-0 transition-opacity group-hover:opacity-100">
+                      <span className="line-clamp-1 text-sm font-semibold text-white">
+                        {item.name}
+                      </span>
+                      <span className="text-xs font-bold text-cyan-300">
+                        Rp {item.pricePerDay.toLocaleString('id-ID')}/hari
+                      </span>
+                    </div>
+                  </motion.div>
+                </Link>
               ))}
             </div>
           </motion.div>

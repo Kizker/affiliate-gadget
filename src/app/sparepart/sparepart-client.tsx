@@ -20,6 +20,9 @@ interface Product {
   stock: number
   images: string[]
   isActive: boolean
+  totalSold?: number
+  rating?: number
+  reviewCount?: number
 }
 
 interface FilterOption {
@@ -111,29 +114,29 @@ export default function SparepartClientPage({
         if (categoryFilter) params.set('category', categoryFilter)
         if (brandFilter) params.set('brand', brandFilter)
 
-        // Add sorting
-        if (sortBy) {
-          switch (sortBy) {
-            case 'price-low':
-              params.set('sortBy', 'price')
-              params.set('sortOrder', 'asc')
-              break
-            case 'price-high':
-              params.set('sortBy', 'price')
-              params.set('sortOrder', 'desc')
-              break
-            case 'rating':
-              params.set('sortBy', 'rating')
-              params.set('sortOrder', 'desc')
-              break
-            case 'sold':
-              params.set('sortBy', 'sold')
-              params.set('sortOrder', 'desc')
-              break
-            default:
-              // popular - default sorting
-              break
-          }
+        // Add sorting - always send sortBy param
+        switch (sortBy) {
+          case 'price-low':
+            params.set('sortBy', 'price')
+            params.set('sortOrder', 'asc')
+            break
+          case 'price-high':
+            params.set('sortBy', 'price')
+            params.set('sortOrder', 'desc')
+            break
+          case 'rating':
+            params.set('sortBy', 'rating')
+            params.set('sortOrder', 'desc')
+            break
+          case 'sold':
+            params.set('sortBy', 'sold')
+            params.set('sortOrder', 'desc')
+            break
+          case 'popular':
+          default:
+            params.set('sortBy', 'popular')
+            params.set('sortOrder', 'desc')
+            break
         }
 
         // Add price range filter
@@ -316,7 +319,6 @@ export default function SparepartClientPage({
             { value: 'price-low', label: 'Harga Terendah' },
             { value: 'price-high', label: 'Harga Tertinggi' },
             { value: 'rating', label: 'Rating Tertinggi' },
-            { value: 'sold', label: 'Paling Laris' },
           ]}
         />
 
@@ -433,16 +435,20 @@ export default function SparepartClientPage({
                           id={item.id}
                           title={item.name}
                           image={item.images[0] || '/placeholder.png'}
-                          description={`${item.brand || 'No Brand'} • ${item.category}`}
+                          description={item.brand || 'Original'}
                           price={item.price}
+                          rating={item.rating}
+                          reviewCount={item.reviewCount}
                           badge={
-                            item.stock > 0 ? `Stok: ${item.stock}` : 'Habis'
+                            item.stock > 0
+                              ? `Stok: ${item.stock}${item.totalSold ? ` | ${item.totalSold} terjual` : ''}`
+                              : 'Habis'
                           }
                           badgeColor={item.stock > 0 ? 'green' : 'red'}
                           href={`/sparepart/${item.id}`}
                           actionLabel="Lihat Detail"
                           imageAspect={aspectClass}
-                          priority={index < 4} // Prioritize first 4 images for LCP
+                          priority={index < 4}
                         />
                       </div>
                     )

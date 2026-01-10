@@ -148,9 +148,9 @@ export function Sidebar({ variant = 'dark', forceRole }: SidebarProps) {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Fixed position for desktop */}
       <aside
-        className={`fixed left-0 top-0 z-40 h-screen w-64 transform border-r transition-transform duration-300 lg:sticky ${
+        className={`fixed left-0 top-0 z-40 h-screen w-64 transform border-r transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${
           isLight

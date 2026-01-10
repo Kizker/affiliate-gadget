@@ -209,7 +209,7 @@ export default async function CustomerDashboard() {
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
               {/* Konsultasi Servis */}
               <Link
-                href="/konsultasi"
+                href="/teknisi"
                 className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-blue-300 hover:shadow-lg"
               >
                 <div className="relative aspect-square overflow-hidden">
@@ -239,7 +239,7 @@ export default async function CustomerDashboard() {
 
               {/* Jasa Cek/Bongkar */}
               <Link
-                href="/cek-bongkar"
+                href="/teknisi"
                 className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-blue-300 hover:shadow-lg"
               >
                 <div className="relative aspect-square overflow-hidden">
@@ -269,7 +269,7 @@ export default async function CustomerDashboard() {
 
               {/* Jasa Servis */}
               <Link
-                href="/jasa-servis"
+                href="/teknisi"
                 className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-blue-300 hover:shadow-lg"
               >
                 <div className="relative aspect-square overflow-hidden">

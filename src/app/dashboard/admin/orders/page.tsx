@@ -563,21 +563,24 @@ export default function AdminOrdersPage() {
             className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm"
           />
         </div>
-        <select
-          value={filter}
-          onChange={(e) => {
-            setFilter(
-              e.target.value as 'all' | 'service' | 'sparepart' | 'rental'
-            )
-            setPage(1)
-          }}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
-        >
-          <option value="all">Semua Tipe</option>
-          <option value="service">Service</option>
-          <option value="sparepart">Sparepart</option>
-          <option value="rental">Rental</option>
-        </select>
+        {/* Type filter - only for SUPER_ADMIN */}
+        {currentUserRole === 'SUPER_ADMIN' && (
+          <select
+            value={filter}
+            onChange={(e) => {
+              setFilter(
+                e.target.value as 'all' | 'service' | 'sparepart' | 'rental'
+              )
+              setPage(1)
+            }}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+          >
+            <option value="all">Semua Tipe</option>
+            <option value="service">Service</option>
+            <option value="sparepart">Sparepart</option>
+            <option value="rental">Rental</option>
+          </select>
+        )}
         <select
           value={statusFilter}
           onChange={(e) => {

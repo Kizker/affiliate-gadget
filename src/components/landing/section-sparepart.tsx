@@ -19,7 +19,7 @@ export default function SectionSparepart() {
   const [products, setProducts] = useState<Product[]>([])
 
   useEffect(() => {
-    fetch('/api/products?limit=6')
+    fetch('/api/products?limit=6&sortBy=rating')
       .then((res) => res.json())
       .then((data) => setProducts(data.products || []))
       .catch(console.error)
@@ -95,28 +95,30 @@ export default function SectionSparepart() {
 
             {/* Featured Image - After Content */}
             {products[0] && (
-              <div className="mx-auto mb-6 max-w-sm overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xl">
-                <div className="relative h-48">
-                  <Image
-                    src={
-                      products[0].images[0] ||
-                      'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=600&h=400&fit=crop'
-                    }
-                    alt={products[0].name}
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-3 left-4 right-4">
-                    <div className="line-clamp-1 text-base font-bold text-white">
-                      {products[0].name}
-                    </div>
-                    <div className="text-sm font-bold text-cyan-300">
-                      Rp {products[0].price.toLocaleString('id-ID')}
+              <Link href={`/sparepart/${products[0].id}`}>
+                <div className="mx-auto mb-6 max-w-sm cursor-pointer overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xl">
+                  <div className="relative h-48">
+                    <Image
+                      src={
+                        products[0].images[0] ||
+                        'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=600&h=400&fit=crop'
+                      }
+                      alt={products[0].name}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute bottom-3 left-4 right-4">
+                      <div className="line-clamp-1 text-base font-bold text-white">
+                        {products[0].name}
+                      </div>
+                      <div className="text-sm font-bold text-cyan-300">
+                        Rp {products[0].price.toLocaleString('id-ID')}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             )}
 
             <Link
@@ -139,32 +141,33 @@ export default function SectionSparepart() {
           >
             <div className="grid grid-cols-3 gap-3">
               {products.slice(0, 6).map((product, idx) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: idx * 0.08 }}
-                  className="group relative aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
-                >
-                  <Image
-                    src={
-                      product.images[0] ||
-                      'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=200&h=200&fit=crop'
-                    }
-                    alt={product.name}
-                    fill
-                    className="object-cover transition-transform group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <span className="line-clamp-1 text-xs font-medium text-white">
-                      {product.name}
-                    </span>
-                    <span className="text-xs font-bold text-cyan-300">
-                      Rp {product.price.toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </motion.div>
+                <Link key={product.id} href={`/sparepart/${product.id}`}>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: idx * 0.08 }}
+                    className="group relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                  >
+                    <Image
+                      src={
+                        product.images[0] ||
+                        'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=200&h=200&fit=crop'
+                      }
+                      alt={product.name}
+                      fill
+                      className="object-cover transition-transform group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                      <span className="line-clamp-1 text-xs font-medium text-white">
+                        {product.name}
+                      </span>
+                      <span className="text-xs font-bold text-cyan-300">
+                        Rp {product.price.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  </motion.div>
+                </Link>
               ))}
             </div>
           </motion.div>

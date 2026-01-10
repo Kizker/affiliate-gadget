@@ -15,7 +15,12 @@ export async function GET(request: Request) {
       where: { email: session.user.email },
     })
 
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+    if (
+      !user ||
+      (user.role !== 'ADMIN' &&
+        user.role !== 'SUPER_ADMIN' &&
+        user.role !== 'TECHNICIAN')
+    ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -50,14 +55,34 @@ export async function GET(request: Request) {
       technicianPaymentRequestedById?: { not: null } | null
       items?: {
         some: {
-          serviceId?: { not: null }
-          productId?: { not: null }
-          rentalItemId?: { not: null }
+          serviceId?: { not: null } | null
+          productId?: { not: null } | null
+          rentalItemId?: { not: null } | null
         }
       }
+      // For TECHNICIAN role - only show service orders assigned to them
+      technicianId?: string
     }
 
     const where: OrderWhereInput = {}
+
+    // Role-based type filtering
+    // ADMIN (Admin Chat) can ONLY see sparepart and rental orders
+    // TECHNICIAN can ONLY see service orders (their own)
+    if (user.role === 'ADMIN') {
+      // Admin Chat sees sparepart and rental only - not service
+      // We need to use a different approach - filter out service orders
+      where.items = { some: { serviceId: null } }
+    } else if (user.role === 'TECHNICIAN') {
+      // Technician sees only service orders assigned to them
+      const technician = await prisma.technician.findUnique({
+        where: { userId: user.id },
+      })
+      if (technician) {
+        where.technicianId = technician.id
+      }
+      where.items = { some: { serviceId: { not: null } } }
+    }
 
     // Search filter (order number, user name, user email)
     if (search) {
@@ -101,8 +126,8 @@ export async function GET(request: Request) {
       }
     }
 
-    // Type filter (requires checking order items)
-    if (type && type !== 'all') {
+    // Type filter (only for SUPER_ADMIN - others are auto-filtered)
+    if (user.role === 'SUPER_ADMIN' && type && type !== 'all') {
       if (type === 'service') {
         where.items = { some: { serviceId: { not: null } } }
       } else if (type === 'sparepart') {
@@ -184,7 +209,37 @@ export async function GET(request: Request) {
       },
     })
 
-    // Get stats for tabs
+    // Get stats for tabs - filtered by role
+    // Build base stats filter based on role
+    interface StatsWhereInput {
+      claimedById?: string | null
+      technicianId?: string
+      items?: {
+        some: {
+          serviceId?: { not: null } | null
+        }
+      }
+      paymentRequestedById?: { not: null }
+      technicianPaymentRequestedById?: { not: null }
+    }
+
+    const baseStatsWhere: StatsWhereInput = {}
+
+    // Apply role-based filtering to stats
+    if (user.role === 'ADMIN') {
+      // ADMIN only counts sparepart/rental orders
+      baseStatsWhere.items = { some: { serviceId: null } }
+    } else if (user.role === 'TECHNICIAN') {
+      // TECHNICIAN only counts their service orders
+      const technician = await prisma.technician.findUnique({
+        where: { userId: user.id },
+      })
+      if (technician) {
+        baseStatsWhere.technicianId = technician.id
+      }
+      baseStatsWhere.items = { some: { serviceId: { not: null } } }
+    }
+
     const [
       totalOrders,
       myOrders,
@@ -192,9 +247,11 @@ export async function GET(request: Request) {
       pendingPaymentRequests,
       pendingTechnicianPaymentRequests,
     ] = await Promise.all([
-      prisma.order.count({}),
-      prisma.order.count({ where: { claimedById: user.id } }),
-      prisma.order.count({ where: { claimedById: null } }),
+      prisma.order.count({ where: baseStatsWhere }),
+      prisma.order.count({
+        where: { ...baseStatsWhere, claimedById: user.id },
+      }),
+      prisma.order.count({ where: { ...baseStatsWhere, claimedById: null } }),
       prisma.order.count({ where: { paymentRequestedById: { not: null } } }),
       prisma.order.count({
         where: { technicianPaymentRequestedById: { not: null } },

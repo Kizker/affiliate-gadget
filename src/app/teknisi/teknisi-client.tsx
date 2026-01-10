@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import { SearchBar } from '@/components/catalog/search-bar'
@@ -102,6 +103,9 @@ function TechnicianSkeleton({
 export default function TeknisiClientPage({
   initialData,
 }: TeknisiClientPageProps) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   // Start with initial data from server - NO LOADING STATE on first render!
   const [technicians, setTechnicians] = useState<TechnicianData[]>(
@@ -109,9 +113,19 @@ export default function TeknisiClientPage({
   )
   const [loading, setLoading] = useState(false) // Start false since we have initial data
   const [loadingMore, setLoadingMore] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedSpecialty, setSelectedSpecialty] = useState('')
-  const [sortBy, setSortBy] = useState('rating')
+  const [searchQuery, setSearchQuery] = useState(
+    searchParams.get('search') || ''
+  )
+  const [selectedSpecialty, setSelectedSpecialty] = useState(
+    searchParams.get('specialty') || ''
+  )
+  const [minRating, setMinRating] = useState(
+    searchParams.get('minRating') || ''
+  )
+  const [availability, setAvailability] = useState(
+    searchParams.get('availability') || ''
+  )
+  const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'rating')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(
     initialData.pagination.page < initialData.pagination.totalPages
@@ -120,6 +134,31 @@ export default function TeknisiClientPage({
   const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   const loaderRef = useRef<HTMLDivElement>(null)
+
+  // Sync state to URL params
+  useEffect(() => {
+    if (isInitialLoad) return
+
+    const params = new URLSearchParams()
+    if (searchQuery) params.set('search', searchQuery)
+    if (selectedSpecialty) params.set('specialty', selectedSpecialty)
+    if (minRating) params.set('minRating', minRating)
+    if (availability) params.set('availability', availability)
+    if (sortBy && sortBy !== 'rating') params.set('sortBy', sortBy)
+
+    const queryString = params.toString()
+    router.replace(`/teknisi${queryString ? `?${queryString}` : ''}`, {
+      scroll: false,
+    })
+  }, [
+    searchQuery,
+    selectedSpecialty,
+    minRating,
+    availability,
+    sortBy,
+    isInitialLoad,
+    router,
+  ])
 
   const fetchTechnicians = useCallback(
     async (pageNum: number, append: boolean = false) => {
@@ -138,13 +177,30 @@ export default function TeknisiClientPage({
 
         if (searchQuery) params.append('search', searchQuery)
         if (selectedSpecialty) params.append('specialty', selectedSpecialty)
+        if (minRating) params.append('minRating', minRating)
+        if (availability === 'available') params.append('available', 'true')
 
         const res = await fetch(`/api/technicians?${params}`)
         if (!res.ok) throw new Error('Failed to fetch')
 
         const data = await res.json()
-        const newTechnicians = data.technicians || []
+        let newTechnicians = data.technicians || []
         const totalPages = data.pagination?.totalPages || 1
+
+        // Client-side filter for rating if API doesn't support it
+        if (minRating) {
+          const minRatingNum = parseFloat(minRating)
+          newTechnicians = newTechnicians.filter(
+            (t: TechnicianData) => t.rating >= minRatingNum
+          )
+        }
+
+        // Client-side filter for availability if API doesn't support it
+        if (availability === 'available') {
+          newTechnicians = newTechnicians.filter(
+            (t: TechnicianData) => t.isAvailable
+          )
+        }
 
         if (append) {
           setTechnicians((prev) => {
@@ -167,20 +223,31 @@ export default function TeknisiClientPage({
         setLoadingMore(false)
       }
     },
-    [searchQuery, selectedSpecialty, sortBy]
+    [searchQuery, selectedSpecialty, minRating, availability, sortBy]
   )
 
-  // Only fetch on filter/search changes, not on initial load
+  // Fetch on filter/search changes, and also on initial load if URL has non-default params
   useEffect(() => {
     if (isInitialLoad) {
       setIsInitialLoad(false)
+      // If URL has non-default params, we need to refetch with those params
+      const hasNonDefaultParams =
+        searchQuery ||
+        selectedSpecialty ||
+        minRating ||
+        availability ||
+        sortBy !== 'rating'
+      if (hasNonDefaultParams) {
+        setTechnicians([])
+        fetchTechnicians(1, false)
+      }
       return
     }
     setPage(1)
     setTechnicians([])
     fetchTechnicians(1, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, selectedSpecialty, sortBy])
+  }, [searchQuery, selectedSpecialty, minRating, availability, sortBy])
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {
@@ -217,18 +284,29 @@ export default function TeknisiClientPage({
   }
 
   const handleFilterChange = (filters: Record<string, string[]>) => {
+    // Handle specialty filter
     const specialty = Object.values(filters)
       .flat()
       .find((f: string) => filterGroups[0].options.some((o) => o.value === f))
-    if (specialty) {
-      setSelectedSpecialty(specialty)
-    } else {
-      setSelectedSpecialty('')
-    }
+    setSelectedSpecialty(specialty || '')
+
+    // Handle rating filter
+    const rating = Object.values(filters)
+      .flat()
+      .find((f: string) => filterGroups[1].options.some((o) => o.value === f))
+    setMinRating(rating || '')
+
+    // Handle availability filter
+    const avail = Object.values(filters)
+      .flat()
+      .find((f: string) => filterGroups[2].options.some((o) => o.value === f))
+    setAvailability(avail || '')
   }
 
   const handleClearFilters = () => {
     setSelectedSpecialty('')
+    setMinRating('')
+    setAvailability('')
   }
 
   return (
@@ -269,6 +347,8 @@ export default function TeknisiClientPage({
           ]}
           onSearch={handleSearch}
           onSortChange={handleSort}
+          defaultSort={sortBy}
+          defaultSearch={searchQuery}
         />
 
         {/* Mobile Filter Toggle */}

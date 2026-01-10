@@ -85,6 +85,18 @@ interface AdminChatRoom {
     status: string
     total: number
     createdAt: string
+    claimedBy?: {
+      id: string
+      name: string | null
+      image: string | null
+    }
+    technician?: {
+      id: string
+      user: {
+        name: string | null
+        image: string | null
+      }
+    }
     items: Array<{
       type?: string
       quantity: number
@@ -1024,17 +1036,28 @@ export default function FloatingChatButton() {
                                   </div>
                                 )
                               } else {
-                                // Customer view: show admin avatar
-                                const adminMessage = room.messages?.find(
-                                  (m) =>
-                                    (m.sender?.role as string) === 'ADMIN' ||
-                                    (m.sender?.role as string) === 'SUPER_ADMIN'
-                                )
-                                const adminImage = adminMessage?.sender?.image
-                                return adminImage ? (
+                                // Customer view: show claimedBy admin or technician avatar
+                                const adminRoom = room as AdminChatRoom
+                                // Priority: claimedBy (admin who claimed), then technician (for service orders)
+                                const claimedByImage =
+                                  adminRoom.order?.claimedBy?.image
+                                const claimedByName =
+                                  adminRoom.order?.claimedBy?.name
+                                const technicianImage =
+                                  adminRoom.order?.technician?.user?.image
+                                const technicianName =
+                                  adminRoom.order?.technician?.user?.name
+
+                                // Use claimedBy first, then technician, then fallback
+                                const displayImage =
+                                  claimedByImage || technicianImage
+                                const displayName =
+                                  claimedByName || technicianName || 'Admin'
+
+                                return displayImage ? (
                                   <img
-                                    src={adminImage}
-                                    alt="Admin"
+                                    src={displayImage}
+                                    alt={displayName}
                                     className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-green-200"
                                   />
                                 ) : (

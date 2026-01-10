@@ -1,5 +1,7 @@
 import { db } from '@/lib/db'
 import TeknisiClientPage from './teknisi-client'
+import { Suspense } from 'react'
+import { Loader2 } from 'lucide-react'
 
 // Enable ISR - revalidate every 60 seconds for fresh data
 export const revalidate = 60
@@ -104,8 +106,36 @@ async function getInitialTechnicians() {
       }
     })
 
+    // Calculate IMDB-style weighted rating for better sorting
+    // Formula: WR = (v ÷ (v+m)) × R + (m ÷ (v+m)) × C
+    // v = number of reviews, R = average rating
+    // m = minimum reviews threshold, C = mean rating of all technicians
+    const m = 1 // Minimum reviews threshold
+    const allRatings = techniciansWithRealRatings.filter(
+      (t) => t.totalReview > 0
+    )
+    const C =
+      allRatings.length > 0
+        ? allRatings.reduce((sum, t) => sum + t.rating, 0) / allRatings.length
+        : 0
+
+    const techniciansWithWeightedRating = techniciansWithRealRatings.map(
+      (tech) => {
+        const v = tech.totalReview
+        const R = tech.rating
+        const weightedRating = v > 0 ? (v / (v + m)) * R + (m / (v + m)) * C : 0
+
+        return { ...tech, weightedRating }
+      }
+    )
+
+    // Sort by weighted rating (considers both rating AND number of reviews)
+    techniciansWithWeightedRating.sort(
+      (a, b) => b.weightedRating - a.weightedRating
+    )
+
     return {
-      technicians: techniciansWithRealRatings,
+      technicians: techniciansWithWeightedRating,
       pagination: {
         page,
         limit,
@@ -127,9 +157,21 @@ async function getInitialTechnicians() {
   }
 }
 
+function TeknisiLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+    </div>
+  )
+}
+
 export default async function TeknisiPage() {
   // Fetch data on server - this runs at build time + revalidates every 60s
   const initialData = await getInitialTechnicians()
 
-  return <TeknisiClientPage initialData={initialData} />
+  return (
+    <Suspense fallback={<TeknisiLoading />}>
+      <TeknisiClientPage initialData={initialData} />
+    </Suspense>
+  )
 }

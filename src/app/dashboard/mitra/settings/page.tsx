@@ -16,17 +16,13 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  useLoadScript,
-  Autocomplete,
-  GoogleMap,
-  Marker,
-} from '@react-google-maps/api'
+import { Autocomplete, GoogleMap, Marker } from '@react-google-maps/api'
+import GoogleMapsProvider, {
+  useGoogleMaps,
+} from '@/components/maps/google-maps-provider'
 
 type Tab = 'profile' | 'security'
 type ProfileSubTab = 'personal' | 'business'
-
-const libraries: 'places'[] = ['places']
 
 // Animation Variants
 const containerVariants = {
@@ -49,7 +45,7 @@ const itemVariants = {
   },
 }
 
-export default function MitraSettingsPage() {
+function MitraSettingsContent() {
   const { update } = useSession()
 
   const [activeTab, setActiveTab] = useState<Tab>('profile')
@@ -57,11 +53,8 @@ export default function MitraSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // Google Maps
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries,
-  })
+  // Google Maps - use from provider
+  const { isLoaded } = useGoogleMaps()
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
 
@@ -814,5 +807,13 @@ export default function MitraSettingsPage() {
         </div>
       </div>
     </motion.div>
+  )
+}
+
+export default function MitraSettingsPage() {
+  return (
+    <GoogleMapsProvider>
+      <MitraSettingsContent />
+    </GoogleMapsProvider>
   )
 }

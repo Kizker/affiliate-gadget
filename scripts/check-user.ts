@@ -2,30 +2,31 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-async function checkUser() {
-    try {
-        const user = await prisma.user.findUnique({
-            where: { email: 'teknisi1@gmail.com' },
-            include: {
-                technician: true,
-            },
-        })
+async function main() {
+  // Check teknisi@test.com account
+  const teknisi = await prisma.user.findFirst({
+    where: { email: 'teknisi@test.com' },
+    include: {
+      technician: { select: { id: true } },
+    },
+  })
 
-        if (user) {
-            console.log('User found:')
-            console.log('- Email:', user.email)
-            console.log('- Role:', user.role)
-            console.log('- Has Technician:', !!user.technician)
-            console.log('\nFull user data:')
-            console.log(JSON.stringify(user, null, 2))
-        } else {
-            console.log('User not found')
-        }
-    } catch (error) {
-        console.error('Error:', error)
-    } finally {
-        await prisma.$disconnect()
-    }
+  console.log('teknisi@test.com:')
+  console.log(`  Name: ${teknisi?.name}`)
+  console.log(`  Role: ${teknisi?.role}`)
+  console.log(`  Has Technician: ${!!teknisi?.technician}`)
+
+  // Total counts
+  const userCount = await prisma.user.count()
+  const technicianCount = await prisma.technician.count()
+  const orderCount = await prisma.order.count()
+
+  console.log(`\nTotal counts:`)
+  console.log(`  Users: ${userCount}`)
+  console.log(`  Technicians: ${technicianCount}`)
+  console.log(`  Orders: ${orderCount}`)
+
+  await prisma.$disconnect()
 }
 
-checkUser()
+main().catch(console.error)
