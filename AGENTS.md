@@ -39,8 +39,9 @@
 
 ### 3. Server Status
 
-- **URL:** [http://localhost:3002](http://localhost:3002) _(Port 3000 used by another background service)_
-- **Mode:** Development (`next dev` via pnpm daemon)
+- **Status:** Inactive / Stopped (Local dev server dimatikan)
+- **Port Tersedia:** Port 3002
+- **Mode Eksekusi Nanti:** `pnpm dev` (atau `next dev -p 3002`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
 
 ---
