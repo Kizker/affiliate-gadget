@@ -3,14 +3,14 @@ version: '3.8'
 services:
   postgres:
     image: postgis/postgis:16-3.4
-    container_name: halotekno-postgres
+    container_name: affiliate-gadget-postgres
     restart: unless-stopped
     ports:
       - '5432:5432'
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: halotekno
+      POSTGRES_DB: affiliate_gadget
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +21,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: halotekno-redis
+    container_name: affiliate-gadget-redis
     restart: unless-stopped
     ports:
       - '6379:6379'

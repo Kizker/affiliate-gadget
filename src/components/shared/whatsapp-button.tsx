@@ -10,7 +10,7 @@ interface WhatsAppButtonProps {
 
 export default function WhatsAppButton({
     phoneNumber = '6281368071901',
-    message = 'Halo HaloTekno! 👋\nSaya ingin konsultasi mengenai masalah gadget saya.\n\nMohon bantuannya, terima kasih!',
+    message = 'Halo Affiliate Gadget! 👋\nSaya ingin konsultasi mengenai masalah gadget saya.\n\nMohon bantuannya, terima kasih!',
     className = '',
     variant = 'default',
 }: WhatsAppButtonProps) {

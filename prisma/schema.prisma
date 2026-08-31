@@ -11,21 +11,28 @@ datasource db {
 model User {
   id                     String             @id @default(cuid())
   name                   String?
+  username               String?
   email                  String             @unique
   emailVerified          DateTime?
   image                  String?
   password               String?
   role                   UserRole           @default(CUSTOMER)
   phone                  String?
+  gender                 String?            // "Laki-laki" | "Perempuan" | "Lainnya"
+  birthDate              DateTime?
+  bio                    String?
   address                String?
   city                   String?
   province               String?
   postalCode             String?
   isActive               Boolean            @default(true)
   mitraStatus            MitraStatus?
+  storeId                String?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
+  store                  Store?             @relation(fields: [storeId], references: [id])
   accounts               Account[]
+  addresses              UserAddress[]
   adminChatMessages      AdminChatMessage[] @relation("AdminChatMessageSender")
   claimedAdminChats      AdminChatRoom[]    @relation("AdminChatClaims")
   adminChatRooms         AdminChatRoom[]    @relation("CustomerAdminChats")
@@ -43,13 +50,274 @@ model User {
   technicianPaymentRequestedOrders   Order[]            @relation("TechnicianPaymentRequestedOrders")
   orders                             Order[]
   reviews                Review[]
+  returnRequests         ReturnRequest[]    @relation("CustomerReturnRequests")
   sessions               Session[]
   technician             Technician?
   tickets                Ticket[]
+  hostedLiveStreams      LiveStream[]       @relation("HostLiveStreams")
+  auditLogs              AuditLog[]
 
   @@index([email])
   @@index([role])
+  @@index([storeId])
   @@map("users")
+}
+
+model UserAddress {
+  id            String   @id @default(cuid())
+  userId        String
+  recipientName String
+  phone         String
+  label         String   @default("Rumah") // "Rumah" | "Kantor"
+  fullAddress   String
+  city          String
+  province      String
+  district      String?  // Kecamatan
+  village       String?  // Desa / Kelurahan
+  postalCode    String
+  latitude      Float?
+  longitude     Float?
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_addresses")
+}
+
+model Store {
+  id             String             @id @default(cuid())
+  name           String             // e.g. "Affiliate Gadget Roxy Mas"
+  slug           String             @unique
+  companyName    String             // e.g. "PT Gadget Jaya Sentosa" (Badan Hukum)
+  taxId          String?            // NPWP Badan Usaha
+  tagline        String?
+  description    String?
+  logo           String?
+  banner         String?
+  address        String
+  city           String
+  province       String
+  postalCode     String?
+  latitude       Float?
+  longitude      Float?
+  phone          String
+  whatsapp       String?
+  email          String?
+  isOwnerStore   Boolean            @default(false) // Unlimited Ads & Internal owner store
+  commissionRate Float              @default(2.0)   // 1% - 3% platform commission
+  rating         Float              @default(5.0)
+  totalReview    Int                @default(0)
+  totalSales     Int                @default(0)
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  bankAccounts   StoreBankAccount[]
+  schedules      StoreSchedule[]
+  users          User[]
+  products       Product[]
+  orders         Order[]
+  liveStreams    LiveStream[]
+  internalAds    InternalAd[]
+  reviews        Review[]
+  returnRequests ReturnRequest[]
+
+  @@index([city])
+  @@index([isOwnerStore])
+  @@index([isActive])
+  @@map("stores")
+}
+
+model StoreBankAccount {
+  id            String   @id @default(cuid())
+  storeId       String
+  bankName      String
+  accountNumber String
+  accountName   String
+  isPrimary     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("store_bank_accounts")
+}
+
+model StoreSchedule {
+  id        String    @id @default(cuid())
+  storeId   String
+  day       DayOfWeek
+  openTime  String
+  closeTime String
+  isClosed  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("store_schedules")
+}
+
+model Product {
+  id                      String           @id @default(cuid())
+  storeId                 String?
+  name                    String
+  description             String?
+  category                String           // e.g. "Smartphone", "Tablet", "Sparepart"
+  brand                   String?          // e.g. "Apple", "Samsung", "Xiaomi"
+  model                   String?          // e.g. "iPhone 15 Pro", "Galaxy S24"
+  condition               String           @default("BARU") // BARU, LIKE_NEW, SECOND_MULUS
+  price                   Float
+  originalPrice           Float?
+  stock                   Int              @default(0)
+  weightGram              Int              @default(500)
+  images                  String[]
+  specs                   Json?            // Chipset, Display, Kamera, Baterai, dll
+  warrantyDays            Int              @default(30) // Garansi 30 Hari penuh
+  includesCharger         Boolean          @default(true) // Bonus Charger
+  includesScreenProtector Boolean          @default(true) // Bonus Antigores
+  includesCase            Boolean          @default(true) // Bonus Softcase
+  isPromoted              Boolean          @default(false) // Internal Ads Promoted Product
+  promotionPriority       Int              @default(0)
+  rating                  Float            @default(5.0)
+  totalReview             Int              @default(0)
+  isActive                Boolean          @default(true)
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  store                   Store?           @relation(fields: [storeId], references: [id])
+  variants                ProductVariant[]
+  cartItems               CartItem[]       @relation("CartItemToProduct")
+  orderItems              OrderItem[]      @relation("OrderItemToProduct")
+  reviews                 Review[]
+
+  @@index([storeId])
+  @@index([category])
+  @@index([brand])
+  @@index([isPromoted])
+  @@index([stock])
+  @@index([isActive])
+  @@index([isActive, brand])
+  @@index([isActive, storeId])
+  @@index([createdAt])
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  name      String   // e.g. "8GB / 256GB - Midnight Black"
+  ram       String?
+  storage   String?
+  color     String?
+  price     Float
+  stock     Int      @default(0)
+  sku       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model LiveStream {
+  id                 String              @id @default(cuid())
+  storeId            String?
+  hostId             String?
+  title              String
+  description        String?
+  coverImage         String?
+  streamUrl          String              // HLS URL / YouTube Live Embed / Mux Playback URL
+  status             LiveStreamStatus    @default(SCHEDULED)
+  scheduledAt        DateTime?
+  startedAt          DateTime?
+  endedAt            DateTime?
+  viewerCount        Int                 @default(0)
+  featuredProductIds String[]            @default([])
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  store              Store?              @relation(fields: [storeId], references: [id])
+  host               User?               @relation("HostLiveStreams", fields: [hostId], references: [id])
+  comments           LiveStreamComment[]
+
+  @@index([storeId])
+  @@index([status])
+  @@map("live_streams")
+}
+
+model LiveStreamComment {
+  id           String     @id @default(cuid())
+  streamId     String
+  userName     String
+  userAvatar   String?
+  message      String
+  isPinned     Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  liveStream   LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  @@index([streamId])
+  @@map("live_stream_comments")
+}
+
+model InternalAd {
+  id                 String      @id @default(cuid())
+  storeId            String?
+  productId          String?
+  title              String
+  subtitle           String?
+  bannerUrl          String
+  targetUrl          String?
+  placement          AdPlacement @default(HOMEPAGE_HERO)
+  isUnlimitedOwnerAd Boolean     @default(false)
+  startDate          DateTime    @default(now())
+  endDate            DateTime?
+  isActive           Boolean     @default(true)
+  priority           Int         @default(0)
+  clicks             Int         @default(0)
+  impressions        Int         @default(0)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  store              Store?      @relation(fields: [storeId], references: [id])
+
+  @@index([storeId])
+  @@index([placement])
+  @@index([isActive])
+  @@map("internal_ads")
+}
+
+model LcdEstimate {
+  id             String   @id @default(cuid())
+  brand          String   // e.g. "Apple", "Samsung", "Xiaomi"
+  modelName      String   // e.g. "iPhone 13 Pro Max", "Galaxy S23 Ultra"
+  qualityType    String   // e.g. "Original OLED", "Incell OEM", "Premium High Copy"
+  estimatedPrice Float
+  durationHours  Int      @default(2)
+  warrantyDays   Int      @default(30)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([brand])
+  @@map("lcd_estimates")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  ipAddress  String?
+  userAgent  String?
+  action     String   // e.g. "UPDATE_PRODUCT_PRICE", "CHANGE_ORDER_STATUS", "STORE_SETTINGS_UPDATE"
+  entityType String?  // e.g. "Product", "Order", "Store"
+  entityId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 model Account {
@@ -135,27 +403,6 @@ model Service {
   @@map("services")
 }
 
-model Product {
-  id          String      @id @default(cuid())
-  name        String
-  description String?
-  category    String
-  brand       String?
-  model       String?
-  price       Float
-  stock       Int         @default(0)
-  images      String[]
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  cartItems   CartItem[]  @relation("CartItemToProduct")
-  orderItems  OrderItem[] @relation("OrderItemToProduct")
-
-  @@index([category])
-  @@index([stock])
-  @@map("products")
-}
-
 model RentalItem {
   id                 String      @id @default(cuid())
   name               String
@@ -196,6 +443,7 @@ model CartItem {
   serviceId    String?
   productId    String?
   rentalItemId String?
+  variantId    String?
   quantity     Int          @default(1)
   rentalDays   Int?
   createdAt    DateTime     @default(now())
@@ -213,6 +461,7 @@ model Order {
   id                   String         @id @default(cuid())
   orderNumber          String         @unique
   userId               String
+  storeId              String?        // Toko/PT yang memproses transaksi
   technicianId         String?
   claimedById          String?
   claimedAt            DateTime?
@@ -223,10 +472,22 @@ model Order {
   status                          OrderStatus    @default(PENDING_PAYMENT)
   subtotal                        Float
   tax                             Float          @default(0)
+  shippingCost                    Float          @default(0)
+  insuranceFee                    Float          @default(0)    // Asuransi Wajib Pengiriman
+  isInsuranceMandatory            Boolean        @default(true)
+  commissionRate                  Float          @default(2.0)  // 1% - 3% platform commission
+  commissionAmount                Float          @default(0)    // Potongan komisi platform
+  courierCode                     String?        // "JNE", "GOJEK"
+  courierService                  String?        // "REG", "YES", "INSTANT", "SAMEDAY"
+  trackingNumber                  String?
+  bonusChargerIncluded            Boolean        @default(true) // Bonus Charger
+  bonusProtectorIncluded          Boolean        @default(true) // Bonus Antigores
+  bonusCaseIncluded               Boolean        @default(true) // Bonus Softcase
+  warrantyExpiryDate              DateTime?      // 30 hari sejak COMPLETED
   total                           Float
   notes                           String?
-  completedAt                     DateTime?      // When order was marked completed (for 7-day complaint window)
-  customerConfirmedAt             DateTime?      // When customer confirms completion (to show rating)
+  completedAt                     DateTime?      // When order was marked completed
+  customerConfirmedAt             DateTime?      // When customer confirms completion
   createdAt                       DateTime       @default(now())
   updatedAt                       DateTime       @updatedAt
   adminChatRoom                   AdminChatRoom?
@@ -234,6 +495,7 @@ model Order {
   complaints                      Complaint[]
   invoice                         Invoice?
   items                           OrderItem[]
+  store                           Store?         @relation(fields: [storeId], references: [id])
   claimedBy                       User?          @relation("ClaimedOrders", fields: [claimedById], references: [id])
   paymentRequestedBy              User?          @relation("PaymentRequestedOrders", fields: [paymentRequestedById], references: [id])
   technicianPaymentRequestedBy    User?          @relation("TechnicianPaymentRequestedOrders", fields: [technicianPaymentRequestedById], references: [id])
@@ -243,8 +505,10 @@ model Order {
   reviews                         Review[]
   tickets                         Ticket[]
   warranty                        Warranty?
+  returnRequests                  ReturnRequest[]
 
   @@index([userId])
+  @@index([storeId])
   @@index([orderNumber])
   @@index([status])
   @@index([claimedById])
@@ -260,6 +524,8 @@ model OrderItem {
   serviceId    String?
   productId    String?
   rentalItemId String?
+  variantId    String?
+  variantName  String?
   quantity     Int          @default(1)
   rentalDays   Int?
   price        Float
@@ -445,23 +711,36 @@ model MitraSchedule {
 }
 
 model Review {
-  id        String     @id @default(cuid())
-  userId    String
-  orderId   String?
-  mitraId   String?
-  type      ReviewType
-  rating    Int
-  comment   String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  mitra     Mitra?     @relation(fields: [mitraId], references: [id])
-  order     Order?     @relation(fields: [orderId], references: [id])
-  user      User       @relation(fields: [userId], references: [id])
+  id            String     @id @default(cuid())
+  userId        String
+  orderId       String?
+  productId     String?
+  storeId       String?
+  mitraId       String?
+  type          ReviewType
+  rating        Int
+  comment       String?
+  variantName   String?
+  images        String[]   @default([])
+  videos        String[]   @default([])
+  sellerReply   String?
+  sellerReplyAt DateTime?
+  helpfulCount  Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  mitra         Mitra?     @relation(fields: [mitraId], references: [id])
+  order         Order?     @relation(fields: [orderId], references: [id])
+  product       Product?   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store         Store?     @relation(fields: [storeId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([orderId])
+  @@index([productId])
+  @@index([storeId])
   @@index([mitraId])
   @@index([type, orderId])
+  @@index([type, productId])
   @@map("reviews")
 }
 
@@ -612,10 +891,32 @@ model messages {
 
 enum UserRole {
   CUSTOMER
-  TECHNICIAN
-  ADMIN
   SUPER_ADMIN
+  ADMIN
+  FINANCE_ADMIN
+  STORE_ADMIN
+  STORE_SALES
+  CONTENT_EDITOR
+  TECHNICIAN
   MITRA
+}
+
+enum LiveStreamStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+}
+
+enum AdPlacement {
+  HOMEPAGE_HERO
+  PROMOTED_LIST
+  BANNER_SPONSOR
+}
+
+enum CourierType {
+  JNE
+  GOJEK
+  PICKUP
 }
 
 enum MitraStatus {
@@ -733,4 +1034,50 @@ enum ComplaintStatus {
   IN_PROGRESS
   RESOLVED
   REJECTED
+}
+
+model ReturnRequest {
+  id                  String       @id @default(cuid())
+  orderId             String
+  userId              String
+  storeId             String?
+  type                ReturnType   @default(REFUND)
+  reason              String
+  reasonLabel         String?
+  description         String
+  images              String[]
+  videoUrl            String?
+  bankName            String?
+  bankAccountNumber   String?
+  bankAccountName     String?
+  refundAmount        Float?
+  status              ReturnStatus @default(PENDING)
+  storeResponse       String?
+  returnCourier       String?
+  returnTrackingNumber String?
+  resolvedAt          DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  order               Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user                User         @relation("CustomerReturnRequests", fields: [userId], references: [id])
+  store               Store?       @relation(fields: [storeId], references: [id])
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([storeId])
+  @@index([status])
+  @@map("return_requests")
+}
+
+enum ReturnType {
+  REFUND
+  REPLACEMENT
+}
+
+enum ReturnStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
 }

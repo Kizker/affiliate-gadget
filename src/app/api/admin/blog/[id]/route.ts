@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
+import { isAdminStaffRole } from '@/lib/dashboard-utils'
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -9,11 +11,8 @@ export async function GET(
   try {
     const session = await auth()
 
-    // Only ADMIN and SUPER_ADMIN can access
-    if (
-      !session?.user ||
-      (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
-    ) {
+    // Only staff and admin roles can access
+    if (!session?.user || !isAdminStaffRole(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -44,11 +43,8 @@ export async function PATCH(
   try {
     const session = await auth()
 
-    // Only ADMIN and SUPER_ADMIN can update articles
-    if (
-      !session?.user ||
-      (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
-    ) {
+    // Only staff and admin roles can update articles
+    if (!session?.user || !isAdminStaffRole(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

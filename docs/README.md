@@ -1,6 +1,6 @@
-# 📚 HaloTekno Documentation
+# 📚 Affiliate Gadget Documentation
 
-Folder ini berisi dokumentasi development HaloTekno platform.
+Folder ini berisi dokumentasi development Affiliate Gadget platform.
 
 ## 📁 Struktur Dokumentasi
 

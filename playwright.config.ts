@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * HaloTekno Playwright Configuration
+ * Affiliate Gadget Playwright Configuration
  * Run with: pnpm test:e2e
  */
 export default defineConfig({

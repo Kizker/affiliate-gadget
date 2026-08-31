@@ -1,4 +1,4 @@
-# 🔧 HaloTekno - Enterprise Service Ecosystem
+# 🔧 Affiliate Gadget - Enterprise Service Ecosystem
 
 > Platform digital enterprise-grade untuk layanan servis HP, sewa alat, penjualan sparepart, dan direktori mitra servis se-Indonesia.
 
@@ -22,7 +22,7 @@
 
 ## 🎯 Tentang Project
 
-**HaloTekno** adalah platform digital komprehensif yang menghubungkan customer dengan layanan servis HP profesional. Platform ini menyediakan:
+**Affiliate Gadget** adalah platform digital komprehensif yang menghubungkan customer dengan layanan servis HP profesional. Platform ini menyediakan:
 
 1. **Layanan Servis HP**
    - Konsultasi servis
@@ -37,7 +37,7 @@
 | Role                  | Deskripsi                                                 |
 | --------------------- | --------------------------------------------------------- |
 | **Customer**          | Pengguna yang booking servis, sewa alat, beli sparepart   |
-| **Super Admin**       | Owner HaloTekno, akses penuh ke semua fitur               |
+| **Super Admin**       | Owner Affiliate Gadget, akses penuh ke semua fitur               |
 | **Admin Operasional** | Teknisi internal, balas chat, update stok, kelola katalog |
 | **Mitra**             | Partner eksternal yang mempromosikan bengkelnya           |
 
@@ -151,7 +151,7 @@
       → Tampilan pembuka website dengan gambar/video full layar seperti Porsche atau GitHub. Menampilkan tagline minimalis dan CTA (tombol aksi) yang jelas.
 
 - [x] **Katalog teknisi dengan filter**
-      → Halaman daftar teknisi internal HaloTekno. Menampilkan foto, nama, pengalaman kerja, spesialisasi, rating, dan kisaran harga. Customer bisa filter berdasarkan kategori keahlian.
+      → Halaman daftar teknisi internal Affiliate Gadget. Menampilkan foto, nama, pengalaman kerja, spesialisasi, rating, dan kisaran harga. Customer bisa filter berdasarkan kategori keahlian.
 
 - [x] **Katalog sparepart**
       → Halaman seperti toko online yang menampilkan daftar sparepart HP. Ada foto produk, nama, harga, stok tersedia, dan tombol untuk menambahkan ke keranjang.
@@ -166,7 +166,7 @@
       → Halaman blog berisi artikel tips & trik seputar servis HP. Dioptimasi untuk ranking Google dengan meta tags dan structured data.
 
 - [x] **Halaman about perusahaan**
-      → Halaman profil perusahaan HaloTekno. Berisi visi misi, sejarah, tim, dan informasi kontak.
+      → Halaman profil perusahaan Affiliate Gadget. Berisi visi misi, sejarah, tim, dan informasi kontak.
 
 ---
 
@@ -415,7 +415,7 @@
 ## 📁 Struktur Folder
 
 ```
-halotekno/
+affiliate-gadget/
 ├── .husky/                    # Git hooks
 ├── prisma/
 │   ├── schema.prisma          # Database schema
@@ -477,8 +477,8 @@ halotekno/
 
 ```bash
 # Clone repository
-git clone https://github.com/[username]/halotekno.git
-cd halotekno
+git clone https://github.com/[username]/affiliate_gadget.git
+cd affiliate_gadget
 # Install dependencies
 pnpm install
 ```
@@ -524,11 +524,11 @@ pnpm dev
 ```env
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_NAME=HaloTekno
+NEXT_PUBLIC_APP_NAME=Affiliate Gadget
 # Database (Development - Neon)
 DATABASE_URL=postgresql://user:pass@host:5432/db?sslmode=require
 # Database (Local Docker)
-# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/halotekno
+# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/affiliate_gadget
 # Redis (Development - Upstash)
 REDIS_URL=redis://default:xxx@xxx.upstash.io:6379
 # Redis (Local Docker)
@@ -670,7 +670,7 @@ main (production-ready)
       → Daftar alat yang bisa disewa. Tampilkan nama, foto, harga per hari, deskripsi. Tombol untuk checkout langsung.
 
 - [ ] **Halaman about**
-      → Profil perusahaan HaloTekno. Visi misi, sejarah, tim inti, alamat kantor, dan kontak.
+      → Profil perusahaan Affiliate Gadget. Visi misi, sejarah, tim inti, alamat kantor, dan kontak.
 
 - [ ] **Blog/artikel**
       → Halaman list artikel dengan thumbnail, judul, tanggal, excerpt. Klik untuk baca artikel lengkap. SEO-friendly dengan meta tags.
@@ -811,9 +811,9 @@ main (production-ready)
 
 ## 📄 Lisensi
 
-## Proyek ini adalah milik penuh PT. HaloTekno. Seluruh source code, database schema, dan aset digital menjadi hak kekayaan intelektual perusahaan.
+## Proyek ini adalah milik penuh PT. Affiliate Gadget. Seluruh source code, database schema, dan aset digital menjadi hak kekayaan intelektual perusahaan.
 
 <p align="center">
-  <strong>HaloTekno</strong> - Enterprise Service Ecosystem<br>
+  <strong>Affiliate Gadget</strong> - Enterprise Service Ecosystem<br>
   Built with ❤️ by Satu Harmony Agency
 </p>

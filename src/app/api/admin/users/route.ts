@@ -8,10 +8,10 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth()
 
-    // Only ADMIN and SUPER_ADMIN can access
+    // Only ADMIN, SUPER_ADMIN, and STORE_ADMIN can access
     if (
       !session?.user ||
-      (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
+      !['ADMIN', 'SUPER_ADMIN', 'STORE_ADMIN'].includes(session.user.role)
     ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -118,10 +118,10 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth()
 
-    // Only ADMIN and SUPER_ADMIN can create users
+    // Only ADMIN, SUPER_ADMIN, and STORE_ADMIN can create users
     if (
       !session?.user ||
-      (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
+      !['ADMIN', 'SUPER_ADMIN', 'STORE_ADMIN'].includes(session.user.role)
     ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

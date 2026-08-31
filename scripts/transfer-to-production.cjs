@@ -5,7 +5,7 @@ const { PrismaClient } = require('@prisma/client')
 const localPrisma = new PrismaClient({
     datasources: {
         db: {
-            url: 'postgresql://postgres:postgres@localhost:5432/halotekno'
+            url: 'postgresql://postgres:postgres@localhost:5432/affiliate_gadget'
         }
     }
 })

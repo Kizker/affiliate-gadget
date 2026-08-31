@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * HaloTekno - Authentication Tests
+ * Affiliate Gadget - Authentication Tests
  * Tests login functionality and protected routes
  */
 

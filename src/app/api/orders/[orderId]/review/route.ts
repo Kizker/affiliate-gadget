@@ -14,7 +14,7 @@ export async function POST(
 
     const { orderId } = await params
     const body = await request.json()
-    const { rating, comment } = body
+    const { rating, comment, images = [], videos = [] } = body
 
     // Validate rating
     if (!rating || rating < 1 || rating > 5) {
@@ -27,7 +27,14 @@ export async function POST(
     // Get order and verify
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { technician: true },
+      include: {
+        technician: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
     })
 
     if (!order) {
@@ -47,6 +54,14 @@ export async function POST(
       )
     }
 
+    const firstProductItem = order.items.find((i) => i.type === 'PRODUCT' && i.productId)
+    const reviewType = firstProductItem ? 'PRODUCT' : 'TECHNICIAN'
+    const productId = firstProductItem?.productId || null
+    const variantName = firstProductItem?.variantName || null
+
+    const sanitizedImages = Array.isArray(images) ? images.filter((img) => typeof img === 'string') : []
+    const sanitizedVideos = Array.isArray(videos) ? videos.filter((vid) => typeof vid === 'string') : []
+
     // Check if review already exists
     const existingReview = await prisma.review.findFirst({
       where: {
@@ -61,8 +76,13 @@ export async function POST(
       review = await prisma.review.update({
         where: { id: existingReview.id },
         data: {
-          rating,
-          comment,
+          rating: Number(rating),
+          comment: comment?.trim() || null,
+          images: sanitizedImages,
+          videos: sanitizedVideos,
+          productId: productId || existingReview.productId,
+          storeId: order.storeId || existingReview.storeId,
+          variantName: variantName || existingReview.variantName,
         },
       })
     } else {
@@ -71,14 +91,37 @@ export async function POST(
         data: {
           userId: session.user.id,
           orderId: orderId,
-          type: 'TECHNICIAN',
-          rating,
-          comment,
+          storeId: order.storeId,
+          productId: productId,
+          variantName: variantName,
+          type: reviewType,
+          rating: Number(rating),
+          comment: comment?.trim() || null,
+          images: sanitizedImages,
+          videos: sanitizedVideos,
         },
       })
     }
 
-    return NextResponse.json({ review })
+    // If product review, recalculate rating & totalReview
+    if (productId) {
+      const allProductReviews = await prisma.review.findMany({
+        where: { productId, type: 'PRODUCT' },
+        select: { rating: true },
+      })
+      const total = allProductReviews.length
+      const avg = total > 0 ? allProductReviews.reduce((acc, r) => acc + r.rating, 0) / total : 5.0
+
+      await prisma.product.update({
+        where: { id: productId },
+        data: {
+          rating: Number(avg.toFixed(1)),
+          totalReview: total,
+        },
+      })
+    }
+
+    return NextResponse.json({ review, success: true })
   } catch (error) {
     console.error('Error creating review:', error)
     return NextResponse.json(

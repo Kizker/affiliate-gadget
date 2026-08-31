@@ -4,128 +4,109 @@ import { NextResponse } from 'next/server'
 
 const { auth } = NextAuth(authConfig)
 
+const ADMIN_STAFF_ROLES = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'STORE_ADMIN',
+  'STORE_SALES',
+  'FINANCE_ADMIN',
+  'CONTENT_EDITOR',
+]
+
+function getCmsDashboardUrl(role?: string | null, mitraStatus?: string | null): string {
+  if (role && ADMIN_STAFF_ROLES.includes(role)) return '/dashboard/admin'
+  if (role === 'TECHNICIAN') return '/dashboard/teknisi'
+  if (role === 'MITRA') {
+    return mitraStatus === 'PENDING' ? '/dashboard/mitra/pending' : '/dashboard/mitra'
+  }
+  return '/'
+}
+
 export default auth((req) => {
   const isLoggedIn = !!req.auth
   const { pathname } = req.nextUrl
 
   // Route categories
-  // const isDashboardRoute = pathname.startsWith('/dashboard')
   const isAdminRoute = pathname.startsWith('/dashboard/admin')
   const isMitraRoute = pathname.startsWith('/dashboard/mitra')
-  // const isCustomerRoute = pathname.startsWith('/dashboard/customer')
+  const isTechnicianRoute = pathname.startsWith('/dashboard/teknisi')
+  const isDashboardGenericRoute = pathname === '/dashboard' || pathname === '/dashboard/customer'
+  const isAuthRoute = pathname === '/login' || pathname === '/register'
+  const isCartOrCheckout = pathname.startsWith('/cart') || pathname.startsWith('/checkout')
+  const isRootPublicRoute = pathname === '/'
 
-  // Customer-only routes that require auth
+  // Protected routes that require authentication
   const requiresAuth =
-    pathname.startsWith('/cart') || pathname.startsWith('/checkout')
+    isAdminRoute ||
+    isMitraRoute ||
+    isTechnicianRoute ||
+    pathname.startsWith('/checkout')
 
-  // Auth routes
-  // const isAuthRoute =
-  //   pathname.startsWith('/login') || pathname.startsWith('/register')
+  // 1. Unauthenticated users accessing protected routes
+  if (requiresAuth && !isLoggedIn) {
+    const redirectUrl = new URL('/login', req.url)
+    if (pathname.startsWith('/checkout')) {
+      redirectUrl.searchParams.set('redirect', pathname)
+    }
+    return NextResponse.redirect(redirectUrl)
+  }
 
-  // Redirect to login if accessing protected route without auth
-  if ((isAdminRoute || isMitraRoute || requiresAuth) && !isLoggedIn) {
+  // 2. Unauthenticated user accessing generic dashboard
+  if (isDashboardGenericRoute && !isLoggedIn) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // Redirect /dashboard to /dashboard/customer for guests
-  if (pathname === '/dashboard' && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/dashboard/customer', req.url))
-  }
-
-  // Redirect to dashboard if accessing auth routes while logged in
-  // Disabled: Let login page handle redirect to detect technician users
-  // if (isAuthRoute && isLoggedIn) {
-  //   const userRole = req.auth?.user?.role
-  //   if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-  //     return NextResponse.redirect(new URL('/dashboard/admin', req.url))
-  //   } else if (userRole === 'MITRA') {
-  //     return NextResponse.redirect(new URL('/dashboard/mitra', req.url))
-  //   } else {
-  //     return NextResponse.redirect(new URL('/dashboard/customer', req.url))
-  //   }
-  // }
-
-  // Role-based access control
+  // 3. Authenticated Role-Based Access Control & Automatic Redirection
   if (isLoggedIn && req.auth?.user) {
     const userRole = req.auth.user.role
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mitraStatus = (req.auth.user as any).mitraStatus
+    const isAdminStaff = !!(userRole && ADMIN_STAFF_ROLES.includes(userRole))
+    const isTechnician = userRole === 'TECHNICIAN'
+    const isMitra = userRole === 'MITRA'
+    const isStaffOrPartner = isAdminStaff || isTechnician || isMitra
 
-    // Teknisi-only routes
-    const isTechniciansRoute = pathname.startsWith('/dashboard/teknisi')
+    // A. Staff / Admin / Sales Toko / Teknisi / Mitra -> otomatis diarahkan langsung ke panel CMS
+    // Tidak diperbolehkan berada di view publik root (/), login, register, cart, atau checkout
+    if (isStaffOrPartner) {
+      const destinationCms = getCmsDashboardUrl(userRole, mitraStatus)
 
-    // Redirect pending mitra to pending page
-    if (userRole === 'MITRA' && mitraStatus === 'PENDING') {
-      if (!pathname.startsWith('/dashboard/mitra/pending')) {
-        return NextResponse.redirect(
-          new URL('/dashboard/mitra/pending', req.url)
-        )
+      // Redirect dari halaman publik root (/), login, register, cart, checkout, atau generic dashboard
+      if (isRootPublicRoute || isAuthRoute || isCartOrCheckout || isDashboardGenericRoute) {
+        return NextResponse.redirect(new URL(destinationCms, req.url))
       }
-    }
 
-    // Redirect approved mitra away from pending page
-    if (
-      userRole === 'MITRA' &&
-      mitraStatus === 'APPROVED' &&
-      pathname.startsWith('/dashboard/mitra/pending')
-    ) {
-      return NextResponse.redirect(new URL('/dashboard/customer', req.url)) // For now, redirect to customer
-    }
-
-    // Technician-only routes - redirect non-technicians away
-    if (isTechniciansRoute && userRole !== 'TECHNICIAN') {
-      if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-        return NextResponse.redirect(new URL('/dashboard/admin', req.url))
-      } else if (userRole === 'MITRA') {
-        return NextResponse.redirect(new URL('/dashboard/mitra', req.url))
+      // Proteksi rute Admin CMS (/dashboard/admin)
+      if (isAdminRoute && !isAdminStaff) {
+        return NextResponse.redirect(new URL(destinationCms, req.url))
       }
-      return NextResponse.redirect(new URL('/dashboard/customer', req.url))
-    }
 
-    // Note: We don't redirect TECHNICIAN from /dashboard/customer because
-    // login page handles redirect. Middleware redirect would cause a loop.
-    // Technicians CAN access customer dashboard if they navigate there directly.
-
-    // Admin-only routes
-    if (isAdminRoute && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-      if (userRole === 'TECHNICIAN') {
-        return NextResponse.redirect(new URL('/dashboard/teknisi', req.url))
+      // Proteksi rute Teknisi (/dashboard/teknisi)
+      if (isTechnicianRoute && !isTechnician) {
+        return NextResponse.redirect(new URL(destinationCms, req.url))
       }
-      return NextResponse.redirect(new URL('/dashboard/customer', req.url))
-    }
 
-    // Mitra-only routes (excluding pending page)
-    if (
-      isMitraRoute &&
-      !pathname.startsWith('/dashboard/mitra/pending') &&
-      userRole !== 'MITRA'
-    ) {
-      if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-        return NextResponse.redirect(new URL('/dashboard/admin', req.url))
+      // Proteksi rute Mitra (/dashboard/mitra)
+      if (isMitraRoute) {
+        if (!isMitra) {
+          return NextResponse.redirect(new URL(destinationCms, req.url))
+        }
+        if (mitraStatus === 'PENDING' && !pathname.startsWith('/dashboard/mitra/pending')) {
+          return NextResponse.redirect(new URL('/dashboard/mitra/pending', req.url))
+        }
+        if (mitraStatus === 'APPROVED' && pathname.startsWith('/dashboard/mitra/pending')) {
+          return NextResponse.redirect(new URL('/dashboard/mitra', req.url))
+        }
       }
-      if (userRole === 'TECHNICIAN') {
-        return NextResponse.redirect(new URL('/dashboard/teknisi', req.url))
+    } else {
+      // B. Customer Role
+      // Jika mengakses area dashboard admin/mitra/teknisi/dashboard umum -> kembalikan ke beranda publik
+      if (isAdminRoute || isMitraRoute || isTechnicianRoute || isDashboardGenericRoute) {
+        return NextResponse.redirect(new URL('/', req.url))
       }
-      return NextResponse.redirect(new URL('/dashboard/customer', req.url))
-    }
-
-    // Admin dan Technician tidak boleh akses cart/checkout
-    const isCartOrCheckout =
-      pathname.startsWith('/cart') || pathname.startsWith('/checkout')
-    if (
-      isCartOrCheckout &&
-      (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN')
-    ) {
-      return NextResponse.redirect(new URL('/dashboard/admin', req.url))
-    }
-
-    if (isCartOrCheckout && userRole === 'TECHNICIAN') {
-      return NextResponse.redirect(new URL('/dashboard/teknisi', req.url))
-    }
-
-    // Mitra tidak boleh akses cart/checkout
-    if (isCartOrCheckout && userRole === 'MITRA') {
-      return NextResponse.redirect(new URL('/dashboard/mitra/pending', req.url))
+      if (isAuthRoute) {
+        return NextResponse.redirect(new URL('/', req.url))
+      }
     }
   }
 
@@ -143,7 +124,7 @@ export default auth((req) => {
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://maps.google.com https://widget.cloudinary.com https://upload-widget.cloudinary.com https://cdn.tiny.cloud; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://widget.cloudinary.com https://cdn.tiny.cloud; img-src 'self' blob: data: https://utfs.io https://lh3.googleusercontent.com https://images.unsplash.com https://res.cloudinary.com https://ui-avatars.com https://maps.gstatic.com https://maps.googleapis.com https://sp.tinymce.com; media-src 'self' https://videos.pexels.com; font-src 'self' https://fonts.gstatic.com https://cdn.tiny.cloud; connect-src 'self' https://utfs.io https://api.cloudinary.com https://res.cloudinary.com https://maps.googleapis.com https://cdn.tiny.cloud https://sp.tinymce.com; frame-ancestors 'none';"
+    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://maps.google.com https://widget.cloudinary.com https://upload-widget.cloudinary.com https://cdn.tiny.cloud; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://widget.cloudinary.com https://cdn.tiny.cloud; img-src 'self' blob: data: https://utfs.io https://lh3.googleusercontent.com https://images.unsplash.com https://res.cloudinary.com https://ui-avatars.com https://maps.gstatic.com https://maps.googleapis.com https://sp.tinymce.com; media-src 'self' blob: data: https://videos.pexels.com https://commondatastorage.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.tiny.cloud; connect-src 'self' https://utfs.io https://api.cloudinary.com https://res.cloudinary.com https://maps.googleapis.com https://cdn.tiny.cloud https://sp.tinymce.com; frame-ancestors 'none';"
   )
   response.headers.set(
     'Permissions-Policy',
@@ -154,5 +135,16 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, sitemap.xml, robots.txt, site.webmanifest
+     * - Static asset files (.svg, .png, .jpg, .jpeg, .webp, .avif, .ico, .woff2, .mp4, etc.)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|site.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|bmp|woff|woff2|ttf|eot|mp4|webm|pdf)$).*)',
+  ],
 }
+

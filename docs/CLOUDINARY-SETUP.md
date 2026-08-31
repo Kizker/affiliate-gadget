@@ -13,7 +13,7 @@ Pastikan `.env.local` Anda sudah berisi:
 ```env
 # Cloudinary
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=dzwuekdyv
-NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=halotekno-uploads
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=affiliate-gadget-uploads
 CLOUDINARY_API_KEY=196366734638336
 CLOUDINARY_API_SECRET=06GjvR0H-TaN4iC30Rv-pt1Rrik
 ```
@@ -44,7 +44,7 @@ Komponen untuk upload single image (banner).
   value={bannerUrl}
   onChange={(url) => setBannerUrl(url)}
   onRemove={() => setBannerUrl('')}
-  folder="halotekno/banners"
+  folder="affiliate-gadget/banners"
 />
 ```
 
@@ -69,7 +69,7 @@ Komponen untuk upload multiple images (gallery).
   value={galleryUrls}
   onChange={(urls) => setGalleryUrls(urls)}
   maxImages={8}
-  folder="halotekno/gallery"
+  folder="affiliate-gadget/gallery"
 />
 ```
 
@@ -125,10 +125,10 @@ src/
 ### **Cloudinary Configuration:**
 
 - **Cloud Name:** `dzwuekdyv`
-- **Upload Preset:** `halotekno-uploads` (unsigned)
+- **Upload Preset:** `affiliate-gadget-uploads` (unsigned)
 - **Folders:**
-  - Banners: `halotekno/banners`
-  - Gallery: `halotekno/gallery`
+  - Banners: `affiliate-gadget/banners`
+  - Gallery: `affiliate-gadget/gallery`
 
 ### **Image Optimization:**
 

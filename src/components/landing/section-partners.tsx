@@ -27,11 +27,11 @@ export default function SectionPartners() {
   }, [])
 
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-cyan-50/60 via-white to-blue-50/50">
+    <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50/40">
       {/* Background Image */}
       <div className="absolute inset-0">
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-5"
           style={{
             backgroundImage:
               'url(https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1920&q=80)',
@@ -41,9 +41,9 @@ export default function SectionPartners() {
 
       {/* Animated Background Blobs */}
       <div className="absolute inset-0">
-        <div className="absolute -right-10 top-10 h-48 w-48 animate-pulse rounded-full bg-blue-400/20 blur-3xl sm:h-96 sm:w-96" />
+        <div className="absolute -right-10 top-10 h-48 w-48 animate-pulse rounded-full bg-blue-400/10 blur-3xl sm:h-96 sm:w-96" />
         <div
-          className="absolute -left-10 bottom-10 h-40 w-40 animate-pulse rounded-full bg-cyan-400/20 blur-3xl sm:h-80 sm:w-80"
+          className="absolute -left-10 bottom-10 h-40 w-40 animate-pulse rounded-full bg-orange-400/10 blur-3xl sm:h-80 sm:w-80"
           style={{ animationDelay: '1s' }}
         />
       </div>
@@ -59,13 +59,13 @@ export default function SectionPartners() {
             className="text-center"
           >
             {/* Content - Top */}
-            <span className="mb-3 inline-block rounded-full bg-cyan-100 px-4 py-1.5 text-xs font-medium text-cyan-700">
+            <span className="mb-3 inline-block rounded-full bg-blue-100 px-4 py-1.5 text-xs font-medium text-blue-700">
               🏪 Mitra Terpercaya
             </span>
             <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900">
               Temukan
               <br />
-              <span className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
                 Service Center
               </span>
             </h2>
@@ -76,15 +76,17 @@ export default function SectionPartners() {
 
             {/* Trust Badges - Compact */}
             <div className="mb-6 flex justify-center gap-2">
-              <div className="flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-md">
+              <div className="flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-sm border border-gray-100">
                 <BadgeCheck className="h-4 w-4 text-green-500" />
                 <span className="text-xs font-medium text-gray-700">
-                  Verified
+                  Terverifikasi
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-md">
+              <div className="flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-sm border border-gray-100">
                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                <span className="text-xs font-medium text-gray-700">4.5+</span>
+                <span className="text-xs font-medium text-gray-700">
+                  Rating 4.5+
+                </span>
               </div>
             </div>
 
@@ -104,8 +106,8 @@ export default function SectionPartners() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <div className="absolute bottom-3 left-4 right-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className="line-clamp-1 text-base font-bold text-white">
+                      <div className="flex items-center gap-1.5 text-base font-bold text-white">
+                        <span className="line-clamp-1">
                           {partners[0].businessName}
                         </span>
                         <BadgeCheck className="h-4 w-4 flex-shrink-0 text-blue-300" />
@@ -113,7 +115,7 @@ export default function SectionPartners() {
                       <div className="flex items-center gap-2 text-sm text-white/90">
                         <div className="flex items-center gap-1">
                           <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                          {partners[0].rating.toFixed(1)}
+                          <span>{partners[0].rating.toFixed(1)}</span>
                         </div>
                         <span>•</span>
                         <div className="flex items-center gap-1">
@@ -129,7 +131,7 @@ export default function SectionPartners() {
 
             <Link
               href="/rekomendasi"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-105"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-orange-500/25 transition-all hover:scale-105 hover:from-orange-600 hover:to-orange-700"
             >
               Lihat Mitra
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -195,13 +197,13 @@ export default function SectionPartners() {
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <span className="mb-4 inline-block rounded-full bg-cyan-100 px-4 py-2 text-sm font-medium text-cyan-700">
+            <span className="mb-4 inline-block rounded-full bg-blue-100 px-4 py-2 text-sm font-medium text-blue-700">
               🏪 Mitra Terpercaya
             </span>
             <h2 className="mb-6 text-4xl font-bold leading-tight text-gray-900 xl:text-6xl">
               Temukan
               <br />
-              <span className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
                 Service Center
               </span>
             </h2>
@@ -211,13 +213,13 @@ export default function SectionPartners() {
             </p>
 
             <div className="mb-8 flex flex-wrap gap-3">
-              <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-md">
+              <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm border border-gray-100">
                 <BadgeCheck className="h-5 w-5 text-green-500" />
                 <span className="text-sm font-medium text-gray-700">
                   Terverifikasi
                 </span>
               </div>
-              <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-md">
+              <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm border border-gray-100">
                 <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
                 <span className="text-sm font-medium text-gray-700">
                   Rating 4.5+
@@ -227,7 +229,7 @@ export default function SectionPartners() {
 
             <Link
               href="/rekomendasi"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-4 font-semibold text-white shadow-xl transition-all hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/30"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-4 font-bold text-white shadow-xl shadow-orange-500/25 transition-all hover:scale-105 hover:from-orange-600 hover:to-orange-700 hover:shadow-2xl hover:shadow-orange-500/40"
             >
               Lihat Semua Mitra
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />

@@ -145,7 +145,7 @@ export default function BlogDetailClient({
                 <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/20 bg-gradient-to-br from-blue-400 to-cyan-300 font-bold text-slate-900">
                   A
                 </div>
-                <span className="font-medium text-white">Admin HaloTekno</span>
+                <span className="font-medium text-white">Admin Affiliate Gadget</span>
               </div>
               <div className="hidden h-1.5 w-1.5 rounded-full bg-slate-500 md:block"></div>
               <div className="flex items-center gap-2">

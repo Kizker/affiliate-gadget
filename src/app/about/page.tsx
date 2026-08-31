@@ -382,7 +382,7 @@ function CTASection() {
 
         <div className="flex flex-wrap justify-center gap-4 sm:gap-8">
           <Link
-            href="/dashboard/customer"
+            href="/gadget"
             className="group relative h-16 w-56 overflow-hidden rounded-full bg-slate-900 text-white transition-all hover:w-60 hover:shadow-2xl sm:h-20 sm:w-64 sm:hover:w-72"
           >
             <div className="absolute inset-0 flex items-center justify-center text-lg font-bold transition-transform group-hover:-translate-y-full sm:text-xl">
@@ -397,7 +397,7 @@ function CTASection() {
 
         <footer className="absolute bottom-8 left-0 w-full text-center sm:bottom-12">
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300 sm:text-xs">
-            &copy; 2025 HaloTekno Inc.
+            &copy; 2025 Affiliate Gadget Inc.
           </p>
         </footer>
       </div>

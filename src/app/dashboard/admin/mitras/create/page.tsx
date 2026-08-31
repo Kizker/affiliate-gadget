@@ -249,15 +249,15 @@ export default function CreateMitraPage() {
 
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || 'Gagal membuat mitra')
+        throw new Error(error.error || 'Gagal menambahkan toko')
       }
 
-      toast.success('Mitra berhasil dibuat!')
+      toast.success('Cabang toko berhasil ditambahkan!')
       router.push('/dashboard/admin/mitras')
     } catch (error) {
       console.error('Error:', error)
       toast.error(
-        error instanceof Error ? error.message : 'Gagal membuat mitra'
+        error instanceof Error ? error.message : 'Gagal menambahkan cabang toko'
       )
     } finally {
       setLoading(false)
@@ -265,83 +265,85 @@ export default function CreateMitraPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Abstract Background */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute left-[-10%] top-[-10%] h-[500px] w-[500px] rounded-full bg-green-400/20 blur-[100px]" />
-        <div className="absolute right-[-10%] top-[10%] h-[600px] w-[600px] rounded-full bg-emerald-400/20 blur-[100px]" />
-        <div className="absolute bottom-[-10%] left-[20%] h-[500px] w-[500px] rounded-full bg-teal-300/20 blur-[100px]" />
-      </div>
+    <div className="space-y-6 max-w-6xl mx-auto pb-16 pt-1" suppressHydrationWarning>
 
-      <div className="relative z-10 mx-auto max-w-5xl px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <Link
-              href="/dashboard/admin/mitras"
-              className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Kembali ke Mitra
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-              Tambah Mitra Baru
-            </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Buat akun mitra dan profil bisnis sekaligus
-            </p>
+      {/* 1. Header Hero Section */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 rounded-3xl bg-white p-6 sm:p-8 shadow-xs border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[11px] font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300">
+            <Store className="h-3.5 w-3.5 text-orange-500" />
+            <span>Pendaftaran Toko Baru</span>
           </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
+            Tambah Toko Baru
+          </h1>
+
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl">
+            Buat akun admin, daftarkan jam operasional, dan lokasi koordinat Maps toko resmi.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/admin/mitras"
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 whitespace-nowrap"
+          >
+            <span>← Kembali ke Daftar Toko</span>
+          </Link>
+
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 font-medium text-white shadow-lg shadow-green-600/20 transition-all hover:shadow-xl disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-6 py-2.5 text-xs font-semibold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95 disabled:opacity-50 whitespace-nowrap"
           >
             {loading ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Menyimpan...
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Menyimpan...</span>
               </>
             ) : (
               <>
-                <Save className="h-5 w-5" />
-                Buat Mitra
+                <Save className="h-4 w-4" />
+                <span>Simpan Toko</span>
               </>
             )}
           </button>
         </div>
+      </div>
 
-        {/* Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
-          {[
-            { id: 'user', label: 'Data Pemilik', icon: UserPlus },
-            { id: 'info', label: 'Informasi Dasar', icon: Store },
-            { id: 'services', label: 'Layanan', icon: Edit3 },
-            { id: 'gallery', label: 'Galeri', icon: ImageIcon },
-            { id: 'contact', label: 'Kontak', icon: Phone },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
-                activeTab === tab.id
-                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg'
-                  : 'bg-white text-gray-600 shadow-sm hover:bg-gray-50'
-              }`}
-            >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      {/* 2. Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto rounded-3xl bg-white p-3 shadow-xs border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800 no-scrollbar">
+        {[
+          { id: 'user', label: 'Data Pemilik & Admin', icon: UserPlus },
+          { id: 'info', label: 'Informasi Toko', icon: Store },
+          { id: 'services', label: 'Layanan Servis', icon: Edit3 },
+          { id: 'gallery', label: 'Foto Toko', icon: ImageIcon },
+          { id: 'contact', label: 'Kontak & Rekening', icon: Phone },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
+              activeTab === tab.id
+                ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'
+            }`}
+          >
+            <tab.icon className="h-3.5 w-3.5" />
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
 
-        {/* Content Card */}
-        <div className="rounded-[2rem] border border-white/60 bg-white/60 p-6 shadow-xl backdrop-blur-xl">
+      {/* 3. Content Card */}
+      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           {/* User Tab */}
           {activeTab === 'user' && (
             <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">Data Pemilik</h3>
+              <h3 className="text-xl font-bold text-gray-900">Data Akun Admin Toko</h3>
               <p className="text-sm text-gray-500">
-                Masukkan data pemilik mitra yang akan didaftarkan
+                Masukkan data akun pengelola cabang toko yang akan didaftarkan
               </p>
 
               {/* New User Form */}
@@ -357,7 +359,7 @@ export default function CreateMitraPage() {
                       setNewUser({ ...newUser, name: e.target.value })
                     }
                     className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Nama pemilik"
+                    placeholder="Nama penanggung jawab"
                   />
                 </div>
                 <div>
@@ -428,7 +430,7 @@ export default function CreateMitraPage() {
                   htmlFor="isApproved"
                   className="text-sm font-medium text-gray-700"
                 >
-                  Approve mitra langsung (skip pending status)
+                  Verifikasi dan aktifkan cabang toko langsung (Status Aktif)
                 </label>
               </div>
             </div>
@@ -447,7 +449,7 @@ export default function CreateMitraPage() {
                 value={profile.banner}
                 onChange={(url) => setProfile({ ...profile, banner: url })}
                 onRemove={() => setProfile({ ...profile, banner: '' })}
-                folder="halotekno/banners"
+                folder="affiliate-gadget/banners"
               />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -719,7 +721,7 @@ export default function CreateMitraPage() {
                 value={profile.gallery}
                 onChange={(urls) => setProfile({ ...profile, gallery: urls })}
                 maxImages={8}
-                folder="halotekno/gallery"
+                folder="affiliate-gadget/gallery"
               />
             </div>
           )}
@@ -818,6 +820,6 @@ export default function CreateMitraPage() {
           )}
         </div>
       </div>
-    </div>
-  )
+    )
 }
+

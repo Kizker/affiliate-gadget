@@ -216,3 +216,93 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const {
+      name,
+      description,
+      category,
+      brand,
+      model,
+      condition = 'BARU',
+      price,
+      originalPrice,
+      stock = 1,
+      weightGram = 500,
+      images = [],
+      specs = {},
+      storeId,
+      warrantyDays = 30,
+      includesCharger = true,
+      includesScreenProtector = true,
+      includesCase = true,
+      variants = [],
+    } = body
+
+    if (!name || !price) {
+      return NextResponse.json(
+        { error: 'Nama produk dan harga wajib diisi' },
+        { status: 400 }
+      )
+    }
+
+    // Default to the first store if storeId not provided
+    let finalStoreId = storeId
+    if (!finalStoreId) {
+      const firstStore = await prisma.store.findFirst()
+      finalStoreId = firstStore?.id
+    }
+
+    const newProduct = await prisma.product.create({
+      data: {
+        name,
+        description,
+        category: category || 'Smartphone',
+        brand,
+        model,
+        condition,
+        price: parseFloat(String(price)),
+        originalPrice: originalPrice ? parseFloat(String(originalPrice)) : null,
+        stock: parseInt(String(stock)) || 0,
+        weightGram: parseInt(String(weightGram)) || 500,
+        images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80'],
+        specs: specs || {},
+        storeId: finalStoreId,
+        warrantyDays: parseInt(String(warrantyDays)) || 30,
+        includesCharger: Boolean(includesCharger),
+        includesScreenProtector: Boolean(includesScreenProtector),
+        includesCase: Boolean(includesCase),
+        variants: {
+          create: (variants || []).map((v: any) => ({
+            name: v.name,
+            ram: v.ram,
+            storage: v.storage,
+            color: v.color,
+            price: parseFloat(String(v.price || price)),
+            stock: parseInt(String(v.stock || stock)) || 0,
+            sku: v.sku,
+          })),
+        },
+      },
+      include: {
+        variants: true,
+        store: true,
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: newProduct,
+      message: 'Produk berhasil ditambahkan',
+    })
+  } catch (error) {
+    console.error('Error creating product:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Gagal menambahkan produk' },
+      { status: 500 }
+    )
+  }
+}
+

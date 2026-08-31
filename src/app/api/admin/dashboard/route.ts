@@ -2,15 +2,14 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
+import { isAdminStaffRole } from '@/lib/dashboard-utils'
+
 export async function GET() {
   try {
     const session = await auth()
 
-    // Only ADMIN and SUPER_ADMIN can access
-    if (
-      !session?.user ||
-      (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
-    ) {
+    // Only staff and admin roles can access
+    if (!session?.user || !isAdminStaffRole(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

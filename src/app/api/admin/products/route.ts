@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
+import { isAdminStaffRole } from '@/lib/dashboard-utils'
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()
 
-    // Only ADMIN and SUPER_ADMIN can access
-    if (
-      !session?.user ||
-      (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
-    ) {
+    // Only staff and admin roles can access
+    if (!session?.user || !isAdminStaffRole(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -51,6 +50,11 @@ export async function GET(request: NextRequest) {
       where.stock = { gt: 0, lte: 5 }
     } else if (stockStatus === 'in_stock') {
       where.stock = { gt: 5 }
+    }
+
+    // Store Admin (Akun Toko) strictly manages products for their own store
+    if (session.user.role === 'STORE_ADMIN' && session.user.storeId) {
+      where.storeId = session.user.storeId
     }
 
     // Get products with pagination
@@ -110,11 +114,8 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth()
 
-    // Only ADMIN and SUPER_ADMIN can create products
-    if (
-      !session?.user ||
-      (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
-    ) {
+    // Only staff and admin roles can create products
+    if (!session?.user || !isAdminStaffRole(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -147,6 +148,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create product
+    const storeIdToAssign = body.storeId || (session.user.role === 'STORE_ADMIN' ? session.user.storeId : undefined)
+
     const product = await prisma.product.create({
       data: {
         name,
@@ -158,6 +161,7 @@ export async function POST(request: NextRequest) {
         stock: parseInt(stock),
         images: images || [],
         isActive: isActive !== undefined ? isActive : true,
+        ...(storeIdToAssign ? { storeId: storeIdToAssign } : {}),
       },
     })
 

@@ -12,7 +12,7 @@ export const dynamic = 'force-static'
 export const revalidate = 300 // 5 minutes
 
 export const metadata = {
-  title: 'Blog - HaloTekno',
+  title: 'Blog - Affiliate Gadget',
   description:
     'Tips, tutorial, dan berita terbaru seputar teknologi, gadget, dan servis HP',
 }
@@ -199,7 +199,7 @@ export default function BlogPage() {
         <div className="relative mx-auto max-w-4xl text-center">
           <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
             <Sparkles className="h-3 w-3" />
-            HaloTekno Blog
+            Affiliate Gadget Blog
           </div>
           <h1 className="animate-fade-in-up mb-6 text-5xl font-extrabold tracking-tight text-slate-900 [animation-delay:100ms] sm:text-6xl">
             Wawasan seputar{' '}

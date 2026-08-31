@@ -1,10 +1,10 @@
-# HaloTekno Database Import Guide
+# Affiliate Gadget Database Import Guide
 
 ## File Export yang Tersedia
 
 File SQL export database sudah tersedia di folder `database-exports/`:
 
-- **File:** `halotekno_export_2025-12-27T19-50-07.sql`
+- **File:** `affiliate_gadget_export_2025-12-27T19-50-07.sql`
 - **Size:** ~9.6 MB
 - **Contains:** Semua data dari database saat ini (Users, Technicians, Services, Products, Rentals, Mitras, Articles, Orders, Reviews, dll)
 
@@ -15,7 +15,7 @@ File SQL export database sudah tersedia di folder `database-exports/`:
 ```bash
 # Clone repository
 git clone <repository-url>
-cd HaloTekno
+cd Affiliate Gadget
 
 # Install dependencies
 npm install
@@ -26,7 +26,7 @@ npm install
 Buat file `.env` dengan isi:
 
 ```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/halotekno"
+DATABASE_URL="postgresql://postgres:password@localhost:5432/affiliate_gadget"
 NEXTAUTH_SECRET="your-secret-key"
 NEXTAUTH_URL="http://localhost:3000"
 ```
@@ -37,11 +37,11 @@ NEXTAUTH_URL="http://localhost:3000"
 
 ```bash
 # Buat database baru
-createdb halotekno
+createdb affiliate_gadget
 
 # Atau via psql:
 psql -U postgres
-CREATE DATABASE halotekno;
+CREATE DATABASE affiliate_gadget;
 \q
 ```
 
@@ -59,7 +59,7 @@ npx prisma migrate deploy
 
 ```bash
 # Import SQL dump
-psql -U postgres -d halotekno -f database-exports/halotekno_export_2025-12-27T19-50-07.sql
+psql -U postgres -d affiliate_gadget -f database-exports/affiliate_gadget_export_2025-12-27T19-50-07.sql
 ```
 
 **PENTING:** Pastikan file SQL ada di folder `database-exports/`
@@ -107,14 +107,14 @@ Database sudah ada data. Reset dulu:
 
 ```bash
 # Drop dan create ulang database
-dropdb halotekno
-createdb halotekno
+dropdb affiliate_gadget
+createdb affiliate_gadget
 
 # Run migrations
 npx prisma migrate deploy
 
 # Import ulang
-psql -U postgres -d halotekno -f database-exports/halotekno_export_2025-12-27T19-50-07.sql
+psql -U postgres -d affiliate_gadget -f database-exports/affiliate_gadget_export_2025-12-27T19-50-07.sql
 ```
 
 ### Error: "permission denied"
@@ -123,7 +123,7 @@ Pastikan user PostgreSQL punya permission:
 
 ```bash
 psql -U postgres
-GRANT ALL PRIVILEGES ON DATABASE halotekno TO postgres;
+GRANT ALL PRIVILEGES ON DATABASE affiliate_gadget TO postgres;
 \q
 ```
 
@@ -136,7 +136,7 @@ Pastikan file SQL ada di folder yang benar:
 ls database-exports/
 
 # Atau gunakan absolute path
-psql -U postgres -d halotekno -f "D:/Project/HaloTekno/database-exports/halotekno_export_2025-12-27T19-50-07.sql"
+psql -U postgres -d affiliate_gadget -f "D:/Project/Affiliate Gadget/database-exports/affiliate_gadget_export_2025-12-27T19-50-07.sql"
 ```
 
 ## Re-Export Database (Jika Ada Update)

@@ -23,6 +23,7 @@ export async function GET() {
                 price: true,
                 images: true,
                 stock: true,
+                variants: true,
               },
             },
             rentalItem: {
@@ -63,6 +64,7 @@ export async function GET() {
                   price: true,
                   images: true,
                   stock: true,
+                  variants: true,
                 },
               },
               rentalItem: {
@@ -89,28 +91,47 @@ export async function GET() {
       })
     }
 
-    // Transform items to match client-side CartItem format
-    const items = cart.items.map((item) => ({
-      id: item.id,
-      type: item.type,
-      productId: item.productId,
-      rentalItemId: item.rentalItemId,
-      serviceId: item.serviceId,
-      quantity: item.quantity,
-      rentalDays: item.rentalDays,
-      name:
-        item.product?.name ||
-        item.rentalItem?.name ||
-        item.service?.name ||
-        'Unknown',
-      price:
-        item.product?.price ||
-        item.rentalItem?.pricePerDay ||
-        item.service?.minPrice ||
-        0,
-      image: item.product?.images?.[0] || item.rentalItem?.images?.[0] || null,
-      stock: item.product?.stock || item.rentalItem?.stock || null,
-    }))
+    // Transform items to match client-side CartItem format with variant awareness
+    const items = cart.items.map((item) => {
+      const variant =
+        item.variantId && item.product?.variants
+          ? item.product.variants.find((v) => v.id === item.variantId)
+          : null
+
+      const name = variant
+        ? `${item.product?.name} (${variant.name})`
+        : item.product?.name ||
+          item.rentalItem?.name ||
+          item.service?.name ||
+          'Unknown'
+
+      const price = variant
+        ? variant.price
+        : item.product?.price ||
+          item.rentalItem?.pricePerDay ||
+          item.service?.minPrice ||
+          0
+
+      const stock = variant
+        ? variant.stock
+        : item.product?.stock || item.rentalItem?.stock || null
+
+      return {
+        id: item.id,
+        type: item.type,
+        productId: item.productId,
+        variantId: item.variantId || undefined,
+        variantName: variant?.name || undefined,
+        rentalItemId: item.rentalItemId,
+        serviceId: item.serviceId,
+        quantity: item.quantity,
+        rentalDays: item.rentalDays,
+        name,
+        price,
+        image: item.product?.images?.[0] || item.rentalItem?.images?.[0] || null,
+        stock,
+      }
+    })
 
     return NextResponse.json({ items })
   } catch (error) {
@@ -131,6 +152,7 @@ export async function POST(request: NextRequest) {
     const {
       type,
       productId,
+      variantId,
       rentalItemId,
       serviceId,
       quantity = 1,
@@ -155,12 +177,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Check if item already exists
+    // Check if item with same variant already exists
     const existingItem = await prisma.cartItem.findFirst({
       where: {
         cartId: cart.id,
         type,
         productId: productId || null,
+        variantId: variantId || null,
         rentalItemId: rentalItemId || null,
         serviceId: serviceId || null,
       },
@@ -180,6 +203,7 @@ export async function POST(request: NextRequest) {
           cartId: cart.id,
           type,
           productId: productId || null,
+          variantId: variantId || null,
           rentalItemId: rentalItemId || null,
           serviceId: serviceId || null,
           quantity,

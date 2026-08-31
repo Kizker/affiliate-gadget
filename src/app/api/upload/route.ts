@@ -19,29 +19,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-    if (!allowedTypes.includes(file.type)) {
+    // Validate file type (Images and Videos ONLY)
+    const isImage = file.type.startsWith('image/')
+    const isVideo = file.type.startsWith('video/')
+
+    if (!isImage && !isVideo) {
       return NextResponse.json(
         {
           error:
-            'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.',
+            'Hanya file foto (JPG, PNG, WebP, GIF) dan video (MP4, WebM, MOV) yang diperbolehkan.',
         },
         { status: 400 }
       )
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024
+    // Validate file size (max 15MB for images, max 60MB for videos)
+    const maxSize = isVideo ? 60 * 1024 * 1024 : 15 * 1024 * 1024
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'File too large. Maximum size is 5MB.' },
+        {
+          error: isVideo
+            ? 'Ukuran video terlalu besar (Maksimal 60MB).'
+            : 'Ukuran foto terlalu besar (Maksimal 15MB).',
+        },
         { status: 400 }
       )
     }
 
+    const folderParam = formData.get('folder') as string | null
+    const folder = folderParam && /^[a-zA-Z0-9_-]+$/.test(folderParam) ? folderParam : 'reviews'
+
     // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'chat')
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', folder)
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true })
     }
@@ -49,7 +58,7 @@ export async function POST(req: NextRequest) {
     // Generate unique filename
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2, 8)
-    const extension = file.name.split('.').pop() || 'jpg'
+    const extension = file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg')
     const filename = `${timestamp}-${randomString}.${extension}`
     const filepath = path.join(uploadsDir, filename)
 
@@ -59,12 +68,13 @@ export async function POST(req: NextRequest) {
     await writeFile(filepath, buffer)
 
     // Return public URL
-    const url = `/uploads/chat/${filename}`
+    const url = `/uploads/${folder}/${filename}`
 
     return NextResponse.json({
       success: true,
       url,
       filename,
+      mediaType: isVideo ? 'video' : 'image',
     })
   } catch (error) {
     console.error('Error uploading file:', error)

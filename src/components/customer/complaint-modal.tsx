@@ -1,7 +1,16 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Upload, Loader2, AlertTriangle } from 'lucide-react'
+import {
+  X,
+  Upload,
+  Loader2,
+  ShieldCheck,
+  CheckCircle2,
+  Sparkles,
+  Play,
+  Trash2,
+} from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ComplaintModalProps {
@@ -12,6 +21,19 @@ interface ComplaintModalProps {
   onSuccess?: () => void
 }
 
+const isVideoUrl = (url?: string | null) => {
+  if (!url) return false
+  return /\.(mp4|webm|mov|mkv|ogg|3gp)$/i.test(url)
+}
+
+const COMMON_ISSUES = [
+  { id: 'lcd', label: 'Layar & LCD', fullText: 'Kendala Layar LCD / Touchscreen bergaris atau blank' },
+  { id: 'battery', label: 'Baterai & Daya', fullText: 'Kendala Baterai / Pengisian Daya tidak masuk' },
+  { id: 'hardware', label: 'Kamera & Audio', fullText: 'Kamera / Speaker / Mic bermasalah' },
+  { id: 'system', label: 'Mati Total / Mesin', fullText: 'Unit Mati Total / Masalah Mesin & Bootloop' },
+  { id: 'other', label: 'Lainnya / Fisik', fullText: 'Fisik / Tombol / Komponen Unit Tidak Berfungsi' },
+]
+
 export function ComplaintModal({
   isOpen,
   onClose,
@@ -19,6 +41,7 @@ export function ComplaintModal({
   orderNumber,
   onSuccess,
 }: ComplaintModalProps) {
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
   const [subject, setSubject] = useState('')
   const [description, setDescription] = useState('')
   const [images, setImages] = useState<string[]>([])
@@ -26,18 +49,31 @@ export function ComplaintModal({
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelectPreset = (preset: typeof COMMON_ISSUES[0]) => {
+    setSelectedPreset(preset.id)
+    setSubject(preset.fullText)
+  }
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
     if (images.length + files.length > 5) {
-      toast.error('Maksimal 5 gambar')
+      toast.error('Maksimal 5 file bukti (foto / video) kerusakan')
       return
     }
 
     setUploading(true)
     try {
       for (const file of Array.from(files)) {
+        const isImage = file.type.startsWith('image/')
+        const isVideo = file.type.startsWith('video/')
+
+        if (!isImage && !isVideo) {
+          toast.error(`File ${file.name} bukan foto atau video.`)
+          continue
+        }
+
         const formData = new FormData()
         formData.append('file', file)
 
@@ -46,16 +82,20 @@ export function ComplaintModal({
           body: formData,
         })
 
-        if (!res.ok) throw new Error('Upload failed')
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || 'Upload failed')
+        }
 
         const data = await res.json()
         setImages((prev) => [...prev, data.url])
       }
-      toast.success('Gambar berhasil diupload')
-    } catch {
-      toast.error('Gagal upload gambar')
+      toast.success('Bukti berhasil diunggah')
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal upload media bukti')
     } finally {
       setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -67,7 +107,7 @@ export function ComplaintModal({
     e.preventDefault()
 
     if (!subject.trim() || !description.trim()) {
-      toast.error('Mohon isi subjek dan deskripsi komplain')
+      toast.error('Mohon lengkapi subjek kendala dan rincian klaim garansi')
       return
     }
 
@@ -87,10 +127,10 @@ export function ComplaintModal({
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Gagal mengirim komplain')
+        throw new Error(data.error || 'Gagal mengajukan klaim garansi')
       }
 
-      toast.success('Komplain berhasil dikirim')
+      toast.success('Klaim garansi 30 hari berhasil dikirim ke teknisi toko')
       onSuccess?.()
       onClose()
 
@@ -98,9 +138,10 @@ export function ComplaintModal({
       setSubject('')
       setDescription('')
       setImages([])
+      setSelectedPreset(null)
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Gagal mengirim komplain'
+        error instanceof Error ? error.message : 'Gagal mengirim klaim garansi'
       )
     } finally {
       setSubmitting(false)
@@ -110,99 +151,136 @@ export function ComplaintModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl duration-200 animate-in fade-in zoom-in-95">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
+      {/* Modal Surface */}
+      <div className="relative w-full max-w-lg rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-7 shadow-2xl duration-200 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900">
+        
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Ajukan Komplain</h2>
-            <p className="text-sm text-gray-500">Order #{orderNumber}</p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black text-slate-950 dark:text-white tracking-tight">
+                Klaim Garansi 30 Hari
+              </h2>
+              <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                Tukar Unit
+              </span>
+            </div>
+            <p className="font-mono text-xs text-slate-500 mt-0.5">
+              Pesanan #{orderNumber}
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white transition cursor-pointer"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
-          {/* Warning */}
-          <div className="mb-4 flex items-start gap-3 rounded-lg bg-yellow-50 p-3 text-sm">
-            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-yellow-600" />
-            <p className="text-yellow-700">
-              Komplain hanya dapat diajukan dalam waktu 7 hari setelah pesanan
-              selesai. Teknisi/Admin akan meninjau dan merespons komplain Anda.
-            </p>
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          
+          {/* Preset Issue Quick Select (Segmented Chips) */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Pilih Kategori Kendala:
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              {COMMON_ISSUES.map((preset) => {
+                const isSelected = selectedPreset === preset.id || subject === preset.fullText
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleSelectPreset(preset)}
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold text-center transition cursor-pointer border ${
+                      isSelected
+                        ? 'bg-slate-950 text-white border-slate-950 dark:bg-white dark:text-slate-950 dark:border-white shadow-2xs'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/70 dark:bg-slate-800/60 dark:border-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
-          {/* Subject */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Subjek Komplain <span className="text-red-500">*</span>
+          {/* Subject Field */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              Subjek Kendala <span className="text-orange-500">*</span>
             </label>
             <input
               type="text"
               value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Contoh: Layanan tidak sesuai deskripsi"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              onChange={(e) => {
+                setSubject(e.target.value)
+                setSelectedPreset(null)
+              }}
+              placeholder="Contoh: Layar LCD blank setelah 5 hari pemakaian"
+              className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white transition"
               required
             />
           </div>
 
           {/* Description */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Deskripsi Komplain <span className="text-red-500">*</span>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              Rincian Masalah / Gejala Kerusakan <span className="text-orange-500">*</span>
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Jelaskan kendala atau masalah yang Anda alami secara detail..."
-              rows={4}
-              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              placeholder="Jelaskan secara singkat kendala yang dialami agar teknisi toko dapat menyiapkan unit pengganti teruji..."
+              rows={3}
+              className="w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white transition leading-relaxed"
               required
             />
           </div>
 
-          {/* Image Upload */}
-          <div className="mb-6">
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Bukti Foto (Opsional)
-            </label>
-            <p className="mb-2 text-xs text-gray-500">Maksimal 5 gambar</p>
+          {/* Media (Photo & Video) Upload */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Bukti Foto / Video Kerusakan (Opsional)
+              </label>
+              <span className="text-[11px] text-slate-400">Maks. 5 file</span>
+            </div>
 
-            {/* Image Preview Grid */}
+            {/* Media Preview Grid */}
             {images.length > 0 && (
-              <div className="mb-3 grid grid-cols-5 gap-2">
-                {images.map((url, index) => (
-                  <div
-                    key={index}
-                    className="group relative aspect-square overflow-hidden rounded-lg"
-                  >
-                    <img
-                      src={url}
-                      alt={`Bukti ${index + 1}`}
-                      className="h-full w-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+              <div className="mb-2.5 grid grid-cols-5 gap-2">
+                {images.map((url, index) => {
+                  const isVideo = isVideoUrl(url)
+                  return (
+                    <div
+                      key={index}
+                      className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-800"
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
+                      {isVideo ? (
+                        <div className="relative h-full w-full bg-slate-900 flex items-center justify-center">
+                          <video src={url} className="h-full w-full object-cover opacity-80" />
+                          <Play className="absolute h-4 w-4 fill-white text-white" />
+                        </div>
+                      ) : (
+                        <img
+                          src={url}
+                          alt={`Bukti ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute right-1 top-1 rounded-full bg-slate-950/80 p-1 text-white opacity-0 group-hover:opacity-100 hover:bg-rose-600 transition cursor-pointer z-10"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             )}
 
@@ -212,17 +290,17 @@ export function ComplaintModal({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 py-4 text-gray-500 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200/90 bg-slate-50/50 hover:bg-slate-100/60 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 transition cursor-pointer"
               >
                 {uploading ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Mengupload...</span>
+                    <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                    <span>Mengunggah bukti...</span>
                   </>
                 ) : (
                   <>
-                    <Upload className="h-5 w-5" />
-                    <span>Upload Gambar</span>
+                    <Upload className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Upload Foto / Video Kerusakan</span>
                   </>
                 )}
               </button>
@@ -231,26 +309,26 @@ export function ComplaintModal({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               multiple
-              onChange={handleImageUpload}
+              onChange={handleMediaUpload}
               className="hidden"
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3">
+          {/* Action Buttons */}
+          <div className="pt-3 flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              className="rounded-full px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={submitting || !subject.trim() || !description.trim()}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 text-white px-6 py-2.5 text-xs font-bold shadow-xs transition active:scale-95 disabled:opacity-40 cursor-pointer"
             >
               {submitting ? (
                 <>
@@ -258,11 +336,12 @@ export function ComplaintModal({
                   <span>Mengirim...</span>
                 </>
               ) : (
-                <span>Kirim Komplain</span>
+                <span>Ajukan Klaim</span>
               )}
             </button>
           </div>
         </form>
+
       </div>
     </div>
   )

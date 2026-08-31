@@ -18,7 +18,7 @@ import prisma from '@/lib/db'
 export const revalidate = 60
 
 export const metadata = {
-  title: 'Detail Sparepart - HaloTekno',
+  title: 'Detail Sparepart - Affiliate Gadget',
 }
 
 // Pre-generate popular product pages at build time

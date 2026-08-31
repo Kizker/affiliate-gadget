@@ -23,6 +23,15 @@ export async function GET() {
             status: true,
             total: true,
             createdAt: true,
+            store: {
+              select: {
+                id: true,
+                name: true,
+                companyName: true,
+                phone: true,
+                city: true,
+              },
+            },
             claimedBy: {
               select: {
                 id: true,

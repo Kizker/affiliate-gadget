@@ -45,7 +45,8 @@ function DirectCheckoutContent() {
   // Redirect if not logged in
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?redirect=' + encodeURIComponent(window.location.href))
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/checkout/direct'
+      router.push('/login?redirect=' + encodeURIComponent(currentPath))
     } else if (status === 'authenticated') {
       setLoading(false)
     }

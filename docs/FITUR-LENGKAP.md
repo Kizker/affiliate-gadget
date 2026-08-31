@@ -1,4 +1,4 @@
-# 📱 HaloTekno Platform - Dokumentasi Fitur Lengkap
+# 📱 Affiliate Gadget Platform - Dokumentasi Fitur Lengkap
 
 > **Panduan Testing**: Gunakan checklist `[ ]` di bawah ini untuk menandai fitur yang sudah ditest.
 > Ubah `[✅]` menjadi `[❌]` setelah testing fitur tersebut.
@@ -31,7 +31,7 @@
 
 **Katalog Teknisi**
 
-- [✅] Browse semua teknisi internal HaloTekno
+- [✅] Browse semua teknisi internal Affiliate Gadget
 - [✅] Filter berdasarkan spesialisasi (LCD, Mesin, Software, Kamera)
 - [✅] Urutkan berdasarkan rating
 - [✅] Lihat detail profil teknisi

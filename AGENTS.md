@@ -1,0 +1,1011 @@
+# AGENTS.md — Affiliate Gadget Platform
+
+## 📌 Project Overview
+
+**Affiliate Gadget** adalah platform marketplace gadget afiliasi berbasis arsitektur **Multi-PT / Multi-Toko Offline** di Indonesia. Platform ini dirancang untuk mendesentralisasikan omzet per badan hukum PT (optimasi perpajakan), memberikan insentif garansi 30 hari ganti unit baru, paket bonus 3-in-1, logistik terproteksi (asuransi wajib JNE & Gojek), servis LCD kilat 2 jam, siaran penjualan langsung (Live Streaming Hub), dan slot Iklan Internal berbayar.
+
+---
+
+## 🛠 Tech Stack & Environment
+
+- **Framework:** Next.js 15 (App Router, React 19)
+- **Styling:** Tailwind CSS, Radix UI, Lucide Icons, Framer Motion
+- **Typography:** Poppins (Google Fonts via `next/font/google`)
+- **Color Palette:** E-Commerce Triple Palette (White/Slate-50 Clean Canvas, Trust Blue `#1E3A8A`/`#2563EB`, Action Orange `#F97316`/`#EA580C`)
+- **ORM & Database:** Prisma v6 with PostgreSQL (Local database `affiliate_gadget` on port 5432)
+- **Authentication:** NextAuth.js v5 (Beta 30) with Prisma Adapter & Multi-Level RBAC
+- **Package Manager:** `pnpm` v10.16.0 (Node.js v22.14.0 on macOS / Apple Silicon)
+
+---
+
+## 🚀 Local Development Setup & Status
+
+### 1. Environment Configuration (`.env`)
+
+- `DATABASE_URL="postgresql://andrichadeamitra@localhost:5432/affiliate_gadget"`
+- `NEXT_PUBLIC_APP_URL="http://localhost:3002"`
+- `NEXTAUTH_URL="http://localhost:3002"`
+- `NEXTAUTH_SECRET` & `AUTH_SECRET` configured for session security
+
+### 2. Database Models & Multi-PT Multi-Store Architecture
+
+- `Store`: Badan usaha PT (nama PT, NPWP, alamat fisik toko, koordinat maps, nomor rekening bank mandiri per PT, komisi platform 1–3%).
+- `Product` & `ProductVariant`: Inventori gadget dengan RAM, storage, varian warna, harga terpisah, tag bonus 3-in-1, dan garansi 30 hari.
+- `Order` & `OrderItem`: Order Multi-PT dengan wajib asuransi kurir JNE/Gojek, auto-bundling bonus 3-in-1, dan pelacakan komisi 1–3%.
+- `LiveStream` & `LiveStreamComment`: Hub siaran langsung penjualan toko cabang dengan pinned gadget & chat interaktif.
+- `InternalAd`: Slot iklan berbayar (Hero Slider, Sidebar Promoted, Footer Ads).
+- `LcdEstimate`: Estimasi biaya pergantian LCD per model HP & grade layar (Original OLED / OEM).
+- `AuditLog`: Log keamanan dan aktivitas admin/sales.
+
+### 3. Server Status
+
+- **URL:** [http://localhost:3002](http://localhost:3002) _(Port 3000 used by another background service)_
+- **Mode:** Development (`next dev` via pnpm daemon)
+- **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
+
+---
+
+## 🔑 Struktur 4 Role Utama & Akun Pengujian
+
+Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
+
+1. **`SUPER_ADMIN` (Superadmin):** Memiliki hak akses penuh untuk mengawasi seluruh aktivitas platform, omzet konsolidasi Multi-PT, audit log, kelola pengguna & admin, serta performa seluruh toko fisik di Indonesia.
+2. **`ADMIN` (Admin Platform):** Mengelola jalannya platform (master katalog gadget, verifikasi toko/mitra, pusat resolusi garansi/komplain, dan pengaturan platform), **tanpa melihat aktivitas transaksi detail, omzet internal, maupun arus kas per cabang toko**.
+3. **`STORE_ADMIN` (Admin Toko / Akun Toko):** Akun resmi milik cabang toko fisik/PT. Semua operasional cabang toko (inventori stok unit fisik, pemrosesan pesanan kurir JNE/Gojek, klaim garansi toko, live streaming toko, rekening bank mandiri PT, hingga jam buka) dilakukan secara mandiri dan langsung oleh akun toko tersebut.
+4. **`CUSTOMER` (Customer):** Pembeli di antarmuka publik (katalog produk, checkout pesanan, cek resi, klaim garansi 30 hari, servis LCD).
+
+### Akun Pengujian Lokal Siap Pakai:
+
+| Kategori Role             | Role Code     | Email                                | Password      | Keterangan & Akses                                                              |
+| ------------------------- | ------------- | ------------------------------------ | ------------- | ------------------------------------------------------------------------------- |
+| **Superadmin**            | `SUPER_ADMIN` | `superadmin@affiliategadget.com`     | `admin123`    | Akses Penuh: Semua aktivitas, omzet, pesanan & laporan seluruh toko             |
+| **Admin (Platform)**      | `ADMIN`       | `admin@affiliategadget.com`          | `admin123`    | Pengelola Platform: Master katalog, verifikasi toko, komplain, tanpa omzet toko |
+| **Admin Toko (Jakarta)**  | `STORE_ADMIN` | `admin.roxy@affiliategadget.com`     | `admin123`    | Bambang S. (PT Gadget Jaya Sentosa - Roxy Mas Pusat)                            |
+| **Admin Toko (Surabaya)** | `STORE_ADMIN` | `admin.surabaya@affiliategadget.com` | `admin123`    | Kevin Santoso (PT Sinar Gadget Nusantara - WTC Surabaya)                        |
+| **Admin Toko (Bandung)**  | `STORE_ADMIN` | `admin.bandung@affiliategadget.com`  | `admin123`    | Reza Pratama (PT Digital Niaga Prima - BEC Bandung)                             |
+| **Admin Toko (Medan)**    | `STORE_ADMIN` | `admin.medan@affiliategadget.com`    | `admin123`    | Rian Siregar (PT Surya Makmur Gadget - Plaza Medan Fair)                        |
+| **Admin Toko (Jogja)**    | `STORE_ADMIN` | `admin.jogja@affiliategadget.com`    | `admin123`    | Anisa Putri (PT Mega Ponsel Nusantara - Jogjatronik Mall)                       |
+| **Customer (Jakarta)**    | `CUSTOMER`    | `customer@test.com`                  | `customer123` | Rian Pratama (Customer Pembeli)                                                 |
+| **Customer (Surabaya)**   | `CUSTOMER`    | `siti.aminah@gmail.com`              | `customer123` | Siti Aminah (Customer Pembeli)                                                  |
+| **Customer (Bandung)**    | `CUSTOMER`    | `dimas.setiawan@gmail.com`           | `customer123` | Dimas Setiawan (Customer Pembeli)                                               |
+
+---
+
+## 🗺 Struktur Navigasi & Rute Utama
+
+- `/` — Homepage Multi-PT (9 Section Lengkap: Hero Slider, 4 Shortcut, Statistik Dinamis, Value Props vs Shopee, Live Streaming Hub, Product Showcase, Iklan Internal, Kalkulator Servis LCD, Mitra CTA).
+- `/gadget` — Katalog Gadget Multi-Toko dengan filter merek, asal cabang toko, dan pencarian instan.
+- `/gadget/[id]` — Halaman Detail Produk (pemilihan varian RAM/warna, bonus 3-in-1, chat sales WhatsApp, asuransi & beli langsung).
+- `/toko` — Direktori Toko & Badan Hukum PT se-Indonesia dengan filter kota dan peta toko.
+- `/toko/[slug]` — Profil Khusus Cabang Toko (Legalitas PT, NPWP, jam operasional, petunjuk Google Maps, inventori khusus cabang).
+- `/servis-lcd` — Modul Servis LCD Kilat (kalkulator estimasi per merek/model, pilihan toko, antar langsung atau Gojek instant).
+- `/live` — Hub Live Streaming Toko (player live, interaksi chat real-time, promo diskon & checkout langsung).
+- `/garansi` — Layanan Garansi 30 Hari Ganti Unit Baru (pemeriksaan nomor pesanan, syarat klaim, trigger WA cepat).
+- `/hubungi-kami` — Pusat Bantuan & Kontak Cabang Toko PT se-Indonesia.
+- `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
+- `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
+
+- **2026-08-30 (Second-Hand Gadget Marketplace Transformation: Transformasi Total Seluruh Informasi Platform Menjadi Penjualan Gadget Second Berkualitas):**
+  - **1. Standarisasi Kondisi Unit Second:** Menerapkan standarisasi kondisi fisik unit gadget second di seluruh katalog publik, landing page, dan admin CMS: `LIKE_NEW` (*Second Like New - Mulus 99%*), `SECOND_MULUS` (*Second Mulus - 95% s/d 98%*), dan `GRADE_A` (*Second Grade A - Normal 100%*).
+  - **2. Redefinisi Jaminan & Garansi Toko 30 Hari:** Mengubah seluruh klausa garansi dari "ganti unit baru" menjadi **"Garansi Toko 30 Hari Tukar Unit Gadget Second"** (unit pengganti teruji fungsional 100% atau refund 100%), bebas biaya servis, dengan garansi IMEI bebas blokir seumur hidup.
+  - **3. Transformasi Landing Page & Showcase:** Pembaruan hero headline (*Beli Gadget Second Lebih Tenang & Terjamin*), 3D Coverflow cards, pilar nilai (*Trust Pillars*), dan tabel komparasi nilai (*Value Props*) yang membandingkan Affiliate Gadget terhadap penjual second online tanpa jaminan/uji teknisi.
+  - **4. Penyelarasan Transaksi & Post-Purchase:** Mengadaptasi halaman keranjang, checkout, konfirmasi pesanan, modal pengajuan komplain garansi toko (*Tukar Unit Teruji*), dan modal pengajuan retur (*Tukar Unit Pengganti*).
+  - **5. Sinkronisasi Admin CMS & Seed Data:** Memperbarui form produk admin (tambah & edit produk), halaman manajemen retur/komplain, dan data awal database 12 smartphone menjadi unit second teruji.
+
+- **2026-08-30 (Buyer Reviews & Media Attachments Architecture: Sistem Ulasan Pembeli dengan Lampiran Foto & Video [/gadget/[id]]):**
+  - **1. Skema Database Prisma untuk Ulasan Produk:** Memperluas model `Review` dengan relasi ke `Product`, array lampiran `images: String[]`, `videos: String[]`, `variantName: String?`, `sellerReply: String?`, `sellerReplyAt: DateTime?`, dan `helpfulCount: Int` untuk mendukung ulasan berbasis verifikasi penerimaan barang fisik.
+  - **2. Senior UI/UX Redesign — Unified 2-Column Rating Overview:** Mengeliminasi elemen redundan (kapsul `100% Asli`, tombol edit di header, kotak ketiga pilar garansi sekunder, dan subtitle berulang). Merestrukturisasi ringkasan penilaian menjadi tata letak **2-Kolom Terpadu dengan Whitespace Optimal**:
+    - *Kolom Kiri (Hero Rating Score)*: Skor besar tegas (`4.8 / 5.0`), 5 bintang emas, total ulasan pembeli, dan chip rekomendasi kepuasan (`98% Pembeli Merekomendasikan`).
+    - *Kolom Kanan (Interactive Rating Bars)*: Bar chart filter distribusi bintang (5★ s/d 1★) yang responsif dengan divider vertikal halus dan visual feedback saat diklik.
+  - **3. Standarisasi Luxury Portal Lightbox (Harmonisasi dengan Modul Klaim Garansi):** Mengadopsi arsitektur modal Lightbox layar penuh (`createPortal` ke `document.body`) dengan glassmorphism backdrop (`bg-white/45 backdrop-blur-xl`), tombol navigasi melingkar hitam solid (`bg-black/80 hover:bg-black text-white`), panggung media `rounded-3xl` dengan border halus, filmstrip thumbnail `bg-white/80 border border-slate-200/80 backdrop-blur-xl`, chip nama reviewer & rating bintang terpusat di tengah atas (*centered floating pill*), eliminasi tombol silang X demi tampilan bersih (menutup cukup dengan klik area luar/ESC), dan keyboard shortcut helper persis seperti pada modul Klaim Garansi.
+  - **4. Senior UI/UX Redesign — Minimalist Filter & Sort Toolbar:** Mengeliminasi pembungkus border ganda (*box-in-a-box*) dan menghapus tombol bintang bernilai nol (`⭐ 3 (0)`, `⭐ 2 (0)`, `⭐ 1 (0)`). Toolbar kini menggunakan **Pill Kapsul Segmented Mandiri** (*Semua*, *Dengan Foto & Video*, *5 Bintang*, *4 Bintang*), ikon bintang amber SVG solid tanpa emoji, serta dropdown pengurutan ramping (*Paling Baru, Rating Tertinggi, dll*) yang terintegrasi secara proporsional.
+  - **5. Kartu Ulasan Terverifikasi & Balasan Resmi Toko:** Kartu ulasan dengan avatar squircle monogram, nama pembeli tersensor demi privasi (*Budi S***o*), chip `✓ Pembeli Terverifikasi`, badge varian unit yang dibeli, tag kurir logistik (JNE/Gojek), galeri foto/video, callout balasan resmi dari cabang toko (`🏬 Tanggapan Resmi Toko Affiliate Gadget - Roxy Mas`), dan tombol interaktif `👍 Membantu`.
+  - **6. Modal Tulis/Edit Ulasan:** Form dialog interaktif dengan selektor bintang, tag kepuasan cepat (*Pengiriman Kilat*, *Packing Kayu & Bubble Tebal*, *Unit 100% Original Segel*, dll), area upload multi-foto (JPG, PNG, WebP) dan video (MP4, WebM, MOV) dengan live preview, validasi ukuran file, dan sinkronisasi rating produk otomatis.
+  - **7. Refinement Kartu Produk (Solid Clean Floating Rating Pill):** Menghapus 2 kapsul atas (`Garansi 30 Hari` & `Bonus 3-in-1`) pada seluruh kartu produk ([`/gadget`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/gadget/page.tsx), [`/toko/[slug]`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/toko/%5Bslug%5D/page.tsx), dan showcase landing page) dan menggantinya dengan satu kapsul total penilaian di pojok kanan atas (*⭐ 4.9 (24)*) berformat **Solid Clean Floating Pill** (`bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700/80 shadow-md text-slate-900 dark:text-white`), bintang emas amber solid, tipografi tabular tebal, dan efek micro-zoom saat hover.
+  - **8. Senior UI/UX Polish — Minimalist Clean Hero Section ([`/`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-hero-clean.tsx)):** Menghapus kapsul reassurance atas (`🛡️ Garansi 30 Hari Ganti Baru • 100% Original BNIB`) dan strip trust poin bawah (`Stok Ready di Toko Resmi`, `🚚 Asuransi Kurir Terproteksi`, `🎁 Free Bonus 3-in-1 (Rp 0)`), memberikan tampilan landing page yang jauh lebih bersih, lapang (*generous whitespace*), modern, dan langsung terfokus pada pesan utama serta tombol aksi produk.
+  - **9. 3D Depth Layered Carousel Hero Spotlight ([`/`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-hero-clean.tsx)):** Mengadopsi arsitektur **Framer Motion (`motion.div`) Spring Physics 3D Coverflow** dengan parameter transisi yang lebih tenang dan anggun (`stiffness: 110, damping: 19, mass: 1.1, perspective: 1200px`) dan *Persistent Geometry* (struktur DOM dan tinggi kartu identik tanpa perombakan kondisional). Hal ini menghasilkan animasi perpindahan kartu yang meluncur lambat, anggun, sangat halus (*butter-smooth & cinematic*), rotasi spatial 3D angle (`rotateY: ±8deg`), interaksi klik kartu langsung (*click-to-front*), dan hover auto-pause tanpa tombol navigasi yang berantakan.
+  - **10. Senior UI/UX Redesign — Unified Balanced Header & Toolbar ([`/`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-featured-gadgets.tsx)):** Mengeliminasi label eyebrow kaku (`KATALOG GADGET PILIHAN`), subtitle deskripsi berulang, dan tombol redundan di bagian bawah (*Lihat Seluruh Koleksi Gadget di Katalog*). Menata ulang menjadi **Unified Balanced Layout**:
+    - *Baris Atas*: Judul tegas berwibawa (`Smartphone Pilihan`).
+    - *Baris Toolbar*: Menyeimbangkan panggung secara simetris dengan deretan **Compact Brand Capsule Pills** di sisi kiri (`Semua`, `Apple`, `Samsung`, `Xiaomi`, `ASUS`, `Vivo`, `Oppo`) dan tombol **Action Orange Capsule** (`Lihat Semua Katalog →`) di sisi kanan pada baris yang sama. Mengeliminasi ruang kosong canggung di sebelah kanan filter dan menghasilkan hierarki visual yang solid, terstruktur, dan elegan.
+  - **11. Senior UI/UX Redesign — Physical Store Spotlight Header & Card Polish ([`/`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-store-spotlight.tsx)):** Mengeliminasi label eyebrow kaku (`JARINGAN TOKO RESMI TERVERIFIKASI`) dan subtitle panjang. Mengadopsi tata letak header 1-baris bersih berimbang dengan tombol **Action Orange Capsule** (`Lihat Semua Toko →`), kartu toko berarsitektur `rounded-3xl` seragam, chip kota semantik (`bg-blue-50 text-blue-700`), status operasional interaktif, dan tombol aksi toko yang ramping.
+  - **12. Senior UI/UX Polish — Clean Justified Left-Right Footer Layout ([`footer.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/layouts/footer.tsx)):** Menghapus kolom cabang fisik dan menata ulang layout menjadi **Rata Kanan-Kiri Terpadu (*Justify Between Layout*)**:
+    - *Sisi Kiri (Left Anchor)*: Identitas brand, logo, deskripsi, dan badge verifikasi jaringan resmi.
+    - *Sisi Kanan (Right Anchor)*: Kolom navigasi *Menu Utama* dan *Merek Populer* yang merapat rapi ke tepi kanan dengan spasi horizontal proporsional dan transisi hover Action Orange.
+    - *Bawah*: Hak cipta di sisi kiri dan link ketentuan/kontak di sisi kanan. Menghilangkan ruang kosong asimetris dan menghasilkan footer yang seimbang dan lapang.
+  - **13. Senior UI/UX Redesign — Trust Pillars Bento Grid ([`section-trust-pillars.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-trust-pillars.tsx)):** Mengeliminasi label eyebrow kaku (`JAMINAN KEAMANAN BELANJA`) dan menyederhanakan header. Mengadopsi tata letak kartu bento `rounded-3xl` serasi, chip nilai semantik warna pastel (`bg-emerald-50`, `bg-orange-50`, `bg-blue-50`), judul tebal berwibawa seragam, dan tautan aksi interaktif dengan transisi hover Action Orange.
+  - **14. Return & Refund Architecture (Fitur Pengajuan Pengembalian pada Pesanan Selesai [/dashboard/customer/orders & /orders/[orderId]]):**
+    - *Skema Database & Backend*: Menambahkan model `ReturnRequest` beserta enum `ReturnType` (*REFUND* vs *REPLACEMENT*) dan `ReturnStatus` (*PENDING*, *IN_REVIEW*, *APPROVED*, *REJECTED*, *COMPLETED*), sinkronisasi PostgreSQL via Prisma DB push, serta endpoint API [`/api/returns`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/returns/route.ts) dan [`/api/returns/[id]`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/returns/%5Bid%5D/route.ts).
+    - *Komponen Modal Interaktif ([`return-modal.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/customer/return-modal.tsx))*: Dialog modern minimalis dengan selektor solusi (*Refund 100%* vs *Tukar Unit Baru*), preset kendala cepat (*Cacat Fisik*, *Mati Total*, *Salah Varian*, dll), form rekening pengembalian dana, upload multi-media bukti unboxing, validasi 30 hari, dan tombol konfirmasi Action Orange.
+    - *Integrasi UI/UX Pesanan*: Tombol **`Ajukan Pengembalian`** pada kartu pesanan `COMPLETED` di daftar pesanan ([`orders-client.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/customer/orders/orders-client.tsx)) dan **Kartu Live Status Pengembalian (Bento Section)** pada halaman detail pesanan ([`order-detail-client.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/customer/orders/%5BorderId%5D/order-detail-client.tsx)).
+  - **15. Senior UI/UX Redesign — Return & Refund Modal ([`return-modal.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/customer/return-modal.tsx)):**
+    - *Eliminasi Truncation & Sticky Layout*: Mengadopsi arsitektur modal 3-lapisan terstruktur (**Fixed Sticky Header**, **Smooth Scrollable Body**, **Fixed Sticky Footer**), sehingga tombol konfirmasi pengajuan selalu tampil utuh di layar tanpa terpotong batas bawah viewport browser.
+    - *Penyederhanaan Teks & Subtitle*: Menghapus subtitle berulang di header dan label petunjuk redundan.
+    - *Harmonisasi Warna & Bento Cards*: Mengeliminasi warna border biru yang bertabrakan, menggantinya dengan **Modern Segmented Solution Cards** bernuansa *Action Orange & Neutral Slate* dengan indikator centang di sudut atas dan chip nilai (*100%* & *Unit Baru*).
+    - *Minimalist Focus & Micro-interactions*: Textarea kendala dengan focus ring oranye lembut, galeri media unboxing yang proporsional, serta tombol aksi *Action Orange Pill* kontras tinggi.
+  - **16. Senior UI/UX Redesign — Admin Returns & Refund Hub ([`/dashboard/admin/returns`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/returns/page.tsx) & [`sidebar.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/sidebar.tsx)):**
+    - *Eliminasi Header Redundan & Maksimalkan Whitespace*: Menghapus blok header judul & subtitle berulang agar halaman langsung fokus pada **Bento Metrics** dan **Daftar Pengajuan** (konsisten dengan halaman Produk, Pesanan, dan Klaim Garansi).
+    - *Single-Row Unified Control Panel (Identik dengan Katalog Gadget & Pesanan)*: Menata ulang toolbar menjadi 1 baris terpadu berarsitektur `rounded-3xl` dengan Segmented Pills Status (`Semua Status`, `Perlu Verifikasi`, `Sedang Diperiksa`, `Disetujui`, `Selesai`, `Ditolak`) di sisi kiri, serta Dropdown Solusi, Filter Cabang Toko, Input Pencarian dengan tombol hapus (X), dan tombol Refresh instan di sisi kanan.
+    - *Harmonisasi Bento Metrics (Anti-Rainbow Palette)*: Mengeliminasi 5 warna pastel bertabrakan (kuning, biru, hijau, oranye, abu) yang menimbulkan kebisingan visual (*visual noise*). Menyatukannya menjadi **4 Kartu Bento Mewah & Bersih** berlatar putih/gelap netral dengan tipografi mono tebal tabular, indikator denyut amber (*pulse*) untuk antrean baru, dan penghapusan subtitle mikro berulang.
+    - *2-Column Spacious Bento Card*: Merombak 3 kotak abu-abu bertumpuk menjadi **Tata Letak 2-Kolom Terpadu**:
+      - *Kolom Kiri*: Strip info unit gadget dengan thumbnail beresolusi tajam, harga pesanan, tag kendala, dan galeri foto/video unboxing ber-aspect squircle halus.
+      - *Kolom Kanan*: Rincian rekening bank tujuan refund atau alur tukar unit tersegel, tanggapan resmi toko cabang, dan nomor resi pengiriman balik.
+    - *Action Hub High Contrast*: Tombol aksi *Action Orange Pill* kontras tinggi (*Setujui Pengajuan*, *Mulai Pemeriksaan Unit*, *Konfirmasi Selesai*, *Beri Tanggapan*) yang responsif dan sangat jelas.
+    - *Luxury Portal Media Lightbox*: Viewer foto dan video unboxing layar penuh berbasis portal dengan keyboard navigation (ESC, panah kiri/kanan) dan filmstrip thumbnail.
+
+- **2026-08-30 (User Profile Photo Integration: Tampilan Foto Profil Pengguna di Navbar & Dashboard Sidebar [/ & /dashboard]):**
+  - **1. Integrasi Foto Profil di Navbar:** Mengganti inisial teks/monogram default pada tombol pill akun navbar publik ([`navbar.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/layouts/navbar.tsx)) dengan **Foto Profil Asli Pengguna** (`rounded-full` dengan border halus dan `object-cover`), serta penambahan foto profil di dalam dropdown menu header dengan fallback otomatis ke inisial jika foto belum diunggah.
+  - **2. Sinkronisasi Sesi & API Profil:** Mengoptimalkan [`auth.ts`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/auth.ts) dan [`auth.config.ts`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/auth.config.ts) untuk menyalurkan atribut `image` aman ke sesi JWT, serta auto-fetch profil via `/api/user/profile` untuk sesi yang sudah aktif tanpa perlu re-login.
+  - **3. Integrasi Foto Profil di Sidebar Dashboard:** Menghubungkan foto profil pengguna di bagian footer sidebar dashboard ([`sidebar.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/sidebar.tsx)) baik pada mode diperluas maupun mode mini *collapsed*.
+
+- **2026-08-29 (In-App Chat Toko Architecture: Penggantian Link Eksternal WhatsApp Menjadi Chat Toko Internal [/toko, /toko/[slug], & /gadget/[id]]):**
+  - **1. Integrasi Chat Toko Internal:** Mengganti seluruh tombol dan aksi *"Chat Sales WA"* / *"Hubungi WhatsApp"* menjadi **"Chat Toko"** yang langsung terhubung ke modul chat internal platform ([`/dashboard/customer/chat`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/customer/chat/page.tsx)), sehingga pengguna tidak lagi diarahkan keluar ke aplikasi pihak ketiga (WhatsApp).
+  - **2. Standarisasi Ikon & Styling:** Mengganti ikon telepon `PhoneCall` menjadi ikon pesan `MessageSquare`, dengan aksen warna *Action Orange* (`text-orange-500` / `bg-orange-500`) yang selaras dengan tema modern minimalis platform.
+
+- **2026-08-29 (Senior UI/UX Redesign: Modern Minimalist Product Card Architecture [/gadget, /toko, & Homepage]):**
+  - **1. Eliminasi Clutter & Banner Tebal:** Menghapus bar oranye tebal yang menutupi bagian bawah foto unit, memberikan 100% ruang pandang bersih pada foto produk hero. Bonus 3-in-1 kini hadir dalam bentuk pill kaca minimalis di pojok kanan atas foto.
+  - **2. Perbaikan Truncation & Layout Metadata:** Menyelaraskan nama toko cabang dan pill status stok (`Stok: X Unit` / `Sisa X!`) dengan spasi proporsional tanpa terpotong (*no awkward truncation*).
+  - **3. Formasi Harga Solid & Anti-Wrap:** Memperbaiki layout harga sehingga nominal `Rp X.XXX.XXX` tampil dalam format satu baris yang tebal, tegas, dan kontras tinggi tanpa pemecahan teks (*anti-wrap glitch*).
+  - **4. Solid Action Orange CTA Button:** Menggunakan tombol *Action Orange Pill* (`bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white shadow-sm shadow-orange-500/25 font-bold`) yang mencolok dan meningkatkan konversi klik, lengkap dengan micro-animation icon panah.
+  - **5. Auto-Crop Square Image Framing:** Mengatur bingkai foto `aspect-square` dengan `object-cover` bersih tanpa padding/gutter abu-abu, sehingga gambar produk non-square (portrait/landscape) otomatis terpotong rapi memenuhi bingkai kartu secara konsisten.
+
+- **2026-08-29 (Product Inventory UI/UX: Tampilan Total Stok & Rincian Stok Per Varian [/gadget & /gadget/[id]]):**
+  - **1. Total Stok Produk di Header Detail Gadget:** Menambahkan badge semantik `Total Stok: {totalStock} Unit` pada deretan badge metadata unit (bersama Merek dan Kondisi) di [`src/app/gadget/[id]/page.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/gadget/%5Bid%5D/page.tsx).
+  - **2. Rincian Stok Per Varian Hardware:** Setiap opsi varian RAM/Storage menampilkan badge ketersediaan stok spesifik (`Stok: X`, `Sisa X!`, atau `Habis`), serta indikator stok terpilih yang langsung tersinkronisasi dengan stepper kuantitas dan proteksi stok habis (*out-of-stock guard*).
+  - **3. Status Stok Semantik di Seluruh Katalog & Toko:** Menambahkan chip ketersediaan stok fisik di katalog gadget publik ([`/gadget`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/gadget/page.tsx)), profil toko ([`/toko/[slug]`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/toko/%5Bslug%5D/page.tsx)), dan showcase beranda ([`section-product-showcase.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-product-showcase.tsx) & [`section-featured-gadgets.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-featured-gadgets.tsx)).
+
+- **2026-08-27 (Role-Adaptive Settings Architecture: Pengaturan Khusus Admin Platform [/dashboard/admin/settings]):**
+  - **1. Pemisahan Hak Akses Profil Toko:** Admin Platform (`ADMIN`) dan Superadmin (`SUPER_ADMIN`) tidak lagi dibebani formulir *Profil Toko & PT Cabang* fisik, melainkan langsung difokuskan pada **Profil Akun Pengelola** dan **Keamanan & Password**.
+  - **2. Single Unified View & Eliminasi Tab Redundan:** Untuk Admin Platform, tombol tab ganda dihilangkan dan diganti dengan satu badge bersih **`Profil Akun`**, menyajikan data akun dan form ganti password secara simultan dalam satu layar 2-kolom responsif.
+  - **3. Action Orange Branding & Bento Layout:** Tombol simpan perubahan *Action Orange Pill*, avatar monogram squircle, dan kartu ringkasan cakupan hak akses platform.
+
+- **2026-08-27 (Senior UI/UX Redesign & Simplified Naming: Admin Platform Dashboard View [/dashboard/admin]):**
+  - **1. Penyederhanaan Penamaan & Eliminasi Redundansi:**
+    - `Master Katalog` ➔ **`Katalog Gadget`** (`12 Model` · `Aktif di Publik`)
+    - `Jaringan Toko` ➔ **`Daftar Toko`** (`5 Cabang` · `Terverifikasi`)
+    - `Pengguna Platform` ➔ **`Pengguna`** (`1.280 Akun` · `Customer`)
+    - `Pusat Resolusi` ➔ **`Klaim Garansi`** (`100% Aman` · `0 Antrean`)
+    - `Jaringan Toko Terverifikasi` ➔ **`Daftar Toko`**
+    - `Aksi Cepat Pengelolaan Platform` ➔ **`Aksi Cepat`**
+  - **2. Modern Linear List Layout:** Menghapus kotak abu-abu tebal bersarang pada kartu Daftar Toko dan menggantinya dengan divider baris halus, avatar squircle monogram oranye hangat (`R`, `W`, `B`, `P`, `J`), hover oranye, serta chip status semantik (*● Terverifikasi*).
+  - **3. Balanced 4-Card Action Grid:** Mengubah 2 kotak vertikal yang canggung pada kartu Aksi Cepat menjadi grid 4 kartu pintasan proporsional (*Katalog Gadget, Daftar Toko, Klaim Garansi, Pengaturan*) dengan ikon berwarna, deskripsi ringkas, dan animasi panah interaktif.
+
+- **2026-08-27 (Perbaikan Otorisasi API Daftar Toko untuk Admin Platform [/api/admin/mitras & /api/admin/mitras/[id]]):**
+  - **1. Unified RBAC Authorization:** Memperluas validasi hak akses pada handler `GET`, `POST`, `PUT`, dan `DELETE` di endpoint [`/api/admin/mitras`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/admin/mitras/route.ts) dan [`/api/admin/mitras/[id]`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/admin/mitras/[id]/route.ts) sehingga dapat diakses oleh role **`ADMIN` (Admin Platform)** dan **`SUPER_ADMIN`**.
+  - **2. Eliminasi Toast Error 401:** Admin Platform kini dapat membuka, melihat detail pendataan, memfilter, dan mengelola daftar toko tanpa kendala error `Unauthorized. Please login as super admin`.
+
+- **2026-08-27 (Senior UI/UX Polish: Penyederhanaan Label Menu Navigasi Sidebar [/components/dashboard/sidebar.tsx]):**
+  - **1. Label Menu Lebih Ringkas & Bersih:** Mengubah penamaan label menu yang panjang dan redundan menjadi nama ringkas yang langsung to-the-point:
+    - `Katalog Master Gadget` ➔ **`Katalog Gadget`**
+    - `Verifikasi Jaringan Toko` ➔ **`Daftar Toko`**
+    - `Pusat Klaim & Garansi` / `Klaim Garansi 30 Hari` ➔ **`Klaim Garansi`**
+    - `Pengaturan Platform` / `Pengaturan Akun` ➔ **`Pengaturan`**
+    - `Pesanan Seluruh Toko` / `Manajemen Pesanan` ➔ **`Pesanan`**
+    - `Kelola Pengguna & Admin` ➔ **`Kelola Pengguna`**
+  - **2. Penamaan Kategori Ramping:** Menyederhanakan header grup seksi menu (seperti `Manajemen Platform` ➔ `Katalog & Toko`, `Layanan & Resolusi` ➔ `Layanan`).
+
+- **2026-08-27 (Senior UI/UX Harmonization: Action Orange Branding pada Dashboard Utama [/dashboard/admin]):**
+  - **1. Highlight Metrik Omzet & Komisi:** Kartu Total Omzet Jaringan & Komisi Platform kini menggunakan ikon berlatar oranye lembut (`bg-orange-50 text-orange-600`), label mata uang oranye (`text-orange-500`), dan hover border oranye.
+  - **2. Proportional Top Branch Highlight:** Cabang peringkat 01 (Roxy Mas Pusat) pada Distribusi Omzet Toko kini memiliki squircle rank oranye (`bg-orange-100/90 text-orange-700`) dan progress bar *Action Orange* (`bg-orange-500 shadow-2xs shadow-orange-500/20`).
+  - **3. Commission Earning & Quick Links:** Nominal komisi per transaksi pada kartu Aktivitas Transaksi Jaringan ditonjolkan dengan warna oranye cerah (`text-orange-600 font-bold font-mono`), serta transisi hover oranye pada seluruh link dan nama toko.
+
+- **2026-08-27 (Senior UI/UX Harmonization: Action Orange Branding pada Daftar Toko [/dashboard/admin/mitras]):**
+  - **1. Primary CTA (+ Tambah Toko):** Mengganti tombol hitam menjadi *Action Orange Pill* (`bg-orange-500 hover:bg-orange-600 active:scale-95 text-white shadow-sm shadow-orange-500/25 font-bold`).
+  - **2. Warm Monogram Squircle Avatars:** Mengganti inisial abu-abu datar di tabel menjadi squircle monogram oranye lembut (`bg-orange-100/80 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200/60 shadow-2xs`).
+  - **3. KPI Metric Card & Focus Highlights:** Kartu Total Jaringan kini dilengkapi ikon oranye dengan chip status terdaftar, persentase komisi oranye, search & city filter focus rings oranye, serta modal detail toko beraksen oranye.
+
+- **2026-08-27 (Senior UI/UX Redesign: Manajemen Pengguna Table List View [/dashboard/admin/users]):**
+  - **1. Zero Top Header Noise & Unified Action Toolbar:** Menghapus blok judul besar dan teks subtitle di atas agar 4 kartu KPI langsung tampil bersih di layar. Mengintegrasikan kontrol filter tab role (Capsule Segmented Switcher), live search input dengan orange focus ring, tombol Export CSV, dan Primary CTA **+ Tambah Akun** (*Action Orange Pill `bg-orange-500 hover:bg-orange-600`*) ke dalam satu toolbar ramping dan terpadu.
+  - **2. Action Orange Brand Highlights & Bento KPI Grid:** 4 kartu metrik pengguna proporsional berlatar putih bersih (`rounded-2xl border border-slate-200/80 shadow-2xs`) dengan highlight brand oranye pada kartu Total Pengguna, avatar squircle monogram (`bg-orange-100/80 text-orange-700`), hover state, dan status indikator interaktif.
+  - **3. Clean Data Table List Layout:** Menggantikan representasi 3-kolom kartu lebar yang boros scroll dengan format **Data Table List** berstandar Linear & Apple:
+    - *Kolom 1 (Pengguna & Profil)*: Avatar squircle monogram oranye lembut / foto profil, Nama tebal dengan hover orange, dan alamat email.
+    - *Kolom 2 (Peran & Akses)*: Chip semantik peran (Super Admin - purple, Admin Platform - blue, Admin Toko - indigo, Customer - slate, Teknisi - orange).
+    - *Kolom 3 (Kontak & Telepon)*: Nomor telepon / WA berformat monospace rapi.
+    - *Kolom 4 (Status Akun)*: Status pill semantik (*● Aktif* / *● Nonaktif*).
+    - *Kolom 5 (Terdaftar)*: Format tanggal registrasi bahasa Indonesia ringkas (*26 Agu 2026*).
+    - *Kolom 6 (Aksi Cepat)*: Aksi toggle aktif/nonaktif cepat, tombol Edit Role, dan hapus akun.
+  - **4. Redesain Modal Bento Modern (`CreateUserModal` & `EditUserModal`):** Dialog berarsitektur Bento modern dengan backdrop blur lembut, input field ramping `rounded-xl` dengan focus orange, squircle header icon oranye, dan tombol aksi utama *Action Orange Pill* (`bg-orange-500 hover:bg-orange-600 text-white`).
+
+- **2026-08-27 (Senior UI/UX Polish: Eliminasi Header Judul & Relokasi Filter Periode [/dashboard/admin/reports]):**
+  - **1. Zero Top Header Noise:** Menghapus blok judul *"Laporan Finansial"* dan teks subtitle deskripsi di bagian atas agar 4 kartu KPI omzet langsung tampil di layar tanpa pemborosan ruang vertikal.
+  - **2. Top-Right Period Filter Pill:** Merelokasi dropdown filter periode (`📅 Periode: [Bulan Ini ▼]`) ke pojok kanan atas dalam bentuk capsule pill yang ramping dan mudah diakses.
+
+- **2026-08-27 (Senior UI/UX Redesign: Laporan Finansial & Dashboard Analytics [/dashboard/admin/reports]):**
+  - **1. Standarisasi Lebar Kontainer & Responsivitas:** Menyelaraskan kontainer ke `max-w-6xl mx-auto` agar konsisten dengan halaman Dashboard, Daftar Toko, dan Katalog Gadget.
+  - **2. Modern Minimalist Bento KPI Grid:** 4 kartu metrik omzet, transaksi pesanan, member aktif, dan stok menipis dengan tipografi proporsional tanpa polusi badge bertumpuk.
+  - **3. Dual Analytics Bento Charts:** Merestrukturisasi grafik donat komposisi omzet (Slate `#0f172a`, Blue `#2563eb`, Orange `#f97316`) dengan cutout 72% dan grafik batang distribusi status order yang bersih.
+  - **4. Streamlined Insights & Unified Export Toolbar:** Mengelompokkan produk terlaris, statistik cabang, dan garansi ke dalam kartu permukaan bento tunggal dengan toolbar ekspor cepat di bagian bawah.
+
+- **2026-08-27 (Senior UI/UX Master Redesign: 2-Column Responsive Layout [/mitras/[id]/edit]):**
+  - **1. Struktur Grid 2-Kolom Seimbang (Linear & Stripe Standard):** Mengganti tumpukan vertikal 5 kartu memanjang menjadi tata letak **2-Kolom Responsive (`grid grid-cols-1 lg:grid-cols-12 gap-5`)**:
+    - **Kolom Utama Kiri (8 Kolom):** Kartu Identitas Toko, Alamat Fisik & Titik Logistik, serta Kontak CS & Telepon Toko.
+    - **Kolom Meta Kanan (4 Kolom):** Kartu Entitas & Akun Cabang, Switch Status Operasional, Jam Buka Hari Kerja/Weekend, dan Chip Fasilitas Toko.
+  - **2. Top Floating Control Bar:** Menambahkan bar kontrol atas yang ramping dengan tombol *← Kembali*, Breadcrumb Toko, tautan *Halaman Publik ↗*, dan tombol utama **Simpan Perubahan** (*Solid Black Pill*), sehingga pengguna dapat langsung menyimpan tanpa harus scroll jauh ke bawah.
+  - **3. Ergonomi Input & Spasi Bersih:** Menggunakan latar input `bg-slate-50/50` dengan border halus `border-slate-200/80`, fokus state `focus:border-slate-900 focus:bg-white`, serta badge ikon squircle yang konsisten.
+
+- **2026-08-27 (Senior UI/UX Polish: Eliminasi Header Judul & Back Link [/mitras/[id]/edit]):**
+  - **1. Zero Top Header Noise:** Menghapus blok judul *"Edit Profil Cabang Toko"*, subtitle deskripsi, dan link kembali di bagian atas agar kartu Bento formulir langsung tampil bersih dan efisien di layar tanpa pemborosan ruang vertikal.
+
+- **2026-08-27 (Penyelarasan Lebar Kontainer & Responsivitas Sidebar [/mitras/[id]/edit & /mitras/create]):**
+  - **1. Sinkronisasi Grid & Header Alignment:** Mengubah kontainer halaman formulir dari `max-w-4xl` menjadi `max-w-6xl mx-auto` agar sejajar presisi dengan header atas (*Lihat Toko Publik* dan toggle sidebar) serta daftar tabel master toko.
+  - **2. Dynamic Sidebar Adaptation:** Kontainer kini otomatis meregang (*fluid stretch*) dan terpusat rapi saat sidebar dibuka maupun ditutup (*collapsed/expanded*), persis seperti halaman Dashboard, Pesanan, dan Katalog Produk.
+
+- **2026-08-27 (Senior UI/UX Redesign: Bento Surface Cards pada Formulir Edit Toko [/mitras/[id]/edit/page.tsx]):**
+  - **1. Eliminasi Nested Gray Box:** Menghapus kotak abu-abu tebal (*nested container*) dan menggantinya dengan kartu permukaan Bento terpisah berlatar putih bersih (`rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs`).
+  - **2. Pengelompokan Kartu Terstruktur:**
+    - 🏢 **Kartu 1 (Akun Pengelola & Badan Usaha):** Metadata penanggung jawab dan email dengan status chip terverifikasi.
+    - 🏬 **Kartu 2 (Informasi Toko & Cabang):** Nama cabang resmi, tagline, dan deskripsi unit.
+    - 📍 **Kartu 3 (Alamat Fisik & Titik Logistik):** Alamat lengkap, kota, provinsi, dan kode pos kurir.
+    - 📞 **Kartu 4 (Kontak & Jam Operasional):** Telepon, WhatsApp sales, dan jam buka operasional.
+    - ⚡ **Kartu 5 (Fasilitas & Status Verifikasi):** Pilihan chip fasilitas dan switch status operasional.
+  - **3. Standardisasi Input & Tombol Aksi:** Input field seragam berukuran `rounded-xl` dengan bayangan halus `shadow-2xs` serta sticky action footer dengan tombol *Solid Black Pill* (`Simpan Perubahan`).
+
+- **2026-08-27 (Perbaikan ReferenceError pada Halaman Edit Toko [/mitras/[id]/edit/page.tsx]):**
+  - **1. Unified Variable Naming:** Memperbaiki deklarasi variabel `storeId` dan state `store` secara konsisten pada hook `useEffect` dan dependency array di [`src/app/dashboard/admin/mitras/[id]/edit/page.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/mitras/[id]/edit/page.tsx), menghilangkan error runtime `tokoId is not defined`.
+
+- **2026-08-27 (Standardisasi Terminologi Global: Penggantian Istilah "Mitra" Menjadi "Toko"):**
+  - **1. Standarisasi Teks & Label Antarmuka:** Mengubah seluruh sebutan *"Mitra"* di modul admin, form tambah/edit cabang, halaman kelola pengguna, dan laporan finansial menjadi terminologi **"Toko"** / **"Cabang Toko"** / **"Admin Toko"**.
+  - **2. Toast & Validasi Feedback:** Menyelaraskan pesan sukses dan notifikasi error (misal: *"Data toko berhasil diperbarui!"*, *"Cabang toko berhasil ditambahkan!"*, dan *"Status akun toko berhasil diperbarui"*).
+
+- **2026-08-27 (Perbaikan Error Edit Toko & Resolusi ID Ganda [/api/admin/mitras/[id]]):**
+  - **1. Unified Store & Mitra Detail Resolution:** Memperbarui handler `GET`, `PUT`, dan `DELETE` pada [`src/app/api/admin/mitras/[id]/route.ts`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/admin/mitras/[id]/route.ts) agar secara mulus mencari ID pada model `db.store` (toko cabang resmi) dan fallback ke `db.mitra` (mitra servis).
+  - **2. Eliminasi Console Error `Failed to fetch mitra`:** Halaman formulir edit toko ([`edit/page.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/mitras/[id]/edit/page.tsx)) kini langsung menerima payload data toko lengkap (status 200 OK), mengisi form input tanpa crash.
+
+- **2026-08-27 (Senior UI/UX & Data Architecture: Pendataan Lengkap Toko & Modal Detail [/dashboard/admin/mitras]):**
+  - **1. Integrasi Pendataan Lengkap Toko (Operational, Financial & Legal):**
+    - **Kolom 1 (Toko & Badan Usaha PT):** Nama toko resmi, nama badan hukum PT (`PT Gadget Jaya Sentosa`, dll.), serta chip lokasi kota.
+    - **Kolom 2 (Alamat & Wilayah):** Alamat fisik toko terpotong rapi dengan ikon gedung dan kode pos posko logistik.
+    - **Kolom 3 (Kontak & PIC):** Nomor WhatsApp / telepon monospace dan alamat email cabang toko.
+    - **Kolom 4 (Rekening & Komisi):** Akun Bank Mandiri / BCA resmi PT dan persentase komisi platform (1.5% – 2.5%).
+    - **Kolom 5 (Status):** Status operasional semantik (*● Terverifikasi* / *● Pending*).
+    - **Kolom 6 (Aksi Terpadu):** Tombol **Detail 🔍**, **Publik ↗**, **Tangguhkan / Setujui**, **Edit**, dan **Hapus**.
+  - **2. Modal Detail Pendataan Lengkap Toko:** Membuka dialog terstruktur saat mengklik tombol *Detail* yang menyajikan:
+    - 🏢 **Legalitas Badan Usaha PT:** Nama Perusahaan, NPWP Badan Usaha (dengan tombol salin 1-klik), skema komisi platform, status PKP.
+    - 💳 **Rekening Bank Mandiri / BCA PT:** Nomor rekening bank resmi PT untuk pencairan omzet otomatis, nama bank, dan nama pemilik rekening.
+    - 📍 **Alamat Fisik & Titik Logistik Kurir:** Alamat lengkap, kota, provinsi, kode pos, dan kesiapan penjemputan Gojek Instant / JNE.
+    - ⏰ **Jam Operasional & Kontak PIC:** Jadwal buka hari kerja & akhir pekan, ketersediaan servis LCD kilat 2 jam, WhatsApp CS, telepon kantor, dan email cabang.
+  - **3. Sinkronisasi API Endpoint ([`/api/admin/mitras`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/admin/mitras/route.ts)):** Memetakan relasi `db.store` dan `db.mitra` secara otomatis mencakup data rekening bank, jadwal operasional, dan penghitungan stok produk & pesanan.
+
+- **2026-08-27 (Senior UI/UX Polish: Eliminasi Header Redundan & Relokasi Tombol Tambah Toko [/dashboard/admin/mitras]):**
+  - **1. Zero Top Header Noise:** Menghapus blok judul *"Daftar Toko"*, chip cabang, dan deskripsi subtitle atas agar 4 kartu metrik KPI langsung terlihat di layar tanpa pemborosan ruang vertikal.
+  - **2. Inline Action Toolbar:** Memindahkan tombol utama **+ Tambah Toko** ke dalam toolbar kontrol terpadu tepat di samping live search input dan dropdown filter kota, menciptakan tata letak yang kompak dan seragam dengan halaman katalog gadget.
+
+- **2026-08-27 (Senior UI/UX Redesign: Daftar Toko Table List View [/dashboard/admin/mitras]):**
+  - **1. Clean Data Table List Layout:** Mengubah representasi kartu toko 3-kolom menjadi format **Data Table List** yang rapi, kompak, dan konsisten seperti halaman katalog master gadget dan manajemen pengguna:
+    - Kolom 1 (*Toko & Cabang*): Monogram avatar squircle, nama toko tebal, dan chip kota.
+    - Kolom 2 (*Alamat Fisik*): Alamat lengkap toko dengan ikon gedung, pas terpotong rapi (*single-line truncate*).
+    - Kolom 3 (*Kontak & WA*): Nomor telepon / WhatsApp monospace.
+    - Kolom 4 (*Status*): Status pill semantik (*Terverifikasi / Pending*).
+    - Kolom 5 (*Aksi*): Tombol aksi terpadu (*Lihat Publik ↗*, *Tangguhkan / Setujui*, *Edit*, dan *Hapus*).
+  - **2. Bento Metric Cards & Filter Toolbar:** 4 kartu metrik proporsional di bagian atas bersama segmented capsule switcher (*Semua Toko*, *Terverifikasi*, *Menunggu Review*), dropdown kota, dan live search box.
+
+- **2026-08-27 (Perbaikan Next.js SSR Hydration Mismatch pada Admin Dashboard [/dashboard/admin]):**
+  - **1. Hydration Guard (`mounted` state & Session Loading Guard):** Menambahkan state guard `mounted` bersama pengecekan `status === 'loading'` dari `useSession()` pada [`src/app/dashboard/admin/page.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/page.tsx) dan [`src/app/dashboard/admin/products/page.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/products/page.tsx).
+  - **2. Deterministic Skeleton Baseline & suppressHydrationWarning:** Merender kerangka visual skeleton yang konsisten pada saat SSR dan siklus hidrasi client awal, serta menambahkan `suppressHydrationWarning` pada kontainer halaman admin ([`page.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/page.tsx), [`reports/page.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/reports/page.tsx), [`users/page.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/users/page.tsx), [`mitras/page.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/mitras/page.tsx)), mencegah konflik perbedaan pohon DOM akibat navigasi cepat sebelum sesi NextAuth terhidrasi.
+
+- **2026-08-27 (Senior UI/UX Polish: Ukuran Font Nominal Proporsional & Zero Truncation [/dashboard/admin]):**
+  - **1. Proportional Nominal Typography:** Mengganti font monospace besar yang terpotong (*"458.900.0..."*) menjadi tipografi sans-serif proporsional modern (`text-lg sm:text-xl font-bold font-sans tabular-nums`) dengan label mata uang `Rp` (12px `text-xs font-semibold text-slate-400`), pas 100% dalam kontainer tanpa ada angka yang terpotong elipsis.
+  - **2. Card Padding & Visual Rhythm:** Menyesuaikan padding kartu metrik menjadi `p-4 sm:p-5` dengan sudut `rounded-2xl` yang ramping, ikon header berukuran pas (`h-6.5 w-6.5`), dan teks konteks subline yang proporsional (`text-[11px]`).
+
+- **2026-08-27 (Pembersihan Total Header Atas Dashboard [/dashboard/admin]):**
+  - **1. Zero Top Bar Noise:** Menghapus dropdown filter cabang toko dan tombol *+ Tambah Gadget* dari header atas, sehingga halaman dashboard langsung menampilkan kartu metrik KPI dan insight bento secara bersih tanpa header bar yang mengambang.
+
+- **2026-08-27 (Pembersihan Header Dashboard: Eliminasi Judul & Subtitle Redundan [/dashboard/admin]):**
+  - **1. Ultra-Minimal Top Header:** Menghapus blok judul *"Ringkasan Toko"*, role badge, dan teks subtitle deskripsi di bagian atas halaman dashboard. Kontrol aksi (Dropdown filter cabang toko dan tombol *+ Tambah Gadget*) kini langsung berada rapi di pojok kanan atas, sehingga 4 kartu KPI langsung terlihat di layar tanpa pemborosan ruang vertikal.
+
+- **2026-08-27 (Penyederhanaan Navigasi Sidebar: Label "Dashboard" Tunggal [/components/dashboard/sidebar.tsx]):**
+  - **1. Clean Navigation Label:** Mengubah label navigasi menu utama dari *"Dashboard Toko"* dan *"Dashboard Platform"* menjadi cukup berlabel **"Dashboard"** untuk seluruh tingkatan role (`SUPER_ADMIN`, `STORE_ADMIN`, dan `ADMIN`), memberikan navigasi yang lebih ringkas, universal, dan elegan.
+
+- **2026-08-27 (Senior UI/UX Polish: Bento Metric Alignment & Zero Collision [/dashboard/admin]):**
+  - **1. Zero Line-Break Currency Formatting:** Menghilangkan pemenggalan baris canggung pada angka metrik (*"Rp \n 458.900.000"* dan *"5 Toko \n Aktif"*), menggantinya dengan format mata uang proporsional satu baris (`Rp` label 12px + nominal `text-xl sm:text-2xl font-bold font-mono tracking-tight`) yang tidak akan pernah terpotong pada berbagai resolusi layar.
+  - **2. Per-Store Proportional Distribution Progress Bars:** Mengganti bar segmented tipis di atas kontainer menjadi *individual progress bars* per baris cabang toko (Roxy Mas 53.5%, WTC Surabaya 28.0%, BEC Bandung 18.5%) dengan visualisasi pangsa pasar yang intuitif.
+  - **3. Transaction Row Spacing & Badge Collision Fix:** Memberikan jarak vertikal dan horizontal yang tegas antara nominal transaksi, komisi platform, dan pill status semantik (`Dibayar`, `Proses`, `Selesai`), menghilangkan masalah teks yang berdempetan.
+  - **4. Global Multi-PT Sanitizer pada Profil Avatar:** Memastikan nama profil pengguna pada avatar bawah sidebar (`session.user.name`) otomatis membersihkan istilah *"Multi-PT"* menjadi label murni *"Super Admin"*.
+
+- **2026-08-27 (Penghapusan Seluruh Istilah "Multi-PT" pada Antarmuka Dashboard & Sidebar):**
+  - **1. Standardisasi Terminologi Bersih:** Mengubah seluruh sebutan *"Multi-PT"* menjadi label yang lebih lugas dan profesional: *"Dashboard Multi-PT"* ➔ **"Dashboard Toko"**, *"Laporan Finansial Multi-PT"* ➔ **"Laporan Finansial"**, *"Daftar Toko & PT"* ➔ **"Daftar Toko"**, *"Ringkasan Multi-PT"* ➔ **"Ringkasan Toko"**, dan *"5 Toko PT"* ➔ **"5 Toko Aktif"**.
+  - **2. Footer & Profil Pengguna:** Memperbarui footer admin menjadi *"© 2026 Affiliate Gadget • Platform Toko Resmi Indonesia"* dan menghapus embel-embel *"(Cabang PT)"* pada info akun pengguna.
+
+- **2026-08-27 (Senior UI/UX Redesign Admin Dashboard [/dashboard/admin]):**
+  - **1. Penyederhanaan Informasi & Eliminasi Badge Spam:** Menghapus micro-badge berwarna-warni yang redundan pada seluruh kartu metrik KPI, menggantinya dengan format metrik tunggal tipografi besar monospace (`text-2xl sm:text-3xl font-black font-mono tracking-tight`) dengan satu baris tren konteks bersih (`↗ +18.5% · 284 pesanan`).
+  - **2. Tata Letak & Spasi (Single-Surface Bento Grid):** Menghilangkan jebakan nested boxes berlapis di dalam kartu metrik dan kartu panel bawah, memperluas padding dari `p-5` menjadi `p-6 sm:p-7`, serta merapikan ritme vertikal `py-3.5`.
+  - **3. Hierarki Visual Tegas & High-Contrast Black Pill CTA:** Merestrukturisasi Header Eksekutif dengan tipografi kontras tinggi, status chip netral (`● Super Admin` / `● Admin Cabang`), filter dropdown toko berbentuk rounded-full pill minimalis, dan Primary CTA *Solid Black Pill* (`+ Tambah Gadget`) standar modern Apple/Stripe/Linear.
+  - **4. Palet Warna Harmonis & Dark Mode:** Menghilangkan tabrakan 6 warna berbeda sekaligus dan mengadopsi palet monokromatik netral bersih (Slate canvas) dengan aksen fungsional yang hemat (Emerald untuk pertumbuhan/sukses, Amber/Rose untuk proses, Slate untuk metadata), lengkap dengan dukungan penuh tema gelap (*Dark Mode*).
+
+- **2026-08-27 (Perbaikan Error Upload Foto Profil Avatar [/api/user/avatar]):**
+  - **1. Local Storage & Sharp WebP Fallback:** Memperbaiki penanganan unggahan avatar dengan kompresi cerdas via Sharp (400x400 cover WebP) dan penyimpanan lokal `/uploads/avatars/` sebagai fallback otomatis saat kredensial Cloudinary belum dikonfigurasi, menghilangkan pesan *500 Internal server error*.
+  - **2. Instant Database Update & Session Sync:** Foto profil yang diunggah langsung tersimpan ke record `prisma.user` dan memicu pembaruan avatar sesi secara real-time.
+
+- **2026-08-27 (Fitur Lengkap Profil Pembeli Ala Shopee & Multi-Alamat [/dashboard/customer/settings]):**
+  - **1. Tab 1 - Profil & Biodata Pembeli Komprehensif (Shopee Standard):**
+    - Input Nama Lengkap sesuai identitas, Username unik (`@username`), Email (dengan chip `Terverifikasi`), Nomor Telepon/WhatsApp aktif kurir, Pilihan Jenis Kelamin (*Laki-laki / Perempuan*), Tanggal Lahir (dengan benefit voucher ulang tahun), dan Bio/Catatan khusus pengiriman.
+    - **Defensive API Hardening & Prisma Scalar Filters:** Memperbaiki resolusi ID/Email sesi di endpoint `PATCH /api/user/profile` serta mengganti klausa `NOT: { id: ... }` menjadi filter scalar Prisma standar `id: { not: ... }`, sehingga penyimpanan biodata profil (nama, username, email, tanggal lahir, jenis kelamin, dan bio) berhasil 100% tanpa error query.
+  - **2. Tab 2 - Manajemen Multi-Alamat Pengiriman & 4-Level Wilayah Indonesia (Shopee-Grade):**
+    - **Balanced 2-Column Desktop Grid (`max-w-4xl`):** Layout 2-kolom seimbang (Sisi Kiri: Form Input & 4 Dropdown Wilayah, Sisi Kanan: Live Interactive GPS Map setinggi form).
+    - **Integrasi 4-Level Wilayah Administratif Lengkap Kemendagri ([`/api/regions`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/regions/route.ts)):**
+      - 1️⃣ **Provinsi:** Menampilkan seluruh **38 Provinsi** se-Indonesia (DKI Jakarta, Jawa Barat, Papua, Aceh, dll.) dengan instant search & memory cache.
+      - 2️⃣ **Kota / Kabupaten:** Menampilkan seluruh **514 Kota & Kabupaten** yang tersaring otomatis sesuai Provinsi yang dipilih.
+      - 3️⃣ **Kecamatan:** Menampilkan seluruh **7.200+ Kecamatan** secara cascading dinamis sesuai Kota yang dipilih.
+      - 4️⃣ **Desa / Kelurahan:** Menampilkan seluruh **83.000+ Desa & Kelurahan** secara cascading dinamis sesuai Kecamatan yang dipilih.
+    - **Format Title Case Otomatis:** Mengonversi data wilayah huruf kapital menjadi teks *Title Case* bersih dan profesional.
+    - **Skema Database & Prisma Migration:** Menambahkan kolom `village` (Desa/Kelurahan) pada model `UserAddress` (`user_addresses`) dan sinkronisasi ke kartu alamat.
+    - **True Fullscreen Portal Lightbox (`createPortal` & `z-[99999]`):** Memindahkan rendering modal langsung ke `document.body`, melepaskan modal dari batasan *CSS transform stacking context* kontainer `<main>` sehingga efek latar belakang blur (`backdrop-blur-md bg-slate-950/60`) menutupi 100% seluruh layar secara penuh dari sudut paling atas tanpa celah.
+    - **Integrasi Peta Interaktif & OpenStreetMap Fallback ([`address-map-picker.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/maps/address-map-picker.tsx)):** Menghilangkan kotak error API key Google Maps lama, menggantinya dengan preview peta visual OpenStreetMap interaktif, tombol *"Deteksi GPS Saya"* (`navigator.geolocation`), dan chip koordinat presisi driver Gojek/JNE.
+    - **Penyederhanaan Label & Header Bersih:** Menghapus subtitle sekunder (*"Format resmi wilayah Kemendagri & kurir ekspedisi JNE / Gojek"*) dan label *"Titik Peta GPS"* pada kolom kanan untuk membuat tampilan modal semakin minimalis, lapang, dan langsung fokus ke interaksi pengguna.
+    - **Minimalist Inline Checkbox:** Mengubah kotak toggle alamat utama yang tebal menjadi checkbox inline modern dan ringan (*"Atur sebagai alamat utama"*), mengeliminasi kontainer abu-abu dan icon sparkle yang berlebihan.
+    - **Sticky Action Footer:** Tombol CTA *"Simpan Alamat"* (Solid Black Pill) dan *"Batal"* selalu terlihat di bagian bawah modal tanpa terpengaruh scroll viewport.
+    - **Penandaan Semantik:** Badge `Alamat Utama` (Default), chip `Titik GPS Terpasang`, dan kontrol 1-klik untuk *"Atur Sebagai Utama"*, *"Ubah"*, dan *"Hapus"*.
+  - **3. Tab 3 - Suite Keamanan Akun:**
+    - Pembaruan Kata Sandi akun dengan indikator keamanan & show/hide toggle.
+    - Pengaturan Verifikasi 2 Langkah (2FA WhatsApp OTP) & Peringatan Login Mencurigakan.
+    - Pemantauan Sesi & Perangkat Login Aktif (Desktop/MacBook vs Mobile iPhone) dilengkapi tombol *"Keluarkan Perangkat Lain"*.
+
+- **2026-08-27 (Penghapusan Widget Floating Chat Sales Toko):**
+  - **1. Clean Screen Layout:** Menghapus komponen tombol melayang hijau _"Chat Sales Toko"_ ([`floating-live-chat.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/shared/floating-live-chat.tsx)) dan deklarasinya di [`layout.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/layout.tsx), sehingga area pandang bawah layar lebih bersih dan pengguna terfokus pada live chat in-platform di header navbar.
+
+- **2026-08-27 (Perbaikan Next.js SSR Hydration Mismatch pada Header Navbar [/components/layouts/navbar.tsx]):**
+  - **1. Hydration Guard (`mounted` state):** Menambahkan state guard `mounted` yang diset pada `useEffect` untuk mencegah inkonsistensi rendering antara SSR HTML dan Client DOM.
+  - **2. Zustand Persist & LocalStorage Alignment:** Memastikan badge jumlah item keranjang belanja (`itemCount`) hanya dirender setelah hidrasi client selesai (`mounted && itemCount > 0`), menghilangkan perbedaan jumlah elemen DOM saat data keranjang dimuat dari `localStorage`.
+  - **3. NextAuth Session Determinism:** Mencegah rendering dropdown autentikasi sebelum client mount selesai (`!mounted || status === 'loading'`), sehingga komponen selalu menghasilkan markup skeleton seragam pada SSR dan transisi mulus ke sesi pengguna.
+  - **4. Dynamic Link Protection:** Menyinkronkan tautan chat dinamis (`getChatLink()`) dan dashboard (`getDashboardLink()`) secara deterministik saat SSR.
+
+- **2026-08-26 (Redesign Senior UI/UX Pusat Klaim Garansi 30 Hari [/dashboard/admin/complaints]):**
+  - **1. 4 Kartu KPI Metrik Klaim (Bento Grid):** Mengadopsi tata letak modern ber-whitespace optimal. Tipografi angka besar (_24-30px font-black_), label _Sentence case_ bersih, dan status pill semantik dinamis (_"Garansi 30H", "Perlu Respon" / "Tertangani", "Uji Teknisi" / "Antrean 0", dan "XX% Sukses"_), menghilangkan teks statis yang memenuhi ruang.
+  - **2. Eliminasi "Boxes-in-Boxes" Trap & Single-Surface Architecture:** Menghilangkan kontainer abu-abu bertumpuk di dalam kartu. Konten ditata secara alami menggunakan whitespace lapang, tipografi presisi, dan garis pemisah vertikal halus (`lg:border-l lg:border-slate-100`).
+  - **3. Hierarki Visual Tegas & Fast Copy:**
+    - Nomor order monospace `#SPR-...` dilengkapi tombol salin 1-klik (_Copy to clipboard_).
+    - Badge squircle nama gadget original, tanggal pengajuan rapi, dan status badge bergradasi semantik.
+    - Judul keluhan berukuran tebal (18px) berpadu dengan deskripsi ber-line-height nyaman (`leading-relaxed text-slate-600`).
+    - Galeri foto bukti interaktif dengan thumbnail squircle 80x80px, efek hover zoom preview, badge hitungan foto, dan True Fullscreen Portal Lightbox (`createPortal(..., document.body)` dengan `z-[99999]`) bebas hambatan stacking context.
+    - **Fitur Lightbox Teater Modern:** Latar belakang putih transparan ber-efek blur lembut (_Translucent Frosted White `bg-white/45 backdrop-blur-xl`_), antarmuka ultra-minimalis bebas distraksi (tanpa top bar), tombol panah melayang minimalis (_Sleek Black Circle with Crisp White Chevron_), filmstrip bottom thumbnail carousel, auto-dismiss saat klik di luar gambar, dan keyboard shortcuts (`←`, `→`, `ESC`).
+  - **4. Aksi Kontekstual & Integrasi WhatsApp Ergonomis:**
+    - Tombol aksi utama kontras tinggi (_"Mulai Tangani Klaim"_ Black Pill, _"Setujui & Selesaikan"_ Solid Emerald, _"Tolak Klaim"_ Rose).
+    - Kartu profil pembeli terintegrasi dengan tombol shortcut WhatsApp emerald lembut yang mencantumkan template pesan otomatis.
+    - **Catatan Resolusi & Penolakan Bento:** Mengeliminasi border hijau kaku lama. Resolusi kini menggunakan kontainer abu-abu netral lembut (`bg-slate-50/90 border border-slate-100`) dengan status pill emerald (_"Hasil Resolusi Garansi"_), tipografi nyaman (`text-slate-700 font-medium`), dan timestamp tabular rapi.
+- **2026-08-26 (Penyederhanaan Terminologi: Standardisasi Label "Toko" [/dashboard/customer/orders/[orderId]]):**
+  - **1. Label Consistency:** Mengubah semua label *"Cabang Toko"* dan *"Toko Cabang"* menjadi cukup berlabel **"Toko"** pada seluruh komponen (Header Pill, Strip Logistik Terpadu, Garansi Toko, Pesan Chat Toko, dan Form Pembatalan), memberikan konsistensi visual dan teks yang ringkas bagi pembeli.
+- **2026-08-26 (Senior UI/UX Redesign Kartu Ringkasan Pembayaran & Garansi Trust Strip [/dashboard/customer/orders/[orderId]]):**
+  - **1. Visual Harmony & Status Header:** Menempatkan status pembayaran semantik (*"Lunas"* emerald pill atau *"Menunggu Bayar"* amber pill) langsung di baris header atas sejajar dengan judul kartu, menyederhanakan hierarki informasi.
+  - **2. Proportional Typography & Single-Line Total:** Menyeimbangkan skala tipografi total tagihan (`font-mono text-xl sm:text-2xl font-black`) dengan label `Total Tagihan` yang sejajar rapi di sisi kiri tanpa distorsi visual.
+  - **3. Eliminasi "Nested Gray Box Trap":** Mengubah kotak abu-abu garansi 30 hari yang bertumpuk menjadi strip garansi resmi terpadu (*Official Store Guarantee Strip*) ber-ikon squircle emerald lembut dan tipografi 11px yang sangat nyaman dibaca.
+- **2026-08-26 (Senior UI/UX Redesign Rincian Unit Gadget, Logistik Terpadu & Ringkasan Pembayaran [/dashboard/customer/orders/[orderId]]):**
+  - **1. Eliminasi Badge Spam pada Baris Produk:** Menghapus perulangan chip badge garansi yang berulang pada setiap baris unit gadget, menggantinya dengan tampilan baris produk yang lapang, thumbnail squircle 88x88px yang jernih, brand tag oranye, dan harga monospace IDR yang tegas.
+  - **2. Integrasi Logistik Terpadu (Zero Separate Box Trap):** Mengeliminasi kartu raksasa logistik terpisah di bawah halaman. Informasi Toko Cabang Pemroses dan Kurir JNE/Asuransi kini terintegrasi secara elegan dalam satu strip bawah kartu produk (*single cohesive surface*).
+  - **3. Ribbon Paket Bonus 3-in-1:** Menyederhanakan tampilan paket bonus 3-in-1 ke dalam pita horizontal emerald lembut tanpa nested white box yang berkotak-kotak.
+  - **4. Zero Line-Break Bug pada Total Tagihan:** Memperbaiki wrapping angka total transaksi agar nominal (`font-mono text-2xl font-black`) tidak terpotong menjadi 2 baris terpisah, lengkap dengan status pembayaran semantik ber-dot indikator aktif.
+- **2026-08-26 (Penyederhanaan UI: Eliminasi Kartu Bantuan Sekunder [/dashboard/customer/orders/[orderId]]):**
+  - **1. Zero Secondary Clutter:** Menghapus kotak pintasan bantuan (*"Butuh Bantuan Pesanan?"*) di kolom kanan rincian pesanan agar tampilan halaman lebih ringkas, padat, dan langsung terfokus pada ringkasan transaksi serta garansi 30 hari resmi.
+- **2026-08-26 (Senior UI/UX Redesign Bento Status Klaim Garansi 30 Hari [/dashboard/customer/orders/[orderId]]):**
+  - **1. Eliminasi "Box-in-Box Trap" & 2-Column Balanced Bento:** Mengubah kontainer berkotak-kotak menjadi layout 2-kolom seimbang: Sisi Kiri menampilkan *Kendala yang Dilaporkan* dan Sisi Kanan menyajikan *Hasil Resolusi & Tindakan Toko* secara berdampingan tanpa nested border yang bertumpuk.
+  - **2. Semantic Status & Live Indicator:** Header dilengkapi ikon status dinamis squircle (`CheckCircle2` emerald untuk selesai, `XCircle` rose untuk tolak, `ShieldCheck` amber untuk proses), tanggal pengajuan tabular, dan pill status semantik ber-dot glowing.
+  - **3. Dynamic Verification Card:** Hasil verifikasi teknisi disajikan dalam kartu bergradasi emerald lembut (`bg-emerald-50/50 border border-emerald-100/90`) dengan ikon checkmark dan pesan unit pengganti baru yang jelas.
+- **2026-08-26 (Senior UI/UX Redesign Modal Rating & Ulasan [rating-modal.tsx]):**
+  - **1. Zero-Clutter Header & Verified Badge:** Menampilkan judul 18px font-black (*"Beri Ulasan Gadget"*), badge verifikasi amber lembut (*"Terverifikasi"*), dan nomor order monospace yang rapi.
+  - **2. Interactive Star Rating Center & Dynamic Emotion Labels:** Bintang rating interaktif dengan efek hover pembesaran halus (`hover:scale-120`), warna emas hangat (`amber-400`), dan label sentimen dinamis semantik (*"1: Sangat Kecewa"*, *"3: Cukup Baik"*, *"5: Luar Biasa / Sempurna"*).
+  - **3. Quick Feedback Tag Chips:** Menambahkan pintasan chip ulasan 1-klik (*⚡ Pengiriman Cepat, 📦 Packing Aman & Asuransi, 📱 Unit 100% Original, 🎁 Bonus 3-in-1 Lengkap, 💬 Respon Toko Ramah*) untuk mempercepat dan mempermudah pengisian ulasan oleh pembeli.
+  - **4. Input Ergonomis & High-Contrast CTA:** Textarea abu-abu netral lembut (`rounded-2xl border border-slate-200/80 bg-slate-50/60`), tombol *Batal* rounded-full, serta tombol aksi *Simpan Ulasan* solid black pill yang tegas dan responsif.
+- **2026-08-26 (Senior UI/UX Redesign Modal Pengajuan Klaim Garansi 30 Hari [complaint-modal.tsx]):**
+  - **1. Zero-Clutter Header & Crisp Badging:** Mengganti ikon oranye raksasa yang memenuhi ruang dengan header minimalis modern: judul berukuran 18px font-black, badge *Ganti Baru* emerald lembut, dan nomor order monospace yang rapi.
+  - **2. Segmented Grid Chips Kategori Kendala:** Mengatur pilihan kendala umum (*Layar & LCD, Baterai & Daya, Kamera & Audio, Mati Total / Mesin, Lainnya*) ke dalam grid 2-3 kolom rapi dengan active state kontras tinggi (*Sleek Black Pill*), mengeliminasi tata letak tombol bertumpuk yang berantakan.
+  - **3. Input & Textarea Ergonomis:** Mengadopsi styling `rounded-2xl border border-slate-200/80 bg-slate-50/60` dengan transisi fokus putih bersih yang nyaman di mata pengguna.
+  - **4. Upload Area Ringkas & High-Contrast CTA:** Dropzone upload bukti foto/video dibuat lebih ramping dengan thumbnail squircle ber-badge status play video, tombol *Batal* rounded-full, dan tombol *Ajukan Klaim* solid black pill kontras tinggi yang tegas.
+- **2026-08-26 (Senior UI/UX Redesign Halaman Rincian Pesanan [/dashboard/customer/orders/[orderId]]):**
+  - **1. Eliminasi Carnival Buttons & In-Platform Chat Focus:** Mengganti deretan tombol warna-warni yang bertabrakan dengan hierarki aksi terfokus:
+    - Sisi Kiri: Pintasan komunikasi tunggal in-platform **"Chat Toko"** (`/dashboard/customer/chat?orderId=...`), mengeliminasi WhatsApp eksternal untuk menjaga privasi dan rekam jejak transaksi di dalam aplikasi.
+    - Sisi Kanan: Aksi utama workflow yang kontras tinggi (*"Bayar Sekarang"* Solid Orange untuk pending, *"Konfirmasi Pesanan Diterima"* Solid Emerald untuk dikirim, *"Klaim Garansi 30 Hari"* Sleek Black Pill, dan *"Beri Ulasan"* subtle pill).
+  - **2. Redesign Bento Status Klaim Garansi 30 Hari:** Mengganti kontainer oranye terang dengan kanvas putih bento bersih (`rounded-3xl border border-slate-200/80 bg-white shadow-2xs`), pill status resolusi semantik, dan kotak solusi teknisi abu-abu netral yang nyaman dibaca.
+  - **3. Tipografi & Rincian Produk yang Lapang:**
+    - Thumbnail squircle produk 96x96px dengan fallback jernih.
+    - Judul gadget 18px tebal dengan highlight brand oranye dan format harga monospace IDR tegas.
+    - Rincian Paket Bonus 3-in-1 Gratis (Rp 0) terbungkus dalam kartu emerald lembut dengan checkmark rapi.
+- **2026-08-26 (Perbaikan Bug Gambar Produk Tidak Muncul pada Pesanan Saya & Rincian Pesanan):**
+  - **1. Database Relational Fix:** Menghubungkan seluruh `OrderItem` riwayat lama yang memiliki `productId: null` ke data katalog `Product` aktif sehingga nama gadget (`iPhone 15 Pro Max`, `Samsung Galaxy S24 Ultra`, dll.), brand, dan galeri foto termuat lengkap.
+  - **2. Eliminasi 404 Broken Image Link:** Mengganti string aset lama `/placeholder-phone.png` yang memicu ikon silang/gambar rusak bawaan browser dengan fallback URL resmi beresolusi tinggi (`DEFAULT_GADGET_IMAGE`).
+  - **3. Graceful onError Image Recovery:** Menambahkan event handler `onError` pada elemen gambar di halaman daftar pesanan ([`orders-client.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/customer/orders/orders-client.tsx)) dan rincian pesanan ([`order-detail-client.tsx`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/customer/orders/%5BorderId%5D/order-detail-client.tsx)) untuk mengalihkan URL yang gagal termuat secara mulus tanpa merusak antarmuka.
+- **2026-08-26 (Senior UI/UX Redesign Halaman Pesanan Saya [/dashboard/customer/orders]):**
+  - **1. Unified Control Panel (Sesuai Desain Manajemen Produk):**
+    - Mengadopsi kontainer *Single-Surface Control Panel* (`rounded-3xl border border-slate-200/80 bg-white p-2.5 sm:p-3 shadow-2xs`) yang identik 100% dengan modul Manajemen Produk.
+    - Tab filter status menggunakan kapsul pil tersegmentasi (`p-1 bg-slate-100/80 rounded-2xl`) dengan tombol aktif solid putih berkontras tinggi (`bg-white text-slate-950 shadow-xs`) dan badge angka dinamis.
+    - Kapsul pencarian responsif (`lg:w-72`) dengan pembersih 1-klik (*Clear button* `X`).
+    - **Zero-Clutter Header:** Menghilangkan banner judul atas dan tombol sekunder redundan, membuat tampilan langsung fokus ke bilah kontrol transaksi.
+    - Desain kartu pesanan mengadopsi *Single-Surface Bento Card* (`rounded-3xl border border-slate-200/70 bg-white hover:border-slate-300 shadow-2xs hover:shadow-xs`) dengan hierarki informasi yang sangat lapang dan teratur.
+    - **Penyelarasan Lebar Kontainer:** Menyesuaikan wrapper dari `max-w-5xl` menjadi `max-w-7xl px-4 sm:px-6 lg:px-8` sehingga batas kiri dan kanan konten sejajar 100% dengan logo navbar dan utilitas profil di header.
+  - **2. Hierarki Visual Tinggi & Redesign Kartu Bento:**
+    - **Single Cohesive Bento Surface:** Menghilangkan pemisah bertumpuk (*three-decker sandwich*). Kartu pesanan kini berupa satu kanvas `rounded-3xl` lapang dengan padding proporsional (`p-5 sm:p-6`).
+    - **Thumbnail Lebih Besar & Jernih:** Ukuran squircle gadget ditingkatkan menjadi `80x80px` - `96x96px` dengan proteksi fallback jernih.
+    - **Pengelompokan Keuangan & Aksi yang Ergonomis:** Total tagihan (`font-mono text-2xl font-black`) berdampingan langsung dengan tombol aksi *Chat Toko* dan tombol utama *Bayar Sekarang / Rincian Pesanan*, mengeliminasi ruang kosong di tengah kartu.
+    - Nomor pesanan monospace `#SPR-...` dilengkapi tombol salin 1-klik (*Copy to clipboard*) dengan umpan balik instan.
+    - Status badge bergradasi semantik (*Menunggu Pembayaran*, *Diproses Toko*, *Sedang Dikirim*, *Selesai & Diterima*) dengan live status dot.
+- **2026-08-26 (Penyederhanaan Dropdown Profil Pengguna [/components/layouts/navbar.tsx]):**
+  - **1. Focused Primary Navigation:** Menghapus tautan navigasi _"Bantuan"_ dari baris menu utama header publik (`navLinks`), sehingga bilah navigasi utama tampil lebih terfokus dan minimalis (_Beranda, Produk, Toko_).
+- **2026-08-26 (Perbaikan Rendering Kartu Pesanan JSON & Pratinjau Sidebar Chat [Customer & Admin]):**
+  - **1. Resolusi Raw JSON pada Bubble Percakapan:**
+    - Memperbaiki parsing otomatis pada pesan kartu pesanan (`order`) dan produk (`product`) sehingga jika pesan berupa string JSON (misal `{"orderNumber": ...}` atau `{"id": ...}`), sistem langsung mendeteksi dan merendernya sebagai **Kartu Bento Pesanan/Produk** yang rapi, bukan teks JSON mentah (_raw JSON string_).
+    - Kartu Pesanan kini menampilkan nomor order monospace `#SPR-...`, status pesanan pill (`PENDING_PAYMENT`, `COMPLETED`, dll), daftar thumbnail gadget beserta kuantitas dan harga, serta total nominal pesanan.
+  - **2. Pratinjau Bersih pada Sidebar Kontak:**
+    - Memperbaiki helper `formatMessagePreview` di sisi Customer (`/dashboard/customer/chat`) dan Admin (`/dashboard/admin/chat`) sehingga pesan terakhir yang berupa JSON produk atau pesanan ditampilkan dengan label bersih semantik (_"📦 Rekomendasi Gadget"_ atau _"📋 Rincian Pesanan"_), mengeliminasi potongan JSON mentah pada daftar percakapan sidebar.
+- **2026-08-26 (Perbaikan & Redesign Katalog Rekomendasi Unit Toko pada Admin Chat [/dashboard/admin/chat]):**
+  - **1. Integrasi Multi-Store Inventori Otomatis:**
+    - Memperbaiki endpoint `/api/admin/chat/catalog` agar menyaring produk berdasarkan cabang toko admin yang login (`user.storeId` atau parameter `storeId` ruangan aktif) dengan batas pengambilan penuh (`limit: 100`) dan mekanisme fallback pintar ke seluruh katalog platform jika belum ada inventori khusus toko.
+    - Menyelaraskan struktur respons JSON `{ items: [...], products: [...], total }` sehingga data produk termuat instan ke dalam state frontend tanpa menghasilkan array kosong `[]`.
+  - **2. Redesign Senior UI/UX Modal Rekomendasi Unit Toko (Portal-Based Bento):**
+    - Menggunakan `createPortal(..., document.body)` dengan `z-[99999]` bebas hambatan konteks penumpukan (_stacking context_).
+    - Desain kartu bento modern: thumbnail squircle gadget 56x56px, badge kategori/merek bergradasi oranye (_Apple, Samsung, dsb._), judul model tebal, format harga monospace IDR (`Rp XX.XXX.XXX`), status indikator ketersediaan stok (_"Stok: XX Unit"_ ber-dot hijau/merah), dan tombol aksi kontras tinggi _"Kirim"_ (High-contrast Black Pill).
+    - Bilah pencarian instan dengan filtering responsif dan pill penghitung produk aktif.
+  - **3. Kartu Rekomendasi Gadget Interaktif di Sisi Customer ([/dashboard/customer/chat]):**
+    - Pesan rekomendasi produk yang dikirim admin toko kini langsung dirender dalam format kartu bento kaya informasi bagi customer, lengkap dengan thumbnail, spesifikasi harga, stok unit, dan tombol pintas _"Lihat Detail"_ (`/gadget/[id]`).
+- **2026-08-26 (Senior UI/UX Redesign Bubble Media Chat & Penghapusan Overlapping Clutter [Admin & Publik]):**
+  - **1. Zero Redundant Clutter:** Mengeliminasi seluruh teks bertabrakan di bawah video/foto (`🔍 Layar Penuh 🎥 Video` dan timestamp).
+  - **2. Full-Bleed Modern Media Card (iMessage / Telegram Architecture):** Media (foto dan video) kini mengisi 100% kontainer `rounded-2xl` tanpa double-border atau padding luar berlebih.
+  - **3. Eliminasi Tombol Bawaan Browser (Native Fullscreen & 3-Dots Overflow):**
+    - Mengonfigurasi `controlsList="nofullscreen nodownload noremoteplayback noplaybackrate"` dan `disablePictureInPicture` pada `<video>` serta aturan CSS `.clean-video-player` untuk menghilangkan ikon fullscreen kotak (`⛶`), Picture-in-Picture, dan menu titik tiga (`⋮`) bawaan browser yang berantakan.
+    - Fungsi perbesar layar penuh kini 100% dikendalikan secara elegan oleh tombol melayang _Theater Expand_ (`Maximize2`).
+  - **4. Floating Glassmorphic Controls:**
+    - **Mode Teater / Maximize Button:** Tombol bulat melayang minimalis di pojok kanan atas media (`bg-black/60 backdrop-blur-md text-white hover:scale-105`) untuk membuka pratinjau resolusi tinggi.
+    - **Timestamp & Read Tick:** Pil kaca transparan di pojok kanan bawah (`bg-black/65 backdrop-blur-md text-white`) menyajikan jam pesan dan centang baca secara elegan dengan kontras sempurna tanpa memakan ruang vertikal.
+- **2026-08-26 (Standarisasi Pengiriman Media Chat & Bukti Klaim Garansi: Eksklusif Foto & Video dengan Player & Lightbox Preview):**
+  - **1. Strict Whitelist (Hanya Foto & Video):**
+    - File input pada Chat (Admin & Publik) dan Modal Pengajuan Klaim Garansi 30 Hari dikonfigurasi `accept="image/*,video/*"`.
+    - Sistem validasi frontend dan backend (`/api/upload`) secara ketat menolak dokumen selain foto (JPG, PNG, WebP, GIF) dan video (MP4, WebM, MOV, 3GP) dengan kapasitas hingga 60MB untuk video.
+  - **2. Inline Video Player & Video Thumbnail Preview:**
+    - Pada obrolan: pesan video langsung menyajikan pemutar video HTML5 interaktif (`<video controls playsInline preload="metadata">`) yang dapat langsung diputar tanpa keluar dari aplikasi.
+    - Pada galeri tiket komplain garansi admin ([`/dashboard/admin/complaints`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/complaints/page.tsx)) dan modal klaim customer: thumbnail video dilengkapi badge label `🎥 Video` serta ikon play animasi halus.
+  - **3. Unified Luxury Theater Portal Lightbox Modal (100% Identik Klaim Garansi):**
+    - Modal Lightbox pada Admin Chat ([`/dashboard/admin/chat`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/chat/page.tsx)) dan Customer Chat ([`/dashboard/customer/chat`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/customer/chat/page.tsx)) kini di-render menggunakan `createPortal(..., document.body)` dengan `z-[99999]`, keluar dari stacking context layout.
+    - Mengadopsi visual _Frosted Translucent Glass_ yang identik (`bg-white/45 backdrop-blur-xl`), kontainer rounded-3xl elegan (`shadow-2xl border border-slate-200/80 bg-white/60`), auto-dismiss saat klik di luar media, dan shortcut keyboard `ESC` untuk menutup.
+- **2026-08-26 (Penambahan Aksi Tambah Dokumen/Foto pada Chat Admin [/dashboard/admin/chat]):**
+  - **1. Unified Input Action:** Menambahkan tombol lampiran `+` di sisi kiri bilah input pesan admin ([`/dashboard/admin/chat`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/chat/page.tsx)), identik dengan yang ada di tampilan publik/customer.
+  - **2. Full Image Workflow:** Mendukung upload gambar instan via `/api/upload`, pengiriman pesan ber-tipe `image` (`mediaUrl`), optimistic append, dan modal lightbox preview gambar layar penuh (_Fullscreen Image Modal_) saat foto diklik.
+- **2026-08-26 (Penyederhanaan Header Sidebar Chat: Eliminasi Baris Judul & Badge [Publik & Admin]):**
+  - **1. Zero Redundant Titles:** Menghapus baris judul atas (_"Pesan & Live Chat"_ beserta count badge pill dan tombol refresh) dari panel sidebar kiri baik di sisi Admin ([`/dashboard/admin/chat`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/chat/page.tsx)) maupun Publik ([`/dashboard/customer/chat`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/customer/chat/page.tsx)).
+  - **2. Instant Focus on Search & Filters:** Sidebar kini langsung menyajikan bilah pencarian toko/customer dan pil filter segmentasi (_Semua, Belum Dibaca, Pesanan_) di bagian teratas, memberikan area pandang riwayat kontak yang lebih luas dan efisien.
+- **2026-08-26 (Penyederhanaan Header Chat: Eliminasi Tombol WhatsApp [Publik & Admin]):**
+  - **1. Focused In-Platform Communication:** Menghapus tombol shortcut WhatsApp hijau dari top bar header obrolan aktif baik di sisi Admin ([`/dashboard/admin/chat`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/chat/page.tsx)) maupun Publik ([`/dashboard/customer/chat`](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/customer/chat/page.tsx)).
+  - **2. Clean & Minimalist Header:** Header chat kini tampil ultra-bersih hanya memuat avatar inisial/foto, nama customer/toko cabang, status badge online, dan nomor telepon/identitas tanpa tombol sekunder yang mendistraksi komunikasi real-time di platform.
+- **2026-08-26 (Pemulihan Footer Admin dengan Snug Viewport Layout [/dashboard/admin/*]):**
+  - **1. Universal Footer Presence:** Menampilkan kembali footer admin (_"© 2026 Affiliate Gadget • Platform Multi-PT Indonesia"_) di seluruh halaman dashboard admin termasuk rute live chat.
+  - **2. Seamless Flex Constraints:** Menggunakan kombinasi `h-screen max-h-screen overflow-hidden` pada outer wrapper, `flex-1 min-h-0` pada kontainer chat utama, dan `shrink-0 py-2.5` pada footer, sehingga footer tetap terlihat menempel rapi di bagian bawah layar tanpa memicu scrollbar pada halaman luar (_Zero Outer Page Scroll_).
+- **2026-08-26 (Pemberantasan Bug Kedip / Flickering pada View Chat [Publik & Admin]):**
+  - **1. Akar Masalah (Root Cause):**
+    - `setSelectedRoom` di dalam interval background polling (3.5s) selalu mengembalikan objek referensi baru dari hasil `.find()`, memicu re-triggering `useEffect([selectedRoom])`.
+    - `useEffect` tersebut memanggil `fetchMessages(selectedRoom)` dengan parameter `isPolling = false`, yang memicu `setMessagesLoading(true)`.
+    - Akibatnya, seluruh kanvas percakapan digantikan oleh spinner `<Loader2 />` selama ~150ms setiap 3.5 detik, menimbulkan efek **kedip-kedip/flicker** berulang.
+  - **2. Solusi & Perbaikan:**
+    - **Stabilisasi Referensi Objek:** `setSelectedRoom` kini mempertahankan referensi objek aktif yang sudah ada jika ID ruangan sama.
+    - **Zero-Flicker Background Polling:** `setMessagesLoading(true)` hanya aktif saat inisialisasi klik awal (`messages.length === 0`), tidak pernah aktif saat interval polling berjalan.
+    - **Deep Structural Equality (No Array Re-churn):** `setMessages` dan `setRooms` hanya memperbarui state jika ada perubahan nyata pada konten/panjang array pesan. Jika tidak ada perubahan, referensi array dipertahankan sehingga React tidak melakukan re-render komponen sama sekali.
+- **2026-08-26 (Otomatisasi Penghilangan Tanda Pesan Belum Dibaca [Publik & Admin]):**
+  - **1. Instant UI Unread Dismissal:** Saat pengguna (customer maupun admin) mengklik atau membuka sebuah percakapan, tanda _unread badge_ oranye (`room._count.messages`) seketika langsung dihapus (`0ms`) dari antarmuka tanpa perlu menunggu refresh.
+  - **2. Synchronized Backend Mark as Read:** Menambahkan mutasi `prisma.adminChatMessage.updateMany` & `prisma.chatMessage.updateMany` (`isRead: true`) saat pesan diambil oleh lawan bicara di rute `/api/admin/chat/rooms/[roomId]/messages` dan `/api/chat/rooms/[roomId]/messages`.
+  - **3. Active Room State Lock:** Saat interval background polling berjalan, status ruangan yang sedang dibuka (_currently active room_) tetap terkunci dengan count 0 sehingga badge notifikasi tidak pernah berkedip kembali saat percakapan sedang berlangsung.
+- **2026-08-26 (Penyelarasan Lebar Kontainer Chat Publik dengan Header Navbar [/dashboard/customer/chat]):**
+  - **1. Perfect Header Alignment:** Menyesuaikan wrapper kontainer chat pelanggan dari `max-w-6xl` menjadi `max-w-7xl px-4 sm:px-6 lg:px-8`, sehingga batas kiri dan kanan kontainer Bento chat sejajar presisi 100% dengan logo brand di kiri dan tombol profil/utility di kanan navbar.
+- **2026-08-26 (Viewport-Locked Layout & Zero Outer Scroll pada Chat Admin [/dashboard/admin/chat]):**
+  - **1. Zero Outer Page Scroll:** Menyesuaikan wrapper layout admin khusus pada rute `/dashboard/admin/chat` (`h-[calc(100vh-3.5rem)] overflow-hidden` tanpa footer dan tanpa padding bawah redundan), sehingga halaman browser tidak lagi dapat bergulir ke atas/bawah.
+  - **2. Snug 100% Viewport Fit:** Kontainer Bento Chat mengisi 100% area kerja (`h-full flex-1 max-h-full min-h-0`), memastikan tata letak pas presisi pada monitor maupun laptop 13"–14".
+  - **3. Isolated Internal Scrolling:** Hanya panel daftar kontak (_Room list_) dan area obrolan (_Messages canvas_) yang memiliki scrollbar internal mandiri. Bilah input dan header tetap terkunci rapi (_sticky/pinned_).
+- **2026-08-26 (Perbaikan Bug Input Bar Terpotong & Responsive Chat Viewport):**
+  - **1. Resolusi Viewport Constraints:** Menyesuaikan tinggi kontainer chat Bento menjadi `h-[calc(100vh-7.5rem)]` (pada admin) dan `h-[calc(100vh-10.5rem)]` (pada publik/customer) dengan batas `min-h-[450px]` yang adaptif pada semua ukuran layar laptop.
+  - **2. Pinned Bottom Input Toolbar:** Menetapkan `shrink-0` pada Header, Banner Pesanan, dan Input Bar serta `flex-1 min-h-0 overflow-y-auto` pada area bubble obrolan, menjamin input bar selalu terlihat menempel rapi di bagian bawah (_pinned at bottom_) tanpa terdorong ke luar layar.
+- **2026-08-26 (Sinkronisasi Desain Bento & Real-Time Live Chat Admin Toko [/dashboard/admin/chat]):**
+  - **1. Penyelarasan Penuh dengan Tampilan Publik (Single-Surface Architecture):** Menghapus seluruh floating control bar di atas layar. Judul pesan, count pill, bilah pencarian customer, dan filter status (_Semua, Belum Dibaca, Pesanan_) disatukan langsung di header sidebar kiri, menciptakan kanvas Bento 2-pane yang 100% harmonis dengan tampilan publik.
+  - **2. Mesin Real-Time Live Polling (1.5 Detik — Tanpa Refresh Manual):** Mengaktifkan interval auto-polling 1500ms untuk obrolan aktif dan 3500ms untuk daftar kotak masuk, sehingga setiap pesan baru yang dikirim oleh customer maupun admin langsung muncul secara instan di layar lawan bicara tanpa perlu menekan tombol refresh.
+  - **3. Optimistic Message Dispatch & Auto-Scroll:** Pesan yang dikirim admin/customer langsung dirender ke layar seketika (_0ms latency feedback_) disertai transisi auto-scroll ke dasar percakapan.
+- **2026-08-26 (Redesign Senior UI/UX Pesan & Live Chat Pelanggan [/dashboard/customer/chat]):**
+  - **1. Single-Surface Architecture & Zero Clutter:** Menghapus seluruh floating header/control bar yang terpisah di atas layar. Judul pesan, count pill, bilah pencarian toko, dan filter status (_Semua, Belum Dibaca, Pesanan_) kini terintegrasi langsung di dalam header sidebar kiri, menciptakan satu kanvas Bento utuh yang elegan dan lapang (`h-[calc(100vh-8.5rem)]`).
+  - **2. Seamless 2-Pane Bento Layout & Eliminasi Border Biru Kaku:** Menghilangkan border biru kaku tebal pada item chat aktif, digantikan dengan indikator aksen vertikal minimalis (`border-l-3 border-slate-950 dark:border-orange-500`) dan latar netral lembut (`bg-slate-50/90`).
+  - **3. Real-Time Messages API & Toko Cabang Populator:** Membangun rute `/api/customer/chat/messages` terdedikasi dan menyertakan relasi `order.store` lengkap (nama toko cabang, PT, nomor WhatsApp) sehingga percakapan langsung dimuat instan tanpa jeda.
+  - **4. Bubble Chat & Konteks Pesanan Presisi:** Menampilkan avatar squircle toko dengan inisial bersih, banner kontekstual nomor order monospace `#SPR-...`, tombol WhatsApp hijau ke nomor cabang toko, dan bubble pesan ber-keterbacaan tinggi.
+  - **5. Ergonomic Input Bar:** Tombol attachment foto `+` minimalis, input pill dengan transisi fokus halus, dan tombol send hitam berkontras tinggi (_High-contrast Black Pill_).
+- **2026-08-26 (Penempatan Ikon Pesan di Samping Keranjang Belanja):**
+  - **1. Dedicated Message/Chat Icon Button:** Menambahkan tombol logo/ikon **Pesan (Live Chat)** (`MessageSquare`) persis di samping tombol Keranjang Belanja (`ShoppingCart`) pada header navbar utama.
+  - **2. Seamless Role-Based Routing:** Dilengkapi logika `getChatLink()` yang mengarahkan pembeli langsung ke rute `/dashboard/customer/chat` (atau `/dashboard/admin/chat` bagi admin cabang toko).
+  - **3. Active State & Minimalist Squircle Styling:** Mengadopsi styling tombol bulat bersih (`h-9 w-9 rounded-full border border-slate-200/70 shadow-xs`) yang identik dan harmonis dengan tombol Keranjang.
+- **2026-08-26 (Penyelarasan Menyeluruh Role Customer & Public View Sesuai Blueprint 2. Customer):**
+  - **1. Struktur 4 Pilar Navigasi Publik & User Dropdown:**
+    - **Menu Utama Navbar:** `Beranda (/)`, `Produk (/gadget)`, `Toko (/toko)`, `Bantuan (/hubungi-kami)`.
+    - **Penyelarasan Menu Garansi:** Menu Garansi yang sebelumnya terisolasi di navbar utama kini dipindahkan secara ergonomis ke dalam `Pesanan Saya -> Detail Pesanan` sesuai instruksi blueprint poin 2.5.2.4.
+    - **Dropdown Akun Pelanggan (Role CUSTOMER):** `Pesanan Saya (/dashboard/customer/orders)`, `Pesan Live Chat (/dashboard/customer/chat)`, `Profil Saya (/dashboard/customer/settings)`, `Bantuan (/hubungi-kami)`, `Keluar`.
+    - **Friendly Route Redirects:** Menambahkan handler redirect instan `/orders` -> `/dashboard/customer/orders`, `/profile` -> `/dashboard/customer/settings`, dan `/bantuan` -> `/hubungi-kami`.
+  - **2. Pembangunan API Aksi Mandiri Pelanggan:**
+    - **`POST /api/orders/[orderId]/confirm`:** Mengonfirmasi penerimaan barang (_Pesanan Diterima_), mengubah status menjadi `COMPLETED`, mencatat `customerConfirmedAt`, dan mengaktifkan masa garansi 30 hari ganti unit baru (`warrantyExpiryDate = now + 30 days`).
+    - **`POST /api/orders/[orderId]/cancel`:** Mengizinkan pembatalan mandiri pesanan yang belum diserahkan ke kurir (`PENDING_PAYMENT`, `PAID`, `PROCESSING`) dan mencatat alasan pembatalan.
+  - **3. Redesign Senior UI/UX Detail Pesanan Bento (`/dashboard/customer/orders/[orderId]`):**
+    - **2.5.2.1. Pesanan Diterima:** Tombol solid emerald konfirmasi terima barang dengan dialog aktivasi garansi 30 hari.
+    - **2.5.2.2. Hubungi Penjual:** Tombol WhatsApp langsung ke nomor cabang toko pemroses (`store.phone` / CS Toko) dengan template pesan otomatis nomor order, serta tombol pintas ke live chat internal.
+    - **2.5.2.3. Batalkan (jika belum dikirim):** Modal dialog pembatalan pesanan terintegrasi dengan pilihan alasan pembatalan.
+    - **2.5.2.4. Klaim Garansi 30 Hari Terintegrasi:** Tombol dan modal klaim garansi langsung di dalam detail pesanan (pilihan kendala LCD/fungsional, deskripsi, upload hingga 5 bukti foto) beserta kartu timeline status klaim garansi real-time.
+  - **4. Redesign Senior UI/UX Daftar Pesanan Pelanggan (`/dashboard/customer/orders`):**
+    - Unified Control Bar dengan filter status segmentasi (_Semua, Belum Bayar, Diproses Toko, Sedang Dikirim, Selesai, Dibatalkan_) dan pencarian instan nomor order/merek.
+    - Kartu Bento modern dengan thumbnail squircle gadget, badge toko cabang pemroses, kurir terproteksi asuransi, dan tombol akses cepat rincian pesanan.
+- **2026-08-26 (Standarisasi Penulisan Terminologi Toko di Seluruh Platform):**
+  - **Penyelarasan Nomenklatur Global:** Mengganti seluruh penyebutan kata _"Ruko"_ menjadi **"Toko"** di semua antarmuka (UI teks, kartu landing page, form pengaturan profil toko, formulir tambah produk, pesan placeholder komplain, banner CTA, modul servis LCD, dan direktori).
+  - **Konsistensi Brand & Copywriting:**
+    - `Lokasi Ruko Terdekat` -> `Lokasi Toko Terdekat`
+    - `Live Chat Sales Ruko` -> `Live Chat Sales Toko`
+    - `Jaringan Ruko Fisik Aktif` -> `Jaringan Toko Fisik Aktif`
+    - `Cek Ruko Terdekat` -> `Cek Toko Terdekat`
+    - `Klaim cepat langsung di ruko` -> `Klaim cepat langsung di toko`
+    - `Pengerjaan ditunggu 1-2 jam langsung selesai di ruko` -> `Pengerjaan ditunggu 1-2 jam langsung selesai di toko`
+    - `Cek Ketersediaan Stok di Ruko?` -> `Cek Ketersediaan Stok di Toko?`
+    - `KEMITRAAN RUKO OFFLINE` -> `KEMITRAAN TOKO OFFLINE`
+    - `Alamat Fisik Ruko & Logistik Penjemputan` -> `Alamat Fisik Toko & Logistik Penjemputan`
+    - `Operasional Ruko` -> `Operasional Toko`
+    - `Teknisi Servis Toko Ruko` -> `Teknisi Servis Toko`
+- **2026-08-26 (Penambahan View Manajemen Keuangan Toko [/dashboard/admin/finance]):**
+  - **1. Dedicated Store Admin Financial Hub:** Menambahkan halaman pengelolaan arus kas & keuangan khusus Admin Toko (`STORE_ADMIN`) di rute `/dashboard/admin/finance`.
+  - **2. 4 Kartu KPI Keuangan Bento Grid:**
+    - **Saldo Siap Cair:** `Rp 184.250.000` (indikator siap transfer ke rekening PT Mandiri).
+    - **Pendapatan Kotor:** `Rp 245.800.000` (+18.2% vs bulan lalu · 152 unit terjual).
+    - **Bagi Hasil Platform:** `Rp 6.145.000` (komisi platform 2.5% terpotong otomatis).
+    - **Dana Tertahan (Escrow):** `Rp 55.405.000` (pesanan sedang dalam pengiriman kurir).
+  - **3. Buku Kas & Mutasi Transaksi (Ledger 2-Kolom Bento):**
+    - Kolom Kiri: Riwayat mutasi mendalam (penjualan unit gadget `+Rp`, bagi hasil platform `-Rp`, dana tertahan escrow, dan pencairan bank mandiri `-Rp`) dengan filter status segmentasi (_Semua Arus, Penjualan, Bagi Hasil, Pencairan, Dana Tertahan_).
+    - Kolom Kanan: Kartu visual Rekening Penampungan Bank Mandiri PT Terverifikasi dan ringkasan NPWP / Pajak resmi cabang PT.
+  - **4. Modal Dialog Interaktif Penarikan Dana:** Formulir penarikan saldo instan ke Bank Mandiri PT dengan tombol preset cepat (_10 Jt, 50 Jt, 100 Jt, Tarik Semua_).
+  - **5. Integrasi Sidebar Navigasi:** Menambahkan menu **Keuangan** dengan ikon `Wallet` di kategori `Operasional`.
+- **2026-08-26 (Penyederhanaan Header Dashboard Toko [/dashboard/admin]):**
+  - **Penghapusan Header Redundan (Zero Above-the-fold Distraction):** Menghapus seluruh bar header atas (_"Dashboard Toko"_, deskripsi, dan tombol _"Kelola Produk"_) sehingga antarmuka dashboard langsung menyajikan 4 Kartu KPI Metrik Kuantitatif dan 2-Kolom Bento Hub di posisi paling atas secara bersih dan lapang.
+- **2026-08-26 (Redesign Senior UI/UX Dashboard Utama Toko & Multi-PT [/dashboard/admin]):**
+  - **1. Eliminasi Elemen Sekunder & Header Minimalis:** Menghapus tombol tindakan redundan yang menduplikasi navigasi produk, merampingkan teks deskripsi, dan menghadirkan header bersih (_"Dashboard Toko"_ & _"Ringkasan Multi-PT & Toko"_).
+  - **2. Transformasi 4 Kartu Metrik KPI (Bento Grid):**
+    - Mengganti teks status statis dengan indikator kuantitatif riil (_28 Unit Ready Fisik, 2 Pesanan Siap Kirim, 100% Proteksi Garansi 30 Hari, dan Status Operasional Toko Buka_).
+    - Tipografi angka tebal (24px tabular) berpadu dengan badge squircle semantik dan status pill (_Emerald, Blue, Orange, Slate_).
+  - **3. Redesign 2-Kolom Bento Hub Ber-whitespace Optimal:**
+    - **Bento Kiri (Inventori Ready Stock Toko):** Dilengkapi thumbnail squircle gadget, tag merek, pill ketersediaan unit, dan harga tabular bold dengan tautan cepat _"Kelola Stok →"_.
+    - **Bento Kanan (Pesanan Masuk Cabang Toko):** Menampilkan nomor pesanan monospace `#ORD-...`, nama customer, kurir terproteksi asuransi, total tagihan tebal, dan status badge (_● Perlu Dikirim / ● Siap Pickup_) dengan tautan cepat _"Proses Pesanan →"_.
+- **2026-08-26 (Pembersihan & Minimalisasi Sidebar Navigasi [/components/dashboard/sidebar.tsx]):**
+  - **Penghapusan Tombol Tambah Cepat:** Menghapus tombol _"+ Tambah Gadget"_ dari atas navigasi sidebar agar antarmuka sidebar lebih lapang, bersih, dan konsisten dengan tata letak minimalis modern.
+- **2026-08-26 (Penyederhanaan Tab Pengaturan Profil Toko [/dashboard/admin/settings]):**
+  - **Penyelarasan Nama Tab:** Mengubah nama tab navigasi menjadi lebih ringkas & minimalis:
+    - Tab 1: **Profil** (Identitas Toko, Legalitas PT, Alamat Toko, dan Rekening Bank Mandiri PT)
+    - Tab 2: **Keamanan** (Kredensial Penanggung Jawab Toko, Email, dan Ganti Kata Sandi)
+- **2026-08-26 (Penyelarasan Nama Menu Sidebar Navigasi Admin Toko [/components/dashboard/sidebar.tsx]):**
+  - **Penyederhanaan Penamaan Bagian Operasional & Pengaturan:**
+    - Kategori: **Operasional**
+      - Menu 1: **Manajemen Produk** (`/dashboard/admin/products`)
+      - Menu 2: **Manajemen Pesanan** (`/dashboard/admin/orders`)
+      - Menu 3: **Pesan** (`/dashboard/admin/chat`)
+      - Menu 4: **Klaim Garansi** (`/dashboard/admin/complaints`)
+    - Kategori: **Pengaturan**
+      - Menu: **Profil Toko** (`/dashboard/admin/settings`)
+- **2026-08-26 (Redesign Senior UI/UX Pusat Klaim Garansi Cabang [/dashboard/admin/complaints]):**
+  - **1. Eliminasi Header Redundan & Unified Control Bar:** Menghapus kotak judul lama yang bertumpuk dan menggantinya dengan Control Bar terpadu (`bg-slate-100/80 rounded-2xl` dengan segmentasi status: _Semua, Perlu Ditangani, Sedang Ditangani, Selesai, Ditolak_).
+  - **2. Tata Letak 2-Kolom Bento Card:**
+    - **Kolom Kiri (Kendala & Bukti Foto):** Menampilkan subjek keluhan, deskripsi kendala berlatar netral lembut, galeri foto kerusakan dengan thumbnail squircle 64x64px dan modal lightbox interaktif, serta form aksi resolusi (_Setujui Ganti Unit / Tolak_).
+    - **Kolom Kanan (Profil Customer & Transaksi):** Menampilkan profil pembeli lengkap dengan shortcut WhatsApp hijau emerald, detail unit gadget, dan tag proteksi Garansi 30 Hari.
+  - **3. Hierarki Visual Semantik:** Status badge semantik (`● Perlu Ditangani` Amber, `● Sedang Ditangani` Blue, `● Garansi Selesai` Emerald), format order monospace (`#SPR-...`), dan tombol CTA berkontras tinggi (_"Mulai Tangani Klaim"_).
+- **2026-08-26 (Redesign Senior UI/UX Profil Toko & Admin [/dashboard/admin/settings]):**
+  - **1. Unified Segmented Control Panel:** Mengadopsi bilah kontrol segmen terpadu (_Profil Toko & PT Cabang_ vs _Akun & Password Admin_) dengan tombol aksi simpan berkontras tinggi (_"Simpan Perubahan"_).
+  - **2. Tata Letak 2-Kolom Bento Modern:**
+    - **Tab Profil Toko Cabang & PT:** Dilengkapi Hero Summary Toko Terverifikasi, pembagian 2 kolom terstruktur (_Identitas Toko & Legalitas PT, Alamat Fisik Toko & Penjemputan Kurir_, serta Kartu Visual Bank Mandiri Rekening PT).
+    - **Tab Akun & Kredensial Admin:** Kartu profil penanggung jawab toko dengan upload avatar squircle dan kartu keamanan ganti password terisolasi secara ergonomis.
+  - **3. Hierarki & Estetika Bersih:** Menggunakan squircle icon badges semantik, tipografi bold ber-whitespace lapang, format NPWP/Rekening monospace, dan validasi input yang intuitif.
+- **2026-08-26 (Redesign Senior UI/UX Pusat Pesan & Live Chat Toko [/dashboard/admin/chat]):**
+  - **1. Eliminasi Header Redundan & Unified Control Bar:** Menghapus kotak header lama yang bertumpuk dan menggantinya dengan Control Bar terpadu (`bg-slate-100/80 rounded-2xl` dengan segmentasi status: _Semua Chat, Belum Dibaca, Terkait Pesanan_).
+  - **2. Seamless 2-Pane Bento Chat Hub:** Mengintegrasikan daftar percakapan dan jendela percakapan aktif ke dalam 1 kontainer Bento utuh (`rounded-3xl border border-slate-200/80 bg-white shadow-xs overflow-hidden`).
+  - **3. Tipografi & Profil Pembeli Presisi:** Menampilkan avatar squircle modern, tautan instan WhatsApp hijau, email pembeli, nomor pesanan monospace, dan badge status semantik.
+  - **4. Distraction-Free Canvas & Quick Actions:** Mengganti latar belakang foto lama dengan canvas netral modern yang bersih, dilengkapi banner kontekstual pesanan yang ringkas serta pintasan aksi cepat (_"Rekomendasikan Gadget"_ & _"Bagikan Order"_).
+- **2026-08-26 (Redesign Modal Dialog Rincian Pesanan Modern Bento [/dashboard/admin/orders]):**
+  - **1. Header Presisi & Fast Copy:** Menampilkan nama toko cabang, nomor order monospace tebal (`#SPR-XXXX...`) dengan tombol salin instan (_Copy to clipboard_), waktu transaksi terperinci, dan status badge bergradasi.
+  - **2. Tata Letak 2-Kolom Bento Seimbang:**
+    - **Kolom Kiri (Unit Gadget & Pembayaran):** Menampilkan thumbnail squircle gadget, harga satuan, box paket bonus 3-in-1 gratis (`Rp 0`), rincian ongkir & asuransi, serta total tagihan berlatar dark high-contrast.
+    - **Kolom Kanan (Pembeli & Logistik):** Menampilkan profil pembeli dengan shortcut WhatsApp beraksen emerald lembut, alamat tujuan pengiriman, dan garansi ekspedisi terproteksi.
+  - **3. Ergonomic Action Footer:** Tombol konfirmasi pembayaran (_"Konfirmasi Pembayaran Lunas"_) dan aksi status pesanan disajikan dengan kontras tinggi, bayangan halus, dan animasi aktif (_active:scale-95_).
+- **2026-08-26 (Penyederhanaan Aksi Tabel Pesanan [/dashboard/admin/orders]):**
+  - **Aksi Minimalis:** Kolom aksi pada tabel pesanan kini hanya menampilkan 1 tombol terpadu **"Rincian"** dengan ikon mata (`Eye`), menciptakan tampilan tabel yang sangat lapang, bersih, dan bebas distraksi.
+  - **Pusat Aksi Konfirmasi di Dialog Rincian:** Seluruh aksi konfirmasi pembayaran (_"Konfirmasi Pembayaran Lunas"_), pemrosesan pesanan (_"Proses Pesanan Sekarang"_), dan penyelesaian pesanan (_"Tandai Selesai & Diterima"_) ditempatkan secara ergonomis di dalam footer modal dialog Rincian Pesanan.
+- **2026-08-26 (Penyempurnaan & Redesign Senior UI/UX Tabel Manajemen Pesanan [/dashboard/admin/orders]):**
+  - **1. Zero-Wrapping Layout & Tipografi Presisi:** Mengeliminasi seluruh pemecahan baris ganjil (_awkward multi-line wraps_) pada nomor order panjang (`#SPR-XXXX...`), nominal total tagihan (`Rp XX.XXX.XXX`), dan tanggal transaksi dengan penataan `whitespace-nowrap`, format monospace bersih, dan thumbnail squircle 48x48px seragam.
+  - **2. Keselarasan 100% dengan Manajemen Produk:** Menerapkan struktur 6 kolom bento table yang identik (_Unit Gadget, Data Pembeli, Total Tagihan, Status Pesanan, Proteksi & Kurir, Aksi_) lengkap dengan header uppercase tracking-wider, transisi hover lembut, dan footer paginasi minimalis.
+  - **3. Hierarki & Action CTAs Ergonomis:** Tombol aksi kontekstual terintegrasi rapi (_Konfirmasi Bayar / Proses Pesanan / Selesai + Rincian_) dengan kontras tinggi dan ruang klik yang nyaman.
+- **2026-08-26 (Penyelarasan Desain Manajemen Pesanan Identik dengan Manajemen Produk [/dashboard/admin/orders]):**
+  - **1. Unified Control Panel:** Mengadopsi struktur bar filter persis seperti Manajemen Produk (`rounded-3xl border border-slate-200/80 bg-white p-2.5 sm:p-3 shadow-2xs`) dengan kontainer pill status `bg-slate-100/80 rounded-2xl` dan tombol aktif putih berbayang halus (`bg-white text-slate-950 shadow-xs`).
+  - **2. Bento Data Table Layout:** Menyelaraskan kartu kontainer tabel utama (`rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs`) lengkap dengan header uppercase tracking-wider, thumbnail squircle 48x48px, format harga tebal tabular, badge status semantik berkilau, tombol aksi kontekstual terintegrasi, dan footer paginasi yang seragam.
+- **2026-08-26 (Redesign UI/UX Manajemen Pesanan Modern Bento [/dashboard/admin/orders] - Senior UI/UX Designer):**
+  - **1. Penyederhanaan Informasi:** Menghilangkan elemen visual bertumpuk (_boxes-in-boxes_), mengelompokkan metadata esensial ke dalam 3 zona horizontal fluid (Produk & Bonus 3-in-1, Data Pembeli & WhatsApp Shortcut, Kurir & Total Tagihan).
+  - **2. Tata Letak & Spasi Optimal:** Menggunakan single-surface squircle Bento card ber-whitespace lega dengan pembatas vertikal halus (`md:border-l md:border-slate-100`) antar zona informasi.
+  - **3. Hierarki Visual Tegas:** Nomor order monospace bold (`#SPR-...`), status badge semantik bergradasi lembut, total tagihan berukuran besar dengan tabular numerals, serta tombol Call to Action (CTA) kontekstual (`Konfirmasi Bayar`, `Proses Pesanan`, `Tandai Selesai`).
+  - **4. Estetika Clean & Minimalist:** Toolbar kontrol segmen terpadu dengan transisi lembut, kartu rincian dialog Bento 2-kolom seimbang, dan palet warna bebas tabrakan visual.
+- **2026-08-26 (Penambahan Tab Kategori Belum Dibayar pada Manajemen Pesanan [/dashboard/admin/orders]):**
+  - **Penambahan Tab Status:** Menambahkan tab segmen filter `"Belum Dibayar"` (`PENDING_PAYMENT`) di bar kontrol pesanan.
+  - **Badge & Tombol Aksi Kontekstual:** Pesanan belum dibayar menampilkan badge amber berkelas (`● Belum Dibayar`) beserta tombol aksi cepat `"Konfirmasi Bayar"` dan opsi konfirmasi lunas di dalam rincian dialog pesanan.
+- **2026-08-26 (Perbaikan Autorisasi API Live Chat untuk Admin Toko [/api/admin/chat/*]):**
+  - **Penyebab:** Endpoint `/api/admin/chat/rooms`, `/api/admin/chat/rooms/[roomId]/messages`, `/api/admin/chat/rooms/[roomId]/claim`, `/api/admin/chat/orders`, dan `/api/admin/chat/catalog` sebelumnya memiliki validasi role kaku `!['ADMIN', 'SUPER_ADMIN'].includes(user.role)`, sehingga mengembalikan status `403 Forbidden` (`Failed to fetch rooms`) saat diakses oleh akun Admin Toko (`STORE_ADMIN`).
+  - **Solusi:** Memperbarui seluruh verifikasi role pada modul chat admin menggunakan utilitas `isAdminStaffRole(user.role)` agar mendukung penuh `STORE_ADMIN` dan seluruh staf toko.
+- **2026-08-26 (Implementasi Lengkap Seluruh View Admin Toko Sesuai Spesifikasi Blueprint):**
+  - **1.2.1. Dashboard Toko (`/dashboard/admin`):** Menampilkan metrik cabang toko (omzet, pesanan masuk, unit terjual, inventori stok fisik toko).
+  - **1.2.2. Tambah Produk (`/dashboard/admin/products/new`):** Akses cepat tombol _"+ Tambah Gadget"_ untuk menambahkan produk baru lengkap dengan varian RAM/Storage, paket bonus 3-in-1, dan garansi 30 hari, langsung terhubung dengan `storeId` cabang.
+  - **1.2.3. Manajemen Produk (`/dashboard/admin/products`):**
+    - **1.2.3.1. Tabel Produk:** Tabel modern Bento dengan scoping toko (`storeId`), filter merek, dan pencarian cepat.
+    - **1.2.3.2. Edit Detail Produk:** Modal edit interaktif untuk mengubah nama, merek, harga, stok, varian RAM/Storage/Warna, bonus 3-in-1, dan garansi secara langsung.
+    - **1.2.3.3. Hapus Produk:** Tombol dan dialog konfirmasi hapus aman dengan integrasi endpoint `DELETE /api/products/[id]`.
+  - **1.2.4. Manajemen Pesanan (`/dashboard/admin/orders`):**
+    - **1.2.4.1. Tabel Pesanan:** Daftar transaksi cabang terfilter status (_Perlu Diproses, Sedang Dikirim, Selesai, Dibatalkan_).
+    - **1.2.4.2. Detail Pesanan:** Dialog Bento rincian unit produk, kurir terproteksi JNE/Gojek, tombol _Proses Pesanan_, serta tautan instan _Hubungi Pembeli_ (WhatsApp).
+  - **1.2.5. Profil Toko & Admin (`/dashboard/admin/settings`):**
+    - **Tab Profil Toko Cabang & PT:** Pengelolaan nama toko, badan hukum PT, NPWP PT, alamat toko cabang, hotline WhatsApp sales, dan rekening bank mandiri per cabang PT.
+    - **Tab Akun & Kredensial Admin:** Pengelolaan foto profil, nama penanggung jawab, email, dan ganti password.
+  - **1.2.6. Pesan / Live Chat (`/dashboard/admin/chat`):** Hub live chat interaktif toko dengan pembeli untuk konsultasi unit ready stock dan klaim garansi.
+- **2026-08-26 (Penyederhanaan Header Kelola Pesanan [/dashboard/admin/orders]):**
+  - **Penghapusan Header Redundan:** Menghapus seluruh bagian header atas (breadcrumb, judul _"Pesanan & Logistik Toko"_, deskripsi, dan counter pill) agar halaman langsung dibuka dengan kontrol utama: filter segmentasi status dan kolom pencarian (_Zero Above-the-fold Distraction_).
+- **2026-08-26 (Perbaikan Hydration Error & Sinkronisasi Pesanan Dashboard Toko Cabang):**
+  - **Penyebab 1 (Hydration Mismatch):** Fungsi bawaan `toLocaleDateString` pada Node.js SSR menghasilkan format teks tanggal dengan representasi karakter/pemisah yang berbeda dibanding browser client, memicu galat mismatch React 19 / Next.js 15.
+  - **Penyebab 2 (Pesanan Tidak Muncul di Dashboard Toko):** Pesanan baru sebelumnya dibuat tanpa menyematkan `storeId` produk ke dalam field `Order.storeId`, sehingga query `where: { storeId: user.storeId }` mengembalikan 0 pesanan untuk Admin Toko (`STORE_ADMIN`).
+  - **Solusi Komprehensif:**
+    - **Fungsi Tanggal Deterministik:** Membuat helper `formatDate(dateStr, isFull)` yang menghasilkan output teks seragam 100% pada lingkungan SSR dan Client, dilengkapi `suppressHydrationWarning`.
+    - **Penyematan `storeId` Otomatis:** Memperbarui alur checkout ([src/app/api/checkout/route.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/checkout/route.ts) & [src/app/api/orders/sparepart/route.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/orders/sparepart/route.ts)) agar otomatis menetapkan `storeId` berdasarkan toko pemilik unit produk.
+    - **Query Fallback Multi-Tingkat ([src/app/api/admin/orders/route.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/admin/orders/route.ts)):** Mengubah filter `STORE_ADMIN` menjadi `OR: [{ storeId: user.storeId }, { items: { some: { product: { storeId: user.storeId } } } }]`.
+    - **Migrasi Data:** Memperbarui seluruh pesanan existing di PostgreSQL agar terhubung langsung dengan ID toko cabang resminya.
+- **2026-08-26 (Redesign Halaman Kelola Pesanan [/dashboard/admin/orders] Modern Bento - Senior UI/UX):**
+  - **Penyederhanaan Informasi (Kriteria 1):** Menghilangkan badge legacy multi-tahap (claim/unclaim teknisi lama) dan merampingkan filter menjadi 5 status inti marketplace (`ALL`, `PAID` / Perlu Diproses, `IN_PROGRESS` / Sedang Dikirim, `COMPLETED` / Selesai, `CANCELLED` / Dibatalkan).
+  - **Tata Letak & Spasi Optimal (Kriteria 2):** Menerapkan kartu Squircle Bento berpadding lega (`rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:border-slate-300 hover:shadow-md transition-all`), menghilangkan sesak visual, dan mengisolasi detail mendalam ke dalam Dialog Bento Interaktif.
+  - **Hierarki Visual & CTA Tegas (Kriteria 3):** Nomor pesanan ditampilkan tegas dengan font monospace bold (`#ORD-XXXXX`), status badge high-contrast (Blue, Orange, Emerald, Rose), pill WhatsApp instan, serta tombol aksi kontekstual yang jelas (`"Proses Pesanan"`, `"Tandai Selesai"`, `"Rincian"`).
+  - **Estetika Clean & Modern (Kriteria 4):** Menghapus footer publik yang bocor ke panel admin, menyembunyikan floating sales chat dari dashboard internal, dan menerapkan kartu kontrol terpadu (_Unified Control Panel_).
+- **2026-08-26 (Perbaikan NextAuth ClientFetchError & Konfigurasi BasePath SessionProvider):**
+  - **Penyebab:** Client-side NextAuth v5 mencoba melakukan `fetch('/session')` tanpa parameter `basePath` eksplisit saat aplikasi berjalan di port non-default (`http://localhost:3002`), yang menyebabkan `ClientFetchError: Failed to fetch`.
+  - **Solusi:**
+    - Menetapkan `basePath: '/api/auth'` pada `src/auth.config.ts` dan `<NextAuthSessionProvider basePath="/api/auth" refetchOnWindowFocus={false} refetchWhenOffline={false}>` pada [src/components/providers/session-provider.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/providers/session-provider.tsx).
+    - Menambahkan `AUTH_TRUST_HOST=true` pada file `.env`.
+    - Hasil verifikasi browser headless: **0 console errors** pada seluruh rute (`/`, `/gadget`, `/login`).
+- **2026-08-26 (Optimasi Kecepatan & Akselerasi Loading Web Menyeluruh - Performance Engineering):**
+  - **Tree-Shaking & Bundle Optimization (`next.config.js`):** Mengaktifkan `experimental.optimizePackageImports` untuk library ikon & UI (`lucide-react`, `framer-motion`, `@radix-ui/react-icons`, `@radix-ui/react-*`, `date-fns`, `sonner`) serta mengaktifkan kompresi Gzip/Brotli (`compress: true`).
+  - **Optimasi Gambar Modern (AVIF/WebP & LCP Priority):** Mengonfigurasi format gambar modern (`image/avif`, `image/webp`), cache TTL gambar 30 hari, serta mengganti tag `<img>` biasa menjadi Next.js `<Image priority sizes="..." />` pada hero slider, katalog produk pilihan, dan kartu profil toko cabang.
+  - **Middleware Bypass untuk Static Assets (`src/middleware.ts`):** Memperbaiki matcher regex middleware agar seluruh file gambar (`.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`, `.avif`), font (`.woff2`), dan dokumen static langsung dilayani seketika tanpa beban eksekusi NextAuth.
+  - **HTTP Response Caching & Stale-While-Revalidate:** Menambahkan header `Cache-Control: public, s-maxage=30-60, stale-while-revalidate=120-300` pada seluruh endpoint API publik (`/api/gadgets`, `/api/stores`, `/api/products/[id]`, `/api/lcd-estimates`, `/api/live-streams`). Waktu respons API kini terpangkas menjadi **26ms – 46ms**!
+  - **Database Composite Indexing:** Menambahkan index komposit performa pada tabel `Product` di PostgreSQL (`@@index([isActive])`, `@@index([isActive, brand])`, `@@index([isActive, storeId])`, `@@index([createdAt])`).
+  - **Dns-Prefetch & Preconnect:** Menambahkan preconnect ke Google Fonts, Unsplash, and Cloudinary CDN pada root layout.
+- **2026-08-26 (Pembaruan Dokumen PDF Blueprint & Kredensial Testing Sistem):**
+  - **Pembaruan Dokumen PDF Master ([DOKUMEN RANCANGAN PENGEMBANGAN WEBSITE AFFILIATE GADGET.pdf](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/DOKUMEN%20RANCANGAN%20PENGEMBANGAN%20WEBSITE%20AFFILIATE%20GADGET.pdf)):**
+    - Memperbarui dokumen spesifikasi teknis dan blueprint sistem ke **Versi 2.0 (2026)**.
+    - Menyelaraskan hierarki hak akses menjadi **4 Role Utama**: Superadmin (`SUPER_ADMIN`), Admin Platform (`ADMIN`), Admin Toko (`STORE_ADMIN` / Akun Toko Mandiri), dan Customer (`CUSTOMER`).
+    - Menyertakan tabel kredensial akun pengujian aktif, legalitas 5 PT cabang toko fisik, dan inventori gadget ready stock.
+  - **Pembaruan Dokumen Kredensial Testing ([Daftar_Akun_Dummy_Affiliate_Gadget.pdf](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/Daftar_Akun_Dummy_Affiliate_Gadget.pdf)):**
+    - Menyajikan ringkasan 2 halaman elegan siap cetak/baca untuk pengujian lokal dengan format akun 4 Role Utama.
+- **2026-08-26 (Penyelarasan 4 Role Utama Sistem: Superadmin, Admin Platform, Admin Toko, Customer):**
+  - **Fokus 4 Role:** Menyederhanakan sistem agar berfokus pada 4 role utama: `SUPER_ADMIN` (melihat semua aktivitas), `ADMIN` (mengelola jalannya platform tanpa melihat aktivitas/omzet internal setiap toko), `STORE_ADMIN` (mengelola toko cabang miliknya sendiri), dan `CUSTOMER` (pembeli).
+  - **Diferensiasi Panel CMS:**
+    - `SUPER_ADMIN` melihat metrik finansial, pembagian omzet seluruh toko cabang PT, grafik distribusi, dan audit transaksi real-time.
+    - `ADMIN` (Platform) melihat master katalog gadget, daftar verifikasi toko, dan pusat keluhan tanpa menampilkan omzet internal toko.
+    - `STORE_ADMIN` melihat inventori unit ready stock toko dan pesanan masuk cabang.
+  - **Sidebar & Modals:** Memperbarui menu sidebar khusus per role ([sidebar.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/sidebar.tsx)), modal create/edit user, dan filter tab halaman kelola pengguna.
+- **2026-08-26 (Penyederhanaan Role Toko Menjadi Single Admin Toko `STORE_ADMIN`):**
+  - **1 Admin per Toko Cabang PT:** Setiap toko cabang fisik / PT kini dikelola oleh 1 Admin Toko tunggal (`STORE_ADMIN`) yang mengelola inventori produk cabang, pesanan, dan operasional toko secara terpusat.
+  - **Pembaruan Database Seed:** Menghapus akun sales ganda dan memastikan kelima cabang toko resmi (Roxy Mas Jakarta, WTC Surabaya, BEC Bandung, Medan Fair, Jogjatronik) masing-masing memiliki 1 akun admin toko terdedikasi (`admin.[cabang]@affiliategadget.com`).
+  - **Pembaruan CMS & User Management:** Menyesuaikan panel CMS Kelola Pengguna ([src/app/dashboard/admin/users/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/users/page.tsx)), Create/Edit User Modal, badge role, dan filter filter tab role agar berfokus pada `STORE_ADMIN`.
+- **2026-08-26 (Pengalihan Otomatis Akun Staff, Admin & Sales Toko Langsung ke Panel CMS):**
+  - **Otomatisasi Routing Non-Customer:** Menambahkan pengalihan otomatis pada level middleware ([src/middleware.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/middleware.ts)), alur login ([src/app/login/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/login/page.tsx)), OAuth callback ([src/app/api/auth/redirect/route.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/auth/redirect/route.ts)), dan utilitas dashboard ([src/lib/dashboard-utils.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/lib/dashboard-utils.ts)).
+  - **Isolasi View Publik & Panel CMS:**
+    - Staff / Admin / Sales Toko (`SUPER_ADMIN`, `ADMIN`, `STORE_ADMIN`, `STORE_SALES`, `FINANCE_ADMIN`, `CONTENT_EDITOR`) yang sudah masuk akan otomatis langsung diarahkan ke CMS Panel (`/dashboard/admin`).
+    - Teknisi (`TECHNICIAN`) diarahkan langsung ke Dashboard Teknisi (`/dashboard/teknisi`).
+    - Mitra Afiliasi (`MITRA`) diarahkan langsung ke Dashboard Mitra (`/dashboard/mitra` atau `/dashboard/mitra/pending`).
+    - Akses ke view publik root (`/`), `/login`, `/register`, `/cart`, dan `/checkout` otomatis dialihkan ke panel CMS masing-masing.
+  - **Penyesuaian Hak Akses API Admin:** Memperluas autorisasi pada API admin (dashboard, profil, pesanan, produk, blog, laporan, dan users) agar mendukung `STORE_ADMIN`, `STORE_SALES`, `FINANCE_ADMIN`, dan `CONTENT_EDITOR` secara seamless tanpa kendala perizinan.
+- **2026-08-25 (Penyelarasan 2-Kolom Sejajar FAQ & Formulir Tiket Dukungan - Senior UI/UX):**
+  - **Tata Letak 2-Kolom Bento Grid Sejajar:** Menata seksi **FAQ** di kolom kiri (`lg:col-span-6`) dan formulir **Kirim Pesan Resmi ke Tim Support** di kolom kanan (`lg:col-span-6`) dalam satu baris horizontal sejajar (`grid grid-cols-1 lg:grid-cols-12 gap-8 items-start`).
+  - **Efisiensi Ruang & Akses Simultan:** Pengguna kini dapat membaca FAQ sembari langsung mengisi formulir pesan di sisi kanan tanpa perlu melakukan _scrolling_ panjang ke bawah.
+- **2026-08-25 (Penutupan Default Seluruh Item FAQ pada Halaman Bantuan - Senior UI/UX):**
+  - **Status Default Tertutup (_All Collapsed_):** Mengubah _initial state_ accordion FAQ (`openFaq`) dari indeks `0` menjadi `null`, sehingga saat pengguna pertama kali masuk ke halaman **Pusat Bantuan (`/hubungi-kami`)**, seluruh kartu pertanyaan berada dalam kondisi tertutup rapi dan hanya akan terbuka jika diklik secara sengaja.
+- **2026-08-25 (Penghapusan Seksi Kontak Toko pada Halaman Bantuan - Senior UI/UX):**
+  - **Pencegahan Redundansi Navigasi:** Menghapus seksi _"Kontak Toko Resmi"_ dari halaman **Pusat Bantuan (`/hubungi-kami`)** karena informasi toko, jam buka, dan WhatsApp sales telah tersedia lengkap dan terpusat di halaman **Direktori Toko (`/toko`)**.
+  - **Simetri & Fokus Konten:** Mengubah tata letak halaman bantuan menjadi simetris terpusat (`max-w-3xl mx-auto`), menempatkan FAQ interaktif dan formulir tiket pesan resmi secara berurutan tanpa distraksi.
+- **2026-08-25 (Redesign Halaman Pusat Bantuan [/hubungi-kami] Modern Bento - Senior UI/UX):**
+  - **Penyederhanaan Header Hero:** Mengganti judul raksasa dengan tipografi modern yang proporsional (`text-2xl sm:text-3xl font-bold tracking-tight text-slate-950`) dan trust pill `[ 💬 Pusat Bantuan & Layanan Resmi ]`.
+  - **Bento Shortcut Topics & 2-Column Grid:** Menata 4 topik bantuan cepat ke dalam kartu squircle (`rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs`) dan membagi konten utama menjadi 2 bento terstruktur: FAQ interaktif (7 cols) dan Hotline cabang toko resmi (5 cols).
+  - **Formulir Tiket Dukungan Elegan:** Memperbarui formulir kontak dengan input squircle adaptif (`rounded-2xl bg-slate-50/80 focus:bg-white`) dan tombol kirim kapsul kontras.
+- **2026-08-25 (Redesign Bar Filter & Pencarian Menjadi Unified Control Panel - Senior UI/UX):**
+  - **Penyatuan Elemen Kontrol (_Zero Floating Void_):** Menggabungkan segmen filter merek/kota, kolom pencarian, dan dropdown urutan ke dalam satu **Control Panel Card** terpadu (`rounded-3xl border border-slate-200/80 bg-white p-2.5 sm:p-3 shadow-2xs`).
+  - **Penghilangan Elemen Bertumpuk (_Pills-in-Pills_):** Mengganti kontainer kapsul abu-abu mengambang dengan tombol segmen modern (`rounded-2xl`) yang menyatu halus dengan kartu kontrol.
+  - **Peningkatan Input Pencarian & Sortir:** Menambahkan tombol bersihkan (X) instan saat mengetik, indikator ikon sortir kustom (`SlidersHorizontal`), serta styling input yang bersih (`bg-slate-50/80 focus:bg-white`).
+- **2026-08-25 (Redesign Modul Verifikasi Garansi Menjadi Unified Command Capsule - Senior UI/UX):**
+  - **Penghapusan Kotak Luar Bertumpuk (_Zero Box Clutter_):** Menghilangkan kotak kartu luar sekunder yang kaku, menggantikannya dengan layout terbuka berpusat pada tipografi yang tenang, trust badge garansi 30 hari, dan deskripsi yang lugas.
+  - **Unified Command Capsule:** Mengintegrasikan input pencarian nomor pesanan dengan tombol aksi _"Periksa"_ ke dalam satu kapsul pil interaktif yang elegan (`rounded-full bg-white shadow-2xs`) dengan efek _focus-within_ yang halus.
+- **2026-08-25 (Penyembunyian Input Pencarian Navbar pada Halaman Katalog & Toko - Senior UI/UX):**
+  - **Pencegahan Duplikasi Form:** Kolom input pencarian di Header Navbar kini otomatis disembunyikan saat pengguna berada di halaman **Katalog Produk (`/gadget`)** dan **Direktori Toko (`/toko`)** (`!isSearchPage`), baik pada versi desktop maupun mobile navigation drawer.
+  - **Fokus Pencarian In-Page:** Mencegah distraksi visual dan kebingungan pengguna akibat adanya dua input pencarian yang bertumpuk secara bersamaan.
+- **2026-08-25 (Penghapusan Total Header & Breadcrumb Top Bar pada Halaman Publik - Senior UI/UX):**
+  - **Penyederhanaan Maksimal:** Menghapus seluruh bar header atas (termasuk breadcrumb, judul H1, dan counter pill) pada halaman **Katalog Gadget (`/gadget`)**, **Direktori Toko (`/toko`)**, dan **Klaim Garansi (`/garansi`)**.
+  - **Fokus Interaksi Instan:** Halaman kini langsung dibuka dengan kontrol utama: filter merek/kota, kolom pencarian, dan box verifikasi garansi di posisi paling atas secara bersih tanpa distraksi.
+- **2026-08-25 (Desain Ulang Header Halaman Publik Menjadi Compact Title Bar - Senior UI/UX):**
+  - **Struktur Header Terpadu:** Menggabungkan breadcrumb lokasi navigasi di atas judul H1 halaman yang tegas (`text-xl sm:text-2xl font-bold tracking-tight text-slate-950`) dan menyejajarkannya dengan pill counter/status badge dinamis di sisi kanan.
+  - **Penyelarasan Konsisten 3 Halaman Utama:** Diterapkan secara seragam pada:
+    - **Direktori Toko (`/toko`):** `Beranda / Daftar Toko` + `Daftar Toko Resmi` + `[ 🏪 X Toko Tersedia ]`.
+    - **Katalog Gadget (`/gadget`):** `Beranda / Katalog Gadget` + `Katalog Gadget Resmi` + `[ 📱 X Gadget Tersedia ]`.
+    - **Klaim Garansi (`/garansi`):** `Beranda / Layanan Garansi` + `Cek & Klaim Garansi 30 Hari` + `[ 🛡️ Proteksi 30 Hari Aktif ]`.
+  - **Pemisah Garis Halus (_Subtle Divider_):** Menambahkan `border-b border-slate-200/60 pb-5` untuk memberikan jangkar visual (_visual anchor_) yang rapi dan elegan sebelum elemen filter dan konten utama.
+- **2026-08-25 (Penghapusan Bagian Header Hero Redundan di Halaman Publik - Senior UI/UX):**
+  - **Penyederhanaan Total:** Menghapus blok judul raksasa dan subtitle panjang yang memakan ruang atas (_above the fold_) pada halaman **Katalog Gadget (`/gadget`)**, **Direktori Toko (`/toko`)**, dan **Klaim Garansi (`/garansi`)**.
+  - **Efisiensi Navigasi & Scannability:** Langsung menampilkan breadcrumb minimalis bersanding dengan pill counter dinamis (`[ 📱 X Gadget Tersedia ]` / `[ 🏪 X Toko Tersedia ]` / `[ 🛡️ Proteksi 30 Hari Aktif ]`), disusul langsung oleh kontrol filter & pencarian sehingga pengguna dapat berinteraksi seketika tanpa terganggu banner teks berlebih.
+- **2026-08-25 (Redesign Halaman Katalog Gadget [/gadget] Modern Bento - Senior UI/UX):**
+  - **Keseimbangan Tipografi Header:** Mengganti ukuran dan ketebalan judul raksasa menjadi skala modern yang proporsional (`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-slate-950`) dan menyederhanakan copywriting subtitle.
+  - **Navigasi Breadcrumb & Floating Filters:** Menambahkan breadcrumb navigasi standar (`Beranda / Katalog Gadget`) serta menyelaraskan bar filter merek ke format _Floating Pill Island_ (`rounded-full bg-slate-100/80 p-1`) dan filter pencarian mandiri `shadow-2xs`.
+  - **Grid Kartu Produk Refined:** Memperbarui visual kartu produk dengan thumbnail squircle `rounded-2xl`, floating warranty badge, dan tombol CTA kapsul kontras.
+- **2026-08-25 (Penyempurnaan Header Bagian Inventori Toko - Senior UI/UX):**
+  - **Keseimbangan Tipografi & Spasi:** Menyesuaikan bobot judul _"Inventori Gadget Ready Stock"_ menjadi `font-bold tracking-tight text-slate-950` yang seimbang dan proporsional (menggantikan ketebalan `font-black` yang menggumpal).
+  - **Copywriting Ringkas & Pill Counter Dinamis:** Menyederhanakan deskripsi kalimat unit ready stock serta menyematkan pill badge dinamis `[ 📱 X Gadget Tersedia ]` di sisi kanan header yang selaras dengan tema publik.
+- **2026-08-25 (Redesign Halaman Profil Toko [slug] Modern Bento - Senior UI/UX):**
+  - **Banner Sampul & Gradien Putih Tajam:** Menerapkan kartu profil toko berlatar belakang foto sampul toko fisik (`store.banner` dengan `opacity-75`) berpadu dengan gradasi putih terarah (`from-white via-white/85 to-white/20`), konsisten dengan direktori toko.
+  - **Foto Profil Square & Pembersihan Jargon:** Mengganti ikon toko biasa dengan foto profil square toko (`rounded-2xl h-20 w-20 sm:h-24 sm:w-24`), menghapus label nama PT lama, dan menyematkan deskripsi tagline ramah pengguna serta badge garansi 30 hari.
+  - **Breadcrumb & CTA Elegan:** Menyelaraskan navigasi breadcrumb (`Beranda / Toko / [Nama Toko]`) dengan separator garis miring halus, serta tombol aksi WhatsApp dan petunjuk arah Google Maps yang modern.
+  - **Kartu Produk Ready Stock:** Merapikan showcase katalog produk per toko dengan squircle card `rounded-3xl`, floating warranty badge, dan tombol aksi yang jelas.
+- **2026-08-25 (Pembaruan Visual Kartu Toko: Foto Profil Square & Latar Sampul Gradien Putih Tajam):**
+  - **Foto Profil Square:** Mengganti ikon toko generik dengan thumbnail foto profil resmi toko (`rounded-2xl` square photo `h-16 w-16 sm:h-20 sm:w-20` berborder halus) lengkap dengan efek hover halus.
+  - **Latar Belakang Sampul & Gradien Putih Diperjelas:** Meningkatkan visibilitas foto sampul (`opacity-75`) yang dipadukan dengan gradien putih terarah (`from-white via-white/85 to-white/20`), sehingga foto toko fisik terlihat sangat jelas dan mewah di sisi kanan kartu, sementara teks di sisi kiri tetap 100% terlindungi dan tajam.
+- **2026-08-25 (Sinkronisasi Lebar Kontainer Direktori Toko dengan Header Navbar - Senior UI/UX):**
+  - **Penyelarasan Kontainer:** Mengubah lebar kontainer direktori toko dari `max-w-6xl` menjadi **`max-w-7xl`**, menyelaraskan batas tepi kiri-kanan halaman persis dengan logo dan menu navigasi pada Navbar.
+  - **Penyempurnaan Bar Filter & Pencarian:** Menghilangkan container card luar berlebih, menyelaraskan filter kota ke dalam _Floating Pill Island_ (`rounded-full bg-slate-100/80 p-1`) dan search input pill kapsul modern berbayangan halus `shadow-2xs`.
+- **2026-08-25 (Redesign Halaman Direktori Toko: Konversi Grid ke List Modern - Senior UI/UX):**
+  - **Transformasi Grid ke List:** Mengubah tata letak kartu 3-kolom grid menjadi format **Horizontal List Bar (`space-y-3.5`)** yang lebih mudah dipindai mata pengguna, menampilkan nama toko, kota, alamat lengkap tanpa terpotong, jam buka, dan jaminan servis.
+  - **Aksi Cepat & Kompak:** Menempatkan tombol aksi (_"Lihat Stok & Profil"_ dan _"Chat Sales WA"_) di sisi kanan dengan penyelarasan responsif (desktop & mobile).
+  - **Penyaringan Kota Dinamis:** Mengotomatiskan filter kota berdasarkan toko aktif di database (`useMemo` unique cities) dengan tab pill yang minimalis.
+- **2026-08-25 (Penyempurnaan Breadcrumb Navigasi Produk - Senior UI/UX):**
+  - **Penyederhanaan Visual:** Mengganti chevron tebal dengan separator garis miring (`/`) abu-abu netral yang halus (`text-slate-300`).
+  - **Keseimbangan Tipografi:** Menyesuaikan bobot teks aktif menjadi `font-medium text-slate-800` (tidak lagi `font-bold` hitam pekat yang bertabrakan dengan judul produk H1), memberikan hierarki navigasi yang tenang dan elegan.
+- **2026-08-25 (Redesign Halaman Detail Produk Modern Bento - Senior UI/UX):**
+  - **Penyederhanaan & Proporsi Visual:** Mengganti tipografi tebal raksasa `font-black` dengan skala tipografi elegan `text-2xl sm:text-3xl font-bold tracking-tight text-slate-950`, menyematkan badge diskon hemat persentase yang jelas, dan merapikan thumbnail galeri produk.
+  - **Tata Letak & Spasi Bento Grid:** Mengelompokkan kartu produk menjadi bento terstruktur: Galeri Produk & Mini-Bento Toko di kolom kiri (5 cols), serta Kartu Harga, Selector Varian Perangkat Keras, Kotak Bonus 3-in-1, Bar Pembelian & Stepper Kuantitas, dan Deskripsi Unit di kolom kanan (7 cols).
+  - **Estetika Luxury & Trust Elements:** Mengadopsi container squircle `rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs`, badge garansi 30 hari melayang yang elegan, dan tombol CTA kontras berpadu halus dengan tema publik lainnya.
+- **2026-08-25 (Redesign Halaman Konfirmasi Pesanan Modern & Minimalis - Senior UI/UX):**
+  - **Penyederhanaan Informasi:** Menghapus label warisan yang membingungkan (_"Sparepart"_), menghilangkan teks counter berulang (_"Pesanan 1 dari 1"_), dan menggantikan header gradien biru tebal dengan kartu pesanan monokrom/slate elegan.
+  - **Tata Letak & Spasi Bento Grid:** Mengelompokkan nomor pesanan dengan tombol 1-klik salin, badge status _"Menunggu Konfirmasi"_, daftar produk bersih dengan thumbnail squircle, total pembayaran ringkas, dan bento mini box perlindungan (Garansi 30 Hari Aktif + Asuransi Kurir 100%).
+  - **Hierarki Visual & Action CTAs:** Menyelaraskan tombol aksi utama (_"Cek Status & Klaim Garansi"_ kapsul oranye) dan tombol sekunder (_"Belanja Gadget Lainnya"_ border netral).
+  - **Estetika Clean & Konsisten:** Mengadopsi container squircle `rounded-3xl border border-slate-200/80 bg-white shadow-xs` di atas canvas `bg-slate-50`, selaras 100% dengan design system publik lainnya.
+- **2026-08-25 (Penyederhanaan Copywriting Keamanan - Menghapus Jargon Teknis):**
+  - **Penyederhanaan:** Mengganti istilah teknis _"Enkripsi SSL 256-bit"_ menjadi kalimat yang ramah dan mudah dipahami pengguna awam: **"Pembayaran Aman & Terlindungi"** pada [checkout/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/checkout/page.tsx) serta **"Koneksi Akun Aman & Terlindungi 100%"** pada halaman login & register.
+- **2026-08-25 (Redesign Halaman Checkout Modern & Minimalis - Senior UI/UX):**
+  - **Penyederhanaan Informasi & Langkah Terstruktur:** Mengelompokkan formulir menjadi 2 langkah jelas (_Langkah 1: Alamat & Kurir Pengiriman_, _Langkah 2: Metode Pembayaran_) serta menambahkan visualisasi transfer bank manual resmi lengkap dengan tombol 1-klik salin nomor rekening.
+  - **Tata Letak & Spasi Bento Grid:** Menata kolom kiri (Alamat, Kurir JNE/Gojek, Metode Pembayaran, Pratinjau Produk) dan kolom kanan (Ringkasan Biaya Sticky, Persetujuan Syarat & Ketentuan Ringkas, Tombol Bayar Sekarang Kapsul Oranye).
+  - **Hierarki Visual & Tipografi:** Mengganti judul panjang dengan header ringkas (_Pembayaran & Pengiriman_), menyematkan badge _Terenkripsi 256-bit_, serta menurunkan skala angka total tagihan agar selaras dalam satu baris.
+  - **Estetika Luxury:** Mengadopsi container squircle `rounded-3xl border border-slate-200/80 bg-white shadow-xs`, pill selectors elegan, dan trust reassurance micro-banner.
+- **2026-08-25 (Penyempurnaan Tipografi Badge Keranjang Belanja):**
+  - **Masalah:** Ketebalan font pada angka badge keranjang belanja di navbar terlalu tebal (`font-black` 900) sehingga angka terlihat menggumpal/terlalu berat dalam lingkaran indikator kecil.
+  - **Solusi:** Menyesuaikan bobot font menjadi `font-semibold` (600) dengan ukuran proporsional `text-[9.5px] leading-none` pada [navbar.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/layouts/navbar.tsx) dan [cart-icon.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/cart/cart-icon.tsx) agar terlihat bersih, tajam, dan elegan.
+- **2026-08-25 (Perbaikan Logika Keranjang: Pemisahan Produk Berdasarkan Varian Spesifik):**
+  - **Masalah:** Saat customer menambahkan produk dengan model yang sama tetapi berbeda varian (misal iPhone 15 Pro Max 256GB dan iPhone 15 Pro Max 1TB), sistem keranjang lama hanya membandingkan `productId` sehingga varian kedua terhitung/bertumpuk ke dalam varian pertama.
+  - **Solusi:**
+    - [src/types/cart.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/types/cart.ts): Menambahkan atribut `variantId?: string` dan `variantName?: string` pada antarmuka `CartItem`.
+    - [src/lib/store/cart-store.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/lib/store/cart-store.ts): Memperbarui fungsi `addItem` agar membandingkan `productId` dan `variantId`. Menghasilkan ID unik item keranjang per varian (`{type}-{productId}-{variantId}-{timestamp}`).
+    - [src/app/gadget/[id]/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/gadget/[id]/page.tsx): Mengirimkan `variantId`, `variantName`, dan `price` serta stok varian terpilih ke dalam pemanggilan `addItem`.
+    - [src/app/api/cart/route.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/cart/route.ts): Menyertakan relasi `variants` produk pada `GET` dan memperhitungkan `variantId` pada pencarian `existingItem` di `POST`.
+    - [src/components/cart/cart-item.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/cart/cart-item.tsx): Menampilkan subtitle varian secara presisi untuk setiap baris produk.
+- **2026-08-25 (Redesign Halaman Keranjang Belanja Modern & Minimalis - Senior UI/UX):**
+  - **Penyederhanaan Informasi:** Menghapus label sekunder yang membingungkan (seperti teks _"Sparepart"_ pada smartphone), menghilangkan duplikasi angka harga yang bertabrakan, dan menyematkan badge garansi/bonus langsung di dalam item.
+  - **Tata Letak & Spasi Bento:**
+    - **Header & Multi-action Bar:** Menyatukan fitur _"Pilih Semua"_ dan tombol _"Hapus Pilihan"_ dalam bar capsule yang bersih dan intuitif di atas daftar produk.
+    - **Item Card:** Mengadopsi container squircle `rounded-3xl` dengan padding optimal (`p-5`), stepper kuantitas berbentuk kapsul (`rounded-full`), serta subtotal yang rapi dan terstruktur.
+  - **Hierarki Visual & Order Summary (Refined):**
+    - **Ringkasan Belanja:** Menghilangkan angka raksasa yang terpotong/wrapping dua baris, menggantinya dengan proporsi font elegan satu baris (`text-base sm:text-lg font-bold text-slate-950`), breakdown rapi (Subtotal, Bonus 3-in-1, Asuransi Pengiriman), dan kotak trust badge terpadu.
+    - **Primary CTA:** Tombol checkout kapsul oranye yang sangat jelas (`rounded-2xl bg-orange-500 hover:bg-orange-600 shadow-sm`) lengkap dengan garansi dan asuransi kurir.
+  - **Estetika Clean:** Menghilangkan border tebal dan warna kontras tajam, selaras dengan design system `bg-slate-50`, squircle cards, dan aksen oranye terpadu.
+- **2026-08-25 (Penghapusan Customer Dashboard Legacy & Pengalihan Langsung ke Tampilan Publik):**
+  - **Kebutuhan User:** Menghapus tampilan dashboard customer legacy (`/dashboard/customer`) dan mengarahkan pengguna customer langsung ke antarmuka toko publik (`/`).
+  - **Perubahan Rute & Middleware:**
+    - [src/app/dashboard/customer/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/customer/page.tsx): Mengganti view lama dengan redirect instan ke `/`.
+    - [src/middleware.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/middleware.ts): Mengarahkan `/dashboard` dan `/dashboard/customer` bagi customer/guest langsung ke beranda publik `/`.
+    - [src/lib/dashboard-utils.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/lib/dashboard-utils.ts): Mengembalikan `/` sebagai rute default untuk peran `CUSTOMER`.
+    - [src/app/login/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/login/page.tsx) & [src/app/register/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/register/page.tsx): Mengarahkan customer yang selesai login/register langsung ke beranda toko publik `/`.
+    - [src/app/api/auth/redirect/route.ts](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/api/auth/redirect/route.ts): Mengarahkan customer yang masuk via Google OAuth ke `/`.
+    - [src/components/layouts/navbar.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/layouts/navbar.tsx): Dropdown menu customer langsung menyajikan tautan publik (_Katalog Gadget_, _Cek Garansi 30 Hari_, _Keranjang_), sementara opsi Dashboard hanya ditampilkan untuk Admin/Mitra/Teknisi.
+- **2026-08-25 (Bug Fix: Penanganan Nilai Undefined pada Avatar Initial Daftar Toko):**
+  - **Penyebab:** Pada [mitras/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/mitras/page.tsx), objek mitra menggunakan atribut `businessName` (bukan `name`), sehingga pemanggilan `mitra.name.charAt(0)` menyebabkan _Runtime TypeError: Cannot read properties of undefined (reading 'charAt')_. Selain itu ikon `ExternalLink` belum diimpor dari `lucide-react`.
+  - **Solusi:**
+    - Mengimpor ikon `ExternalLink` dari `lucide-react`.
+    - Menggunakan fallback aman `const storeName = mitra.businessName || mitra.name || 'Toko Gadget'` dan `const initial = storeName.charAt(0).toUpperCase() || 'T'`.
+    - Memastikan penanganan fallback serupa pada avatar inisial staf/customer di modul komplain admin & teknisi.
+- **2026-08-25 (Penyederhanaan Terminologi — Penghapusan Kata "Cabang" Menjadi "Toko"):**
+  - **Penyederhanaan Total**: Menghapus seluruh kata _"Cabang"_, _"Toko Cabang"_, _"Cabang Toko"_, dan _"Cabang Toko"_ di seluruh proyek, menyederhanakannya menjadi **"Toko"**, **"Daftar Toko"**, atau **"Toko Resmi"**.
+  - **Admin Dashboard**:
+    - [Overview](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/page.tsx): Header _"Monitoring omzet & performa seluruh jaringan toko"_, dropdown filter _"Semua Toko"_, card _"Toko Aktif"_, section _"Distribusi Omzet Toko"_ (_"Performa penjualan per toko"_).
+    - [Sidebar](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/sidebar.tsx): Mengubah menu menjadi _"Daftar Toko"_ dan section _"Operasional Toko"_.
+    - [Mitras / Toko](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/mitras/page.tsx): Header _"Daftar Toko"_, tombol _"Tambah Toko"_, filter _"Cari nama toko atau kota..."_.
+    - [Tambah Toko](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/mitras/create/page.tsx): Header _"Tambah Toko Baru"_, tombol submit _"Simpan Toko"_.
+    - [Katalog Gadget](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/products/page.tsx) & [Tambah Produk](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/products/new/page.tsx): Header _"Inventori produk & varian per toko"_, kolom tabel _"Toko Penjual"_, form _"Toko Pemilik \*"_.
+    - [Reports](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/reports/page.tsx): Subtitle _"Omzet, komisi & performa seluruh jaringan toko"_, badge _"Inventori toko fisik"_, subtitle _"Status dan performa operasional toko"_.
+    - [Users](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/users/page.tsx): Metric card _"Staf Toko"_ (_"Staf counter toko fisik"_).
+    - [Settings](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/settings/page.tsx): Foto profil _"Foto profil resmi toko"_.
+  - **Halaman Publik & Komponen Landing**:
+    - Menghapus kata _"cabang"_ pada seluruh komponen landing ([footer.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/layouts/footer.tsx), [section-hero-clean.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-hero-clean.tsx), [section-store-spotlight.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-store-spotlight.tsx), [section-product-showcase.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-product-showcase.tsx), [section-featured-gadgets.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-featured-gadgets.tsx), [section-mitra-cta.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-mitra-cta.tsx), [section-live-stream.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-live-stream.tsx), [section-cta-banner.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-cta-banner.tsx), [section-value-props.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-value-props.tsx), [section-internal-ads.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-internal-ads.tsx), [section-lcd-service.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-lcd-service.tsx), [section-stats.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-stats.tsx), [section-quick-access.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-quick-access.tsx), [section-trust-pillars.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-trust-pillars.tsx), [floating-live-chat.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/shared/floating-live-chat.tsx)), serta halaman rute ([register](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/register/page.tsx), [checkout](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/checkout/page.tsx), [garansi](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/garansi/page.tsx), [hubungi-kami](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/hubungi-kami/page.tsx), [toko](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/toko/page.tsx), [toko/[slug]](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/toko/[slug]/page.tsx), [gadget/[id]](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/gadget/[id]/page.tsx), [servis-lcd](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/servis-lcd/page.tsx), [live](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/live/page.tsx)).
+- **2026-08-25 (Unifikasi Terminologi — Penghapusan Seluruh Referensi PT Menjadi Toko/Cabang Toko):**
+  - **Standardisasi Total**: Menghapus seluruh sebutan _"PT"_, _"Multi-PT"_, _"Badan Hukum PT"_, _"Entitas PT"_, dan _"Toko Cabang PT"_ di seluruh antarmuka admin dashboard dan halaman publik, lalu menyelaraskannya menjadi **"Toko"**, **"Cabang Toko"**, atau **"Toko Resmi"**.
+  - **Admin Dashboard**:
+    - [Overview](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/page.tsx): Mengubah label header menjadi _"Monitoring omzet & performa jaringan cabang toko"_, mengubah KPI card menjadi _"Jaringan Toko"_, mengubah judul section menjadi _"Distribusi Omzet Cabang"_, dan membersihkan nama PT pada transaksi & performa cabang.
+    - [Sidebar](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/sidebar.tsx): Mengubah menu _"Toko Cabang PT"_ menjadi _"Toko Cabang"_ dan _"Operasional Cabang PT"_ menjadi _"Operasional Cabang Toko"_.
+    - [Mitras / Cabang](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/mitras/page.tsx): Mengubah judul menjadi _"Toko Cabang"_, filter/search _"Cari nama toko cabang atau kota..."_, dan tombol _"Setujui Toko"_.
+    - [Products](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/products/page.tsx) & [New Product](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/products/new/page.tsx): Menghilangkan referensi PT pada table column, badge inventori, dan dropdown cabang pemilik.
+    - [Reports](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/reports/page.tsx): Menyelaraskan header menjadi _"Omzet, komisi & performa seluruh cabang toko"_ dan filter _"Semua Toko"_.
+    - [Users](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/users/page.tsx): Mengubah badge peran menjadi _"Staf Toko Cabang"_ dan _"Pengelola Platform"_.
+  - **Halaman Publik & Komponen Landing**:
+    - Menghapus penyebutan PT pada [section-hero-clean.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-hero-clean.tsx), [section-store-spotlight.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-store-spotlight.tsx), [section-product-showcase.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-product-showcase.tsx), [section-mitra-cta.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-mitra-cta.tsx), [section-trust-pillars.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-trust-pillars.tsx), [footer.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/layouts/footer.tsx), [floating-live-chat.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/shared/floating-live-chat.tsx), [login](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/login/page.tsx), [register](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/register/page.tsx), [checkout](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/checkout/page.tsx), [garansi](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/garansi/page.tsx), [hubungi-kami](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/hubungi-kami/page.tsx), dan [toko](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/toko/page.tsx).
+- **2026-08-25 (Redesign Halaman Admin Dashboard Komprehensif - Senior UI/UX):**
+  - **Penyederhanaan Hero Section**: Mengganti banner hero card besar (~180px) menjadi compact page header (~56px) pada 8 halaman utama (Overview, Products, Orders, Mitras, Complaints, Reports, Users, Settings).
+  - **Unifikasi Design System**: Mengubah seluruh component legacy dengan gradient dan style gray-_ (pada halaman Reports dan Complaints detail) agar selaras dengan model squircle slate-_ (pills, cards, borders).
+  - **Eliminasi Redundansi**: Menghapus card "Aksi Cepat" dan informasi statis "Integritas Garansi" dari halaman overview untuk memfokuskan layar pada visualisasi operasional utama.
+  - **Optimasi Spasi & Whitespace**: Menurunkan margin vertikal halaman dari `space-y-8` ke `space-y-5` untuk menghadirkan kepadatan data yang ramah pengguna.
+- **2026-08-25 (Redesign Beranda Admin Modern & Minimalis - Senior UI/UX):**
+  - **Penyederhanaan Informasi:** Menghilangkan clutter visual dan memfokuskan layar hanya pada metrik & operasional inti (Omzet Desentralisasi PT, Saldo Komisi 1–3%, Status 5 Toko Fisik, dan Integritas Proteksi Garansi 30 Hari).
+  - **Tata Letak & Spasi Bento Grid:** Menerapkan split layout (2/3 konten transaksi real-time & performa cabang PT, 1/3 aksi cepat manajemen & card integritas keamanan).
+  - **Hierarki Visual:** Angka metrik menggunakan `font-black text-2xl sm:text-3xl`, label semantik `text-[11px] font-bold uppercase tracking-wider text-slate-400`, dan Primary CTA dengan _Orange Glow_.
+  - **Estetika Luxury:** Light canvas `bg-slate-50`, squircle cards `rounded-3xl border border-slate-200/80 bg-white shadow-xs`, dan pill badges yang selaras dengan antarmuka publik.
+  - **Validasi Build:** `pnpm tsc --noEmit` lulus 100% (0 error).
+- **2026-08-25 (Mini Icon-Only Collapsible Sidebar with Hover Tooltips - Senior UI/UX):**
+  - **Mini Mode (Width 64px):** Saat di-hide/collapse pada desktop, sidebar beralih menjadi strip ramping mini (`lg:w-16`) yang hanya menampilkan icon-icon navigasi esensial dan avatar profile secara terpusat, dengan offset konten `lg:pl-16`.
+  - **Floating Tooltips on Hover:** Menyematkan tooltip mengambang instan (`group-hover:opacity-100 group-hover:scale-100`) di sisi kanan setiap icon menu (termasuk tombol Quick CTA _Tambah Gadget_, indikator live/badge, pintasan web publik, dan user logout card) sehingga pengguna tetap mengetahui nama modul secara presisi tanpa perlu membuka sidebar penuh.
+  - **Toggle 1-Klik:** Logo header sidebar mini secara interaktif berubah menjadi icon expand (`PanelLeftClose rotate-180`) saat di-hover untuk memudahkan ekspansi kembali ke mode penuh.
+  - **Validasi Build:** `pnpm tsc --noEmit` lulus 100% (0 error).
+- **2026-08-25 (Pembersihan Header Top Bar Admin - Senior UI/UX):**
+  - Menghapus teks breadcrumb _"AffiliateGadget / Panel Admin"_ dari sticky top bar admin ([admin-layout-client.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/admin-layout-client.tsx)) sehingga tampilan top bar menjadi lebih ringkas, clean, dan fokus pada tombol toggle sidebar & shortcut link toko publik.
+  - Validasi build: `pnpm tsc --noEmit` lulus 100% (0 error).
+- **2026-08-25 (Implementasi Collapsible Sidebar & Fluid Responsive Layout - Senior UI/UX):**
+  - **Sidebar Context & Persistensi:** Membangun `SidebarContext` dan `SidebarProvider` ([sidebar-context.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/context/sidebar-context.tsx)) dengan sinkronisasi `localStorage` untuk mengingat preferensi status buka/tutup sidebar user.
+  - **Tombol Hide & Expand Desktop:**
+    - Menambahkan tombol collapse cepat `PanelLeftClose` pada header sidebar ([sidebar.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/sidebar.tsx)) untuk menyembunyikan sidebar ke sisi kiri (`lg:-translate-x-full`).
+    - Menambahkan tombol capsule expand `[ ◨ Buka Sidebar ]` pada sticky top bar ([admin-layout-client.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/admin-layout-client.tsx)) ketika sidebar sedang disembunyikan.
+  - **Fluid Dynamic Width:** Kontainer konten utama otomatis beralih offset dari `lg:pl-64` ke `lg:pl-0` dengan animasi halus (`transition-all duration-300 ease-in-out`), dan inner container diperluas (`max-w-[1600px]`) sehingga kartu dan tabel memanfaatkan ruang layar secara optimal tanpa menyisakan ruang kosong (inner boxed space) yang berlebihan.
+  - **Validasi Build:** `pnpm tsc --noEmit` lulus 100% (0 error).
+- **2026-08-25 (Penyelarasan Header Sidebar Admin - Senior UI/UX):**
+  - Menempatkan sub-label **`Admin`** tepat di bawah teks brand _AffiliateGadget_, memberikan hierarki visual yang jelas, rapi, dan proporsional pada header sidebar ([sidebar.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/sidebar.tsx)).
+  - Validasi build: `pnpm tsc --noEmit` lulus 100% (0 error).
+
+- **2026-08-25 (Penyaringan Modul Manajemen Sesuai Fitur Publik Aktif - Senior UI/UX):**
+  - **Prinsip Sinkronisasi Modul:** Memastikan hanya modul yang benar-benar aktif di tampilan publik (_Katalog Gadget_, _Pesanan & Logistik_, _Toko Cabang PT_, _Klaim Garansi 30 Hari_, _Laporan Finansial_, _Kelola Pengguna_, _Pengaturan_) yang ditampilkan pada sidebar dan view manajemen admin.
+  - **Pembersihan Modul Non-Aktif:**
+    - Menghapus menu _Live Chat Toko_, _Teknisi_, dan _Blog_ dari navigasi sidebar admin ([sidebar.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/sidebar.tsx)) karena belum diaktifkan di sisi publik.
+    - Menyelaraskan navigasi Customer & Mitra ([sidebar.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/dashboard/sidebar.tsx)) agar langsung terhubung ke modul publik aktif (_Klaim Garansi 30 Hari_, _Katalog Gadget Toko_, _Pesanan Toko_).
+    - Memperbarui filter klaim di Pusat Komplain ([complaints/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/complaints/page.tsx)) menjadi _Semua Klaim_ & _Garansi Ganti Unit 30 Hari_.
+    - Membersihkan tabel lama performa teknisi dari laporan finansial ([reports/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/reports/page.tsx)) dan menyelaraskan metrik pengguna ([users/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/users/page.tsx)).
+  - **Validasi Build:** `pnpm tsc --noEmit` lulus 100% (0 error).
+- **2026-08-25 (Redesign Seluruh View Admin Dashboard Sesuai Standar UI/UX Publik - Senior UI/UX):**
+  - **Prinsip Desain Terpadu:** Mengadopsi bahasa desain publik (Light Canvas `bg-slate-50`, squircle cards `rounded-3xl border border-slate-200/80 bg-white shadow-xs`, pill filters/tabs `rounded-full`, typography `font-black`, dan Primary CTA dengan _Orange Glow_ `bg-orange-500 hover:bg-orange-600 shadow-sm shadow-orange-500/25`).
+  - **Admin Overview ([page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/page.tsx)):** Hero squircle card, pill selector cabang toko, 4 Luxury KPI cards (Omzet, Komisi 1-3%, Toko Resmi, Proteksi Garansi), grid performa cabang, dan tabel transaksi real-time terproteksi.
+  - **Katalog Gadget ([products/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/products/page.tsx) & [products/new/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/products/new/page.tsx)):** Filter merek berbentuk pill kapsul, pencarian instan, tabel inventori mewah dengan thumbnail squircle, dan form posting gadget baru terstruktur.
+  - **Manajemen Pesanan ([orders/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/orders/page.tsx)):** Tab filter klaim bergaya pill, kartu pesanan squircle dengan badge kurir terproteksi asuransi, preview unit, dan aksi cepat 1-klik.
+  - **Direktori Mitra Toko ([mitras/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/mitras/page.tsx) & [mitras/create/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/mitras/create/page.tsx)):** 4 metrik status toko, filter persetujuan pill, kartu toko fisik dengan link langsung publik, dan tab pendaftaran toko baru yang elegan.
+  - **Pusat Komplain & Garansi 30 Hari ([complaints/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/complaints/page.tsx)):** Filter jenis penanganan, kartu keluhan squircle, indikator penugasan teknisi, dan trigger lightbox galeri bukti kerusakan.
+  - **Laporan Finansial & Komisi ([reports/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/reports/page.tsx)):** Pemilih periode pill modern, 4 metrik finansial, dan kontainer visualisasi grafik dalam squircle card.
+  - **Manajemen Pengguna & RBAC ([users/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/users/page.tsx)):** 4 kartu metrik pengguna, filter peran pill, kartu pengguna squircle dengan inisial badge dan modal CRUD.
+  - **Pusat Pesan & Chat ([chat/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/chat/page.tsx)):** Header live counter status, container percakapan bergaya squircle dengan bubble chat elegan dan pencarian responsif.
+  - **Manajemen Teknisi ([technicians/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/technicians/page.tsx)):** 4 kartu metrik kesiapan teknisi, kartu staf servis squircle, dan toggle ketersediaan 1-klik.
+  - **Artikel & Edukasi Blog ([blog/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/blog/page.tsx)):** 3 metrik artikel, filter status terbit/draft pill, dan list artikel mewah.
+  - **Pengaturan Profil ([settings/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/settings/page.tsx)):** Form profil minimalis dengan uploader foto terintegrasi dan tombol simpan _Orange Glow_.
+  - **Validasi Build:** Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% (0 error).
+- **2026-08-25 (Pembuatan Data Dummy Realistis Lengkap & Dynamic Homepage Integration):**
+  - **5 Toko Fisik & Badan Hukum PT:** Menambahkan toko resmi berbadan hukum PT di 5 kota besar (Jakarta Pusat - ITC Roxy Mas, Surabaya - WTC Surabaya, Bandung - BEC Bandung, Medan - Plaza Medan Fair, Yogyakarta - Jogja Tronik Mall) lengkap dengan NPWP resmi, rekening bank PT (BCA, Mandiri, BRI), jam operasional, koordinat, dan rating.
+  - **12 Produk Smartphone Flagship & Varian Lengkap:** Mengisi data produk nyata (iPhone 15 Pro Max, iPhone 15 Pro, iPhone 14, Samsung Galaxy S24 Ultra, Samsung Z Fold 6, Samsung A55, ASUS ROG Phone 8 Pro, Xiaomi 14 Leica, POCO F6 Pro, Vivo X100 Pro ZEISS, Vivo V30 Pro, Oppo Find N3 Flip) lengkap dengan spesifikasi teknis mendalam, varian RAM/storage/warna, stok, garansi 30 hari ganti unit baru, dan paket bonus 3-in-1.
+  - **Akun Lengkap Multi-Role:** Menyiapkan akun Super Admin, Finance Admin, Admin & Sales Toko per cabang PT, serta 5 akun customer/pembeli realistis se-Indonesia.
+  - **Homepage Dynamic Fetching:** Memperbarui [section-featured-gadgets.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-featured-gadgets.tsx) dan [section-store-spotlight.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-store-spotlight.tsx) agar langsung mengambil data secara dinamis dari database PostgreSQL via REST API.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Penyederhanaan Footer - Senior UI/UX):**
+  - Menghapus barisan 3-pillar reassurance bar (_Garansi 30 Hari_, _Logistik Wajib Asuransi 100%_, _Jaringan Toko Fisik Resmi_) dari bagian atas footer ([footer.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/layouts/footer.tsx)) untuk menghasilkan tampilan footer yang lebih clean, minimalis, dan elegan.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Penghapusan Section CTA Banner Beranda):**
+  - Menghapus komponen `SectionCtaBanner` dari alur beranda ([page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/page.tsx)) sesuai preferensi user untuk menghasilkan tampilan halaman utama yang lebih clean, ringkas, dan fokus langsung ke direktori toko cabang.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Penyederhanaan Label Tombol Toko - Senior UI/UX):**
+  - **Section Store Spotlight ([section-store-spotlight.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-store-spotlight.tsx)):** Mengubah label tombol aksi kartu toko dari _"Lihat Profil & Stok Toko"_ menjadi **"Lihat Toko"** dengan styling pill modern (`rounded-full`).
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Penyederhanaan Catatan Verifikasi Mitra Register - Senior UI/UX):**
+  - **Halaman Register ([register/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/register/page.tsx)):** Mengganti emoji/teks tebal menjadi _minimalist security micro-note_ dengan icon `ShieldCheck` halus: _"Verifikasi legalitas toko & PT diproses setelah pendaftaran"_, menyatu sempurna dengan estetika kartu form.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Redesign Sidebar Admin Modern & Minimalis - Senior UI/UX):**
+  - **Penyederhanaan Informasi:** Menghapus menu accordion bertingkat _"Kelola"_ dan card profil raksasa di bagian atas; menggantikannya dengan navigasi flat terstruktur berkategori semantik.
+  - **Tata Letak & Spasi:** Menerapkan ritme spasi 8-point grid lapang (`space-y-5`, padding `px-3.5 py-2.5`, `rounded-xl`) untuk meminimalkan _cognitive fatigue_.
+  - **Hierarki Visual:**
+    - Menyematkan **Primary Quick CTA (`+ Tambah Gadget`)** dengan aksen _Orange Glow_ (`/dashboard/admin/products/new`) untuk aksi cepat 1-klik.
+    - Mengelompokkan menu ke dalam 4 kategori semantik: _Utama_, _Toko & Katalog_, _Operasional_ (dengan live indicator dot pada Live Chat), dan _Sistem_.
+  - **Estetika Luxury Minimalis:** Desain clean ala Linear/Stripe/Apple dengan _Active Dark Pill State_ (`bg-slate-900 text-white`), pintasan _Lihat Web Publik_, dan _Compact User Footer Profile_ (avatar initials + status ring + direct logout).
+  - **Layout Alignment:** Menyelaraskan padding desktop `lg:pl-64` dan membersihkan background photo Unsplash pada [admin/layout.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/dashboard/admin/layout.tsx).
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Redesign Section CTA Banner - Senior UI/UX):**
+  - **Section CTA Banner ([section-cta-banner.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-cta-banner.tsx)):**
+    - **Penyederhanaan Informasi:** Menghapus pengulangan 3-badge mikro yang berlebih dan badge teks kaku.
+    - **Tata Letak & Spasi:** Mengubah tata letak asimetris yang padat menjadi **Centered Luxury Card Layout** dengan padding lapang dan visual seimbang.
+    - **Hierarki & CTA:** Menghadirkan status live standby (_🟢 Sales Counter & Teknisi Toko Standby_), tajuk dengan aksen gradasi hangat, dan tombol pill ganda (_Chat Sales Cabang_ & _Jelajahi Produk_).
+    - **Estetika Luxury:** Menggunakan styling midnight card `rounded-3xl` dengan ambient glow halus dan footnote ketersediaan toko fisik.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Redesign Hero Section Landing Page - Senior UI/UX):**
+  - **Section Hero ([section-hero-clean.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/components/landing/section-hero-clean.tsx)):**
+    - **Penyederhanaan Informasi:** Menghapus grid 4-checkbox yang padat dan menggantinya dengan _minimalist live trust strip_ horizontal yang bersih.
+    - **Tata Letak & Spasi:** Mengoptimalkan ritme vertikal dengan whitespace lapang (`pt-28 lg:pt-36`) dan kontras tinggi.
+    - **Hierarki & CTA:** Mempertegas tombol CTA utama (_Jelajahi Produk_) dengan pill capsule orange glow dan tombol sekunder (_Lokasi Toko Fisik_) beraksen border halus.
+    - **Estetika Luxury:** Memperbaiki kartu spotlight produk di kolom kanan dengan styling squircle `rounded-3xl`, floating tag, bonus bar, dan slider pills yang halus.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Penyederhanaan Judul & Integrasi Logo Kartu Auth - Senior UI/UX):**
+  - **Halaman Login ([login/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/login/page.tsx)):** Menempatkan logo resmi tepat di atas judul kartu, memperkecil ukuran font (`text-xl font-bold`), menyederhanakan judul menjadi _"Masuk"_, dan menyederhanakan label pendaftaran menjadi _"Daftar sekarang"_.
+  - **Halaman Register ([register/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/register/page.tsx)):** Menempatkan logo resmi di atas judul kartu, memperkecil ukuran font (`text-xl font-bold`), dan menyederhanakan judul menjadi _"Daftar"_.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Penyederhanaan Bersih View Auth - Senior UI/UX):**
+  - **Halaman Login ([login/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/login/page.tsx)):** Menghapus badge _"Akses Akun Resmi Multi-PT"_ dan barisan trust badges (_Garansi 30 Hari_, _Free Bonus 3-in-1_, _Asuransi JNE/Gojek_) untuk tampilan yang ultra-bersih, fokus, dan minimalis.
+  - **Halaman Register ([register/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/register/page.tsx)):** Menghapus badge _"Registrasi Member & Mitra Resmi"_ dan Bento Strip 3-in-1, menyederhanakan headline menjadi _"Buat Akun Baru"_, dan mempertahankan pemilih jenis akun (Customer vs Mitra) yang elegan.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Redesign View Auth Modern & Minimalis - Senior UI/UX):**
+  - Mendesain ulang seluruh view otentikasi ([login/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/login/page.tsx), [register/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/register/page.tsx), [auth/error/page.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/auth/error/page.tsx)):
+    - **Penyederhanaan Visual:** Menghapus gambar latar belakang Unsplash stok yang berat dan efek blur bertumpuk, diganti dengan ambient canvas lapang dan logo resmi yang elegan.
+    - **Tata Letak & Spasi:** Kontainer squircle modern (`rounded-3xl`) dengan padding optimal, input field bersih dengan icon terintegrasi, dan touch-target yang nyaman.
+    - **Hierarki & CTA:** Tombol aksi utama kontras tinggi (_Solid Black Pill / Primary Orange Glow_), compact role switch pill (_Customer_ vs _Mitra Toko PT_), dan opsi Google OAuth yang rapi.
+    - **Trust & Security:** Badge keamanan enkripsi SSL 256-bit dan penanganan pesan error yang elegan.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Integrasi Favicon & Logo Resmi AffiliateGadget):**
+  - Memproses file gambar resmi `AffiliateGadget.png` menggunakan `sharp` menjadi paket aset favicon lengkap:
+    - `/public/logo.png` (High-res brand asset)
+    - `/public/favicon.ico` (32x32)
+    - `/public/favicon-96x96.png` (96x96)
+    - `/public/apple-touch-icon.png` (180x180)
+    - `/public/web-app-manifest-192x192.png` & `/public/web-app-manifest-512x512.png` (PWA maskable icons)
+    - `/public/site.webmanifest` & `src/app/icon.png`
+  - Memperbarui metadata `icons`, `manifest`, dan `appleWebApp` pada [layout.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/layout.tsx).
+  - Mengganti icon generic dengan gambar logo resmi pada **Navbar Header**, **Footer**, **Dashboard Sidebar**, **Halaman Login**, dan **Halaman Register**.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Redesign View Produk Modern & Minimalis - Senior UI/UX):**
+  - Mendesain ulang rute Katalog Produk (`src/app/gadget/page.tsx`) dan Detail Produk (`src/app/gadget/[id]/page.tsx`):
+    - **Hero Airy Section:** Headline tebal dengan badge status _"Katalog Smartphone Resmi Multi-PT"_.
+    - **Floating Brand Pills & Search:** Bar filter merek pill halus dan dropdown urutan harga minimalis.
+    - **Luxury Product Showcase Cards:** Kartu squircle (`rounded-3xl`) dengan badge Garansi 30 Hari, Free Bonus 3-in-1 Rp 0, toko asal, dan CTA Beli Sekarang dinamis.
+    - **Apple-Grade Product Detail:** Galeri media interaktif, pemilih varian RAM/Storage pill, trust indicators, dan dual CTA (_+ Keranjang_ & _Beli Sekarang_).
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Redesign View Toko Modern & Minimalis - Senior UI/UX):**
+  - Mendesain ulang rute Direktori Toko (`src/app/toko/page.tsx`) dan Profil Khusus Cabang (`src/app/toko/[slug]/page.tsx`):
+    - **Hero Airy Section:** Headline tebal dengan badge legalitas PT _"Jaringan Toko Resmi Berbadan Hukum PT"_.
+    - **Floating Filter Bar:** Tab filter kota berbentuk pill halus dan pencarian instan responsif.
+    - **Luxury Store Identity Cards:** Kartu squircle (`rounded-3xl`) memuat identitas toko, badan hukum PT, jam buka, dukungan garansi 30 hari, direct WhatsApp sales, dan link profil.
+    - **Store Specific Inventory:** Tampilan stok unit khusus cabang dengan badge garansi 30 hari dan free bonus 3-in-1 Rp 0.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Redesign View Garansi Modern & Minimalis - Senior UI/UX):**
+  - Mendesain ulang rute Pusat Garansi (`src/app/garansi/page.tsx`):
+    - **Hero Airy Section:** Headline tebal dengan status pill badge _"Jaminan Perlindungan Belanja Bebas Cemas"_.
+    - **Interactive Warranty Checker:** Form input nomor pesanan berbentuk pill modern dengan visual status aktif, sisa countdown hari, dan direct WhatsApp claim trigger.
+    - **3-Step Claim Workflow:** Alur 3 langkah sederhana (Verifikasi Pesanan $\rightarrow$ Diagnosa Teknisi $\rightarrow$ Ganti Unit Baru).
+    - **Scope of Protection Matrix:** Kartu perbandingan transparan antara kerusakan yang dilindungi vs pengecualian.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Redesign View Bantuan Modern & Minimalis - Senior UI/UX):**
+  - Mendesain ulang rute Pusat Bantuan (`src/app/hubungi-kami/page.tsx`):
+    - **Hero Airy Section:** Headline tebal dan bersih dengan status pill badge.
+    - **Quick Topic Bento Grid (4 Cards):** Akses instan 1-klik untuk Klaim Garansi 30 Hari, Logistik & Asuransi, Katalog Toko Offline, dan Chat Sales WA.
+    - **Interactive FAQ Accordion:** Solusi mandiri untuk pertanyaan yang paling sering diajukan.
+    - **Kontak Cabang Toko PT:** Jam operasional dan direct WhatsApp sales per toko fisik.
+    - **Formulir Tiket Resmi Minimalis:** Input terstruktur dengan kategori yang rapi.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Optimasi Search Bar Header Menjadi Compact & Sleek):**
+  - Mengurangi lebar search bar desktop dari yang sebelumnya ekspansif (`flex-1 max-w-sm`) menjadi **Compact Minimalist Pill** (`w-36 xl:w-44` yang dapat meluas secara dinamis `focus:w-52`).
+  - Menghindari pergeseran visual menu navigasi utama dan menjaga keseimbangan _whitespace_ di header.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Redesign Header Navigasi Modern & Minimalis - Senior UI/UX):**
+  - Mendesain ulang seluruh struktur header navigasi (`src/components/layouts/navbar.tsx`):
+    - Glassmorphism backdrop ultra-bersih (`backdrop-blur-xl`, `bg-white/85`, border halus `border-slate-200/60`).
+    - Pill navigation modern dengan active indicator kontras tinggi (`bg-slate-950 text-white`).
+    - Floating pill search bar responsif dengan icon minimalis.
+    - Cart pill squircle dengan badge counter dinamis.
+    - CTA Masuk (teks bersih) & Daftar (pill orange glow) yang tegas dan tidak bertumpuk.
+    - Mobile navigation drawer dengan tata letak lapang dan transisi halus.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Penyederhanaan Label Navigasi Header & Footer):**
+  - Mengubah label navigasi menjadi lebih simpel, bersih, dan berstandar umum e-commerce:
+    - `/gadget` : _Katalog Gadget_ $\rightarrow$ **Produk**
+    - `/toko` : _Toko PT_ $\rightarrow$ **Toko**
+    - `/garansi` : _Garansi 30 Hari_ $\rightarrow$ **Garansi**
+    - `/hubungi-kami` : _Hubungi Kami_ $\rightarrow$ **Bantuan**
+  - Memvalidasi navbar dan footer pada desktop & mobile drawer (`pnpm tsc --noEmit` lulus 100%).
+- **2026-08-25 (Investigasi & Perbaikan Rute Keranjang & Port Redirect):**
+  - **Root Cause:** File `.env` memiliki nilai hardcoded `NEXTAUTH_URL=http://localhost:3000` dan `NEXT_PUBLIC_APP_URL=http://localhost:3000` sementara server berjalan di port `3002`. Selain itu, `/cart` diatur sebagai _protected route_ yang memaksa redirect guest ke login via NextAuth URL lama (port 3000).
+  - **Perbaikan Terpadu:**
+    1. Mengubah `.env` agar menggunakan port aktif `http://localhost:3002` (`NEXT_PUBLIC_APP_URL`, `NEXTAUTH_URL`, dan `AUTH_URL`).
+    2. Membuka akses `/cart` secara bebas untuk pengguna _guest_ (tanpa blokir redirect login) di `middleware.ts`, `auth.config.ts`, dan `src/app/cart/page.tsx`.
+    3. Memperbaiki redirect `/checkout` agar membawa parameter query `?redirect=/checkout` yang dipertahankan saat login di `src/app/login/page.tsx`.
+    4. Mengganti hardcoded fallback URL di `src/app/api/auth/redirect/route.ts` menjadi dynamic request origin.
+  - Memvalidasi seluruh rute (`/cart`, `/checkout`, `/gadget`, `/toko`, `/garansi`, `/hubungi-kami`, `/login`) $\rightarrow$ lulus 100% dan `pnpm tsc --noEmit` 0 error.
+- **2026-08-25 (Redesign Beranda Modern Minimalis - Senior UI/UX):**
+  - Menyederhanakan struktur beranda dari 9 seksi beruntun menjadi **5 Core Sections** yang terfokus: `SectionHeroClean`, `SectionTrustPillars`, `SectionFeaturedGadgets`, `SectionStoreSpotlight`, dan `SectionCtaBanner`.
+  - Mengoptimalkan _whitespace_ (padding `py-16`–`py-20`), menghapus border kaku berlebihan, dan meningkatkan kenyamanan mata.
+  - Mempertegas hierarki visual: Tipografi judul tegas, pengelompokan informasi logis, dan Call to Action (CTA) utama berkarakter jelas (_Primary Orange Glow_).
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Perbaikan Single Live Chat Widget):**
+  - Menghapus komponen chat internal lama (`FloatingChatButton`) dari root layout yang bertumpuk dengan live chat WhatsApp.
+  - Memusatkan satu-satunya widget **Live Chat Sales Toko Cabang** (`FloatingLiveChat`) secara global di [layout.tsx](file:///Users/andrichadeamitra/Documents/PROJECT/affiliate-gadget/src/app/layout.tsx) dan membersihkan duplikasi tag di halaman-halaman individual.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25 (Tahap 1 - 3 Roadmap):**
+  - Mengimplementasikan restrukturisasi arsitektur 3 Tahap Pengembangan:
+    - **Tahap 1 (Utama & Aktif):** Sistem Afiliasi Multi-PT, Form Input & Posting Gadget Asli (`/dashboard/admin/products/new`), Garansi 30 Hari Ganti Baru, Paket Bonus 3-in-1, Live Chat WA Toko Cabang, dan Halaman Profil Toko Khusus (`/toko` & `/toko/[slug]`).
+    - **Tahap 2 (Coming Soon):** Modul Servis LCD (`/servis-lcd`), Payment Gateway Otomatis, dan Asuransi Kurir Real-time.
+    - **Tahap 3 (Coming Soon):** Live Streaming Sales Hub (`/live`), Komisi Otomatis 1-3%, dan Internal Ads Berbayar.
+  - Menyesuaikan header navigasi (`navbar.tsx`) agar hanya menampilkan menu aktif Tahap 1 (`/gadget`, `/toko`, `/garansi`, `/hubungi-kami`).
+  - Menghapus label "Multi-PT Store" dari logo header agar bersih & modern.
+  - Memvalidasi seluruh rute & `pnpm tsc --noEmit` lulus 100% tanpa error.
+- **2026-08-25:** Transformasi Arsitektur Total Platform Affiliate Gadget Berdasarkan Dokumen PDF V1.0.

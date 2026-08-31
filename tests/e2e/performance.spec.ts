@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test'
 
 /**
- * HaloTekno - Performance & Accessibility Tests
+ * Affiliate Gadget - Performance & Accessibility Tests
  * Basic performance and accessibility checks
  */
 

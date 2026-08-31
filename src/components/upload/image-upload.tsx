@@ -16,7 +16,7 @@ export default function ImageUpload({
   onChange,
   onRemove,
   label = 'Upload Image',
-  folder = 'halotekno',
+  folder = 'affiliate-gadget',
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)

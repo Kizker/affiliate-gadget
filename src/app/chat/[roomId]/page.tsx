@@ -180,7 +180,7 @@ export default function ChatRoomPage({
     otherUser = {
       name: adminMessage?.sender.name || 'Admin',
       image: adminMessage?.sender.image || null,
-      email: 'admin@halotekno.com',
+      email: 'admin@affiliategadget.com',
       phone: null,
     }
     otherUserDetails = room.order || null

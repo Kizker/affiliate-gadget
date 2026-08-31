@@ -2,10 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
-import { CheckCircle, CreditCard, Loader2, ArrowRight } from 'lucide-react'
+import {
+  CheckCircle2,
+  Package,
+  Clock,
+  ArrowRight,
+  Copy,
+  Check,
+  Loader2,
+  ShieldCheck,
+  Truck,
+  ShoppingBag,
+} from 'lucide-react'
+import { toast } from 'sonner'
 
 interface OrderData {
   id: string
@@ -41,6 +54,7 @@ export default function OrderConfirmationPage({
   const [order, setOrder] = useState<OrderData | null>(null)
   const [loading, setLoading] = useState(true)
   const [orderId, setOrderId] = useState<string>('')
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     params.then((p) => setOrderId(p.orderId))
@@ -56,11 +70,11 @@ export default function OrderConfirmationPage({
           const data = await res.json()
           setOrder(data.order)
         } else {
-          router.push('/dashboard/customer/orders')
+          router.push('/')
         }
       } catch (error) {
         console.error('Error fetching order:', error)
-        router.push('/dashboard/customer/orders')
+        router.push('/')
       } finally {
         setLoading(false)
       }
@@ -69,10 +83,21 @@ export default function OrderConfirmationPage({
     fetchOrder()
   }, [orderId, router])
 
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      toast.success('Nomor pesanan berhasil disalin')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('Gagal menyalin nomor pesanan')
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
       </div>
     )
   }
@@ -82,136 +107,182 @@ export default function OrderConfirmationPage({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/40">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between">
       <Navbar variant="light" />
 
-      <main className="flex-1 px-4 pb-8 pt-24 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl">
+      <main className="pb-20 pt-28">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+          
           {/* Success Header */}
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
-              <CheckCircle className="h-12 w-12 text-green-600" />
+          <div className="text-center space-y-3 mb-8">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 shadow-xs border border-emerald-100 dark:bg-emerald-950/50 dark:border-emerald-900/50">
+              <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h1 className="mb-2 text-3xl font-bold text-gray-900">
-              Pesanan Berhasil Dibuat!
-            </h1>
-            <p className="text-gray-600">
-              Terima kasih telah berbelanja di HaloTekno
-            </p>
+            
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
+                Pesanan Berhasil Dibuat
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                Terima kasih! Pesanan Anda segera diverifikasi dan diproses oleh toko resmi.
+              </p>
+            </div>
           </div>
 
-          {/* Order Info Card */}
-          <div className="mb-4 rounded-2xl bg-white p-6 shadow-lg">
-            <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-4">
-              <div>
-                <p className="text-sm text-gray-600">Nomor Pesanan</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {order.orderNumber}
-                </p>
-              </div>
-              <div className="rounded-full bg-yellow-100 px-4 py-2">
-                <p className="text-sm font-semibold text-yellow-700">
-                  Menunggu Pembayaran
-                </p>
-              </div>
-            </div>
-
-            {/* Product Items */}
-            <div className="mb-4 space-y-3">
-              <h3 className="font-semibold text-gray-900">Detail Produk</h3>
-              {order.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex gap-4 rounded-lg bg-gray-50 p-3"
-                >
-                  {item.product?.images?.[0] && (
-                    <img
-                      src={item.product.images[0]}
-                      alt={item.product.name}
-                      className="h-16 w-16 rounded-lg object-cover"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900">
-                      {item.product?.name || 'Produk'}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {item.quantity} x Rp {item.price.toLocaleString('id-ID')}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-blue-600">
-                      Rp {(item.price * item.quantity).toLocaleString('id-ID')}
-                    </p>
-                  </div>
+          {/* Main Order Card */}
+          <div className="rounded-3xl border border-slate-200/80 bg-white shadow-xs overflow-hidden dark:border-slate-800 dark:bg-slate-900">
+            
+            {/* Order Card Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="space-y-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Nomor Pesanan
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm sm:text-base font-bold text-slate-950 dark:text-white">
+                    {order.orderNumber}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(order.orderNumber)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200/80 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition shrink-0"
+                    title="Salin Nomor Pesanan"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-3 w-3 text-emerald-600" />
+                        <span>Disalin</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" />
+                        <span>Salin</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-              ))}
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/50">
+                <Clock className="h-3 w-3" />
+                <span>Menunggu Konfirmasi</span>
+              </div>
             </div>
 
-            {/* Total */}
-            <div className="border-t border-gray-200 pt-4">
-              <div className="flex justify-between text-lg">
-                <span className="font-semibold text-gray-900">Total</span>
-                <span className="text-2xl font-bold text-blue-600">
-                  Rp {order.total.toLocaleString('id-ID')}
+            {/* Items List */}
+            <div className="p-5 sm:p-6 space-y-4">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Rincian Produk
+              </h2>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {order.items.map((item) => {
+                  const name = item.product?.name || 'Gadget Smartphone'
+                  const image = item.product?.images?.[0]
+
+                  return (
+                    <div key={item.id} className="py-3.5 first:pt-0 last:pb-0 flex items-center gap-3">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-slate-50 border border-slate-100 dark:border-slate-800">
+                        {image ? (
+                          <Image
+                            src={image}
+                            alt={name}
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-slate-400">
+                            <Package className="h-6 w-6" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
+                          {name}
+                        </h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {item.quantity} unit × Rp {item.price.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-bold text-slate-950 dark:text-white tabular-nums">
+                          Rp {(item.price * item.quantity).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Total Amount */}
+            <div className="p-5 sm:p-6 bg-slate-50/50 border-t border-slate-100 dark:bg-slate-800/30 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                  Total Pembayaran
+                </span>
+                <span className="text-[10px] text-slate-400 block">
+                  Termasuk PPN, Kurir & Asuransi
                 </span>
               </div>
+              <span className="text-base sm:text-lg font-bold text-slate-950 dark:text-white tabular-nums">
+                Rp {order.total.toLocaleString('id-ID')}
+              </span>
             </div>
-          </div>
 
-          {/* Payment Instructions */}
-          <div className="mb-4 rounded-2xl bg-white p-6 shadow-lg">
-            <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
-              <CreditCard className="h-5 w-5" />
-              Instruksi Pembayaran
-            </h3>
-            <div className="space-y-3 text-sm text-gray-700">
-              <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
-                  1
+            {/* Guarantees Box */}
+            <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-center gap-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                      Garansi 30 Hari Aktif
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Jaminan tukar unit second resmi
+                    </span>
+                  </div>
                 </div>
-                <p>
-                  Transfer ke rekening BCA: <strong>1234567890</strong> a.n.
-                  HaloTekno
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
-                  2
+
+                <div className="flex items-center gap-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800">
+                  <Truck className="h-4 w-4 text-blue-600 shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                      Asuransi Kurir 100%
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Proteksi hilang & kerusakan jalan
+                    </span>
+                  </div>
                 </div>
-                <p>
-                  Masukkan jumlah:{' '}
-                  <strong>Rp {order.total.toLocaleString('id-ID')}</strong>
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
-                  3
-                </div>
-                <p>
-                  Konfirmasi pembayaran melalui WhatsApp atau email dengan
-                  menyertakan nomor pesanan
-                </p>
               </div>
             </div>
+
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col gap-3 sm:flex-row">
+          {/* Action CTAs */}
+          <div className="mt-6 flex flex-col-reverse sm:flex-row gap-3">
             <Link
-              href="/dashboard/customer/orders"
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700"
+              href="/gadget"
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white py-3.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 transition"
             >
-              Lihat Pesanan Saya
-              <ArrowRight className="h-5 w-5" />
+              <ShoppingBag className="h-4 w-4" />
+              <span>Belanja Gadget Lainnya</span>
             </Link>
+
             <Link
-              href="/sparepart"
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-gray-300 bg-white py-3 font-semibold text-gray-700 hover:bg-gray-50"
+              href="/garansi"
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 hover:bg-orange-600 active:scale-[0.99] transition"
             >
-              Belanja Lagi
+              <span>Cek Status & Klaim Garansi</span>
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
+
         </div>
       </main>
 

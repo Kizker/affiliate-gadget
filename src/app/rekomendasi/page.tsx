@@ -5,7 +5,7 @@ import RekomendasiClientPage from './rekomendasi-client'
 export const revalidate = 120
 
 export const metadata = {
-  title: 'Rekomendasi Mitra Terpercaya - HaloTekno',
+  title: 'Rekomendasi Mitra Terpercaya - Affiliate Gadget',
   description:
     'Temukan rekomendasi toko servis gadget dan komputer terbaik di Indonesia',
 }

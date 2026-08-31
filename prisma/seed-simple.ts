@@ -12,8 +12,8 @@ async function main() {
   try {
     const admin = await prisma.user.create({
       data: {
-        email: 'admin@halotekno.com',
-        name: 'Admin HaloTekno',
+        email: 'admin@affiliategadget.com',
+        name: 'Admin Affiliate Gadget',
         password: adminPassword,
         role: 'SUPER_ADMIN',
         phone: '081234567890',

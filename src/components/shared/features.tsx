@@ -81,7 +81,7 @@ export default function Features() {
           <h2 className="mb-4 text-3xl font-bold text-gray-900 sm:text-5xl">
             Mengapa Memilih{' '}
             <span className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
-              HaloTekno?
+              Affiliate Gadget?
             </span>
           </h2>
           <p className="mx-auto max-w-2xl text-lg text-gray-600 sm:text-xl">

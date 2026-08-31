@@ -2,6 +2,8 @@ export interface CartItem {
   id: string
   type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
   productId?: string
+  variantId?: string
+  variantName?: string
   rentalItemId?: string
   serviceId?: string
   name: string

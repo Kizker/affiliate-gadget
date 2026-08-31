@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client')
 
 const local = new PrismaClient({
-    datasources: { db: { url: 'postgresql://postgres:postgres@localhost:5432/halotekno' } }
+    datasources: { db: { url: 'postgresql://postgres:postgres@localhost:5432/affiliate_gadget' } }
 })
 
 const prod = new PrismaClient({

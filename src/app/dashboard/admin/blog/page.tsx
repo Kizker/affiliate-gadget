@@ -108,213 +108,156 @@ export default function BlogAdminPage() {
   )
 
   return (
-    <div>
-      {/* Header Banner */}
-      <div className="mb-8 rounded-2xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-8 text-white shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">📝 Blog Management</h1>
-            <p className="mt-2 text-blue-100">
-              Create and manage your blog articles
-            </p>
+    <div className="space-y-8 py-6 sm:py-8">
+      {/* 1. Header Hero Section */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 rounded-3xl bg-white p-6 sm:p-8 shadow-xs border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[11px] font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300">
+            <FileText className="h-3.5 w-3.5 text-orange-500" />
+            <span>Pusat Edukasi, Tips Gadget & Berita Toko</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-white/20 px-4 py-2 backdrop-blur-sm">
-              <p className="text-sm font-medium">Total Articles</p>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </div>
-            <div className="rounded-xl bg-white/20 px-4 py-2 backdrop-blur-sm">
-              <p className="text-sm font-medium">Published</p>
-              <p className="text-2xl font-bold">{stats.published}</p>
-            </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
+            Artikel & Panduan Gadget
+          </h1>
+
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl">
+            Tulis artikel review smartphone second, panduan klaim garansi 30 hari tukar unit, dan tips perawatan gadget.
+          </p>
+        </div>
+
+        <button
+          onClick={() => router.push('/dashboard/admin/blog/new')}
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-semibold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95 whitespace-nowrap"
+        >
+          <Plus className="h-4 w-4 stroke-[2.5]" />
+          <span>+ Tulis Artikel Baru</span>
+        </button>
+      </div>
+
+      {/* 2. 3 Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Artikel</p>
+          <p className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{stats.total}</p>
+          <p className="mt-1 text-[11px] text-slate-500">Semua konten terbit & draft</p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Artikel Terbit</p>
+          <p className="mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.published}</p>
+          <p className="mt-1 text-[11px] text-slate-500">Live di website publik</p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Draft Tersimpan</p>
+          <p className="mt-2 text-2xl font-black text-amber-600 dark:text-amber-400">{stats.drafts}</p>
+          <p className="mt-1 text-[11px] text-slate-500">Menunggu review editorial</p>
+        </div>
+      </div>
+
+      {/* 3. Filters & Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl bg-white p-4 shadow-xs border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {[
+            { id: 'all', label: 'Semua Artikel' },
+            { id: 'published', label: 'Terbit' },
+            { id: 'draft', label: 'Draft' },
+          ].map((tab) => (
             <button
-              onClick={() => router.push('/dashboard/admin/blog/new')}
-              className="flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 font-medium backdrop-blur-sm transition-all hover:bg-white/30"
+              key={tab.id}
+              onClick={() => {
+                setStatusFilter(tab.id as any)
+                setPage(1)
+              }}
+              className={`rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
+                statusFilter === tab.id
+                  ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'
+              }`}
             >
-              <Plus className="h-5 w-5" />
-              New Article
+              {tab.label}
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm lg:rounded-2xl lg:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500 lg:text-sm">Total Articles</p>
-              <p className="mt-1 text-xl font-bold text-gray-900 lg:text-3xl">
-                {stats.total}
-              </p>
-            </div>
-            <div className="rounded-lg bg-blue-500 p-2 lg:rounded-xl lg:p-3">
-              <FileText className="h-4 w-4 text-white lg:h-6 lg:w-6" />
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm lg:rounded-2xl lg:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500 lg:text-sm">Published</p>
-              <p className="mt-1 text-xl font-bold text-gray-900 lg:text-3xl">
-                {stats.published}
-              </p>
-            </div>
-            <div className="rounded-lg bg-green-500 p-2 lg:rounded-xl lg:p-3">
-              <Eye className="h-4 w-4 text-white lg:h-6 lg:w-6" />
-            </div>
-          </div>
-        </div>
-
-        <div className="col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:col-span-1 lg:rounded-2xl lg:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500 lg:text-sm">Drafts</p>
-              <p className="mt-1 text-xl font-bold text-gray-900 lg:text-3xl">
-                {stats.drafts}
-              </p>
-            </div>
-            <div className="rounded-lg bg-yellow-500 p-2 lg:rounded-xl lg:p-3">
-              <FileText className="h-4 w-4 text-white lg:h-6 lg:w-6" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              setStatusFilter('all')
-              setPage(1)
-            }}
-            className={`rounded-lg px-4 py-2 font-medium transition-colors ${
-              statusFilter === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => {
-              setStatusFilter('published')
-              setPage(1)
-            }}
-            className={`rounded-lg px-4 py-2 font-medium transition-colors ${
-              statusFilter === 'published'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Published
-          </button>
-          <button
-            onClick={() => {
-              setStatusFilter('draft')
-              setPage(1)
-            }}
-            className={`rounded-lg px-4 py-2 font-medium transition-colors ${
-              statusFilter === 'draft'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Drafts
-          </button>
-        </div>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
           <input
             type="text"
-            placeholder="Search articles..."
+            placeholder="Cari judul artikel..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none sm:w-64"
+            className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
       </div>
 
-      {/* Articles List */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      {/* 4. Articles List */}
+      <div className="rounded-3xl border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <div className="py-20 text-center text-slate-400">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-orange-500 mb-2" />
+            <p className="text-xs font-medium">Memuat artikel...</p>
           </div>
         ) : filteredArticles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <FileText className="h-12 w-12 text-gray-400" />
-            <p className="mt-4 text-gray-500">No articles found</p>
-            <button
-              onClick={() => router.push('/dashboard/admin/blog/new')}
-              className="mt-4 text-blue-600 hover:underline"
-            >
-              Create your first article
-            </button>
+          <div className="p-16 text-center space-y-3">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-100 dark:bg-slate-800">
+              <FileText className="h-7 w-7 text-slate-400" />
+            </div>
+            <p className="text-sm font-bold text-slate-900 dark:text-white">Belum ada artikel</p>
+            <p className="text-xs text-slate-400">Mulai tulis artikel baru untuk memberikan panduan kepada pelanggan.</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {filteredArticles.map((article) => (
               <div
                 key={article.id}
-                className="group p-6 transition-colors hover:bg-gray-50"
+                className="group p-5 sm:p-6 transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600">
-                      {article.title}
-                    </h3>
-                    {article.excerpt && (
-                      <p className="mt-1 line-clamp-2 text-sm text-gray-600">
-                        {article.excerpt}
-                      </p>
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                        article.isPublished
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-400'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-400'
+                      }`}
+                    >
+                      {article.isPublished ? 'Terbit' : 'Draft'}
+                    </span>
+                    {article.category && (
+                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                        {article.category}
+                      </span>
                     )}
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          article.isPublished
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}
-                      >
-                        {article.isPublished ? 'Published' : 'Draft'}
-                      </span>
-                      {article.category && (
-                        <span className="flex items-center gap-1">
-                          <Tag className="h-4 w-4" />
-                          {article.category}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        {new Date(article.createdAt).toLocaleDateString(
-                          'id-ID'
-                        )}
-                      </span>
-                    </div>
                   </div>
-                  <div className="ml-4 flex gap-2">
-                    <button
-                      onClick={() =>
-                        router.push(`/dashboard/admin/blog/${article.id}/edit`)
-                      }
-                      className="rounded-lg bg-blue-100 p-2 text-blue-600 hover:bg-blue-200"
-                      title="Edit"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(article.id)}
-                      className="rounded-lg bg-red-100 p-2 text-red-600 hover:bg-red-200"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-orange-600 transition">
+                    {article.title}
+                  </h3>
+
+                  {article.excerpt && (
+                    <p className="line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
+                      {article.excerpt}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <button
+                    onClick={() => router.push(`/dashboard/admin/blog/${article.id}/edit`)}
+                    className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(article.id)}
+                    className="rounded-full p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    title="Hapus Artikel"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -323,16 +266,16 @@ export default function BlogAdminPage() {
 
         {/* Pagination */}
         {totalPages > 1 && !loading && (
-          <div className="border-t border-gray-200 p-6">
+          <div className="border-t border-slate-100 dark:border-slate-800 p-6">
             <div className="flex justify-center">
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-400"
                 >
-                  Previous
+                  Sebelumnya
                 </button>
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   const pageNum = i + 1

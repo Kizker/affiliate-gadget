@@ -14,13 +14,13 @@ async function main() {
 
   // Super Admin
   const superAdmin = await prisma.user.upsert({
-    where: { email: 'admin@halotekno.com' },
+    where: { email: 'admin@affiliategadget.com' },
     update: {
       role: UserRole.SUPER_ADMIN,
     },
     create: {
-      email: 'admin@halotekno.com',
-      name: 'Admin HaloTekno',
+      email: 'admin@affiliategadget.com',
+      name: 'Admin Affiliate Gadget',
       password: hashedPassword,
       role: UserRole.SUPER_ADMIN,
       isActive: true,
@@ -31,10 +31,10 @@ async function main() {
 
   // Admin Chat 1
   const adminChat1 = await prisma.user.upsert({
-    where: { email: 'adminchat1@halotekno.com' },
+    where: { email: 'adminchat1@affiliategadget.com' },
     update: {},
     create: {
-      email: 'adminchat1@halotekno.com',
+      email: 'adminchat1@affiliategadget.com',
       name: 'Admin Chat 1',
       password: hashedPassword,
       role: UserRole.ADMIN,
@@ -47,10 +47,10 @@ async function main() {
 
   // Admin Chat 2
   const adminChat2 = await prisma.user.upsert({
-    where: { email: 'adminchat2@halotekno.com' },
+    where: { email: 'adminchat2@affiliategadget.com' },
     update: {},
     create: {
-      email: 'adminchat2@halotekno.com',
+      email: 'adminchat2@affiliategadget.com',
       name: 'Admin Chat 2',
       password: hashedPassword,
       role: UserRole.ADMIN,

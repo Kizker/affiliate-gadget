@@ -369,7 +369,7 @@ export default function AddToCartModal({
               className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold transition-all sm:text-base ${
                 isAdded
                   ? 'bg-green-500 text-white'
-                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:shadow-lg'
+                  : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-500/25 hover:from-orange-600 hover:to-orange-700 hover:shadow-lg'
               }`}
             >
               {isAdded ? (

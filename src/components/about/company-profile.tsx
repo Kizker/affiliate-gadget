@@ -46,7 +46,7 @@ export default function CompanyProfile() {
             Profil Perusahaan
           </h2>
           <p className="mb-8 text-lg leading-relaxed text-gray-700 md:text-xl">
-            HaloTekno adalah platform digital enterprise-grade yang
+            Affiliate Gadget adalah platform digital enterprise-grade yang
             menghubungkan customer dengan layanan servis HP profesional di
             seluruh Indonesia. Kami menyediakan ekosistem lengkap mulai dari
             konsultasi, perbaikan, sparepart original, hingga sewa peralatan

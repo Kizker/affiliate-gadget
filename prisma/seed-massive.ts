@@ -573,7 +573,7 @@ async function main() {
   const techData = [
     {
       name: 'Ahmad Fauzi',
-      email: 'ahmad.fauzi@halotekno.com',
+      email: 'ahmad.fauzi@affiliategadget.com',
       phone: '081234567801',
       experience: 8,
       rating: 4.9,
@@ -585,7 +585,7 @@ async function main() {
     },
     {
       name: 'Dewi Lestari',
-      email: 'dewi.lestari@halotekno.com',
+      email: 'dewi.lestari@affiliategadget.com',
       phone: '081234567802',
       experience: 6,
       rating: 4.7,
@@ -597,7 +597,7 @@ async function main() {
     },
     {
       name: 'Rudi Hartono',
-      email: 'rudi.hartono@halotekno.com',
+      email: 'rudi.hartono@affiliategadget.com',
       phone: '081234567803',
       experience: 10,
       rating: 4.8,
@@ -609,7 +609,7 @@ async function main() {
     },
     {
       name: 'Siti Nurhaliza',
-      email: 'siti.nur@halotekno.com',
+      email: 'siti.nur@affiliategadget.com',
       phone: '081234567804',
       experience: 4,
       rating: 4.6,
@@ -621,7 +621,7 @@ async function main() {
     },
     {
       name: 'Budi Santoso',
-      email: 'budi.santoso@halotekno.com',
+      email: 'budi.santoso@affiliategadget.com',
       phone: '081234567805',
       experience: 7,
       rating: 4.5,
@@ -633,7 +633,7 @@ async function main() {
     },
     {
       name: 'Eko Prasetyo',
-      email: 'eko.prasetyo@halotekno.com',
+      email: 'eko.prasetyo@affiliategadget.com',
       phone: '081234567806',
       experience: 5,
       rating: 4.4,
@@ -645,7 +645,7 @@ async function main() {
     },
     {
       name: 'Fitri Handayani',
-      email: 'fitri.h@halotekno.com',
+      email: 'fitri.h@affiliategadget.com',
       phone: '081234567807',
       experience: 3,
       rating: 4.3,
@@ -657,7 +657,7 @@ async function main() {
     },
     {
       name: 'Gunawan Wijaya',
-      email: 'gunawan@halotekno.com',
+      email: 'gunawan@affiliategadget.com',
       phone: '081234567808',
       experience: 9,
       rating: 4.8,
@@ -669,7 +669,7 @@ async function main() {
     },
     {
       name: 'Hendra Kusuma',
-      email: 'hendra.k@halotekno.com',
+      email: 'hendra.k@affiliategadget.com',
       phone: '081234567809',
       experience: 6,
       rating: 4.6,
@@ -681,7 +681,7 @@ async function main() {
     },
     {
       name: 'Indra Permana',
-      email: 'indra.p@halotekno.com',
+      email: 'indra.p@affiliategadget.com',
       phone: '081234567810',
       experience: 4,
       rating: 4.5,
@@ -693,7 +693,7 @@ async function main() {
     },
     {
       name: 'Joko Widodo',
-      email: 'joko.w@halotekno.com',
+      email: 'joko.w@affiliategadget.com',
       phone: '081234567811',
       experience: 12,
       rating: 4.9,
@@ -705,7 +705,7 @@ async function main() {
     },
     {
       name: 'Kartika Dewi',
-      email: 'kartika@halotekno.com',
+      email: 'kartika@affiliategadget.com',
       phone: '081234567812',
       experience: 5,
       rating: 4.4,
@@ -717,7 +717,7 @@ async function main() {
     },
     {
       name: 'Lukman Hakim',
-      email: 'lukman@halotekno.com',
+      email: 'lukman@affiliategadget.com',
       phone: '081234567813',
       experience: 7,
       rating: 4.7,
@@ -729,7 +729,7 @@ async function main() {
     },
     {
       name: 'Maya Sari',
-      email: 'maya.sari@halotekno.com',
+      email: 'maya.sari@affiliategadget.com',
       phone: '081234567814',
       experience: 3,
       rating: 4.2,
@@ -741,7 +741,7 @@ async function main() {
     },
     {
       name: 'Nando Pratama',
-      email: 'nando@halotekno.com',
+      email: 'nando@affiliategadget.com',
       phone: '081234567815',
       experience: 8,
       rating: 4.8,

@@ -87,6 +87,16 @@ export async function GET(
       take: limit,
     })
 
+    // Mark unread messages from other party as read
+    await prisma.chatMessage.updateMany({
+      where: {
+        roomId,
+        senderId: { not: session.user.id },
+        isRead: false,
+      },
+      data: { isRead: true },
+    })
+
     return NextResponse.json({
       messages: messages.reverse(),
       order: room.order || null,
@@ -125,10 +135,10 @@ export async function POST(
 
     // Validate media size if provided
     if (mediaSize) {
-      const MAX_SIZE = 10 * 1024 * 1024 // 10MB max
+      const MAX_SIZE = 60 * 1024 * 1024 // 60MB max
       if (mediaSize > MAX_SIZE) {
         return NextResponse.json(
-          { error: 'File size too large. Maximum 10MB' },
+          { error: 'Ukuran file terlalu besar. Maksimal 60MB' },
           { status: 400 }
         )
       }

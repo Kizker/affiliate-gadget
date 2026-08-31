@@ -1,426 +1,79 @@
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from 'lucide-react'
+'use client'
+
 import Link from 'next/link'
+import { Building2 } from 'lucide-react'
 
 interface FooterProps {
-  variant?: 'dark' | 'light'
+  variant?: 'light' | 'dark'
 }
 
-export function Footer({ variant = 'dark' }: FooterProps) {
-  const isLight = variant === 'light'
-
+export function Footer({ variant = 'light' }: FooterProps) {
   return (
-    <footer
-      className={`border-t px-4 py-12 sm:px-6 sm:py-16 lg:px-8 ${
-        isLight ? 'border-gray-200 bg-white' : 'border-gray-800 bg-gray-900'
-      }`}
-    >
-      <div className="mx-auto max-w-7xl">
-        {/* Desktop: 4 columns, Mobile: custom layout */}
-        <div className="mb-8">
-          {/* Mobile Layout */}
-          <div className="grid grid-cols-1 gap-8 lg:hidden">
-            {/* HaloTekno Section - Full Width */}
-            <div className="text-center">
-              <h3
-                className={`bg-gradient-to-r text-2xl font-bold ${
-                  isLight
-                    ? 'from-cyan-600 to-blue-600'
-                    : 'from-cyan-400 to-blue-500'
-                } mb-4 bg-clip-text text-transparent`}
-              >
-                HaloTekno
-              </h3>
-              <p
-                className={`mb-6 text-sm ${
-                  isLight ? 'text-gray-600' : 'text-gray-400'
-                }`}
-              >
-                Platform servis HP terpercaya dengan layanan profesional dan
-                teknisi bersertifikat
-              </p>
-              <div className="flex justify-center gap-3">
-                <a
-                  href="#"
-                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-300 ${
-                    isLight
-                      ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
-                      : 'bg-gray-800 hover:bg-cyan-500'
-                  }`}
-                  aria-label="Facebook"
-                >
-                  <Facebook className="h-5 w-5" />
-                </a>
-                <a
-                  href="#"
-                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-300 ${
-                    isLight
-                      ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
-                      : 'bg-gray-800 hover:bg-cyan-500'
-                  }`}
-                  aria-label="Instagram"
-                >
-                  <Instagram className="h-5 w-5" />
-                </a>
-                <a
-                  href="#"
-                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-300 ${
-                    isLight
-                      ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
-                      : 'bg-gray-800 hover:bg-cyan-500'
-                  }`}
-                  aria-label="Twitter"
-                >
-                  <Twitter className="h-5 w-5" />
-                </a>
-              </div>
-            </div>
-
-            {/* Layanan, Perusahaan & Kontak - 3 Columns */}
-            <div className="grid grid-cols-3 gap-4">
-              {/* Layanan Section */}
-              <div>
-                <h4
-                  className={`mb-3 text-sm font-bold ${
-                    isLight ? 'text-gray-900' : 'text-white'
-                  }`}
-                >
-                  Layanan
-                </h4>
-                <ul
-                  className={`space-y-1.5 text-xs ${
-                    isLight ? 'text-gray-600' : 'text-gray-400'
-                  }`}
-                >
-                  <li>
-                    <Link
-                      href="/teknisi"
-                      className={`block py-1.5 transition-colors ${
-                        isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                      }`}
-                    >
-                      Servis HP
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/sparepart"
-                      className={`block py-1.5 transition-colors ${
-                        isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                      }`}
-                    >
-                      Sparepart
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/sewa-alat"
-                      className={`block py-1.5 transition-colors ${
-                        isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                      }`}
-                    >
-                      Sewa Alat
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/rekomendasi"
-                      className={`block py-1.5 transition-colors ${
-                        isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                      }`}
-                    >
-                      Direktori Mitra
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Perusahaan Section */}
-              <div>
-                <h4
-                  className={`mb-3 text-sm font-bold ${
-                    isLight ? 'text-gray-900' : 'text-white'
-                  }`}
-                >
-                  Perusahaan
-                </h4>
-                <ul
-                  className={`space-y-1.5 text-xs ${
-                    isLight ? 'text-gray-600' : 'text-gray-400'
-                  }`}
-                >
-                  <li>
-                    <Link
-                      href="/about"
-                      className={`block py-1.5 transition-colors ${
-                        isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                      }`}
-                    >
-                      Tentang Kami
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/blog"
-                      className={`block py-1.5 transition-colors ${
-                        isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                      }`}
-                    >
-                      Blog
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Kontak Section */}
-              <div>
-                <h4
-                  className={`mb-3 text-sm font-bold ${
-                    isLight ? 'text-gray-900' : 'text-white'
-                  }`}
-                >
-                  Kontak
-                </h4>
-                <ul
-                  className={`space-y-2 text-xs ${
-                    isLight ? 'text-gray-600' : 'text-gray-400'
-                  }`}
-                >
-                  <li className="flex items-start gap-1.5">
-                    <Phone
-                      className={`mt-0.5 h-3 w-3 flex-shrink-0 ${
-                        isLight ? 'text-blue-600' : 'text-cyan-400'
-                      }`}
-                    />
-                    <span className="break-words">+62 812-3456-7890</span>
-                  </li>
-                  <li className="flex items-start gap-1.5">
-                    <Mail
-                      className={`mt-0.5 h-3 w-3 flex-shrink-0 ${
-                        isLight ? 'text-blue-600' : 'text-cyan-400'
-                      }`}
-                    />
-                    <span className="break-words">info@halotekno.id</span>
-                  </li>
-                  <li className="flex items-start gap-1.5">
-                    <MapPin
-                      className={`mt-0.5 h-3 w-3 flex-shrink-0 ${
-                        isLight ? 'text-blue-600' : 'text-cyan-400'
-                      }`}
-                    />
-                    <span className="break-words">Jakarta, Indonesia</span>
-                  </li>
-                </ul>
-              </div>
+    <footer className="border-t border-slate-200/80 bg-white text-slate-600 dark:border-slate-800/80 dark:bg-slate-950 dark:text-slate-400 text-xs">
+      {/* Main Footer Links */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+        {/* Main Footer Links: Justified Left & Right */}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-10 lg:gap-16">
+          
+          {/* Left Anchor: Brand Info */}
+          <div className="space-y-3.5 max-w-sm">
+            <Link href="/" className="flex items-center gap-2.5">
+              <img
+                src="/logo.png"
+                alt="Affiliate Gadget Logo"
+                className="h-8 w-8 rounded-xl object-contain shadow-2xs"
+              />
+              <span className="text-base font-black text-slate-950 dark:text-white tracking-tight">
+                Affiliate<span className="text-orange-500">Gadget</span>
+              </span>
+            </Link>
+            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              Platform marketplace gadget second / bekas berkualitas terpercaya di Indonesia. Menyediakan smartphone second original bergaransi toko 30 hari tukar unit dengan paket bonus lengkap 3-in-1.
+            </p>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Building2 className="h-4 w-4 text-blue-600" />
+              <span className="text-[11px] font-medium">Jaringan Toko Resmi di Indonesia</span>
             </div>
           </div>
 
-          {/* Desktop Layout - 4 columns */}
-          <div className="hidden grid-cols-4 gap-8 lg:grid">
-            {/* HaloTekno Section */}
+          {/* Right Anchor: Nav Columns */}
+          <div className="flex flex-wrap sm:flex-nowrap gap-12 sm:gap-20 md:gap-28 lg:gap-32">
+            {/* Quick Links */}
             <div>
-              <h3
-                className={`bg-gradient-to-r text-2xl font-bold ${
-                  isLight
-                    ? 'from-cyan-600 to-blue-600'
-                    : 'from-cyan-400 to-blue-500'
-                } mb-4 bg-clip-text text-transparent`}
-              >
-                HaloTekno
-              </h3>
-              <p
-                className={`mb-6 text-sm ${
-                  isLight ? 'text-gray-600' : 'text-gray-400'
-                }`}
-              >
-                Platform servis HP terpercaya dengan layanan profesional dan
-                teknisi bersertifikat
-              </p>
-              <div className="flex gap-3">
-                <a
-                  href="#"
-                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-300 ${
-                    isLight
-                      ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
-                      : 'bg-gray-800 hover:bg-cyan-500'
-                  }`}
-                  aria-label="Facebook"
-                >
-                  <Facebook className="h-5 w-5" />
-                </a>
-                <a
-                  href="#"
-                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-300 ${
-                    isLight
-                      ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
-                      : 'bg-gray-800 hover:bg-cyan-500'
-                  }`}
-                  aria-label="Instagram"
-                >
-                  <Instagram className="h-5 w-5" />
-                </a>
-                <a
-                  href="#"
-                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-300 ${
-                    isLight
-                      ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
-                      : 'bg-gray-800 hover:bg-cyan-500'
-                  }`}
-                  aria-label="Twitter"
-                >
-                  <Twitter className="h-5 w-5" />
-                </a>
-              </div>
-            </div>
-
-            {/* Layanan Section */}
-            <div>
-              <h4
-                className={`mb-4 text-lg font-bold ${
-                  isLight ? 'text-gray-900' : 'text-white'
-                }`}
-              >
-                Layanan
-              </h4>
-              <ul
-                className={`space-y-2 text-sm ${
-                  isLight ? 'text-gray-600' : 'text-gray-400'
-                }`}
-              >
-                <li>
-                  <Link
-                    href="/teknisi"
-                    className={`block py-1.5 transition-colors ${
-                      isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                    }`}
-                  >
-                    Servis HP
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/sparepart"
-                    className={`block py-1.5 transition-colors ${
-                      isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                    }`}
-                  >
-                    Sparepart
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/sewa-alat"
-                    className={`block py-1.5 transition-colors ${
-                      isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                    }`}
-                  >
-                    Sewa Alat
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/rekomendasi"
-                    className={`block py-1.5 transition-colors ${
-                      isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                    }`}
-                  >
-                    Direktori Mitra
-                  </Link>
-                </li>
+              <h5 className="font-bold text-slate-950 dark:text-white mb-3">Menu Utama</h5>
+              <ul className="space-y-2 text-slate-500 dark:text-slate-400">
+                <li><Link href="/" className="hover:text-orange-500 transition-colors">Beranda</Link></li>
+                <li><Link href="/gadget" className="hover:text-orange-500 transition-colors">Katalog Produk</Link></li>
+                <li><Link href="/toko" className="hover:text-orange-500 transition-colors">Jaringan Toko</Link></li>
+                <li><Link href="/hubungi-kami" className="hover:text-orange-500 transition-colors">Pusat Bantuan</Link></li>
               </ul>
             </div>
 
-            {/* Perusahaan Section */}
+            {/* Categories */}
             <div>
-              <h4
-                className={`mb-4 text-lg font-bold ${
-                  isLight ? 'text-gray-900' : 'text-white'
-                }`}
-              >
-                Perusahaan
-              </h4>
-              <ul
-                className={`space-y-2 text-sm ${
-                  isLight ? 'text-gray-600' : 'text-gray-400'
-                }`}
-              >
-                <li>
-                  <Link
-                    href="/about"
-                    className={`block py-1.5 transition-colors ${
-                      isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                    }`}
-                  >
-                    Tentang Kami
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/blog"
-                    className={`block py-1.5 transition-colors ${
-                      isLight ? 'hover:text-blue-600' : 'hover:text-cyan-400'
-                    }`}
-                  >
-                    Blog
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Kontak Section */}
-            <div>
-              <h4
-                className={`mb-4 text-lg font-bold ${
-                  isLight ? 'text-gray-900' : 'text-white'
-                }`}
-              >
-                Kontak
-              </h4>
-              <ul
-                className={`space-y-3 text-sm ${
-                  isLight ? 'text-gray-600' : 'text-gray-400'
-                }`}
-              >
-                <li className="flex items-center gap-2">
-                  <Phone
-                    className={`h-4 w-4 flex-shrink-0 ${
-                      isLight ? 'text-blue-600' : 'text-cyan-400'
-                    }`}
-                  />
-                  <span>+62 812-3456-7890</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Mail
-                    className={`h-4 w-4 flex-shrink-0 ${
-                      isLight ? 'text-blue-600' : 'text-cyan-400'
-                    }`}
-                  />
-                  <span>info@halotekno.id</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <MapPin
-                    className={`mt-1 h-4 w-4 flex-shrink-0 ${
-                      isLight ? 'text-blue-600' : 'text-cyan-400'
-                    }`}
-                  />
-                  <span>Jakarta, Indonesia</span>
-                </li>
+              <h5 className="font-bold text-slate-950 dark:text-white mb-3">Merek Populer</h5>
+              <ul className="space-y-2 text-slate-500 dark:text-slate-400">
+                <li><Link href="/gadget?brand=Apple" className="hover:text-orange-500 transition-colors">Apple iPhone</Link></li>
+                <li><Link href="/gadget?brand=Samsung" className="hover:text-orange-500 transition-colors">Samsung Galaxy</Link></li>
+                <li><Link href="/gadget?brand=Xiaomi" className="hover:text-orange-500 transition-colors">Xiaomi Series</Link></li>
+                <li><Link href="/gadget?brand=ASUS" className="hover:text-orange-500 transition-colors">ASUS ROG Phone</Link></li>
               </ul>
             </div>
           </div>
+
         </div>
 
-        {/* Copyright */}
-        <div
-          className={`border-t pt-8 text-center text-sm ${
-            isLight
-              ? 'border-gray-200 text-gray-600'
-              : 'border-gray-800 text-gray-400'
-          }`}
-        >
-          <p>&copy; 2025 HaloTekno. All rights reserved.</p>
-          <p className="mt-2">Built by Satu Harmony Agency</p>
+        {/* Bottom Bar */}
+        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-400">
+          <p>© {new Date().getFullYear()} Affiliate Gadget. All rights reserved. Platform Marketplace Gadget Terpercaya Indonesia.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/garansi" className="hover:text-slate-600 dark:hover:text-slate-300">Ketentuan Garansi</Link>
+            <Link href="/hubungi-kami" className="hover:text-slate-600 dark:hover:text-slate-300">Kontak Toko</Link>
+          </div>
         </div>
       </div>
     </footer>
   )
 }
+
+export default Footer

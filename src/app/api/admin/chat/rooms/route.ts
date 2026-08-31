@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
+import { isAdminStaffRole } from '@/lib/dashboard-utils'
+
 // GET - Get all admin chat rooms
 export async function GET() {
   try {
@@ -11,13 +13,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is admin
+    // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { role: true },
     })
 
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+    if (!user || !isAdminStaffRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -49,6 +51,15 @@ export async function GET() {
             status: true,
             total: true,
             createdAt: true,
+            store: {
+              select: {
+                id: true,
+                name: true,
+                companyName: true,
+                city: true,
+                phone: true,
+              },
+            },
             items: {
               include: {
                 product: {
@@ -121,13 +132,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is admin
+    // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { role: true },
     })
 
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+    if (!user || !isAdminStaffRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

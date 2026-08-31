@@ -15,7 +15,7 @@ export default function BlogHero() {
           </h1>
           <p className="mx-auto max-w-3xl text-xl text-white/90 md:text-2xl">
             Tips, trik, dan panduan seputar servis HP, sparepart, dan teknologi
-            terkini dari para ahli HaloTekno
+            terkini dari para ahli Affiliate Gadget
           </p>
         </div>
       </div>

@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
         data: {
           orderNumber,
           userId: user.id,
+          storeId: product.storeId || null,
           subtotal: totalPrice,
           tax: 0,
           total: totalPrice,

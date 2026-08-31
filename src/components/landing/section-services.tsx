@@ -43,11 +43,11 @@ export default function SectionServices() {
   ]
 
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-white via-blue-50/50 to-cyan-50/60 lg:snap-start">
+    <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50/40 lg:snap-start">
       {/* Background Image */}
       <div className="absolute inset-0">
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-5"
           style={{
             backgroundImage:
               'url(https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1920&q=80)',
@@ -57,9 +57,9 @@ export default function SectionServices() {
 
       {/* Animated Background Blobs */}
       <div className="absolute inset-0">
-        <div className="absolute -left-20 top-20 h-48 w-48 animate-pulse rounded-full bg-blue-400/20 blur-3xl sm:h-96 sm:w-96" />
+        <div className="absolute -left-20 top-20 h-48 w-48 animate-pulse rounded-full bg-blue-400/10 blur-3xl sm:h-96 sm:w-96" />
         <div
-          className="absolute -right-20 bottom-20 h-40 w-40 animate-pulse rounded-full bg-cyan-400/20 blur-3xl sm:h-80 sm:w-80"
+          className="absolute -right-20 bottom-20 h-40 w-40 animate-pulse rounded-full bg-orange-400/10 blur-3xl sm:h-80 sm:w-80"
           style={{ animationDelay: '1s' }}
         />
       </div>
@@ -80,7 +80,7 @@ export default function SectionServices() {
             </span>
             <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900">
               Servis Gadget{' '}
-              <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
                 Profesional
               </span>
             </h2>
@@ -94,7 +94,7 @@ export default function SectionServices() {
               {steps.map((step, idx) => (
                 <div key={step.title} className="flex items-center">
                   <div className="flex flex-col items-center">
-                    <div className="mb-1.5 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
+                    <div className="mb-1.5 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-md">
                       <step.icon className="h-5 w-5 text-white" />
                     </div>
                     <span className="text-xs font-medium text-gray-700">
@@ -138,7 +138,7 @@ export default function SectionServices() {
 
             <Link
               href="/teknisi"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-105"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-orange-500/25 transition-all hover:scale-105 hover:from-orange-600 hover:to-orange-700"
             >
               Cari Teknisi
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -160,7 +160,7 @@ export default function SectionServices() {
             <h2 className="mb-6 text-4xl font-bold leading-tight text-gray-900 xl:text-6xl">
               Servis Gadget
               <br />
-              <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
                 Profesional
               </span>
             </h2>
@@ -173,7 +173,7 @@ export default function SectionServices() {
               {steps.map((step, idx) => (
                 <div key={step.title} className="flex items-center">
                   <div className="group flex flex-col items-center">
-                    <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg transition-all group-hover:scale-110">
+                    <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg transition-all group-hover:scale-110">
                       <step.icon className="h-7 w-7 text-white" />
                     </div>
                     <span className="text-sm font-semibold text-gray-800">
@@ -189,7 +189,7 @@ export default function SectionServices() {
 
             <Link
               href="/teknisi"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 font-semibold text-white shadow-xl transition-all hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/30"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-4 font-bold text-white shadow-xl shadow-orange-500/25 transition-all hover:scale-105 hover:from-orange-600 hover:to-orange-700 hover:shadow-2xl hover:shadow-orange-500/40"
             >
               Cari Teknisi
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />

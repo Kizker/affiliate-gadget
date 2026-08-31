@@ -1,21 +1,21 @@
 const milestones = [
   {
     year: '2020',
-    title: 'Berdirinya HaloTekno',
+    title: 'Berdirinya Affiliate Gadget',
     description:
-      'HaloTekno didirikan dengan visi menjadi platform servis HP terpercaya di Indonesia. Dimulai dengan 3 teknisi profesional di Jakarta.',
+      'Affiliate Gadget didirikan dengan visi menjadi platform servis HP terpercaya di Indonesia. Dimulai dengan 3 teknisi profesional di Jakarta.',
   },
   {
     year: '2021',
     title: 'Ekspansi Layanan',
     description:
-      'Meluncurkan layanan sewa alat dan penjualan sparepart original. Membuka cabang di 5 kota besar Indonesia.',
+      'Meluncurkan layanan sewa alat dan penjualan sparepart original. Membuka toko di 5 kota besar Indonesia.',
   },
   {
     year: '2022',
     title: 'Platform Digital',
     description:
-      'Launching platform digital HaloTekno dengan sistem booking online, live chat, dan tracking order real-time.',
+      'Launching platform digital Affiliate Gadget dengan sistem booking online, live chat, dan tracking order real-time.',
   },
   {
     year: '2023',

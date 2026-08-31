@@ -9,6 +9,7 @@ declare module 'next-auth' {
       name: string | null
       image: string | null
       role: UserRole
+      storeId?: string | null
       isTechnician?: boolean
       mitraStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null
     }
@@ -16,6 +17,7 @@ declare module 'next-auth' {
 
   interface User {
     role: UserRole
+    storeId?: string | null
   }
 }
 
@@ -23,5 +25,6 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id: string
     role: UserRole
+    storeId?: string | null
   }
 }

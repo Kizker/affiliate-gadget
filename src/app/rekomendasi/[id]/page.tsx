@@ -38,11 +38,11 @@ export async function generateMetadata({
   })
 
   if (!mitra) {
-    return { title: 'Mitra Tidak Ditemukan - HaloTekno' }
+    return { title: 'Mitra Tidak Ditemukan - Affiliate Gadget' }
   }
 
   return {
-    title: `${mitra.businessName} - Rekomendasi HaloTekno`,
+    title: `${mitra.businessName} - Rekomendasi Affiliate Gadget`,
     description:
       mitra.tagline ||
       `${mitra.businessName} - Mitra servis terpercaya di ${mitra.city}`,

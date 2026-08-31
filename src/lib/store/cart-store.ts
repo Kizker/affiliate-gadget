@@ -49,6 +49,7 @@ const syncItemToServerFn = async (
         body: JSON.stringify({
           type: item.type,
           productId: item.productId,
+          variantId: item.variantId,
           rentalItemId: item.rentalItemId,
           serviceId: item.serviceId,
           quantity: item.quantity,
@@ -157,12 +158,14 @@ export const useCartStore = create<CartStore>()(
           (i) =>
             i.type === item.type &&
             i.productId === item.productId &&
+            (i.variantId || null) === (item.variantId || null) &&
+            i.name === item.name &&
             i.rentalItemId === item.rentalItemId &&
             i.serviceId === item.serviceId
         )
 
         if (existingItem) {
-          // Update quantity if item already exists
+          // Update quantity if exact same variant and item already exists
           const newQuantity = existingItem.quantity + item.quantity
           set({
             items: items.map((i) =>
@@ -177,10 +180,11 @@ export const useCartStore = create<CartStore>()(
             })
           }
         } else {
-          // Add new item and auto-select it
+          // Add new distinct item with variant-specific unique ID and auto-select it
+          const variantKey = item.variantId || (item.name ? item.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase() : 'default')
           const newItem: CartItem = {
             ...item,
-            id: `${item.type}-${item.productId || item.rentalItemId || item.serviceId}-${Date.now()}`,
+            id: `${item.type}-${item.productId || item.rentalItemId || item.serviceId}-${variantKey}-${Date.now()}`,
           }
           set({
             items: [...items, newItem],
@@ -331,7 +335,7 @@ export const useCartStore = create<CartStore>()(
       },
     }),
     {
-      name: 'halotekno-cart-storage',
+      name: 'affiliate-gadget-cart-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         items: state.items,

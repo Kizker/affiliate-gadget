@@ -54,10 +54,10 @@ export default function TinyMCEEditor({
             'alignright alignjustify | bullist numlist outdent indent | ' +
             'removeformat | link image media table emoticons | codesample code fullscreen | help',
           content_style: `
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
             
             body { 
-              font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+              font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
               font-size: 16px;
               line-height: 1.75;
               color: #1a1a2e;
@@ -79,7 +79,7 @@ export default function TinyMCEEditor({
             }
             h2 { 
               color: #1a1a2e; 
-              font-size: 1.875em; 
+              font-size: 2em; /* 32px (8 * 4) */
               font-weight: 600; 
               margin-top: 1.5em;
               border-bottom: 2px solid #e5e7eb;
@@ -87,7 +87,7 @@ export default function TinyMCEEditor({
             }
             h3 { 
               color: #374151; 
-              font-size: 1.375em; 
+              font-size: 1.5em; /* 24px (8 * 3) */
               font-weight: 600; 
               margin-top: 1.25em;
             }

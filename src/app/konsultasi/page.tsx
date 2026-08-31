@@ -1,7 +1,7 @@
 import ServiceTechnicianList from '@/components/service/service-technician-list'
 
 export const metadata = {
-    title: 'Konsultasi Servis - HaloTekno',
+    title: 'Konsultasi Servis - Affiliate Gadget',
     description: 'Konsultasi gratis seputar masalah gadget Anda dengan teknisi profesional.',
 }
 

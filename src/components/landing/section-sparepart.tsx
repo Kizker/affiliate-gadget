@@ -32,11 +32,11 @@ export default function SectionSparepart() {
   ]
 
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-cyan-50/60 via-white to-blue-50/50 lg:snap-start">
+    <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50/40 lg:snap-start">
       {/* Background Image */}
       <div className="absolute inset-0">
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-5"
           style={{
             backgroundImage:
               'url(https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=1920&q=80)',
@@ -46,9 +46,9 @@ export default function SectionSparepart() {
 
       {/* Animated Background Blobs */}
       <div className="absolute inset-0">
-        <div className="absolute right-10 top-10 h-40 w-40 animate-pulse rounded-full bg-cyan-400/20 blur-3xl sm:h-80 sm:w-80" />
+        <div className="absolute right-10 top-10 h-40 w-40 animate-pulse rounded-full bg-blue-400/10 blur-3xl sm:h-80 sm:w-80" />
         <div
-          className="absolute -left-10 bottom-10 h-48 w-48 animate-pulse rounded-full bg-blue-400/20 blur-3xl sm:h-96 sm:w-96"
+          className="absolute -left-10 bottom-10 h-48 w-48 animate-pulse rounded-full bg-orange-400/10 blur-3xl sm:h-96 sm:w-96"
           style={{ animationDelay: '1.5s' }}
         />
       </div>
@@ -64,12 +64,12 @@ export default function SectionSparepart() {
             className="text-center"
           >
             {/* Content - Top */}
-            <span className="mb-3 inline-block rounded-full bg-cyan-100 px-4 py-1.5 text-xs font-medium text-cyan-700">
+            <span className="mb-3 inline-block rounded-full bg-blue-100 px-4 py-1.5 text-xs font-medium text-blue-700">
               🛒 Sparepart Shop
             </span>
             <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900">
               Sparepart{' '}
-              <span className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
                 Original
               </span>
             </h2>
@@ -83,9 +83,9 @@ export default function SectionSparepart() {
               {features.map((feature) => (
                 <div
                   key={feature.title}
-                  className="flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-md"
+                  className="flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-sm border border-gray-100"
                 >
-                  <feature.icon className="h-4 w-4 text-cyan-600" />
+                  <feature.icon className="h-4 w-4 text-blue-600" />
                   <span className="text-xs font-medium text-gray-700">
                     {feature.title}
                   </span>
@@ -112,7 +112,7 @@ export default function SectionSparepart() {
                       <div className="line-clamp-1 text-base font-bold text-white">
                         {products[0].name}
                       </div>
-                      <div className="text-sm font-bold text-cyan-300">
+                      <div className="text-sm font-bold text-orange-400">
                         Rp {products[0].price.toLocaleString('id-ID')}
                       </div>
                     </div>
@@ -123,7 +123,7 @@ export default function SectionSparepart() {
 
             <Link
               href="/sparepart"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-105"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-orange-500/25 transition-all hover:scale-105 hover:from-orange-600 hover:to-orange-700"
             >
               Lihat Sparepart
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -178,13 +178,13 @@ export default function SectionSparepart() {
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <span className="mb-4 inline-block rounded-full bg-cyan-100 px-4 py-2 text-sm font-medium text-cyan-700">
+            <span className="mb-4 inline-block rounded-full bg-blue-100 px-4 py-2 text-sm font-medium text-blue-700">
               🛒 Sparepart Shop
             </span>
             <h2 className="mb-6 text-4xl font-bold leading-tight text-gray-900 xl:text-6xl">
               Sparepart
               <br />
-              <span className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
                 Original
               </span>
             </h2>
@@ -197,9 +197,9 @@ export default function SectionSparepart() {
               {features.map((feature) => (
                 <div
                   key={feature.title}
-                  className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-md"
+                  className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm border border-gray-100"
                 >
-                  <feature.icon className="h-5 w-5 text-cyan-600" />
+                  <feature.icon className="h-5 w-5 text-blue-600" />
                   <span className="text-sm font-medium text-gray-700">
                     {feature.title}
                   </span>
@@ -209,7 +209,7 @@ export default function SectionSparepart() {
 
             <Link
               href="/sparepart"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-4 font-semibold text-white shadow-xl transition-all hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/30"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-4 font-bold text-white shadow-xl shadow-orange-500/25 transition-all hover:scale-105 hover:from-orange-600 hover:to-orange-700 hover:shadow-2xl hover:shadow-orange-500/40"
             >
               Lihat Semua Sparepart
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />

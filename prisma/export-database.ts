@@ -9,19 +9,19 @@ async function exportDatabase() {
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
   const exportDir = path.join(process.cwd(), 'database-exports')
-  const exportFile = path.join(exportDir, `halotekno_export_${timestamp}.sql`)
+  const exportFile = path.join(exportDir, `affiliate_gadget_export_${timestamp}.sql`)
 
   // Create export directory if not exists
   if (!fs.existsSync(exportDir)) {
     fs.mkdirSync(exportDir, { recursive: true })
   }
 
-  let sqlDump = `-- HaloTekno Database Export
+  let sqlDump = `-- Affiliate Gadget Database Export
 -- Generated: ${new Date().toISOString()}
--- Database: halotekno
+-- Database: affiliate_gadget
 -- 
 -- IMPORTANT: Run this file after creating database and running Prisma migrations
--- Command: psql -U postgres -d halotekno -f ${path.basename(exportFile)}
+-- Command: psql -U postgres -d affiliate_gadget -f ${path.basename(exportFile)}
 --
 
 -- Disable triggers temporarily
@@ -331,10 +331,10 @@ SET session_replication_role = replica;
       `📊 File size: ${(fs.statSync(exportFile).size / 1024).toFixed(2)} KB`
     )
     console.log('\n📝 To import this database:')
-    console.log('   1. Create new database: createdb halotekno')
+    console.log('   1. Create new database: createdb affiliate_gadget')
     console.log('   2. Run migrations: npx prisma migrate deploy')
     console.log(
-      `   3. Import data: psql -U postgres -d halotekno -f "${path.basename(exportFile)}"`
+      `   3. Import data: psql -U postgres -d affiliate_gadget -f "${path.basename(exportFile)}"`
     )
   } catch (error) {
     console.error('❌ Error exporting database:', error)

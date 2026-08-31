@@ -20,6 +20,7 @@ interface ProductItem extends CartItem {
     price: number
     stock: number
     isActive: boolean
+    storeId?: string | null
   }
 }
 
@@ -31,6 +32,7 @@ interface RentalItem extends CartItem {
     depositAmount?: number | null
     stock: number
     isActive: boolean
+    storeId?: string | null
   }
 }
 
@@ -201,12 +203,19 @@ export async function POST(request: NextRequest) {
       // Generate order number with type prefix
       const orderNumber = `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
 
+      // Determine store ID from items
+      const detectedStoreId =
+        (orderItems.find((item) => (item as ProductItem)?.product?.storeId) as ProductItem)?.product?.storeId ||
+        (orderItems.find((item) => (item as RentalItem)?.rentalItem?.storeId) as RentalItem)?.rentalItem?.storeId ||
+        null
+
       // Create order in transaction
       const order = await prisma.$transaction(async (tx) => {
         const newOrder = await tx.order.create({
           data: {
             orderNumber,
             userId: session.user.id,
+            storeId: detectedStoreId,
             technicianId:
               orderType === 'SERVICE'
                 ? (orderItems[0] as ServiceItem)?.service?.technicianId

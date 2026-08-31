@@ -52,13 +52,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         // Return user data including cached fields to store in JWT
-        // DO NOT include image here - it can be a huge base64 that bloats the JWT
+        const safeImage = (user.image && !user.image.startsWith('data:') && user.image.length < 500) ? user.image : null
         return {
           id: user.id,
           email: user.email,
           name: user.mitra?.businessName || user.name,
-          // image excluded intentionally - causes 431 error if base64
+          image: safeImage,
           role: user.role,
+          storeId: user.storeId,
           mitraStatus: user.mitraStatus,
           isTechnician: !!user.technician,
         }
@@ -76,14 +77,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.name = user.name
         token.email = user.email
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.image = (user.image && !user.image.startsWith('data:') && user.image.length < 500) ? user.image : null
+        token.storeId = user.storeId || null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.isTechnician = (user as any).isTechnician || false
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.mitraStatus = (user as any).mitraStatus || null
       }
 
-      // Remove only picture/image to prevent bloat
+      // Remove raw huge picture to prevent bloat
       delete token.picture
-      delete token.image
 
       return token
     },
@@ -94,6 +97,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as UserRole
         session.user.name = token.name as string
         session.user.email = token.email as string
+        session.user.image = (token.image as string) || null
+        session.user.storeId = token.storeId as string | null
         session.user.isTechnician = token.isTechnician as boolean
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(session.user as any).mitraStatus = token.mitraStatus as string | null

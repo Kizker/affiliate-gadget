@@ -6,9 +6,9 @@ const teamMembers = [
     position: 'Founder & CEO',
     photo:
       'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80',
-    bio: 'Visioner di balik HaloTekno dengan 10+ tahun pengalaman di industri teknologi',
+    bio: 'Visioner di balik Affiliate Gadget dengan 10+ tahun pengalaman di industri teknologi',
     linkedin: '#',
-    email: 'ahmad@halotekno.com',
+    email: 'ahmad@affiliategadget.com',
   },
   {
     name: 'Siti Nurhaliza',
@@ -17,7 +17,7 @@ const teamMembers = [
       'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80',
     bio: 'Expert dalam pengembangan platform digital dan sistem enterprise',
     linkedin: '#',
-    email: 'siti@halotekno.com',
+    email: 'siti@affiliategadget.com',
   },
   {
     name: 'Budi Santoso',
@@ -26,7 +26,7 @@ const teamMembers = [
       'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80',
     bio: 'Mengelola operasional dan jaringan mitra di seluruh Indonesia',
     linkedin: '#',
-    email: 'budi@halotekno.com',
+    email: 'budi@affiliategadget.com',
   },
   {
     name: 'Diana Putri',
@@ -35,7 +35,7 @@ const teamMembers = [
       'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80',
     bio: 'Memastikan kepuasan pelanggan dan kualitas layanan terbaik',
     linkedin: '#',
-    email: 'diana@halotekno.com',
+    email: 'diana@affiliategadget.com',
   },
 ]
 

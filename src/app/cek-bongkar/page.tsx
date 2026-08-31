@@ -1,7 +1,7 @@
 import ServiceTechnicianList from '@/components/service/service-technician-list'
 
 export const metadata = {
-    title: 'Jasa Cek/Bongkar - HaloTekno',
+    title: 'Jasa Cek/Bongkar - Affiliate Gadget',
     description: 'Layanan diagnosa lengkap kondisi gadget oleh teknisi profesional.',
 }
 

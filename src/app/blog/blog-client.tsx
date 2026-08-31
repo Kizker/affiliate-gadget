@@ -55,7 +55,7 @@ export default function BlogClientPage({ initialArticles }: BlogClientProps) {
             className={`mb-6 inline-flex transform items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 transition-all duration-700 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
           >
             <Sparkles className="h-3 w-3" />
-            HaloTekno Blog
+            Affiliate Gadget Blog
           </div>
           <h1
             className={`mb-6 transform text-5xl font-extrabold tracking-tight text-slate-900 transition-all delay-100 duration-700 sm:text-6xl ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}

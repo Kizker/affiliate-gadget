@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     if (
       !session?.user ||
-      !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)
+      !['ADMIN', 'SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'].includes(session.user.role)
     ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -35,10 +35,10 @@ export async function GET(request: NextRequest) {
 
     // Create workbook
     const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'HaloTekno'
+    workbook.creator = 'Affiliate Gadget'
     workbook.created = new Date()
 
-    const filename = `HaloTekno_${type}_${new Date().toISOString().split('T')[0]}`
+    const filename = `Affiliate Gadget_${type}_${new Date().toISOString().split('T')[0]}`
     let sheetName = type.toUpperCase()
 
     // Get data based on type

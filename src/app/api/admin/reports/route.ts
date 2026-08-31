@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Only SUPER_ADMIN can access reports
-    if (session.user.role !== 'SUPER_ADMIN') {
+    // Only admin, store admin, and finance admin can access reports
+    if (!['SUPER_ADMIN', 'ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

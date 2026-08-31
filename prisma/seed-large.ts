@@ -13,11 +13,11 @@ async function main() {
 
   const adminPassword = await bcrypt.hash('admin123', 12)
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@halotekno.com' },
+    where: { email: 'admin@affiliategadget.com' },
     update: {},
     create: {
-      email: 'admin@halotekno.com',
-      name: 'Admin HaloTekno',
+      email: 'admin@affiliategadget.com',
+      name: 'Admin Affiliate Gadget',
       password: adminPassword,
       role: 'SUPER_ADMIN',
       phone: '081234567890',
@@ -50,7 +50,7 @@ async function main() {
 
   const techniciansData = [
     {
-      email: 'ahmad.teknisi@halotekno.com',
+      email: 'ahmad.teknisi@affiliategadget.com',
       name: 'Ahmad Fauzi',
       phone: '081234567801',
       image:
@@ -82,7 +82,7 @@ async function main() {
       ],
     },
     {
-      email: 'dewi.teknisi@halotekno.com',
+      email: 'dewi.teknisi@affiliategadget.com',
       name: 'Dewi Lestari',
       phone: '081234567802',
       image:
@@ -114,7 +114,7 @@ async function main() {
       ],
     },
     {
-      email: 'rudi.teknisi@halotekno.com',
+      email: 'rudi.teknisi@affiliategadget.com',
       name: 'Rudi Hartono',
       phone: '081234567803',
       image:
@@ -146,7 +146,7 @@ async function main() {
       ],
     },
     {
-      email: 'siti.teknisi@halotekno.com',
+      email: 'siti.teknisi@affiliategadget.com',
       name: 'Siti Nurhaliza',
       phone: '081234567804',
       image:
@@ -183,7 +183,7 @@ async function main() {
       ],
     },
     {
-      email: 'andi.teknisi@halotekno.com',
+      email: 'andi.teknisi@affiliategadget.com',
       name: 'Andi Wijaya',
       phone: '081234567805',
       image:

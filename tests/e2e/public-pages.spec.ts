@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * HaloTekno - Public Pages E2E Tests
+ * Affiliate Gadget - Public Pages E2E Tests
  * Tests all publicly accessible pages for errors and basic functionality
  */
 
@@ -10,7 +10,7 @@ test.describe('Public Pages', () => {
     await page.goto('/')
 
     // Check page title
-    await expect(page).toHaveTitle(/HaloTekno/)
+    await expect(page).toHaveTitle(/Affiliate Gadget/)
 
     // Check navbar is visible
     await expect(page.locator('nav')).toBeVisible()
@@ -50,21 +50,21 @@ test.describe('Public Pages', () => {
   test('Teknisi page loads correctly', async ({ page }) => {
     await page.goto('/teknisi')
 
-    await expect(page).toHaveTitle(/Teknisi|HaloTekno/)
+    await expect(page).toHaveTitle(/Teknisi|Affiliate Gadget/)
     await page.waitForLoadState('networkidle')
   })
 
   test('Sparepart page loads correctly', async ({ page }) => {
     await page.goto('/sparepart')
 
-    await expect(page).toHaveTitle(/Sparepart|HaloTekno/)
+    await expect(page).toHaveTitle(/Sparepart|Affiliate Gadget/)
     await page.waitForLoadState('networkidle')
   })
 
   test('Sewa Alat page loads correctly', async ({ page }) => {
     await page.goto('/sewa-alat')
 
-    await expect(page).toHaveTitle(/Sewa|HaloTekno/)
+    await expect(page).toHaveTitle(/Sewa|Affiliate Gadget/)
     await page.waitForLoadState('networkidle')
   })
 
@@ -79,7 +79,7 @@ test.describe('Public Pages', () => {
   test('About page loads correctly', async ({ page }) => {
     await page.goto('/about')
 
-    await expect(page).toHaveTitle(/Tentang|About|HaloTekno/)
+    await expect(page).toHaveTitle(/Tentang|About|Affiliate Gadget/)
     await page.waitForLoadState('networkidle')
   })
 

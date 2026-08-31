@@ -64,7 +64,7 @@ export async function GET(
     const isTechnicianForOrder =
       complaint.order.technician?.user.id === session.user.id
     const isAdmin =
-      session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN'
+      session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN' || session.user.role === 'STORE_ADMIN'
 
     if (!isOwner && !isAssigned && !isTechnicianForOrder && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -122,7 +122,7 @@ export async function PATCH(
     const isAssigned = complaint.assignedToId === session.user.id
     const isClaimedAdmin = complaint.order.claimedById === session.user.id
     const isAdmin =
-      session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN'
+      session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN' || session.user.role === 'STORE_ADMIN'
 
     if (!isTechnicianForOrder && !isAssigned && !isClaimedAdmin && !isAdmin) {
       return NextResponse.json(

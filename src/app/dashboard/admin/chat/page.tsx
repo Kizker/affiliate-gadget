@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageSquare,
   Search,
@@ -12,16 +14,24 @@ import {
   X,
   ChevronLeft,
   Loader2,
-  RefreshCw,
+  RotateCcw,
   Wrench,
   Users,
   Star,
   Hammer,
+  Phone,
+  Store,
+  Clock,
+  Sparkles,
+  ExternalLink,
+  Plus,
+  ZoomIn,
+  Maximize2,
+  Play,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DateSeparator } from '@/components/chat/date-separator'
 import { isSameDay } from '@/utils/chat-helpers'
-import OrderReferenceCard from '@/components/chat/order-reference-card'
 
 interface ChatRoom {
   id: string
@@ -48,22 +58,28 @@ interface ChatRoom {
     status: string
     total: number
     createdAt?: string
+    store?: {
+      id: string
+      name: string
+      companyName?: string
+      city?: string
+    } | null
     items: Array<{
       type?: string
       quantity: number
       product?: { name: string } | null
       rentalItem?: { name: string } | null
       service?: { name: string } | null
-      price: number
+      price?: number
     }>
   } | null
-  messages: {
+  messages: Array<{
     content: string
     createdAt: string
     senderId: string
-    messageType: string
-  }[]
-  _count: {
+    messageType?: string
+  }>
+  _count?: {
     messages: number
   }
 }
@@ -90,56 +106,84 @@ interface Message {
 interface CatalogItem {
   id: string
   name: string
-  price?: number
-  pricePerDay?: number
-  stock: number
-  images: string[]
-  type: 'product' | 'rental'
+  brand?: string | null
+  model?: string | null
   category?: string
-  brand?: string
+  price: number
+  originalPrice?: number | null
+  stock?: number
+  images: string[]
+  type: string
+  storeName?: string
+  storeCity?: string
 }
 
-interface OrderItem {
+interface OrderReference {
   id: string
   orderNumber: string
   status: string
   total: number
   createdAt: string
-  user: {
-    id: string
-    name: string | null
-    email: string
-  }
-  items: Array<{
+  items?: Array<{
+    name?: string
+    qty?: number
+    quantity?: number
     product?: { name: string } | null
     rentalItem?: { name: string } | null
     service?: { name: string } | null
-    quantity: number
     price: number
   }>
 }
 
 interface TechnicianItem {
   id: string
-  userId: string
-  name: string | null
-  image: string | null
-  email: string
-  phone: string | null
+  user: {
+    id: string
+    name: string
+    phone: string
+    avatar?: string
+  }
+  skills: string[]
   rating: number
-  totalReview: number
-  experience: number
-  specialties: string[]
-  type: 'technician'
+  completedJobs: number
 }
 
 interface MitraItem {
   id: string
-  name: string | null
-  image: string | null
-  email: string
-  phone: string | null
-  type: 'mitra'
+  user: {
+    id: string
+    name: string
+    phone: string
+    avatar?: string
+  }
+  businessName: string
+  serviceType: string
+  rating: number
+  city: string
+}
+
+const statusConfig: Record<string, { label: string; color: string }> = {
+  PENDING_PAYMENT: { label: 'Belum Bayar', color: 'bg-amber-50 text-amber-700' },
+  PAID: { label: 'Dibayar', color: 'bg-blue-50 text-blue-700' },
+  PROCESSING: { label: 'Diproses', color: 'bg-purple-50 text-purple-700' },
+  SHIPPED: { label: 'Dikirim', color: 'bg-indigo-50 text-indigo-700' },
+  DELIVERED: { label: 'Terkirim', color: 'bg-teal-50 text-teal-700' },
+  COMPLETED: { label: 'Selesai', color: 'bg-emerald-50 text-emerald-700' },
+  CANCELLED: { label: 'Dibatalkan', color: 'bg-rose-50 text-rose-700' },
+}
+
+const isVideoMedia = (url?: string | null, mediaType?: string | null, messageType?: string | null) => {
+  if (messageType === 'video') return true
+  if (mediaType?.startsWith('video/')) return true
+  if (url && /\.(mp4|webm|mov|mkv|ogg|3gp)$/i.test(url)) return true
+  return false
+}
+
+const isImageMedia = (url?: string | null, mediaType?: string | null, messageType?: string | null) => {
+  if (messageType === 'image') return true
+  if (mediaType?.startsWith('image/')) return true
+  if (url && /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(url)) return true
+  return !!url && !isVideoMedia(url, mediaType, messageType)
 }
 
 export default function AdminChatPage() {
@@ -149,158 +193,312 @@ export default function AdminChatPage() {
   const [loading, setLoading] = useState(true)
   const [messagesLoading, setMessagesLoading] = useState(false)
   const [sending, setSending] = useState(false)
-  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false)
-
-  const [searchQuery, setSearchQuery] = useState('')
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const [fullscreenMedia, setFullscreenMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null)
   const [messageInput, setMessageInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [roomFilter, setRoomFilter] = useState<'ALL' | 'UNREAD' | 'ORDER'>('ALL')
+  const [stats, setStats] = useState({ totalRooms: 0, unreadRooms: 0 })
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
 
-  // Catalog modal
+  // Catalog Modal States
   const [showCatalogModal, setShowCatalogModal] = useState(false)
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
-  const [catalogSearch, setCatalogSearch] = useState('')
   const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogSearch, setCatalogSearch] = useState('')
+  const [catalogTab, setCatalogTab] = useState<'sparepart' | 'sewa' | 'teknisi' | 'mitra'>('sparepart')
 
-  // Order modal
+  // Order Modal States
   const [showOrderModal, setShowOrderModal] = useState(false)
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([])
-  const [orderSearch, setOrderSearch] = useState('')
+  const [orderItems, setOrderItems] = useState<any[]>([])
   const [orderLoading, setOrderLoading] = useState(false)
+  const [orderSearch, setOrderSearch] = useState('')
 
-  // People (teknisi/mitra) state
+  // Technician & Mitra States
   const [technicianItems, setTechnicianItems] = useState<TechnicianItem[]>([])
   const [mitraItems, setMitraItems] = useState<MitraItem[]>([])
-  const [catalogTab, setCatalogTab] = useState<
-    'sparepart' | 'sewa' | 'teknisi' | 'mitra'
-  >('sparepart')
-  const [peopleLoading, setPeopleLoading] = useState(false)
+  const [, setPeopleLoading] = useState(false)
 
-  // Image upload
-  const [, setUploadingImage] = useState(false)
-  const [, setShowAttachMenu] = useState(false)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const messagesPollingRef = useRef<NodeJS.Timeout | null>(null)
+  const roomsPollingRef = useRef<NodeJS.Timeout | null>(null)
+  const selectedRoomRef = useRef<ChatRoom | null>(null)
 
-  const [stats, setStats] = useState({ totalRooms: 0, unreadRooms: 0 })
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const pollingRef = useRef<NodeJS.Timeout | null>(null)
+  const [mounted, setMounted] = useState(false)
 
-  // Fetch chat rooms
-  const fetchRooms = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/chat/rooms')
-      if (!res.ok) throw new Error('Failed to fetch rooms')
-      const data = await res.json()
-      setRooms(data.rooms || [])
-      setStats(data.stats || { totalRooms: 0, unreadRooms: 0 })
-    } catch (error) {
-      console.error('Error fetching rooms:', error)
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Keyboard shortcut listener (ESC to close lightbox)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!fullscreenMedia) return
+      if (e.key === 'Escape') setFullscreenMedia(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [fullscreenMedia])
+
+  // Keep selectedRoomRef synced with state
+  useEffect(() => {
+    selectedRoomRef.current = selectedRoom
+  }, [selectedRoom])
+
+  // Auto scroll to bottom
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      })
     }
   }, [])
 
-  // Fetch messages for selected room
-  const fetchMessages = useCallback(
-    async (roomId: string, isPolling = false) => {
-      try {
-        // Only show loading on initial fetch, not polling
-        if (!isPolling) {
-          setMessagesLoading(true)
-        }
-
-        const res = await fetch(`/api/admin/chat/rooms/${roomId}/messages`)
-        if (!res.ok) throw new Error('Failed to fetch messages')
-        const data = await res.json()
-        setMessages(data.messages || [])
-
-        // Mark as read (only on initial load)
-        if (!isPolling) {
-          await fetch(`/api/admin/chat/rooms/${roomId}/messages`, {
-            method: 'PATCH',
-          })
-          // Small delay then refresh rooms to update unread count
-          setTimeout(fetchRooms, 500)
-        }
-      } catch (error) {
-        console.error('Error fetching messages:', error)
-      } finally {
-        if (!isPolling) {
-          setMessagesLoading(false)
-          setShouldScrollToBottom(true) // Scroll after messages loaded
-        }
-      }
-    },
-    [fetchRooms]
-  )
-
-  // Initial load
   useEffect(() => {
-    fetchRooms()
+    scrollToBottom()
+  }, [messages, scrollToBottom])
+
+  // Fetch all chat rooms
+  const fetchRooms = useCallback(async (isPolling = false) => {
+    try {
+      if (!isPolling) setLoading(true)
+      const res = await fetch('/api/admin/chat/rooms')
+      if (!res.ok) throw new Error('Failed to fetch rooms')
+      const data = await res.json()
+
+      const rawRooms: ChatRoom[] = data.rooms || []
+      // Clear unread count for currently active room so badge stays cleared while room is open
+      const mappedRooms = rawRooms.map((r) =>
+        selectedRoomRef.current?.id === r.id ? { ...r, _count: { messages: 0 } } : r
+      )
+
+      setRooms((prev) => {
+        if (prev.length !== mappedRooms.length) return mappedRooms
+        const hasDiff = mappedRooms.some((r, i) => {
+          const p = prev[i]
+          return !p || r.id !== p.id || r.lastMessageAt !== p.lastMessageAt || (r._count?.messages || 0) !== (p._count?.messages || 0)
+        })
+        return hasDiff ? mappedRooms : prev
+      })
+      const unreadCount = mappedRooms.filter((r) => (r._count?.messages || 0) > 0).length
+      setStats({
+        totalRooms: data.stats?.totalRooms ?? mappedRooms.length,
+        unreadRooms: unreadCount,
+      })
+
+      // Auto select first room if none selected on desktop (keep reference to avoid re-triggering effects)
+      setSelectedRoom((curr) => {
+        if (curr) {
+          return curr
+        }
+        if (typeof window !== 'undefined' && window.innerWidth >= 1024 && mappedRooms.length > 0) {
+          return mappedRooms[0]
+        }
+        return null
+      })
+    } catch (error) {
+      if (!isPolling) {
+        console.error('Error fetching rooms:', error)
+        toast.error('Gagal memuat daftar pesan')
+      }
+    } finally {
+      if (!isPolling) setLoading(false)
+    }
+  }, [])
+
+  // Initial rooms fetch
+  useEffect(() => {
+    fetchRooms(false)
   }, [fetchRooms])
 
-  // Polling for new messages - use isPolling flag
+  // Background rooms polling every 3.5s for live conversation updates
   useEffect(() => {
-    if (selectedRoom) {
-      pollingRef.current = setInterval(() => {
-        fetchMessages(selectedRoom.id, true)
-      }, 5000)
+    roomsPollingRef.current = setInterval(() => {
+      fetchRooms(true)
+    }, 3500)
+    return () => {
+      if (roomsPollingRef.current) clearInterval(roomsPollingRef.current)
+    }
+  }, [fetchRooms])
+
+  // Fetch messages for selected room
+  const fetchMessages = useCallback(async (roomId: string, isPolling = false) => {
+    try {
+      const res = await fetch(`/api/admin/chat/rooms/${roomId}/messages`)
+      if (!res.ok) throw new Error('Failed to fetch messages')
+      const data = await res.json()
+      
+      setMessages((prev) => {
+        const newMsgs = data.messages || []
+        if (prev.length !== newMsgs.length) return newMsgs
+        const hasDiff = newMsgs.some(
+          (m: any, idx: number) =>
+            m.id !== prev[idx]?.id ||
+            m.content !== prev[idx]?.content ||
+            m.isRead !== prev[idx]?.isRead
+        )
+        return hasDiff ? newMsgs : prev
+      })
+    } catch (error) {
+      if (!isPolling) {
+        console.error('Error fetching messages:', error)
+      }
+    } finally {
+      if (!isPolling) setMessagesLoading(false)
+    }
+  }, [])
+
+  // Fetch messages on selected room change
+  useEffect(() => {
+    if (selectedRoom?.id) {
+      setMessagesLoading(true)
+      fetchMessages(selectedRoom.id, false)
+    } else {
+      setMessages([])
+      setMessagesLoading(false)
+    }
+  }, [selectedRoom?.id, fetchMessages])
+
+  // Real-time live polling for messages (every 1.5s)
+  useEffect(() => {
+    if (selectedRoom?.id) {
+      messagesPollingRef.current = setInterval(() => {
+        if (selectedRoomRef.current?.id) {
+          fetchMessages(selectedRoomRef.current.id, true)
+        }
+      }, 1500)
     }
     return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-      }
+      if (messagesPollingRef.current) clearInterval(messagesPollingRef.current)
     }
-  }, [selectedRoom, fetchMessages])
+  }, [selectedRoom?.id, fetchMessages])
 
-  // Scroll to bottom only when shouldScrollToBottom is true
-  useEffect(() => {
-    if (shouldScrollToBottom && messagesEndRef.current) {
-      const container = messagesEndRef.current.parentElement
-      if (container) {
-        container.scrollTop = container.scrollHeight
-      }
-      setShouldScrollToBottom(false)
-    }
-  }, [messages, shouldScrollToBottom])
-
-  // Filter rooms by search
-  const filteredRooms = rooms.filter(
-    (room) =>
-      room.customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      room.customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      room.order?.orderNumber.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
+  // Select a room
   const handleSelectRoom = (room: ChatRoom) => {
     setSelectedRoom(room)
     setShowChatOnMobile(true)
+    // Instantly clear unread badge in state
+    setRooms((prev) =>
+      prev.map((r) => (r.id === room.id ? { ...r, _count: { messages: 0 } } : r))
+    )
+    if (room._count?.messages && room._count.messages > 0) {
+      setStats((prev) => ({
+        ...prev,
+        unreadRooms: Math.max(0, prev.unreadRooms - 1),
+      }))
+    }
     fetchMessages(room.id)
   }
 
+  // Back to room list on mobile
   const handleBackToList = () => {
     setShowChatOnMobile(false)
-    setSelectedRoom(null)
-    setMessages([])
   }
 
-  // Send message
+  // Send message with optimistic update
   const handleSendMessage = async (
-    messageType = 'text',
-    attachmentId?: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    attachmentData?: any
+    type: string = 'text',
+    attachmentId: string | null = null,
+    extraData: any = null
   ) => {
-    if (messageType === 'text' && !messageInput.trim()) return
     if (!selectedRoom) return
+    if (type === 'text' && !messageInput.trim()) return
 
+    const contentToSend = type !== 'text' && extraData ? JSON.stringify(extraData) : messageInput.trim()
+    if (type === 'text') setMessageInput('')
     setSending(true)
-    try {
-      let content = messageInput.trim()
 
-      // For product/order attachments, include data as JSON in content
-      if (attachmentData) {
-        content = JSON.stringify(attachmentData)
+    // Optimistic message
+    const optimisticMsg: Message = {
+      id: `temp-${Date.now()}`,
+      roomId: selectedRoom.id,
+      senderId: 'me',
+      content: contentToSend,
+      messageType: type,
+      attachmentId,
+      mediaUrl: null,
+      mediaType: null,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      sender: {
+        id: 'me',
+        name: 'Admin',
+        image: null,
+        role: 'STORE_ADMIN',
+      },
+    }
+    setMessages((prev) => [...prev, optimisticMsg])
+    scrollToBottom()
+
+    try {
+      const res = await fetch(
+        `/api/admin/chat/rooms/${selectedRoom.id}/messages`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: contentToSend,
+            messageType: type,
+            attachmentId,
+          }),
+        }
+      )
+
+      if (!res.ok) throw new Error('Failed to send message')
+      const data = await res.json()
+
+      // Replace optimistic message with actual
+      setMessages((prev) =>
+        prev.map((m) => (m.id === optimisticMsg.id ? data.message : m))
+      )
+      fetchRooms(true)
+    } catch (error) {
+      console.error('Error sending message:', error)
+      toast.error('Gagal mengirim pesan')
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id))
+      if (type === 'text') setMessageInput(contentToSend)
+    } finally {
+      setSending(false)
+      setShowCatalogModal(false)
+      setShowOrderModal(false)
+    }
+  }
+
+  // Media (Photo & Video) upload handler
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !selectedRoom) return
+
+    const isImage = file.type.startsWith('image/')
+    const isVideo = file.type.startsWith('video/')
+
+    if (!isImage && !isVideo) {
+      toast.error('Hanya file foto (JPG, PNG, WebP) dan video (MP4, WebM, MOV) yang diperbolehkan.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    const messageType = isVideo ? 'video' : 'image'
+    const defaultContent = isVideo ? '🎥 Video' : '📷 Foto'
+
+    setUploadingMedia(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json()
+        throw new Error(err.error || 'Upload gagal')
       }
+      const uploadData = await uploadRes.json()
 
       const res = await fetch(
         `/api/admin/chat/rooms/${selectedRoom.id}/messages`,
@@ -308,733 +506,515 @@ export default function AdminChatPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content,
+            content: defaultContent,
             messageType,
-            attachmentId,
+            mediaUrl: uploadData.url,
+            mediaType: file.type,
           }),
         }
       )
 
-      if (!res.ok) throw new Error('Failed to send message')
-
+      if (!res.ok) throw new Error('Gagal mengirim media')
       const data = await res.json()
+
       setMessages((prev) => [...prev, data.message])
-      setMessageInput('')
-      setShouldScrollToBottom(true)
-
-      // Close modals
-      setShowCatalogModal(false)
-      setShowOrderModal(false)
-
-      // Refresh rooms
-      fetchRooms()
-    } catch (error) {
-      console.error('Error sending message:', error)
-      toast.error('Gagal mengirim pesan')
+      scrollToBottom()
+      toast.success(isVideo ? 'Video berhasil dikirim' : 'Foto berhasil dikirim')
+    } catch (error: any) {
+      console.error('Error uploading media:', error)
+      toast.error(error.message || 'Gagal mengupload file')
     } finally {
-      setSending(false)
-    }
-  }
-
-  // Search catalog
-  const searchCatalog = async (search: string) => {
-    setCatalogLoading(true)
-    try {
-      const res = await fetch(
-        `/api/admin/chat/catalog?search=${encodeURIComponent(search)}`
-      )
-      if (!res.ok) throw new Error('Failed to search catalog')
-      const data = await res.json()
-      setCatalogItems([...(data.products || []), ...(data.rentalItems || [])])
-    } catch (error) {
-      console.error('Error searching catalog:', error)
-    } finally {
-      setCatalogLoading(false)
-    }
-  }
-
-  // Search orders
-  const searchOrders = async (search: string) => {
-    setOrderLoading(true)
-    try {
-      const customerId = selectedRoom?.customer.id
-      const params = new URLSearchParams()
-      if (search) params.append('search', search)
-      if (customerId) params.append('customerId', customerId)
-
-      const res = await fetch(`/api/admin/chat/orders?${params}`)
-      if (!res.ok) throw new Error('Failed to search orders')
-      const data = await res.json()
-      setOrderItems(data.orders || [])
-    } catch (error) {
-      console.error('Error searching orders:', error)
-    } finally {
-      setOrderLoading(false)
-    }
-  }
-
-  // Search people (technicians/mitra)
-  const searchPeople = async (search: string) => {
-    setPeopleLoading(true)
-    try {
-      const res = await fetch(
-        `/api/admin/chat/people?search=${encodeURIComponent(search)}`
-      )
-      if (!res.ok) throw new Error('Failed to search people')
-      const data = await res.json()
-      setTechnicianItems(data.technicians || [])
-      setMitraItems(data.mitra || [])
-    } catch (error) {
-      console.error('Error searching people:', error)
-    } finally {
-      setPeopleLoading(false)
-    }
-  }
-
-  // Handle image upload (currently unused, kept for future use)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !selectedRoom) return
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Hanya file gambar yang diperbolehkan')
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ukuran file maksimal 5MB')
-      return
-    }
-
-    setUploadingImage(true)
-    setShowAttachMenu(false)
-
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        // Send image message
-        const msgRes = await fetch(
-          `/api/admin/chat/rooms/${selectedRoom.id}/messages`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              content: '📷 Gambar',
-              messageType: 'image',
-              mediaUrl: data.url,
-            }),
-          }
-        )
-
-        if (msgRes.ok) {
-          const msgData = await msgRes.json()
-          setMessages((prev) => [...prev, msgData.message])
-          fetchRooms()
-        }
-      } else {
-        toast.error('Gagal upload gambar')
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error)
-      toast.error('Terjadi kesalahan saat upload')
-    } finally {
-      setUploadingImage(false)
+      setUploadingMedia(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
     }
   }
 
-  // Open catalog modal
+  // Fetch catalog items for recommendation
+  const fetchCatalogItems = async (search: string = '') => {
+    try {
+      setCatalogLoading(true)
+      const storeId = selectedRoom?.order?.store?.id || ''
+      const params = new URLSearchParams()
+      if (search) params.append('search', search)
+      if (storeId) params.append('storeId', storeId)
+      params.append('limit', '100')
+
+      const res = await fetch(`/api/admin/chat/catalog?${params.toString()}`)
+      if (!res.ok) throw new Error('Failed to fetch catalog')
+      const data = await res.json()
+      setCatalogItems(data.items || data.products || [])
+    } catch (error) {
+      console.error('Error fetching catalog:', error)
+      toast.error('Gagal memuat katalog produk')
+    } finally {
+      setCatalogLoading(false)
+    }
+  }
+
+  // Fetch orders for customer
+  const fetchCustomerOrders = async (customerId?: string, search: string = '') => {
+    try {
+      setOrderLoading(true)
+      const params = new URLSearchParams()
+      if (customerId) params.append('customerId', customerId)
+      if (search) params.append('search', search)
+
+      const res = await fetch(`/api/admin/chat/orders?${params}`)
+      if (!res.ok) throw new Error('Failed to fetch orders')
+      const data = await res.json()
+      setOrderItems(data.orders || [])
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+      toast.error('Gagal memuat daftar pesanan')
+    } finally {
+      setOrderLoading(false)
+    }
+  }
+
+  // Fetch technicians & partners
+  const fetchPeople = async (search: string = '') => {
+    try {
+      setPeopleLoading(true)
+      const res = await fetch(
+        `/api/admin/chat/people?search=${encodeURIComponent(search)}`
+      )
+      if (!res.ok) throw new Error('Failed to fetch people')
+      const data = await res.json()
+      setTechnicianItems(data.technicians || [])
+      setMitraItems(data.mitras || [])
+    } catch (error) {
+      console.error('Error fetching people:', error)
+    } finally {
+      setPeopleLoading(false)
+    }
+  }
+
   const openCatalogModal = () => {
     setShowCatalogModal(true)
-    setCatalogSearch('')
-    setCatalogTab('sparepart')
-    searchCatalog('')
-    searchPeople('')
+    fetchCatalogItems()
+    fetchPeople()
   }
 
-  // Open order modal
   const openOrderModal = () => {
     setShowOrderModal(true)
-    setOrderSearch('')
-    searchOrders('')
+    fetchCustomerOrders(selectedRoom?.customerId)
   }
 
-  // Send product recommendation
-  const sendProductRecommendation = (item: CatalogItem) => {
-    handleSendMessage(item.type, item.id, {
-      id: item.id,
-      name: item.name,
-      price: item.price || item.pricePerDay,
-      image: item.images?.[0] || null,
-      stock: item.stock,
-      type: item.type,
-    })
-  }
-
-  // Send technician recommendation
-  const sendTechnicianRecommendation = (tech: TechnicianItem) => {
-    handleSendMessage('technician', tech.id, {
-      id: tech.id,
-      userId: tech.userId,
-      name: tech.name,
-      image: tech.image,
-      rating: tech.rating,
-      totalReview: tech.totalReview,
-      experience: tech.experience,
-      specialties: tech.specialties,
-      type: 'technician',
-    })
-  }
-
-  // Send mitra recommendation
-  const sendMitraRecommendation = (mitra: MitraItem) => {
-    handleSendMessage('mitra', mitra.id, {
-      id: mitra.id,
-      name: mitra.name,
-      image: mitra.image,
-      email: mitra.email,
-      phone: mitra.phone,
-      type: 'mitra',
-    })
-  }
-
-  // Send order info
-  const sendOrderInfo = (order: OrderItem) => {
-    handleSendMessage('order', order.id, {
-      id: order.id,
-      orderNumber: order.orderNumber,
-      status: order.status,
-      total: order.total,
-      items: order.items?.map(
-        (i: {
-          product?: { name: string } | null
-          rentalItem?: { name: string } | null
-          service?: { name: string } | null
-          quantity: number
-          price: number
-        }) => ({
-          name: i.product?.name || i.rentalItem?.name || i.service?.name,
-          qty: i.quantity,
-          price: i.price,
-        })
-      ),
-    })
-  }
-
-  const getStatusBadge = (status: string | null) => {
-    if (!status) return null
-
-    const statusConfig: Record<string, { label: string; color: string }> = {
-      PENDING_PAYMENT: {
-        label: 'Pending',
-        color: 'bg-yellow-100 text-yellow-700',
-      },
-      PAID: { label: 'Paid', color: 'bg-blue-100 text-blue-700' },
-      IN_PROGRESS: {
-        label: 'Progress',
-        color: 'bg-purple-100 text-purple-700',
-      },
-      SHIPPED: { label: 'Terkirim', color: 'bg-orange-100 text-orange-700' },
-      RENTED: { label: 'Disewa', color: 'bg-cyan-100 text-cyan-700' },
-      RETURNED: { label: 'Kembali', color: 'bg-indigo-100 text-indigo-700' },
-      COMPLETED: { label: 'Selesai', color: 'bg-green-100 text-green-700' },
-      CANCELLED: { label: 'Batal', color: 'bg-red-100 text-red-700' },
-    }
-
-    const config = statusConfig[status] || {
-      label: status,
-      color: 'bg-gray-100 text-gray-700',
-    }
-
-    return (
-      <span
-        className={`rounded-full px-2 py-0.5 text-xs font-medium ${config.color}`}
-      >
-        {config.label}
-      </span>
-    )
-  }
-
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr)
+  // Format time
+  const formatTime = (dateString: string) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
     const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const diffDays = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+    )
 
-    if (days === 0) {
+    if (diffDays === 0) {
       return date.toLocaleTimeString('id-ID', {
         hour: '2-digit',
         minute: '2-digit',
       })
-    } else if (days === 1) {
+    } else if (diffDays === 1) {
       return 'Kemarin'
-    } else if (days < 7) {
-      return `${days} hari lalu`
+    } else {
+      return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+      })
     }
-    return date.toLocaleDateString('id-ID')
   }
 
-  // Format message preview for room list (show friendly text instead of raw JSON)
-  const formatMessagePreview = (
-    message:
-      | { content: string; messageType: string; mediaUrl?: string | null }
-      | undefined
-  ) => {
-    if (!message) return 'Tidak ada pesan'
-
-    // Check for media/image
-    if (message.messageType === 'image' || message.mediaUrl) {
-      return '📷 Gambar'
+  // Format message preview
+  const formatMessagePreview = (message?: {
+    content: string
+    messageType?: string
+  }) => {
+    if (!message) return 'Belum ada pesan'
+    switch (message.messageType) {
+      case 'product':
+        return '📦 Rekomendasi Gadget'
+      case 'rental':
+        return '🔄 Rekomendasi Sewa'
+      case 'service':
+        return '🔧 Rekomendasi Servis'
+      case 'technician':
+        return '👨‍🔧 Kontak Teknisi'
+      case 'mitra':
+        return '🏢 Rekomendasi Mitra'
+      case 'order':
+        return '📋 Rincian Pesanan'
+      case 'image':
+        return '📷 Lampiran Foto'
+      case 'video':
+        return '🎥 Lampiran Video'
+      default:
+        if (isVideoMedia(message.content, undefined, message.messageType)) return '🎥 Lampiran Video'
+        if (isImageMedia(message.content, undefined, message.messageType)) return '📷 Lampiran Foto'
+        if (
+          message.content?.trim().startsWith('{') &&
+          message.content.includes('"name"') &&
+          message.content.includes('"price"')
+        ) {
+          return '📦 Rekomendasi Gadget'
+        }
+        if (
+          message.content?.trim().startsWith('{') &&
+          message.content.includes('"orderNumber"')
+        ) {
+          return '📋 Rincian Pesanan'
+        }
+        return message.content
     }
-
-    // Check for special message types that contain JSON
-    if (message.messageType === 'order') {
-      return '📦 Mengirim info pesanan'
-    }
-
-    if (message.messageType === 'product') {
-      return '🛒 Mengirim rekomendasi produk'
-    }
-
-    if (message.messageType === 'rental') {
-      return '🔧 Mengirim rekomendasi sewa'
-    }
-
-    if (message.messageType === 'technician') {
-      return '👨‍🔧 Mengirim rekomendasi teknisi'
-    }
-
-    if (message.messageType === 'mitra') {
-      return '🏪 Mengirim rekomendasi mitra'
-    }
-
-    // Try to detect JSON content even if messageType is text
-    const content = message.content
-    if (content.startsWith('{') && content.includes('"id"')) {
-      try {
-        const parsed = JSON.parse(content)
-        if (parsed.orderNumber) return '📦 Mengirim info pesanan'
-        if (parsed.price !== undefined && parsed.name)
-          return '🛒 Mengirim info produk'
-        return '📄 Mengirim data'
-      } catch {
-        // Not valid JSON, continue to return content
-      }
-    }
-
-    // For regular text, return the content
-    return content
   }
 
-  // Render message content based on type
+  // Render message content for text/catalog/order
   const renderMessageContent = (message: Message, isAdmin: boolean) => {
-    if (message.messageType === 'text') {
-      return (
-        <div
-          className={`rounded-2xl px-4 py-2 ${
-            isAdmin
-              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
-              : 'bg-gray-100 text-gray-900'
-          }`}
-        >
-          <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-        </div>
-      )
-    }
+    const contentTrimmed = message.content?.trim() || ''
+    const isOrder =
+      message.messageType === 'order' ||
+      (contentTrimmed.startsWith('{') && contentTrimmed.includes('"orderNumber"'))
+    const isProduct =
+      message.messageType === 'product' ||
+      message.messageType === 'rental' ||
+      (contentTrimmed.startsWith('{') && contentTrimmed.includes('"name"') && contentTrimmed.includes('"price"'))
 
-    // Product/Rental recommendation
-    if (message.messageType === 'product' || message.messageType === 'rental') {
+    if (isProduct) {
       try {
         const data = JSON.parse(message.content)
         return (
-          <div className="max-w-xs overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex gap-3 p-3">
-              {data.image && (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-2xs dark:bg-slate-900 dark:border-slate-800 text-slate-900 dark:text-white max-w-xs space-y-2">
+            <div className="flex gap-3">
+              {data.image ? (
                 <img
                   src={data.image}
                   alt={data.name}
-                  className="h-16 w-16 rounded-lg object-cover"
+                  className="h-12 w-12 rounded-xl object-contain bg-slate-50 border p-1 shrink-0"
                 />
+              ) : (
+                <div className="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                  <Package className="h-5 w-5 text-slate-400" />
+                </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-gray-900">
-                  {data.name}
-                </p>
-                <p className="mt-1 text-base font-bold text-blue-600">
+                {data.brand && (
+                  <span className="text-[9.5px] font-black uppercase text-orange-600 dark:text-orange-400">
+                    {data.brand}
+                  </span>
+                )}
+                <p className="truncate text-xs font-bold">{data.name}</p>
+                <p className="mt-0.5 text-xs font-black font-mono text-orange-600 dark:text-orange-400">
                   Rp {data.price?.toLocaleString('id-ID')}
-                  {message.messageType === 'rental' && (
-                    <span className="text-xs font-normal">/hari</span>
-                  )}
                 </p>
-                <p className="text-xs text-gray-500">Stock: {data.stock}</p>
-              </div>
-            </div>
-            <div className="border-t border-gray-100 bg-gray-50 px-3 py-2">
-              <p className="text-xs text-gray-600">
-                <Package className="mr-1 inline h-3 w-3" />
-                {message.messageType === 'product'
-                  ? 'Rekomendasi Produk'
-                  : 'Rekomendasi Sewa'}
-              </p>
-            </div>
-          </div>
-        )
-      } catch {
-        return <p className="text-sm text-gray-500">Invalid product data</p>
-      }
-    }
-
-    // Order info
-    if (message.messageType === 'order') {
-      try {
-        const data = JSON.parse(message.content)
-        return (
-          <div className="max-w-xs overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-3 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs opacity-90">Order Number</p>
-                  <p className="font-bold">{data.orderNumber}</p>
-                </div>
-                <ShoppingBag className="h-6 w-6" />
-              </div>
-            </div>
-            <div className="p-3">
-              {data.items?.slice(0, 2).map(
-                (
-                  item: {
-                    name: string
-                    qty: number
-                    price: number
-                  },
-                  idx: number
-                ) => (
-                  <div key={idx} className="flex justify-between text-sm">
-                    <span className="mr-2 truncate text-gray-700">
-                      {item.name}
-                    </span>
-                    <span className="shrink-0 font-medium text-gray-900">
-                      x{item.qty}
-                    </span>
-                  </div>
-                )
-              )}
-              {data.items?.length > 2 && (
-                <p className="mt-1 text-xs text-gray-500">
-                  +{data.items.length - 2} item lainnya
-                </p>
-              )}
-              <div className="mt-2 border-t border-gray-200 pt-2">
-                <div className="flex justify-between">
-                  <span className="font-bold text-gray-900">Total</span>
-                  <span className="font-bold text-blue-600">
-                    Rp {data.total?.toLocaleString('id-ID')}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      } catch {
-        return <p className="text-sm text-gray-500">Invalid order data</p>
-      }
-    }
-
-    // Technician recommendation
-    if (message.messageType === 'technician') {
-      try {
-        const data = JSON.parse(message.content)
-        return (
-          <div className="max-w-xs overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex gap-3 p-3">
-              {data.image ? (
-                <img
-                  src={data.image}
-                  alt={data.name}
-                  className="h-14 w-14 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-red-500 text-white">
-                  <span className="text-lg font-bold">
-                    {(data.name || 'T').charAt(0)}
-                  </span>
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900">
-                  {data.name}
-                </p>
-                <div className="mt-0.5 flex items-center gap-1">
-                  <span className="text-sm text-yellow-500">⭐</span>
-                  <span className="text-sm font-medium">
-                    {data.rating?.toFixed(1)}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    ({data.totalReview} review)
-                  </span>
-                </div>
-                <p className="truncate text-xs text-gray-500">
-                  {data.specialties?.slice(0, 2).join(', ')}
-                </p>
-              </div>
-            </div>
-            <div className="border-t border-gray-100 bg-orange-50 px-3 py-2">
-              <p className="text-xs text-orange-600">
-                <Wrench className="mr-1 inline h-3 w-3" />
-                Rekomendasi Teknisi
-              </p>
-            </div>
-          </div>
-        )
-      } catch {
-        return <p className="text-sm text-gray-500">Invalid technician data</p>
-      }
-    }
-
-    // Mitra recommendation
-    if (message.messageType === 'mitra') {
-      try {
-        const data = JSON.parse(message.content)
-        return (
-          <div className="max-w-xs overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex gap-3 p-3">
-              {data.image ? (
-                <img
-                  src={data.image}
-                  alt={data.name}
-                  className="h-14 w-14 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white">
-                  <span className="text-lg font-bold">
-                    {(data.name || 'M').charAt(0)}
-                  </span>
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900">
-                  {data.name}
-                </p>
-                <p className="truncate text-sm text-gray-500">{data.email}</p>
-                {data.phone && (
-                  <p className="text-xs text-gray-400">{data.phone}</p>
+                {data.stock !== undefined && (
+                  <p className="text-[10px] text-slate-400">Stok Cabang: {data.stock} Unit</p>
                 )}
               </div>
             </div>
-            <div className="border-t border-gray-100 bg-purple-50 px-3 py-2">
-              <p className="text-xs text-purple-600">
-                <Users className="mr-1 inline h-3 w-3" />
-                Rekomendasi Mitra
-              </p>
+            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+              <Package className="h-3 w-3 text-orange-500" />
+              <span>Rekomendasi Unit Toko</span>
             </div>
           </div>
         )
       } catch {
-        return <p className="text-sm text-gray-500">Invalid mitra data</p>
+        return <p className="text-xs text-slate-400">Rekomendasi Produk</p>
       }
     }
 
-    // Image/Media
-    if (message.mediaUrl) {
-      return (
-        <div className="overflow-hidden rounded-2xl border border-gray-200">
-          <img
-            src={message.mediaUrl}
-            alt="Media"
-            className="max-h-64 max-w-xs object-cover"
-          />
-        </div>
-      )
+    if (isOrder) {
+      try {
+        const data = JSON.parse(message.content)
+        return (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:bg-slate-900 dark:border-slate-800 text-slate-900 dark:text-white max-w-sm space-y-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <ShoppingBag className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="font-mono text-xs font-bold truncate">#{data.orderNumber}</span>
+              </div>
+              <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                {data.status || 'Pesanan'}
+              </span>
+            </div>
+
+            {data.items && data.items.length > 0 && (
+              <div className="space-y-2">
+                {data.items.map((it: any, idx: number) => {
+                  const name = it.product?.name || it.rentalItem?.name || it.service?.name || it.name || 'Unit Gadget'
+                  const img = it.product?.images?.[0] || it.rentalItem?.images?.[0] || it.image
+                  return (
+                    <div key={idx} className="flex items-center gap-2.5">
+                      {img && (
+                        <img src={img} alt="" className="h-10 w-10 rounded-xl object-contain bg-slate-50 border p-1 shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-slate-800 dark:text-slate-200">{name}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {it.quantity || 1}x • Rp {(it.price || 0).toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2 text-xs">
+              <span className="text-slate-500 text-[11px]">Total Pesanan:</span>
+              <span className="font-black font-mono text-orange-600 dark:text-orange-400 text-xs sm:text-sm">
+                Rp {data.total?.toLocaleString('id-ID')}
+              </span>
+            </div>
+          </div>
+        )
+      } catch {
+        return <p className="text-xs text-slate-400">Info Pesanan</p>
+      }
     }
 
     return (
-      <div
-        className={`inline-block max-w-[85%] rounded-2xl px-4 py-3 shadow-sm md:max-w-[70%] ${
-          isAdmin
-            ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
-            : 'border border-gray-200 bg-white text-gray-900'
-        }`}
-      >
-        <p className="text-sm">{message.content}</p>
-      </div>
+      <p className="whitespace-pre-wrap text-xs sm:text-[13px] leading-relaxed">
+        {message.content}
+      </p>
     )
   }
 
-  return (
-    <div>
-      {/* Header Banner */}
-      <div className="mb-6 rounded-2xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-6 text-white shadow-lg lg:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold lg:text-3xl">
-              💬 Chat & Messages
-            </h1>
-            <p className="mt-1 text-sm text-blue-100 lg:mt-2 lg:text-base">
-              Kelola percakapan dengan customer
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-white/20 px-3 py-2 backdrop-blur-sm lg:px-4">
-              <p className="text-xs font-medium lg:text-sm">Total Chats</p>
-              <p className="text-xl font-bold lg:text-2xl">
-                {stats.totalRooms}
-              </p>
-            </div>
-            <div className="rounded-xl bg-white/20 px-3 py-2 backdrop-blur-sm lg:px-4">
-              <p className="text-xs font-medium lg:text-sm">Unread</p>
-              <p className="text-xl font-bold lg:text-2xl">
-                {stats.unreadRooms}
-              </p>
-            </div>
-            <button
-              onClick={fetchRooms}
-              className="rounded-lg bg-white/20 p-2 transition-colors hover:bg-white/30"
-              title="Refresh"
-            >
-              <RefreshCw className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </div>
+  // Filtered rooms based on search and status
+  const filteredRooms = rooms.filter((room) => {
+    const matchSearch =
+      searchQuery === '' ||
+      (room.customer.name &&
+        room.customer.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (room.customer.phone && room.customer.phone.includes(searchQuery)) ||
+      (room.order &&
+        room.order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()))
 
-      {/* Chat Container */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* Chat Room List - Left Sidebar */}
-        <div
-          className={`lg:col-span-4 xl:col-span-3 ${showChatOnMobile ? 'hidden lg:block' : 'block'}`}
-        >
-          <div className="flex h-[600px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
-            {/* Search */}
-            <div className="border-b border-gray-200 p-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari customer atau order..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none"
-                />
+    if (!matchSearch) return false
+
+    if (roomFilter === 'UNREAD') {
+      return (room._count?.messages || 0) > 0
+    }
+    if (roomFilter === 'ORDER') {
+      return !!room.order
+    }
+    return true
+  })
+
+  return (
+    <div className="w-full h-full max-h-full flex flex-col font-sans">
+      
+      {/* Luxury Fullscreen Portal Lightbox Modal (Escape stacking context & covers 100% viewport) */}
+      {mounted && fullscreenMedia && createPortal(
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[99999] flex flex-col items-center justify-between bg-white/45 backdrop-blur-xl p-4 sm:p-6 select-none cursor-pointer"
+            onClick={() => setFullscreenMedia(null)}
+          >
+            {/* Top spacing spacer */}
+            <div className="h-2 sm:h-4" />
+
+            {/* Middle Main Media (Image/Video) Stage */}
+            <div className="relative flex-1 w-full flex items-center justify-center my-auto px-2 sm:px-14">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="relative max-h-[68vh] sm:max-h-[72vh] max-w-[90vw] sm:max-w-[80vw] overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/80 bg-white/60 flex items-center justify-center cursor-default ring-1 ring-black/5"
+                >
+                  {fullscreenMedia.type === 'video' ? (
+                    <video
+                      src={fullscreenMedia.url}
+                      controls
+                      autoPlay
+                      playsInline
+                      className="max-h-[68vh] sm:max-h-[72vh] w-auto max-w-full rounded-2xl sm:rounded-3xl object-contain shadow-2xl bg-black"
+                    />
+                  ) : (
+                    <img
+                      src={fullscreenMedia.url}
+                      alt="Pratinjau Foto Lampiran"
+                      className="max-h-[68vh] sm:max-h-[72vh] w-auto max-w-full object-contain rounded-2xl sm:rounded-3xl select-none"
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Bottom Bar: Instructions / Keyboard shortcuts */}
+            <div
+              className="w-full max-w-sm flex items-center justify-center gap-3 z-20 cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 border border-slate-200/80 backdrop-blur-xl shadow-lg text-[11px] font-bold text-slate-700">
+                <span>Klik di luar area atau tekan <kbd className="px-1.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 font-mono text-[10px]">ESC</kbd> untuk menutup</span>
               </div>
             </div>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
 
-            {/* Room List */}
-            <div className="flex-1 overflow-y-auto">
-              {loading ? (
-                <div className="flex h-full items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      {/* Single-Surface Unified Bento Chat Hub Container */}
+      <div className="rounded-3xl border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900 overflow-hidden h-full flex-1 max-h-full min-h-0 grid grid-cols-1 lg:grid-cols-12">
+        
+        {/* Left Pane: Integrated Control & Customer Chat Rooms List (4 Cols) */}
+        <div
+          className={`lg:col-span-4 xl:col-span-4 border-r border-slate-100 dark:border-slate-800 flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-slate-900 ${
+            showChatOnMobile ? 'hidden lg:flex' : 'flex'
+          }`}
+        >
+          {/* Integrated Sidebar Header */}
+          <div className="p-3 sm:p-3.5 border-b border-slate-100 dark:border-slate-800 space-y-2.5">
+            {/* Search Capsule */}
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Cari customer, no. order..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+            </div>
+
+            {/* Segmented Filter Pills */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl dark:bg-slate-800/80">
+              {[
+                { id: 'ALL', label: 'Semua' },
+                { id: 'UNREAD', label: `Belum Dibaca (${stats.unreadRooms})` },
+                { id: 'ORDER', label: 'Pesanan' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setRoomFilter(tab.id as any)}
+                  className={`flex-1 rounded-lg py-1 text-[11px] font-bold transition-all text-center ${
+                    roomFilter === tab.id
+                      ? 'bg-white text-slate-950 shadow-xs dark:bg-slate-900 dark:text-white'
+                      : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Rooms Scroll Area */}
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800/60">
+            {loading ? (
+              <div className="flex h-full flex-col items-center justify-center text-slate-400 space-y-2">
+                <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                <p className="text-xs font-medium">Memuat percakapan...</p>
+              </div>
+            ) : filteredRooms.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center p-6 text-center text-slate-400 space-y-2">
+                <div className="h-12 w-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                  <MessageSquare className="h-6 w-6 text-slate-400" />
                 </div>
-              ) : filteredRooms.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center text-gray-500">
-                  <MessageSquare className="h-12 w-12 text-gray-300" />
-                  <p className="mt-2">Belum ada chat</p>
-                </div>
-              ) : (
-                filteredRooms.map((room) => (
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Belum ada percakapan</p>
+                <p className="text-[11px] text-slate-400">Pesan dari customer toko akan otomatis masuk ke panel ini.</p>
+              </div>
+            ) : (
+              filteredRooms.map((room) => {
+                const isSelected = selectedRoom?.id === room.id
+                const customerName = room.customer.name || room.customer.email.split('@')[0]
+                const status = room.order ? statusConfig[room.order.status] : null
+                const unreadCount = room._count?.messages || 0
+
+                return (
                   <button
                     key={room.id}
                     onClick={() => handleSelectRoom(room)}
-                    className={`w-full border-b border-gray-100 p-4 text-left transition-colors hover:bg-gray-50 ${
-                      selectedRoom?.id === room.id ? 'bg-blue-50' : ''
+                    className={`w-full p-3.5 text-left transition-all flex items-start gap-3 relative ${
+                      isSelected
+                        ? 'bg-slate-50/90 dark:bg-slate-800/90'
+                        : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      {/* Avatar */}
-                      <div className="relative shrink-0">
-                        {room.customer.image ? (
-                          <img
-                            src={room.customer.image}
-                            alt={room.customer.name || 'Customer'}
-                            className="h-12 w-12 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                            <span className="text-lg font-bold">
-                              {(room.customer.name || room.customer.email)
-                                .charAt(0)
-                                .toUpperCase()}
-                            </span>
-                          </div>
-                        )}
+                    {/* Minimalist Left Accent Pill */}
+                    {isSelected && (
+                      <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-slate-950 dark:bg-orange-500" />
+                    )}
+
+                    {/* Customer Avatar */}
+                    <div className="relative shrink-0">
+                      {room.customer.image ? (
+                        <img
+                          src={room.customer.image}
+                          alt={customerName}
+                          className="h-10 w-10 rounded-2xl object-cover border border-slate-200/60 shadow-2xs"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-900 font-bold text-xs dark:bg-slate-800 dark:text-white border border-slate-200/60 dark:border-slate-700">
+                          {customerName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white shadow-2xs">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Customer Info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="font-bold text-slate-900 dark:text-white text-xs truncate">
+                          {customerName}
+                        </p>
+                        <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                          {formatTime(room.lastMessageAt)}
+                        </span>
                       </div>
 
-                      {/* Info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="truncate font-semibold text-gray-900">
-                            {room.customer.name || room.customer.email}
-                          </p>
-                          <span className="ml-2 shrink-0 text-xs text-gray-500">
-                            {formatTime(room.lastMessageAt)}
+                      {/* Order Tag */}
+                      {room.order && (
+                        <div className="mt-0.5 flex items-center gap-1.5 text-[10px]">
+                          <span className="font-mono font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[130px]">
+                            #{room.order.orderNumber}
                           </span>
-                        </div>
-
-                        {room.order && (
-                          <div className="mt-1 flex items-center gap-2">
-                            <ShoppingBag className="h-3 w-3 shrink-0 text-gray-400" />
-                            <span className="truncate text-xs text-gray-600">
-                              {room.order.orderNumber}
-                            </span>
-                            {getStatusBadge(room.order.status)}
-                          </div>
-                        )}
-
-                        {/* Claim Status */}
-                        <div className="mt-1">
-                          {room.claimedById ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                              ✓ {room.claimedBy?.name || 'Claimed'}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">
-                              ⏳ Menunggu Diambil
+                          {status && (
+                            <span className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.2 text-[9px] font-semibold text-slate-600 dark:text-slate-300">
+                              {status.label}
                             </span>
                           )}
                         </div>
+                      )}
 
-                        <div className="mt-1 flex items-center justify-between">
-                          <p className="truncate text-sm text-gray-600">
-                            {formatMessagePreview(room.messages[0])}
-                          </p>
-                          {room._count.messages > 0 && (
-                            <span className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                              {room._count.messages}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      {/* Message Preview */}
+                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 truncate font-normal">
+                        {formatMessagePreview(room.messages[0])}
+                      </p>
                     </div>
                   </button>
-                ))
-              )}
-            </div>
+                )
+              })
+            )}
           </div>
         </div>
 
-        {/* Chat Messages - Main Area */}
+        {/* Right Pane: Active Conversation Window (8 Cols) */}
         <div
-          className={`lg:col-span-8 xl:col-span-9 ${!showChatOnMobile ? 'hidden lg:block' : 'block'}`}
+          className={`lg:col-span-8 xl:col-span-8 flex flex-col h-full min-h-0 overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 ${
+            !showChatOnMobile ? 'hidden lg:flex' : 'flex'
+          }`}
         >
           {selectedRoom ? (
-            <div className="flex h-[600px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
-              {/* Chat Header */}
-              <div className="flex items-center justify-between border-b border-gray-200 p-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  {/* Back Button - Mobile Only */}
+            <>
+              {/* Active Room Header */}
+              <div className="shrink-0 p-3 sm:p-3.5 border-b border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Mobile Back Button */}
                   <button
                     onClick={handleBackToList}
-                    className="shrink-0 rounded-lg p-2 text-gray-600 hover:bg-gray-100 lg:hidden"
+                    className="rounded-xl p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden dark:text-slate-400 dark:hover:bg-slate-800"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
@@ -1044,571 +1024,469 @@ export default function AdminChatPage() {
                       <img
                         src={selectedRoom.customer.image}
                         alt=""
-                        className="h-10 w-10 rounded-full object-cover"
+                        className="h-10 w-10 rounded-2xl object-cover border border-slate-200/60 shadow-2xs"
                       />
                     ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                        <span className="font-bold">
-                          {(
-                            selectedRoom.customer.name ||
-                            selectedRoom.customer.email
-                          )
-                            .charAt(0)
-                            .toUpperCase()}
-                        </span>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-900 font-bold text-xs dark:bg-slate-800 dark:text-white border border-slate-200/60 dark:border-slate-700">
+                        {(selectedRoom.customer.name || selectedRoom.customer.email).charAt(0).toUpperCase()}
                       </div>
                     )}
                   </div>
+
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-gray-900">
-                      {selectedRoom.customer.name ||
-                        selectedRoom.customer.email}
-                    </p>
-                    <p className="truncate text-sm text-gray-500">
-                      {selectedRoom.customer.phone ||
-                        selectedRoom.customer.email}
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm truncate">
+                        {selectedRoom.customer.name || selectedRoom.customer.email}
+                      </h3>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9.5px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Customer
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {selectedRoom.customer.phone || selectedRoom.customer.email}
                     </p>
                   </div>
                 </div>
-
-                {selectedRoom.order && (
-                  <div className="hidden shrink-0 text-right sm:block">
-                    <p className="text-sm font-medium text-gray-700">
-                      {selectedRoom.order.orderNumber}
-                    </p>
-                    {getStatusBadge(selectedRoom.order.status)}
-                  </div>
-                )}
               </div>
 
-              {/* Order Reference Card - Show if room has order */}
+              {/* Contextual Order Banner (If order linked) */}
               {selectedRoom.order && (
-                <div className="border-b border-gray-200 bg-white p-3">
-                  <OrderReferenceCard
-                    order={{
-                      id: selectedRoom.order.id,
-                      orderNumber: selectedRoom.order.orderNumber,
-                      status: selectedRoom.order.status,
-                      total: selectedRoom.order.total,
-                      createdAt:
-                        selectedRoom.order.createdAt ||
-                        new Date().toISOString(),
-                      items: selectedRoom.order.items.map((item) => ({
-                        type: item.type,
-                        quantity: item.quantity,
-                        product: item.product || undefined,
-                        service: item.service || undefined,
-                        rentalItem: item.rentalItem || undefined,
-                      })),
-                    }}
-                    variant="compact"
-                  />
+                <div className="shrink-0 px-4 py-2 bg-blue-50/50 dark:bg-blue-950/20 border-b border-blue-100/70 dark:border-blue-900/30 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 truncate">
+                    <Package className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                    <span className="font-mono font-bold text-blue-950 dark:text-blue-200 truncate">
+                      Order #{selectedRoom.order.orderNumber}
+                    </span>
+                    <span className="text-slate-400 hidden sm:inline">•</span>
+                    <span className="text-slate-600 dark:text-slate-300 font-medium hidden sm:inline">
+                      Rp {selectedRoom.order.total.toLocaleString('id-ID')}
+                    </span>
+                    {statusConfig[selectedRoom.order.status] && (
+                      <span className="rounded bg-blue-100/80 dark:bg-blue-900/60 px-1.5 py-0.2 text-[9.5px] font-bold text-blue-800 dark:text-blue-300">
+                        {statusConfig[selectedRoom.order.status].label}
+                      </span>
+                    )}
+                  </div>
+
+                  <a
+                    href={`/dashboard/admin/orders?search=${selectedRoom.order.orderNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-700 text-[11px] shrink-0 transition hover:underline"
+                  >
+                    <span>Lihat Rincian</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
               )}
 
-              {/* Messages - with Wallpaper */}
-              <div
-                className="flex-1 space-y-4 overflow-y-auto p-4"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(to bottom right, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 0.9), rgba(238, 242, 255, 0.95)), url(https://images.unsplash.com/photo-1556656793-08538906a9f8?w=1920&q=80)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundAttachment: 'local',
-                }}
-              >
-                {messagesLoading ? (
+              {/* Chat Canvas (Messages Bubble Area) */}
+              <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3">
+                {messagesLoading && messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center text-gray-500">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/80 shadow-lg backdrop-blur-sm">
-                      <MessageSquare className="h-8 w-8 text-blue-500" />
+                  <div className="flex h-full flex-col items-center justify-center text-center p-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-2xs border border-slate-100 dark:bg-slate-900 dark:border-slate-800 mb-2">
+                      <MessageSquare className="h-6 w-6 text-orange-500" />
                     </div>
-                    <p className="mt-3 font-medium">Belum ada pesan</p>
-                    <p className="text-sm">Kirim pesan pertama!</p>
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Mulai Percakapan Langsung
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5 max-w-xs">
+                      Balas pertanyaan customer atau kirimkan rekomendasi gadget cabang.
+                    </p>
                   </div>
                 ) : (
                   messages.map((message, index) => {
-                    // Date separator logic
                     const currentDate = new Date(message.createdAt)
-                    const previousDate =
-                      index > 0 ? new Date(messages[index - 1].createdAt) : null
-                    const showDateSeparator =
-                      !previousDate || !isSameDay(currentDate, previousDate)
+                    const previousDate = index > 0 ? new Date(messages[index - 1].createdAt) : null
+                    const showDateSeparator = !previousDate || !isSameDay(currentDate, previousDate)
+                    const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'STORE_ADMIN'].includes(message.sender.role) || message.senderId === 'me'
+                    const isVideo = isVideoMedia(message.mediaUrl, message.mediaType, message.messageType)
+                    const isImage = isImageMedia(message.mediaUrl, message.mediaType, message.messageType)
+                    const isMedia = isVideo || isImage
 
-                    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(
-                      message.sender.role
-                    )
+                    const formattedTime = new Date(message.createdAt).toLocaleTimeString('id-ID', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
 
                     return (
                       <React.Fragment key={message.id}>
-                        {showDateSeparator && (
-                          <DateSeparator date={currentDate} />
-                        )}
-                        <div
-                          className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div
-                            className={`max-w-[75%] ${isAdmin ? 'items-end' : 'items-start'}`}
-                          >
-                            {renderMessageContent(message, isAdmin)}
+                        {showDateSeparator && <DateSeparator date={currentDate} />}
 
-                            {/* Timestamp & Read Status */}
+                        <div className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
+                          {isMedia ? (
+                            /* Full-Bleed Modern Media Bubble (Apple/Telegram Style) */
+                            <div className="relative group max-w-[85%] sm:max-w-[70%] rounded-2xl overflow-hidden shadow-xs border border-slate-200/80 dark:border-slate-800 bg-black">
+                              {isVideo ? (
+                                <div className="relative">
+                                  <video
+                                    src={message.mediaUrl!}
+                                    controls
+                                    controlsList="nofullscreen nodownload noremoteplayback noplaybackrate"
+                                    disablePictureInPicture
+                                    disableRemotePlayback
+                                    playsInline
+                                    preload="metadata"
+                                    className="max-h-[300px] sm:max-h-[360px] w-full max-w-[280px] sm:max-w-[340px] rounded-2xl object-cover bg-black block clean-video-player"
+                                  />
+                                  {/* Floating Theater Mode Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setFullscreenMedia({ url: message.mediaUrl!, type: 'video' })}
+                                    title="Perbesar Layar Penuh"
+                                    className="absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 hover:bg-black/85 text-white backdrop-blur-md transition-all hover:scale-105 shadow-xs cursor-pointer"
+                                  >
+                                    <Maximize2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div
+                                  onClick={() => setFullscreenMedia({ url: message.mediaUrl!, type: 'image' })}
+                                  className="relative cursor-pointer"
+                                >
+                                  <img
+                                    src={message.mediaUrl!}
+                                    alt="Foto Lampiran"
+                                    className="max-h-[280px] sm:max-h-[340px] max-w-[280px] sm:max-w-[340px] rounded-2xl object-cover block group-hover:scale-102 transition-transform duration-200"
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md">
+                                      <ZoomIn className="h-4 w-4" />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Floating Glassmorphic Timestamp Pill */}
+                              <div className="pointer-events-none absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-md shadow-xs">
+                                <span>{formattedTime}</span>
+                                {isAdmin && (
+                                  <span>
+                                    {message.isRead ? (
+                                      <CheckCheck className="h-3 w-3 text-blue-400 inline" />
+                                    ) : (
+                                      <Check className="h-3 w-3 text-slate-300 inline" />
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            /* Standard Text / Card Bubble */
                             <div
-                              className={`mt-1 flex items-center gap-1 text-xs text-gray-500 ${
-                                isAdmin ? 'justify-end' : 'justify-start'
+                              className={`max-w-[80%] sm:max-w-[70%] rounded-2xl text-xs px-4 py-2.5 shadow-2xs ${
+                                isAdmin
+                                  ? 'bg-slate-950 text-white dark:bg-blue-600 rounded-tr-xs'
+                                  : 'bg-white text-slate-900 border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 rounded-tl-xs'
                               }`}
                             >
-                              <span>{formatTime(message.createdAt)}</span>
-                              {isAdmin && (
-                                <span>
-                                  {message.isRead ? (
-                                    <CheckCheck className="h-3 w-3 text-blue-600" />
-                                  ) : (
-                                    <Check className="h-3 w-3" />
-                                  )}
-                                </span>
+                              {!isAdmin && (
+                                <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                                  {message.sender.name || 'Customer'}
+                                </p>
                               )}
+
+                              {renderMessageContent(message, isAdmin)}
+
+                              {/* Timestamp & Read Status */}
+                              <div
+                                className={`mt-1.5 flex items-center justify-end gap-1 text-[9.5px] font-medium ${
+                                  isAdmin ? 'text-slate-400 dark:text-blue-200' : 'text-slate-400'
+                                }`}
+                              >
+                                <span>{formattedTime}</span>
+                                {isAdmin && (
+                                  <span>
+                                    {message.isRead ? (
+                                      <CheckCheck className="h-3 w-3 text-blue-400 inline" />
+                                    ) : (
+                                      <Check className="h-3 w-3 text-slate-400 inline" />
+                                    )}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </React.Fragment>
                     )
                   })
                 )}
-                <div ref={messagesEndRef} />
               </div>
 
-              {/* Message Input */}
-              <div className="border-t border-gray-200 p-4">
+              {/* Bottom Message Input Bar */}
+              <div className="shrink-0 border-t border-slate-200/80 bg-white p-3 sm:p-3.5 dark:border-slate-800 dark:bg-slate-900 space-y-2">
+                
+                {/* Action Shortcuts */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={openCatalogModal}
-                    className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
-                    title="Rekomendasikan Produk"
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-950 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                   >
-                    <Package className="h-5 w-5" />
+                    <Package className="h-3 w-3 text-orange-500" />
+                    <span>Rekomendasikan Gadget</span>
                   </button>
+
                   <button
                     onClick={openOrderModal}
-                    className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
-                    title="Bagikan Order"
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-950 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                   >
-                    <ShoppingBag className="h-5 w-5" />
+                    <ShoppingBag className="h-3 w-3 text-blue-500" />
+                    <span>Bagikan Order</span>
                   </button>
-                  <div className="flex-1">
-                    <textarea
-                      value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault()
-                          handleSendMessage('text')
-                        }
-                      }}
-                      placeholder="Ketik pesan..."
-                      rows={1}
-                      className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
+                </div>
+
+                {/* Input & Send Button */}
+                <div className="flex items-center gap-2">
+                  {/* Hidden File Input for Photo & Video Upload */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept="image/*,video/*"
+                    className="hidden"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingMedia}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition"
+                    title="Kirim Foto / Video"
+                  >
+                    {uploadingMedia ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                  </button>
+
+                  <input
+                    type="text"
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendMessage('text')
+                      }
+                    }}
+                    placeholder="Tulis balasan untuk customer..."
+                    className="flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+
                   <button
                     onClick={() => handleSendMessage('text')}
-                    className="self-start rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 p-2 text-white hover:shadow-lg disabled:opacity-50"
                     disabled={!messageInput.trim() || sending}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white shadow-xs hover:bg-slate-800 active:scale-95 disabled:opacity-40 transition dark:bg-white dark:text-slate-950"
+                    title="Kirim Pesan"
                   >
                     {sending ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Send className="h-5 w-5" />
+                      <Send className="h-4 w-4" />
                     )}
                   </button>
                 </div>
+
               </div>
-            </div>
+            </>
           ) : (
-            <div className="flex h-[600px] items-center justify-center rounded-2xl border border-gray-200 bg-white">
-              <div className="text-center">
-                <MessageSquare className="mx-auto h-16 w-16 text-gray-400" />
-                <p className="mt-4 text-gray-600">
-                  Pilih chat untuk memulai percakapan
-                </p>
+            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-slate-400">
+              <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-2xs border border-slate-200/80 dark:border-slate-800 dark:bg-slate-900 mb-3">
+                <MessageSquare className="h-7 w-7 text-orange-500" />
               </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Pilih Percakapan Customer
+              </h3>
+              <p className="mt-1 max-w-xs text-xs text-slate-500">
+                Pilih percakapan dari daftar di sebelah kiri untuk mulai merespon customer toko.
+              </p>
             </div>
           )}
         </div>
+
       </div>
 
-      {/* Catalog Modal - Enhanced with Tabs */}
-      {showCatalogModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-            {/* Header with Gradient */}
-            <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-4 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold">
-                    📦 Katalog & Rekomendasi
+      {/* 3. Catalog Recommendation Modal (Portal-based Bento Card) */}
+      {mounted && showCatalogModal && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col max-h-[85vh]"
+          >
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Katalog & Rekomendasi Unit Toko
                   </h3>
-                  <p className="text-sm text-white/80">
-                    Pilih item untuk dikirim ke customer
-                  </p>
+                  <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-black text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
+                    {catalogItems.length} Produk
+                  </span>
                 </div>
-                <button
-                  onClick={() => setShowCatalogModal(false)}
-                  className="rounded-full p-2 transition-colors hover:bg-white/20"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Pilih gadget dari inventori toko untuk dibagikan langsung ke customer
+                </p>
               </div>
+              <button
+                onClick={() => setShowCatalogModal(false)}
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            {/* Tabs */}
-            <div className="border-b border-gray-200 bg-gray-50">
-              <div className="flex">
-                <button
-                  onClick={() => setCatalogTab('sparepart')}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                    catalogTab === 'sparepart'
-                      ? 'border-b-2 border-blue-600 bg-white text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <Package className="h-4 w-4" />
-                  Sparepart
-                </button>
-                <button
-                  onClick={() => setCatalogTab('sewa')}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                    catalogTab === 'sewa'
-                      ? 'border-b-2 border-green-600 bg-white text-green-600'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <Hammer className="h-4 w-4" />
-                  Sewa Alat
-                </button>
-                <button
-                  onClick={() => setCatalogTab('teknisi')}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                    catalogTab === 'teknisi'
-                      ? 'border-b-2 border-orange-600 bg-white text-orange-600'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <Wrench className="h-4 w-4" />
-                  Teknisi
-                </button>
-                <button
-                  onClick={() => setCatalogTab('mitra')}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                    catalogTab === 'mitra'
-                      ? 'border-b-2 border-purple-600 bg-white text-purple-600'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <Users className="h-4 w-4" />
-                  Mitra
-                </button>
-              </div>
-            </div>
-
-            {/* Search */}
-            <div className="border-b border-gray-100 bg-white p-4">
+            {/* Search Input Bar */}
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder={`Cari ${catalogTab === 'sparepart' ? 'produk' : catalogTab === 'sewa' ? 'alat sewa' : catalogTab === 'teknisi' ? 'teknisi' : 'mitra'}...`}
+                  placeholder="Cari merek, model gadget (misal: iPhone 15, Galaxy S24)..."
                   value={catalogSearch}
                   onChange={(e) => {
                     setCatalogSearch(e.target.value)
-                    if (catalogTab === 'teknisi' || catalogTab === 'mitra') {
-                      searchPeople(e.target.value)
-                    } else {
-                      searchCatalog(e.target.value)
-                    }
+                    fetchCatalogItems(e.target.value)
                   }}
-                  className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white transition"
                 />
               </div>
             </div>
 
-            {/* Content */}
-            <div className="max-h-96 overflow-y-auto p-4">
-              {/* Sparepart Tab */}
-              {catalogTab === 'sparepart' &&
-                (catalogLoading ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            {/* Product List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[240px] max-h-[420px]">
+              {catalogLoading ? (
+                <div className="py-16 text-center">
+                  <Loader2 className="h-7 w-7 animate-spin mx-auto text-orange-500" />
+                  <p className="text-xs text-slate-400 mt-2 font-medium">Memuat katalog produk toko...</p>
+                </div>
+              ) : catalogItems.length === 0 ? (
+                <div className="py-16 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 mx-auto mb-2 text-slate-400">
+                    <Package className="h-6 w-6" />
                   </div>
-                ) : catalogItems.filter((i) => i.type === 'product').length ===
-                  0 ? (
-                  <div className="py-12 text-center">
-                    <Package className="mx-auto h-12 w-12 text-gray-300" />
-                    <p className="mt-3 text-gray-500">Tidak ada produk</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {catalogItems
-                      .filter((i) => i.type === 'product')
-                      .map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => sendProductRecommendation(item)}
-                          className="group flex items-center gap-3 rounded-xl border border-gray-200 p-3 text-left transition-all hover:border-blue-300 hover:bg-blue-50"
-                        >
-                          {item.images?.[0] ? (
-                            <img
-                              src={item.images[0]}
-                              alt={item.name}
-                              className="h-14 w-14 rounded-lg object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gray-100">
-                              <Package className="h-6 w-6 text-gray-400" />
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium text-gray-900 group-hover:text-blue-600">
-                              {item.name}
-                            </p>
-                            <p className="text-sm font-bold text-blue-600">
-                              Rp {(item.price || 0).toLocaleString('id-ID')}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Stock: {item.stock}
-                            </p>
-                          </div>
-                        </button>
-                      ))}
-                  </div>
-                ))}
-
-              {/* Sewa Tab */}
-              {catalogTab === 'sewa' &&
-                (catalogLoading ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-                  </div>
-                ) : catalogItems.filter((i) => i.type === 'rental').length ===
-                  0 ? (
-                  <div className="py-12 text-center">
-                    <Hammer className="mx-auto h-12 w-12 text-gray-300" />
-                    <p className="mt-3 text-gray-500">Tidak ada alat sewa</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {catalogItems
-                      .filter((i) => i.type === 'rental')
-                      .map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => sendProductRecommendation(item)}
-                          className="group flex items-center gap-3 rounded-xl border border-gray-200 p-3 text-left transition-all hover:border-green-300 hover:bg-green-50"
-                        >
-                          {item.images?.[0] ? (
-                            <img
-                              src={item.images[0]}
-                              alt={item.name}
-                              className="h-14 w-14 rounded-lg object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gray-100">
-                              <Hammer className="h-6 w-6 text-gray-400" />
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium text-gray-900 group-hover:text-green-600">
-                              {item.name}
-                            </p>
-                            <p className="text-sm font-bold text-green-600">
-                              Rp{' '}
-                              {(item.pricePerDay || 0).toLocaleString('id-ID')}
-                              /hari
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Stock: {item.stock}
-                            </p>
-                          </div>
-                        </button>
-                      ))}
-                  </div>
-                ))}
-
-              {/* Teknisi Tab */}
-              {catalogTab === 'teknisi' &&
-                (peopleLoading ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
-                  </div>
-                ) : technicianItems.length === 0 ? (
-                  <div className="py-12 text-center">
-                    <Wrench className="mx-auto h-12 w-12 text-gray-300" />
-                    <p className="mt-3 text-gray-500">Tidak ada teknisi</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {technicianItems.map((tech) => (
-                      <button
-                        key={tech.id}
-                        onClick={() => sendTechnicianRecommendation(tech)}
-                        className="group flex items-center gap-3 rounded-xl border border-gray-200 p-3 text-left transition-all hover:border-orange-300 hover:bg-orange-50"
-                      >
-                        {tech.image ? (
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Tidak ada produk ditemukan</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Coba gunakan kata kunci pencarian merek atau model lain</p>
+                </div>
+              ) : (
+                catalogItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-slate-300 bg-white hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/80 transition-all gap-3 shadow-2xs"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800 p-1.5 flex items-center justify-center">
+                        {item.images?.[0] ? (
                           <img
-                            src={tech.image}
-                            alt={tech.name || ''}
-                            className="h-14 w-14 rounded-full object-cover"
+                            src={item.images[0]}
+                            alt={item.name}
+                            className="h-full w-full object-contain"
                           />
                         ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-red-500">
-                            <span className="text-xl font-bold text-white">
-                              {(tech.name || 'T').charAt(0)}
-                            </span>
-                          </div>
+                          <Package className="h-6 w-6 text-slate-300" />
                         )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-gray-900 group-hover:text-orange-600">
-                            {tech.name}
-                          </p>
-                          <div className="mt-0.5 flex items-center gap-1">
-                            <Star className="h-3.5 w-3.5 fill-yellow-500 text-yellow-500" />
-                            <span className="text-sm font-medium">
-                              {tech.rating?.toFixed(1) || '0.0'}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              ({tech.totalReview} review)
-                            </span>
-                          </div>
-                          <p className="truncate text-xs text-gray-500">
-                            {tech.specialties?.slice(0, 2).join(', ')}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ))}
+                      </div>
 
-              {/* Mitra Tab */}
-              {catalogTab === 'mitra' &&
-                (peopleLoading ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-                  </div>
-                ) : mitraItems.length === 0 ? (
-                  <div className="py-12 text-center">
-                    <Users className="mx-auto h-12 w-12 text-gray-300" />
-                    <p className="mt-3 text-gray-500">Tidak ada mitra</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {mitraItems.map((mitra) => (
-                      <button
-                        key={mitra.id}
-                        onClick={() => sendMitraRecommendation(mitra)}
-                        className="group flex items-center gap-3 rounded-xl border border-gray-200 p-3 text-left transition-all hover:border-purple-300 hover:bg-purple-50"
-                      >
-                        {mitra.image ? (
-                          <img
-                            src={mitra.image}
-                            alt={mitra.name || ''}
-                            className="h-14 w-14 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500">
-                            <span className="text-xl font-bold text-white">
-                              {(mitra.name || 'M').charAt(0)}
-                            </span>
-                          </div>
+                      <div className="min-w-0 flex-1">
+                        {item.brand && (
+                          <span className="text-[9.5px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                            {item.brand}
+                          </span>
                         )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-gray-900 group-hover:text-purple-600">
-                            {mitra.name}
-                          </p>
-                          <p className="truncate text-sm text-gray-500">
-                            {mitra.email}
-                          </p>
-                          {mitra.phone && (
-                            <p className="text-xs text-gray-400">
-                              {mitra.phone}
-                            </p>
-                          )}
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                          {item.name}
+                        </h4>
+                        
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="font-mono text-xs sm:text-sm font-black text-orange-600 dark:text-orange-400">
+                            Rp {item.price?.toLocaleString('id-ID')}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                            <span className={`h-1.5 w-1.5 rounded-full ${(item.stock ?? 0) > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            Stok: {item.stock ?? 0} Unit
+                          </span>
                         </div>
-                      </button>
-                    ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        handleSendMessage('product', null, {
+                          id: item.id,
+                          name: item.name,
+                          price: item.price,
+                          image: item.images?.[0],
+                          stock: item.stock ?? 0,
+                          brand: item.brand,
+                        })
+                        setShowCatalogModal(false)
+                      }}
+                      className="shrink-0 px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold shadow-xs active:scale-95 transition cursor-pointer dark:bg-white dark:text-slate-950"
+                    >
+                      Kirim
+                    </button>
                   </div>
-                ))}
+                ))
+              )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Order Modal */}
+      {/* 4. Order Recommendation Modal */}
       {showOrderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-gray-200 p-4">
-              <h3 className="text-lg font-semibold">Bagikan Order</h3>
-              <button
-                onClick={() => setShowOrderModal(false)}
-                className="rounded-lg p-1 hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Bagikan Pesanan Terkait</h3>
+                <p className="text-xs text-slate-400">Kirim referensi status pesanan ke percakapan</p>
+              </div>
+              <button onClick={() => setShowOrderModal(false)} className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100">
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="p-4">
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari order number..."
-                  value={orderSearch}
-                  onChange={(e) => {
-                    setOrderSearch(e.target.value)
-                    searchOrders(e.target.value)
-                  }}
-                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div className="max-h-80 space-y-2 overflow-y-auto">
-                {orderLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                  </div>
-                ) : orderItems.length === 0 ? (
-                  <p className="py-8 text-center text-gray-500">
-                    Tidak ada order
-                  </p>
-                ) : (
-                  orderItems.map((order) => (
+            <div className="max-h-80 overflow-y-auto p-4 space-y-2">
+              {orderLoading ? (
+                <div className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-orange-500" /></div>
+              ) : orderItems.length === 0 ? (
+                <p className="py-8 text-center text-xs text-slate-400">Tidak ada pesanan ditemukan</p>
+              ) : (
+                orderItems.map((ord) => (
+                  <div key={ord.id} className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 hover:bg-slate-50 transition">
+                    <div>
+                      <span className="font-mono text-xs font-bold text-slate-900">#{ord.orderNumber}</span>
+                      <p className="text-xs font-bold text-slate-600">Total: Rp {ord.total?.toLocaleString('id-ID')}</p>
+                    </div>
                     <button
-                      key={order.id}
-                      onClick={() => sendOrderInfo(order)}
-                      className="w-full rounded-lg border border-gray-200 p-3 text-left transition-colors hover:bg-gray-50"
+                      onClick={() => handleSendMessage('order', null, {
+                        orderNumber: ord.orderNumber,
+                        total: ord.total,
+                        status: ord.status,
+                        items: ord.items,
+                      })}
+                      className="px-3 py-1.5 rounded-xl bg-slate-950 text-white text-xs font-bold hover:bg-slate-800 transition"
                     >
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold text-gray-900">
-                          {order.orderNumber}
-                        </p>
-                        {getStatusBadge(order.status)}
-                      </div>
-                      <p className="mt-1 text-sm text-gray-600">
-                        {order.items?.length || 0} item • Rp{' '}
-                        {order.total.toLocaleString('id-ID')}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {formatTime(order.createdAt)}
-                      </p>
+                      Bagikan
                     </button>
-                  ))
-                )}
-              </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
       )}
+
     </div>
   )
 }

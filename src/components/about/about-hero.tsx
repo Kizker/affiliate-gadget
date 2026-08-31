@@ -16,7 +16,7 @@ export default function AboutHero() {
       <div className="relative z-10 flex min-h-[60vh] items-center">
         <div className="container mx-auto px-4 py-20 text-center">
           <h1 className="mb-6 text-5xl font-bold text-white md:text-6xl lg:text-7xl">
-            Tentang HaloTekno
+            Tentang Affiliate Gadget
           </h1>
           <p className="mx-auto max-w-3xl text-xl text-white/90 md:text-2xl">
             Platform digital terpercaya untuk solusi servis HP, sparepart

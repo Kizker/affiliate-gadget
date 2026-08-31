@@ -109,10 +109,10 @@ export default function RentalConfirmationPage({
           Pesanan tidak ditemukan
         </h2>
         <Link
-          href="/dashboard/customer"
+          href="/"
           className="mt-4 text-purple-600 hover:underline"
         >
-          Kembali ke Dashboard
+          Kembali ke Beranda
         </Link>
       </div>
     )

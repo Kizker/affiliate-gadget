@@ -36,7 +36,10 @@ export async function PATCH(
     }
 
     // Check authorization
-    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+    const isSuperOrAdmin = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN'
+    const isStoreAdminOfOrder = user.role === 'STORE_ADMIN' && user.storeId && order.storeId === user.storeId
+
+    if (!isSuperOrAdmin && !isStoreAdminOfOrder) {
       const technician = await prisma.technician.findUnique({
         where: { userId: user.id },
       })

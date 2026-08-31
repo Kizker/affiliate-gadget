@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from 'next-auth'
 
 export const authConfig = {
+  basePath: '/api/auth',
   trustHost: true,
   pages: {
     signIn: '/login',
@@ -24,7 +25,6 @@ export const authConfig = {
         '/dashboard/admin',
         '/dashboard/mitra',
         '/dashboard/teknisi',
-        '/cart',
         '/checkout',
       ]
       const isProtectedRoute = protectedRoutes.some((route) =>
@@ -45,13 +45,14 @@ export const authConfig = {
         token.name = user.name
         token.email = user.email
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.image = (user.image && !user.image.startsWith('data:') && user.image.length < 500) ? user.image : null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.isTechnician = (user as any).isTechnician || false
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.mitraStatus = (user as any).mitraStatus || null
       }
-      // Remove picture/image to prevent bloat
+      // Remove raw huge pictures to prevent bloat
       delete token.picture
-      delete token.image
       return token
     },
     // Session callback - needed for middleware to access user data
@@ -62,6 +63,7 @@ export const authConfig = {
         session.user.role = token.role as any
         session.user.name = token.name as string
         session.user.email = token.email as string
+        session.user.image = (token.image as string) || null
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(session.user as any).isTechnician = token.isTechnician as boolean
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

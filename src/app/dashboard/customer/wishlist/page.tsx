@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Heart } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Wishlist | HaloTekno',
+  title: 'Wishlist | Affiliate Gadget',
   description: 'Daftar keinginan produk dan jasa servis Anda',
 }
 

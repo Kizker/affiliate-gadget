@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, Mail, Lock, User, Chrome } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Store, Loader2, ArrowRight, ShieldCheck } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -18,7 +18,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'CUSTOMER', // Default to customer
+    role: 'CUSTOMER',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,13 +27,13 @@ export default function RegisterPage() {
     setError('')
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Password tidak cocok')
+      setError('Konfirmasi kata sandi tidak cocok.')
       setIsLoading(false)
       return
     }
 
     if (formData.password.length < 6) {
-      setError('Password minimal 6 karakter')
+      setError('Kata sandi minimal 6 karakter.')
       setIsLoading(false)
       return
     }
@@ -54,7 +54,7 @@ export default function RegisterPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Registrasi gagal')
+        throw new Error(data.error || 'Registrasi akun gagal.')
       }
 
       // Auto login after registration
@@ -65,19 +65,18 @@ export default function RegisterPage() {
       })
 
       if (result?.error) {
-        setError('Registrasi berhasil, silakan login')
-        setTimeout(() => router.push('/login'), 2000)
+        setError('Akun berhasil dibuat, silakan masuk.')
+        setTimeout(() => router.push('/login'), 1500)
       } else {
-        // Redirect based on role
         if (formData.role === 'MITRA') {
           router.push('/dashboard/mitra/pending')
         } else {
-          router.push('/dashboard/customer')
+          router.push('/')
         }
         router.refresh()
       }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Terjadi kesalahan. Silakan coba lagi.')
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'Terjadi kendala saat pendaftaran.')
     } finally {
       setIsLoading(false)
     }
@@ -85,138 +84,141 @@ export default function RegisterPage() {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
-    await signIn('google', { callbackUrl: '/dashboard/customer' })
+    await signIn('google', { callbackUrl: '/' })
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Background Image with Overlay */}
-      <div className="absolute inset-0">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              'url(https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1920&q=80)',
-          }}
-        ></div>
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-cyan-50/90 to-blue-50/95"></div>
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col justify-between relative selection:bg-orange-500 selection:text-white">
+      
+      {/* Subtle Ambient Background */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] bg-gradient-to-b from-blue-100/30 via-slate-100/20 to-transparent blur-3xl dark:from-slate-800/20" />
       </div>
 
-      {/* Animated Background Elements */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute right-10 top-20 h-72 w-72 animate-pulse rounded-full bg-cyan-400/20 blur-3xl"></div>
-        <div className="absolute bottom-20 left-10 h-96 w-96 animate-pulse rounded-full bg-blue-400/20 blur-3xl"></div>
-      </div>
+      {/* Top Simple Header Bar */}
+      <header className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 group focus:outline-none"
+          aria-label="Affiliate Gadget Beranda"
+        >
+          <img
+            src="/logo.png"
+            alt="Affiliate Gadget Logo"
+            className="h-8 w-8 rounded-xl object-contain shadow-2xs transition-transform duration-200 group-hover:scale-105"
+          />
+          <span className="text-base font-black tracking-tight text-slate-950 dark:text-white leading-none">
+            Affiliate<span className="text-orange-500">Gadget</span>
+          </span>
+        </Link>
 
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
-          {/* Logo/Title */}
-          <div className="mb-8 text-center">
-            <h1 className="mb-2 bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-4xl font-bold text-transparent">
-              HaloTekno
-            </h1>
-            <p className="text-gray-600">Buat akun baru Anda</p>
-          </div>
+        <Link
+          href="/"
+          className="text-xs font-semibold text-slate-500 hover:text-slate-950 transition-colors dark:text-slate-400 dark:hover:text-white"
+        >
+          ← Kembali ke Beranda
+        </Link>
+      </header>
 
-          {/* Register Card */}
-          <div className="rounded-2xl border border-gray-200 bg-white/90 p-8 shadow-2xl backdrop-blur-sm">
-            {error && (
-              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
+      {/* Main Form Center */}
+      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[500px]">
+          
+          {/* Card Container */}
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-7 sm:p-9 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+            
+            {/* Header with Logo & Simplified Title */}
+            <div className="text-center mb-6 flex flex-col items-center">
+              <Link
+                href="/"
+                className="mb-3 inline-block group focus:outline-none"
+                aria-label="Affiliate Gadget Beranda"
+              >
+                <img
+                  src="/logo.png"
+                  alt="Affiliate Gadget"
+                  className="h-11 w-11 rounded-2xl object-contain shadow-2xs transition-transform duration-200 group-hover:scale-105"
+                />
+              </Link>
+              <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">
+                Daftar
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Buat akun baru untuk mulai bertransaksi
+              </p>
+            </div>
 
-            {/* Role Selection Tabs */}
-            <div className="mb-6">
-              <p className="mb-3 text-center text-sm font-medium text-gray-700">Daftar Sebagai</p>
-              <div className="grid grid-cols-2 gap-3">
+            {/* Role Selection Dual Cards */}
+            <div className="mb-6 space-y-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 text-center">
+                Pilih Jenis Akun
+              </label>
+              
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'CUSTOMER' })}
-                  className={`group relative overflow-hidden rounded-xl border-2 p-4 transition-all ${formData.role === 'CUSTOMER'
-                    ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50'
-                    : 'border-gray-200 bg-white hover:border-blue-300'
-                    }`}
+                  className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition-all duration-200 ${
+                    formData.role === 'CUSTOMER'
+                      ? 'border-slate-950 bg-slate-950 text-white shadow-xs dark:border-white dark:bg-white dark:text-slate-950'
+                      : 'border-slate-200/80 bg-slate-50/60 text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400'
+                  }`}
                 >
-                  <div className="flex flex-col items-center">
-                    <User className={`mb-2 h-8 w-8 ${formData.role === 'CUSTOMER' ? 'text-blue-600' : 'text-gray-400'}`} />
-                    <span className={`font-semibold ${formData.role === 'CUSTOMER' ? 'text-blue-600' : 'text-gray-700'}`}>
-                      Customer
-                    </span>
-                    <span className="mt-1 text-xs text-gray-500">Pengguna Biasa</span>
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${formData.role === 'CUSTOMER' ? 'bg-white/20 text-white dark:bg-slate-900/10 dark:text-slate-950' : 'bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-200 shadow-2xs'}`}>
+                    <User className="h-4 w-4" />
                   </div>
-                  {formData.role === 'CUSTOMER' && (
-                    <div className="absolute right-2 top-2">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600">
-                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-xs font-bold leading-tight">Customer</p>
+                    <p className="text-[10px] opacity-75">Beli Smartphone</p>
+                  </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'MITRA' })}
-                  className={`group relative overflow-hidden rounded-xl border-2 p-4 transition-all ${formData.role === 'MITRA'
-                    ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50'
-                    : 'border-gray-200 bg-white hover:border-green-300'
-                    }`}
+                  className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition-all duration-200 ${
+                    formData.role === 'MITRA'
+                      ? 'border-slate-950 bg-slate-950 text-white shadow-xs dark:border-white dark:bg-white dark:text-slate-950'
+                      : 'border-slate-200/80 bg-slate-50/60 text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400'
+                  }`}
                 >
-                  <div className="flex flex-col items-center">
-                    <svg
-                      className={`mb-2 h-8 w-8 ${formData.role === 'MITRA' ? 'text-green-600' : 'text-gray-400'}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 0 011 1v5m-4 0h4"
-                      />
-                    </svg>
-                    <span className={`font-semibold ${formData.role === 'MITRA' ? 'text-green-600' : 'text-gray-700'}`}>
-                      Mitra
-                    </span>
-                    <span className="mt-1 text-xs text-gray-500">Partner Bisnis</span>
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${formData.role === 'MITRA' ? 'bg-white/20 text-white dark:bg-slate-900/10 dark:text-slate-950' : 'bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-200 shadow-2xs'}`}>
+                    <Store className="h-4 w-4" />
                   </div>
-                  {formData.role === 'MITRA' && (
-                    <div className="absolute right-2 top-2">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-600">
-                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-xs font-bold leading-tight">Mitra Toko</p>
+                    <p className="text-[10px] opacity-75">Daftar Akun Toko</p>
+                  </div>
                 </button>
               </div>
+
               {formData.role === 'MITRA' && (
-                <div className="mt-3 rounded-lg bg-blue-50 p-3 text-center">
-                  <p className="text-sm text-blue-700">
-                    ℹ️ Akun mitra akan direview oleh admin sebelum diaktifkan
-                  </p>
+                <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-slate-500 dark:text-slate-400 animate-in fade-in duration-200">
+                  <ShieldCheck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span>Verifikasi pendaftaran toko diproses setelah registrasi</span>
                 </div>
               )}
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Name Field */}
-              <div>
+            {/* Error Notification Banner */}
+            {error && (
+              <div className="mb-5 rounded-2xl bg-rose-50 p-3.5 text-xs font-semibold text-rose-700 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-300 animate-in fade-in duration-150">
+                {error}
+              </div>
+            )}
+
+            {/* Registration Form */}
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              
+              {/* Name Input */}
+              <div className="space-y-1.5">
                 <label
                   htmlFor="name"
-                  className="mb-2 block text-sm font-medium text-gray-700"
+                  className="block text-xs font-bold text-slate-700 dark:text-slate-300"
                 >
                   Nama Lengkap
                 </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
+                <div className="relative flex items-center">
                   <input
                     id="name"
                     name="name"
@@ -227,24 +229,22 @@ export default function RegisterPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:ring-2 focus:ring-blue-500"
-                    placeholder="John Doe"
+                    placeholder="Contoh: Budi Santoso"
+                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
+                  <User className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                 </div>
               </div>
 
-              {/* Email Field */}
-              <div>
+              {/* Email Input */}
+              <div className="space-y-1.5">
                 <label
                   htmlFor="email"
-                  className="mb-2 block text-sm font-medium text-gray-700"
+                  className="block text-xs font-bold text-slate-700 dark:text-slate-300"
                 >
-                  Email
+                  Alamat Email
                 </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                  </div>
+                <div className="relative flex items-center">
                   <input
                     id="email"
                     name="email"
@@ -255,24 +255,22 @@ export default function RegisterPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                     placeholder="nama@email.com"
+                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
+                  <Mail className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                 </div>
               </div>
 
-              {/* Password Field */}
-              <div>
+              {/* Password Input */}
+              <div className="space-y-1.5">
                 <label
                   htmlFor="password"
-                  className="mb-2 block text-sm font-medium text-gray-700"
+                  className="block text-xs font-bold text-slate-700 dark:text-slate-300"
                 >
-                  Password
+                  Kata Sandi
                 </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
+                <div className="relative flex items-center">
                   <input
                     id="password"
                     name="password"
@@ -283,35 +281,34 @@ export default function RegisterPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, password: e.target.value })
                     }
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-12 text-gray-900 placeholder-gray-400 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                     placeholder="Minimal 6 karakter"
+                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-11 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
+                  <Lock className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
+                    aria-label="Toggle password visibility"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-4 w-4" />
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* Confirm Password Field */}
-              <div>
+              {/* Confirm Password Input */}
+              <div className="space-y-1.5">
                 <label
                   htmlFor="confirmPassword"
-                  className="mb-2 block text-sm font-medium text-gray-700"
+                  className="block text-xs font-bold text-slate-700 dark:text-slate-300"
                 >
-                  Konfirmasi Password
+                  Konfirmasi Kata Sandi
                 </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
+                <div className="relative flex items-center">
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -320,86 +317,112 @@ export default function RegisterPage() {
                     required
                     value={formData.confirmPassword}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        confirmPassword: e.target.value,
-                      })
+                      setFormData({ ...formData, confirmPassword: e.target.value })
                     }
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-12 text-gray-900 placeholder-gray-400 focus:border-transparent focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ulangi password"
+                    placeholder="Ulangi kata sandi"
+                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-11 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
+                  <Lock className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
+                    aria-label="Toggle confirm password visibility"
                   >
                     {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-4 w-4" />
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex w-full justify-center rounded-lg border border-transparent bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:from-cyan-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isLoading ? 'Memproses...' : 'Daftar'}
-              </button>
+              {/* Submit CTA Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 hover:bg-orange-600 active:scale-98 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Mendaftarkan Akun...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Daftar Akun Sekarang</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
 
             {/* Divider */}
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-2 text-gray-500">
-                    Atau daftar dengan
-                  </span>
-                </div>
-              </div>
+            <div className="my-5 relative flex items-center justify-center">
+              <div className="w-full border-t border-slate-200/80 dark:border-slate-800" />
+              <span className="absolute bg-white px-3 text-[11px] font-semibold text-slate-400 dark:bg-slate-900">
+                atau
+              </span>
             </div>
 
-            {/* Google Sign In */}
+            {/* Google OAuth Button */}
             <button
               type="button"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="mt-6 flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2.5 rounded-full border border-slate-200/80 bg-white py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
             >
-              <Chrome className="h-5 w-5" />
-              Google
+              <svg className="h-4 w-4" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>Daftar dengan Google</span>
             </button>
 
-            {/* Sign In Link */}
-            <p className="mt-6 text-center text-sm text-gray-600">
-              Sudah punya akun?{' '}
+            {/* Login Link */}
+            <p className="mt-5 text-center text-xs text-slate-500 dark:text-slate-400">
+              Sudah memiliki akun?{' '}
               <Link
                 href="/login"
-                className="font-medium text-blue-600 hover:text-blue-500"
+                className="font-bold text-slate-950 hover:underline dark:text-white"
               >
-                Masuk sekarang
+                Masuk di sini
               </Link>
             </p>
+
           </div>
 
-          {/* Back to Home */}
-          <div className="mt-6 text-center">
-            <Link
-              href="/"
-              className="text-sm text-gray-600 transition-colors hover:text-blue-600"
-            >
-              ← Kembali ke Beranda
-            </Link>
+          {/* Trust Security Footer Tag */}
+          <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Koneksi Akun Aman & Terlindungi 100%</span>
           </div>
+
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 py-6 text-center text-[11px] text-slate-400 border-t border-slate-200/50 dark:border-slate-800/50">
+        © {new Date().getFullYear()} Affiliate Gadget. All rights reserved. Jaringan Toko Smartphone Resmi & Terpercaya.
+      </footer>
+
     </div>
   )
 }

@@ -14,7 +14,7 @@ const initialMessages: Message[] = [
     {
         id: '1',
         type: 'bot',
-        text: 'Halo! 👋 Selamat datang di HaloTekno. Saya asisten virtual yang siap membantu konsultasi masalah gadget Anda. Silakan ceritakan masalah yang Anda alami.',
+        text: 'Halo! 👋 Selamat datang di Affiliate Gadget. Saya asisten virtual yang siap membantu konsultasi masalah gadget Anda. Silakan ceritakan masalah yang Anda alami.',
         time: 'Baru saja',
     },
 ]
@@ -62,7 +62,7 @@ export default function ChatWindow() {
                     <Bot className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                    <h3 className="font-semibold text-white">Asisten HaloTekno</h3>
+                    <h3 className="font-semibold text-white">Asisten Affiliate Gadget</h3>
                     <p className="text-xs text-blue-100">Online • Siap membantu</p>
                 </div>
             </div>

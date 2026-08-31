@@ -17,7 +17,7 @@ export default function MitraPendingPage() {
       session?.user?.role === 'MITRA' &&
       session.user.mitraStatus === 'APPROVED'
     ) {
-      router.push('/dashboard/customer')
+      router.push('/dashboard/mitra')
     }
   }, [session, status, router])
 
@@ -155,10 +155,10 @@ export default function MitraPendingPage() {
           <p className="mt-4 text-center text-xs text-gray-500">
             Butuh bantuan?{' '}
             <a
-              href="mailto:support@halotekno.com"
+              href="mailto:support@affiliategadget.com"
               className="font-medium text-blue-600 hover:underline"
             >
-              support@halotekno.com
+              support@affiliategadget.com
             </a>
           </p>
         </div>

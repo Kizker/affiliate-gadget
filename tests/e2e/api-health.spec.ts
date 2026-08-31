@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * HaloTekno - API Health Check Tests
+ * Affiliate Gadget - API Health Check Tests
  * Tests all API endpoints for availability and basic responses
  */
 

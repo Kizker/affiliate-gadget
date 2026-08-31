@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
+import { isAdminStaffRole } from '@/lib/dashboard-utils'
 
 // GET - Get all orders for admin with pagination, search, and claim filter
 export async function GET(request: Request) {
@@ -10,17 +11,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is admin
+    // Check if user is admin, staff, or technician
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
     })
 
-    if (
-      !user ||
-      (user.role !== 'ADMIN' &&
-        user.role !== 'SUPER_ADMIN' &&
-        user.role !== 'TECHNICIAN')
-    ) {
+    if (!user || (!isAdminStaffRole(user.role) && user.role !== 'TECHNICIAN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -35,107 +31,60 @@ export async function GET(request: Request) {
 
     const skip = (page - 1) * limit
 
-    // Build where clause
-    interface OrderWhereInput {
-      OR?: Array<{
-        orderNumber?: { contains: string; mode: 'insensitive' }
-        user?: {
-          name?: { contains: string; mode: 'insensitive' }
-          email?: { contains: string; mode: 'insensitive' }
-        }
-      }>
-      status?:
-        | 'PENDING_PAYMENT'
-        | 'PAID'
-        | 'IN_PROGRESS'
-        | 'COMPLETED'
-        | 'CANCELLED'
-      claimedById?: string | null
-      paymentRequestedById?: { not: null } | null
-      technicianPaymentRequestedById?: { not: null } | null
-      items?: {
-        some: {
-          serviceId?: { not: null } | null
-          productId?: { not: null } | null
-          rentalItemId?: { not: null } | null
-        }
-      }
-      // For TECHNICIAN role - only show service orders assigned to them
-      technicianId?: string
-    }
+    // Build where clause using structured AND array
+    const andConditions: import('@prisma/client').Prisma.OrderWhereInput[] = []
 
-    const where: OrderWhereInput = {}
-
-    // Role-based type filtering
-    // ADMIN (Admin Chat) can ONLY see sparepart and rental orders
-    // TECHNICIAN can ONLY see service orders (their own)
-    if (user.role === 'ADMIN') {
-      // Admin Chat sees sparepart and rental only - not service
-      // We need to use a different approach - filter out service orders
-      where.items = { some: { serviceId: null } }
+    // 1. Store Admin scoping (Akun Toko Mandiri)
+    if (user.role === 'STORE_ADMIN' && user.storeId) {
+      andConditions.push({
+        OR: [
+          { storeId: user.storeId },
+          { items: { some: { product: { storeId: user.storeId } } } },
+        ],
+      })
     } else if (user.role === 'TECHNICIAN') {
-      // Technician sees only service orders assigned to them
       const technician = await prisma.technician.findUnique({
         where: { userId: user.id },
       })
       if (technician) {
-        where.technicianId = technician.id
+        andConditions.push({ technicianId: technician.id })
       }
-      where.items = { some: { serviceId: { not: null } } }
+      andConditions.push({ items: { some: { serviceId: { not: null } } } })
     }
 
-    // Search filter (order number, user name, user email)
+    // 2. Search filter (Order number, customer name, email, phone, or product name)
     if (search) {
-      where.OR = [
-        { orderNumber: { contains: search, mode: 'insensitive' } },
-        { user: { name: { contains: search, mode: 'insensitive' } } },
-        { user: { email: { contains: search, mode: 'insensitive' } } },
-      ]
+      andConditions.push({
+        OR: [
+          { orderNumber: { contains: search, mode: 'insensitive' } },
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+          { user: { email: { contains: search, mode: 'insensitive' } } },
+          { user: { phone: { contains: search, mode: 'insensitive' } } },
+          { items: { some: { product: { name: { contains: search, mode: 'insensitive' } } } } },
+        ],
+      })
     }
 
-    // Status filter
-    if (status && status !== 'all') {
-      where.status = status as
-        | 'PENDING_PAYMENT'
-        | 'PAID'
-        | 'IN_PROGRESS'
-        | 'COMPLETED'
-        | 'CANCELLED'
+    // 3. Status filter
+    if (status && status !== 'all' && status !== 'ALL') {
+      andConditions.push({
+        status: status as any,
+      })
     }
 
-    // Claim filter (only for ADMIN, SUPER_ADMIN sees all)
-    if (user.role === 'ADMIN') {
-      if (claimFilter === 'mine') {
-        where.claimedById = user.id
-      } else if (claimFilter === 'unclaimed') {
-        where.claimedById = null
-      }
-      // 'all' shows everything for admin - they can see but not edit others' orders
-    } else if (user.role === 'SUPER_ADMIN') {
-      // SUPER_ADMIN can filter but sees all by default
-      if (claimFilter === 'mine') {
-        where.claimedById = user.id
-      } else if (claimFilter === 'unclaimed') {
-        where.claimedById = null
-      } else if (claimFilter === 'payment_requests') {
-        // Filter for pending payment requests (SUPER_ADMIN only)
-        where.paymentRequestedById = { not: null }
-      } else if (claimFilter === 'technician_payment_requests') {
-        // Filter for pending technician payment requests (SUPER_ADMIN only)
-        where.technicianPaymentRequestedById = { not: null }
-      }
-    }
-
-    // Type filter (only for SUPER_ADMIN - others are auto-filtered)
+    // 4. Type filter (for Superadmin)
     if (user.role === 'SUPER_ADMIN' && type && type !== 'all') {
       if (type === 'service') {
-        where.items = { some: { serviceId: { not: null } } }
+        andConditions.push({ items: { some: { serviceId: { not: null } } } })
       } else if (type === 'sparepart') {
-        where.items = { some: { productId: { not: null } } }
+        andConditions.push({ items: { some: { productId: { not: null } } } })
       } else if (type === 'rental') {
-        where.items = { some: { rentalItemId: { not: null } } }
+        andConditions.push({ items: { some: { rentalItemId: { not: null } } } })
       }
     }
+
+    const where: import('@prisma/client').Prisma.OrderWhereInput =
+      andConditions.length > 0 ? { AND: andConditions } : {}
 
     // Get total count for pagination
     const total = await prisma.order.count({ where })
@@ -153,6 +102,25 @@ export async function GET(request: Request) {
             name: true,
             email: true,
             phone: true,
+            address: true,
+            city: true,
+            province: true,
+            postalCode: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            city: true,
+          },
+        },
+        payment: {
+          select: {
+            status: true,
+            method: true,
+            amount: true,
           },
         },
         claimedBy: {

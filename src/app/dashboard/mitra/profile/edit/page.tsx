@@ -547,7 +547,7 @@ export default function MitraDashboard() {
                 value={profile.banner}
                 onChange={(url) => setProfile({ ...profile, banner: url })}
                 onRemove={() => setProfile({ ...profile, banner: '' })}
-                folder="halotekno/banners"
+                folder="affiliate-gadget/banners"
               />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -830,7 +830,7 @@ export default function MitraDashboard() {
                   })
                 }}
                 maxImages={8}
-                folder="halotekno/gallery"
+                folder="affiliate-gadget/gallery"
               />
             </div>
           )}

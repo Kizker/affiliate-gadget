@@ -532,7 +532,7 @@ export default function TechnicianComplaintsPage() {
                         {complaint.assignedTo ? (
                           <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-2 ring-1 ring-gray-100">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 ring-2 ring-white">
-                              {complaint.assignedTo.name.charAt(0)}
+                              {(complaint.assignedTo.name || 'T').charAt(0)}
                             </div>
                             <div className="text-right sm:text-left">
                               <p className="text-xs text-gray-500">
@@ -752,7 +752,7 @@ export default function TechnicianComplaintsPage() {
                           <div className="space-y-4">
                             <div className="flex items-center gap-3">
                               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-600">
-                                {complaint.user.name.charAt(0)}
+                                {(complaint.user.name || 'U').charAt(0)}
                               </div>
                               <div>
                                 <p className="font-medium text-gray-900">

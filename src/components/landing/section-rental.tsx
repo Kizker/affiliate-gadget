@@ -31,11 +31,11 @@ export default function SectionRental() {
   ]
 
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-white via-blue-50/50 to-cyan-50/60 lg:snap-start">
+    <section className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50/40 lg:snap-start">
       {/* Background Image */}
       <div className="absolute inset-0">
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-5"
           style={{
             backgroundImage:
               'url(https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1920&q=80)',
@@ -45,9 +45,9 @@ export default function SectionRental() {
 
       {/* Animated Background Blobs */}
       <div className="absolute inset-0">
-        <div className="absolute left-20 top-1/4 h-40 w-40 animate-pulse rounded-full bg-blue-400/20 blur-3xl sm:h-72 sm:w-72" />
+        <div className="absolute left-20 top-1/4 h-40 w-40 animate-pulse rounded-full bg-blue-400/10 blur-3xl sm:h-72 sm:w-72" />
         <div
-          className="absolute bottom-1/4 right-20 h-48 w-48 animate-pulse rounded-full bg-cyan-400/20 blur-3xl sm:h-96 sm:w-96"
+          className="absolute bottom-1/4 right-20 h-48 w-48 animate-pulse rounded-full bg-orange-400/10 blur-3xl sm:h-96 sm:w-96"
           style={{ animationDelay: '2s' }}
         />
       </div>
@@ -68,7 +68,7 @@ export default function SectionRental() {
             </span>
             <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900">
               Sewa Alat{' '}
-              <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
                 Profesional
               </span>
             </h2>
@@ -82,7 +82,7 @@ export default function SectionRental() {
               {benefits.map((benefit) => (
                 <div
                   key={benefit.title}
-                  className="flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-md"
+                  className="flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-sm border border-gray-100"
                 >
                   <benefit.icon className="h-4 w-4 text-blue-600" />
                   <span className="text-xs font-medium text-gray-700">
@@ -111,7 +111,7 @@ export default function SectionRental() {
                       <div className="line-clamp-1 text-base font-bold text-white">
                         {items[0].name}
                       </div>
-                      <div className="text-sm font-bold text-cyan-300">
+                      <div className="text-sm font-bold text-orange-400">
                         Rp {items[0].pricePerDay.toLocaleString('id-ID')}/hari
                       </div>
                     </div>
@@ -122,7 +122,7 @@ export default function SectionRental() {
 
             <Link
               href="/sewa-alat"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-105"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-orange-500/25 transition-all hover:scale-105 hover:from-orange-600 hover:to-orange-700"
             >
               Lihat Katalog
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -144,7 +144,7 @@ export default function SectionRental() {
             <h2 className="mb-6 text-4xl font-bold leading-tight text-gray-900 xl:text-6xl">
               Sewa Alat
               <br />
-              <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
                 Profesional
               </span>
             </h2>
@@ -157,7 +157,7 @@ export default function SectionRental() {
               {benefits.map((benefit) => (
                 <div
                   key={benefit.title}
-                  className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-md"
+                  className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm border border-gray-100"
                 >
                   <benefit.icon className="h-5 w-5 text-blue-600" />
                   <span className="text-sm font-medium text-gray-700">
@@ -169,7 +169,7 @@ export default function SectionRental() {
 
             <Link
               href="/sewa-alat"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 font-semibold text-white shadow-xl transition-all hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/30"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-4 font-bold text-white shadow-xl shadow-orange-500/25 transition-all hover:scale-105 hover:from-orange-600 hover:to-orange-700 hover:shadow-2xl hover:shadow-orange-500/40"
             >
               Lihat Katalog Alat
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -205,7 +205,7 @@ export default function SectionRental() {
                       <span className="line-clamp-1 text-sm font-semibold text-white">
                         {item.name}
                       </span>
-                      <span className="text-xs font-bold text-cyan-300">
+                      <span className="text-xs font-bold text-orange-400">
                         Rp {item.pricePerDay.toLocaleString('id-ID')}/hari
                       </span>
                     </div>

@@ -1,17 +1,50 @@
 import { UserRole } from '@prisma/client'
 
-export function getDashboardRoute(role: UserRole): string {
+export const ADMIN_STAFF_ROLES = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'STORE_ADMIN',
+  'STORE_SALES',
+  'FINANCE_ADMIN',
+  'CONTENT_EDITOR',
+] as const
+
+export type AdminStaffRole = (typeof ADMIN_STAFF_ROLES)[number]
+
+export function isAdminStaffRole(role?: string | null): boolean {
+  if (!role) return false
+  return (ADMIN_STAFF_ROLES as readonly string[]).includes(role)
+}
+
+export function isStaffOrPartnerRole(role?: string | null): boolean {
+  if (!role) return false
+  return (
+    isAdminStaffRole(role) ||
+    role === 'TECHNICIAN' ||
+    role === 'MITRA'
+  )
+}
+
+export function getDashboardRoute(
+  role?: UserRole | string | null,
+  mitraStatus?: string | null
+): string {
+  if (!role) return '/'
+
+  if (isAdminStaffRole(role)) {
+    return '/dashboard/admin'
+  }
+
   switch (role) {
-    case 'SUPER_ADMIN':
-    case 'ADMIN':
-      return '/dashboard/admin'
     case 'TECHNICIAN':
       return '/dashboard/teknisi'
     case 'MITRA':
-      return '/dashboard/mitra'
+      return mitraStatus === 'PENDING'
+        ? '/dashboard/mitra/pending'
+        : '/dashboard/mitra'
     case 'CUSTOMER':
     default:
-      return '/dashboard/customer'
+      return '/'
   }
 }
 

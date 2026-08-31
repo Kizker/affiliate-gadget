@@ -106,7 +106,7 @@ export async function PATCH(request: NextRequest) {
       const existingUser = await prisma.user.findFirst({
         where: {
           email,
-          NOT: { id: session.user.id },
+          id: { not: session.user.id },
         },
       })
 

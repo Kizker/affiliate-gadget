@@ -172,7 +172,7 @@ export default function ServiceTechnicianList({
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/40">
+    <div className="min-h-screen bg-slate-50">
       <Navbar variant="light" />
 
       <main className="pb-16 pt-24">

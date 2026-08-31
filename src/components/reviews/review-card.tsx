@@ -71,7 +71,7 @@ export default function ReviewCard({
       {/* User Info */}
       <div className="mb-4 flex items-start gap-4">
         {/* Avatar */}
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white">
           {review.user.image ? (
             <img
               src={review.user.image}

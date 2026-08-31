@@ -65,7 +65,7 @@ export default function CartIcon({ variant = 'dark' }: CartIconProps) {
                     }`}
             />
             {mounted && itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 text-xs font-bold text-white">
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-[10px] font-semibold text-white shadow-sm shadow-orange-500/30">
                     {itemCount > 99 ? '99+' : itemCount}
                 </span>
             )}

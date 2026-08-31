@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client'
 const prismaLocal = new PrismaClient({
   datasources: {
     db: {
-      url: 'postgresql://postgres:postgres@localhost:5432/halotekno',
+      url: 'postgresql://postgres:postgres@localhost:5432/affiliate_gadget',
     },
   },
 })
@@ -64,8 +64,8 @@ async function copyDatabase() {
     for (const product of products) {
       await prismaNeon.product.upsert({
         where: { id: product.id },
-        update: product,
-        create: product,
+        update: product as any,
+        create: product as any,
       })
     }
     console.log(`✅ Copied ${products.length} products`)

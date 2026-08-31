@@ -10,7 +10,7 @@ async function importToNeon() {
   const exportFile = path.join(
     process.cwd(),
     'database-exports',
-    'halotekno_export_2026-01-02T13-32-12.sql'
+    'affiliate_gadget_export_2026-01-02T13-32-12.sql'
   )
 
   if (!fs.existsSync(exportFile)) {

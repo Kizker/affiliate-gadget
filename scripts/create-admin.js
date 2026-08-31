@@ -10,8 +10,8 @@ async function createAdmin() {
         // Create admin user
         const admin = await prisma.user.create({
             data: {
-                email: 'admin@halotekno.com',
-                name: 'Admin HaloTekno',
+                email: 'admin@affiliategadget.com',
+                name: 'Admin Affiliate Gadget',
                 password: hashedPassword,
                 role: 'ADMIN',
                 phone: '081234567890',
@@ -31,7 +31,7 @@ async function createAdmin() {
 
             // Update existing user to admin
             const updated = await prisma.user.update({
-                where: { email: 'admin@halotekno.com' },
+                where: { email: 'admin@affiliategadget.com' },
                 data: { role: 'ADMIN' },
             })
 

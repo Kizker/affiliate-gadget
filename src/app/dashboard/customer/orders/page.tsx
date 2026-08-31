@@ -18,20 +18,22 @@ export default async function CustomerOrdersPage() {
         select: {
           type: true,
           notes: true,
+          quantity: true,
+          price: true,
+          subtotal: true,
           service: { select: { name: true, category: true } },
-          product: { select: { name: true } },
-          rentalItem: { select: { name: true } },
+          product: { select: { id: true, name: true, brand: true, images: true } },
+          rentalItem: { select: { name: true, images: true } },
         },
       },
-      technician: {
-        include: {
-          user: { select: { name: true, phone: true, image: true } },
+      store: {
+        select: {
+          id: true,
+          name: true,
+          companyName: true,
+          city: true,
+          phone: true,
         },
-      },
-      reviews: {
-        where: { type: 'TECHNICIAN' },
-        take: 1,
-        select: { id: true, rating: true, comment: true },
       },
       complaints: {
         select: {
@@ -49,6 +51,32 @@ export default async function CustomerOrdersPage() {
         orderBy: { createdAt: 'desc' },
         take: 1,
       },
+      returnRequests: {
+        select: {
+          id: true,
+          type: true,
+          reason: true,
+          reasonLabel: true,
+          description: true,
+          images: true,
+          bankName: true,
+          bankAccountNumber: true,
+          bankAccountName: true,
+          refundAmount: true,
+          status: true,
+          storeResponse: true,
+          returnCourier: true,
+          returnTrackingNumber: true,
+          createdAt: true,
+          resolvedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
+      reviews: {
+        take: 1,
+        select: { id: true, rating: true, comment: true },
+      },
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -59,27 +87,45 @@ export default async function CustomerOrdersPage() {
     orderNumber: order.orderNumber,
     status: order.status as string,
     total: order.total,
+    subtotal: order.subtotal,
+    shippingCost: order.shippingCost,
+    insuranceFee: order.insuranceFee,
+    courierCode: order.courierCode,
+    courierService: order.courierService,
+    trackingNumber: order.trackingNumber,
+    warrantyExpiryDate: order.warrantyExpiryDate?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
     notes: order.notes,
+    store: order.store
+      ? {
+          id: order.store.id,
+          name: order.store.name,
+          ptName: order.store.companyName,
+          city: order.store.city,
+          phone: order.store.phone,
+        }
+      : null,
     items: order.items.map((item) => ({
       type: item.type as string,
       notes: item.notes,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.subtotal,
       service: item.service
         ? { name: item.service.name, category: item.service.category as string }
         : undefined,
-      product: item.product ? { name: item.product.name } : undefined,
-      rentalItem: item.rentalItem ? { name: item.rentalItem.name } : undefined,
+      product: item.product
+        ? {
+            id: item.product.id,
+            name: item.product.name,
+            brand: item.product.brand,
+            images: item.product.images,
+          }
+        : undefined,
+      rentalItem: item.rentalItem
+        ? { name: item.rentalItem.name, images: item.rentalItem.images }
+        : undefined,
     })),
-    technician: order.technician
-      ? {
-          id: order.technician.id,
-          user: {
-            name: order.technician.user.name || 'Teknisi',
-            phone: order.technician.user.phone,
-            image: order.technician.user.image,
-          },
-        }
-      : undefined,
     review: order.reviews[0]
       ? { rating: order.reviews[0].rating, comment: order.reviews[0].comment }
       : null,
@@ -98,6 +144,24 @@ export default async function CustomerOrdersPage() {
       assignedTo: c.assignedTo
         ? { name: c.assignedTo.name || 'Admin', email: c.assignedTo.email }
         : null,
+    })),
+    returnRequests: order.returnRequests.map((r) => ({
+      id: r.id,
+      type: r.type as string,
+      reason: r.reason,
+      reasonLabel: r.reasonLabel,
+      description: r.description,
+      images: r.images,
+      bankName: r.bankName,
+      bankAccountNumber: r.bankAccountNumber,
+      bankAccountName: r.bankAccountName,
+      refundAmount: r.refundAmount,
+      status: r.status as string,
+      storeResponse: r.storeResponse,
+      returnCourier: r.returnCourier,
+      returnTrackingNumber: r.returnTrackingNumber,
+      createdAt: r.createdAt.toISOString(),
+      resolvedAt: r.resolvedAt?.toISOString() ?? null,
     })),
   }))
 

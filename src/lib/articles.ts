@@ -237,7 +237,7 @@ Banyak masalah kini dapat diselesaikan melalui software tanpa perlu membuka pera
 
 ## Kesimpulan
 
-Teknologi terus mengubah cara kita memperbaiki smartphone. Di HaloTekno, kami selalu mengadopsi teknologi terbaru untuk memberikan layanan terbaik kepada pelanggan.
+Teknologi terus mengubah cara kita memperbaiki smartphone. Di Affiliate Gadget, kami selalu mengadopsi teknologi terbaru untuk memberikan layanan terbaik kepada pelanggan.
     `,
     thumbnail:
       'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&q=80',

@@ -1,5 +1,5 @@
 ﻿
-> halotekno@0.1.0 lint D:\Project\HaloTekno
+> affiliate_gadget@0.1.0 lint D:\Project\Affiliate Gadget
 > next lint
 
 node.exe : `next lint` is deprecated and will be removed in Next.js 16.

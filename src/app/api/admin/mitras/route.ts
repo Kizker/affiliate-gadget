@@ -2,24 +2,138 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-// GET /api/admin/mitras - List all mitras
+// GET /api/admin/mitras - List all stores & mitras with complete operational & legal data
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession()
 
-    if (!session || session.user.role !== 'SUPER_ADMIN') {
+    if (
+      !session ||
+      (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
+    ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(req.url)
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const limit = parseInt(searchParams.get('limit') || '25')
     const search = searchParams.get('search') || ''
     const city = searchParams.get('city') || ''
     const approved = searchParams.get('approved')
 
     const skip = (page - 1) * limit
 
+    // First check if we have Store records (Official Stores with PT Legalitas)
+    const storeWhere: Record<string, unknown> = {}
+    if (search) {
+      storeWhere.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { companyName: { contains: search, mode: 'insensitive' } },
+        { city: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+    if (city) {
+      storeWhere.city = city
+    }
+    if (approved !== null && approved !== '') {
+      storeWhere.isActive = approved === 'true'
+    }
+
+    const storeCount = await db.store.count({ where: storeWhere })
+
+    if (storeCount > 0) {
+      const stores = await db.store.findMany({
+        where: storeWhere,
+        skip,
+        take: limit,
+        include: {
+          bankAccounts: true,
+          schedules: true,
+          _count: {
+            select: {
+              products: true,
+              orders: true,
+              liveStreams: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      })
+
+      const [totalActive, totalInactive, uniqueCities] = await Promise.all([
+        db.store.count({ where: { isActive: true } }),
+        db.store.count({ where: { isActive: false } }),
+        db.store.findMany({
+          select: { city: true },
+          distinct: ['city'],
+        }),
+      ])
+
+      const mappedStores = stores.map((s) => ({
+        id: s.id,
+        businessName: s.name,
+        name: s.name,
+        slug: s.slug,
+        companyName: s.companyName,
+        taxId: s.taxId,
+        tagline: s.tagline,
+        description: s.description,
+        address: s.address,
+        city: s.city,
+        province: s.province,
+        postalCode: s.postalCode,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        phone: s.phone,
+        whatsapp: s.whatsapp,
+        email: s.email,
+        rating: s.rating,
+        totalReview: s.totalReview,
+        totalSales: s.totalSales,
+        commissionRate: s.commissionRate,
+        isOwnerStore: s.isOwnerStore,
+        isApproved: s.isActive,
+        isActive: s.isActive,
+        createdAt: s.createdAt.toISOString(),
+        bankAccounts: s.bankAccounts,
+        schedules: s.schedules,
+        user: {
+          id: s.id,
+          name: s.companyName,
+          email: s.email || `${s.slug}@affiliategadget.com`,
+          phone: s.phone,
+          isActive: s.isActive,
+          mitraStatus: s.isActive ? 'APPROVED' : 'PENDING',
+        },
+        _count: {
+          services: s._count.products,
+          products: s._count.products,
+          orders: s._count.orders,
+          images: 4,
+          reviews: s.totalReview,
+        },
+      }))
+
+      return NextResponse.json({
+        mitras: mappedStores,
+        pagination: {
+          page,
+          limit,
+          total: storeCount,
+          totalPages: Math.ceil(storeCount / limit),
+        },
+        stats: {
+          total: storeCount,
+          approved: totalActive,
+          pending: totalInactive,
+          cities: uniqueCities.length,
+        },
+      })
+    }
+
+    // Fallback to legacy Mitra table if no store records
     const where: Record<string, unknown> = {}
 
     if (search) {
@@ -67,7 +181,6 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // Calculate stats for all mitras (not just current page)
     const [approvedCount, pendingCount, uniqueCities] = await Promise.all([
       db.mitra.count({ where: { isApproved: true } }),
       db.mitra.count({ where: { isApproved: false } }),
@@ -106,7 +219,10 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession()
 
-    if (!session || session.user.role !== 'SUPER_ADMIN') {
+    if (
+      !session ||
+      (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
+    ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

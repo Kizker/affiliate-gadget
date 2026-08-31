@@ -21,6 +21,16 @@ export async function GET(request: NextRequest) {
     if (session.user.role === 'CUSTOMER') {
       // Customers only see their own complaints
       where.userId = session.user.id
+    } else if (session.user.role === 'STORE_ADMIN') {
+      // Store Admins see complaints for their store branch orders
+      if (session.user.storeId) {
+        where.order = {
+          OR: [
+            { storeId: session.user.storeId },
+            { items: { some: { product: { storeId: session.user.storeId } } } }
+          ]
+        }
+      }
     } else if (session.user.role === 'TECHNICIAN') {
       // Technicians see complaints for orders they handled
       where.order = {
@@ -30,10 +40,7 @@ export async function GET(request: NextRequest) {
         },
       }
     } else if (session.user.role === 'ADMIN') {
-      // Admin Chat sees complaints for orders THEY claimed (product/rental)
-      where.order = {
-        claimedById: session.user.id,
-      }
+      // Platform Admin sees platform complaints
     }
     // SUPER_ADMIN sees all complaints (no filter)
 

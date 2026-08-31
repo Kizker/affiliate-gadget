@@ -55,7 +55,7 @@ export default function AddToCartButton({
                 disabled={isAdded}
                 className={`p-2 rounded-full transition-all duration-300 ${isAdded
                         ? 'bg-green-500 text-white'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-orange-500 text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600'
                     } ${className}`}
                 aria-label="Add to cart"
             >
@@ -74,7 +74,7 @@ export default function AddToCartButton({
             disabled={isAdded}
             className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${isAdded
                     ? 'bg-green-500 text-white'
-                    : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:shadow-lg hover:scale-105'
+                    : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-500/25 hover:from-orange-600 hover:to-orange-700 hover:shadow-lg hover:shadow-orange-500/40 hover:scale-105'
                 } ${className}`}
         >
             {isAdded ? (

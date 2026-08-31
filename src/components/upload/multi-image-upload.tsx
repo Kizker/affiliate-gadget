@@ -16,7 +16,7 @@ export default function MultiImageUpload({
   onChange,
   maxImages = 8,
   label = 'Upload Images',
-  folder = 'halotekno/gallery',
+  folder = 'affiliate-gadget/gallery',
 }: MultiImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)

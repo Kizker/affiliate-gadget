@@ -35,13 +35,13 @@ export async function generateMetadata({
   })
 
   if (!article) {
-    return { title: 'Article Not Found - HaloTekno' }
+    return { title: 'Article Not Found - Affiliate Gadget' }
   }
 
   return {
-    title: `${article.title} - Blog HaloTekno`,
+    title: `${article.title} - Blog Affiliate Gadget`,
     description:
-      article.excerpt || `Baca artikel ${article.title} di HaloTekno`,
+      article.excerpt || `Baca artikel ${article.title} di Affiliate Gadget`,
     openGraph: {
       title: article.title,
       description: article.excerpt || '',

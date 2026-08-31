@@ -63,7 +63,7 @@ export default function ContactLocation() {
                 <br />
                 WhatsApp: +62 812 3456 7890
                 <br />
-                Email: info@halotekno.com
+                Email: info@affiliategadget.com
               </p>
             </div>
 

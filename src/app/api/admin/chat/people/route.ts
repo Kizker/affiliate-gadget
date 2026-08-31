@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
+import { isAdminStaffRole } from '@/lib/dashboard-utils'
+
 // GET - Search technicians and mitra for catalog sharing
 export async function GET(req: NextRequest) {
   try {
@@ -10,13 +12,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is admin
+    // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { role: true },
     })
 
-    if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
+    if (!user || !isAdminStaffRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

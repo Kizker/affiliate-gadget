@@ -1,6 +1,6 @@
 # Panduan Setup untuk Developer Baru (Clone Environment)
 
-Panduan ini akan membantu Anda menjalankan proyek `HaloTekno` dengan environment yang **sama persis** (termasuk data user, mitra, dll) menggunakan Docker.
+Panduan ini akan membantu Anda menjalankan proyek `Affiliate Gadget` dengan environment yang **sama persis** (termasuk data user, mitra, dll) menggunakan Docker.
 
 ## Prasyarat
 
@@ -14,8 +14,8 @@ Panduan ini akan membantu Anda menjalankan proyek `HaloTekno` dengan environment
 ### 1. Clone Repository & Install Dependencies
 
 ```bash
-git clone https://github.com/habstrakT808/halotekno-platform.git
-cd halotekno-platform
+git clone https://github.com/habstrakT808/affiliate-gadget-platform.git
+cd affiliate-gadget-platform
 pnpm install
 # atau
 npm install
@@ -33,7 +33,7 @@ Lalu edit file `.env`. Pastikan setting berikut sesuai untuk Docker:
 
 ```env
 # Database (Local Docker)
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/halotekno
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/affiliate_gadget
 
 # Redis (Local Docker)
 REDIS_URL=redis://localhost:6379

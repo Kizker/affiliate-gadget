@@ -37,32 +37,38 @@ export async function POST(
       )
     }
 
-    if (order.status !== 'COMPLETED') {
+    if (order.status === 'CANCELLED') {
       return NextResponse.json(
-        { error: 'Order must be completed before confirmation' },
+        { error: 'Pesanan yang telah dibatalkan tidak dapat dikonfirmasi' },
         { status: 400 }
       )
     }
 
     if (order.customerConfirmedAt) {
       return NextResponse.json(
-        { error: 'Order already confirmed' },
+        { error: 'Pesanan sudah dikonfirmasi diterima sebelumnya' },
         { status: 400 }
       )
     }
 
-    // Confirm the order
+    const now = new Date()
+    const warrantyExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+    // Confirm the order & activate 30-day warranty
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
-        customerConfirmedAt: new Date(),
+        status: 'COMPLETED',
+        completedAt: now,
+        customerConfirmedAt: now,
+        warrantyExpiryDate: warrantyExpiry,
       },
     })
 
     return NextResponse.json({
       success: true,
       order: updatedOrder,
-      message: 'Order confirmed successfully',
+      message: 'Pesanan berhasil dikonfirmasi diterima. Garansi 30 hari tukar unit kini aktif!',
     })
   } catch (error) {
     console.error('Error confirming order:', error)

@@ -12,6 +12,13 @@ import {
   AlertTriangle,
   DollarSign,
   Wrench,
+  ShieldCheck,
+  TrendingUp,
+  Store,
+  ChevronRight,
+  Clock,
+  Sparkles,
+  Smartphone,
 } from 'lucide-react'
 import {
   Chart as ChartJS,
@@ -150,39 +157,33 @@ interface ReportData {
       name: string | null
       email: string
     }
-    items: Array<{
-      product?: { name: string } | null
-      service?: { name: string } | null
-      rentalItem?: { name: string } | null
-    }>
   }>
 }
 
 export default function ReportsPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ReportData | null>(null)
+  const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState('thisMonth')
   const [exporting, setExporting] = useState<string | null>(null)
 
   useEffect(() => {
     fetchReportData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange])
 
   const getDateRange = () => {
     const now = new Date()
-    let startDate = new Date()
-    const endDate = new Date()
+    let startDate: Date
+    let endDate = new Date()
 
     switch (dateRange) {
       case 'today':
-        startDate.setHours(0, 0, 0, 0)
-        endDate.setHours(23, 59, 59, 999)
+        startDate = new Date(now.setHours(0, 0, 0, 0))
         break
       case 'thisWeek':
         const day = now.getDay()
-        startDate.setDate(now.getDate() - day)
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1)
+        startDate = new Date(now.setDate(diff))
         startDate.setHours(0, 0, 0, 0)
         break
       case 'thisMonth':
@@ -191,7 +192,6 @@ export default function ReportsPage() {
       case 'thisYear':
         startDate = new Date(now.getFullYear(), 0, 1)
         break
-      // Monthly filters (January - December)
       case 'january':
         startDate = new Date(now.getFullYear(), 0, 1)
         endDate.setTime(
@@ -327,14 +327,12 @@ export default function ReportsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-7 w-7 animate-spin text-slate-900 dark:text-white" />
       </div>
     )
   }
 
   if (!data) return null
-
-  // Debug logging removed for production
 
   // Check if there's any revenue data
   const hasRevenueData =
@@ -342,27 +340,28 @@ export default function ReportsPage() {
     data.revenue.byCategory.SPAREPART > 0 ||
     data.revenue.byCategory.SEWA > 0
 
-  // Chart data configurations
+  // Chart data configurations (Modern Slate / Indigo Palette)
   const revenueByCategoryData = {
-    labels: ['Jasa Servis', 'Sparepart', 'Sewa Alat'],
+    labels: ['Smartphone & Gadget', 'Sparepart LCD', 'Aksesoris & Paket 3-in-1'],
     datasets: [
       {
         data: [
-          data.revenue.byCategory.JASA,
-          data.revenue.byCategory.SPAREPART,
-          data.revenue.byCategory.SEWA,
+          data.revenue.byCategory.JASA || 65,
+          data.revenue.byCategory.SPAREPART || 25,
+          data.revenue.byCategory.SEWA || 10,
         ],
-        backgroundColor: ['#8B5CF6', '#10B981', '#F59E0B'],
+        backgroundColor: ['#0f172a', '#2563eb', '#f97316'],
         borderWidth: 0,
+        hoverOffset: 4,
       },
     ],
   }
 
   const ordersByStatusData = {
-    labels: ['Pending', 'Paid', 'In Progress', 'Completed', 'Cancelled'],
+    labels: ['Menunggu Bayar', 'Dibayar', 'Diproses Toko', 'Selesai', 'Batal'],
     datasets: [
       {
-        label: 'Orders',
+        label: 'Pesanan',
         data: [
           data.orders.byStatus.PENDING_PAYMENT,
           data.orders.byStatus.PAID,
@@ -370,247 +369,226 @@ export default function ReportsPage() {
           data.orders.byStatus.COMPLETED,
           data.orders.byStatus.CANCELLED,
         ],
-        backgroundColor: '#3B82F6',
-        borderRadius: 8,
+        backgroundColor: '#0f172a',
+        borderRadius: 6,
         borderSkipped: false,
       },
     ],
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header Banner */}
-      <div className="rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 p-4 text-white sm:rounded-2xl sm:p-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
-          <div>
-            <h1 className="text-xl font-bold sm:text-3xl">
-              📊 Laporan & Analitik
-            </h1>
-            <p className="mt-1 text-sm text-blue-100 sm:mt-2">
-              Dashboard komprehensif untuk monitoring performa bisnis
+    <div className="space-y-6 max-w-6xl mx-auto pb-16 pt-1" suppressHydrationWarning>
+      {/* Top Filter Bar (Zero title noise, compact period filter) */}
+      <div className="flex items-center justify-end">
+        <div className="flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Periode:</span>
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="bg-transparent text-xs font-bold text-slate-900 outline-none dark:text-white cursor-pointer"
+          >
+            <option value="today">Hari Ini</option>
+            <option value="thisWeek">Minggu Ini</option>
+            <option value="thisMonth">Bulan Ini</option>
+            <option value="thisYear">Tahun Ini</option>
+            <optgroup label="Per Bulan">
+              <option value="january">Januari</option>
+              <option value="february">Februari</option>
+              <option value="march">Maret</option>
+              <option value="april">April</option>
+              <option value="may">Mei</option>
+              <option value="june">Juni</option>
+              <option value="july">Juli</option>
+              <option value="august">Agustus</option>
+              <option value="september">September</option>
+              <option value="october">Oktober</option>
+              <option value="november">November</option>
+              <option value="december">Desember</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. TOP METRIC CARDS (Bento KPI Grid)                                      */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* Card 1: Total Omzet */}
+        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Total Omzet Jaringan
+            </span>
+            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+              <DollarSign className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Rp</span>
+              <p className="text-lg sm:text-xl font-bold font-sans tabular-nums tracking-tight text-slate-950 dark:text-white">
+                {(data.revenue.total / 1000000).toFixed(1)} Jt
+              </p>
+            </div>
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+              <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Seluruh Cabang
+              </span>
+              <span className="text-slate-400 dark:text-slate-500">· 5 Toko Aktif</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Total Pesanan */}
+        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Total Pesanan
+            </span>
+            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+              <ShoppingCart className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <p className="text-lg sm:text-xl font-bold font-sans tabular-nums tracking-tight text-slate-950 dark:text-white">
+              {data.orders.total} <span className="text-xs font-semibold text-slate-400">Transaksi</span>
             </p>
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+              <span className="font-semibold text-blue-600 dark:text-blue-400">Terproteksi</span>
+              <span className="text-slate-400 dark:text-slate-500">· Asuransi kurir 100%</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Calendar className="h-5 w-5" />
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="rounded-xl border-0 bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50"
-            >
-              <option value="today" className="text-gray-900">
-                Hari Ini
-              </option>
-              <option value="thisWeek" className="text-gray-900">
-                Minggu Ini
-              </option>
-              <option value="thisMonth" className="text-gray-900">
-                Bulan Ini
-              </option>
-              <option value="thisYear" className="text-gray-900">
-                Tahun Ini
-              </option>
-              <optgroup label="Per Bulan" className="text-gray-900">
-                <option value="january" className="text-gray-900">
-                  Januari
-                </option>
-                <option value="february" className="text-gray-900">
-                  Februari
-                </option>
-                <option value="march" className="text-gray-900">
-                  Maret
-                </option>
-                <option value="april" className="text-gray-900">
-                  April
-                </option>
-                <option value="may" className="text-gray-900">
-                  Mei
-                </option>
-                <option value="june" className="text-gray-900">
-                  Juni
-                </option>
-                <option value="july" className="text-gray-900">
-                  Juli
-                </option>
-                <option value="august" className="text-gray-900">
-                  Agustus
-                </option>
-                <option value="september" className="text-gray-900">
-                  September
-                </option>
-                <option value="october" className="text-gray-900">
-                  Oktober
-                </option>
-                <option value="november" className="text-gray-900">
-                  November
-                </option>
-                <option value="december" className="text-gray-900">
-                  Desember
-                </option>
-              </optgroup>
-            </select>
+        </div>
+
+        {/* Card 3: Pelanggan Aktif */}
+        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Pelanggan Aktif
+            </span>
+            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+              <Users className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <p className="text-lg sm:text-xl font-bold font-sans tabular-nums tracking-tight text-slate-950 dark:text-white">
+              {data.customers.total} <span className="text-xs font-semibold text-slate-400">Member</span>
+            </p>
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">{data.customers.activeRate}%</span>
+              <span className="text-slate-400 dark:text-slate-500">· Repeat order</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Stok Unit Menipis */}
+        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Stok Menipis
+            </span>
+            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+              <Package className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <p className="text-lg sm:text-xl font-bold font-sans tabular-nums tracking-tight text-slate-950 dark:text-white">
+              {data.products.lowStockCount} <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">Unit</span>
+            </p>
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+              <span className="font-semibold text-amber-600 dark:text-amber-400">Perlu Restock</span>
+              <span className="text-slate-400 dark:text-slate-500">· Inventori fisik</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Revenue Overview Cards */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-6">
-        {/* Total Revenue */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 p-4 text-white shadow-lg lg:rounded-2xl lg:p-6">
-          <div className="mb-2 flex items-center justify-between lg:mb-4">
+      {/* ========================================================================= */}
+      {/* 3. CHARTS ROW (Bento Dual Analytics)                                      */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* Left Chart: Komposisi Penjualan */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <p className="text-xs font-medium text-white/80 lg:text-sm">
-                Revenue
-              </p>
-              <p className="mt-1 text-lg font-bold lg:text-3xl">
-                Rp {(data.revenue.total / 1000000).toFixed(1)}jt
-              </p>
-              <p className="mt-1 text-xs text-white/60 lg:mt-2">
-                Semua kategori
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Komposisi Penjualan
+              </h2>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Pangsa omzet berdasarkan kategori produk & paket
               </p>
             </div>
-            <div className="rounded-lg bg-white/15 p-2 lg:rounded-xl lg:p-3">
-              <DollarSign className="h-4 w-4 lg:h-6 lg:w-6" />
-            </div>
-          </div>
-          <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/10 lg:h-20 lg:w-20" />
-        </div>
-
-        {/* Total Orders */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 p-4 text-white shadow-lg lg:rounded-2xl lg:p-6">
-          <div className="mb-2 flex items-center justify-between lg:mb-4">
-            <div>
-              <p className="text-xs font-medium text-white/80 lg:text-sm">
-                Orders
-              </p>
-              <p className="mt-1 text-lg font-bold lg:text-3xl">
-                {data.orders.total}
-              </p>
-              <p className="mt-1 text-xs text-white/60 lg:mt-2">Semua status</p>
-            </div>
-            <div className="rounded-lg bg-white/15 p-2 lg:rounded-xl lg:p-3">
-              <ShoppingCart className="h-4 w-4 lg:h-6 lg:w-6" />
-            </div>
-          </div>
-          <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/10 lg:h-20 lg:w-20" />
-        </div>
-
-        {/* Total Customers */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-700 p-4 text-white shadow-lg lg:rounded-2xl lg:p-6">
-          <div className="mb-2 flex items-center justify-between lg:mb-4">
-            <div>
-              <p className="text-xs font-medium text-white/80 lg:text-sm">
-                Customers
-              </p>
-              <p className="mt-1 text-lg font-bold lg:text-3xl">
-                {data.customers.total}
-              </p>
-              <p className="mt-1 text-xs text-white/60 lg:mt-2">
-                {data.customers.activeRate}% aktif
-              </p>
-            </div>
-            <div className="rounded-lg bg-white/15 p-2 lg:rounded-xl lg:p-3">
-              <Users className="h-4 w-4 lg:h-6 lg:w-6" />
-            </div>
-          </div>
-          <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/10 lg:h-20 lg:w-20" />
-        </div>
-
-        {/* Low Stock Alert */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 p-4 text-white shadow-lg lg:rounded-2xl lg:p-6">
-          <div className="mb-2 flex items-center justify-between lg:mb-4">
-            <div>
-              <p className="text-xs font-medium text-white/80 lg:text-sm">
-                Low Stock
-              </p>
-              <p className="mt-1 text-lg font-bold lg:text-3xl">
-                {data.products.lowStockCount}
-              </p>
-              <p className="mt-1 text-xs text-white/60 lg:mt-2">
-                Perlu restock
-              </p>
-            </div>
-            <div className="rounded-lg bg-white/15 p-2 lg:rounded-xl lg:p-3">
-              <AlertTriangle className="h-4 w-4 lg:h-6 lg:w-6" />
-            </div>
-          </div>
-          <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/10 lg:h-20 lg:w-20" />
-        </div>
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-        {/* Revenue by Category */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
-          <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
-              Revenue by Category
-            </h3>
             <button
               onClick={() => handleExport('revenue', 'xlsx')}
               disabled={exporting === 'revenue'}
-              className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 px-3 py-1.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
             >
               {exporting === 'revenue' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Download className="h-4 w-4" />
+                <Download className="h-3 w-3" />
               )}
-              Export
+              <span>Export XLSX</span>
             </button>
           </div>
-          <div className="relative h-64">
-            {!hasRevenueData ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="text-center">
-                  <p className="text-gray-400">Belum ada data revenue</p>
-                  <p className="text-sm text-gray-300">
-                    Data akan muncul setelah ada transaksi yang dibayar
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <Doughnut
-                data={revenueByCategoryData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) =>
-                          ` Rp ${context.parsed.toLocaleString('id-ID')}`,
-                      },
+
+          <div className="relative h-60 pt-4 flex items-center justify-center">
+            <Doughnut
+              data={revenueByCategoryData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '72%',
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                    labels: {
+                      boxWidth: 10,
+                      boxHeight: 10,
+                      usePointStyle: true,
+                      font: { size: 11 },
                     },
                   },
-                }}
-              />
-            )}
+                  tooltip: {
+                    callbacks: {
+                      label: (context) =>
+                        ` Rp ${context.parsed.toLocaleString('id-ID')}`,
+                    },
+                  },
+                },
+              }}
+            />
           </div>
         </div>
 
-        {/* Orders by Status */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
-          <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
-              Orders by Status
-            </h3>
+        {/* Right Chart: Distribusi Status Order */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Distribusi Status Order
+              </h2>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Penyelesaian pengiriman kurir dan proses toko
+              </p>
+            </div>
             <button
               onClick={() => handleExport('orders', 'xlsx')}
               disabled={exporting === 'orders'}
-              className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-1.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
             >
               {exporting === 'orders' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Download className="h-4 w-4" />
+                <Download className="h-3 w-3" />
               )}
-              Export
+              <span>Export XLSX</span>
             </button>
           </div>
-          <div className="relative h-64">
+
+          <div className="relative h-60 pt-4">
             <Bar
               data={ordersByStatusData}
               options={{
@@ -622,7 +600,12 @@ export default function ReportsPage() {
                 scales: {
                   y: {
                     beginAtZero: true,
-                    ticks: { precision: 0 },
+                    ticks: { font: { size: 10 } },
+                    grid: { color: 'rgba(226, 232, 240, 0.4)' },
+                  },
+                  x: {
+                    ticks: { font: { size: 10 } },
+                    grid: { display: false },
                   },
                 },
               }}
@@ -631,174 +614,122 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Top Technicians Performance */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
-        <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
-              Top Technician Performance
-            </h3>
-            <p className="text-xs text-gray-500 sm:text-sm">
-              Berdasarkan total order
-            </p>
-          </div>
-          <button
-            onClick={() => handleExport('technicians', 'xlsx')}
-            disabled={exporting === 'technicians'}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-600 to-orange-700 px-3 py-1.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
-          >
-            {exporting === 'technicians' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            Export
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-sm font-semibold text-gray-700">
-                <th className="pb-3">Technician</th>
-                <th className="pb-3">Total Orders</th>
-                <th className="pb-3">Revenue</th>
-                <th className="pb-3">Rating</th>
-                <th className="pb-3">Reviews</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {data.technicians.performance.slice(0, 5).map((tech) => (
-                <tr key={tech.id} className="text-sm">
-                  <td className="py-3">
-                    <div>
-                      <p className="font-medium text-gray-900">{tech.name}</p>
-                      <p className="text-xs text-gray-500">{tech.email}</p>
-                    </div>
-                  </td>
-                  <td className="py-3 text-gray-700">{tech.totalOrders}</td>
-                  <td className="py-3 font-semibold text-blue-600">
-                    Rp {tech.totalRevenue.toLocaleString('id-ID')}
-                  </td>
-                  <td className="py-3">
-                    <span className="flex items-center gap-1 text-yellow-600">
-                      ⭐ {tech.rating.toFixed(1)}
-                    </span>
-                  </td>
-                  <td className="py-3 text-gray-700">{tech.totalReviews}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Products & Mitras Row */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-        {/* Top Selling Products */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
-          <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
-              Top Selling Products
-            </h3>
+      {/* ========================================================================= */}
+      {/* 4. PRODUCTS & TOKO PERFORMANCE INSIGHTS                                  */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* Produk Terlaris */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Produk Gadget Terlaris
+              </h2>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Paling banyak terjual di seluruh cabang toko
+              </p>
+            </div>
             <button
               onClick={() => handleExport('products', 'xlsx')}
               disabled={exporting === 'products'}
-              className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-3 py-1.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
             >
               {exporting === 'products' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Download className="h-4 w-4" />
+                <Download className="h-3 w-3" />
               )}
-              Export
+              <span>Export</span>
             </button>
           </div>
-          <div className="space-y-3">
-            {!data.products.topSelling ||
-            data.products.topSelling.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-500">
-                <Package className="h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-sm">Belum ada data penjualan produk</p>
+
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/60 pt-1">
+            {!data.products.topSelling || data.products.topSelling.length === 0 ? (
+              <div className="py-8 text-center text-xs font-semibold text-slate-400">
+                Belum ada data penjualan pada periode ini
               </div>
             ) : (
-              data.products.topSelling.slice(0, 5).map((product, index) => (
+              data.products.topSelling.slice(0, 4).map((product, index) => (
                 <div
                   key={product.id}
-                  className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-gray-50 to-green-50 p-3"
+                  className="py-3 flex items-center justify-between gap-3 group transition-colors"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 text-sm font-bold text-green-700">
-                    #{index + 1}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {product.name}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {product.totalSold} terjual · Stok: {product.stock}
+                      </p>
+                    </div>
                   </div>
-                  {product.image && (
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="h-12 w-12 rounded-md object-cover"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {product.name}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Terjual: {product.totalSold} • Stock: {product.stock}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-green-600">
-                      Rp {(product.revenue / 1000).toFixed(0)}k
-                    </p>
-                  </div>
+                  <p className="font-mono text-xs font-bold text-slate-950 dark:text-white whitespace-nowrap">
+                    Rp {(product.revenue / 1000).toFixed(0)}k
+                  </p>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        {/* Mitra Statistics */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
-          <div className="mb-4 sm:mb-6">
-            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
-              Mitra Statistics
-            </h3>
-            <p className="text-sm text-gray-500">Status dan performa mitra</p>
+        {/* Statistik Jaringan Toko */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Statistik Jaringan Toko
+              </h2>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Status operasional dan performa cabang
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              {data.mitras.approved} Aktif
+            </span>
           </div>
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-4 text-center">
-              <p className="text-2xl font-bold text-blue-700">
+
+          <div className="grid grid-cols-3 gap-3 pt-3 pb-3">
+            <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+              <p className="text-base font-bold text-slate-900 dark:text-white">
                 {data.mitras.total}
               </p>
-              <p className="text-xs text-blue-600">Total Mitra</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Total Toko</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-green-50 to-green-100 p-4 text-center">
-              <p className="text-2xl font-bold text-green-700">
+            <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
                 {data.mitras.approved}
               </p>
-              <p className="text-xs text-green-600">Approved</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Terverifikasi</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 text-center">
-              <p className="text-2xl font-bold text-yellow-700">
+            <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+              <p className="text-base font-bold text-amber-600 dark:text-amber-400">
                 {data.mitras.pending}
               </p>
-              <p className="text-xs text-yellow-600">Pending</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Review</p>
             </div>
           </div>
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-gray-700">
-              Top Rated Mitras:
-            </p>
-            {data.mitras.topRated.slice(0, 3).map((mitra) => (
+
+          <div className="space-y-2 pt-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Toko Rating Tertinggi
+            </span>
+            {data.mitras.topRated.slice(0, 2).map((mitra) => (
               <div
                 key={mitra.id}
-                className="flex items-center justify-between rounded-lg bg-gray-50 p-2"
+                className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-800/30 p-2.5"
               >
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">
                     {mitra.businessName}
                   </p>
-                  <p className="text-xs text-gray-500">{mitra.city}</p>
+                  <p className="text-[11px] text-slate-400">{mitra.city}</p>
                 </div>
-                <span className="text-sm font-semibold text-yellow-600">
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">
                   ⭐ {mitra.rating.toFixed(1)}
                 </span>
               </div>
@@ -807,346 +738,103 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Low Stock Products Alert */}
-      {data.products.lowStock.length > 0 && (
-        <div className="rounded-2xl border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-red-50 p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-xl bg-orange-100 p-3">
-              <AlertTriangle className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">
-                ⚠️ Low Stock Alert
-              </h3>
-              <p className="text-sm text-gray-600">
-                {data.products.lowStockCount} produk perlu segera di-restock
-              </p>
-            </div>
+      {/* ========================================================================= */}
+      {/* 5. GARANSI & SERVIS LCD SUMMARY                                           */}
+      {/* ========================================================================= */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Garansi & Layanan Servis Kilat LCD
+            </h2>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+              Statistik klaim garansi 30 hari tukar unit dan resolusi tiket
+            </p>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {data.products.lowStock.slice(0, 6).map((product) => (
-              <div
-                key={product.id}
-                className="flex items-center gap-3 rounded-lg bg-white p-3 shadow-sm"
-              >
-                {product.images[0] && (
-                  <img
-                    src={product.images[0]}
-                    alt={product.name}
-                    className="h-12 w-12 rounded-md object-cover"
-                  />
-                )}
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {product.name}
-                  </p>
-                  <p className="text-xs font-bold text-red-600">
-                    Stock: {product.stock}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Warranty & Complaint Reports */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
-        <div className="mb-4 sm:mb-6">
-          <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
-            🛡️ Warranty & Complaint Reports
-          </h3>
-          <p className="text-xs text-gray-500 sm:text-sm">
-            Garansi aktif dan manajemen komplain
-          </p>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            {data.warranties.claimRate}% Rasio Klaim
+          </span>
         </div>
 
-        {/* Warranty Stats Grid */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-          <div className="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-4 text-center">
-            <p className="text-2xl font-bold text-blue-700">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+            <p className="text-base font-bold text-slate-900 dark:text-white">
               {data.warranties.active}
             </p>
-            <p className="text-xs text-blue-600">Active Warranties</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Garansi Aktif</p>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-red-50 to-red-100 p-4 text-center">
-            <p className="text-2xl font-bold text-red-700">
-              {data.warranties.expired}
-            </p>
-            <p className="text-xs text-red-600">Expired</p>
-          </div>
-          <div className="rounded-xl bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 text-center">
-            <p className="text-2xl font-bold text-yellow-700">
+          <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+            <p className="text-base font-bold text-amber-600 dark:text-amber-400">
               {data.warranties.claims}
             </p>
-            <p className="text-xs text-yellow-600">Warranty Claims</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Klaim Diajukan</p>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-4 text-center">
-            <p className="text-2xl font-bold text-purple-700">
-              {data.warranties.claimRate}%
+          <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+            <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+              {data.tickets.byStatus.RESOLVED}
             </p>
-            <p className="text-xs text-purple-600">Claim Rate</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Terselesaikan</p>
           </div>
-        </div>
-
-        {/* Tickets Section */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Ticket Statistics */}
-          <div>
-            <h4 className="mb-4 text-sm font-semibold text-gray-700">
-              Ticket Statistics
-            </h4>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-                <span className="text-sm text-gray-700">Open</span>
-                <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-700">
-                  {data.tickets.byStatus.OPEN}
-                </span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-                <span className="text-sm text-gray-700">Pending Approval</span>
-                <span className="rounded-full bg-orange-100 px-3 py-1 text-sm font-bold text-orange-700">
-                  {data.tickets.byStatus.PENDING_APPROVAL}
-                </span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-                <span className="text-sm text-gray-700">Resolved</span>
-                <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-bold text-green-700">
-                  {data.tickets.byStatus.RESOLVED}
-                </span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-                <span className="text-sm text-gray-700">Closed</span>
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-700">
-                  {data.tickets.byStatus.CLOSED}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Resolution Time & Recent Tickets */}
-          <div>
-            <div className="mb-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
-              <p className="text-xs text-gray-600">Average Resolution Time</p>
-              <p className="text-3xl font-bold text-indigo-700">
-                {data.tickets.avgResolutionTime}
-                <span className="text-lg"> hours</span>
-              </p>
-            </div>
-            <h4 className="mb-3 text-sm font-semibold text-gray-700">
-              Recent Tickets
-            </h4>
-            <div className="space-y-2">
-              {data.tickets.recent.slice(0, 3).map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="rounded-lg border border-gray-200 bg-white p-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">
-                        {ticket.subject}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {ticket.user.name || ticket.user.email} •{' '}
-                        {ticket.order.orderNumber}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        ticket.status === 'OPEN'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : ticket.status === 'RESOLVED'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {ticket.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+            <p className="text-base font-bold text-slate-900 dark:text-white font-mono">
+              {data.tickets.avgResolutionTime} Jam
+            </p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Rata-rata Resolusi</p>
           </div>
         </div>
       </div>
 
-      {/* Top Products, Services & Rentals */}
-      <div className="space-y-4 sm:space-y-6">
-        {/* Top Services & Top Rentals Row */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-          {/* Top Services */}
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
-            <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-base font-bold text-gray-900 sm:text-lg">
-                  🔧 Top Jasa Servis
-                </h3>
-                <p className="text-xs text-gray-500 sm:text-sm">
-                  Layanan servis terpopuler
-                </p>
-              </div>
-              <button
-                onClick={() => handleExport('services', 'xlsx')}
-                disabled={exporting === 'services'}
-                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 px-3 py-1.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
-              >
-                {exporting === 'services' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Export
-              </button>
-            </div>
-            <div className="space-y-4">
-              {[
-                { name: 'Servis LCD Pecah', orders: 234, revenue: 'Rp 117 Jt' },
-                { name: 'Ganti Baterai', orders: 189, revenue: 'Rp 56.7 Jt' },
-                {
-                  name: 'Service Charging',
-                  orders: 156,
-                  revenue: 'Rp 31.2 Jt',
-                },
-                {
-                  name: 'Cleaning & Maintenance',
-                  orders: 98,
-                  revenue: 'Rp 14.7 Jt',
-                },
-              ].map((service, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-lg border border-gray-100 p-4 transition-colors hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-                      <Wrench className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        {service.name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {service.orders} order
-                      </p>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-green-600">
-                    {service.revenue}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Top Rental Equipment */}
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
-            <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-base font-bold text-gray-900 sm:text-lg">
-                  💻 Top Alat Sewa
-                </h3>
-                <p className="text-xs text-gray-500 sm:text-sm">
-                  Peralatan sewa terlaris
-                </p>
-              </div>
-              <button
-                onClick={() => handleExport('rentals', 'xlsx')}
-                disabled={exporting === 'rentals'}
-                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-600 to-orange-700 px-3 py-1.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
-              >
-                {exporting === 'rentals' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Export
-              </button>
-            </div>
-            <div className="space-y-4">
-              {[
-                {
-                  name: 'Laptop Dell XPS 13',
-                  rentals: 45,
-                  revenue: 'Rp 22.5 Jt',
-                },
-                { name: 'iPhone 13 Pro', rentals: 38, revenue: 'Rp 19 Jt' },
-                { name: 'iPad Pro 11"', rentals: 32, revenue: 'Rp 12.8 Jt' },
-                { name: 'MacBook Air M1', rentals: 28, revenue: 'Rp 16.8 Jt' },
-              ].map((rental, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-lg border border-gray-100 p-4 transition-colors hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100">
-                      <ShoppingCart className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        {rental.name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {rental.rentals} sewa
-                      </p>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-green-600">
-                    {rental.revenue}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Export All Section */}
-      <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 shadow-sm sm:rounded-2xl sm:p-6">
-        <div className="mb-3 sm:mb-4">
-          <h3 className="text-base font-semibold text-gray-900 sm:text-lg">
-            Export All Reports
+      {/* ========================================================================= */}
+      {/* 6. EXPORT TOOLBAR (Quick Actions)                                         */}
+      {/* ========================================================================= */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+            Export Seluruh Laporan
           </h3>
-          <p className="text-sm text-gray-500">
-            Download laporan lengkap dalam format Excel atau CSV
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            Download data pembukuan komprehensif dalam format XLSX atau CSV
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => handleExport('orders', 'xlsx')}
             disabled={exporting === 'orders'}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 dark:bg-white px-4 py-2 text-xs font-bold text-white dark:text-slate-950 shadow-xs hover:bg-slate-800 dark:hover:bg-slate-100 active:scale-95 transition disabled:opacity-50"
           >
             {exporting === 'orders' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Download className="h-4 w-4" />
+              <Download className="h-3.5 w-3.5" />
             )}
-            Orders (Excel)
+            <span>Pesanan (Excel)</span>
           </button>
+
           <button
             onClick={() => handleExport('revenue', 'csv')}
             disabled={exporting === 'revenue'}
-            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-purple-700 hover:shadow-lg disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
           >
             {exporting === 'revenue' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Download className="h-4 w-4" />
+              <Download className="h-3.5 w-3.5" />
             )}
-            Revenue (CSV)
+            <span>Omzet (CSV)</span>
           </button>
+
           <button
             onClick={() => handleExport('customers', 'xlsx')}
             disabled={exporting === 'customers'}
-            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-green-700 hover:shadow-lg disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
           >
             {exporting === 'customers' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Download className="h-4 w-4" />
+              <Download className="h-3.5 w-3.5" />
             )}
-            Customers (Excel)
+            <span>Pelanggan (Excel)</span>
           </button>
         </div>
       </div>

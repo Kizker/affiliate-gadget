@@ -105,10 +105,10 @@ export default function SparepartConfirmationPage({
           Pesanan tidak ditemukan
         </h2>
         <Link
-          href="/dashboard/customer"
+          href="/"
           className="mt-4 text-blue-600 hover:underline"
         >
-          Kembali ke Dashboard
+          Kembali ke Beranda
         </Link>
       </div>
     )
@@ -136,7 +136,7 @@ export default function SparepartConfirmationPage({
                   Pesanan Diterima!
                 </h1>
                 <p className="text-sm text-blue-100">
-                  Terima kasih telah berbelanja di HaloTekno
+                  Terima kasih telah berbelanja di Affiliate Gadget
                 </p>
               </div>
             </div>

@@ -1,657 +1,411 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useSession, signOut } from 'next-auth/react'
 import {
-  LogOut,
+  Smartphone,
+  Search,
+  ShoppingCart,
+  ShoppingBag,
+  ShieldCheck,
   User,
   Menu,
   X,
+  LogOut,
   ChevronDown,
-  ShoppingBag,
-  Settings,
-  LayoutDashboard,
+  ArrowRight,
+  MessageSquare,
+  HelpCircle,
 } from 'lucide-react'
-import CartIcon from '@/components/cart/cart-icon'
+import { useCartStore } from '@/lib/store/cart-store'
 
 interface NavbarProps {
-  variant?: 'dark' | 'light'
-  hideLogo?: boolean
-  fullWidth?: boolean
+  variant?: 'light' | 'dark'
 }
 
-export function Navbar({
-  variant = 'dark',
-  hideLogo = false,
-  fullWidth = false,
-}: NavbarProps) {
-  const [scrolled, setScrolled] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [layananOpen, setLayananOpen] = useState(false)
-  const [userImage, setUserImage] = useState<string | null>(null)
+export function Navbar({ variant = 'light' }: NavbarProps) {
+  const pathname = usePathname()
+  const router = useRouter()
   const { data: session, status } = useSession()
+  const [mounted, setMounted] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const { items } = useCartStore()
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(session?.user?.image || null)
 
   useEffect(() => {
+    setMounted(true)
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50)
+      setScrolled(window.scrollY > 10)
     }
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Close mobile menu when route changes
+  // Sync and fetch profile avatar for active session
   useEffect(() => {
-    setMobileMenuOpen(false)
-    setLayananOpen(false)
-  }, [])
-
-  // Fetch user image from API (since session doesn't include image to avoid JWT bloat)
-  useEffect(() => {
-    if (session?.user?.id) {
-      fetch('/api/auth/me')
-        .then((res) => res.json())
+    if (session?.user?.image) {
+      setAvatarUrl(session.user.image)
+    } else if (session?.user?.id || session?.user?.email) {
+      // Fetch latest profile avatar from database if not in cached JWT
+      fetch('/api/user/profile')
+        .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data.image) {
-            setUserImage(data.image)
+          if (data?.user?.image) {
+            setAvatarUrl(data.user.image)
           }
         })
         .catch(() => {})
+    } else {
+      setAvatarUrl(null)
     }
-  }, [session?.user?.id])
+  }, [session?.user])
 
-  const isLight = variant === 'light'
+  // Close menus on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+    setUserDropdownOpen(false)
+  }, [pathname])
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen)
-    if (mobileMenuOpen) {
-      setLayananOpen(false)
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/gadget?search=${encodeURIComponent(searchQuery.trim())}`)
     }
   }
 
+  const getChatLink = () => {
+    if (!mounted || !session) return '/login?callbackUrl=/dashboard/customer/chat'
+    const role = (session.user as any)?.role
+    if (
+      role === 'SUPER_ADMIN' ||
+      role === 'ADMIN' ||
+      role === 'STORE_ADMIN' ||
+      role === 'STORE_SALES' ||
+      role === 'STORE_STAFF' ||
+      role === 'FINANCE_ADMIN' ||
+      role === 'CONTENT_EDITOR'
+    ) {
+      return '/dashboard/admin/chat'
+    }
+    return '/dashboard/customer/chat'
+  }
+
+  const getDashboardLink = () => {
+    if (!mounted || !session) return '/login'
+    const role = (session.user as any)?.role
+    if (
+      role === 'SUPER_ADMIN' ||
+      role === 'ADMIN' ||
+      role === 'STORE_ADMIN' ||
+      role === 'STORE_SALES' ||
+      role === 'STORE_STAFF' ||
+      role === 'FINANCE_ADMIN' ||
+      role === 'CONTENT_EDITOR'
+    ) {
+      return '/dashboard/admin'
+    }
+    if (role === 'MITRA') return '/dashboard/mitra'
+    if ((session.user as any)?.isTechnician || role === 'TECHNICIAN') return '/dashboard/teknisi'
+    return '/'
+  }
+
+  const navLinks = [
+    { href: '/', label: 'Beranda' },
+    { href: '/gadget', label: 'Produk' },
+    { href: '/toko', label: 'Toko' },
+  ]
+
+  const isSearchPage = pathname.startsWith('/gadget') || pathname.startsWith('/toko')
+
   return (
-    <nav
-      className={`fixed top-0 z-50 w-full transition-all duration-500 ${
-        isLight
-          ? scrolled || mobileMenuOpen
-            ? 'bg-white/95 shadow-lg backdrop-blur-md'
-            : 'bg-white/90 shadow-md backdrop-blur-sm'
-          : scrolled || mobileMenuOpen
-            ? 'bg-gray-900/95 shadow-lg backdrop-blur-md'
-            : 'bg-transparent'
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? 'bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 shadow-[0_2px_20px_rgba(0,0,0,0.02)]'
+          : 'bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-slate-100/70 dark:border-slate-900'
       }`}
     >
-      <div
-        className={
-          fullWidth
-            ? 'mx-auto max-w-[calc(100vw-16rem)] px-4 sm:px-6 lg:px-8'
-            : 'mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'
-        }
-      >
-        <div className="flex h-16 items-center justify-between sm:h-20">
-          {!hideLogo && (
-            <Link
-              href="/"
-              className={`bg-gradient-to-r text-2xl font-bold sm:text-3xl ${
-                isLight
-                  ? 'from-cyan-600 to-blue-600'
-                  : 'from-cyan-400 to-blue-500'
-              } bg-clip-text text-transparent`}
-            >
-              HaloTekno
-            </Link>
-          )}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4">
+          
+          {/* 1. Brand Logo (Clean & High Contrast with Official Logo) */}
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 shrink-0 group focus:outline-none"
+            aria-label="Affiliate Gadget Beranda"
+          >
+            <img
+              src="/logo.png"
+              alt="Affiliate Gadget Logo"
+              className="h-8 w-8 rounded-xl object-contain shadow-2xs transition-transform duration-200 group-hover:scale-105"
+            />
+            <span className="text-base font-black tracking-tight text-slate-950 dark:text-white leading-none">
+              Affiliate<span className="text-orange-500">Gadget</span>
+            </span>
+          </Link>
 
-          {/* Spacer to push everything to the right */}
-          <div className="flex-1"></div>
+          {/* 2. Center: Dedicated Floating Nav Island (Ultra-Clean Whitespace) */}
+          <nav className="hidden md:flex items-center rounded-full bg-slate-100/70 p-1 backdrop-blur-xs border border-slate-200/40 dark:bg-slate-900/60 dark:border-slate-800/60">
+            {navLinks.map((link) => {
+              const isActive =
+                link.href === '/'
+                  ? pathname === '/'
+                  : pathname.startsWith(link.href)
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide transition-all duration-200 ${
+                    isActive
+                      ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-950 hover:bg-white/60 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
+          </nav>
 
-          {/* Desktop Navigation Menu + Auth Buttons - All on the right */}
-          <div className="hidden items-center gap-4 md:flex">
-            {/* Navigation Links */}
-            <div className="group relative">
-              <button
-                className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors ${
-                  isLight
-                    ? 'text-gray-700 hover:text-blue-600'
-                    : 'text-gray-100 hover:text-cyan-400'
-                }`}
-                aria-label="Layanan"
-                aria-haspopup="true"
+          {/* 3. Right: Utility & Action Cluster */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            
+            {/* Minimalist Search Capsule (Hidden on /gadget and /toko where in-page search is active) */}
+            {!isSearchPage && (
+              <form
+                onSubmit={handleSearchSubmit}
+                className="hidden lg:flex relative items-center animate-in fade-in duration-200"
               >
-                Layanan
-                <ChevronDown className="h-4 w-4" aria-hidden="true" />
-              </button>
-              {/* Dropdown Menu */}
-              <div
-                className={`invisible absolute left-0 mt-2 w-48 opacity-0 transition-all duration-200 group-hover:visible group-hover:opacity-100 ${
-                  isLight ? 'bg-white' : 'bg-gray-800'
-                } rounded-lg py-2 shadow-lg`}
-              >
-                <Link
-                  href="/teknisi"
-                  className={`block px-4 py-2 text-sm transition-colors ${
-                    isLight
-                      ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                  }`}
-                >
-                  Servis HP
-                </Link>
-                <Link
-                  href="/sparepart"
-                  className={`block px-4 py-2 text-sm transition-colors ${
-                    isLight
-                      ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                  }`}
-                >
-                  Sparepart
-                </Link>
-                <Link
-                  href="/sewa-alat"
-                  className={`block px-4 py-2 text-sm transition-colors ${
-                    isLight
-                      ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                  }`}
-                >
-                  Sewa Alat
-                </Link>
-                <Link
-                  href="/rekomendasi"
-                  className={`block px-4 py-2 text-sm transition-colors ${
-                    isLight
-                      ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                  }`}
-                >
-                  Direktori Mitra
-                </Link>
-              </div>
-            </div>
-
-            <Link
-              href="/about"
-              className={`px-3 py-2 text-sm font-medium transition-colors ${
-                isLight
-                  ? 'text-gray-700 hover:text-blue-600'
-                  : 'text-gray-100 hover:text-cyan-400'
-              }`}
-            >
-              Tentang
-            </Link>
-
-            <Link
-              href="/blog"
-              className={`px-3 py-2 text-sm font-medium transition-colors ${
-                isLight
-                  ? 'text-gray-700 hover:text-blue-600'
-                  : 'text-gray-100 hover:text-cyan-400'
-              }`}
-            >
-              Blog
-            </Link>
-
-            {/* Cart Icon - Only for customers and mitra */}
-            {(!session ||
-              (session.user.role !== 'ADMIN' &&
-                !session.user.isTechnician)) && (
-              <CartIcon variant={isLight ? 'light' : 'dark'} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari..."
+                  className="w-32 xl:w-36 focus:w-48 rounded-full border border-slate-200/70 bg-slate-50/80 py-1.5 pl-8 pr-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-300 focus:border-slate-300 focus:bg-white focus:shadow-xs dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-100 dark:focus:border-slate-700"
+                />
+                <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+              </form>
             )}
 
-            {status === 'loading' ? (
-              <div
-                className={`h-8 w-8 border-2 ${
-                  isLight ? 'border-blue-600' : 'border-cyan-500'
-                } animate-spin rounded-full border-t-transparent`}
-              ></div>
-            ) : session ? (
-              <div className="group relative">
+            {/* Live Chat / Pesan Button (Placed Next to Cart) */}
+            <Link
+              href={getChatLink()}
+              className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 ${
+                pathname.startsWith('/dashboard/customer/chat') || pathname.startsWith('/dashboard/admin/chat')
+                  ? 'border-slate-900 bg-slate-950 text-white shadow-xs dark:border-white dark:bg-white dark:text-slate-950'
+                  : 'border-slate-200/70 bg-white text-slate-700 shadow-xs hover:bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+              aria-label="Pesan Live Chat"
+              title="Pesan & Live Chat"
+            >
+              <MessageSquare className="h-4 w-4" />
+            </Link>
+
+            {/* Cart Button */}
+            <Link
+              href="/cart"
+              className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 ${
+                pathname === '/cart'
+                  ? 'border-slate-900 bg-slate-950 text-white shadow-xs dark:border-white dark:bg-white dark:text-slate-950'
+                  : 'border-slate-200/70 bg-white text-slate-700 shadow-xs hover:bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+              aria-label="Keranjang Belanja"
+              title="Keranjang Belanja"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {mounted && itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9.5px] font-semibold leading-none text-white shadow-xs animate-in zoom-in duration-150">
+                  {itemCount > 9 ? '9+' : itemCount}
+                </span>
+              )}
+            </Link>
+
+            {/* User Session Auth Control */}
+            {!mounted || status === 'loading' ? (
+              <div className="h-8 w-16 animate-pulse rounded-full bg-slate-100 dark:bg-slate-800" />
+            ) : session?.user ? (
+              <div className="relative">
                 <button
-                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                    isLight
-                      ? 'text-gray-700 hover:bg-gray-100'
-                      : 'text-gray-100 hover:bg-gray-800'
-                  }`}
-                  aria-label={session.user.name || 'Akun Saya'}
-                  aria-haspopup="true"
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  className="flex items-center gap-2 rounded-full border border-slate-200/70 bg-white py-1 pl-1 pr-2.5 text-xs font-semibold text-slate-800 shadow-xs transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
                 >
-                  {userImage ? (
-                    <img
-                      src={userImage}
-                      alt=""
-                      className="h-8 w-8 rounded-full object-cover"
-                      width={32}
-                      height={32}
-                    />
-                  ) : (
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full ${isLight ? 'bg-blue-100' : 'bg-gray-700'}`}
-                      aria-hidden="true"
-                    >
-                      <User
-                        className={`h-4 w-4 ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}
+                  {avatarUrl ? (
+                    <div className="relative h-6 w-6 overflow-hidden rounded-full border border-slate-200/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shrink-0">
+                      <img
+                        src={avatarUrl}
+                        alt={session.user.name || 'Avatar'}
+                        className="h-full w-full object-cover"
+                        onError={() => setAvatarUrl(null)}
                       />
                     </div>
+                  ) : (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-white font-black text-[10px] dark:bg-blue-600 shrink-0">
+                      {(session.user.name || 'U').charAt(0).toUpperCase()}
+                    </div>
                   )}
-                  <span className="max-w-[120px] truncate">
-                    {session.user.name || 'Akun Saya'}
+                  <span className="max-w-[80px] truncate hidden sm:inline-block">
+                    {session.user.name?.split(' ')[0] || 'Akun'}
                   </span>
-                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                  <ChevronDown className="h-3 w-3 text-slate-400" />
                 </button>
-                {/* Profile Dropdown */}
-                <div
-                  className={`invisible absolute right-0 mt-2 w-56 opacity-0 transition-all duration-200 group-hover:visible group-hover:opacity-100 ${isLight ? 'bg-white' : 'bg-gray-800'} rounded-xl border py-2 shadow-lg ${isLight ? 'border-gray-200' : 'border-gray-700'}`}
-                >
-                  <div
-                    className={`border-b px-4 py-3 ${isLight ? 'border-gray-200' : 'border-gray-700'}`}
-                  >
-                    <p
-                      className={`text-sm font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}
-                    >
-                      {session.user.name || 'User'}
-                    </p>
-                    <p
-                      className={`truncate text-xs ${isLight ? 'text-gray-500' : 'text-gray-400'}`}
-                    >
-                      {session.user.email}
-                    </p>
-                  </div>
-                  <Link
-                    href={
-                      session.user.role === 'SUPER_ADMIN' ||
-                      session.user.role === 'ADMIN'
-                        ? '/dashboard/admin'
-                        : session.user.role === 'MITRA'
-                          ? '/dashboard/mitra'
-                          : session.user.isTechnician
-                            ? '/dashboard/teknisi'
-                            : '/dashboard/customer'
-                    }
-                    className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                      isLight
-                        ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                        : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                    }`}
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </Link>
-                  {/* Mitra-only menu items */}
-                  {session.user.role === 'MITRA' && (
-                    <Link
-                      href="/dashboard/mitra/profile/edit"
-                      className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                        isLight
-                          ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                          : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                      }`}
-                    >
-                      <User className="h-4 w-4" />
-                      Edit Profil
-                    </Link>
-                  )}
 
-                  {/* Customer-only menu items (exclude technicians) */}
-                  {session.user.role === 'CUSTOMER' &&
-                    !session.user.isTechnician && (
-                      <>
+                {/* Dropdown Menu */}
+                {userDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-60 rounded-2xl border border-slate-200/80 bg-white p-2 shadow-xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in zoom-in-95 duration-150 z-50">
+                    <div className="flex items-center gap-3 px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                      {avatarUrl ? (
+                        <div className="relative h-9 w-9 overflow-hidden rounded-full border border-slate-200/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shrink-0">
+                          <img
+                            src={avatarUrl}
+                            alt={session.user.name || 'Avatar'}
+                            className="h-full w-full object-cover"
+                            onError={() => setAvatarUrl(null)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-950 text-white font-black text-xs shrink-0 dark:bg-blue-600">
+                          {(session.user.name || 'U').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {session.user.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {session.user.email}
+                        </p>
+                        <span className="mt-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          {(session.user as any)?.role || 'CUSTOMER'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="py-1">
+                      {((session.user as any)?.role === 'CUSTOMER' || !(session.user as any)?.role) ? (
+                        <>
+                          <Link
+                            href="/dashboard/customer/orders"
+                            className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <ShoppingBag className="h-3.5 w-3.5 text-slate-400" /> Pesanan Saya
+                          </Link>
+                          <Link
+                            href="/dashboard/customer/settings"
+                            className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <User className="h-3.5 w-3.5 text-slate-400" /> Profil Saya
+                          </Link>
+                          <Link
+                            href="/hubungi-kami"
+                            className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <HelpCircle className="h-3.5 w-3.5 text-slate-400" /> Bantuan
+                          </Link>
+                        </>
+                      ) : (
                         <Link
-                          href="/dashboard/customer/orders"
-                          className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                            isLight
-                              ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                              : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                          }`}
+                          href={getDashboardLink()}
+                          className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
-                          <ShoppingBag className="h-4 w-4" />
-                          Pesanan Saya
+                          <User className="h-3.5 w-3.5 text-slate-400" /> Panel Dashboard
                         </Link>
-                      </>
-                    )}
-                  {/* Settings link for all users - moved to bottom */}
-                  <Link
-                    href={
-                      session.user.role === 'ADMIN'
-                        ? '/dashboard/admin/settings'
-                        : session.user.role === 'MITRA'
-                          ? '/dashboard/mitra/settings'
-                          : session.user.isTechnician
-                            ? '/dashboard/teknisi/settings'
-                            : '/dashboard/customer/settings'
-                    }
-                    className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                      isLight
-                        ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                        : 'text-gray-100 hover:bg-gray-700 hover:text-cyan-400'
-                    }`}
-                  >
-                    <Settings className="h-4 w-4" />
-                    Pengaturan
-                  </Link>
-                  <div
-                    className={`my-2 border-t ${isLight ? 'border-gray-200' : 'border-gray-700'}`}
-                  ></div>
-                  <button
-                    onClick={() => signOut({ callbackUrl: '/' })}
-                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                      isLight
-                        ? 'text-red-600 hover:bg-red-50'
-                        : 'text-red-400 hover:bg-gray-700'
-                    }`}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Keluar
-                  </button>
-                </div>
+                      )}
+                    </div>
+
+                    <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        onClick={() => signOut({ callbackUrl: '/' })}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                      >
+                        <LogOut className="h-3.5 w-3.5" /> Keluar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
                 <Link
                   href="/login"
-                  className={`px-6 py-3 text-sm font-semibold ${
-                    isLight
-                      ? 'text-gray-700 hover:text-blue-600'
-                      : 'text-gray-100 hover:text-cyan-400'
-                  } transition-colors`}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950 hover:bg-slate-100/70 transition-colors dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   Masuk
                 </Link>
                 <Link
                   href="/register"
-                  className={`rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-3 font-semibold text-white hover:shadow-lg ${
-                    isLight
-                      ? 'hover:shadow-blue-500/50'
-                      : 'hover:shadow-cyan-500/50'
-                  } transform text-sm transition-all duration-300 hover:scale-105`}
+                  className="inline-flex items-center justify-center rounded-full bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-600 transition-all duration-200 active:scale-95"
                 >
                   Daftar
                 </Link>
               </div>
             )}
-          </div>
 
-          {/* Mobile Burger Button */}
-          <button
-            onClick={toggleMobileMenu}
-            className={`rounded-lg p-2 transition-colors md:hidden ${
-              isLight
-                ? 'text-gray-700 hover:bg-gray-100'
-                : 'text-white hover:bg-gray-800'
-            }`}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out md:hidden ${
-          mobileMenuOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        <div
-          className={`space-y-2 px-4 py-4 ${
-            isLight
-              ? 'border-t border-gray-100 bg-white'
-              : 'border-t border-gray-800 bg-gray-900'
-          }`}
-        >
-          {/* Layanan Dropdown */}
-          <div>
+            {/* Mobile Menu Toggle Button */}
             <button
-              onClick={() => setLayananOpen(!layananOpen)}
-              className={`flex w-full items-center justify-between rounded-lg px-4 py-3 text-left font-medium transition-colors ${
-                isLight
-                  ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                  : 'text-gray-100 hover:bg-gray-800 hover:text-cyan-400'
-              }`}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-700 md:hidden dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+              aria-label="Toggle Menu"
             >
-              Layanan
-              <ChevronDown
-                className={`h-5 w-5 transition-transform duration-200 ${layananOpen ? 'rotate-180' : ''}`}
-              />
+              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
-            <div
-              className={`overflow-hidden transition-all duration-200 ${layananOpen ? 'max-h-52' : 'max-h-0'}`}
-            >
-              <div className="space-y-1 py-2 pl-4">
-                <Link
-                  href="/teknisi"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block rounded-lg px-4 py-2 text-sm transition-colors ${
-                    isLight
-                      ? 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-cyan-400'
-                  }`}
-                >
-                  Servis HP
-                </Link>
-                <Link
-                  href="/sparepart"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block rounded-lg px-4 py-2 text-sm transition-colors ${
-                    isLight
-                      ? 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-cyan-400'
-                  }`}
-                >
-                  Sparepart
-                </Link>
-                <Link
-                  href="/sewa-alat"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block rounded-lg px-4 py-2 text-sm transition-colors ${
-                    isLight
-                      ? 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-cyan-400'
-                  }`}
-                >
-                  Sewa Alat
-                </Link>
-                <Link
-                  href="/rekomendasi"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block rounded-lg px-4 py-2 text-sm transition-colors ${
-                    isLight
-                      ? 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-cyan-400'
-                  }`}
-                >
-                  Direktori Mitra
-                </Link>
-              </div>
-            </div>
+
           </div>
 
-          {/* Other Links */}
-          <Link
-            href="/about"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`block rounded-lg px-4 py-3 font-medium transition-colors ${
-              isLight
-                ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                : 'text-gray-100 hover:bg-gray-800 hover:text-cyan-400'
-            }`}
-          >
-            Tentang
-          </Link>
-
-          <Link
-            href="/blog"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`block rounded-lg px-4 py-3 font-medium transition-colors ${
-              isLight
-                ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                : 'text-gray-100 hover:bg-gray-800 hover:text-cyan-400'
-            }`}
-          >
-            Blog
-          </Link>
-
-          {/* Cart Icon - Mobile */}
-          <div className="px-4 py-2">
-            <CartIcon variant={isLight ? 'light' : 'dark'} />
-          </div>
-
-          {/* Divider */}
-          <div
-            className={`my-3 border-t ${isLight ? 'border-gray-200' : 'border-gray-700'}`}
-          ></div>
-
-          {/* Mobile Auth Buttons */}
-          {status === 'loading' ? (
-            <div className="flex justify-center py-4">
-              <div
-                className={`h-8 w-8 border-2 ${
-                  isLight ? 'border-blue-600' : 'border-cyan-500'
-                } animate-spin rounded-full border-t-transparent`}
-              ></div>
-            </div>
-          ) : session ? (
-            <div className="space-y-2">
-              {/* User Info */}
-              <div
-                className={`px-4 py-3 ${isLight ? 'bg-gray-50' : 'bg-gray-800'} rounded-lg`}
-              >
-                <p
-                  className={`text-sm font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}
-                >
-                  {session.user.name || 'User'}
-                </p>
-                <p
-                  className={`truncate text-xs ${isLight ? 'text-gray-500' : 'text-gray-400'}`}
-                >
-                  {session.user.email}
-                </p>
-              </div>
-
-              {/* Dashboard Link */}
-              <Link
-                href={
-                  session.user.role === 'SUPER_ADMIN' ||
-                  session.user.role === 'ADMIN'
-                    ? '/dashboard/admin'
-                    : session.user.role === 'MITRA'
-                      ? '/dashboard/mitra'
-                      : session.user.isTechnician
-                        ? '/dashboard/teknisi'
-                        : '/dashboard/customer'
-                }
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-4 py-3 font-medium transition-colors ${
-                  isLight
-                    ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                    : 'text-gray-100 hover:bg-gray-800 hover:text-cyan-400'
-                }`}
-              >
-                <LayoutDashboard className="h-5 w-5" />
-                Dashboard
-              </Link>
-
-              {/* Mitra-only menu items */}
-              {session.user.role === 'MITRA' && (
-                <Link
-                  href="/dashboard/mitra/profile/edit"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-3 font-medium transition-colors ${
-                    isLight
-                      ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                      : 'text-gray-100 hover:bg-gray-800 hover:text-cyan-400'
-                  }`}
-                >
-                  <User className="h-5 w-5" />
-                  Edit Profil
-                </Link>
-              )}
-
-              {/* Customer-only menu items (exclude technicians) */}
-              {session.user.role === 'CUSTOMER' &&
-                !session.user.isTechnician && (
-                  <>
-                    <Link
-                      href="/dashboard/customer/orders"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 rounded-lg px-4 py-3 font-medium transition-colors ${
-                        isLight
-                          ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                          : 'text-gray-100 hover:bg-gray-800 hover:text-cyan-400'
-                      }`}
-                    >
-                      <ShoppingBag className="h-5 w-5" />
-                      Pesanan Saya
-                    </Link>
-                  </>
-                )}
-
-              {/* Settings link for all users */}
-              <Link
-                href={
-                  session.user.role === 'ADMIN'
-                    ? '/dashboard/admin/settings'
-                    : session.user.role === 'MITRA'
-                      ? '/dashboard/mitra/settings'
-                      : session.user.isTechnician
-                        ? '/dashboard/teknisi/settings'
-                        : '/dashboard/customer/settings'
-                }
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-4 py-3 font-medium transition-colors ${
-                  isLight
-                    ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                    : 'text-gray-100 hover:bg-gray-800 hover:text-cyan-400'
-                }`}
-              >
-                <Settings className="h-5 w-5" />
-                Pengaturan
-              </Link>
-
-              {/* Logout Button */}
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  signOut({ callbackUrl: '/' })
-                }}
-                className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 font-medium transition-colors ${
-                  isLight
-                    ? 'text-red-600 hover:bg-red-50'
-                    : 'text-red-400 hover:bg-gray-800'
-                }`}
-              >
-                <LogOut className="h-5 w-5" />
-                Keluar
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block rounded-lg px-4 py-3 text-center font-medium transition-colors ${
-                  isLight
-                    ? 'text-gray-700 hover:bg-gray-100'
-                    : 'text-gray-100 hover:bg-gray-800'
-                }`}
-              >
-                Masuk
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3 text-center font-medium text-white transition-all hover:shadow-lg"
-              >
-                Daftar
-              </Link>
-            </div>
-          )}
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="mt-2 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xl md:hidden dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
+            {/* Search Input for Mobile (Hidden on /gadget and /toko) */}
+            {!isSearchPage && (
+              <form onSubmit={handleSearchSubmit} className="mb-3 relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari gadget..."
+                  className="w-full rounded-full border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-xs outline-none focus:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              </form>
+            )}
+
+            {/* Links List */}
+            <nav className="flex flex-col gap-1">
+              {navLinks.map((link) => {
+                const isActive =
+                  pathname === link.href ||
+                  (link.href !== '/' && pathname.startsWith(link.href))
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center justify-between rounded-xl px-4 py-2 text-xs font-bold transition-colors ${
+                      isActive
+                        ? 'bg-slate-950 text-white dark:bg-blue-600'
+                        : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <span>{link.label}</span>
+                    <ArrowRight className="h-3 w-3 opacity-40" />
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+        )}
+
       </div>
-    </nav>
+    </header>
   )
 }
+
+export default Navbar

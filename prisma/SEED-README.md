@@ -7,8 +7,8 @@
 1. **Clone repository dan install dependencies**
 
    ```bash
-   git clone https://github.com/habstrakT808/halotekno-platform.git
-   cd halotekno-platform
+   git clone https://github.com/habstrakT808/affiliate-gadget-platform.git
+   cd affiliate-gadget-platform
    pnpm install
    ```
 
@@ -35,7 +35,7 @@ Semua user menggunakan password default: **`password123`**
 
 | Email               | Role        | Keterangan                               |
 | ------------------- | ----------- | ---------------------------------------- |
-| super@halotekno.com | SUPER_ADMIN | Super Admin (bisa konfirmasi pembayaran) |
+| super@affiliategadget.com | SUPER_ADMIN | Super Admin (bisa konfirmasi pembayaran) |
 | customer@test.com   | CUSTOMER    | Customer untuk testing                   |
 | teknisi@test.com    | MITRA       | Teknisi untuk testing                    |
 

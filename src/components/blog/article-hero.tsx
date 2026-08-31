@@ -15,7 +15,7 @@ export default function ArticleHero({ article }: ArticleHeroProps) {
           backgroundImage: `url(${article.featuredImage})`,
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-800/85 to-cyan-900/90"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-950/95 via-blue-900/90 to-slate-900/95"></div>
       </div>
 
       {/* Content */}
