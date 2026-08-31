@@ -85,6 +85,12 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-08-31 (GitHub Repository Initialization & Main Branch Push: https://github.com/Kizker/affiliate-gadget):**
+  - **1. Inisialisasi Repository Baru GitHub:** Membuat repository baru di akun GitHub `Kizker` bernama `affiliate-gadget` secara otomatis via GitHub REST API dengan visibilitas *public*.
+  - **2. Konfigurasi Remote & Author Git:** Mengalihkan git remote `origin` dari URL lama ke `https://github.com/Kizker/affiliate-gadget.git` dan menetapkan identitas author `Kizker` (`andrichadhea@gmail.com`).
+  - **3. Full Staging & Commit:** Melakukan sinkronisasi dan commit 249 berkas kode arsitektur platform marketplace Multi-PT/Multi-Toko Offline (`feat: initial release of affiliate gadget multi-pt marketplace platform`).
+  - **4. Push Berhasil ke Branch `main`:** Berhasil mem-push seluruh source code ke branch `main` pada remote repository `Kizker/affiliate-gadget`.
+
 - **2026-08-30 (Second-Hand Gadget Marketplace Transformation: Transformasi Total Seluruh Informasi Platform Menjadi Penjualan Gadget Second Berkualitas):**
   - **1. Standarisasi Kondisi Unit Second:** Menerapkan standarisasi kondisi fisik unit gadget second di seluruh katalog publik, landing page, dan admin CMS: `LIKE_NEW` (*Second Like New - Mulus 99%*), `SECOND_MULUS` (*Second Mulus - 95% s/d 98%*), dan `GRADE_A` (*Second Grade A - Normal 100%*).
   - **2. Redefinisi Jaminan & Garansi Toko 30 Hari:** Mengubah seluruh klausa garansi dari "ganti unit baru" menjadi **"Garansi Toko 30 Hari Tukar Unit Gadget Second"** (unit pengganti teruji fungsional 100% atau refund 100%), bebas biaya servis, dengan garansi IMEI bebas blokir seumur hidup.
