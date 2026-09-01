@@ -27,30 +27,26 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>
 }) {
-  try {
-    const { slug } = await params
+  const { slug } = await params
 
-    const article = await prisma.article.findUnique({
-      where: { slug, isPublished: true },
-      select: { title: true, excerpt: true, coverImage: true },
-    })
+  const article = await prisma.article.findUnique({
+    where: { slug, isPublished: true },
+    select: { title: true, excerpt: true, coverImage: true },
+  })
 
-    if (!article) {
-      return { title: 'Article Not Found - Affiliate Gadget' }
-    }
+  if (!article) {
+    return { title: 'Article Not Found - Affiliate Gadget' }
+  }
 
-    return {
-      title: `${article.title} - Blog Affiliate Gadget`,
-      description:
-        article.excerpt || `Baca artikel ${article.title} di Affiliate Gadget`,
-      openGraph: {
-        title: article.title,
-        description: article.excerpt || '',
-        images: article.coverImage ? [article.coverImage] : [],
-      },
-    }
-  } catch {
-    return { title: 'Blog - Affiliate Gadget' }
+  return {
+    title: `${article.title} - Blog Affiliate Gadget`,
+    description:
+      article.excerpt || `Baca artikel ${article.title} di Affiliate Gadget`,
+    openGraph: {
+      title: article.title,
+      description: article.excerpt || '',
+      images: article.coverImage ? [article.coverImage] : [],
+    },
   }
 }
 
@@ -111,8 +107,8 @@ export default async function BlogDetailPage({
 
   return (
     <BlogDetailClient
-      article={data.article}
-      relatedArticles={data.relatedArticles}
+      article={data!.article}
+      relatedArticles={data!.relatedArticles}
     />
   )
 }

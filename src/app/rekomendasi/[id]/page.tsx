@@ -151,7 +151,7 @@ export default async function MitraDetailPage({
 
   return (
     <Suspense fallback={<MitraDetailLoading />}>
-      <MitraDetailClient mitra={mitra} />
+      <MitraDetailClient mitra={mitra!} />
     </Suspense>
   )
 }

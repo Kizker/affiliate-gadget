@@ -34,7 +34,7 @@ async function getProduct(id: string) {
 
     // Calculate total sold
     const totalSold = product.orderItems.reduce(
-      (sum, item) => sum + item.quantity,
+      (sum: number, item: { quantity: number }) => sum + item.quantity,
       0
     )
 
@@ -95,13 +95,13 @@ export default async function SparepartDetailPage({
     notFound()
   }
 
-  const { product, reviews, relatedProducts } = data
+  const { product, reviews, relatedProducts } = data!
   const isInStock = product.stock > 0
 
   // Calculate average rating
   const averageRating =
     reviews.length > 0
-      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+      ? reviews.reduce((sum: number, review: { rating: number }) => sum + review.rating, 0) / reviews.length
       : 0
 
   return (

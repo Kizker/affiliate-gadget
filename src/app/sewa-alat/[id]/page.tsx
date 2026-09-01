@@ -48,7 +48,7 @@ export default async function SewaAlatDetailPage({
     notFound()
   }
 
-  const { item, relatedItems } = data
+  const { item, relatedItems } = data!
 
   const isAvailable = item.stock > 0
 
