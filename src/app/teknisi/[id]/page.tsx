@@ -126,7 +126,7 @@ export default async function TeknisiDetailPage({
       image: technician.user.image,
       phone: technician.user.phone,
     },
-    services: technician.services.map((s) => ({
+    services: technician.services.map((s: { id: string; name: string; category: string; price: number | null; minPrice: number | null; maxPrice: number | null; description: string | null }) => ({
       id: s.id,
       name: s.name,
       category: s.category,

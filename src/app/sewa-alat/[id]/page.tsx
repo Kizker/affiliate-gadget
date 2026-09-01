@@ -282,7 +282,7 @@ export default async function SewaAlatDetailPage({
             <div className="columns-2 gap-4 lg:columns-1">
               {/* Desktop Grid */}
               <div className="hidden lg:grid lg:grid-cols-4 lg:gap-6">
-                {relatedItems.map((rentalItem) => (
+                {relatedItems.map((rentalItem: { id: string; name: string; images: string[]; pricePerDay: number; category: string }) => (
                   <Link
                     key={rentalItem.id}
                     href={`/sewa-alat/${rentalItem.id}`}
@@ -321,7 +321,7 @@ export default async function SewaAlatDetailPage({
 
               {/* Mobile Masonry */}
               <div className="lg:hidden">
-                {relatedItems.map((rentalItem) => (
+                {relatedItems.map((rentalItem: { id: string; name: string; images: string[]; pricePerDay: number; category: string }) => (
                   <div key={rentalItem.id} className="mb-4 break-inside-avoid">
                     <Link
                       href={`/sewa-alat/${rentalItem.id}`}

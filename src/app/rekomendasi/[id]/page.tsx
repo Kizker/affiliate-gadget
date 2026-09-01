@@ -111,13 +111,13 @@ async function getMitra(id: string): Promise<MitraData | null> {
       rating: mitra.rating,
       totalReview: mitra.totalReview,
       isOpen,
-      services: mitra.services.map((s) => ({
+      services: mitra.services.map((s: { id: string; name: string; price: string | null; icon: string | null }) => ({
         id: s.id,
         name: s.name,
         price: s.price || 'Hubungi kami',
         icon: s.icon,
       })),
-      images: mitra.images.map((img) => ({
+      images: mitra.images.map((img: { id: string; url: string }) => ({
         id: img.id,
         url: img.url,
       })),
