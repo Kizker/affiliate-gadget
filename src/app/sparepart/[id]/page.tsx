@@ -101,7 +101,10 @@ export default async function SparepartDetailPage({
   // Calculate average rating
   const averageRating =
     reviews.length > 0
-      ? reviews.reduce((sum: number, review: { rating: number }) => sum + review.rating, 0) / reviews.length
+      ? reviews.reduce(
+          (sum: number, review: { rating: number }) => sum + review.rating,
+          0
+        ) / reviews.length
       : 0
 
   return (
@@ -166,7 +169,7 @@ export default async function SparepartDetailPage({
 
               {reviews.length > 0 ? (
                 <div className="space-y-4">
-                  {reviews.map((review: { id: string; rating: number; comment: string | null; createdAt: string; user: { name: string | null; image: string | null } }) => (
+                  {reviews.map((review) => (
                     <div
                       key={review.id}
                       className="border-b border-gray-100 pb-4 last:border-0 last:pb-0"
@@ -414,7 +417,7 @@ export default async function SparepartDetailPage({
             <div className="columns-2 gap-4 lg:columns-1">
               {/* Desktop Grid */}
               <div className="hidden lg:grid lg:grid-cols-4 lg:gap-6">
-                {relatedProducts.map((item: { id: string; name: string; images: string[]; price: number; stock: number; category: string }) => (
+                {relatedProducts.map((item) => (
                   <Link
                     key={item.id}
                     href={`/sparepart/${item.id}`}
@@ -452,7 +455,7 @@ export default async function SparepartDetailPage({
 
               {/* Mobile Masonry */}
               <div className="lg:hidden">
-                {relatedProducts.map((item: { id: string; name: string; images: string[]; price: number; stock: number; category: string }) => (
+                {relatedProducts.map((item) => (
                   <div key={item.id} className="mb-4 break-inside-avoid">
                     <Link
                       href={`/sparepart/${item.id}`}

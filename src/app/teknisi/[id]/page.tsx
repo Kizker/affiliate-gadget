@@ -62,20 +62,31 @@ async function getReviews(technicianId: string) {
     })
 
     // Calculate average rating
-    const totalRating = reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0)
+    const totalRating = reviews.reduce(
+      (sum: number, r: { rating: number }) => sum + r.rating,
+      0
+    )
     const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0
 
     return {
-      reviews: reviews.map((r: { id: string; rating: number; comment: string | null; createdAt: Date; user: { name: string | null; image: string | null } }) => ({
-        id: r.id,
-        rating: r.rating,
-        comment: r.comment,
-        createdAt: r.createdAt.toISOString(),
-        user: {
-          name: r.user.name || 'Anonymous',
-          image: r.user.image,
-        },
-      })),
+      reviews: reviews.map(
+        (r: {
+          id: string
+          rating: number
+          comment: string | null
+          createdAt: Date
+          user: { name: string | null; image: string | null }
+        }) => ({
+          id: r.id,
+          rating: r.rating,
+          comment: r.comment,
+          createdAt: r.createdAt.toISOString(),
+          user: {
+            name: r.user.name || 'Anonymous',
+            image: r.user.image,
+          },
+        })
+      ),
       averageRating,
       totalReviews: reviews.length,
     }
@@ -126,11 +137,11 @@ export default async function TeknisiDetailPage({
       image: technician.user.image,
       phone: technician.user.phone,
     },
-    services: technician.services.map((s: { id: string; name: string; category: string; price: number | null; minPrice: number | null; maxPrice: number | null; description: string | null }) => ({
+    services: technician.services.map((s) => ({
       id: s.id,
       name: s.name,
       category: s.category,
-      price: s.price,
+      price: s.price ?? 0,
       minPrice: s.minPrice,
       maxPrice: s.maxPrice,
       description: s.description,
