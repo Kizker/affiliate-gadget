@@ -23,16 +23,20 @@ export const metadata = {
 
 // Pre-generate popular product pages at build time
 export async function generateStaticParams() {
-  const products = await prisma.product.findMany({
-    where: { isActive: true, stock: { gt: 0 } },
-    take: 30,
-    select: { id: true },
-    orderBy: { createdAt: 'desc' },
-  })
+  try {
+    const products = await prisma.product.findMany({
+      where: { isActive: true, stock: { gt: 0 } },
+      take: 30,
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+    })
 
-  return products.map((product) => ({
-    id: product.id,
-  }))
+    return products.map((product) => ({
+      id: product.id,
+    }))
+  } catch {
+    return []
+  }
 }
 
 async function getProduct(id: string) {

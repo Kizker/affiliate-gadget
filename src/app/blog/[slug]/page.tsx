@@ -27,26 +27,30 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>
 }) {
-  const { slug } = await params
+  try {
+    const { slug } = await params
 
-  const article = await prisma.article.findUnique({
-    where: { slug, isPublished: true },
-    select: { title: true, excerpt: true, coverImage: true },
-  })
+    const article = await prisma.article.findUnique({
+      where: { slug, isPublished: true },
+      select: { title: true, excerpt: true, coverImage: true },
+    })
 
-  if (!article) {
-    return { title: 'Article Not Found - Affiliate Gadget' }
-  }
+    if (!article) {
+      return { title: 'Article Not Found - Affiliate Gadget' }
+    }
 
-  return {
-    title: `${article.title} - Blog Affiliate Gadget`,
-    description:
-      article.excerpt || `Baca artikel ${article.title} di Affiliate Gadget`,
-    openGraph: {
-      title: article.title,
-      description: article.excerpt || '',
-      images: article.coverImage ? [article.coverImage] : [],
-    },
+    return {
+      title: `${article.title} - Blog Affiliate Gadget`,
+      description:
+        article.excerpt || `Baca artikel ${article.title} di Affiliate Gadget`,
+      openGraph: {
+        title: article.title,
+        description: article.excerpt || '',
+        images: article.coverImage ? [article.coverImage] : [],
+      },
+    }
+  } catch {
+    return { title: 'Blog - Affiliate Gadget' }
   }
 }
 

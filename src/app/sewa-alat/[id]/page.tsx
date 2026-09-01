@@ -16,16 +16,20 @@ export const metadata = {
 
 // Pre-generate popular rental item pages at build time
 export async function generateStaticParams() {
-  const items = await prisma.rentalItem.findMany({
-    where: { isActive: true, stock: { gt: 0 } },
-    take: 20,
-    select: { id: true },
-    orderBy: { createdAt: 'desc' },
-  })
+  try {
+    const items = await prisma.rentalItem.findMany({
+      where: { isActive: true, stock: { gt: 0 } },
+      take: 20,
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+    })
 
-  return items.map((item) => ({
-    id: item.id,
-  }))
+    return items.map((item) => ({
+      id: item.id,
+    }))
+  } catch {
+    return []
+  }
 }
 
 async function getRentalItem(id: string) {

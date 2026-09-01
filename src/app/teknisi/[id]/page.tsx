@@ -9,18 +9,22 @@ export const revalidate = 60
 
 // Generate static paths for popular technicians at build time
 export async function generateStaticParams() {
-  const technicians = await db.technician.findMany({
-    where: {
-      isAvailable: true,
-      user: { isActive: true },
-    },
-    take: 20,
-    select: { id: true },
-  })
+  try {
+    const technicians = await db.technician.findMany({
+      where: {
+        isAvailable: true,
+        user: { isActive: true },
+      },
+      take: 20,
+      select: { id: true },
+    })
 
-  return technicians.map((tech) => ({
-    id: tech.id,
-  }))
+    return technicians.map((tech) => ({
+      id: tech.id,
+    }))
+  } catch {
+    return []
+  }
 }
 
 // Fetch technician data on server
