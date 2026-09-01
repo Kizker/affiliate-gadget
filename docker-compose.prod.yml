@@ -44,7 +44,7 @@ services:
     container_name: affiliate-gadget-app
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-3005}:3000"
+      - "3005:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
