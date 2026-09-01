@@ -4,29 +4,8 @@ import { Suspense } from 'react'
 import MitraDetailClient from './mitra-detail-client'
 import { Loader2 } from 'lucide-react'
 
-// Enable ISR - revalidate every 2 minutes
-export const revalidate = 120
-
-// Pre-generate popular mitra pages at build time
-export async function generateStaticParams() {
-  try {
-    const mitras = await prisma.mitra.findMany({
-      where: {
-        isApproved: true,
-        isActive: true,
-      },
-      take: 20,
-      orderBy: [{ rating: 'desc' }, { totalReview: 'desc' }],
-      select: { id: true },
-    })
-
-    return mitras.map((mitra) => ({
-      id: mitra.id,
-    }))
-  } catch {
-    return []
-  }
-}
+// Force dynamic rendering - avoid DB calls at build time (Docker build stage has no DB)
+export const dynamic = 'force-dynamic'
 
 // Generate metadata for SEO
 export async function generateMetadata({
@@ -34,31 +13,27 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>
 }) {
-  try {
-    const { id } = await params
+  const { id } = await params
 
-    const mitra = await prisma.mitra.findUnique({
-      where: { id, isApproved: true, isActive: true },
-      select: { businessName: true, tagline: true, banner: true, city: true },
-    })
+  const mitra = await prisma.mitra.findUnique({
+    where: { id, isApproved: true, isActive: true },
+    select: { businessName: true, tagline: true, banner: true, city: true },
+  })
 
-    if (!mitra) {
-      return { title: 'Mitra Tidak Ditemukan - Affiliate Gadget' }
-    }
+  if (!mitra) {
+    return { title: 'Mitra Tidak Ditemukan - Affiliate Gadget' }
+  }
 
-    return {
-      title: `${mitra.businessName} - Rekomendasi Affiliate Gadget`,
-      description:
-        mitra.tagline ||
-        `${mitra.businessName} - Mitra servis terpercaya di ${mitra.city}`,
-      openGraph: {
-        title: mitra.businessName,
-        description: mitra.tagline || '',
-        images: mitra.banner ? [mitra.banner] : [],
-      },
-    }
-  } catch {
-    return { title: 'Detail Mitra - Affiliate Gadget' }
+  return {
+    title: `${mitra.businessName} - Rekomendasi Affiliate Gadget`,
+    description:
+      mitra.tagline ||
+      `${mitra.businessName} - Mitra servis terpercaya di ${mitra.city}`,
+    openGraph: {
+      title: mitra.businessName,
+      description: mitra.tagline || '',
+      images: mitra.banner ? [mitra.banner] : [],
+    },
   }
 }
 

@@ -4,28 +4,8 @@ import { Suspense } from 'react'
 import TeknisiDetailClient from './teknisi-detail-client'
 import { Loader2 } from 'lucide-react'
 
-// Enable ISR - revalidate every 60 seconds
-export const revalidate = 60
-
-// Generate static paths for popular technicians at build time
-export async function generateStaticParams() {
-  try {
-    const technicians = await db.technician.findMany({
-      where: {
-        isAvailable: true,
-        user: { isActive: true },
-      },
-      take: 20,
-      select: { id: true },
-    })
-
-    return technicians.map((tech) => ({
-      id: tech.id,
-    }))
-  } catch {
-    return []
-  }
-}
+// Force dynamic rendering - avoid DB calls at build time (Docker build stage has no DB)
+export const dynamic = 'force-dynamic'
 
 // Fetch technician data on server
 async function getTechnician(id: string) {
