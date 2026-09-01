@@ -13,6 +13,14 @@ import {
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import prisma from '@/lib/db'
+import type { Product, Review } from '@prisma/client'
+
+type ReviewWithUser = Review & {
+  user: {
+    name: string | null
+    image: string | null
+  }
+}
 
 // Force dynamic rendering - avoid DB calls at build time (Docker build stage has no DB)
 export const dynamic = 'force-dynamic'
@@ -169,7 +177,7 @@ export default async function SparepartDetailPage({
 
               {reviews.length > 0 ? (
                 <div className="space-y-4">
-                  {reviews.map((review) => (
+                  {reviews.map((review: ReviewWithUser) => (
                     <div
                       key={review.id}
                       className="border-b border-gray-100 pb-4 last:border-0 last:pb-0"
@@ -417,7 +425,7 @@ export default async function SparepartDetailPage({
             <div className="columns-2 gap-4 lg:columns-1">
               {/* Desktop Grid */}
               <div className="hidden lg:grid lg:grid-cols-4 lg:gap-6">
-                {relatedProducts.map((item) => (
+                {relatedProducts.map((item: Product) => (
                   <Link
                     key={item.id}
                     href={`/sparepart/${item.id}`}
@@ -455,7 +463,7 @@ export default async function SparepartDetailPage({
 
               {/* Mobile Masonry */}
               <div className="lg:hidden">
-                {relatedProducts.map((item) => (
+                {relatedProducts.map((item: Product) => (
                   <div key={item.id} className="mb-4 break-inside-avoid">
                     <Link
                       href={`/sparepart/${item.id}`}

@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import type { Service } from '@prisma/client'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import TeknisiDetailClient from './teknisi-detail-client'
@@ -137,7 +138,7 @@ export default async function TeknisiDetailPage({
       image: technician.user.image,
       phone: technician.user.phone,
     },
-    services: technician.services.map((s) => ({
+    services: technician.services.map((s: Service) => ({
       id: s.id,
       name: s.name,
       category: s.category,
