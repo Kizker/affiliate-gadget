@@ -54,3 +54,6 @@ logs/
 
 # Database exports
 database-exports/*.sql
+
+# Agents & AI tooling
+.agents

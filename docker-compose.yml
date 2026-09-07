@@ -1,38 +1,138 @@
-version: '3.8'
+# ================================================================
+# docker-compose.yml — Unified Docker Stack (Local & Hosting)
+# Affiliate Gadget Platform (Next.js 15 + PostgreSQL + Redis + Nginx)
+# ================================================================
 
 services:
+  # ── 1. PostgreSQL (Database with PostGIS) ───────────────────────
   postgres:
     image: postgis/postgis:16-3.4
     container_name: affiliate-gadget-postgres
     restart: unless-stopped
     ports:
-      - '5432:5432'
+      - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: affiliate_gadget
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-affiliate_gadget}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-affiliate_gadget}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    networks:
+      - affiliate-network
 
+  # ── 2. Redis (Cache, Sessions & Rate Limiter) ─────────────────
   redis:
     image: redis:7-alpine
     container_name: affiliate-gadget-redis
     restart: unless-stopped
     ports:
-      - '6379:6379'
+      - "6379:6379"
+    command: >
+      sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then
+        redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes;
+      else
+        redis-server --appendonly yes;
+      fi'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: >
+        sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then
+          redis-cli -a "$$REDIS_PASSWORD" ping;
+        else
+          redis-cli ping;
+        fi'
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - affiliate-network
+
+  # ── 3. Next.js Application ────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: affiliate-gadget:latest
+    container_name: affiliate-gadget-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - NEXT_TELEMETRY_DISABLED=1
+      # Database & Cache URLs
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-affiliate_gadget}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      # App & Authentication
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-affiliate-gadget-dev-secret-key-32chars}
+      - AUTH_SECRET=${AUTH_SECRET:-affiliate-gadget-dev-secret-key-32chars}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME:-Affiliate Gadget}
+      - NEXT_PUBLIC_WHATSAPP_CS=${NEXT_PUBLIC_WHATSAPP_CS:-6281234567890}
+      # OAuth & Media Integrations
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:-}
+      - NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - UPLOADTHING_SECRET=${UPLOADTHING_SECRET:-}
+      - UPLOADTHING_APP_ID=${UPLOADTHING_APP_ID:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY:-}
+      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY:-}
+      - MIDTRANS_IS_PRODUCTION=${MIDTRANS_IS_PRODUCTION:-false}
+      - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+      - NEXT_PUBLIC_TINYMCE_API_KEY=${NEXT_PUBLIC_TINYMCE_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - affiliate-network
+
+  # ── 4. Nginx Reverse Proxy (SSL/TLS for Hosting VPS) ──────────
+  nginx:
+    image: nginx:alpine
+    container_name: affiliate-gadget-nginx
+    restart: unless-stopped
+    profiles:
+      - production
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - affiliate-network
 
 volumes:
   postgres_data:
+    name: affiliate_gadget_postgres_data
   redis_data:
+    name: affiliate_gadget_redis_data
+  nginx_logs:
+    name: affiliate_gadget_nginx_logs
+
+networks:
+  affiliate-network:
+    name: affiliate_gadget_network
+    driver: bridge

@@ -4,10 +4,23 @@ import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import { loginSchema } from '@/lib/validations/auth'
+import { loginSchema, LOGIN_ERROR_CODES } from '@/lib/validations/auth'
+import {
+  extractClientIp,
+  checkLoginRateLimit,
+  checkAccountLockout,
+  getLoginFailCount,
+  incrementLoginFailCounter,
+  resetLoginFailCounter,
+  calculateProgressiveDelay,
+} from '@/lib/login-security'
 import { UserRole } from '@prisma/client'
 
 import { authConfig } from './auth.config'
+
+// Pre-computed valid bcrypt hash used for anti-enumeration timing attack mitigation
+const DUMMY_HASH =
+  '$2a$10$wT8K8J5p8z9V6d.2k4xO/.ySGe7fF7KkW2Qj5m1nI0t4eQx0fJtKy'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -18,41 +31,98 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    }),
+    }) as any,
+
     Credentials({
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         const validatedFields = loginSchema.safeParse(credentials)
 
         if (!validatedFields.success) {
-          return null
+          throw new Error(LOGIN_ERROR_CODES.INVALID_CREDENTIALS)
         }
 
         const { email, password } = validatedFields.data
+        const clientIp = extractClientIp(req)
 
+        // 1. Dual-layer rate limiting check (IP & Email)
+        const rateLimit = await checkLoginRateLimit(clientIp, email)
+        if (rateLimit.blocked) {
+          if (rateLimit.reason === 'ip') {
+            throw new Error(LOGIN_ERROR_CODES.RATE_LIMIT_IP)
+          }
+          throw new Error(LOGIN_ERROR_CODES.RATE_LIMIT_EMAIL)
+        }
+
+        // 2. Account Lockout check (5 failed attempts)
+        const lockout = await checkAccountLockout(email)
+        if (lockout.locked) {
+          throw new Error(LOGIN_ERROR_CODES.ACCOUNT_LOCKED)
+        }
+
+        // 3. Progressive delay based on consecutive fail count (anti-brute-force timing)
+        const previousFails = await getLoginFailCount(email)
+        const delayMs = calculateProgressiveDelay(previousFails)
+        if (delayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs))
+        }
+
+        // 4. Query user record from database
         const user = await prisma.user.findUnique({
           where: { email },
-          include: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            password: true,
+            role: true,
+            image: true,
+            storeId: true,
+            mitraStatus: true,
+            isActive: true,
+            emailVerified: true,
             mitra: { select: { businessName: true } },
             technician: { select: { id: true } },
           },
         })
 
+        // 5. Anti-Enumeration: Run dummy compare if user or password does not exist
         if (!user || !user.password) {
-          return null
+          await bcrypt.compare(password, DUMMY_HASH)
+          await incrementLoginFailCounter(email)
+          throw new Error(LOGIN_ERROR_CODES.INVALID_CREDENTIALS)
         }
 
+        // 6. Check Email Verification status (temporarily bypassed for development mode)
+        // if (!user.emailVerified) {
+        //   throw new Error(LOGIN_ERROR_CODES.EMAIL_NOT_VERIFIED)
+        // }
+
+        // 7. Check Active status (admin disable check)
+        if (!user.isActive) {
+          throw new Error(LOGIN_ERROR_CODES.ACCOUNT_DISABLED)
+        }
+
+        // 8. Verify Password
         const passwordsMatch = await bcrypt.compare(password, user.password)
-
         if (!passwordsMatch) {
-          return null
+          await incrementLoginFailCounter(email)
+          throw new Error(LOGIN_ERROR_CODES.INVALID_CREDENTIALS)
         }
+
+        // 9. Login Successful: Reset fail counter
+        await resetLoginFailCounter(email)
 
         // Return user data including cached fields to store in JWT
-        const safeImage = (user.image && !user.image.startsWith('data:') && user.image.length < 500) ? user.image : null
+        const safeImage =
+          user.image &&
+          !user.image.startsWith('data:') &&
+          user.image.length < 500
+            ? user.image
+            : null
         return {
           id: user.id,
           email: user.email,
@@ -76,8 +146,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.role = user.role
         token.name = user.name
         token.email = user.email
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        token.image = (user.image && !user.image.startsWith('data:') && user.image.length < 500) ? user.image : null
+
+        token.image =
+          user.image &&
+          !user.image.startsWith('data:') &&
+          user.image.length < 500
+            ? user.image
+            : null
         token.storeId = user.storeId || null
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.isTechnician = (user as any).isTechnician || false

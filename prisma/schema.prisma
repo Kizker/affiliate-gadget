@@ -17,7 +17,7 @@ model User {
   image                  String?
   password               String?
   role                   UserRole           @default(CUSTOMER)
-  phone                  String?
+  phone                  String?            @unique
   gender                 String?            // "Laki-laki" | "Perempuan" | "Lainnya"
   birthDate              DateTime?
   bio                    String?
@@ -56,11 +56,26 @@ model User {
   tickets                Ticket[]
   hostedLiveStreams      LiveStream[]       @relation("HostLiveStreams")
   auditLogs              AuditLog[]
+  emailVerificationTokens EmailVerificationToken[]
 
   @@index([email])
+  @@index([phone])
   @@index([role])
   @@index([storeId])
   @@map("users")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("email_verification_tokens")
 }
 
 model UserAddress {

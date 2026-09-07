@@ -4,7 +4,9 @@ import bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Starting comprehensive realistic seed for Affiliate Gadget Platform...')
+  console.log(
+    '🌱 Starting comprehensive realistic seed for Affiliate Gadget Platform...'
+  )
 
   // Clean existing specific test data to avoid duplicate conflict
   console.log('🧹 Cleaning existing records...')
@@ -30,6 +32,7 @@ async function main() {
       role: UserRole.SUPER_ADMIN,
       phone: '081289001122',
       isActive: true,
+      emailVerified: new Date(),
     },
     create: {
       email: 'superadmin@affiliategadget.com',
@@ -38,6 +41,7 @@ async function main() {
       role: UserRole.SUPER_ADMIN,
       phone: '081289001122',
       isActive: true,
+      emailVerified: new Date(),
     },
   })
 
@@ -49,6 +53,7 @@ async function main() {
       role: UserRole.ADMIN,
       phone: '081289003344',
       isActive: true,
+      emailVerified: new Date(),
     },
     create: {
       email: 'admin@affiliategadget.com',
@@ -57,12 +62,13 @@ async function main() {
       role: UserRole.ADMIN,
       phone: '081289003344',
       isActive: true,
+      emailVerified: new Date(),
     },
   })
 
   // 2. TOKO FISIK & BADAN HUKUM PT (5 Real Stores Across Indonesia)
   console.log('🏬 Creating 5 Official Multi-PT Stores...')
-  
+
   // Store 1: Jakarta Pusat - Roxy Mas (PT Gadget Jaya Sentosa)
   const storeRoxy = await prisma.store.create({
     data: {
@@ -71,8 +77,10 @@ async function main() {
       companyName: 'PT Gadget Jaya Sentosa',
       taxId: '01.428.910.4-015.000',
       tagline: 'Pusat Gadget & Flagship Store Jakarta Pusat',
-      description: 'Cabang pusat penjualan smartphone second berkualitas resmi bergaransi 30 hari di ITC Roxy Mas. Melayani pembelian unit second like new, tukar tambah, dan servis kilat dengan teknisi tersertifikasi.',
-      address: 'ITC Roxy Mas Lt. 2 No. 45-47, Jl. KH. Hasyim Ashari No. 125, Cideng, Gambir',
+      description:
+        'Cabang pusat penjualan smartphone second berkualitas resmi bergaransi 30 hari di ITC Roxy Mas. Melayani pembelian unit second like new, tukar tambah, dan servis kilat dengan teknisi tersertifikasi.',
+      address:
+        'ITC Roxy Mas Lt. 2 No. 45-47, Jl. KH. Hasyim Ashari No. 125, Cideng, Gambir',
       city: 'Jakarta Pusat',
       province: 'DKI Jakarta',
       postalCode: '10150',
@@ -80,7 +88,8 @@ async function main() {
       whatsapp: '6281288997701',
       email: 'roxy@affiliategadget.com',
       logo: 'https://images.unsplash.com/photo-1616469829941-c7200edec809?w=300&q=80',
-      banner: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1200&q=80',
+      banner:
+        'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1200&q=80',
       isOwnerStore: true,
       commissionRate: 1.5,
       rating: 4.9,
@@ -125,8 +134,10 @@ async function main() {
       companyName: 'PT Sinar Gadget Nusantara',
       taxId: '02.582.119.8-609.000',
       tagline: 'Pusat Smartphone Resmi Jawa Timur',
-      description: 'Pusat belanja gadget terbesar di Surabaya. Seluruh unit dijamin 100% original, segel resmi, dengan proteksi garansi ganti unit 30 hari.',
-      address: 'WTC Surabaya Galeria Lt. 3 No. 312-315, Jl. Pemuda No. 27-31, Embong Kaliasin, Genteng',
+      description:
+        'Pusat belanja gadget terbesar di Surabaya. Seluruh unit dijamin 100% original, segel resmi, dengan proteksi garansi ganti unit 30 hari.',
+      address:
+        'WTC Surabaya Galeria Lt. 3 No. 312-315, Jl. Pemuda No. 27-31, Embong Kaliasin, Genteng',
       city: 'Surabaya',
       province: 'Jawa Timur',
       postalCode: '60271',
@@ -134,7 +145,8 @@ async function main() {
       whatsapp: '6281399887702',
       email: 'surabaya@affiliategadget.com',
       logo: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=300&q=80',
-      banner: 'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=1200&q=80',
+      banner:
+        'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=1200&q=80',
       isOwnerStore: false,
       commissionRate: 2.0,
       rating: 4.9,
@@ -173,8 +185,10 @@ async function main() {
       companyName: 'PT Digital Niaga Prima',
       taxId: '03.194.882.1-428.000',
       tagline: 'Gadget & Gaming Phone Hub Bandung',
-      description: 'Spesialis smartphone flagship dan gaming phone di kawasan Dago & Purnawarman Bandung. Dilengkapi unit demo dan teknisi siap bantu.',
-      address: 'Bandung Electronic Center (BEC) Lt. 1 Blok B-08 & B-09, Jl. Purnawarman No. 13-15, Babakan Ciamis, Sumur Bandung',
+      description:
+        'Spesialis smartphone flagship dan gaming phone di kawasan Dago & Purnawarman Bandung. Dilengkapi unit demo dan teknisi siap bantu.',
+      address:
+        'Bandung Electronic Center (BEC) Lt. 1 Blok B-08 & B-09, Jl. Purnawarman No. 13-15, Babakan Ciamis, Sumur Bandung',
       city: 'Bandung',
       province: 'Jawa Barat',
       postalCode: '40117',
@@ -182,7 +196,8 @@ async function main() {
       whatsapp: '6281122334455',
       email: 'bandung@affiliategadget.com',
       logo: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80',
-      banner: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1200&q=80',
+      banner:
+        'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1200&q=80',
       isOwnerStore: false,
       commissionRate: 2.0,
       rating: 4.8,
@@ -221,8 +236,10 @@ async function main() {
       companyName: 'PT Surya Makmur Gadget',
       taxId: '04.812.339.7-112.000',
       tagline: 'Pusat Gadget Resmi Sumatera Utara',
-      description: 'Toko gadget terpercaya di Medan dengan fasilitas konsultasi langsung, unboxing di tempat, dan bonus paket aksesoris lengkap 3-in-1.',
-      address: 'Plaza Medan Fair Lt. 4 No. 42-44, Jl. Gatot Subroto No. 30, Sekip, Medan Petisah',
+      description:
+        'Toko gadget terpercaya di Medan dengan fasilitas konsultasi langsung, unboxing di tempat, dan bonus paket aksesoris lengkap 3-in-1.',
+      address:
+        'Plaza Medan Fair Lt. 4 No. 42-44, Jl. Gatot Subroto No. 30, Sekip, Medan Petisah',
       city: 'Medan',
       province: 'Sumatera Utara',
       postalCode: '20113',
@@ -230,7 +247,8 @@ async function main() {
       whatsapp: '6281266554433',
       email: 'medan@affiliategadget.com',
       logo: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=300&q=80',
-      banner: 'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=1200&q=80',
+      banner:
+        'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=1200&q=80',
       isOwnerStore: false,
       commissionRate: 2.5,
       rating: 4.9,
@@ -269,8 +287,10 @@ async function main() {
       companyName: 'PT Mega Ponsel Nusantara',
       taxId: '05.671.229.4-541.000',
       tagline: 'Pusat Gadget Mahasiswa & Profesional Jogja',
-      description: 'Melayani civitas akademika & masyarakat Yogyakarta dengan harga terbaik, garansi tukar unit 30 hari, dan gratis softcase + tempered glass.',
-      address: 'Jogja Tronik Mall Lt. UG No. 18-20, Jl. Brigjen Katamso No. 75-77, Prawirodirjan, Gondomanan',
+      description:
+        'Melayani civitas akademika & masyarakat Yogyakarta dengan harga terbaik, garansi tukar unit 30 hari, dan gratis softcase + tempered glass.',
+      address:
+        'Jogja Tronik Mall Lt. UG No. 18-20, Jl. Brigjen Katamso No. 75-77, Prawirodirjan, Gondomanan',
       city: 'Yogyakarta',
       province: 'DI Yogyakarta',
       postalCode: '55121',
@@ -278,7 +298,8 @@ async function main() {
       whatsapp: '6281788990011',
       email: 'jogja@affiliategadget.com',
       logo: 'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=300&q=80',
-      banner: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=80',
+      banner:
+        'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=80',
       isOwnerStore: false,
       commissionRate: 2.0,
       rating: 4.9,
@@ -311,7 +332,7 @@ async function main() {
 
   // 3. STORE ADMIN ACCOUNTS (1 Admin Tunggal per Cabang Toko PT)
   console.log('👨‍💼 Creating Single Store Admin accounts (1 Admin per Toko)...')
-  
+
   // 3.1 Admin Cabang Roxy Mas Pusat (Jakarta)
   await prisma.user.upsert({
     where: { email: 'admin.roxy@affiliategadget.com' },
@@ -321,6 +342,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeRoxy.id,
       phone: '081288997700',
+      isActive: true,
+      emailVerified: new Date(),
     },
     create: {
       email: 'admin.roxy@affiliategadget.com',
@@ -329,6 +352,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeRoxy.id,
       phone: '081288997700',
+      isActive: true,
+      emailVerified: new Date(),
     },
   })
 
@@ -341,6 +366,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeSurabaya.id,
       phone: '081399887702',
+      isActive: true,
+      emailVerified: new Date(),
     },
     create: {
       email: 'admin.surabaya@affiliategadget.com',
@@ -349,6 +376,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeSurabaya.id,
       phone: '081399887702',
+      isActive: true,
+      emailVerified: new Date(),
     },
   })
 
@@ -361,6 +390,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeBandung.id,
       phone: '081122334455',
+      isActive: true,
+      emailVerified: new Date(),
     },
     create: {
       email: 'admin.bandung@affiliategadget.com',
@@ -369,6 +400,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeBandung.id,
       phone: '081122334455',
+      isActive: true,
+      emailVerified: new Date(),
     },
   })
 
@@ -381,6 +414,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeMedan.id,
       phone: '081266554433',
+      isActive: true,
+      emailVerified: new Date(),
     },
     create: {
       email: 'admin.medan@affiliategadget.com',
@@ -389,6 +424,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeMedan.id,
       phone: '081266554433',
+      isActive: true,
+      emailVerified: new Date(),
     },
   })
 
@@ -401,6 +438,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeJogja.id,
       phone: '081788990011',
+      isActive: true,
+      emailVerified: new Date(),
     },
     create: {
       email: 'admin.jogja@affiliategadget.com',
@@ -409,6 +448,8 @@ async function main() {
       role: UserRole.STORE_ADMIN,
       storeId: storeJogja.id,
       phone: '081788990011',
+      isActive: true,
+      emailVerified: new Date(),
     },
   })
 
@@ -475,6 +516,7 @@ async function main() {
         province: c.province,
         postalCode: c.postalCode,
         isActive: true,
+        emailVerified: new Date(),
       },
       create: {
         email: c.email,
@@ -487,6 +529,7 @@ async function main() {
         province: c.province,
         postalCode: c.postalCode,
         isActive: true,
+        emailVerified: new Date(),
       },
     })
   }
@@ -517,7 +560,8 @@ async function main() {
         'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&q=80',
         'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800&q=80',
       ],
-      description: 'Apple iPhone 15 Pro Max dengan material Titanium kelas kedirgantaraan, chip revolusioner Apple A17 Pro (3nm), kamera utama 48MP dengan 5x Optical Telephoto Zoom, dan port USB-C berkecepatan 10Gbps.',
+      description:
+        'Apple iPhone 15 Pro Max dengan material Titanium kelas kedirgantaraan, chip revolusioner Apple A17 Pro (3nm), kamera utama 48MP dengan 5x Optical Telephoto Zoom, dan port USB-C berkecepatan 10Gbps.',
       specs: {
         Chipset: 'Apple A17 Pro (3nm)',
         Layar: '6.7 inch Super Retina XDR OLED, 120Hz ProMotion, 2000 nits',
@@ -528,10 +572,42 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '256GB - Natural Titanium', ram: '8GB', storage: '256GB', color: 'Natural Titanium', price: 22999000, stock: 6, sku: 'IP15PM-256-NT' },
-          { name: '256GB - Blue Titanium', ram: '8GB', storage: '256GB', color: 'Blue Titanium', price: 22999000, stock: 4, sku: 'IP15PM-256-BT' },
-          { name: '512GB - Black Titanium', ram: '8GB', storage: '512GB', color: 'Black Titanium', price: 26999000, stock: 3, sku: 'IP15PM-512-BL' },
-          { name: '1TB - White Titanium', ram: '8GB', storage: '1TB', color: 'White Titanium', price: 30999000, stock: 2, sku: 'IP15PM-1TB-WT' },
+          {
+            name: '256GB - Natural Titanium',
+            ram: '8GB',
+            storage: '256GB',
+            color: 'Natural Titanium',
+            price: 22999000,
+            stock: 6,
+            sku: 'IP15PM-256-NT',
+          },
+          {
+            name: '256GB - Blue Titanium',
+            ram: '8GB',
+            storage: '256GB',
+            color: 'Blue Titanium',
+            price: 22999000,
+            stock: 4,
+            sku: 'IP15PM-256-BT',
+          },
+          {
+            name: '512GB - Black Titanium',
+            ram: '8GB',
+            storage: '512GB',
+            color: 'Black Titanium',
+            price: 26999000,
+            stock: 3,
+            sku: 'IP15PM-512-BL',
+          },
+          {
+            name: '1TB - White Titanium',
+            ram: '8GB',
+            storage: '1TB',
+            color: 'White Titanium',
+            price: 30999000,
+            stock: 2,
+            sku: 'IP15PM-1TB-WT',
+          },
         ],
       },
     },
@@ -560,7 +636,8 @@ async function main() {
         'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&q=80',
         'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=800&q=80',
       ],
-      description: 'Apple iPhone 15 Pro dalam bodi ringkas 6.1 inci dengan performa dahsyat chipset A17 Pro untuk pengalaman gaming level konsol dan Action Button serbaguna.',
+      description:
+        'Apple iPhone 15 Pro dalam bodi ringkas 6.1 inci dengan performa dahsyat chipset A17 Pro untuk pengalaman gaming level konsol dan Action Button serbaguna.',
       specs: {
         Chipset: 'Apple A17 Pro (3nm)',
         Layar: '6.1 inch Super Retina XDR OLED, 120Hz ProMotion',
@@ -570,8 +647,24 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '128GB - Natural Titanium', ram: '8GB', storage: '128GB', color: 'Natural Titanium', price: 18999000, stock: 8, sku: 'IP15P-128-NT' },
-          { name: '256GB - Black Titanium', ram: '8GB', storage: '256GB', color: 'Black Titanium', price: 21499000, stock: 5, sku: 'IP15P-256-BL' },
+          {
+            name: '128GB - Natural Titanium',
+            ram: '8GB',
+            storage: '128GB',
+            color: 'Natural Titanium',
+            price: 18999000,
+            stock: 8,
+            sku: 'IP15P-128-NT',
+          },
+          {
+            name: '256GB - Black Titanium',
+            ram: '8GB',
+            storage: '256GB',
+            color: 'Black Titanium',
+            price: 21499000,
+            stock: 5,
+            sku: 'IP15P-256-BL',
+          },
         ],
       },
     },
@@ -600,7 +693,8 @@ async function main() {
         'https://images.unsplash.com/photo-1663499482523-1c0c1bae4ce1?w=800&q=80',
         'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800&q=80',
       ],
-      description: 'iPhone 14 hadir dengan sistem kamera ganda canggih, Photonic Engine untuk foto minim cahaya yang memukau, dan daya tahan baterai sepanjang hari.',
+      description:
+        'iPhone 14 hadir dengan sistem kamera ganda canggih, Photonic Engine untuk foto minim cahaya yang memukau, dan daya tahan baterai sepanjang hari.',
       specs: {
         Chipset: 'Apple A15 Bionic (5-core GPU)',
         Layar: '6.1 inch Super Retina XDR OLED',
@@ -610,9 +704,33 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '128GB - Midnight', ram: '6GB', storage: '128GB', color: 'Midnight', price: 12499000, stock: 10, sku: 'IP14-128-MN' },
-          { name: '128GB - Starlight', ram: '6GB', storage: '128GB', color: 'Starlight', price: 12499000, stock: 7, sku: 'IP14-128-ST' },
-          { name: '256GB - Blue', ram: '6GB', storage: '256GB', color: 'Blue', price: 14999000, stock: 4, sku: 'IP14-256-BL' },
+          {
+            name: '128GB - Midnight',
+            ram: '6GB',
+            storage: '128GB',
+            color: 'Midnight',
+            price: 12499000,
+            stock: 10,
+            sku: 'IP14-128-MN',
+          },
+          {
+            name: '128GB - Starlight',
+            ram: '6GB',
+            storage: '128GB',
+            color: 'Starlight',
+            price: 12499000,
+            stock: 7,
+            sku: 'IP14-128-ST',
+          },
+          {
+            name: '256GB - Blue',
+            ram: '6GB',
+            storage: '256GB',
+            color: 'Blue',
+            price: 14999000,
+            stock: 4,
+            sku: 'IP14-256-BL',
+          },
         ],
       },
     },
@@ -641,7 +759,8 @@ async function main() {
         'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&q=80',
         'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=800&q=80',
       ],
-      description: 'Samsung Galaxy S24 Ultra dibekali kecerdasan Galaxy AI, kamera 200MP Quad Telephoto dengan ProVisual Engine, frame Titanium, dan layar datar Gorilla Armor bebas pantulan silau.',
+      description:
+        'Samsung Galaxy S24 Ultra dibekali kecerdasan Galaxy AI, kamera 200MP Quad Telephoto dengan ProVisual Engine, frame Titanium, dan layar datar Gorilla Armor bebas pantulan silau.',
       specs: {
         Chipset: 'Snapdragon 8 Gen 3 for Galaxy (4nm)',
         Layar: '6.8 inch Dynamic AMOLED 2X, 120Hz LTPO, 2600 nits',
@@ -651,9 +770,33 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '12GB / 256GB - Titanium Gray', ram: '12GB', storage: '256GB', color: 'Titanium Gray', price: 21999000, stock: 7, sku: 'S24U-256-GR' },
-          { name: '12GB / 512GB - Titanium Black', ram: '12GB', storage: '512GB', color: 'Titanium Black', price: 23999000, stock: 5, sku: 'S24U-512-BL' },
-          { name: '12GB / 512GB - Titanium Violet', ram: '12GB', storage: '512GB', color: 'Titanium Violet', price: 23999000, stock: 3, sku: 'S24U-512-VT' },
+          {
+            name: '12GB / 256GB - Titanium Gray',
+            ram: '12GB',
+            storage: '256GB',
+            color: 'Titanium Gray',
+            price: 21999000,
+            stock: 7,
+            sku: 'S24U-256-GR',
+          },
+          {
+            name: '12GB / 512GB - Titanium Black',
+            ram: '12GB',
+            storage: '512GB',
+            color: 'Titanium Black',
+            price: 23999000,
+            stock: 5,
+            sku: 'S24U-512-BL',
+          },
+          {
+            name: '12GB / 512GB - Titanium Violet',
+            ram: '12GB',
+            storage: '512GB',
+            color: 'Titanium Violet',
+            price: 23999000,
+            stock: 3,
+            sku: 'S24U-512-VT',
+          },
         ],
       },
     },
@@ -682,7 +825,8 @@ async function main() {
         'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=800&q=80',
         'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&q=80',
       ],
-      description: 'Ponsel lipat flagship paling tipis dan tangguh dengan layar utama 7.6 inci imersif, multitasking 3 aplikasi sekaligus, serta dukungan Galaxy AI komprehensif.',
+      description:
+        'Ponsel lipat flagship paling tipis dan tangguh dengan layar utama 7.6 inci imersif, multitasking 3 aplikasi sekaligus, serta dukungan Galaxy AI komprehensif.',
       specs: {
         Chipset: 'Snapdragon 8 Gen 3 for Galaxy',
         LayarUtama: '7.6 inch Foldable Dynamic AMOLED 2X 120Hz',
@@ -692,8 +836,24 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '12GB / 256GB - Silver Shadow', ram: '12GB', storage: '256GB', color: 'Silver Shadow', price: 26499000, stock: 4, sku: 'ZF6-256-SS' },
-          { name: '12GB / 512GB - Navy', ram: '12GB', storage: '512GB', color: 'Navy', price: 28499000, stock: 3, sku: 'ZF6-512-NV' },
+          {
+            name: '12GB / 256GB - Silver Shadow',
+            ram: '12GB',
+            storage: '256GB',
+            color: 'Silver Shadow',
+            price: 26499000,
+            stock: 4,
+            sku: 'ZF6-256-SS',
+          },
+          {
+            name: '12GB / 512GB - Navy',
+            ram: '12GB',
+            storage: '512GB',
+            color: 'Navy',
+            price: 28499000,
+            stock: 3,
+            sku: 'ZF6-512-NV',
+          },
         ],
       },
     },
@@ -722,7 +882,8 @@ async function main() {
         'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=800&q=80',
         'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=800&q=80',
       ],
-      description: 'Juara kelas menengah Samsung dengan bingkai metal premium, perlindungan Gorilla Glass Victus+, ketahanan air IP67, dan kamera 50MP OIS jernih.',
+      description:
+        'Juara kelas menengah Samsung dengan bingkai metal premium, perlindungan Gorilla Glass Victus+, ketahanan air IP67, dan kamera 50MP OIS jernih.',
       specs: {
         Chipset: 'Exynos 1480 with AMD Xclipse 530 GPU',
         Layar: '6.6 inch Super AMOLED 120Hz HDR10+ 1000 nits',
@@ -732,8 +893,24 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '8GB / 256GB - Awesome Iceblue', ram: '8GB', storage: '256GB', color: 'Awesome Iceblue', price: 5999000, stock: 15, sku: 'A55-256-IB' },
-          { name: '8GB / 256GB - Awesome Navy', ram: '8GB', storage: '256GB', color: 'Awesome Navy', price: 5999000, stock: 12, sku: 'A55-256-NV' },
+          {
+            name: '8GB / 256GB - Awesome Iceblue',
+            ram: '8GB',
+            storage: '256GB',
+            color: 'Awesome Iceblue',
+            price: 5999000,
+            stock: 15,
+            sku: 'A55-256-IB',
+          },
+          {
+            name: '8GB / 256GB - Awesome Navy',
+            ram: '8GB',
+            storage: '256GB',
+            color: 'Awesome Navy',
+            price: 5999000,
+            stock: 12,
+            sku: 'A55-256-NV',
+          },
         ],
       },
     },
@@ -762,7 +939,8 @@ async function main() {
         'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&q=80',
         'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80',
       ],
-      description: 'Monster gaming generasi terbaru dengan layar super halus 165Hz AMOLED, AniMe Vision Mini-LED belakang yang dapat dikustomisasi, dan sistem pendingin GameCool 8.',
+      description:
+        'Monster gaming generasi terbaru dengan layar super halus 165Hz AMOLED, AniMe Vision Mini-LED belakang yang dapat dikustomisasi, dan sistem pendingin GameCool 8.',
       specs: {
         Chipset: 'Snapdragon 8 Gen 3 (4nm)',
         Layar: '6.78 inch Samsung Flexible AMOLED, 165Hz, 2500 nits',
@@ -772,8 +950,24 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '16GB / 512GB - Phantom Black', ram: '16GB', storage: '512GB', color: 'Phantom Black', price: 15499000, stock: 6, sku: 'ROG8P-512-BK' },
-          { name: '24GB / 1TB - Phantom Edition', ram: '24GB', storage: '1TB', color: 'Phantom Black', price: 19999000, stock: 3, sku: 'ROG8P-1TB-BK' },
+          {
+            name: '16GB / 512GB - Phantom Black',
+            ram: '16GB',
+            storage: '512GB',
+            color: 'Phantom Black',
+            price: 15499000,
+            stock: 6,
+            sku: 'ROG8P-512-BK',
+          },
+          {
+            name: '24GB / 1TB - Phantom Edition',
+            ram: '24GB',
+            storage: '1TB',
+            color: 'Phantom Black',
+            price: 19999000,
+            stock: 3,
+            sku: 'ROG8P-1TB-BK',
+          },
         ],
       },
     },
@@ -802,7 +996,8 @@ async function main() {
         'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&q=80',
         'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=800&q=80',
       ],
-      description: 'Kamera optik legendaris Leica Summilux dengan bukaan lensa lebar f/1.6, sensor Light Hunter 900, dan layar LTPO OLED ultra tajam 3000 nits.',
+      description:
+        'Kamera optik legendaris Leica Summilux dengan bukaan lensa lebar f/1.6, sensor Light Hunter 900, dan layar LTPO OLED ultra tajam 3000 nits.',
       specs: {
         Chipset: 'Snapdragon 8 Gen 3 (4nm)',
         Layar: '6.36 inch CrystalRes LTPO AMOLED 120Hz 3000 nits',
@@ -811,9 +1006,33 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '12GB / 256GB - Black', ram: '12GB', storage: '256GB', color: 'Black', price: 11999000, stock: 8, sku: 'MI14-256-BK' },
-          { name: '12GB / 512GB - Jade Green', ram: '12GB', storage: '512GB', color: 'Jade Green', price: 12999000, stock: 5, sku: 'MI14-512-JG' },
-          { name: '12GB / 512GB - White', ram: '12GB', storage: '512GB', color: 'White', price: 12999000, stock: 4, sku: 'MI14-512-WH' },
+          {
+            name: '12GB / 256GB - Black',
+            ram: '12GB',
+            storage: '256GB',
+            color: 'Black',
+            price: 11999000,
+            stock: 8,
+            sku: 'MI14-256-BK',
+          },
+          {
+            name: '12GB / 512GB - Jade Green',
+            ram: '12GB',
+            storage: '512GB',
+            color: 'Jade Green',
+            price: 12999000,
+            stock: 5,
+            sku: 'MI14-512-JG',
+          },
+          {
+            name: '12GB / 512GB - White',
+            ram: '12GB',
+            storage: '512GB',
+            color: 'White',
+            price: 12999000,
+            stock: 4,
+            sku: 'MI14-512-WH',
+          },
         ],
       },
     },
@@ -842,7 +1061,8 @@ async function main() {
         'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=800&q=80',
         'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80',
       ],
-      description: 'Flagship killer bertenaga Snapdragon 8 Gen 2 dengan layar resolusi WQHD+ 120Hz Flow AMOLED 4000 nits dan pengisian daya ultra kilat 120W HyperCharge.',
+      description:
+        'Flagship killer bertenaga Snapdragon 8 Gen 2 dengan layar resolusi WQHD+ 120Hz Flow AMOLED 4000 nits dan pengisian daya ultra kilat 120W HyperCharge.',
       specs: {
         Chipset: 'Snapdragon 8 Gen 2 (4nm)',
         Layar: '6.67 inch WQHD+ Flow AMOLED 120Hz 4000 nits peak',
@@ -851,8 +1071,24 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '12GB / 512GB - Black', ram: '12GB', storage: '512GB', color: 'Black', price: 8499000, stock: 10, sku: 'F6P-512-BK' },
-          { name: '16GB / 1TB - White', ram: '16GB', storage: '1TB', color: 'White', price: 9499000, stock: 6, sku: 'F6P-1TB-WH' },
+          {
+            name: '12GB / 512GB - Black',
+            ram: '12GB',
+            storage: '512GB',
+            color: 'Black',
+            price: 8499000,
+            stock: 10,
+            sku: 'F6P-512-BK',
+          },
+          {
+            name: '16GB / 1TB - White',
+            ram: '16GB',
+            storage: '1TB',
+            color: 'White',
+            price: 9499000,
+            stock: 6,
+            sku: 'F6P-1TB-WH',
+          },
         ],
       },
     },
@@ -881,18 +1117,36 @@ async function main() {
         'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&q=80',
         'https://images.unsplash.com/photo-1616469829941-c7200edec809?w=800&q=80',
       ],
-      description: 'Master fotografi mobile dengan lensa ZEISS APO Telephoto, sensor Sony IMX989 1-inch raksasa, chip pencitraan khusus Vivo V3, dan prosesor kencang Dimensity 9300.',
+      description:
+        'Master fotografi mobile dengan lensa ZEISS APO Telephoto, sensor Sony IMX989 1-inch raksasa, chip pencitraan khusus Vivo V3, dan prosesor kencang Dimensity 9300.',
       specs: {
         Chipset: 'MediaTek Dimensity 9300 (4nm)',
         Layar: '6.78 inch LTPO AMOLED 120Hz 3000 nits HDR10+',
-        Kamera: '50MP 1-inch Sony IMX989 OIS + 50MP ZEISS APO Floating Tele + 50MP UW',
+        Kamera:
+          '50MP 1-inch Sony IMX989 OIS + 50MP ZEISS APO Floating Tele + 50MP UW',
         Baterai: '5.400 mAh 100W FlashCharge & 50W Wireless',
         Fitur: 'ZEISS T* Coating & V3 Imaging Chip',
       },
       variants: {
         create: [
-          { name: '16GB / 512GB - Asteroid Black', ram: '16GB', storage: '512GB', color: 'Asteroid Black', price: 16999000, stock: 5, sku: 'X100P-512-BK' },
-          { name: '16GB / 512GB - Sunset Orange', ram: '16GB', storage: '512GB', color: 'Sunset Orange', price: 16999000, stock: 4, sku: 'X100P-512-OR' },
+          {
+            name: '16GB / 512GB - Asteroid Black',
+            ram: '16GB',
+            storage: '512GB',
+            color: 'Asteroid Black',
+            price: 16999000,
+            stock: 5,
+            sku: 'X100P-512-BK',
+          },
+          {
+            name: '16GB / 512GB - Sunset Orange',
+            ram: '16GB',
+            storage: '512GB',
+            color: 'Sunset Orange',
+            price: 16999000,
+            stock: 4,
+            sku: 'X100P-512-OR',
+          },
         ],
       },
     },
@@ -921,7 +1175,8 @@ async function main() {
         'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=800&q=80',
         'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80',
       ],
-      description: 'Ponsel potret kelas atas dengan optik ZEISS triple kamera 50MP, lampu studio Aura Light pintar, bodi ultra tipis 7.45mm, dan baterai besar 5000mAh.',
+      description:
+        'Ponsel potret kelas atas dengan optik ZEISS triple kamera 50MP, lampu studio Aura Light pintar, bodi ultra tipis 7.45mm, dan baterai besar 5000mAh.',
       specs: {
         Chipset: 'MediaTek Dimensity 8200 (4nm)',
         Layar: '6.78 inch 1.5K 3D Curved AMOLED 120Hz 2800 nits',
@@ -930,8 +1185,24 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '12GB / 512GB - Equatorial Green', ram: '12GB', storage: '512GB', color: 'Equatorial Green', price: 8999000, stock: 8, sku: 'V30P-512-EG' },
-          { name: '12GB / 512GB - Volcanic Black', ram: '12GB', storage: '512GB', color: 'Volcanic Black', price: 8999000, stock: 6, sku: 'V30P-512-VB' },
+          {
+            name: '12GB / 512GB - Equatorial Green',
+            ram: '12GB',
+            storage: '512GB',
+            color: 'Equatorial Green',
+            price: 8999000,
+            stock: 8,
+            sku: 'V30P-512-EG',
+          },
+          {
+            name: '12GB / 512GB - Volcanic Black',
+            ram: '12GB',
+            storage: '512GB',
+            color: 'Volcanic Black',
+            price: 8999000,
+            stock: 6,
+            sku: 'V30P-512-VB',
+          },
         ],
       },
     },
@@ -960,7 +1231,8 @@ async function main() {
         'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=800&q=80',
         'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=800&q=80',
       ],
-      description: 'Ponsel lipat vertikal intuitif dengan layar cover multifungsi 3.26 inci, sistem kamera Hasselblad 3 lensa pertama pada flip phone, dan engsel Flexion Hinge tanpa celah.',
+      description:
+        'Ponsel lipat vertikal intuitif dengan layar cover multifungsi 3.26 inci, sistem kamera Hasselblad 3 lensa pertama pada flip phone, dan engsel Flexion Hinge tanpa celah.',
       specs: {
         Chipset: 'MediaTek Dimensity 9200',
         LayarUtama: '6.8 inch Foldable LTPO AMOLED 120Hz HDR10+',
@@ -970,14 +1242,32 @@ async function main() {
       },
       variants: {
         create: [
-          { name: '12GB / 256GB - Cream Gold', ram: '12GB', storage: '256GB', color: 'Cream Gold', price: 14999000, stock: 4, sku: 'N3F-256-CG' },
-          { name: '12GB / 256GB - Sleek Black', ram: '12GB', storage: '256GB', color: 'Sleek Black', price: 14999000, stock: 4, sku: 'N3F-256-SB' },
+          {
+            name: '12GB / 256GB - Cream Gold',
+            ram: '12GB',
+            storage: '256GB',
+            color: 'Cream Gold',
+            price: 14999000,
+            stock: 4,
+            sku: 'N3F-256-CG',
+          },
+          {
+            name: '12GB / 256GB - Sleek Black',
+            ram: '12GB',
+            storage: '256GB',
+            color: 'Sleek Black',
+            price: 14999000,
+            stock: 4,
+            sku: 'N3F-256-SB',
+          },
         ],
       },
     },
   })
 
-  console.log('🎉 Seed completed successfully with realistic Multi-PT Stores, Products, and Accounts!')
+  console.log(
+    '🎉 Seed completed successfully with realistic Multi-PT Stores, Products, and Accounts!'
+  )
 }
 
 main()

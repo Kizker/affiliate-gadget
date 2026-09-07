@@ -1,4 +1,5 @@
 import 'next-auth'
+import '@auth/core/types'
 import { UserRole } from '@prisma/client'
 
 declare module 'next-auth' {
@@ -16,8 +17,19 @@ declare module 'next-auth' {
   }
 
   interface User {
-    role: UserRole
+    role?: UserRole
     storeId?: string | null
+    isTechnician?: boolean
+    mitraStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null
+  }
+}
+
+declare module '@auth/core/types' {
+  interface User {
+    role?: UserRole
+    storeId?: string | null
+    isTechnician?: boolean
+    mitraStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null
   }
 }
 

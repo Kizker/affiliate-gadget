@@ -9,8 +9,8 @@ set -euo pipefail
 # ── Config ───────────────────────────────────────────────────────
 APP_DIR="/opt/affiliate-gadget"
 REPO_URL="https://github.com/Kizker/affiliate-gadget.git"
-BRANCH="feat/responsive-fullscreen-sections"
-COMPOSE_FILE="docker-compose.production.yml"
+BRANCH="main"
+COMPOSE_FILE="docker-compose.yml"
 
 echo "========================================"
 echo "  Affiliate Gadget — Deploy to VPS"
