@@ -18,6 +18,15 @@
 
 ---
 
+## 🪨 Caveman Communication Protocol (Active)
+
+- **Gaya Respon:** Terse, padat, tanpa basa-basi (Caveman style).
+- **Substansi Teknis:** Kode, perintah terminal, path file, dan pesan error 100% utuh dan akurat.
+- **Pangkas Fluff:** Hapus kata pembuka/penutup basa-basi, kalimat pengantar panjang, dan narasi progress berulang.
+- **Bahasa:** Tetap gunakan Bahasa Indonesia yang ringkas, lugas, dan to the point.
+
+---
+
 ## 🚀 Local Development Setup & Status
 
 ### 1. Environment Configuration (`.env`)
