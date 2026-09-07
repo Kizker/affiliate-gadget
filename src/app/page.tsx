@@ -9,27 +9,32 @@ import { SectionStoreSpotlight } from '@/components/landing/section-store-spotli
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
-      {/* Sticky Modern Top Header */}
+    <>
+      {/* Navbar fixed di atas, di luar scroll container */}
       <Navbar variant="light" />
 
-      {/* Streamlined Modern Minimalist Content Flow */}
-      <main>
-        {/* 1. Hero Showcase: High impact, spacious, clear value proposition */}
+      {/* Scroll snap container — fullscreen scroll */}
+      <div
+        id="snap-container"
+        className="h-screen overflow-y-scroll bg-white text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {/* 1. Hero — Section 1 */}
         <SectionHeroClean />
 
-        {/* 2. Trust Pillars: 3 core reassurances (Garansi 30 Hari, Bonus 3-in-1, Toko Resmi) */}
+        {/* 2. Trust Pillars — Section 2 */}
         <SectionTrustPillars />
 
-        {/* 3. Curated Featured Gadgets: Instant brand filter & high-contrast product cards */}
+        {/* 3. Featured Gadgets — Section 3 */}
         <SectionFeaturedGadgets />
 
-        {/* 4. Physical Stores & Branches: Verifiable credibility & physical presence */}
+        {/* 4. Store Spotlight — Section 4 */}
         <SectionStoreSpotlight />
-      </main>
 
-      {/* Modern Clean Footer */}
-      <Footer variant="light" />
-    </div>
+        {/* 5. Footer — Section 5 */}
+        <footer>
+          <Footer variant="light" />
+        </footer>
+      </div>
+    </>
   )
 }

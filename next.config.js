@@ -34,6 +34,7 @@ const nextConfig = {
       },
     ],
   },
+  serverExternalPackages: ['nodemailer'],
   experimental: {
     optimizePackageImports: [
       'lucide-react',
@@ -88,4 +89,3 @@ const nextConfig = {
 }
 
 export default nextConfig
-

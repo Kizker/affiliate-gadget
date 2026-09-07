@@ -48,8 +48,8 @@ export function SectionFeaturedGadgets() {
       })
 
   return (
-    <section className="py-16 sm:py-20 bg-white dark:bg-slate-950">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section className="h-screen flex flex-col pt-16 bg-white dark:bg-slate-950 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         
         {/* Streamlined Section Header & Action Toolbar */}
         <div className="space-y-4 mb-8 sm:mb-10">
@@ -95,7 +95,8 @@ export function SectionFeaturedGadgets() {
 
         </div>
 
-        {/* Product Grid */}
+        {/* Product Grid — inner scrollable area */}
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#e2e8f0_transparent]">
         {loading ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
@@ -214,6 +215,7 @@ export function SectionFeaturedGadgets() {
             })}
           </div>
         )}
+        </div>
 
       </div>
     </section>
