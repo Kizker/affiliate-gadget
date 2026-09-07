@@ -42,10 +42,21 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   useEffect(() => {
     setMounted(true)
     const handleScroll = () => {
-      setScrolled(window.scrollY > 10)
+      const snapContainer = document.getElementById('snap-container')
+      const scrollPos = snapContainer ? snapContainer.scrollTop : window.scrollY
+      setScrolled(scrollPos > 10)
     }
+    // Listen to both window and snap container
     window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    const snapContainer = document.getElementById('snap-container')
+    if (snapContainer) {
+      snapContainer.addEventListener('scroll', handleScroll, { passive: true })
+    }
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      const el = document.getElementById('snap-container')
+      if (el) el.removeEventListener('scroll', handleScroll)
+    }
   }, [])
 
   // Sync and fetch profile avatar for active session

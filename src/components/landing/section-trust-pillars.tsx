@@ -38,62 +38,62 @@ export function SectionTrustPillars() {
   ]
 
   return (
-    <section className="py-16 sm:py-20 bg-slate-50/50 dark:bg-slate-900/30 border-y border-slate-100 dark:border-slate-800/80">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        
-        {/* Streamlined Section Header */}
-        <div className="text-center max-w-xl mx-auto mb-10 sm:mb-12">
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
+    <section className="h-screen flex flex-col pt-16 bg-slate-50/50 dark:bg-slate-900/30 border-y border-slate-100 dark:border-slate-800/80 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+
+        {/* Section Header */}
+        <div className="text-center max-w-xl mx-auto mb-4 sm:mb-8 shrink-0">
+          <h2 className="text-xl sm:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
             Keuntungan Belanja Gadget Second di Sini
           </h2>
-          <p className="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Jaminan unit second original 100% lolos uji teknisi, proteksi garansi toko fisik, dan paket aksesoris lengkap.
           </p>
         </div>
 
-        {/* 3 Pillars Bento Grid */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        {/* 3 Pillars 
+            Mobile : vertikal stack (3 kartu atas-bawah), compact, fit layar
+            Desktop: grid 3 kolom
+        */}
+        <div className="flex-1 min-h-0 flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-6">
           {pillars.map((item, idx) => {
             const Icon = item.icon
             return (
               <div
                 key={idx}
-                className="group relative flex flex-col justify-between rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-7 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+                className="group flex flex-row md:flex-col items-center md:items-start justify-between rounded-2xl md:rounded-3xl border border-slate-200/80 bg-white px-4 py-3 md:p-7 transition-all duration-300 hover:border-slate-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 flex-1 min-h-0"
               >
-                <div className="space-y-4">
-                  {/* Top: Icon & Value Chip */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${item.iconBg} shadow-2xs`}>
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    
-                    <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold tracking-wide uppercase ${item.badgeColor}`}>
-                      {item.badge}
-                    </span>
+                {/* Mobile: icon kiri, teks tengah, link kanan */}
+                <div className="flex items-center gap-3 md:w-full md:flex-col md:items-start flex-1 min-w-0">
+                  {/* Icon */}
+                  <div className={`flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl md:rounded-2xl ${item.iconBg} shadow-2xs`}>
+                    <Icon className="h-5 w-5 md:h-6 md:w-6" />
                   </div>
 
-                  {/* Title & Description */}
-                  <div className="space-y-2 pt-1">
-                    <h3 className="text-base sm:text-lg font-black text-slate-950 dark:text-white group-hover:text-orange-500 transition-colors tracking-tight">
-                      {item.title}
-                    </h3>
-                    
-                    <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  {/* Title & Desc */}
+                  <div className="flex-1 min-w-0 md:mt-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm md:text-xl font-black text-slate-950 dark:text-white group-hover:text-orange-500 transition-colors tracking-tight">
+                        {item.title}
+                      </h3>
+                    </div>
+                    <span className={`hidden md:inline-block mt-2 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold tracking-wide uppercase ${item.badgeColor}`}>
+                      {item.badge}
+                    </span>
+                    <p className="mt-0.5 md:mt-4 text-[11px] md:text-[15px] leading-relaxed md:leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-2 md:line-clamp-none">
                       {item.desc}
                     </p>
                   </div>
                 </div>
 
-                {/* Bottom CTA Action Link */}
-                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80">
-                  <Link
-                    href={item.href}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 group-hover:text-orange-500 dark:text-slate-200 dark:group-hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    <span>{item.actionText}</span>
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1" />
-                  </Link>
-                </div>
+                {/* CTA */}
+                <Link
+                  href={item.href}
+                  className="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-slate-900 group-hover:text-orange-500 dark:text-slate-200 dark:group-hover:text-orange-400 transition-colors cursor-pointer ml-3 md:ml-0 md:mt-4 md:pt-4 md:border-t md:border-slate-100 md:dark:border-slate-800/80 md:w-full"
+                >
+                  <span className="hidden md:inline">{item.actionText}</span>
+                  <ArrowRight className="h-4 w-4 md:h-3.5 md:w-3.5 md:transition-transform md:duration-200 md:group-hover:translate-x-1" />
+                </Link>
               </div>
             )
           })}
