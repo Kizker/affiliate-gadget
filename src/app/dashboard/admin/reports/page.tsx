@@ -174,7 +174,7 @@ export default function ReportsPage() {
   const getDateRange = () => {
     const now = new Date()
     let startDate: Date
-    let endDate = new Date()
+    const endDate = new Date()
 
     switch (dateRange) {
       case 'today':
@@ -342,7 +342,11 @@ export default function ReportsPage() {
 
   // Chart data configurations (Modern Slate / Indigo Palette)
   const revenueByCategoryData = {
-    labels: ['Smartphone & Gadget', 'Sparepart LCD', 'Aksesoris & Paket 3-in-1'],
+    labels: [
+      'Smartphone & Gadget',
+      'Sparepart LCD',
+      'Aksesoris & Paket 3-in-1',
+    ],
     datasets: [
       {
         data: [
@@ -377,16 +381,21 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-16 pt-1" suppressHydrationWarning>
+    <div
+      className="mx-auto max-w-6xl space-y-6 pb-16 pt-1"
+      suppressHydrationWarning
+    >
       {/* Top Filter Bar (Zero title noise, compact period filter) */}
       <div className="flex items-center justify-end">
-        <div className="flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+        <div className="shadow-2xs flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 dark:border-slate-800 dark:bg-slate-900">
           <Calendar className="h-3.5 w-3.5 text-slate-400" />
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Periode:</span>
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            Periode:
+          </span>
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="bg-transparent text-xs font-bold text-slate-900 outline-none dark:text-white cursor-pointer"
+            className="cursor-pointer bg-transparent text-xs font-bold text-slate-900 outline-none dark:text-white"
           >
             <option value="today">Hari Ini</option>
             <option value="thisWeek">Minggu Ini</option>
@@ -413,21 +422,23 @@ export default function ReportsPage() {
       {/* ========================================================================= */}
       {/* 2. TOP METRIC CARDS (Bento KPI Grid)                                      */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
         {/* Card 1: Total Omzet */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+        <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Total Omzet Jaringan
             </span>
-            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
               <DollarSign className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="mt-2.5">
             <div className="flex items-baseline gap-1">
-              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Rp</span>
-              <p className="text-lg sm:text-xl font-bold font-sans tabular-nums tracking-tight text-slate-950 dark:text-white">
+              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+                Rp
+              </span>
+              <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
                 {(data.revenue.total / 1000000).toFixed(1)} Jt
               </p>
             </div>
@@ -436,70 +447,93 @@ export default function ReportsPage() {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Seluruh Cabang
               </span>
-              <span className="text-slate-400 dark:text-slate-500">· 5 Toko Aktif</span>
+              <span className="text-slate-400 dark:text-slate-500">
+                · 5 Toko Aktif
+              </span>
             </div>
           </div>
         </div>
 
         {/* Card 2: Total Pesanan */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+        <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Total Pesanan
             </span>
-            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
               <ShoppingCart className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="mt-2.5">
-            <p className="text-lg sm:text-xl font-bold font-sans tabular-nums tracking-tight text-slate-950 dark:text-white">
-              {data.orders.total} <span className="text-xs font-semibold text-slate-400">Transaksi</span>
+            <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
+              {data.orders.total}{' '}
+              <span className="text-xs font-semibold text-slate-400">
+                Transaksi
+              </span>
             </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-              <span className="font-semibold text-blue-600 dark:text-blue-400">Terproteksi</span>
-              <span className="text-slate-400 dark:text-slate-500">· Asuransi kurir 100%</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">
+                Terproteksi
+              </span>
+              <span className="text-slate-400 dark:text-slate-500">
+                · Asuransi kurir 100%
+              </span>
             </div>
           </div>
         </div>
 
         {/* Card 3: Pelanggan Aktif */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+        <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Pelanggan Aktif
             </span>
-            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
               <Users className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="mt-2.5">
-            <p className="text-lg sm:text-xl font-bold font-sans tabular-nums tracking-tight text-slate-950 dark:text-white">
-              {data.customers.total} <span className="text-xs font-semibold text-slate-400">Member</span>
+            <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
+              {data.customers.total}{' '}
+              <span className="text-xs font-semibold text-slate-400">
+                Member
+              </span>
             </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">{data.customers.activeRate}%</span>
-              <span className="text-slate-400 dark:text-slate-500">· Repeat order</span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                {data.customers.activeRate}%
+              </span>
+              <span className="text-slate-400 dark:text-slate-500">
+                · Repeat order
+              </span>
             </div>
           </div>
         </div>
 
         {/* Card 4: Stok Unit Menipis */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+        <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Stok Menipis
             </span>
-            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
               <Package className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="mt-2.5">
-            <p className="text-lg sm:text-xl font-bold font-sans tabular-nums tracking-tight text-slate-950 dark:text-white">
-              {data.products.lowStockCount} <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">Unit</span>
+            <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
+              {data.products.lowStockCount}{' '}
+              <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
+                Unit
+              </span>
             </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-              <span className="font-semibold text-amber-600 dark:text-amber-400">Perlu Restock</span>
-              <span className="text-slate-400 dark:text-slate-500">· Inventori fisik</span>
+              <span className="font-semibold text-amber-600 dark:text-amber-400">
+                Perlu Restock
+              </span>
+              <span className="text-slate-400 dark:text-slate-500">
+                · Inventori fisik
+              </span>
             </div>
           </div>
         </div>
@@ -510,8 +544,8 @@ export default function ReportsPage() {
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Left Chart: Komposisi Penjualan */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="shadow-2xs flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 Komposisi Penjualan
@@ -523,7 +557,7 @@ export default function ReportsPage() {
             <button
               onClick={() => handleExport('revenue', 'xlsx')}
               disabled={exporting === 'revenue'}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
+              className="dark:hover:bg-slate-750 inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             >
               {exporting === 'revenue' ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -534,7 +568,7 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <div className="relative h-60 pt-4 flex items-center justify-center">
+          <div className="relative flex h-60 items-center justify-center pt-4">
             <Doughnut
               data={revenueByCategoryData}
               options={{
@@ -564,8 +598,8 @@ export default function ReportsPage() {
         </div>
 
         {/* Right Chart: Distribusi Status Order */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="shadow-2xs flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 Distribusi Status Order
@@ -577,7 +611,7 @@ export default function ReportsPage() {
             <button
               onClick={() => handleExport('orders', 'xlsx')}
               disabled={exporting === 'orders'}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
+              className="dark:hover:bg-slate-750 inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             >
               {exporting === 'orders' ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -619,8 +653,8 @@ export default function ReportsPage() {
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Produk Terlaris */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 Produk Gadget Terlaris
@@ -632,7 +666,7 @@ export default function ReportsPage() {
             <button
               onClick={() => handleExport('products', 'xlsx')}
               disabled={exporting === 'products'}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
+              className="dark:hover:bg-slate-750 inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             >
               {exporting === 'products' ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -643,8 +677,9 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/60 pt-1">
-            {!data.products.topSelling || data.products.topSelling.length === 0 ? (
+          <div className="divide-y divide-slate-100 pt-1 dark:divide-slate-800/60">
+            {!data.products.topSelling ||
+            data.products.topSelling.length === 0 ? (
               <div className="py-8 text-center text-xs font-semibold text-slate-400">
                 Belum ada data penjualan pada periode ini
               </div>
@@ -652,14 +687,14 @@ export default function ReportsPage() {
               data.products.topSelling.slice(0, 4).map((product, index) => (
                 <div
                   key={product.id}
-                  className="py-3 flex items-center justify-between gap-3 group transition-colors"
+                  className="group flex items-center justify-between gap-3 py-3 transition-colors"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                       {index + 1}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
                         {product.name}
                       </p>
                       <p className="text-[11px] text-slate-400">
@@ -667,7 +702,7 @@ export default function ReportsPage() {
                       </p>
                     </div>
                   </div>
-                  <p className="font-mono text-xs font-bold text-slate-950 dark:text-white whitespace-nowrap">
+                  <p className="whitespace-nowrap font-mono text-xs font-bold text-slate-950 dark:text-white">
                     Rp {(product.revenue / 1000).toFixed(0)}k
                   </p>
                 </div>
@@ -677,8 +712,8 @@ export default function ReportsPage() {
         </div>
 
         {/* Statistik Jaringan Toko */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 Statistik Jaringan Toko
@@ -687,41 +722,47 @@ export default function ReportsPage() {
                 Status operasional dan performa cabang
               </p>
             </div>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               {data.mitras.approved} Aktif
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pt-3 pb-3">
-            <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+          <div className="grid grid-cols-3 gap-3 pb-3 pt-3">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
               <p className="text-base font-bold text-slate-900 dark:text-white">
                 {data.mitras.total}
               </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Total Toko</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Total Toko
+              </p>
             </div>
-            <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
               <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
                 {data.mitras.approved}
               </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Terverifikasi</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Terverifikasi
+              </p>
             </div>
-            <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
               <p className="text-base font-bold text-amber-600 dark:text-amber-400">
                 {data.mitras.pending}
               </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Review</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Review
+              </p>
             </div>
           </div>
 
           <div className="space-y-2 pt-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Toko Rating Tertinggi
             </span>
             {data.mitras.topRated.slice(0, 2).map((mitra) => (
               <div
                 key={mitra.id}
-                className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-800/30 p-2.5"
+                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/40 p-2.5 dark:border-slate-800/80 dark:bg-slate-800/30"
               >
                 <div>
                   <p className="text-xs font-bold text-slate-900 dark:text-white">
@@ -729,7 +770,7 @@ export default function ReportsPage() {
                   </p>
                   <p className="text-[11px] text-slate-400">{mitra.city}</p>
                 </div>
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">
+                <span className="font-mono text-xs font-bold text-amber-600 dark:text-amber-400">
                   ⭐ {mitra.rating.toFixed(1)}
                 </span>
               </div>
@@ -741,8 +782,8 @@ export default function ReportsPage() {
       {/* ========================================================================= */}
       {/* 5. GARANSI & SERVIS LCD SUMMARY                                           */}
       {/* ========================================================================= */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="shadow-2xs space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
           <div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
               Garansi & Layanan Servis Kilat LCD
@@ -756,30 +797,38 @@ export default function ReportsPage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
             <p className="text-base font-bold text-slate-900 dark:text-white">
               {data.warranties.active}
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Garansi Aktif</p>
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Garansi Aktif
+            </p>
           </div>
-          <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
             <p className="text-base font-bold text-amber-600 dark:text-amber-400">
               {data.warranties.claims}
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Klaim Diajukan</p>
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Klaim Diajukan
+            </p>
           </div>
-          <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
             <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
               {data.tickets.byStatus.RESOLVED}
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Terselesaikan</p>
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Terselesaikan
+            </p>
           </div>
-          <div className="rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 p-3 text-center">
-            <p className="text-base font-bold text-slate-900 dark:text-white font-mono">
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
+            <p className="font-mono text-base font-bold text-slate-900 dark:text-white">
               {data.tickets.avgResolutionTime} Jam
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">Rata-rata Resolusi</p>
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Rata-rata Resolusi
+            </p>
           </div>
         </div>
       </div>
@@ -787,7 +836,7 @@ export default function ReportsPage() {
       {/* ========================================================================= */}
       {/* 6. EXPORT TOOLBAR (Quick Actions)                                         */}
       {/* ========================================================================= */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="shadow-2xs flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
             Export Seluruh Laporan
@@ -797,11 +846,11 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleExport('orders', 'xlsx')}
             disabled={exporting === 'orders'}
-            className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 dark:bg-white px-4 py-2 text-xs font-bold text-white dark:text-slate-950 shadow-xs hover:bg-slate-800 dark:hover:bg-slate-100 active:scale-95 transition disabled:opacity-50"
+            className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
           >
             {exporting === 'orders' ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -814,7 +863,7 @@ export default function ReportsPage() {
           <button
             onClick={() => handleExport('revenue', 'csv')}
             disabled={exporting === 'revenue'}
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
+            className="dark:hover:bg-slate-750 inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
           >
             {exporting === 'revenue' ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -827,7 +876,7 @@ export default function ReportsPage() {
           <button
             onClick={() => handleExport('customers', 'xlsx')}
             disabled={exporting === 'customers'}
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition disabled:opacity-50"
+            className="dark:hover:bg-slate-750 inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
           >
             {exporting === 'customers' ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

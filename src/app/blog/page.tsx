@@ -7,9 +7,8 @@ import { Calendar, ArrowUpRight, Sparkles } from 'lucide-react'
 import { Suspense } from 'react'
 import BlogSearch from './blog-search'
 
-// Force static generation with ISR
-export const dynamic = 'force-static'
-export const revalidate = 300 // 5 minutes
+// Dynamic server rendering
+export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Blog - Affiliate Gadget',

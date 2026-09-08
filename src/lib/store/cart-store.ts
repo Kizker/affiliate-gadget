@@ -98,8 +98,8 @@ export const useCartStore = create<CartStore>()(
         if (currentUserId === userId) return // No change
 
         if (userId) {
-          // User is logging in - fetch cart from server
-          set({ userId, isLoading: true })
+          // User is logging in - clear local state first, then fetch cart from server
+          set({ userId, items: [], selectedItems: [], isLoading: true })
           try {
             const res = await fetch('/api/cart')
             if (res.ok) {
@@ -181,7 +181,11 @@ export const useCartStore = create<CartStore>()(
           }
         } else {
           // Add new distinct item with variant-specific unique ID and auto-select it
-          const variantKey = item.variantId || (item.name ? item.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase() : 'default')
+          const variantKey =
+            item.variantId ||
+            (item.name
+              ? item.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()
+              : 'default')
           const newItem: CartItem = {
             ...item,
             id: `${item.type}-${item.productId || item.rentalItemId || item.serviceId}-${variantKey}-${Date.now()}`,
@@ -240,22 +244,53 @@ export const useCartStore = create<CartStore>()(
       },
 
       removeSelectedItems: async () => {
-        const selectedIds = get().selectedItems
+        const previousItems = get().items
+        const selectedIds = [...get().selectedItems]
         const userId = get().userId
 
+        if (selectedIds.length === 0) return
+
+        // Optimistically remove selected items
         set({
-          items: get().items.filter((item) => !selectedIds.includes(item.id)),
+          items: previousItems.filter((item) => !selectedIds.includes(item.id)),
           selectedItems: [],
         })
 
-        // Sync to server - remove each selected item
+        // Sync to server in parallel
         if (userId) {
-          for (const id of selectedIds) {
-            try {
-              await fetch(`/api/cart/${id}`, { method: 'DELETE' })
-            } catch (error) {
-              console.error('Error removing item:', error)
+          const deleteResults = await Promise.allSettled(
+            selectedIds.map(async (id) => {
+              const res = await fetch(`/api/cart/${id}`, { method: 'DELETE' })
+              if (!res.ok) {
+                throw new Error(
+                  `Failed to delete item ${id}: status ${res.status}`
+                )
+              }
+              return id
+            })
+          )
+
+          // Collect failed IDs
+          const failedIds: string[] = []
+          deleteResults.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              failedIds.push(selectedIds[index])
+              console.error(
+                'Error removing cart item from server:',
+                result.reason
+              )
             }
+          })
+
+          // Rollback failed items to local state
+          if (failedIds.length > 0) {
+            const itemsToRestore = previousItems.filter((item) =>
+              failedIds.includes(item.id)
+            )
+            set((state) => ({
+              items: [...state.items, ...itemsToRestore],
+              selectedItems: [...state.selectedItems, ...failedIds],
+            }))
           }
         }
       },

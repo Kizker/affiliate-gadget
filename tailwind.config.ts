@@ -12,26 +12,38 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-poppins)', 'Poppins', 'sans-serif'],
-        poppins: ['var(--font-poppins)', 'Poppins', 'sans-serif'],
+        sans: [
+          'Poppins',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          'sans-serif',
+        ],
+        poppins: [
+          'Poppins',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'sans-serif',
+        ],
       },
       fontSize: {
         // 8-Point Grid Typographic Formula (with 4px and 2px micro steps)
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }], // 10px (8+2) / 14px
-        'xs': ['0.75rem', { lineHeight: '1rem' }],        // 12px (8+4 / 4*3) / 16px (8*2)
-        'sm': ['0.875rem', { lineHeight: '1.25rem' }],    // 14px (16-2) / 20px (4*5)
-        'base': ['1rem', { lineHeight: '1.5rem' }],       // 16px (8*2) / 24px (8*3)
-        'md': ['1.125rem', { lineHeight: '1.625rem' }],   // 18px (16+2) / 26px
-        'lg': ['1.25rem', { lineHeight: '1.75rem' }],     // 20px (16+4 / 4*5) / 28px (4*7)
-        'xl': ['1.5rem', { lineHeight: '2rem' }],         // 24px (8*3) / 32px (8*4)
-        '2xl': ['2rem', { lineHeight: '2.5rem' }],        // 32px (8*4) / 40px (8*5)
-        '3xl': ['2.5rem', { lineHeight: '3rem' }],        // 40px (8*5) / 48px (8*6)
-        '4xl': ['3rem', { lineHeight: '3.5rem' }],        // 48px (8*6) / 56px (8*7)
-        '5xl': ['3.5rem', { lineHeight: '4rem' }],        // 56px (8*7) / 64px (8*8)
-        '6xl': ['4rem', { lineHeight: '4.5rem' }],        // 64px (8*8) / 72px (8*9)
-        '7xl': ['4.5rem', { lineHeight: '5rem' }],        // 72px (8*9) / 80px (8*10)
-        '8xl': ['5rem', { lineHeight: '5.5rem' }],        // 80px (8*10) / 88px (8*11)
-        '9xl': ['6rem', { lineHeight: '6.5rem' }],        // 96px (8*12) / 104px (8*13)
+        xs: ['0.75rem', { lineHeight: '1rem' }], // 12px (8+4 / 4*3) / 16px (8*2)
+        sm: ['0.875rem', { lineHeight: '1.25rem' }], // 14px (16-2) / 20px (4*5)
+        base: ['1rem', { lineHeight: '1.5rem' }], // 16px (8*2) / 24px (8*3)
+        md: ['1.125rem', { lineHeight: '1.625rem' }], // 18px (16+2) / 26px
+        lg: ['1.25rem', { lineHeight: '1.75rem' }], // 20px (16+4 / 4*5) / 28px (4*7)
+        xl: ['1.5rem', { lineHeight: '2rem' }], // 24px (8*3) / 32px (8*4)
+        '2xl': ['2rem', { lineHeight: '2.5rem' }], // 32px (8*4) / 40px (8*5)
+        '3xl': ['2.5rem', { lineHeight: '3rem' }], // 40px (8*5) / 48px (8*6)
+        '4xl': ['3rem', { lineHeight: '3.5rem' }], // 48px (8*6) / 56px (8*7)
+        '5xl': ['3.5rem', { lineHeight: '4rem' }], // 56px (8*7) / 64px (8*8)
+        '6xl': ['4rem', { lineHeight: '4.5rem' }], // 64px (8*8) / 72px (8*9)
+        '7xl': ['4.5rem', { lineHeight: '5rem' }], // 72px (8*9) / 80px (8*10)
+        '8xl': ['5rem', { lineHeight: '5.5rem' }], // 80px (8*10) / 88px (8*11)
+        '9xl': ['6rem', { lineHeight: '6.5rem' }], // 96px (8*12) / 104px (8*13)
       },
       colors: {
         border: 'hsl(var(--border))',

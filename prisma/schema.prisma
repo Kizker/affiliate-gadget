@@ -137,6 +137,7 @@ model Store {
   internalAds    InternalAd[]
   reviews        Review[]
   returnRequests ReturnRequest[]
+  adminChatRooms AdminChatRoom[]
 
   @@index([city])
   @@index([isOwnerStore])
@@ -840,6 +841,7 @@ model Article {
 model AdminChatRoom {
   id            String             @id @default(cuid())
   customerId    String
+  storeId       String?
   orderId       String?            @unique
   claimedById   String?
   claimedAt     DateTime?
@@ -850,9 +852,11 @@ model AdminChatRoom {
   claimedBy     User?              @relation("AdminChatClaims", fields: [claimedById], references: [id])
   customer      User               @relation("CustomerAdminChats", fields: [customerId], references: [id], onDelete: Cascade)
   order         Order?             @relation(fields: [orderId], references: [id])
+  store         Store?             @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([customerId])
   @@index([orderId])
+  @@index([storeId])
   @@index([claimedById])
   @@map("admin_chat_rooms")
 }

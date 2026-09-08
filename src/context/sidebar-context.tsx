@@ -83,3 +83,7 @@ export function useSidebar() {
   }
   return context
 }
+
+export function useSidebarSafe() {
+  return useContext(SidebarContext) ?? null
+}

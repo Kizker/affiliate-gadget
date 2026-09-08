@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -43,6 +43,14 @@ interface BankAccount {
   accountName: string
 }
 
+interface CheckoutOrderResponseItem {
+  order?: {
+    id: string
+    orderNumber?: string
+  }
+  id?: string
+}
+
 export default function CheckoutPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -63,10 +71,20 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<
     'GATEWAY' | 'MANUAL_TRANSFER'
   >('GATEWAY')
-  const [termsAccepted, setTermsAccepted] = useState(true)
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null)
+
+  // Idempotency Key (LOW-04): unik per payload keranjang belanja
+  const idempotencyKeyRef = useRef<string>('')
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      idempotencyKeyRef.current =
+        window.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
+    }
+  }, [selectedItemIds])
 
   // Address state
   const [addresses, setAddresses] = useState<UserAddressItem[]>([])
@@ -81,7 +99,7 @@ export default function CheckoutPage() {
     [addresses, selectedAddressId]
   )
 
-  const fetchAddresses = useCallback(async () => {
+  const fetchAddresses = useCallback(async (selectNewest = false) => {
     setLoadingAddresses(true)
     try {
       const res = await fetch('/api/user/addresses')
@@ -89,14 +107,34 @@ export default function CheckoutPage() {
         const data = await res.json()
         const list: UserAddressItem[] = data.addresses || []
         setAddresses(list)
-        // Auto-select default address
-        const def = list.find((a) => a.isDefault) ?? list[0] ?? null
-        if (def) setSelectedAddressId(def.id)
+        if (selectNewest && list.length > 0) {
+          // Newly added address is first in ordered list
+          setSelectedAddressId(list[0].id)
+        } else {
+          // Auto-select default address if none selected or if selected is missing
+          setSelectedAddressId((prev) => {
+            if (prev && list.some((a) => a.id === prev)) return prev
+            const def = list.find((a) => a.isDefault) ?? list[0] ?? null
+            return def ? def.id : null
+          })
+        }
       }
     } catch {
       // silent
     } finally {
       setLoadingAddresses(false)
+    }
+  }, [])
+
+  const fetchBankAccounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bank-accounts')
+      if (res.ok) {
+        const data = await res.json()
+        setBankAccounts(data.accounts || [])
+      }
+    } catch (error) {
+      console.error('Error fetching bank accounts:', error)
     }
   }, [])
 
@@ -111,22 +149,10 @@ export default function CheckoutPage() {
   }, [status, router, session, setUserId, fetchAddresses])
 
   useEffect(() => {
-    if (selectedItems.length > 0) {
+    if (status === 'authenticated' && selectedItems.length > 0) {
       fetchBankAccounts()
     }
-  }, [selectedItems])
-
-  const fetchBankAccounts = async () => {
-    try {
-      const res = await fetch('/api/bank-accounts')
-      if (res.ok) {
-        const data = await res.json()
-        setBankAccounts(data.accounts || [])
-      }
-    } catch (error) {
-      console.error('Error fetching bank accounts:', error)
-    }
-  }
+  }, [status, selectedItems, fetchBankAccounts])
 
   const subtotal = selectedItems.reduce((sum, item) => {
     const itemPrice = item.rentalDays
@@ -184,9 +210,18 @@ export default function CheckoutPage() {
         .filter(Boolean)
         .join(', ')
 
+      if (!idempotencyKeyRef.current && typeof window !== 'undefined') {
+        idempotencyKeyRef.current =
+          window.crypto?.randomUUID?.() ||
+          `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
+      }
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': idempotencyKeyRef.current,
+        },
         body: JSON.stringify({
           items: selectedItems,
           paymentMethod:
@@ -208,15 +243,21 @@ export default function CheckoutPage() {
       })
 
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Gagal memproses checkout')
+        const errorData = await res.json().catch(() => ({}))
+        // Refresh idempotency key agar user bisa mencoba kembali jika request ditolak validasi/stok
+        if (typeof window !== 'undefined') {
+          idempotencyKeyRef.current =
+            window.crypto?.randomUUID?.() ||
+            `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
+        }
+        throw new Error(errorData.error || 'Gagal memproses checkout')
       }
 
       const data = await res.json()
       removeSelectedItems()
 
       const orderIds = (data.orders || [])
-        .map((o: any) => o.order?.id || o.id)
+        .map((o: CheckoutOrderResponseItem) => o.order?.id || o.id)
         .filter(Boolean)
         .join(',')
       router.push(`/order-confirmation/multiple?orders=${orderIds}`)
@@ -461,8 +502,7 @@ export default function CheckoutPage() {
                     isOpen={isAddressModalOpen}
                     onClose={() => setIsAddressModalOpen(false)}
                     onSuccess={async () => {
-                      await fetchAddresses()
-                      // Select the newly added address (last in list after refresh)
+                      await fetchAddresses(true)
                     }}
                   />
 
@@ -473,7 +513,15 @@ export default function CheckoutPage() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <button
                         type="button"
-                        onClick={() => setCourier('JNE')}
+                        onClick={() => {
+                          setCourier('JNE')
+                          if (
+                            courierService !== 'YES' &&
+                            courierService !== 'REG'
+                          ) {
+                            setCourierService('REG')
+                          }
+                        }}
                         className={`rounded-2xl border p-3.5 text-left transition-all ${
                           courier === 'JNE'
                             ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600'
@@ -484,18 +532,27 @@ export default function CheckoutPage() {
                           <span className="flex items-center gap-1.5">
                             <Truck className="h-3.5 w-3.5" /> JNE Express
                           </span>
-                          <span>Rp 15.000</span>
+                          <span>
+                            {courierService === 'YES' && courier === 'JNE'
+                              ? 'Rp 28.000'
+                              : 'Rp 15.000'}
+                          </span>
                         </div>
                         <p
                           className={`mt-1 text-[10px] ${courier === 'JNE' ? 'text-slate-300' : 'text-slate-400'}`}
                         >
-                          Reguler / YES (1-2 Hari Kerja)
+                          {courierService === 'YES' && courier === 'JNE'
+                            ? 'Layanan YES (1 Hari Esok Sampai)'
+                            : 'Layanan Reguler (1-2 Hari Kerja)'}
                         </p>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => setCourier('GOJEK')}
+                        onClick={() => {
+                          setCourier('GOJEK')
+                          setCourierService('INSTANT')
+                        }}
                         className={`rounded-2xl border p-3.5 text-left transition-all ${
                           courier === 'GOJEK'
                             ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600'
@@ -515,6 +572,56 @@ export default function CheckoutPage() {
                         </p>
                       </button>
                     </div>
+
+                    {/* JNE Service Sub-Toggle (MED-08) */}
+                    {courier === 'JNE' && (
+                      <div className="mt-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+                        <div className="mb-2 flex items-center justify-between px-1">
+                          <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                            Pilihan Paket JNE
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            Pilih estimasi kedatangan paket
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCourierService('REG')}
+                            className={`flex flex-col rounded-xl px-3 py-2 text-left transition-all ${
+                              courierService === 'REG'
+                                ? 'shadow-2xs border border-blue-600 bg-blue-50/80 font-bold text-blue-950 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-100'
+                                : 'border border-slate-200/80 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300'
+                            }`}
+                          >
+                            <span className="text-xs">JNE Reguler (REG)</span>
+                            <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
+                              Rp 15.000 • 1-2 Hari Kerja
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setCourierService('YES')}
+                            className={`flex flex-col rounded-xl px-3 py-2 text-left transition-all ${
+                              courierService === 'YES'
+                                ? 'shadow-2xs border border-orange-500 bg-orange-50/80 font-bold text-orange-950 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-100'
+                                : 'border border-slate-200/80 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300'
+                            }`}
+                          >
+                            <span className="flex items-center justify-between text-xs">
+                              <span>JNE YES</span>
+                              <span className="py-0.2 rounded bg-orange-500/15 px-1 text-[9px] font-semibold text-orange-600 dark:text-orange-400">
+                                Esok
+                              </span>
+                            </span>
+                            <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
+                              Rp 28.000 • Prioritas 1 Hari
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -638,12 +745,10 @@ export default function CheckoutPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                          <span className="block text-xs font-bold text-slate-900 dark:text-white">
-                            BCA - 8830 1928 3920
-                          </span>
-                          <span className="block text-[10px] text-slate-500">
-                            a.n. Rekening Operasional Toko Gadget
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center dark:border-slate-800 dark:bg-slate-900/50">
+                          <span className="block text-xs text-slate-500 dark:text-slate-400">
+                            Informasi rekening tujuan transfer akan dikirimkan
+                            otomatis setelah pesanan dibuat.
                           </span>
                         </div>
                       )}
@@ -718,7 +823,13 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                    <span>Ongkos Kirim ({courier})</span>
+                    <span>
+                      Ongkos Kirim (
+                      {courier === 'JNE'
+                        ? `JNE ${courierService}`
+                        : 'Gojek Instant'}
+                      )
+                    </span>
                     <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
                       Rp {shippingCost.toLocaleString('id-ID')}
                     </span>

@@ -1,19 +1,11 @@
 import type { Metadata } from 'next'
-import { Poppins } from 'next/font/google'
-import dynamic from 'next/dynamic'
 import '@/styles/globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SessionProvider } from '@/components/providers/session-provider'
 
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  display: 'swap',
-  variable: '--font-poppins',
-})
-
 export const metadata: Metadata = {
-  title: 'Affiliate Gadget - Marketplace Gadget Second Berkualitas & Terpercaya',
+  title:
+    'Affiliate Gadget - Marketplace Gadget Second Berkualitas & Terpercaya',
   description:
     'Platform marketplace gadget second / bekas berkualitas terverifikasi se-Indonesia. Jaminan unit like new, garansi toko 30 hari tukar unit, lolos uji fungsi teknisi, dan paket bonus aksesoris lengkap 3-in-1.',
   robots: 'index, follow',
@@ -31,7 +23,8 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
   },
   openGraph: {
-    title: 'Affiliate Gadget - Marketplace Gadget Second Berkualitas & Terpercaya',
+    title:
+      'Affiliate Gadget - Marketplace Gadget Second Berkualitas & Terpercaya',
     description:
       'Platform marketplace gadget second / bekas berkualitas terverifikasi se-Indonesia. Jaminan unit like new, garansi toko 30 hari tukar unit, lolos uji fungsi teknisi, dan paket bonus aksesoris lengkap 3-in-1.',
     type: 'website',
@@ -44,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="id" className={poppins.variable} suppressHydrationWarning>
+    <html lang="id" suppressHydrationWarning>
       <head>
         {/* Preconnect to external domains for faster resource loading */}
         <link rel="preconnect" href="https://images.unsplash.com" />
@@ -52,15 +45,20 @@ export default function RootLayout({
         <link rel="preconnect" href="https://utfs.io" />
         <link rel="dns-prefetch" href="https://utfs.io" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
       </head>
-      <body className={`${poppins.className} font-sans`}>
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+      <body className="font-sans antialiased">
+        <SessionProvider>{children}</SessionProvider>
         <Toaster />
       </body>
     </html>
   )
 }
-

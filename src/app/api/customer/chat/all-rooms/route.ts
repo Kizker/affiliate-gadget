@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
-// GET - Get all admin chat rooms for current customer
+// GET - Get all admin and store chat rooms for current customer
 export async function GET() {
   try {
     const session = await auth()
@@ -16,6 +16,16 @@ export async function GET() {
         customerId: session.user.id,
       },
       include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            phone: true,
+            city: true,
+            logo: true,
+          },
+        },
         order: {
           select: {
             id: true,
@@ -66,6 +76,8 @@ export async function GET() {
           take: 1,
           select: {
             content: true,
+            messageType: true,
+            createdAt: true,
             sender: {
               select: {
                 id: true,

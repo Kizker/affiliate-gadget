@@ -24,6 +24,16 @@ export async function GET(req: NextRequest) {
         customerId: session.user.id,
       },
       include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            phone: true,
+            city: true,
+            logo: true,
+          },
+        },
         order: {
           select: {
             id: true,

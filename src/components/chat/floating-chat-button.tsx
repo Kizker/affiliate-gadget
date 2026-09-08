@@ -362,8 +362,8 @@ export default function FloatingChatButton() {
     }
   }, [messages, shouldScrollToBottom])
 
-  const fetchRooms = async () => {
-    setLoading(true)
+  const fetchRooms = async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
       const allRooms: ChatRoom[] = []
       const isAdmin =
@@ -494,7 +494,7 @@ export default function FloatingChatButton() {
         setMessages((prev) => [...prev, data.message])
         setNewMessage('')
         setShouldScrollToBottom(true)
-        fetchRooms()
+        fetchRooms(true)
       } else {
         toast.error('Gagal mengirim pesan')
       }
@@ -922,7 +922,7 @@ export default function FloatingChatButton() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={fetchRooms}
+                    onClick={() => fetchRooms()}
                     className="rounded-full p-2 transition-colors hover:bg-white/20"
                   >
                     <RefreshCw className="h-5 w-5" />

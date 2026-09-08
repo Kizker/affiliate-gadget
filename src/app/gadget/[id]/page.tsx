@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Navbar } from '@/components/layouts/navbar'
@@ -33,6 +34,7 @@ import { toast } from 'sonner'
 export default function GadgetDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { status } = useSession()
   const id = params?.id as string
 
   const [product, setProduct] = useState<any>(null)
@@ -177,6 +179,28 @@ export default function GadgetDetailPage() {
       ? product.originalPrice - currentPrice
       : 0
 
+  const handleChatStore = () => {
+    if (!product?.store?.id) return
+
+    const storeId = product.store.id
+    const productId = product.id
+    const productName = encodeURIComponent(product.name || '')
+    const productPrice = currentPrice || product.price || 0
+    const variantName = encodeURIComponent(selectedVariant?.name || '')
+    const productImage = encodeURIComponent(
+      selectedImage || (product.images && product.images[0]) || ''
+    )
+
+    const chatUrl = `/dashboard/customer/chat?storeId=${storeId}&productId=${productId}&productName=${productName}&productPrice=${productPrice}&variantName=${variantName}&productImage=${productImage}`
+
+    if (status === 'unauthenticated') {
+      router.push(`/login?callbackUrl=${encodeURIComponent(chatUrl)}`)
+      return
+    }
+
+    router.push(chatUrl)
+  }
+
   return (
     <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar variant="light" />
@@ -316,13 +340,14 @@ export default function GadgetDetailPage() {
                     <span className="text-[11px] text-slate-400">
                       📍 {product.store.address}
                     </span>
-                    <Link
-                      href={`/dashboard/customer/chat?storeId=${product.store.id}`}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-[11px] font-bold text-orange-700 transition-colors hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-300"
+                    <button
+                      type="button"
+                      onClick={handleChatStore}
+                      className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-[11px] font-bold text-orange-700 transition-colors hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-300"
                     >
                       <MessageSquare className="h-3 w-3 text-orange-500" />
                       <span>Chat Toko</span>
-                    </Link>
+                    </button>
                   </div>
                 </div>
               )}
@@ -531,6 +556,17 @@ export default function GadgetDetailPage() {
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
+
+                    {/* Chat Store Button */}
+                    <button
+                      type="button"
+                      onClick={handleChatStore}
+                      className="shadow-2xs inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-orange-200 bg-orange-50/80 px-4 py-3.5 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-[0.99] dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                      title="Tanya unit atau negosiasi ke toko"
+                    >
+                      <MessageSquare className="h-4 w-4 text-orange-500" />
+                      <span>Chat Toko</span>
+                    </button>
 
                     {/* Add to Cart Button */}
                     <button

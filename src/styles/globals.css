@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,22 +13,22 @@
     --card-foreground: 222.2 47.4% 11.2%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 47.4% 11.2%;
-    
+
     /* Biru (Warna Merek & Navigasi / Trust & Professionalism) */
     --primary: 221.2 83.2% 53.3%; /* #2563EB - Trust Blue */
     --primary-foreground: 210 40% 98%;
     --secondary: 214 32% 95%; /* #F1F5F9 - Soft Blue-Grey */
     --secondary-foreground: 222.2 47.4% 11.2%;
-    
+
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    
+
     /* Oranye (Warna Aksen / Aksi / CTA & Urgensi) */
     --accent: 24.6 95% 53.1%; /* #F97316 - High-conversion Orange */
     --accent-foreground: 0 0% 100%;
     --action: 24.6 95% 53.1%;
     --action-foreground: 0 0% 100%;
-    
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;

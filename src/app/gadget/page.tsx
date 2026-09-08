@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -17,9 +17,11 @@ import {
   SlidersHorizontal,
   Package,
   Star,
+  MessageSquare,
+  Loader2,
 } from 'lucide-react'
 
-export default function GadgetKatalogPage() {
+function GadgetKatalogContent() {
   const searchParams = useSearchParams()
   const [gadgets, setGadgets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -256,21 +258,31 @@ export default function GadgetKatalogPage() {
                       </div>
                     </div>
 
-                    {/* 3. Action Button (Action Orange) */}
-                    <div className="mt-3.5 border-t border-slate-100 pt-3 dark:border-slate-800/80">
+                    {/* 3. Action Buttons */}
+                    <div className="mt-3.5 flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800/80">
                       <Link
                         href={`/gadget/${item.id}`}
-                        className={`flex w-full items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-bold transition-all duration-200 ${
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-bold transition-all duration-200 ${
                           totalStock > 0
                             ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/25 hover:bg-orange-600 active:scale-[0.98]'
                             : 'cursor-not-allowed bg-slate-100 text-slate-400 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-500'
                         }`}
                       >
                         <span>
-                          {totalStock > 0 ? 'Lihat Detail Unit' : 'Stok Habis'}
+                          {totalStock > 0 ? 'Lihat Detail' : 'Stok Habis'}
                         </span>
                         <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
+
+                      {item.store?.id && (
+                        <Link
+                          href={`/dashboard/customer/chat?storeId=${item.store.id}&productId=${item.id}&productName=${encodeURIComponent(item.name || '')}&productPrice=${item.price || 0}&productImage=${encodeURIComponent(item.images?.[0] || '')}`}
+                          className="shadow-2xs flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-orange-800 dark:hover:bg-orange-950/40 dark:hover:text-orange-300"
+                          title="Chat Toko tentang produk ini"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Link>
+                      )}
                     </div>
                   </div>
                 )
@@ -282,5 +294,23 @@ export default function GadgetKatalogPage() {
 
       <Footer variant="light" />
     </div>
+  )
+}
+
+export default function GadgetKatalogPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+          <Navbar variant="light" />
+          <div className="flex flex-1 items-center justify-center pt-28">
+            <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+          </div>
+          <Footer variant="light" />
+        </div>
+      }
+    >
+      <GadgetKatalogContent />
+    </Suspense>
   )
 }

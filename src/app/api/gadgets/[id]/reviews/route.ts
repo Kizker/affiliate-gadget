@@ -9,11 +9,16 @@ export async function GET(
   try {
     const { id: productId } = await params
     const { searchParams } = new URL(req.url)
-    const ratingFilter = searchParams.get('rating') ? parseInt(searchParams.get('rating')!) : null
+    const ratingFilter = searchParams.get('rating')
+      ? parseInt(searchParams.get('rating')!)
+      : null
     const hasMediaFilter = searchParams.get('hasMedia') === 'true'
     const sort = searchParams.get('sort') || 'newest'
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
-    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+    const limit = Math.min(
+      50,
+      Math.max(1, parseInt(searchParams.get('limit') || '20'))
+    )
 
     // Verify product exists
     const product = await prisma.product.findUnique({
@@ -22,7 +27,10 @@ export async function GET(
     })
 
     if (!product) {
-      return NextResponse.json({ success: false, error: 'Produk tidak ditemukan' }, { status: 404 })
+      return NextResponse.json(
+        { success: false, error: 'Produk tidak ditemukan' },
+        { status: 404 }
+      )
     }
 
     // Build Prisma query condition
@@ -171,12 +179,16 @@ export async function GET(
       }
     })
 
-    const averageRating = totalReviews > 0 ? Number((sumRating / totalReviews).toFixed(1)) : 5.0
+    const averageRating =
+      totalReviews > 0 ? Number((sumRating / totalReviews).toFixed(1)) : 5.0
     const satisfiedReviews = starCounts[5] + starCounts[4]
-    const satisfactionRate = totalReviews > 0 ? Math.round((satisfiedReviews / totalReviews) * 100) : 100
+    const satisfactionRate =
+      totalReviews > 0
+        ? Math.round((satisfiedReviews / totalReviews) * 100)
+        : 100
 
     // Check customer eligibility (Delivered order verification)
-    let userEligibility = {
+    const userEligibility = {
       isLoggedIn: false,
       canReview: false,
       isDelivered: false,
@@ -232,7 +244,8 @@ export async function GET(
           userEligibility.canReview = true
           userEligibility.isDelivered = true
           userEligibility.eligibleOrderId = deliveredOrder.id
-          userEligibility.eligibleVariantName = deliveredOrder.items[0]?.variantName || null
+          userEligibility.eligibleVariantName =
+            deliveredOrder.items[0]?.variantName || null
         }
       }
     }
@@ -274,7 +287,10 @@ export async function POST(
   try {
     const session = await auth()
     if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: 'Silakan masuk untuk memberikan ulasan' }, { status: 401 })
+      return NextResponse.json(
+        { success: false, error: 'Silakan masuk untuk memberikan ulasan' },
+        { status: 401 }
+      )
     }
 
     const { id: productId } = await params
@@ -291,7 +307,10 @@ export async function POST(
     // Validation
     if (!rating || rating < 1 || rating > 5) {
       return NextResponse.json(
-        { success: false, error: 'Rating harus bernilai antara 1 sampai 5 bintang' },
+        {
+          success: false,
+          error: 'Rating harus bernilai antara 1 sampai 5 bintang',
+        },
         { status: 400 }
       )
     }
@@ -303,7 +322,10 @@ export async function POST(
     })
 
     if (!product) {
-      return NextResponse.json({ success: false, error: 'Produk gadget tidak ditemukan' }, { status: 404 })
+      return NextResponse.json(
+        { success: false, error: 'Produk gadget tidak ditemukan' },
+        { status: 404 }
+      )
     }
 
     // Check if user has purchased and received the product, or find latest delivered order
@@ -347,10 +369,14 @@ export async function POST(
 
     // Clean image and video arrays
     const sanitizedImages = Array.isArray(images)
-      ? images.filter((img: any) => typeof img === 'string' && img.trim().length > 0)
+      ? images.filter(
+          (img: any) => typeof img === 'string' && img.trim().length > 0
+        )
       : []
     const sanitizedVideos = Array.isArray(videos)
-      ? videos.filter((vid: any) => typeof vid === 'string' && vid.trim().length > 0)
+      ? videos.filter(
+          (vid: any) => typeof vid === 'string' && vid.trim().length > 0
+        )
       : []
 
     let review
@@ -401,9 +427,10 @@ export async function POST(
     })
 
     const totalReview = allReviews.length
-    const averageRating = totalReview > 0
-      ? allReviews.reduce((sum, r) => sum + r.rating, 0) / totalReview
-      : 5.0
+    const averageRating =
+      totalReview > 0
+        ? allReviews.reduce((sum, r) => sum + r.rating, 0) / totalReview
+        : 5.0
 
     await prisma.product.update({
       where: { id: productId },
@@ -415,13 +442,18 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: existingReview ? 'Ulasan produk berhasil diperbarui!' : 'Ulasan dan lampiran media berhasil dikirim!',
+      message: existingReview
+        ? 'Ulasan produk berhasil diperbarui!'
+        : 'Ulasan dan lampiran media berhasil dikirim!',
       data: review,
     })
   } catch (error) {
     console.error('Error submitting product review:', error)
     return NextResponse.json(
-      { success: false, error: 'Terjadi kesalahan sistem saat menyimpan ulasan' },
+      {
+        success: false,
+        error: 'Terjadi kesalahan sistem saat menyimpan ulasan',
+      },
       { status: 500 }
     )
   }

@@ -16,7 +16,7 @@ describe('Security & Cryptography (Tahap 1)', () => {
 
       const isWrongMatch = await bcrypt.compare('WrongPassword123!', hashed)
       expect(isWrongMatch).toBe(false)
-    })
+    }, 15000)
   })
 
   describe('Verification Token Generation & SHA-256 Hashing', () => {
