@@ -16,19 +16,38 @@ export async function GET() {
     // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true },
+      select: { role: true, storeId: true },
     })
 
     if (!user || !isAdminStaffRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Build where clause - show rooms claimed by this admin OR unclaimed rooms
-    const whereClause = {
-      OR: [
-        { claimedById: session.user.id }, // Rooms claimed by this admin
-        { claimedById: null }, // Unclaimed rooms (new customer chats)
-      ],
+    // Build where clause
+    // STORE_ADMIN: hanya lihat chat yang terkait dengan order di toko mereka
+    // Admin/SuperAdmin: lihat semua room yang di-claim mereka atau unclaimed
+    let whereClause: Record<string, unknown>
+
+    if (user.role === 'STORE_ADMIN' && user.storeId) {
+      whereClause = {
+        OR: [
+          // Rooms terkait order di toko ini
+          { order: { storeId: user.storeId } },
+          // Rooms terkait order dengan item produk dari toko ini
+          {
+            order: { items: { some: { product: { storeId: user.storeId } } } },
+          },
+          // Rooms tanpa order (general inquiry) yang di-claim admin ini
+          { claimedById: session.user.id },
+        ],
+      }
+    } else {
+      whereClause = {
+        OR: [
+          { claimedById: session.user.id }, // Rooms claimed by this admin
+          { claimedById: null }, // Unclaimed rooms (new customer chats)
+        ],
+      }
     }
 
     // Fetch admin chat rooms with customer info and order info
@@ -135,7 +154,7 @@ export async function POST(request: Request) {
     // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true },
+      select: { role: true, storeId: true },
     })
 
     if (!user || !isAdminStaffRole(user.role)) {
@@ -149,6 +168,32 @@ export async function POST(request: Request) {
         { error: 'Customer ID required' },
         { status: 400 }
       )
+    }
+
+    // STORE_ADMIN: validasi bahwa order yang di-chat adalah milik tokonya
+    if (orderId && user.role === 'STORE_ADMIN' && user.storeId) {
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          storeId: true,
+          items: { select: { product: { select: { storeId: true } } } },
+        },
+      })
+
+      if (order) {
+        const orderStoreId = order.storeId
+        const itemStoreId = order.items.find((i) => i.product?.storeId)?.product
+          ?.storeId
+        const belongsToThisStore =
+          orderStoreId === user.storeId || itemStoreId === user.storeId
+
+        if (!belongsToThisStore) {
+          return NextResponse.json(
+            { error: 'Pesanan ini bukan milik toko Anda' },
+            { status: 403 }
+          )
+        }
+      }
     }
 
     // Check if room with this order already exists

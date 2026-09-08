@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -9,6 +9,10 @@ import { toast } from 'sonner'
 import { useCartStore } from '@/lib/store/cart-store'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
+import {
+  AddressModal,
+  UserAddressItem,
+} from '@/components/customer/address-modal'
 import {
   ShoppingCart,
   ArrowLeft,
@@ -24,6 +28,11 @@ import {
   ArrowRight,
   Sparkles,
   Building2,
+  Plus,
+  Home,
+  Star,
+  Edit3,
+  ChevronRight,
 } from 'lucide-react'
 
 interface BankAccount {
@@ -50,13 +59,46 @@ export default function CheckoutPage() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [courier, setCourier] = useState<'JNE' | 'GOJEK'>('JNE')
   const [courierService, setCourierService] = useState('REG')
-  const [deliveryAddress, setDeliveryAddress] = useState('')
   const [notes, setNotes] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'GATEWAY' | 'MANUAL_TRANSFER'>('GATEWAY')
+  const [paymentMethod, setPaymentMethod] = useState<
+    'GATEWAY' | 'MANUAL_TRANSFER'
+  >('GATEWAY')
   const [termsAccepted, setTermsAccepted] = useState(true)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null)
+
+  // Address state
+  const [addresses, setAddresses] = useState<UserAddressItem[]>([])
+  const [loadingAddresses, setLoadingAddresses] = useState(false)
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    null
+  )
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
+
+  const selectedAddress = useMemo(
+    () => addresses.find((a) => a.id === selectedAddressId) ?? null,
+    [addresses, selectedAddressId]
+  )
+
+  const fetchAddresses = useCallback(async () => {
+    setLoadingAddresses(true)
+    try {
+      const res = await fetch('/api/user/addresses')
+      if (res.ok) {
+        const data = await res.json()
+        const list: UserAddressItem[] = data.addresses || []
+        setAddresses(list)
+        // Auto-select default address
+        const def = list.find((a) => a.isDefault) ?? list[0] ?? null
+        if (def) setSelectedAddressId(def.id)
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingAddresses(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -64,8 +106,9 @@ export default function CheckoutPage() {
     } else if (status === 'authenticated') {
       setUserId(session.user.id)
       setLoading(false)
+      fetchAddresses()
     }
-  }, [status, router, session, setUserId])
+  }, [status, router, session, setUserId, fetchAddresses])
 
   useEffect(() => {
     if (selectedItems.length > 0) {
@@ -94,10 +137,14 @@ export default function CheckoutPage() {
 
   // Calculate Mandatory Shipping Insurance (0.25% of subtotal + admin fee)
   const insuranceFee = Math.max(15000, Math.round(subtotal * 0.0025))
-  const shippingCost = courier === 'GOJEK' ? 35000 : courierService === 'YES' ? 28000 : 15000
+  const shippingCost =
+    courier === 'GOJEK' ? 35000 : courierService === 'YES' ? 28000 : 15000
   const total = subtotal + shippingCost + insuranceFee
 
-  const handleCopyAccount = async (accountNumber: string, accountId: string) => {
+  const handleCopyAccount = async (
+    accountNumber: string,
+    accountId: string
+  ) => {
     try {
       await navigator.clipboard.writeText(accountNumber)
       setCopiedAccount(accountId)
@@ -119,19 +166,31 @@ export default function CheckoutPage() {
       return
     }
 
-    if (!deliveryAddress.trim()) {
-      toast.error('Harap isi alamat lengkap pengiriman')
+    if (!selectedAddressId || !selectedAddress) {
+      toast.error('Harap pilih alamat pengiriman terlebih dahulu')
       return
     }
 
     setSubmitting(true)
     try {
+      const addressString = [
+        selectedAddress!.fullAddress,
+        selectedAddress!.district,
+        selectedAddress!.village,
+        selectedAddress!.city,
+        selectedAddress!.province,
+        selectedAddress!.postalCode,
+      ]
+        .filter(Boolean)
+        .join(', ')
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: selectedItems,
-          paymentMethod: paymentMethod === 'GATEWAY' ? 'MIDTRANS' : 'MANUAL_TRANSFER',
+          paymentMethod:
+            paymentMethod === 'GATEWAY' ? 'MIDTRANS' : 'MANUAL_TRANSFER',
           courierCode: courier,
           courierService: courierService,
           shippingCost: shippingCost,
@@ -140,7 +199,10 @@ export default function CheckoutPage() {
           bonusChargerIncluded: true,
           bonusProtectorIncluded: true,
           bonusCaseIncluded: true,
-          deliveryAddress: deliveryAddress,
+          addressId: selectedAddressId,
+          deliveryAddress: addressString,
+          recipientName: selectedAddress!.recipientName,
+          recipientPhone: selectedAddress!.phone,
           notes: notes,
         }),
       })
@@ -153,12 +215,19 @@ export default function CheckoutPage() {
       const data = await res.json()
       removeSelectedItems()
 
-      const orderIds = (data.orders || []).map((o: any) => o.order?.id || o.id).filter(Boolean).join(',')
+      const orderIds = (data.orders || [])
+        .map((o: any) => o.order?.id || o.id)
+        .filter(Boolean)
+        .join(',')
       router.push(`/order-confirmation/multiple?orders=${orderIds}`)
-      toast.success('Pesanan berhasil dibuat dengan Asuransi & Garansi 30 Hari!')
+      toast.success(
+        'Pesanan berhasil dibuat dengan Asuransi & Garansi 30 Hari!'
+      )
     } catch (error) {
       console.error('Checkout error:', error)
-      toast.error(error instanceof Error ? error.message : 'Gagal memproses checkout')
+      toast.error(
+        error instanceof Error ? error.message : 'Gagal memproses checkout'
+      )
     } finally {
       setSubmitting(false)
     }
@@ -174,21 +243,22 @@ export default function CheckoutPage() {
 
   if (selectedItems.length === 0) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900 max-w-md space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+        <div className="shadow-xs max-w-md space-y-4 rounded-3xl border border-slate-200/80 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
             <ShoppingCart className="h-8 w-8" />
           </div>
           <h2 className="text-lg font-bold text-slate-950 dark:text-white">
             Tidak Ada Item yang Dipilih
           </h2>
           <p className="text-xs text-slate-500">
-            Pilih gadget resmi di keranjang Anda sebelum melanjutkan proses checkout.
+            Pilih gadget resmi di keranjang Anda sebelum melanjutkan proses
+            checkout.
           </p>
           <div className="pt-2">
             <Link
               href="/cart"
-              className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 hover:bg-orange-600 transition"
+              className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
             >
               <ArrowLeft className="h-4 w-4" /> Kembali ke Keranjang
             </Link>
@@ -199,25 +269,24 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between">
+    <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar variant="light" />
 
       <main className="pb-20 pt-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          
           {/* Header */}
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <Link
                 href="/cart"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/80 bg-white text-slate-600 shadow-2xs hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-white transition-all shrink-0"
+                className="shadow-2xs flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-white text-slate-600 transition-all hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-white"
                 title="Kembali ke Keranjang"
                 aria-label="Kembali ke Keranjang"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Link>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
+                <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
                   Checkout Pesanan
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -226,61 +295,200 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <div className="shadow-2xs inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Pembayaran Aman & Terlindungi</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-            
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
             {/* Left Column: Logistics, Payment & Items (7 cols) */}
-            <div className="lg:col-span-7 space-y-4">
-              
+            <div className="space-y-4 lg:col-span-7">
               {/* 1. Delivery Address & Courier Logistics */}
-              <div className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
+              <div className="shadow-xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-                  <h2 className="text-sm font-bold text-slate-950 dark:text-white flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-orange-500" /> Alamat & Kurir Pengiriman
+                  <h2 className="flex items-center gap-2 text-sm font-bold text-slate-950 dark:text-white">
+                    <MapPin className="h-4 w-4 text-orange-500" /> Alamat &
+                    Kurir Pengiriman
                   </h2>
-                  <span className="text-[11px] font-semibold text-slate-400">Langkah 1 dari 2</span>
+                  <span className="text-[11px] font-semibold text-slate-400">
+                    Langkah 1 dari 2
+                  </span>
                 </div>
 
                 <div className="space-y-3">
+                  {/* Address Picker */}
                   <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Alamat Lengkap Tujuan <span className="text-rose-500">*</span>
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
-                      placeholder="Nama jalan, nomor rumah, RT/RW, kelurahan, kecamatan, kota, kode pos"
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-400 focus:bg-white transition dark:border-slate-700 dark:bg-slate-800/50 dark:text-white"
-                    />
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Pilih Alamat Pengiriman{' '}
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddressModalOpen(true)}
+                        className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span>Tambah Alamat</span>
+                      </button>
+                    </div>
+
+                    {loadingAddresses ? (
+                      <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-200 py-8 dark:border-slate-700">
+                        <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                      </div>
+                    ) : addresses.length === 0 ? (
+                      /* Empty state */
+                      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center dark:border-slate-700 dark:bg-slate-800/30">
+                        <div className="shadow-2xs mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-900">
+                          <MapPin className="h-5 w-5" />
+                        </div>
+                        <p className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Belum ada alamat tersimpan
+                        </p>
+                        <p className="mb-3 text-[11px] text-slate-400">
+                          Tambahkan alamat pengiriman untuk melanjutkan
+                          checkout.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddressModalOpen(true)}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          <span>Tambah Alamat Baru</span>
+                        </button>
+                      </div>
+                    ) : (
+                      /* Address card list */
+                      <div className="max-h-72 space-y-2.5 overflow-y-auto pr-0.5">
+                        {addresses.map((addr) => {
+                          const isSelected = selectedAddressId === addr.id
+                          return (
+                            <button
+                              key={addr.id}
+                              type="button"
+                              onClick={() => setSelectedAddressId(addr.id)}
+                              className={`w-full cursor-pointer rounded-2xl border p-4 text-left transition-all ${
+                                isSelected
+                                  ? 'border-orange-400 bg-orange-50/60 ring-1 ring-orange-400/40 dark:border-orange-500 dark:bg-orange-950/20'
+                                  : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-slate-600'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                {/* Radio indicator */}
+                                <div
+                                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
+                                    isSelected
+                                      ? 'border-orange-500 bg-orange-500'
+                                      : 'border-slate-300 dark:border-slate-600'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                  )}
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  {/* Name + badges */}
+                                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                                    <span className="text-xs font-bold text-slate-950 dark:text-white">
+                                      {addr.recipientName}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">
+                                      •
+                                    </span>
+                                    <span className="text-[11px] font-medium text-slate-500">
+                                      {addr.phone}
+                                    </span>
+                                    <span
+                                      className={`inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                                        addr.label === 'Kantor'
+                                          ? 'border-blue-200/80 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300'
+                                          : 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                      }`}
+                                    >
+                                      {addr.label === 'Kantor' ? (
+                                        <Building2 className="h-2.5 w-2.5" />
+                                      ) : (
+                                        <Home className="h-2.5 w-2.5" />
+                                      )}
+                                      {addr.label || 'Rumah'}
+                                    </span>
+                                    {addr.isDefault && (
+                                      <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-950 px-2 py-0.5 text-[10px] font-bold text-white dark:bg-slate-100 dark:text-slate-900">
+                                        <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                                        Utama
+                                      </span>
+                                    )}
+                                  </div>
+                                  {/* Full address */}
+                                  <p className="text-[11px] font-medium leading-relaxed text-slate-700 dark:text-slate-300">
+                                    {addr.fullAddress}
+                                  </p>
+                                  <p className="mt-0.5 text-[10px] text-slate-400">
+                                    {[
+                                      addr.district,
+                                      addr.city,
+                                      addr.province,
+                                      addr.postalCode,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(', ')}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Link to settings */}
+                    <Link
+                      href="/dashboard/customer/settings"
+                      className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-orange-600 transition hover:text-orange-700"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                      Kelola semua alamat di pengaturan
+                      <ChevronRight className="h-3 w-3" />
+                    </Link>
                   </div>
+
+                  {/* AddressModal */}
+                  <AddressModal
+                    isOpen={isAddressModalOpen}
+                    onClose={() => setIsAddressModalOpen(false)}
+                    onSuccess={async () => {
+                      await fetchAddresses()
+                      // Select the newly added address (last in list after refresh)
+                    }}
+                  />
 
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Pilihan Kurir Terproteksi Asuransi
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <button
                         type="button"
                         onClick={() => setCourier('JNE')}
-                        className={`rounded-2xl p-3.5 text-left border transition-all ${
+                        className={`rounded-2xl border p-3.5 text-left transition-all ${
                           courier === 'JNE'
-                            ? 'border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600 shadow-2xs'
+                            ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600'
                             : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'
                         }`}
                       >
-                        <div className="flex items-center justify-between font-bold text-xs">
+                        <div className="flex items-center justify-between text-xs font-bold">
                           <span className="flex items-center gap-1.5">
                             <Truck className="h-3.5 w-3.5" /> JNE Express
                           </span>
                           <span>Rp 15.000</span>
                         </div>
-                        <p className={`mt-1 text-[10px] ${courier === 'JNE' ? 'text-slate-300' : 'text-slate-400'}`}>
+                        <p
+                          className={`mt-1 text-[10px] ${courier === 'JNE' ? 'text-slate-300' : 'text-slate-400'}`}
+                        >
                           Reguler / YES (1-2 Hari Kerja)
                         </p>
                       </button>
@@ -288,19 +496,21 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={() => setCourier('GOJEK')}
-                        className={`rounded-2xl p-3.5 text-left border transition-all ${
+                        className={`rounded-2xl border p-3.5 text-left transition-all ${
                           courier === 'GOJEK'
-                            ? 'border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600 shadow-2xs'
+                            ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600'
                             : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'
                         }`}
                       >
-                        <div className="flex items-center justify-between font-bold text-xs">
+                        <div className="flex items-center justify-between text-xs font-bold">
                           <span className="flex items-center gap-1.5">
                             <Truck className="h-3.5 w-3.5" /> Gojek Instant
                           </span>
                           <span>Rp 35.000</span>
                         </div>
-                        <p className={`mt-1 text-[10px] ${courier === 'GOJEK' ? 'text-slate-300' : 'text-slate-400'}`}>
+                        <p
+                          className={`mt-1 text-[10px] ${courier === 'GOJEK' ? 'text-slate-300' : 'text-slate-400'}`}
+                        >
                           Langsung Sampai (Maks 2 Jam)
                         </p>
                       </button>
@@ -310,18 +520,21 @@ export default function CheckoutPage() {
               </div>
 
               {/* 2. Payment Method */}
-              <div className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
+              <div className="shadow-xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-                  <h2 className="text-sm font-bold text-slate-950 dark:text-white flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-orange-500" /> Metode Pembayaran
+                  <h2 className="flex items-center gap-2 text-sm font-bold text-slate-950 dark:text-white">
+                    <CreditCard className="h-4 w-4 text-orange-500" /> Metode
+                    Pembayaran
                   </h2>
-                  <span className="text-[11px] font-semibold text-slate-400">Langkah 2 dari 2</span>
+                  <span className="text-[11px] font-semibold text-slate-400">
+                    Langkah 2 dari 2
+                  </span>
                 </div>
 
                 <div className="space-y-2.5">
                   {/* Payment Gateway (QRIS, VA) */}
                   <label
-                    className={`flex items-start justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
+                    className={`flex cursor-pointer items-start justify-between rounded-2xl border p-4 transition-all ${
                       paymentMethod === 'GATEWAY'
                         ? 'border-slate-950 bg-slate-50 dark:border-blue-500 dark:bg-blue-950/20'
                         : 'border-slate-200 hover:border-slate-300 dark:border-slate-800'
@@ -336,22 +549,24 @@ export default function CheckoutPage() {
                         className="mt-0.5 h-4 w-4 text-slate-950 focus:ring-slate-950 dark:text-blue-600"
                       />
                       <div>
-                        <span className="text-xs font-bold text-slate-950 dark:text-white block">
-                          Payment Gateway Otomatis (QRIS, BCA VA, Mandiri, E-Wallet)
+                        <span className="block text-xs font-bold text-slate-950 dark:text-white">
+                          Payment Gateway Otomatis (QRIS, BCA VA, Mandiri,
+                          E-Wallet)
                         </span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          Konfirmasi instan otomatis tanpa perlu upload bukti transfer
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          Konfirmasi instan otomatis tanpa perlu upload bukti
+                          transfer
                         </p>
                       </div>
                     </div>
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 shrink-0">
+                    <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                       Rekomendasi
                     </span>
                   </label>
 
                   {/* Manual Transfer */}
                   <label
-                    className={`flex items-start justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
+                    className={`flex cursor-pointer items-start justify-between rounded-2xl border p-4 transition-all ${
                       paymentMethod === 'MANUAL_TRANSFER'
                         ? 'border-slate-950 bg-slate-50 dark:border-blue-500 dark:bg-blue-950/20'
                         : 'border-slate-200 hover:border-slate-300 dark:border-slate-800'
@@ -366,11 +581,12 @@ export default function CheckoutPage() {
                         className="mt-0.5 h-4 w-4 text-slate-950 focus:ring-slate-950 dark:text-blue-600"
                       />
                       <div>
-                        <span className="text-xs font-bold text-slate-950 dark:text-white block">
+                        <span className="block text-xs font-bold text-slate-950 dark:text-white">
                           Transfer Bank Manual ke Rekening Toko
                         </span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          Transfer langsung ke rekening bank resmi toko counter fisik
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          Transfer langsung ke rekening bank resmi toko counter
+                          fisik
                         </p>
                       </div>
                     </div>
@@ -378,28 +594,33 @@ export default function CheckoutPage() {
 
                   {/* Display Bank Accounts if Manual Transfer Selected */}
                   {paymentMethod === 'MANUAL_TRANSFER' && (
-                    <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60 space-y-3">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <div className="mt-2 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+                      <span className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
                         <Building2 className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300" />
                         Rekening Tujuan Pembayaran Resmi:
                       </span>
-                      
+
                       {bankAccounts.length > 0 ? (
                         <div className="space-y-2">
                           {bankAccounts.map((acc) => (
-                            <div key={acc.id} className="flex items-center justify-between rounded-xl bg-white p-3 border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800">
+                            <div
+                              key={acc.id}
+                              className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+                            >
                               <div>
-                                <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                                <span className="block text-xs font-bold text-slate-900 dark:text-white">
                                   {acc.bankName} - {acc.accountNumber}
                                 </span>
-                                <span className="text-[10px] text-slate-500 block">
+                                <span className="block text-[10px] text-slate-500">
                                   a.n. {acc.accountName}
                                 </span>
                               </div>
                               <button
                                 type="button"
-                                onClick={() => handleCopyAccount(acc.accountNumber, acc.id)}
-                                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition"
+                                onClick={() =>
+                                  handleCopyAccount(acc.accountNumber, acc.id)
+                                }
+                                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
                               >
                                 {copiedAccount === acc.id ? (
                                   <>
@@ -417,11 +638,11 @@ export default function CheckoutPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="rounded-xl bg-white p-3 border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800">
-                          <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                        <div className="rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                          <span className="block text-xs font-bold text-slate-900 dark:text-white">
                             BCA - 8830 1928 3920
                           </span>
-                          <span className="text-[10px] text-slate-500 block">
+                          <span className="block text-[10px] text-slate-500">
                             a.n. Rekening Operasional Toko Gadget
                           </span>
                         </div>
@@ -432,20 +653,26 @@ export default function CheckoutPage() {
               </div>
 
               {/* 3. Items Preview */}
-              <div className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
+              <div className="shadow-xs space-y-3 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
                   <h2 className="text-sm font-bold text-slate-950 dark:text-white">
                     Produk yang Dipesan ({selectedItems.length})
                   </h2>
-                  <Link href="/cart" className="text-[11px] font-semibold text-orange-600 hover:underline">
+                  <Link
+                    href="/cart"
+                    className="text-[11px] font-semibold text-orange-600 hover:underline"
+                  >
                     Ubah Keranjang
                   </Link>
                 </div>
 
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {selectedItems.map((item) => (
-                    <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-center gap-3">
-                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-50 border border-slate-100 dark:border-slate-800">
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800">
                         <Image
                           src={item.image || '/placeholder.png'}
                           alt={item.name}
@@ -454,60 +681,61 @@ export default function CheckoutPage() {
                           className="object-cover"
                         />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
                           {item.name}
                         </h3>
                         <p className="text-[11px] text-slate-400">
-                          {item.quantity} unit × Rp {item.price.toLocaleString('id-ID')}
+                          {item.quantity} unit × Rp{' '}
+                          {item.price.toLocaleString('id-ID')}
                         </p>
                       </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xs font-bold text-slate-950 dark:text-white tabular-nums">
-                          Rp {(item.price * item.quantity).toLocaleString('id-ID')}
+                      <div className="shrink-0 text-right">
+                        <span className="text-xs font-bold tabular-nums text-slate-950 dark:text-white">
+                          Rp{' '}
+                          {(item.price * item.quantity).toLocaleString('id-ID')}
                         </span>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
             </div>
 
             {/* Right Column: Order Summary & Checkout Action (5 cols, Sticky) */}
-            <div className="lg:col-span-5 sticky top-28 space-y-4">
-              <div className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                <h3 className="text-sm font-bold text-slate-950 dark:text-white border-b border-slate-100 pb-3.5 dark:border-slate-800">
+            <div className="sticky top-28 space-y-4 lg:col-span-5">
+              <div className="shadow-xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+                <h3 className="border-b border-slate-100 pb-3.5 text-sm font-bold text-slate-950 dark:border-slate-800 dark:text-white">
                   Ringkasan Pembayaran
                 </h3>
 
                 <div className="space-y-2.5 text-xs">
                   <div className="flex justify-between text-slate-600 dark:text-slate-400">
                     <span>Subtotal Produk</span>
-                    <span className="font-semibold text-slate-900 dark:text-white tabular-nums">
+                    <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
                       Rp {subtotal.toLocaleString('id-ID')}
                     </span>
                   </div>
 
                   <div className="flex justify-between text-slate-600 dark:text-slate-400">
                     <span>Ongkos Kirim ({courier})</span>
-                    <span className="font-semibold text-slate-900 dark:text-white tabular-nums">
+                    <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
                       Rp {shippingCost.toLocaleString('id-ID')}
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                     <span className="flex items-center gap-1.5">
                       <ShieldCheck className="h-3.5 w-3.5 text-blue-500" />
                       <span>Asuransi Kurir 100%</span>
                     </span>
-                    <span className="font-semibold text-slate-900 dark:text-white tabular-nums">
+                    <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
                       Rp {insuranceFee.toLocaleString('id-ID')}
                     </span>
                   </div>
 
                   {/* Free Bonus 3-in-1 Included */}
-                  <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 pt-0.5">
+                  <div className="flex items-center justify-between pt-0.5 text-slate-600 dark:text-slate-400">
                     <span className="flex items-center gap-1.5">
                       <Gift className="h-3.5 w-3.5 text-orange-500" />
                       <span>Bonus Aksesoris 3-in-1</span>
@@ -516,22 +744,22 @@ export default function CheckoutPage() {
                       GRATIS (Rp 0)
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400 pl-5 -mt-1 leading-tight">
+                  <p className="-mt-1 pl-5 text-[10px] leading-tight text-slate-400">
                     Charger 20W + Tempered Glass + Case
                   </p>
 
                   {/* Total Payment Row */}
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                     <div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                      <span className="block text-xs font-bold text-slate-900 dark:text-white">
                         Total Tagihan
                       </span>
-                      <span className="text-[10px] text-slate-400 block">
+                      <span className="block text-[10px] text-slate-400">
                         Termasuk PPN & Asuransi
                       </span>
                     </div>
 
-                    <span className="text-base sm:text-lg font-bold text-slate-950 dark:text-white tabular-nums tracking-tight whitespace-nowrap">
+                    <span className="whitespace-nowrap text-base font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-lg">
                       Rp {total.toLocaleString('id-ID')}
                     </span>
                   </div>
@@ -539,7 +767,7 @@ export default function CheckoutPage() {
 
                 {/* Terms Agreement */}
                 <div className="pt-1">
-                  <label className="flex items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400 cursor-pointer">
+                  <label className="flex cursor-pointer items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                     <input
                       type="checkbox"
                       checked={termsAccepted}
@@ -547,7 +775,8 @@ export default function CheckoutPage() {
                       className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-950"
                     />
                     <span className="leading-snug">
-                      Saya menyetujui syarat garansi resmi toko 30 hari tukar unit & asuransi kurir terproteksi.
+                      Saya menyetujui syarat garansi resmi toko 30 hari tukar
+                      unit & asuransi kurir terproteksi.
                     </span>
                   </label>
                 </div>
@@ -557,7 +786,7 @@ export default function CheckoutPage() {
                   type="button"
                   onClick={handleCheckout}
                   disabled={submitting}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 hover:bg-orange-600 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {submitting ? (
                     <>
@@ -573,20 +802,18 @@ export default function CheckoutPage() {
                 </button>
 
                 {/* Trust Badges */}
-                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800/80 space-y-1.5">
+                <div className="space-y-1.5 rounded-2xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800/80 dark:bg-slate-800/50">
                   <div className="flex items-center gap-2 text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
                     <span>Garansi 30 Hari Tukar Unit Gadget Second</span>
                   </div>
                   <div className="flex items-center gap-2 text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                    <Truck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                    <Truck className="h-3.5 w-3.5 shrink-0 text-blue-600" />
                     <span>Proteksi Rusak / Hilang JNE & Gojek 100%</span>
                   </div>
                 </div>
-
               </div>
             </div>
-
           </div>
         </div>
       </main>
