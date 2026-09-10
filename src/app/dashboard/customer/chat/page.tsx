@@ -35,6 +35,14 @@ interface ChatRoom {
   customerId?: string
   orderId?: string | null
   storeId?: string | null
+  claimedById?: string | null
+  claimedBy?: {
+    id: string
+    name: string | null
+    email?: string | null
+    image?: string | null
+    role?: string
+  } | null
   lastMessageAt: string
   type: 'admin' | 'technician'
   order?: {
@@ -81,6 +89,8 @@ interface ChatRoom {
   messages?: {
     content: string
     messageType?: string
+    mediaUrl?: string | null
+    mediaType?: string | null
     createdAt?: string
     senderId?: string
   }[]
@@ -105,14 +115,25 @@ interface Message {
   }
 }
 
+const NON_MEDIA_TYPES = [
+  'product_reference',
+  'product',
+  'order',
+  'rental',
+  'service',
+  'text',
+]
+
 const isVideoMedia = (
   url?: string | null,
   mediaType?: string | null,
   messageType?: string | null
 ) => {
+  // Never treat non-media message types as video
+  if (messageType && NON_MEDIA_TYPES.includes(messageType)) return false
   if (messageType === 'video') return true
   if (mediaType?.startsWith('video/')) return true
-  if (url && /\.(mp4|webm|mov|mkv|ogg|3gp)$/i.test(url)) return true
+  if (url && /\.(mp4|webm|mov|mkv|ogg|3gp)(\?.*)?$/i.test(url)) return true
   return false
 }
 
@@ -121,10 +142,20 @@ const isImageMedia = (
   mediaType?: string | null,
   messageType?: string | null
 ) => {
+  // Never treat non-media message types as image
+  if (messageType && NON_MEDIA_TYPES.includes(messageType)) return false
   if (messageType === 'image') return true
   if (mediaType?.startsWith('image/')) return true
-  if (url && /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(url)) return true
-  return !!url && !isVideoMedia(url, mediaType, messageType)
+  if (url && /\.(jpg|jpeg|png|webp|gif|svg|avif)(\?.*)?$/i.test(url))
+    return true
+  if (
+    url &&
+    (url.startsWith('/uploads/') || url.includes('images.unsplash.com')) &&
+    !isVideoMedia(url, mediaType, messageType)
+  ) {
+    return true
+  }
+  return false
 }
 
 function CustomerChatContent() {
@@ -132,6 +163,7 @@ function CustomerChatContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const paramOrderId = searchParams.get('orderId')
   const paramStoreId = searchParams.get('storeId')
   const paramProductId = searchParams.get('productId')
   const paramProductName = searchParams.get('productName')
@@ -293,11 +325,12 @@ function CustomerChatContent() {
     }
   }, [status, fetchRooms])
 
-  // Auto-select first room on desktop only once upon initial load if no storeId param
+  // Auto-select first room on desktop only once upon initial load if no storeId or orderId param
   useEffect(() => {
     if (
       !hasAutoSelectedRef.current &&
       !paramStoreId &&
+      !paramOrderId &&
       rooms.length > 0 &&
       !selectedRoom &&
       typeof window !== 'undefined' &&
@@ -306,7 +339,7 @@ function CustomerChatContent() {
       hasAutoSelectedRef.current = true
       setSelectedRoom(rooms[0])
     }
-  }, [rooms, paramStoreId, selectedRoom])
+  }, [rooms, paramStoreId, paramOrderId, selectedRoom])
 
   // Fetch messages for selected room
   const fetchMessages = useCallback(
@@ -438,13 +471,26 @@ function CustomerChatContent() {
         return []
       })
       fetchMessages(room, false)
+
+      // Sync URL
+      if (typeof window !== 'undefined') {
+        if (room.orderId || room.order?.id) {
+          window.history.replaceState(
+            null,
+            '',
+            `/dashboard/customer/chat?orderId=${room.orderId || room.order?.id}`
+          )
+        } else {
+          window.history.replaceState(null, '', '/dashboard/customer/chat')
+        }
+      }
     },
     [fetchMessages]
   )
 
   // Auto-open and initialize direct store room from URL parameters
   useEffect(() => {
-    if (status !== 'authenticated' || !paramStoreId) return
+    if (status !== 'authenticated' || (!paramStoreId && !paramOrderId)) return
 
     const safeParam = (p: string | null) => {
       if (!p) return undefined
@@ -462,7 +508,7 @@ function CustomerChatContent() {
       ? Number(paramProductPrice)
       : undefined
 
-    const initKey = `${paramStoreId}_${paramProductId || ''}_${resolvedProductName || ''}_${resolvedVariantName || ''}`
+    const initKey = `${paramOrderId || ''}_${paramStoreId || ''}_${paramProductId || ''}_${resolvedProductName || ''}_${resolvedVariantName || ''}`
     if (lastInitializedKeyRef.current === initKey) return
     lastInitializedKeyRef.current = initKey
 
@@ -483,7 +529,8 @@ function CustomerChatContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            storeId: paramStoreId,
+            orderId: paramOrderId || undefined,
+            storeId: paramStoreId || undefined,
             productId: paramProductId || undefined,
             productName: resolvedProductName,
             productPrice: resolvedProductPrice,
@@ -499,11 +546,14 @@ function CustomerChatContent() {
           const targetRoom: ChatRoom = {
             id: data.roomId,
             customerId: session?.user?.id,
-            storeId: data.store?.id || paramStoreId,
-            orderId: null,
+            storeId: data.store?.id || paramStoreId || null,
+            claimedById: data.claimedBy?.id || null,
+            claimedBy: data.claimedBy || null,
+            orderId: data.orderId || null,
             lastMessageAt: new Date().toISOString(),
             type: 'admin',
             store: data.store,
+            order: data.order || null,
             messages:
               data.messages && data.messages.length > 0
                 ? [data.messages[data.messages.length - 1]]
@@ -526,14 +576,39 @@ function CustomerChatContent() {
           setSelectedRoom(targetRoom)
           setShowChatOnMobile(true)
 
+          // Immediately inject targetRoom into rooms list state so sidebar is instantly rendered
+          setRooms((prev) => {
+            const exists = prev.some((r) => r.id === targetRoom.id)
+            if (exists) {
+              return prev.map((r) => (r.id === targetRoom.id ? targetRoom : r))
+            }
+            return [targetRoom, ...prev]
+          })
+          setLoading(false)
+
           // Refresh rooms list in background
           fetchRooms(true)
 
-          // Clean URL params via Next.js router.replace so navigation state stays in sync
-          router.replace('/dashboard/customer/chat', { scroll: false })
+          // Clean URL params via window.history and router.replace
+          // Preserve ?orderId= in URL if it was opened via order
+          if (typeof window !== 'undefined') {
+            if (paramOrderId) {
+              window.history.replaceState(
+                null,
+                '',
+                `/dashboard/customer/chat?orderId=${paramOrderId}`
+              )
+            } else {
+              window.history.replaceState(null, '', '/dashboard/customer/chat')
+              router.replace('/dashboard/customer/chat', { scroll: false })
+            }
+          }
+          lastInitializedKeyRef.current = null
+        } else {
           lastInitializedKeyRef.current = null
         }
       } catch (error) {
+        lastInitializedKeyRef.current = null
         console.error('Error auto-opening store room:', error)
         toast.error('Gagal menghubungkan ke chat toko')
       } finally {
@@ -544,6 +619,7 @@ function CustomerChatContent() {
     initStoreRoom()
   }, [
     status,
+    paramOrderId,
     paramStoreId,
     paramProductId,
     paramProductName,
@@ -788,28 +864,65 @@ function CustomerChatContent() {
     mediaType?: string | null
   }) => {
     if (!message) return 'Mulai percakapan...'
-    if (isVideoMedia(message.content, message.mediaUrl, message.messageType))
-      return '🎥 Lampiran Video'
-    if (isImageMedia(message.content, message.mediaUrl, message.messageType))
-      return '📷 Lampiran Foto'
+    const trimmed = message.content?.trim() || ''
+
+    // 1. Product reference / inquiry from customer
+    if (
+      message.messageType === 'product_reference' ||
+      (trimmed.startsWith('{') &&
+        (trimmed.includes('"productName"') ||
+          trimmed.includes('"type":"product_reference"')))
+    ) {
+      try {
+        const p = JSON.parse(trimmed)
+        const name = p.productName || p.name || 'Produk'
+        return `📦 Tanya: ${name}`
+      } catch {
+        return '📦 Produk Ditanyakan'
+      }
+    }
+
+    // 2. Product recommendation from store
     if (
       message.messageType === 'product' ||
-      message.messageType === 'product_reference' ||
-      (message.content?.trim().startsWith('{') &&
-        (message.content.includes('"name"') ||
-          message.content.includes('"productName"')) &&
-        (message.content.includes('"price"') ||
-          message.content.includes('"productPrice"')))
+      (trimmed.startsWith('{') &&
+        (trimmed.includes('"name"') || trimmed.includes('"productName"')) &&
+        (trimmed.includes('"price"') || trimmed.includes('"productPrice"')))
     ) {
-      return '📦 Rekomendasi Gadget'
+      try {
+        const p = JSON.parse(trimmed)
+        const name = p.productName || p.name || 'Produk'
+        return `📦 Rekomendasi: ${name}`
+      } catch {
+        return '📦 Rekomendasi Gadget'
+      }
     }
+
+    // 3. Order detail
     if (
       message.messageType === 'order' ||
-      (message.content?.trim().startsWith('{') &&
-        message.content.includes('"orderNumber"'))
+      (trimmed.startsWith('{') && trimmed.includes('"orderNumber"'))
     ) {
-      return '📋 Rincian Pesanan'
+      try {
+        const o = JSON.parse(trimmed)
+        return `📋 Pesanan #${o.orderNumber}`
+      } catch {
+        return '📋 Rincian Pesanan'
+      }
     }
+
+    // 4. Media attachments (check mediaUrl properly)
+    if (
+      isVideoMedia(message.mediaUrl, message.mediaType, message.messageType)
+    ) {
+      return '🎥 Lampiran Video'
+    }
+    if (
+      isImageMedia(message.mediaUrl, message.mediaType, message.messageType)
+    ) {
+      return '📷 Lampiran Foto'
+    }
+
     if (message.messageType === 'rental') return '🔄 Rekomendasi Sewa'
     if (message.messageType === 'service') return '🔧 Rekomendasi Servis'
     return message.content
@@ -1042,6 +1155,14 @@ function CustomerChatContent() {
                             </div>
                           )}
 
+                          {!orderNumber && room.claimedBy?.name && (
+                            <div className="mt-0.5 flex items-center gap-1">
+                              <span className="truncate text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                                • Admin: {room.claimedBy.name}
+                              </span>
+                            </div>
+                          )}
+
                           <p className="mt-1 truncate text-[11px] font-normal text-slate-500 dark:text-slate-400">
                             {lastMsg}
                           </p>
@@ -1096,9 +1217,16 @@ function CustomerChatContent() {
                           </span>
                         </div>
                         <p className="truncate text-[11px] text-slate-400">
-                          {selectedRoom.order
-                            ? `Pesanan #${selectedRoom.order.orderNumber}`
-                            : 'Customer Support & Sales Toko'}
+                          {selectedRoom.order ? (
+                            `Pesanan #${selectedRoom.order.orderNumber}`
+                          ) : selectedRoom.claimedBy?.name ? (
+                            <span className="font-semibold text-blue-600 dark:text-blue-400">
+                              Admin Toko: {selectedRoom.claimedBy.name}
+                            </span>
+                          ) : (
+                            selectedRoom.store?.companyName ||
+                            'Customer Support & Sales Toko'
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1130,7 +1258,7 @@ function CustomerChatContent() {
                   )}
 
                   {/* Messages Bubble Canvas */}
-                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
+                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden p-4 sm:p-5">
                     {messagesLoading ? (
                       <div className="flex h-full items-center justify-center">
                         <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
@@ -1171,18 +1299,30 @@ function CustomerChatContent() {
                         })
 
                         const contentTrimmed = msg.content?.trim() || ''
+
+                        // Pre-parse JSON content once to detect type field
+                        let parsedContent: Record<string, unknown> | null = null
+                        if (contentTrimmed.startsWith('{')) {
+                          try {
+                            parsedContent = JSON.parse(contentTrimmed)
+                          } catch {
+                            parsedContent = null
+                          }
+                        }
+
                         const isOrder =
                           msg.messageType === 'order' ||
-                          (contentTrimmed.startsWith('{') &&
-                            contentTrimmed.includes('"orderNumber"'))
+                          parsedContent?.orderNumber !== undefined
+
                         const isProduct =
                           msg.messageType === 'product' ||
                           msg.messageType === 'product_reference' ||
-                          (contentTrimmed.startsWith('{') &&
-                            (contentTrimmed.includes('"name"') ||
-                              contentTrimmed.includes('"productName"')) &&
-                            (contentTrimmed.includes('"price"') ||
-                              contentTrimmed.includes('"productPrice"')))
+                          parsedContent?.type === 'product_reference' ||
+                          (parsedContent !== null &&
+                            (parsedContent.productName !== undefined ||
+                              parsedContent.name !== undefined) &&
+                            (parsedContent.productPrice !== undefined ||
+                              parsedContent.price !== undefined))
 
                         return (
                           <div
@@ -1254,10 +1394,14 @@ function CustomerChatContent() {
                               /* Standalone Luxury Product Card (High Quality Visual Card) */
                               (() => {
                                 try {
-                                  const p = JSON.parse(msg.content)
-                                  const prodId = p.productId || p.id
+                                  const p: Record<string, unknown> =
+                                    parsedContent ?? JSON.parse(msg.content)
+                                  const prodId =
+                                    (p.productId as string) || (p.id as string)
                                   const prodName =
-                                    p.productName || p.name || 'Produk Gadget'
+                                    (p.productName as string) ||
+                                    (p.name as string) ||
+                                    'Produk Gadget'
                                   const prodPrice =
                                     p.productPrice !== undefined
                                       ? p.productPrice
@@ -1265,7 +1409,7 @@ function CustomerChatContent() {
                                   const rawImage =
                                     p.productImage || p.image || null
                                   const prodImage = Array.isArray(rawImage)
-                                    ? rawImage[0]
+                                    ? (rawImage[0] as string)
                                     : typeof rawImage === 'string' &&
                                         rawImage.trim() !== ''
                                       ? rawImage
@@ -1296,7 +1440,7 @@ function CustomerChatContent() {
                                       <div className="flex items-center gap-3">
                                         {prodImage ? (
                                           <img
-                                            src={prodImage}
+                                            src={prodImage as string}
                                             alt={prodName}
                                             className="h-16 w-16 shrink-0 rounded-2xl border border-slate-100 bg-slate-50 object-cover p-1 dark:border-slate-800 dark:bg-slate-800"
                                           />
@@ -1307,22 +1451,24 @@ function CustomerChatContent() {
                                         )}
 
                                         <div className="min-w-0 flex-1">
-                                          {p.brand && (
-                                            <span className="text-[9.5px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                                              {p.brand}
-                                            </span>
-                                          )}
+                                          {typeof p.brand === 'string' &&
+                                            p.brand && (
+                                              <span className="text-[9.5px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                                {p.brand}
+                                              </span>
+                                            )}
                                           <p
                                             className="truncate text-xs font-bold text-slate-900 dark:text-white"
                                             title={prodName}
                                           >
                                             {prodName}
                                           </p>
-                                          {p.variantName && (
-                                            <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                                              Varian: {p.variantName}
-                                            </p>
-                                          )}
+                                          {typeof p.variantName === 'string' &&
+                                            p.variantName && (
+                                              <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                                Varian: {p.variantName}
+                                              </p>
+                                            )}
                                           <p className="mt-0.5 font-mono text-sm font-black text-orange-600 dark:text-orange-400 sm:text-base">
                                             Rp{' '}
                                             {(
@@ -1463,14 +1609,14 @@ function CustomerChatContent() {
                                       )
                                     } catch {
                                       return (
-                                        <p className="whitespace-pre-wrap text-xs leading-relaxed sm:text-[13px]">
+                                        <p className="whitespace-pre-wrap break-words break-all text-xs leading-relaxed sm:text-[13px]">
                                           {msg.content}
                                         </p>
                                       )
                                     }
                                   })()
                                 ) : (
-                                  <p className="whitespace-pre-wrap text-xs leading-relaxed sm:text-[13px]">
+                                  <p className="whitespace-pre-wrap break-words break-all text-xs leading-relaxed sm:text-[13px]">
                                     {msg.content}
                                   </p>
                                 )}

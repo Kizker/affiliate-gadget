@@ -24,13 +24,15 @@ export async function GET() {
     }
 
     // Build where clause
-    // STORE_ADMIN: hanya lihat chat yang terkait dengan order di toko mereka
+    // STORE_ADMIN: lihat chat direct store (storeId), chat order di toko mereka, atau chat yang di-claim
     // Admin/SuperAdmin: lihat semua room yang di-claim mereka atau unclaimed
     let whereClause: Record<string, unknown>
 
     if (user.role === 'STORE_ADMIN' && user.storeId) {
       whereClause = {
         OR: [
+          // Rooms direct chat dengan toko cabang ini
+          { storeId: user.storeId },
           // Rooms terkait order di toko ini
           { order: { storeId: user.storeId } },
           // Rooms terkait order dengan item produk dari toko ini
@@ -50,10 +52,20 @@ export async function GET() {
       }
     }
 
-    // Fetch admin chat rooms with customer info and order info
+    // Fetch admin chat rooms with customer info, order info, and store info
     const rooms = await prisma.adminChatRoom.findMany({
       where: whereClause,
       include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            phone: true,
+            city: true,
+            logo: true,
+          },
+        },
         customer: {
           select: {
             id: true,

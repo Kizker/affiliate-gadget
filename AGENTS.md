@@ -95,6 +95,13 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-10 (Order-to-Store Chat Linking, Product Card Render Fix & Direct Room Auto-Selection):**
+  - **1. Order-to-Store Chat Resolution ([`store-room/route.ts`](file:///src/app/api/customer/chat/store-room/route.ts)):** Menerima parameter `orderId`, menyelesaikan relasi `storeId` secara otomatis via database query ke tabel `Order`, memetakan pesanan ke kamar chat toko cabang terkait atau kamar spesifik pesanan tanpa duplikasi.
+  - **2. Customer Chat Auto-Open & Selection ([`chat/page.tsx`](file:///src/app/dashboard/customer/chat/page.tsx)):** Ekstraksi parameter `orderId`, proteksi auto-select desktop dari pembukaan kamar default yang salah, inisialisasi kamar chat toko otomatis, sinkronisasi URL state `?orderId=...` secara bersih, dan aktivasi langsung ruang chat toko pada antarmuka pelanggan.
+  - **3. Order Button Direct Linking ([`orders-client.tsx`](file:///src/app/dashboard/customer/orders/orders-client.tsx) & [`order-detail-client.tsx`](file:///src/app/dashboard/customer/orders/[orderId]/order-detail-client.tsx)):** Pembaruan tautan tombol "Chat Toko" menyertakan `storeId` sebagai fast-path navigasi.
+  - **4. Product Reference Card Bubble Render Polish:** Penyempurnaan deteksi tipe pesan produk dan isolasi dari parser media foto/video agar kartu referensi produk dirender sempurna dengan luxury styling.
+  - **5. Verification & Tests:** 100% lolos kompilasi TypeScript (`pnpm tsc --noEmit` = 0 error) dan 8 test suites dengan 86 unit tests lolos 100% (`pnpm test:unit`).
+
 - **2026-09-08 (Checkout Security, Architecture Hardening, Product-to-Store Direct Chat & Real-Time Sync: Penutupan Kerentanan Checkout, Idempotency Redis, Fitur Chat Toko Langsung dari Produk, dan Sinkronisasi Multi-Produk):**
   - **1. Fondasi Keamanan & Integritas Checkout (Sprint 1):** Penanganan kebocoran state keranjang multi-user (`setUserId` flush), pembatasan laju request dual-layer sliding window Redis (5x/m per-user & 10x/10m per-IP), kalkulasi harga, logistik & asuransi wajib 0.25% di sisi server (_zero client trust_), serta transaksi atomik database `updateMany` untuk perlindungan _race condition_ stok unit.
   - **2. Validasi Data, IDOR Prevention & UX Hardening (Sprint 2):** Eliminasi kerentanan IDOR pada rute detail pesanan, validasi Zod terstruktur, query N+1 fix pada konfirmasi pesanan jamak, penegakan persetujuan S&K legal, autentikasi rekening bank, dan penghapusan fallback dummy.

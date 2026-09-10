@@ -78,6 +78,8 @@ interface ChatRoom {
     createdAt: string
     senderId: string
     messageType?: string
+    mediaUrl?: string | null
+    mediaType?: string | null
   }>
   _count?: {
     messages: number
@@ -193,8 +195,16 @@ const isImageMedia = (
 ) => {
   if (messageType === 'image') return true
   if (mediaType?.startsWith('image/')) return true
-  if (url && /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(url)) return true
-  return !!url && !isVideoMedia(url, mediaType, messageType)
+  if (url && /\.(jpg|jpeg|png|webp|gif|svg|avif)(\?.*)?$/i.test(url))
+    return true
+  if (
+    url &&
+    (url.startsWith('/uploads/') || url.includes('images.unsplash.com')) &&
+    !isVideoMedia(url, mediaType, messageType)
+  ) {
+    return true
+  }
+  return false
 }
 
 export default function AdminChatPage() {
@@ -676,6 +686,8 @@ export default function AdminChatPage() {
   const formatMessagePreview = (message?: {
     content: string
     messageType?: string
+    mediaUrl?: string | null
+    mediaType?: string | null
   }) => {
     if (!message) return 'Belum ada pesan'
     switch (message.messageType) {
@@ -696,32 +708,57 @@ export default function AdminChatPage() {
       case 'video':
         return '🎥 Lampiran Video'
       case 'product_reference':
-      case 'product':
-        return '📦 Rekomendasi Gadget'
-      default:
-        if (isVideoMedia(message.content, undefined, message.messageType))
-          return '🎥 Lampiran Video'
-        if (isImageMedia(message.content, undefined, message.messageType))
-          return '📷 Lampiran Foto'
+      case 'product': {
+        const trimmed = message.content?.trim() || ''
+        if (trimmed.startsWith('{')) {
+          try {
+            const p = JSON.parse(trimmed)
+            const name = p.productName || p.name
+            if (name)
+              return `📦 ${message.messageType === 'product_reference' ? 'Tanya' : 'Rekomendasi'}: ${name}`
+          } catch {}
+        }
+        return message.messageType === 'product_reference'
+          ? '📦 Produk Ditanyakan'
+          : '📦 Rekomendasi Gadget'
+      }
+      default: {
+        const trimmed = message.content?.trim() || ''
         if (
           message.messageType === 'product' ||
           message.messageType === 'product_reference' ||
-          (message.content?.trim().startsWith('{') &&
-            (message.content.includes('"name"') ||
-              message.content.includes('"productName"')) &&
-            (message.content.includes('"price"') ||
-              message.content.includes('"productPrice"')))
+          (trimmed.startsWith('{') &&
+            (trimmed.includes('"name"') || trimmed.includes('"productName"')) &&
+            (trimmed.includes('"price"') || trimmed.includes('"productPrice"')))
         ) {
+          try {
+            const p = JSON.parse(trimmed)
+            const name = p.productName || p.name
+            if (name)
+              return `📦 ${p.type === 'product_reference' ? 'Tanya' : 'Rekomendasi'}: ${name}`
+          } catch {}
           return '📦 Rekomendasi Gadget'
         }
         if (
           message.messageType === 'order' ||
-          (message.content?.trim().startsWith('{') &&
-            message.content.includes('"orderNumber"'))
+          (trimmed.startsWith('{') && trimmed.includes('"orderNumber"'))
         ) {
+          try {
+            const o = JSON.parse(trimmed)
+            if (o.orderNumber) return `📋 Pesanan #${o.orderNumber}`
+          } catch {}
           return '📋 Rincian Pesanan'
         }
+        if (
+          isVideoMedia(message.mediaUrl, message.mediaType, message.messageType)
+        )
+          return '🎥 Lampiran Video'
+        if (
+          isImageMedia(message.mediaUrl, message.mediaType, message.messageType)
+        )
+          return '📷 Lampiran Foto'
         return message.content
+      }
     }
   }
 
@@ -1225,7 +1262,7 @@ export default function AdminChatPage() {
               {/* Chat Canvas (Messages Bubble Area) */}
               <div
                 ref={messagesContainerRef}
-                className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5"
+                className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden p-4 sm:p-5"
               >
                 {messagesLoading && messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center">

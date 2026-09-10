@@ -16,6 +16,15 @@ export async function GET() {
         customerId: session.user.id,
       },
       include: {
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
         store: {
           select: {
             id: true,
@@ -77,6 +86,8 @@ export async function GET() {
           select: {
             content: true,
             messageType: true,
+            mediaUrl: true,
+            mediaType: true,
             createdAt: true,
             sender: {
               select: {

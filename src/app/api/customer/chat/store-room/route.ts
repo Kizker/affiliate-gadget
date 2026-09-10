@@ -12,31 +12,79 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const {
-      storeId,
+      orderId,
+      storeId: reqStoreId,
       productId,
       productName,
       productPrice,
       variantName,
       productImage,
     } = body
+    let storeId = reqStoreId
+
+    // If orderId is provided, look up the order and its store
+    let resolvedOrder: any = null
+    if (orderId && typeof orderId === 'string') {
+      resolvedOrder = await prisma.order.findFirst({
+        where: {
+          id: orderId,
+          userId: session.user.id,
+        },
+        include: {
+          store: {
+            select: {
+              id: true,
+              name: true,
+              companyName: true,
+              phone: true,
+              city: true,
+              logo: true,
+              isActive: true,
+            },
+          },
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  brand: true,
+                  images: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      if (resolvedOrder?.storeId && !storeId) {
+        storeId = resolvedOrder.storeId
+      }
+    }
 
     if (!storeId || typeof storeId !== 'string') {
-      return NextResponse.json({ error: 'Store ID required' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Store ID or valid Order ID required' },
+        { status: 400 }
+      )
     }
 
     // Verify store exists
-    const store = await prisma.store.findUnique({
-      where: { id: storeId },
-      select: {
-        id: true,
-        name: true,
-        companyName: true,
-        phone: true,
-        city: true,
-        logo: true,
-        isActive: true,
-      },
-    })
+    const store =
+      (resolvedOrder?.storeId === storeId ? resolvedOrder.store : null) ||
+      (await prisma.store.findUnique({
+        where: { id: storeId },
+        select: {
+          id: true,
+          name: true,
+          companyName: true,
+          phone: true,
+          city: true,
+          logo: true,
+          isActive: true,
+        },
+      }))
 
     if (!store) {
       return NextResponse.json({ error: 'Store not found' }, { status: 404 })
@@ -74,14 +122,41 @@ export async function POST(req: NextRequest) {
         : null)
     const resolvedBrand = dbProduct?.brand || null
 
-    // Find existing direct chat room between this customer and this store (orderId = null)
-    let room = await prisma.adminChatRoom.findFirst({
+    // Find active store admin for this store to automatically connect the chat room
+    const storeAdmin = await prisma.user.findFirst({
       where: {
-        customerId: session.user.id,
-        storeId: storeId,
-        orderId: null,
-      } as any,
+        storeId: store.id,
+        role: 'STORE_ADMIN',
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+      },
     })
+
+    // Find existing chat room: first check if a room exists for this specific order
+    let room = orderId
+      ? await prisma.adminChatRoom.findFirst({
+          where: {
+            customerId: session.user.id,
+            orderId: orderId,
+          } as any,
+        })
+      : null
+
+    // If no order-specific room, check direct chat room between this customer and this store (orderId = null)
+    if (!room) {
+      room = await prisma.adminChatRoom.findFirst({
+        where: {
+          customerId: session.user.id,
+          storeId: store.id,
+          orderId: null,
+        } as any,
+      })
+    }
 
     const isNew = !room
 
@@ -92,6 +167,8 @@ export async function POST(req: NextRequest) {
           data: {
             customerId: session.user.id,
             storeId: store.id,
+            claimedById: storeAdmin?.id || null,
+            claimedAt: storeAdmin ? new Date() : null,
             lastMessageAt: new Date(),
           } as any,
         })
@@ -118,6 +195,16 @@ export async function POST(req: NextRequest) {
         return createdRoom
       })
     } else {
+      // If room exists but not yet assigned to store admin, auto-connect
+      if (!room.claimedById && storeAdmin) {
+        room = await prisma.adminChatRoom.update({
+          where: { id: room.id },
+          data: {
+            claimedById: storeAdmin.id,
+            claimedAt: new Date(),
+          },
+        })
+      }
       // Existing room: check if we should post a new product reference message
       if (productId || resolvedProductName) {
         const lastMessage = await prisma.adminChatMessage.findFirst({
@@ -204,6 +291,25 @@ export async function POST(req: NextRequest) {
         city: store.city,
         logo: store.logo,
       },
+      claimedBy: storeAdmin
+        ? {
+            id: storeAdmin.id,
+            name: storeAdmin.name,
+            email: storeAdmin.email,
+            image: storeAdmin.image,
+          }
+        : null,
+      orderId: room.orderId || (resolvedOrder ? resolvedOrder.id : null),
+      order:
+        room.orderId && resolvedOrder
+          ? {
+              id: resolvedOrder.id,
+              orderNumber: resolvedOrder.orderNumber,
+              status: resolvedOrder.status,
+              total: resolvedOrder.total,
+              items: resolvedOrder.items,
+            }
+          : null,
       isNew,
       messages,
     })
