@@ -7,7 +7,10 @@ import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
-import { AddressModal, UserAddressItem } from '@/components/customer/address-modal'
+import {
+  AddressModal,
+  UserAddressItem,
+} from '@/components/customer/address-modal'
 import {
   User,
   Lock,
@@ -67,7 +70,9 @@ export default function CustomerSettingsPage() {
   const [addresses, setAddresses] = useState<UserAddressItem[]>([])
   const [loadingAddresses, setLoadingAddresses] = useState(false)
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
-  const [addressToEdit, setAddressToEdit] = useState<UserAddressItem | null>(null)
+  const [addressToEdit, setAddressToEdit] = useState<UserAddressItem | null>(
+    null
+  )
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -247,7 +252,9 @@ export default function CustomerSettingsPage() {
         await update()
         toast({
           title: 'Biodata Tersimpan',
-          description: data.message || 'Perubahan data profil pembeli berhasil diperbarui.',
+          description:
+            data.message ||
+            'Perubahan data profil pembeli berhasil diperbarui.',
         })
       } else {
         toast({
@@ -278,7 +285,8 @@ export default function CustomerSettingsPage() {
       if (res.ok) {
         toast({
           title: 'Alamat Utama Diperbarui',
-          description: 'Alamat ini akan otomatis digunakan saat checkout pesanan.',
+          description:
+            'Alamat ini akan otomatis digunakan saat checkout pesanan.',
         })
         await fetchAddresses()
       } else {
@@ -302,7 +310,8 @@ export default function CustomerSettingsPage() {
   }
 
   const handleDeleteAddress = async (addressId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus alamat pengiriman ini?')) return
+    if (!confirm('Apakah Anda yakin ingin menghapus alamat pengiriman ini?'))
+      return
 
     setDeletingId(addressId)
     try {
@@ -397,7 +406,8 @@ export default function CustomerSettingsPage() {
       setLoggingOutOther(false)
       toast({
         title: 'Sesi Lain Dikeluarkan',
-        description: 'Semua perangkat lain telah berhasil di-logout dari akun Anda.',
+        description:
+          'Semua perangkat lain telah berhasil di-logout dari akun Anda.',
       })
     }, 1200)
   }
@@ -409,7 +419,9 @@ export default function CustomerSettingsPage() {
         <div className="flex flex-1 items-center justify-center pt-20">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-7 w-7 animate-spin text-slate-900" />
-            <p className="text-xs font-semibold text-slate-500">Memuat data akun pembeli...</p>
+            <p className="text-xs font-semibold text-slate-500">
+              Memuat data akun pembeli...
+            </p>
           </div>
         </div>
       </div>
@@ -441,10 +453,9 @@ export default function CustomerSettingsPage() {
     <div className="min-h-screen bg-slate-50/50 text-slate-900 selection:bg-orange-500 selection:text-white">
       <Navbar variant="light" />
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-24 pb-20">
-        
+      <main className="mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6 lg:px-8">
         {/* Top Segmented Navigation Pills (Aligned with Header Navbar max-w-7xl) */}
-        <div className="rounded-full border border-slate-200/70 bg-slate-100/80 p-1 shadow-2xs flex gap-1 mb-6">
+        <div className="shadow-2xs mb-6 flex gap-1 rounded-full border border-slate-200/70 bg-slate-100/80 p-1">
           {tabsConfig.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -452,10 +463,10 @@ export default function CustomerSettingsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 px-3 text-xs font-bold transition-all duration-200 cursor-pointer ${
+                className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-bold transition-all duration-200 ${
                   isActive
-                    ? 'bg-slate-950 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-950 hover:bg-white/60'
+                    ? 'shadow-xs bg-slate-950 text-white'
+                    : 'text-slate-600 hover:bg-white/60 hover:text-slate-950'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -467,9 +478,8 @@ export default function CustomerSettingsPage() {
         </div>
 
         {/* Main Content Bento Card */}
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-2xs">
+        <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8">
           <AnimatePresence mode="wait">
-            
             {/* ========================================================================= */}
             {/* ------------------------- TAB 1: PROFIL & BIODATA ---------------------- */}
             {/* ========================================================================= */}
@@ -483,24 +493,26 @@ export default function CustomerSettingsPage() {
                 className="space-y-6"
               >
                 {/* Avatar Inner Box */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 sm:p-5 shadow-2xs">
+                <div className="shadow-2xs flex flex-col items-start gap-5 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:p-5">
                   <div className="relative shrink-0">
-                    <div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-white shadow-xs bg-slate-900 text-white flex items-center justify-center">
+                    <div className="shadow-xs relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-900 text-white">
                       {avatarPreview ? (
-                        <Image
+                        <img
                           src={avatarPreview}
-                          alt="Avatar"
-                          fill
-                          className="object-cover"
+                          alt={name || session?.user?.name || 'Avatar'}
+                          className="h-full w-full object-cover"
+                          onError={() => setAvatarPreview(null)}
                         />
                       ) : (
                         <span className="text-xl font-black">
-                          {(name || session?.user?.name || 'U').charAt(0).toUpperCase()}
+                          {(name || session?.user?.name || 'U')
+                            .charAt(0)
+                            .toUpperCase()}
                         </span>
                       )}
                     </div>
                     {uploadingAvatar && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-950/60 backdrop-blur-2xs">
+                      <div className="backdrop-blur-2xs absolute inset-0 flex items-center justify-center rounded-full bg-slate-950/60">
                         <Loader2 className="h-5 w-5 animate-spin text-white" />
                       </div>
                     )}
@@ -512,10 +524,14 @@ export default function CustomerSettingsPage() {
                         type="button"
                         onClick={handleAvatarClick}
                         disabled={uploadingAvatar}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                        className="shadow-xs inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-slate-950 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
                       >
                         <Camera className="h-3.5 w-3.5" />
-                        <span>{uploadingAvatar ? 'Mengunggah...' : 'Ubah Foto Profil'}</span>
+                        <span>
+                          {uploadingAvatar
+                            ? 'Mengunggah...'
+                            : 'Ubah Foto Profil'}
+                        </span>
                       </button>
                     </div>
                     <p className="text-[11px] text-slate-400">
@@ -534,20 +550,20 @@ export default function CustomerSettingsPage() {
                 {/* Shopee Buyer Form Grid */}
                 <div className="space-y-4">
                   {/* Row 1: Nama Lengkap & Username */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <label className="mb-1.5 block text-xs font-bold text-slate-700">
                         Nama Lengkap <span className="text-red-500">*</span>
                       </label>
                       <div className="relative flex items-center">
-                        <User className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                        <User className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                         <input
                           type="text"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           placeholder="Nama lengkap sesuai KTP"
                           required
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                       </div>
                     </div>
@@ -557,72 +573,78 @@ export default function CustomerSettingsPage() {
                         Username / Nama Panggilan
                       </label>
                       <div className="relative flex items-center">
-                        <AtSign className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                        <AtSign className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                         <input
                           type="text"
                           value={username}
-                          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                          onChange={(e) =>
+                            setUsername(
+                              e.target.value.toLowerCase().replace(/\s+/g, '')
+                            )
+                          }
                           placeholder="sitiaminah99"
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs font-mono"
+                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Row 2: Email & Nomor Telepon WhatsApp */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
+                      <div className="mb-1.5 flex items-center justify-between">
                         <label className="block text-xs font-bold text-slate-700">
                           Alamat Email <span className="text-red-500">*</span>
                         </label>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 shadow-2xs">
+                        <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
                           <CheckCircle2 className="h-3 w-3 text-emerald-600" />
                           Terverifikasi
                         </span>
                       </div>
                       <div className="relative flex items-center">
-                        <Mail className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                        <Mail className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                         <input
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="nama@email.com"
                           required
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
+                      <div className="mb-1.5 flex items-center justify-between">
                         <label className="block text-xs font-bold text-slate-700">
-                          Nomor Telepon / WhatsApp <span className="text-red-500">*</span>
+                          Nomor Telepon / WhatsApp{' '}
+                          <span className="text-red-500">*</span>
                         </label>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 shadow-2xs">
+                        <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
                           <CheckCircle2 className="h-3 w-3 text-emerald-600" />
                           WhatsApp Aktif
                         </span>
                       </div>
                       <div className="relative flex items-center">
-                        <Phone className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                        <Phone className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                         <input
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="Contoh: 081234567890"
                           required
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                       </div>
                       <p className="mt-1 text-[11px] text-slate-400">
-                        Nomor aktif untuk pelacakan resi kurir JNE & konfirmasi driver Gojek.
+                        Nomor aktif untuk pelacakan resi kurir JNE & konfirmasi
+                        driver Gojek.
                       </p>
                     </div>
                   </div>
 
                   {/* Row 3: Jenis Kelamin & Tanggal Lahir */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <label className="mb-1.5 block text-xs font-bold text-slate-700">
                         Jenis Kelamin
@@ -633,9 +655,9 @@ export default function CustomerSettingsPage() {
                             key={item}
                             type="button"
                             onClick={() => setGender(item)}
-                            className={`rounded-full border py-2.5 px-3 text-xs font-bold transition-all cursor-pointer ${
+                            className={`cursor-pointer rounded-full border px-3 py-2.5 text-xs font-bold transition-all ${
                               gender === item
-                                ? 'border-slate-950 bg-slate-950 text-white shadow-xs'
+                                ? 'shadow-xs border-slate-950 bg-slate-950 text-white'
                                 : 'border-slate-200/70 bg-slate-50/80 text-slate-600 hover:border-slate-300 hover:bg-white'
                             }`}
                           >
@@ -650,16 +672,17 @@ export default function CustomerSettingsPage() {
                         Tanggal Lahir
                       </label>
                       <div className="relative flex items-center">
-                        <Calendar className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                        <Calendar className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                         <input
                           type="date"
                           value={birthDate}
                           onChange={(e) => setBirthDate(e.target.value)}
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs cursor-pointer"
+                          className="focus:shadow-xs w-full cursor-pointer rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white"
                         />
                       </div>
                       <p className="mt-1 text-[11px] text-slate-400">
-                        Dapatkan voucher diskon & hadiah spesial di hari ulang tahun Anda.
+                        Dapatkan voucher diskon & hadiah spesial di hari ulang
+                        tahun Anda.
                       </p>
                     </div>
                   </div>
@@ -670,32 +693,34 @@ export default function CustomerSettingsPage() {
                       Bio / Catatan Khusus Pengiriman
                     </label>
                     <div className="relative">
-                      <FileText className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                      <FileText className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
                       <textarea
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
                         rows={2}
                         placeholder="Contoh: Jika rumah kosong, paket gadget dapat dititipkan ke security pos depan."
-                        className="w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                        className="focus:shadow-xs w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Save Button */}
-                <div className="flex items-center justify-end pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-end border-t border-slate-100 pt-4">
                   <button
                     type="button"
                     onClick={handleSaveProfile}
                     disabled={saving}
-                    className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                    className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
                   >
                     {saving ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Check className="h-3.5 w-3.5" />
                     )}
-                    <span>{saving ? 'Menyimpan...' : 'Simpan Profil Biodata'}</span>
+                    <span>
+                      {saving ? 'Menyimpan...' : 'Simpan Profil Biodata'}
+                    </span>
                   </button>
                 </div>
               </motion.div>
@@ -714,13 +739,14 @@ export default function CustomerSettingsPage() {
                 className="space-y-6"
               >
                 {/* Header Bar with Add Address CTA */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center">
                   <div>
                     <h2 className="text-sm font-bold text-slate-950">
                       Daftar Alamat Pengiriman Saya
                     </h2>
                     <p className="text-xs text-slate-400">
-                      Kelola alamat Rumah, Kantor, dan titik GPS akurat untuk kurir
+                      Kelola alamat Rumah, Kantor, dan titik GPS akurat untuk
+                      kurir
                     </p>
                   </div>
                   <button
@@ -729,7 +755,7 @@ export default function CustomerSettingsPage() {
                       setAddressToEdit(null)
                       setIsAddressModalOpen(true)
                     }}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition active:scale-95 cursor-pointer shrink-0"
+                    className="shadow-xs inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>Tambah Alamat Baru</span>
@@ -742,15 +768,16 @@ export default function CustomerSettingsPage() {
                     <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
                   </div>
                 ) : addresses.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-400 shadow-2xs mb-3">
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-12 text-center">
+                    <div className="shadow-2xs mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400">
                       <MapPin className="h-6 w-6" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 mb-1">
+                    <h3 className="mb-1 text-sm font-bold text-slate-900">
                       Belum Ada Alamat Tersimpan
                     </h3>
-                    <p className="text-xs text-slate-400 max-w-sm mb-4">
-                      Tambahkan alamat rumah atau kantor Anda untuk mempermudah proses checkout pembelian gadget.
+                    <p className="mb-4 max-w-sm text-xs text-slate-400">
+                      Tambahkan alamat rumah atau kantor Anda untuk mempermudah
+                      proses checkout pembelian gadget.
                     </p>
                     <button
                       type="button"
@@ -758,7 +785,7 @@ export default function CustomerSettingsPage() {
                         setAddressToEdit(null)
                         setIsAddressModalOpen(true)
                       }}
-                      className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
+                      className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       <span>Tambah Alamat Pertama</span>
@@ -769,17 +796,15 @@ export default function CustomerSettingsPage() {
                     {addresses.map((item) => (
                       <div
                         key={item.id}
-                        className={`rounded-2xl border transition-all p-5 shadow-2xs ${
+                        className={`shadow-2xs rounded-2xl border p-5 transition-all ${
                           item.isDefault
                             ? 'border-slate-950/30 bg-slate-50/90 ring-1 ring-slate-950/10'
                             : 'border-slate-200/80 bg-white hover:border-slate-300'
                         }`}
                       >
-                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                          
+                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                           {/* Left Details */}
-                          <div className="space-y-2 flex-1">
-                            
+                          <div className="flex-1 space-y-2">
                             {/* Badges & Recipient */}
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="text-sm font-black text-slate-950">
@@ -794,10 +819,10 @@ export default function CustomerSettingsPage() {
 
                               {/* Label Badge (Rumah vs Kantor) */}
                               <span
-                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border shadow-2xs ${
+                                className={`shadow-2xs inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
                                   item.label === 'Kantor'
-                                    ? 'bg-blue-50 text-blue-700 border-blue-200/80'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                                    ? 'border-blue-200/80 bg-blue-50 text-blue-700'
+                                    : 'border-emerald-200/80 bg-emerald-50 text-emerald-700'
                                 }`}
                               >
                                 {item.label === 'Kantor' ? (
@@ -810,7 +835,7 @@ export default function CustomerSettingsPage() {
 
                               {/* Default Badge */}
                               {item.isDefault && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-950 text-white px-2.5 py-0.5 text-[10px] font-bold shadow-xs">
+                                <span className="shadow-xs inline-flex items-center gap-1 rounded-full bg-slate-950 px-2.5 py-0.5 text-[10px] font-bold text-white">
                                   <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
                                   Alamat Utama
                                 </span>
@@ -818,13 +843,19 @@ export default function CustomerSettingsPage() {
                             </div>
 
                             {/* Full Address */}
-                            <p className="text-xs leading-relaxed text-slate-700 font-medium">
+                            <p className="text-xs font-medium leading-relaxed text-slate-700">
                               {item.fullAddress}
                             </p>
 
                             {/* Village, District, City, Province, Postal Code */}
                             <p className="text-xs text-slate-500">
-                              {[item.village, item.district, item.city, item.province, item.postalCode]
+                              {[
+                                item.village,
+                                item.district,
+                                item.city,
+                                item.province,
+                                item.postalCode,
+                              ]
                                 .filter(Boolean)
                                 .join(', ')}
                             </p>
@@ -841,13 +872,13 @@ export default function CustomerSettingsPage() {
                           </div>
 
                           {/* Right Action Buttons */}
-                          <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 md:border-t-0 md:pt-0">
                             {!item.isDefault && (
                               <button
                                 type="button"
                                 onClick={() => handleSetDefaultAddress(item.id)}
                                 disabled={settingDefaultId === item.id}
-                                className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition cursor-pointer"
+                                className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                               >
                                 {settingDefaultId === item.id ? (
                                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -864,7 +895,7 @@ export default function CustomerSettingsPage() {
                                 setAddressToEdit(item)
                                 setIsAddressModalOpen(true)
                               }}
-                              className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition cursor-pointer"
+                              className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                             >
                               <Edit3 className="h-3 w-3 text-slate-500" />
                               <span>Ubah</span>
@@ -875,7 +906,7 @@ export default function CustomerSettingsPage() {
                                 type="button"
                                 onClick={() => handleDeleteAddress(item.id)}
                                 disabled={deletingId === item.id}
-                                className="inline-flex items-center gap-1 rounded-full border border-rose-200/80 bg-rose-50/50 px-3 py-1.5 text-xs font-bold text-rose-600 shadow-2xs hover:bg-rose-100/60 transition cursor-pointer"
+                                className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-rose-200/80 bg-rose-50/50 px-3 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-100/60"
                               >
                                 {deletingId === item.id ? (
                                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -886,7 +917,6 @@ export default function CustomerSettingsPage() {
                               </button>
                             )}
                           </div>
-
                         </div>
                       </div>
                     ))}
@@ -923,36 +953,43 @@ export default function CustomerSettingsPage() {
                         Ubah Kata Sandi Akun
                       </h2>
                       <p className="text-xs text-slate-400">
-                        Perbarui kata sandi secara berkala untuk menjaga keamanan akun
+                        Perbarui kata sandi secara berkala untuk menjaga
+                        keamanan akun
                       </p>
                     </div>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 shadow-2xs">
+                    <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
                       <ShieldCheck className="h-3 w-3 text-emerald-600" />
                       Enkripsi Terproteksi
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     {/* Current Password */}
                     <div>
                       <label className="mb-1.5 block text-xs font-bold text-slate-700">
                         Password Saat Ini
                       </label>
                       <div className="relative flex items-center">
-                        <KeyRound className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                        <KeyRound className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                         <input
                           type={showCurrentPassword ? 'text' : 'password'}
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
                           placeholder="Password lama"
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                         <button
                           type="button"
-                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          className="absolute right-3.5 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                          onClick={() =>
+                            setShowCurrentPassword(!showCurrentPassword)
+                          }
+                          className="absolute right-3.5 cursor-pointer text-slate-400 transition hover:text-slate-600"
                         >
-                          {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showCurrentPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -963,20 +1000,24 @@ export default function CustomerSettingsPage() {
                         Password Baru
                       </label>
                       <div className="relative flex items-center">
-                        <Lock className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                        <Lock className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                         <input
                           type={showNewPassword ? 'text' : 'password'}
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="Min. 6 karakter"
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                         <button
                           type="button"
                           onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="absolute right-3.5 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                          className="absolute right-3.5 cursor-pointer text-slate-400 transition hover:text-slate-600"
                         >
-                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showNewPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -987,20 +1028,26 @@ export default function CustomerSettingsPage() {
                         Konfirmasi Password Baru
                       </label>
                       <div className="relative flex items-center">
-                        <Lock className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                        <Lock className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                         <input
                           type={showConfirmPassword ? 'text' : 'password'}
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Ulangi password baru"
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                         <button
                           type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3.5 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          className="absolute right-3.5 cursor-pointer text-slate-400 transition hover:text-slate-600"
                         >
-                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -1008,7 +1055,8 @@ export default function CustomerSettingsPage() {
 
                   <div className="flex items-center justify-between pt-2">
                     <div className="text-[11px] text-slate-400">
-                      Minimal 6 karakter, kombinasikan huruf dan angka untuk keamanan maksimal.
+                      Minimal 6 karakter, kombinasikan huruf dan angka untuk
+                      keamanan maksimal.
                     </div>
                     <button
                       type="button"
@@ -1019,7 +1067,7 @@ export default function CustomerSettingsPage() {
                         !newPassword ||
                         !confirmPassword
                       }
-                      className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                      className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
                     >
                       {saving ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1032,7 +1080,7 @@ export default function CustomerSettingsPage() {
                 </div>
 
                 {/* 2. Shopee-Style Security Verification Settings */}
-                <div className="pt-6 border-t border-slate-100 space-y-4">
+                <div className="space-y-4 border-t border-slate-100 pt-6">
                   <div>
                     <h2 className="text-sm font-bold text-slate-950">
                       Verifikasi & Keamanan Tambahan
@@ -1042,21 +1090,21 @@ export default function CustomerSettingsPage() {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {/* 2FA Toggle */}
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/70 bg-slate-50/80">
+                    <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4">
                       <div className="space-y-1 pr-4">
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-bold text-slate-900">
                             Verifikasi 2 Langkah (OTP WhatsApp)
                           </span>
-                          <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.2 text-[9px] font-black">
+                          <span className="py-0.2 rounded-full bg-emerald-100 px-2 text-[9px] font-black text-emerald-700">
                             DIREKOMENDASIKAN
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500">
-                          Minta kode OTP verifikasi WhatsApp saat login dari browser baru.
+                          Minta kode OTP verifikasi WhatsApp saat login dari
+                          browser baru.
                         </p>
                       </div>
                       <button
@@ -1064,8 +1112,11 @@ export default function CustomerSettingsPage() {
                         onClick={() => {
                           setTwoFactorEnabled(!twoFactorEnabled)
                           toast({
-                            title: twoFactorEnabled ? '2FA Dinonaktifkan' : '2FA Diaktifkan',
-                            description: 'Pengaturan keamanan 2 langkah berhasil diperbarui.',
+                            title: twoFactorEnabled
+                              ? '2FA Dinonaktifkan'
+                              : '2FA Diaktifkan',
+                            description:
+                              'Pengaturan keamanan 2 langkah berhasil diperbarui.',
                           })
                         }}
                         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
@@ -1081,13 +1132,14 @@ export default function CustomerSettingsPage() {
                     </div>
 
                     {/* Login Alerts Toggle */}
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/70 bg-slate-50/80">
+                    <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4">
                       <div className="space-y-1 pr-4">
                         <span className="text-xs font-bold text-slate-900">
                           Notifikasi Login Mencurigakan
                         </span>
                         <p className="text-[11px] text-slate-500">
-                          Kirim peringatan instan ke email jika ada aktivitas login asing.
+                          Kirim peringatan instan ke email jika ada aktivitas
+                          login asing.
                         </p>
                       </div>
                       <button
@@ -1096,7 +1148,8 @@ export default function CustomerSettingsPage() {
                           setLoginAlertsEnabled(!loginAlertsEnabled)
                           toast({
                             title: 'Pengaturan Disimpan',
-                            description: 'Notifikasi keamanan email telah diperbarui.',
+                            description:
+                              'Notifikasi keamanan email telah diperbarui.',
                           })
                         }}
                         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
@@ -1105,31 +1158,33 @@ export default function CustomerSettingsPage() {
                       >
                         <span
                           className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            loginAlertsEnabled ? 'translate-x-5' : 'translate-x-0'
+                            loginAlertsEnabled
+                              ? 'translate-x-5'
+                              : 'translate-x-0'
                           }`}
                         />
                       </button>
                     </div>
-
                   </div>
                 </div>
 
                 {/* 3. Daftar Perangkat & Sesi Login Aktif */}
-                <div className="pt-6 border-t border-slate-100 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-4 border-t border-slate-100 pt-6">
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                     <div>
                       <h2 className="text-sm font-bold text-slate-950">
                         Perangkat & Sesi Login Aktif
                       </h2>
                       <p className="text-xs text-slate-400">
-                        Daftar perangkat yang saat ini memiliki akses aktif ke akun Anda
+                        Daftar perangkat yang saat ini memiliki akses aktif ke
+                        akun Anda
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={handleLogoutOtherDevices}
                       disabled={loggingOutOther}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition cursor-pointer self-start sm:self-auto"
+                      className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 self-start rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 sm:self-auto"
                     >
                       {loggingOutOther ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1142,9 +1197,9 @@ export default function CustomerSettingsPage() {
 
                   <div className="space-y-3">
                     {/* Current Device */}
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/70 bg-slate-50/80">
+                    <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4">
                       <div className="flex items-center gap-3.5">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-xs">
+                        <div className="shadow-xs flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white">
                           <Laptop className="h-5 w-5" />
                         </div>
                         <div>
@@ -1152,8 +1207,8 @@ export default function CustomerSettingsPage() {
                             <span className="text-xs font-black text-slate-950">
                               MacBook / Desktop (macOS)
                             </span>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.2 text-[9px] font-black text-emerald-800">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="py-0.2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 text-[9px] font-black text-emerald-800">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                               Aktif Sekarang
                             </span>
                           </div>
@@ -1165,9 +1220,9 @@ export default function CustomerSettingsPage() {
                     </div>
 
                     {/* Smartphone Device */}
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/70 bg-white">
+                    <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-4">
                       <div className="flex items-center gap-3.5">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 shadow-2xs">
+                        <div className="shadow-2xs flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
                           <Smartphone className="h-5 w-5" />
                         </div>
                         <div>
@@ -1182,13 +1237,10 @@ export default function CustomerSettingsPage() {
                     </div>
                   </div>
                 </div>
-
               </motion.div>
             )}
-
           </AnimatePresence>
         </div>
-
       </main>
 
       <Footer variant="light" />
