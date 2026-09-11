@@ -134,10 +134,43 @@ deploy_containers() {
     # Start services
     docker compose -f "$COMPOSE_FILE" up -d
 
-    # Jalankan DB migration
-    echo "  → Running database migrations..."
-    sleep 5
-    docker compose -f "$COMPOSE_FILE" exec -T app sh -c "npx prisma db push --schema=./prisma/schema.prisma" || true
+    # Tunggu postgres siap
+    echo "  → Waiting for postgres to be ready..."
+    sleep 8
+
+    # Deteksi nama network Docker Compose
+    DOCKER_NETWORK=$(docker network ls --filter name=affiliate --format '{{.Name}}' | head -1)
+    echo "  → Using Docker network: $DOCKER_NETWORK"
+
+    # Jalankan DB push via temporary container (source dir + network access)
+    echo "  → Running database schema push..."
+    docker run --rm \
+        --network "$DOCKER_NETWORK" \
+        -v "$APP_DIR":/app \
+        -w /app \
+        -e DATABASE_URL="postgresql://agadget:AgProd2026Secure@postgres:5432/affiliate_gadget?schema=public" \
+        node:22-alpine \
+        sh -c "apk add --no-cache openssl && npm install -g tsx@4.19.2 && npx prisma@6 db push --schema=./prisma/schema.prisma --skip-generate" 2>&1 || true
+
+    # Jalankan seed jika belum ada data
+    echo "  → Checking if seed is needed..."
+    USER_COUNT=$(docker exec affiliate-gadget-postgres psql -U agadget -d affiliate_gadget -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ' || echo '0')
+    echo "  → Users in DB: $USER_COUNT"
+
+    if [ "$USER_COUNT" -eq "0" ] 2>/dev/null; then
+        echo "  → Database empty, running seed..."
+        docker run --rm \
+            --network "$DOCKER_NETWORK" \
+            -v "$APP_DIR":/app \
+            -w /app \
+            -e DATABASE_URL="postgresql://agadget:AgProd2026Secure@postgres:5432/affiliate_gadget?schema=public" \
+            -e NODE_ENV=production \
+            node:22-alpine \
+            sh -c "apk add --no-cache openssl && npm install -g tsx@4.19.2 && tsx prisma/seed.ts" 2>&1
+        echo "  → Seed completed!"
+    else
+        echo "  → Database already seeded, skipping."
+    fi
 
     echo ""
     echo "========================================"
