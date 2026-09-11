@@ -79,12 +79,22 @@ interface AdminChatRoom {
     phone?: string | null
     email?: string
   }
+  store?: {
+    id?: string
+    name?: string
+    logo?: string | null
+  } | null
   order?: {
     id: string
     orderNumber: string
     status: string
     total: number
     createdAt: string
+    store?: {
+      id?: string
+      name?: string
+      logo?: string | null
+    } | null
     claimedBy?: {
       id: string
       name: string | null
@@ -1040,19 +1050,27 @@ export default function FloatingChatButton() {
                                 const adminRoom = room as AdminChatRoom
                                 // Priority: claimedBy (admin who claimed), then technician (for service orders)
                                 const claimedByImage =
+                                  (adminRoom as any).claimedBy?.image ||
                                   adminRoom.order?.claimedBy?.image
                                 const claimedByName =
+                                  (adminRoom as any).claimedBy?.name ||
                                   adminRoom.order?.claimedBy?.name
                                 const technicianImage =
                                   adminRoom.order?.technician?.user?.image
                                 const technicianName =
                                   adminRoom.order?.technician?.user?.name
 
-                                // Use claimedBy first, then technician, then fallback
+                                // Use claimedBy first, then store logo, then technician, then fallback
+                                const storeLogo =
+                                  (adminRoom as any).store?.logo ||
+                                  (adminRoom.order?.store as any)?.logo
                                 const displayImage =
-                                  claimedByImage || technicianImage
+                                  claimedByImage || storeLogo || technicianImage
                                 const displayName =
-                                  claimedByName || technicianName || 'Admin'
+                                  claimedByName ||
+                                  (adminRoom as any).store?.name ||
+                                  technicianName ||
+                                  'Admin Toko'
 
                                 return displayImage ? (
                                   <img
@@ -1219,11 +1237,20 @@ export default function FloatingChatButton() {
                             const adminMessage = messages.find(
                               (m) =>
                                 m.sender.role === 'ADMIN' ||
-                                m.sender.role === 'SUPER_ADMIN'
+                                m.sender.role === 'SUPER_ADMIN' ||
+                                m.sender.role === 'STORE_ADMIN'
                             )
                             const adminName =
-                              adminMessage?.sender.name || 'Admin'
-                            const adminImage = adminMessage?.sender.image
+                              adminMessage?.sender.name ||
+                              (adminRoom as any).claimedBy?.name ||
+                              (adminRoom as any).store?.name ||
+                              'Admin Toko'
+                            const adminImage =
+                              adminMessage?.sender.image ||
+                              (adminRoom as any).claimedBy?.image ||
+                              adminRoom.order?.claimedBy?.image ||
+                              (adminRoom as any).store?.logo ||
+                              (adminRoom.order?.store as any)?.logo
 
                             return adminImage ? (
                               <img

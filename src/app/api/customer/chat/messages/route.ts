@@ -24,6 +24,15 @@ export async function GET(req: NextRequest) {
         customerId: session.user.id,
       },
       include: {
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
         store: {
           select: {
             id: true,
@@ -47,6 +56,14 @@ export async function GET(req: NextRequest) {
                 companyName: true,
                 phone: true,
                 city: true,
+                logo: true,
+              },
+            },
+            claimedBy: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
               },
             },
           },

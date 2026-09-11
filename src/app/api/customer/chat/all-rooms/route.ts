@@ -49,6 +49,7 @@ export async function GET() {
                 companyName: true,
                 phone: true,
                 city: true,
+                logo: true,
               },
             },
             claimedBy: {

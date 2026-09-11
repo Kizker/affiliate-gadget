@@ -135,6 +135,7 @@ export default function StoreDetailPage() {
                 fill
                 sizes="(max-width: 1280px) 100vw, 1200px"
                 priority
+                unoptimized={!!store.banner?.startsWith('/')}
                 className="sm:object-right-center object-cover object-right opacity-75 transition-transform duration-700 group-hover:scale-105 dark:opacity-40"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/20 dark:from-slate-950 dark:via-slate-950/85 dark:to-slate-950/20" />
@@ -155,6 +156,7 @@ export default function StoreDetailPage() {
                     alt={store.name}
                     fill
                     sizes="96px"
+                    unoptimized={!!store.logo?.startsWith('/')}
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>

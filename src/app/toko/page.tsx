@@ -163,6 +163,7 @@ export default function TokoDirectoryPage() {
                           alt={store.name}
                           fill
                           sizes="80px"
+                          unoptimized={!!store.logo?.startsWith('/')}
                           className="object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       </div>

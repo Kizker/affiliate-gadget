@@ -335,7 +335,7 @@ export default function EditProductPage() {
 
   if (initialLoading) {
     return (
-      <div className="w-full max-w-6xl space-y-8 py-2 sm:py-4">
+      <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-2 sm:px-6 sm:py-4">
         <div className="flex h-96 items-center justify-center rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">
           <div className="text-center text-slate-400">
             <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-orange-500" />
@@ -349,7 +349,7 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl space-y-8 py-2 sm:py-4">
+    <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-2 sm:px-6 sm:py-4">
       {/* 1. Header Hero Section */}
       <div className="shadow-xs flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-2">

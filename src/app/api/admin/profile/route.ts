@@ -168,6 +168,7 @@ export async function PATCH(request: NextRequest) {
         const {
           storeName,
           companyName,
+          logo,
           taxId,
           address,
           city,
@@ -185,6 +186,7 @@ export async function PATCH(request: NextRequest) {
           data: {
             ...(storeName && { name: storeName }),
             ...(companyName && { companyName }),
+            ...(logo !== undefined && { logo }),
             ...(taxId !== undefined && { taxId }),
             ...(address && { address }),
             ...(city && { city }),
@@ -197,6 +199,14 @@ export async function PATCH(request: NextRequest) {
             bankAccounts: true,
           },
         })
+
+        // Jika foto logo toko diupdate dan foto pengelola belum ada, sinkronkan ke akun user
+        if (logo && !updateData.image) {
+          await tx.user.update({
+            where: { id: session.user.id },
+            data: { image: logo },
+          })
+        }
 
         // Update or create primary bank account
         if (bankName && accountNumber && accountName) {

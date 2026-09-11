@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
@@ -217,6 +217,28 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
   const [localOpen, setLocalOpen] = useState(false)
   const pathname = usePathname()
   const { data: session } = useSession()
+
+  const [liveAvatar, setLiveAvatar] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (session?.user?.image) {
+      setLiveAvatar(session.user.image)
+    }
+  }, [session?.user?.image])
+
+  useEffect(() => {
+    const handleProfileUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ image?: string }>
+      if (customEvent.detail?.image) {
+        setLiveAvatar(customEvent.detail.image)
+      }
+    }
+    window.addEventListener('profile-updated', handleProfileUpdated)
+    return () =>
+      window.removeEventListener('profile-updated', handleProfileUpdated)
+  }, [])
+
+  const displayUserImage = liveAvatar || session?.user?.image || null
 
   const isMobileOpen = sidebarCtx ? sidebarCtx.isMobileOpen : localOpen
   const isCollapsed = sidebarCtx ? sidebarCtx.isCollapsed : false
@@ -515,10 +537,10 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
               <div className="shadow-2xs flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex min-w-0 items-center gap-2.5">
                   {/* User Avatar */}
-                  {session?.user?.image ? (
+                  {displayUserImage ? (
                     <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-lg border border-slate-200/80 bg-slate-100 dark:border-slate-700">
                       <img
-                        src={session.user.image}
+                        src={displayUserImage}
                         alt="Avatar"
                         className="h-full w-full object-cover"
                       />
@@ -562,14 +584,14 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
               </div>
             ) : (
               <div className="group relative flex flex-col items-center">
-                {session?.user?.image ? (
+                {displayUserImage ? (
                   <button
                     onClick={() => signOut({ callbackUrl: '/' })}
                     aria-label="Keluar"
                     className="shadow-2xs relative flex h-10 w-10 overflow-hidden rounded-xl border border-slate-200/80 bg-white transition hover:opacity-80"
                   >
                     <img
-                      src={session.user.image}
+                      src={displayUserImage}
                       alt="Avatar"
                       className="h-full w-full object-cover"
                     />

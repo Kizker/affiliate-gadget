@@ -56,6 +56,12 @@ interface ChatRoom {
       companyName?: string
       phone?: string | null
       city?: string
+      logo?: string | null
+    } | null
+    claimedBy?: {
+      id: string
+      name: string | null
+      image?: string | null
     } | null
     items?: Array<{
       product?: { name: string; brand?: string; images?: string[] } | null
@@ -303,11 +309,34 @@ function CustomerChatContent() {
             !p ||
             r.id !== p.id ||
             r.lastMessageAt !== p.lastMessageAt ||
-            (r._count?.messages || 0) !== (p._count?.messages || 0)
+            (r._count?.messages || 0) !== (p._count?.messages || 0) ||
+            r.claimedBy?.image !== p.claimedBy?.image ||
+            r.store?.logo !== p.store?.logo ||
+            r.claimedBy?.name !== p.claimedBy?.name
           )
         })
         return hasDiff ? mappedRooms : prev
       })
+
+      // Sync selectedRoom if active room info or avatar changed
+      if (selectedRoomRef.current) {
+        const currentActive = allRooms.find(
+          (r) => r.id === selectedRoomRef.current?.id
+        )
+        if (currentActive) {
+          setSelectedRoom((curr) => {
+            if (
+              curr &&
+              (curr.claimedBy?.image !== currentActive.claimedBy?.image ||
+                curr.store?.logo !== currentActive.store?.logo ||
+                curr.claimedBy?.name !== currentActive.claimedBy?.name)
+            ) {
+              return { ...curr, ...currentActive }
+            }
+            return curr
+          })
+        }
+      }
     } catch (error) {
       if (!isPolling) {
         console.error('Error fetching rooms:', error)
@@ -361,6 +390,20 @@ function CustomerChatContent() {
           const data = await res.json()
           const newMsgs = data.messages || []
 
+          if (data.room) {
+            setSelectedRoom((curr) => {
+              if (
+                curr &&
+                curr.id === data.room.id &&
+                (curr.claimedBy?.image !== data.room.claimedBy?.image ||
+                  curr.store?.logo !== data.room.store?.logo)
+              ) {
+                return { ...curr, ...data.room }
+              }
+              return curr
+            })
+          }
+
           setMessages((prev) => {
             // Guard: jika newMsgs lebih sedikit dari prev, ada optimistic message pending
             // Jangan overwrite — biarkan polling berikutnya yang akan sync setelah commit DB
@@ -379,7 +422,8 @@ function CustomerChatContent() {
               (m: any, idx: number) =>
                 m.id !== prev[idx]?.id ||
                 m.content !== prev[idx]?.content ||
-                m.isRead !== prev[idx]?.isRead
+                m.isRead !== prev[idx]?.isRead ||
+                m.sender?.image !== prev[idx]?.sender?.image
             )
             if (hasDiff) {
               return newMsgs
@@ -942,6 +986,12 @@ function CustomerChatContent() {
     selectedRoom?.technician?.user?.name ||
     'CS Toko'
 
+  const activeStoreLogo =
+    selectedRoom?.claimedBy?.image ||
+    activeStore?.logo ||
+    selectedRoom?.order?.claimedBy?.image ||
+    null
+
   if (status === 'loading' || loading) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50/50 dark:bg-slate-950">
@@ -1095,6 +1145,11 @@ function CustomerChatContent() {
                   filteredRooms.map((room) => {
                     const isSelected = selectedRoom?.id === room.id
                     const storeObj = room.order?.store || room.store
+                    const storeLogo =
+                      room.claimedBy?.image ||
+                      storeObj?.logo ||
+                      room.order?.claimedBy?.image ||
+                      null
                     const firstProduct = room.order?.items?.[0]?.product?.name
                     const title =
                       storeObj?.name ||
@@ -1121,9 +1176,17 @@ function CustomerChatContent() {
 
                         {/* Avatar Squircle */}
                         <div className="relative shrink-0">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-100 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-                            {title.charAt(0).toUpperCase()}
-                          </div>
+                          {storeLogo ? (
+                            <img
+                              src={storeLogo}
+                              alt={title}
+                              className="shadow-2xs h-10 w-10 rounded-2xl border border-slate-200/60 object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-100 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                              {title.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                           {(room._count?.messages || 0) > 0 && (
                             <span className="shadow-2xs absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
                               {room._count?.messages}
@@ -1202,9 +1265,17 @@ function CustomerChatContent() {
                         <ChevronLeft className="h-5 w-5" />
                       </button>
 
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-100 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-                        {activeStoreTitle.charAt(0).toUpperCase()}
-                      </div>
+                      {activeStoreLogo ? (
+                        <img
+                          src={activeStoreLogo}
+                          alt={activeStoreTitle}
+                          className="shadow-2xs h-10 w-10 shrink-0 rounded-2xl border border-slate-200/60 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-100 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                          {activeStoreTitle.charAt(0).toUpperCase()}
+                        </div>
+                      )}
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -1324,11 +1395,39 @@ function CustomerChatContent() {
                             (parsedContent.productPrice !== undefined ||
                               parsedContent.price !== undefined))
 
+                        const senderAvatar =
+                          msg.sender.image ||
+                          selectedRoom?.claimedBy?.image ||
+                          activeStoreLogo ||
+                          null
+                        const senderName =
+                          msg.sender.name ||
+                          (msg.sender.role === 'ADMIN' ||
+                          msg.sender.role === 'SUPER_ADMIN' ||
+                          msg.sender.role === 'STORE_ADMIN'
+                            ? 'Admin Toko'
+                            : 'CS Toko')
+
                         return (
                           <div
                             key={msg.id}
-                            className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                            className={`flex items-end gap-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}
                           >
+                            {!isMe && (
+                              <div className="mb-1 shrink-0">
+                                {senderAvatar ? (
+                                  <img
+                                    src={senderAvatar}
+                                    alt={senderName}
+                                    className="shadow-2xs h-8 w-8 rounded-full border border-slate-200/80 object-cover dark:border-slate-700"
+                                  />
+                                ) : (
+                                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-orange-200 bg-orange-100 text-xs font-bold text-orange-700 dark:border-slate-700 dark:bg-slate-800 dark:text-orange-400">
+                                    {senderName.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             {isMedia ? (
                               /* Full-Bleed Modern Media Bubble (Apple/Telegram Style) */
                               <div className="shadow-xs group relative max-w-[85%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[70%]">
@@ -1519,13 +1618,11 @@ function CustomerChatContent() {
                                 }`}
                               >
                                 {!isMe && (
-                                  <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                                    {msg.sender.role === 'ADMIN' ||
-                                    msg.sender.role === 'SUPER_ADMIN' ||
-                                    msg.sender.role === 'STORE_ADMIN'
-                                      ? 'Admin Toko'
-                                      : msg.sender.name || 'CS Toko'}
-                                  </p>
+                                  <div className="mb-1 flex items-center gap-1.5">
+                                    <p className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                      {senderName}
+                                    </p>
+                                  </div>
                                 )}
                                 {isOrder ? (
                                   (() => {

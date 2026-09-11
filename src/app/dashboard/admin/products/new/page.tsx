@@ -261,7 +261,7 @@ export default function NewGadgetProductPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl space-y-8 py-2 sm:py-4">
+    <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-2 sm:px-6 sm:py-4">
       {/* 1. Header Hero Section */}
       <div className="shadow-xs flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-2">

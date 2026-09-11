@@ -139,7 +139,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     // Only include authorized callback from authConfig
     authorized: authConfig.callbacks?.authorized,
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }: any) {
+      // Handle client-side session update (e.g. after uploading a new profile picture)
+      if (trigger === 'update' && session) {
+        const updateData = session.user || session
+        if (updateData.image !== undefined) {
+          token.image = updateData.image
+        }
+        if (updateData.name !== undefined) {
+          token.name = updateData.name
+        }
+      }
+
       // Store essential user data in token
       if (user) {
         token.id = user.id
