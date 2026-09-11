@@ -47,7 +47,8 @@ next-env.d.ts
 prisma/migrations/**/migration.sql
 
 # Uploads
-uploads/
+/public/uploads/
+/uploads/
 
 # Logs
 logs/

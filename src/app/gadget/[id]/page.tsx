@@ -265,6 +265,7 @@ export default function GadgetDetailPage() {
                     fill
                     sizes="500px"
                     priority
+                    unoptimized
                     className="object-contain transition-transform duration-300"
                   />
                 </div>
@@ -294,6 +295,7 @@ export default function GadgetDetailPage() {
                         alt="Thumbnail"
                         fill
                         sizes="64px"
+                        unoptimized
                         className="object-cover"
                       />
                     </button>
@@ -315,6 +317,7 @@ export default function GadgetDetailPage() {
                     fill
                     sizes="100vw"
                     priority
+                    unoptimized
                     className="object-contain transition-all duration-300"
                   />
                 </div>
