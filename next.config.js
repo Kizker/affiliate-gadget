@@ -54,7 +54,7 @@ const nextConfig = {
       'sonner',
     ],
     serverActions: {
-      bodySizeLimit: '5mb',
+      bodySizeLimit: '50mb',
     },
   },
   async headers() {

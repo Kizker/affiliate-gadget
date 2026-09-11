@@ -93,34 +93,40 @@ export const useCartStore = create<CartStore>()(
       isSyncing: false,
 
       setUserId: async (userId) => {
+        if (!userId) {
+          // User is logging out or is unauthenticated guest:
+          // ALWAYS clear local cart state and remove persisted storage
+          set({ items: [], selectedItems: [], userId: null, isLoading: false })
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.removeItem('affiliate-gadget-cart-storage')
+            } catch {}
+          }
+          return
+        }
+
         const currentUserId = get().userId
+        if (currentUserId === userId && get().items.length > 0) return // Already loaded for this user
 
-        if (currentUserId === userId) return // No change
-
-        if (userId) {
-          // User is logging in - clear local state first, then fetch cart from server
-          set({ userId, items: [], selectedItems: [], isLoading: true })
-          try {
-            const res = await fetch('/api/cart')
-            if (res.ok) {
-              const data = await res.json()
-              set({
-                items: data.items || [],
-                selectedItems: (data.items || []).map(
-                  (item: CartItem) => item.id
-                ),
-                isLoading: false,
-              })
-            } else {
-              set({ isLoading: false })
-            }
-          } catch (error) {
-            console.error('Error fetching cart:', error)
+        // User is logging in - clear local state first, then fetch cart from server
+        set({ userId, items: [], selectedItems: [], isLoading: true })
+        try {
+          const res = await fetch('/api/cart')
+          if (res.ok) {
+            const data = await res.json()
+            set({
+              items: data.items || [],
+              selectedItems: (data.items || []).map(
+                (item: CartItem) => item.id
+              ),
+              isLoading: false,
+            })
+          } else {
             set({ isLoading: false })
           }
-        } else {
-          // User is logging out - clear local cart but keep server cart intact
-          set({ items: [], selectedItems: [], userId: null })
+        } catch (error) {
+          console.error('Error fetching cart:', error)
+          set({ isLoading: false })
         }
       },
 
@@ -233,6 +239,11 @@ export const useCartStore = create<CartStore>()(
       clearCart: async () => {
         const userId = get().userId
         set({ items: [], selectedItems: [] })
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('affiliate-gadget-cart-storage')
+          } catch {}
+        }
         // Sync to server
         if (userId) {
           try {
@@ -372,11 +383,22 @@ export const useCartStore = create<CartStore>()(
     {
       name: 'affiliate-gadget-cart-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        items: state.items,
-        selectedItems: state.selectedItems,
-        userId: state.userId,
-      }),
+      partialize: (state) => {
+        // Hanya simpan ke localStorage jika user terotentikasi.
+        // Unauthenticated / guest cart tidak pernah disimpan secara persisten.
+        if (!state.userId) {
+          return {
+            items: [],
+            selectedItems: [],
+            userId: null,
+          }
+        }
+        return {
+          items: state.items,
+          selectedItems: state.selectedItems,
+          userId: state.userId,
+        }
+      },
     }
   )
 )

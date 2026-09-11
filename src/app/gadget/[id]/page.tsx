@@ -79,6 +79,14 @@ export default function GadgetDetailPage() {
   const handleAddToCart = () => {
     if (!product) return
 
+    if (status === 'unauthenticated') {
+      toast.error(
+        'Silakan masuk terlebih dahulu untuk menambahkan produk ke keranjang.'
+      )
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/gadget/${id}`)}`)
+      return
+    }
+
     const priceToUse = selectedVariant ? selectedVariant.price : product.price
     const variantName = selectedVariant ? selectedVariant.name : undefined
     const variantId = selectedVariant ? selectedVariant.id : undefined
@@ -102,6 +110,14 @@ export default function GadgetDetailPage() {
   }
 
   const handleBuyNow = () => {
+    if (!product) return
+
+    if (status === 'unauthenticated') {
+      toast.error('Silakan masuk terlebih dahulu untuk melanjutkan pembelian.')
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/gadget/${id}`)}`)
+      return
+    }
+
     handleAddToCart()
     router.push('/cart')
   }

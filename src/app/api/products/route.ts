@@ -263,11 +263,18 @@ export async function POST(request: NextRequest) {
         brand,
         model,
         condition,
-        price: parseFloat(String(price)),
-        originalPrice: originalPrice ? parseFloat(String(originalPrice)) : null,
+        price: parseFloat(String(price).replace(/\./g, '')),
+        originalPrice: originalPrice
+          ? parseFloat(String(originalPrice).replace(/\./g, ''))
+          : null,
         stock: parseInt(String(stock)) || 0,
         weightGram: parseInt(String(weightGram)) || 500,
-        images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80'],
+        images:
+          images.length > 0
+            ? images
+            : [
+                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80',
+              ],
         specs: specs || {},
         storeId: finalStoreId,
         warrantyDays: parseInt(String(warrantyDays)) || 30,
@@ -280,7 +287,7 @@ export async function POST(request: NextRequest) {
             ram: v.ram,
             storage: v.storage,
             color: v.color,
-            price: parseFloat(String(v.price || price)),
+            price: parseFloat(String(v.price || price).replace(/\./g, '')),
             stock: parseInt(String(v.stock || stock)) || 0,
             sku: v.sku,
           })),
@@ -300,9 +307,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating product:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Gagal menambahkan produk' },
+      {
+        error:
+          error instanceof Error ? error.message : 'Gagal menambahkan produk',
+      },
       { status: 500 }
     )
   }
 }
-

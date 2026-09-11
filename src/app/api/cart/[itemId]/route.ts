@@ -69,8 +69,14 @@ export async function DELETE(
       },
     })
 
-    if (!item || item.cart.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+    // Item tidak ada di DB (mungkin ID lokal client yg belum sync) → anggap sudah terhapus
+    if (!item) {
+      return NextResponse.json({ success: true, alreadyRemoved: true })
+    }
+
+    // IDOR guard: pastikan item milik user ini
+    if (item.cart.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     await prisma.cartItem.delete({

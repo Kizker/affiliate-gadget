@@ -170,11 +170,11 @@ function MultipleOrderConfirmationContent() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar variant="light" />
 
-      <main className="pb-20 pt-28">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+      <main className="flex min-h-screen flex-col pb-20 pt-28 sm:pb-24 sm:pt-32">
+        <div className="mx-auto my-auto w-full max-w-2xl px-4 sm:px-6">
           {/* Success Header */}
           <div className="mb-8 space-y-3 text-center">
             <div className="shadow-xs mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-emerald-100 bg-emerald-50 text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-950/50">
@@ -384,7 +384,7 @@ function MultipleOrderConfirmationContent() {
             </Link>
 
             <Link
-              href="/garansi"
+              href="/dashboard/customer/orders"
               className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.99]"
             >
               <span>Cek Status & Klaim Garansi</span>

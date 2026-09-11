@@ -300,11 +300,11 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
       : null
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50/60 font-sans dark:bg-slate-950">
+    <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar variant="light" />
 
-      <main className="flex-1 pb-20 pt-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <main className="flex min-h-screen flex-col pb-20 pt-28 sm:pb-24 sm:pt-32">
+        <div className="mx-auto my-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Top Breadcrumb & Store Origin Bar */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <Link

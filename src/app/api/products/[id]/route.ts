@@ -75,7 +75,12 @@ export async function PATCH(
       where: { email: session.user.email },
     })
 
-    if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN' && user.role !== 'STORE_ADMIN')) {
+    if (
+      !user ||
+      (user.role !== 'SUPER_ADMIN' &&
+        user.role !== 'ADMIN' &&
+        user.role !== 'STORE_ADMIN')
+    ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -92,8 +97,15 @@ export async function PATCH(
     }
 
     // Store Admin can only edit products belonging to their store
-    if (user.role === 'STORE_ADMIN' && user.storeId && existing.storeId !== user.storeId) {
-      return NextResponse.json({ error: 'Forbidden: Cannot edit product of another store' }, { status: 403 })
+    if (
+      user.role === 'STORE_ADMIN' &&
+      user.storeId &&
+      existing.storeId !== user.storeId
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden: Cannot edit product of another store' },
+        { status: 403 }
+      )
     }
 
     const {
@@ -132,7 +144,9 @@ export async function PATCH(
               ram: v.ram,
               storage: v.storage,
               color: v.color,
-              price: parseFloat(String(v.price || price || existing.price)),
+              price: parseFloat(
+                String(v.price || price || existing.price).replace(/\./g, '')
+              ),
               stock: parseInt(String(v.stock || stock || existing.stock)) || 0,
               sku: v.sku || null,
             })),
@@ -149,20 +163,32 @@ export async function PATCH(
           ...(brand !== undefined && { brand }),
           ...(model !== undefined && { model }),
           ...(condition !== undefined && { condition }),
-          ...(price !== undefined && { price: parseFloat(String(price)) }),
+          ...(price !== undefined && {
+            price: parseFloat(String(price).replace(/\./g, '')),
+          }),
           ...(originalPrice !== undefined && {
-            originalPrice: originalPrice ? parseFloat(String(originalPrice)) : null,
+            originalPrice: originalPrice
+              ? parseFloat(String(originalPrice).replace(/\./g, ''))
+              : null,
           }),
           ...(stock !== undefined && { stock: parseInt(String(stock)) || 0 }),
-          ...(weightGram !== undefined && { weightGram: parseInt(String(weightGram)) || 500 }),
+          ...(weightGram !== undefined && {
+            weightGram: parseInt(String(weightGram)) || 500,
+          }),
           ...(images !== undefined && { images }),
           ...(specs !== undefined && { specs }),
-          ...(warrantyDays !== undefined && { warrantyDays: parseInt(String(warrantyDays)) || 30 }),
-          ...(includesCharger !== undefined && { includesCharger: Boolean(includesCharger) }),
+          ...(warrantyDays !== undefined && {
+            warrantyDays: parseInt(String(warrantyDays)) || 30,
+          }),
+          ...(includesCharger !== undefined && {
+            includesCharger: Boolean(includesCharger),
+          }),
           ...(includesScreenProtector !== undefined && {
             includesScreenProtector: Boolean(includesScreenProtector),
           }),
-          ...(includesCase !== undefined && { includesCase: Boolean(includesCase) }),
+          ...(includesCase !== undefined && {
+            includesCase: Boolean(includesCase),
+          }),
           ...(isActive !== undefined && { isActive: Boolean(isActive) }),
         },
         include: {
@@ -180,7 +206,10 @@ export async function PATCH(
   } catch (error) {
     console.error('Error updating product:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Gagal memperbarui produk' },
+      {
+        error:
+          error instanceof Error ? error.message : 'Gagal memperbarui produk',
+      },
       { status: 500 }
     )
   }
@@ -201,7 +230,12 @@ export async function DELETE(
       where: { email: session.user.email },
     })
 
-    if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN' && user.role !== 'STORE_ADMIN')) {
+    if (
+      !user ||
+      (user.role !== 'SUPER_ADMIN' &&
+        user.role !== 'ADMIN' &&
+        user.role !== 'STORE_ADMIN')
+    ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -216,8 +250,15 @@ export async function DELETE(
     }
 
     // Store Admin can only delete products belonging to their store
-    if (user.role === 'STORE_ADMIN' && user.storeId && existing.storeId !== user.storeId) {
-      return NextResponse.json({ error: 'Forbidden: Cannot delete product of another store' }, { status: 403 })
+    if (
+      user.role === 'STORE_ADMIN' &&
+      user.storeId &&
+      existing.storeId !== user.storeId
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden: Cannot delete product of another store' },
+        { status: 403 }
+      )
     }
 
     // Perform deletion
@@ -239,7 +280,10 @@ export async function DELETE(
   } catch (error) {
     console.error('Error deleting product:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Gagal menghapus produk' },
+      {
+        error:
+          error instanceof Error ? error.message : 'Gagal menghapus produk',
+      },
       { status: 500 }
     )
   }

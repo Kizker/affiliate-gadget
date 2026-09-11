@@ -35,11 +35,25 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const { items } = useCartStore()
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
+  const { items, setUserId: cartSetUserId } = useCartStore()
+  // Guard with mounted & authenticated to prevent hydration mismatch and hide badge when unauthenticated
+  const itemCount =
+    mounted && status === 'authenticated'
+      ? items.reduce((sum, item) => sum + item.quantity, 0)
+      : 0
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     session?.user?.image || null
   )
+
+  // Reaktif: sinkronisasi keranjang belanja dengan status sesi NextAuth
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.id) {
+      cartSetUserId(session.user.id)
+    } else if (status === 'unauthenticated') {
+      // Bersihkan seketika keranjang lokal jika belum login / sudah logout
+      cartSetUserId(null)
+    }
+  }, [status, session?.user?.id, cartSetUserId])
 
   useEffect(() => {
     setMounted(true)
@@ -341,7 +355,10 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
 
                     <div className="border-t border-slate-100 pt-1 dark:border-slate-800">
                       <button
-                        onClick={() => signOut({ callbackUrl: '/' })}
+                        onClick={() => {
+                          cartSetUserId(null)
+                          signOut({ callbackUrl: '/' })
+                        }}
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                       >
                         <LogOut className="h-3.5 w-3.5" /> Keluar
@@ -530,6 +547,23 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                 <span>Garansi 30 Hari</span>
                 <ArrowRight className="h-3.5 w-3.5 opacity-40" />
               </Link>
+
+              {session?.user && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    cartSetUserId(null)
+                    setMobileMenuOpen(false)
+                    signOut({ callbackUrl: '/' })
+                  }}
+                  className="mt-2 flex w-full items-center justify-between rounded-xl border border-red-100 bg-red-50/50 px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-100 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-400"
+                >
+                  <span className="flex items-center gap-2">
+                    <LogOut className="h-3.5 w-3.5" /> Keluar
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 opacity-40" />
+                </button>
+              )}
             </nav>
           </div>
         )}
