@@ -96,16 +96,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
-    // Store Admin can only edit products belonging to their store
-    if (
-      user.role === 'STORE_ADMIN' &&
-      user.storeId &&
-      existing.storeId !== user.storeId
-    ) {
-      return NextResponse.json(
-        { error: 'Forbidden: Cannot edit product of another store' },
-        { status: 403 }
-      )
+    // Store Admin can only edit products belonging to their own store
+    if (user.role === 'STORE_ADMIN') {
+      if (!user.storeId || existing.storeId !== user.storeId) {
+        return NextResponse.json(
+          {
+            error:
+              'Akses ditolak: Anda hanya dapat mengelola produk milik toko Anda sendiri.',
+          },
+          { status: 403 }
+        )
+      }
     }
 
     const {
@@ -157,6 +158,10 @@ export async function PATCH(
       return await tx.product.update({
         where: { id },
         data: {
+          ...(body.storeId &&
+            (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') && {
+              storeId: body.storeId,
+            }),
           ...(name !== undefined && { name }),
           ...(description !== undefined && { description }),
           ...(category !== undefined && { category }),

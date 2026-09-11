@@ -20,7 +20,7 @@ describe('Checkout Security & Business Rules (Sprint 1)', () => {
     })
 
     it('should allow checkout requests up to 10 attempts per 10 minutes per IP', async () => {
-      const ip = `192.168.1.${Math.floor(Math.random() * 200 + 10)}`
+      const ip = `192.168.1.${Math.floor(Math.random() * 200 + 10)}-${Date.now()}-${Math.random()}`
       const key = `checkout:ip:${ip}`
 
       for (let i = 1; i <= 10; i++) {

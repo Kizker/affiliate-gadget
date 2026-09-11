@@ -15,16 +15,11 @@ import {
   Save,
   Loader2,
   CheckCircle,
-  Edit3,
-  Image as ImageIcon,
   Eye,
   ArrowLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import ImageUpload from '@/components/upload/image-upload'
-import MultiImageUpload from '@/components/upload/multi-image-upload'
-import GoogleMapsAutocomplete from '@/components/maps/google-maps-autocomplete'
-import GoogleMapsProvider from '@/components/maps/google-maps-provider'
 import { motion } from 'framer-motion'
 
 interface Service {
@@ -38,6 +33,7 @@ interface MitraProfile {
   tagline: string
   description: string
   city: string
+  province?: string
   address: string
   phone: string
   email: string
@@ -59,6 +55,7 @@ const DEFAULT_PROFILE: MitraProfile = {
   tagline: '',
   description: '',
   city: '',
+  province: '',
   address: '',
   phone: '',
   email: '',
@@ -287,9 +284,17 @@ export default function MitraDashboard() {
         setMitraId(data.id)
       }
 
-      toast.success(
-        'Profil berhasil disimpan! Klik "Lihat Preview" untuk melihat hasilnya.'
-      )
+      if (data.isPendingReview || session?.user?.role === 'MITRA') {
+        toast.success(
+          'Profil toko berhasil disimpan dan dikirim ke Super Admin untuk ditinjau!'
+        )
+        router.push('/dashboard/mitra/pending')
+        router.refresh()
+      } else {
+        toast.success(
+          'Profil berhasil disimpan! Klik "Lihat Preview" untuk melihat hasilnya.'
+        )
+      }
     } catch (error) {
       console.error('Error saving profile:', error)
       toast.error(
@@ -492,18 +497,7 @@ export default function MitraDashboard() {
               shortLabel: 'Info',
               icon: Store,
             },
-            {
-              id: 'services',
-              label: 'Layanan',
-              shortLabel: 'Layanan',
-              icon: Edit3,
-            },
-            {
-              id: 'gallery',
-              label: 'Galeri',
-              shortLabel: 'Galeri',
-              icon: ImageIcon,
-            },
+
             {
               id: 'contact',
               label: 'Kontak',
@@ -601,48 +595,46 @@ export default function MitraDashboard() {
                 <label className="mb-2 block text-sm font-medium text-gray-700">
                   Alamat Lengkap <span className="text-red-500">*</span>
                 </label>
-                <p className="mb-2 text-xs text-gray-500">
-                  Gunakan Google Maps untuk memilih lokasi yang akurat
-                </p>
-                <GoogleMapsProvider>
-                  <GoogleMapsAutocomplete
-                    defaultValue={profile.address}
-                    placeholder="Cari alamat menggunakan Google Maps..."
-                    onPlaceSelected={(place) => {
-                      setProfile({
-                        ...profile,
-                        address: place.address,
-                        city: place.city,
-                        latitude: place.latitude,
-                        longitude: place.longitude,
-                      })
-                      toast.success(`Lokasi dipilih: ${place.city}`, {
-                        description: place.address,
-                      })
-                    }}
-                  />
-                </GoogleMapsProvider>
-                {profile.address && (
-                  <p className="mt-2 text-xs text-gray-600">
-                    📍 {profile.address}
-                  </p>
-                )}
+                <textarea
+                  value={profile.address}
+                  onChange={(e) =>
+                    setProfile({ ...profile, address: e.target.value })
+                  }
+                  placeholder="Masukkan alamat lengkap fisik toko (Jalan, No, RT/RW, Kecamatan)..."
+                  rows={3}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Kota <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={profile.city}
-                  readOnly
-                  placeholder="Akan terisi otomatis dari Google Maps"
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 placeholder-gray-400"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Kota akan terisi otomatis saat Anda memilih alamat
-                </p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Kota <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.city}
+                    onChange={(e) =>
+                      setProfile({ ...profile, city: e.target.value })
+                    }
+                    placeholder="Contoh: Jakarta Pusat"
+                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Provinsi <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.province || ''}
+                    onChange={(e) =>
+                      setProfile({ ...profile, province: e.target.value })
+                    }
+                    placeholder="Contoh: DKI Jakarta"
+                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
               {/* Features */}
@@ -731,107 +723,6 @@ export default function MitraDashboard() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Services Tab */}
-          {activeTab === 'services' && (
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">
-                Layanan yang Ditawarkan
-              </h3>
-
-              {/* Add Service Form */}
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                  <select
-                    value={newService.icon}
-                    onChange={(e) =>
-                      setNewService({ ...newService, icon: e.target.value })
-                    }
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {SERVICE_ICONS.map((icon) => (
-                      <option key={icon} value={icon}>
-                        {icon}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={newService.name}
-                    onChange={(e) =>
-                      setNewService({ ...newService, name: e.target.value })
-                    }
-                    placeholder="Nama layanan"
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    value={newService.price}
-                    onChange={(e) =>
-                      setNewService({ ...newService, price: e.target.value })
-                    }
-                    placeholder="Mulai dari Rp..."
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={addService}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 font-medium text-white transition-all hover:bg-blue-700"
-                  >
-                    <Plus className="h-5 w-5" />
-                    Tambah
-                  </button>
-                </div>
-              </div>
-
-              {/* Services List */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {profile.services.map((service, index) => (
-                  <div
-                    key={index}
-                    className="group relative rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md"
-                  >
-                    <button
-                      onClick={() => removeService(index)}
-                      className="absolute right-2 top-2 rounded-full bg-red-100 p-1 text-red-600 opacity-0 transition-all hover:bg-red-600 hover:text-white group-hover:opacity-100"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                    <div className="mb-2 text-3xl">{service.icon}</div>
-                    <h4 className="font-semibold text-gray-900">
-                      {service.name}
-                    </h4>
-                    <p className="text-sm text-blue-600">{service.price}</p>
-                  </div>
-                ))}
-                {profile.services.length === 0 && (
-                  <div className="col-span-full py-12 text-center text-gray-400">
-                    Belum ada layanan. Tambahkan layanan pertama Anda!
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Gallery Tab */}
-          {activeTab === 'gallery' && (
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">Galeri Foto</h3>
-
-              <MultiImageUpload
-                key="mitra-gallery" // Prevent remount
-                label="Galeri Foto Toko"
-                value={profile.gallery}
-                onChange={(urls) => {
-                  setProfile((prev) => {
-                    const updated = { ...prev, gallery: urls }
-                    return updated
-                  })
-                }}
-                maxImages={8}
-                folder="affiliate-gadget/gallery"
-              />
             </div>
           )}
 

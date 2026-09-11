@@ -3,6 +3,7 @@
 import { Autocomplete } from '@react-google-maps/api'
 import { useState, useRef } from 'react'
 import { MapPin } from 'lucide-react'
+import { useGoogleMaps } from './google-maps-provider'
 
 interface GoogleMapsAutocompleteProps {
   onPlaceSelected: (place: {
@@ -21,6 +22,7 @@ export default function GoogleMapsAutocomplete({
   defaultValue = '',
   placeholder = 'Cari alamat...',
 }: GoogleMapsAutocompleteProps) {
+  const { isLoaded } = useGoogleMaps()
   const [autocomplete, setAutocomplete] =
     useState<google.maps.places.Autocomplete | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -71,6 +73,31 @@ export default function GoogleMapsAutocomplete({
     }
   }
 
+  // Graceful fallback for environments without Google Maps API Key
+  if (!isLoaded) {
+    return (
+      <div className="relative">
+        <MapPin className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        <input
+          ref={inputRef}
+          type="text"
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          onChange={(e) => {
+            onPlaceSelected({
+              address: e.target.value,
+              city: '',
+              province: '',
+              latitude: -6.2088,
+              longitude: 106.8456,
+            })
+          }}
+          className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="relative">
       <Autocomplete
@@ -88,7 +115,7 @@ export default function GoogleMapsAutocomplete({
             type="text"
             defaultValue={defaultValue}
             placeholder={placeholder}
-            className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           />
         </div>
       </Autocomplete>

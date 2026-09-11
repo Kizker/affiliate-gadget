@@ -13,17 +13,12 @@ import {
   Save,
   Loader2,
   CheckCircle,
-  Edit3,
-  Image as ImageIcon,
   ArrowLeft,
   UserPlus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import ImageUpload from '@/components/upload/image-upload'
-import MultiImageUpload from '@/components/upload/multi-image-upload'
-import GoogleMapsAutocomplete from '@/components/maps/google-maps-autocomplete'
-import GoogleMapsProvider from '@/components/maps/google-maps-provider'
 
 interface Service {
   name: string
@@ -265,29 +260,32 @@ export default function CreateMitraPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-16 pt-1" suppressHydrationWarning>
-
+    <div
+      className="mx-auto max-w-6xl space-y-6 pb-16 pt-1"
+      suppressHydrationWarning
+    >
       {/* 1. Header Hero Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 rounded-3xl bg-white p-6 sm:p-8 shadow-xs border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800">
+      <div className="shadow-xs flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[11px] font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300">
             <Store className="h-3.5 w-3.5 text-orange-500" />
             <span>Pendaftaran Toko Baru</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
+          <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
             Tambah Toko Baru
           </h1>
 
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl">
-            Buat akun admin, daftarkan jam operasional, dan lokasi koordinat Maps toko resmi.
+          <p className="max-w-xl text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+            Buat akun admin, daftarkan jam operasional, dan lokasi koordinat
+            Maps toko resmi.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/admin/mitras"
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 whitespace-nowrap"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
           >
             <span>← Kembali ke Daftar Toko</span>
           </Link>
@@ -295,7 +293,7 @@ export default function CreateMitraPage() {
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-6 py-2.5 text-xs font-semibold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95 disabled:opacity-50 whitespace-nowrap"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-orange-500 px-6 py-2.5 text-xs font-semibold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95 disabled:opacity-50"
           >
             {loading ? (
               <>
@@ -313,21 +311,19 @@ export default function CreateMitraPage() {
       </div>
 
       {/* 2. Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto rounded-3xl bg-white p-3 shadow-xs border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800 no-scrollbar">
+      <div className="shadow-xs no-scrollbar flex items-center gap-2 overflow-x-auto rounded-3xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         {[
           { id: 'user', label: 'Data Pemilik & Admin', icon: UserPlus },
           { id: 'info', label: 'Informasi Toko', icon: Store },
-          { id: 'services', label: 'Layanan Servis', icon: Edit3 },
-          { id: 'gallery', label: 'Foto Toko', icon: ImageIcon },
           { id: 'contact', label: 'Kontak & Rekening', icon: Phone },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
+            className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-all duration-200 ${
               activeTab === tab.id
-                ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-xs'
-                : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'
+                ? 'shadow-xs bg-slate-950 text-white dark:bg-white dark:text-slate-950'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
             }`}
           >
             <tab.icon className="h-3.5 w-3.5" />
@@ -337,200 +333,183 @@ export default function CreateMitraPage() {
       </div>
 
       {/* 3. Content Card */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-          {/* User Tab */}
-          {activeTab === 'user' && (
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">Data Akun Admin Toko</h3>
-              <p className="text-sm text-gray-500">
-                Masukkan data akun pengelola cabang toko yang akan didaftarkan
-              </p>
+      <div className="shadow-xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+        {/* User Tab */}
+        {activeTab === 'user' && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-bold text-gray-900">
+              Data Akun Admin Toko
+            </h3>
+            <p className="text-sm text-gray-500">
+              Masukkan data akun pengelola cabang toko yang akan didaftarkan
+            </p>
 
-              {/* New User Form */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Nama Lengkap <span className="text-red-500">*</span>
-                  </label>
+            {/* New User Form */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Nama Lengkap <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newUser.name}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, name: e.target.value })
+                  }
+                  className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Nama penanggung jawab"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, email: e.target.value })
+                  }
+                  className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  No. Telepon
+                </label>
+                <input
+                  type="tel"
+                  value={newUser.phone}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, phone: e.target.value })
+                  }
+                  className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="081234567890"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <div className="mt-1 flex gap-2">
                   <input
                     type="text"
-                    value={newUser.name}
+                    value={newUser.password}
                     onChange={(e) =>
-                      setNewUser({ ...newUser, name: e.target.value })
+                      setNewUser({ ...newUser, password: e.target.value })
                     }
-                    className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Nama penanggung jawab"
+                    className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Auto-generate jika kosong"
                   />
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    className="rounded-xl bg-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-300"
+                  >
+                    Generate
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, email: e.target.value })
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="email@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    No. Telepon
-                  </label>
-                  <input
-                    type="tel"
-                    value={newUser.phone}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, phone: e.target.value })
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="081234567890"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-                  <div className="mt-1 flex gap-2">
-                    <input
-                      type="text"
-                      value={newUser.password}
-                      onChange={(e) =>
-                        setNewUser({ ...newUser, password: e.target.value })
-                      }
-                      className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="Auto-generate jika kosong"
-                    />
-                    <button
-                      type="button"
-                      onClick={generatePassword}
-                      className="rounded-xl bg-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-300"
-                    >
-                      Generate
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Approval checkbox */}
-              <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <input
-                  type="checkbox"
-                  id="isApproved"
-                  checked={profile.isApproved}
-                  onChange={(e) =>
-                    setProfile({ ...profile, isApproved: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded border-gray-300 text-green-600"
-                />
-                <label
-                  htmlFor="isApproved"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Verifikasi dan aktifkan cabang toko langsung (Status Aktif)
-                </label>
               </div>
             </div>
-          )}
 
-          {/* Info Tab */}
-          {activeTab === 'info' && (
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">
-                Informasi Dasar
-              </h3>
-
-              {/* Banner Upload */}
-              <ImageUpload
-                label="Banner Toko"
-                value={profile.banner}
-                onChange={(url) => setProfile({ ...profile, banner: url })}
-                onRemove={() => setProfile({ ...profile, banner: '' })}
-                folder="affiliate-gadget/banners"
+            {/* Approval checkbox */}
+            <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <input
+                type="checkbox"
+                id="isApproved"
+                checked={profile.isApproved}
+                onChange={(e) =>
+                  setProfile({ ...profile, isApproved: e.target.checked })
+                }
+                className="h-4 w-4 rounded border-gray-300 text-green-600"
               />
+              <label
+                htmlFor="isApproved"
+                className="text-sm font-medium text-gray-700"
+              >
+                Verifikasi dan aktifkan cabang toko langsung (Status Aktif)
+              </label>
+            </div>
+          </div>
+        )}
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Nama Toko <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={profile.name}
-                    onChange={(e) =>
-                      setProfile({ ...profile, name: e.target.value })
-                    }
-                    placeholder="Contoh: TechCare Pro Service"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Tagline
-                  </label>
-                  <input
-                    type="text"
-                    value={profile.tagline}
-                    onChange={(e) =>
-                      setProfile({ ...profile, tagline: e.target.value })
-                    }
-                    placeholder="Contoh: Solusi Teknologi Terpercaya"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
+        {/* Info Tab */}
+        {activeTab === 'info' && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-bold text-gray-900">Informasi Dasar</h3>
 
+            {/* Banner Upload */}
+            <ImageUpload
+              label="Banner Toko"
+              value={profile.banner}
+              onChange={(url) => setProfile({ ...profile, banner: url })}
+              onRemove={() => setProfile({ ...profile, banner: '' })}
+              folder="affiliate-gadget/banners"
+            />
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Deskripsi Toko
+                  Nama Toko <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  value={profile.description}
+                <input
+                  type="text"
+                  value={profile.name}
                   onChange={(e) =>
-                    setProfile({ ...profile, description: e.target.value })
+                    setProfile({ ...profile, name: e.target.value })
                   }
-                  placeholder="Jelaskan tentang toko Anda..."
-                  rows={4}
+                  placeholder="Contoh: TechCare Pro Service"
                   className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
-
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Alamat Lengkap <span className="text-red-500">*</span>
+                  Tagline
                 </label>
-                <p className="mb-2 text-xs text-gray-500">
-                  Gunakan Google Maps untuk memilih lokasi yang akurat
-                </p>
-                <GoogleMapsProvider>
-                  <GoogleMapsAutocomplete
-                    defaultValue={profile.address}
-                    placeholder="Cari alamat menggunakan Google Maps..."
-                    onPlaceSelected={(place) => {
-                      setProfile({
-                        ...profile,
-                        address: place.address,
-                        city: place.city,
-                        province: place.province || place.city, // fallback to city if no province
-                        latitude: place.latitude,
-                        longitude: place.longitude,
-                      })
-                      toast.success(`Lokasi dipilih: ${place.city}`, {
-                        description: place.address,
-                      })
-                    }}
-                  />
-                </GoogleMapsProvider>
-                {profile.address && (
-                  <p className="mt-2 text-xs text-gray-600">
-                    📍 {profile.address}
-                  </p>
-                )}
+                <input
+                  type="text"
+                  value={profile.tagline}
+                  onChange={(e) =>
+                    setProfile({ ...profile, tagline: e.target.value })
+                  }
+                  placeholder="Contoh: Solusi Teknologi Terpercaya"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
               </div>
+            </div>
 
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Deskripsi Toko
+              </label>
+              <textarea
+                value={profile.description}
+                onChange={(e) =>
+                  setProfile({ ...profile, description: e.target.value })
+                }
+                placeholder="Jelaskan tentang toko Anda..."
+                rows={4}
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Alamat Lengkap <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={profile.address}
+                onChange={(e) =>
+                  setProfile({ ...profile, address: e.target.value })
+                }
+                placeholder="Masukkan alamat lengkap fisik toko (Jalan, No, RT/RW, Kecamatan)..."
+                rows={3}
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
                   Kota <span className="text-red-500">*</span>
@@ -538,288 +517,204 @@ export default function CreateMitraPage() {
                 <input
                   type="text"
                   value={profile.city}
-                  readOnly
-                  placeholder="Akan terisi otomatis dari Google Maps"
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3"
+                  onChange={(e) =>
+                    setProfile({ ...profile, city: e.target.value })
+                  }
+                  placeholder="Contoh: Jakarta Pusat"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  Kota akan terisi otomatis saat Anda memilih alamat
-                </p>
               </div>
-
-              {/* Features */}
               <div>
-                <label className="mb-3 block text-sm font-medium text-gray-700">
-                  Keunggulan Toko
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Provinsi <span className="text-red-500">*</span>
                 </label>
-                <div className="mb-4">
-                  <p className="mb-2 text-xs text-gray-500">
-                    Pilih dari saran:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {FEATURE_OPTIONS.map((feature) => (
-                      <button
-                        key={feature}
-                        type="button"
-                        onClick={() => toggleFeature(feature)}
-                        className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                          profile.features.includes(feature)
-                            ? 'bg-green-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {profile.features.includes(feature) && (
-                          <CheckCircle className="mr-1 inline h-4 w-4" />
-                        )}
-                        {feature}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom feature */}
-                <div className="mb-4">
-                  <p className="mb-2 text-xs text-gray-500">
-                    Atau tambahkan keunggulan custom:
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newFeature}
-                      onChange={(e) => setNewFeature(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && addCustomFeature()}
-                      placeholder="Contoh: Buka 24 Jam"
-                      maxLength={MAX_FEATURE_LENGTH}
-                      className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={addCustomFeature}
-                      className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                    >
-                      <Plus className="inline h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Selected features */}
-                {profile.features.length > 0 && (
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-gray-700">
-                      Keunggulan terpilih:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {profile.features.map((feature, index) => (
-                        <div
-                          key={index}
-                          className="group relative rounded-full bg-green-600 px-4 py-2 pr-8 text-sm font-medium text-white"
-                        >
-                          {feature}
-                          <button
-                            type="button"
-                            onClick={() => removeFeature(feature)}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-1 opacity-0 transition-all hover:bg-white/30 group-hover:opacity-100"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <input
+                  type="text"
+                  value={profile.province}
+                  onChange={(e) =>
+                    setProfile({ ...profile, province: e.target.value })
+                  }
+                  placeholder="Contoh: DKI Jakarta"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
               </div>
             </div>
-          )}
 
-          {/* Services Tab */}
-          {activeTab === 'services' && (
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">
-                Layanan yang Ditawarkan
-              </h3>
+            {/* Features */}
+            <div>
+              <label className="mb-3 block text-sm font-medium text-gray-700">
+                Keunggulan Toko
+              </label>
+              <div className="mb-4">
+                <p className="mb-2 text-xs text-gray-500">Pilih dari saran:</p>
+                <div className="flex flex-wrap gap-2">
+                  {FEATURE_OPTIONS.map((feature) => (
+                    <button
+                      key={feature}
+                      type="button"
+                      onClick={() => toggleFeature(feature)}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                        profile.features.includes(feature)
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {profile.features.includes(feature) && (
+                        <CheckCircle className="mr-1 inline h-4 w-4" />
+                      )}
+                      {feature}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-              {/* Add Service Form */}
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                  <select
-                    value={newService.icon}
-                    onChange={(e) =>
-                      setNewService({ ...newService, icon: e.target.value })
-                    }
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    {SERVICE_ICONS.map((icon) => (
-                      <option key={icon} value={icon}>
-                        {icon}
-                      </option>
-                    ))}
-                  </select>
+              {/* Custom feature */}
+              <div className="mb-4">
+                <p className="mb-2 text-xs text-gray-500">
+                  Atau tambahkan keunggulan custom:
+                </p>
+                <div className="flex gap-2">
                   <input
                     type="text"
-                    value={newService.name}
-                    onChange={(e) =>
-                      setNewService({ ...newService, name: e.target.value })
-                    }
-                    placeholder="Nama layanan"
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                  <input
-                    type="text"
-                    value={newService.price}
-                    onChange={(e) =>
-                      setNewService({ ...newService, price: e.target.value })
-                    }
-                    placeholder="Mulai dari Rp..."
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    value={newFeature}
+                    onChange={(e) => setNewFeature(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addCustomFeature()}
+                    placeholder="Contoh: Buka 24 Jam"
+                    maxLength={MAX_FEATURE_LENGTH}
+                    className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                   <button
-                    onClick={addService}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-green-600 font-medium text-white transition-all hover:bg-green-700"
+                    type="button"
+                    onClick={addCustomFeature}
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
                   >
-                    <Plus className="h-5 w-5" />
-                    Tambah
+                    <Plus className="inline h-4 w-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Services List */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {profile.services.map((service, index) => (
-                  <div
-                    key={index}
-                    className="group relative rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md"
-                  >
-                    <button
-                      onClick={() => removeService(index)}
-                      className="absolute right-2 top-2 rounded-full bg-red-100 p-1 text-red-600 opacity-0 transition-all hover:bg-red-600 hover:text-white group-hover:opacity-100"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                    <div className="mb-2 text-3xl">{service.icon}</div>
-                    <h4 className="font-semibold text-gray-900">
-                      {service.name}
-                    </h4>
-                    <p className="text-sm text-green-600">{service.price}</p>
+              {/* Selected features */}
+              {profile.features.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-medium text-gray-700">
+                    Keunggulan terpilih:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.features.map((feature, index) => (
+                      <div
+                        key={index}
+                        className="group relative rounded-full bg-green-600 px-4 py-2 pr-8 text-sm font-medium text-white"
+                      >
+                        {feature}
+                        <button
+                          type="button"
+                          onClick={() => removeFeature(feature)}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-1 opacity-0 transition-all hover:bg-white/30 group-hover:opacity-100"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {profile.services.length === 0 && (
-                  <div className="col-span-full py-12 text-center text-gray-400">
-                    Belum ada layanan. Tambahkan layanan pertama!
-                  </div>
-                )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Contact Tab */}
+        {activeTab === 'contact' && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-bold text-gray-900">
+              Kontak & Jam Operasional
+            </h3>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Phone className="h-4 w-4" /> Nomor Telepon{' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={profile.phone}
+                  onChange={(e) =>
+                    setProfile({ ...profile, phone: e.target.value })
+                  }
+                  placeholder="+62 812-xxxx-xxxx"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Mail className="h-4 w-4" /> Email
+                </label>
+                <input
+                  type="email"
+                  value={profile.email}
+                  onChange={(e) =>
+                    setProfile({ ...profile, email: e.target.value })
+                  }
+                  placeholder="toko@email.com"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Globe className="h-4 w-4" /> Website (opsional)
+                </label>
+                <input
+                  type="text"
+                  value={profile.website}
+                  onChange={(e) =>
+                    setProfile({ ...profile, website: e.target.value })
+                  }
+                  placeholder="www.toko-anda.com"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Clock className="h-4 w-4" /> Jam Buka (Weekday)
+                </label>
+                <input
+                  type="text"
+                  value={profile.hours.weekday}
+                  onChange={(e) =>
+                    setProfile({
+                      ...profile,
+                      hours: { ...profile.hours, weekday: e.target.value },
+                    })
+                  }
+                  placeholder="Senin - Sabtu: 09:00 - 18:00"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Clock className="h-4 w-4" /> Jam Buka (Weekend)
+                </label>
+                <input
+                  type="text"
+                  value={profile.hours.weekend}
+                  onChange={(e) =>
+                    setProfile({
+                      ...profile,
+                      hours: { ...profile.hours, weekend: e.target.value },
+                    })
+                  }
+                  placeholder="Minggu: Tutup / 10:00 - 15:00"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
               </div>
             </div>
-          )}
-
-          {/* Gallery Tab */}
-          {activeTab === 'gallery' && (
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">Galeri Foto</h3>
-
-              <MultiImageUpload
-                label="Galeri Foto Toko"
-                value={profile.gallery}
-                onChange={(urls) => setProfile({ ...profile, gallery: urls })}
-                maxImages={8}
-                folder="affiliate-gadget/gallery"
-              />
-            </div>
-          )}
-
-          {/* Contact Tab */}
-          {activeTab === 'contact' && (
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">
-                Kontak & Jam Operasional
-              </h3>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Phone className="h-4 w-4" /> Nomor Telepon{' '}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={profile.phone}
-                    onChange={(e) =>
-                      setProfile({ ...profile, phone: e.target.value })
-                    }
-                    placeholder="+62 812-xxxx-xxxx"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Mail className="h-4 w-4" /> Email
-                  </label>
-                  <input
-                    type="email"
-                    value={profile.email}
-                    onChange={(e) =>
-                      setProfile({ ...profile, email: e.target.value })
-                    }
-                    placeholder="toko@email.com"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Globe className="h-4 w-4" /> Website (opsional)
-                  </label>
-                  <input
-                    type="text"
-                    value={profile.website}
-                    onChange={(e) =>
-                      setProfile({ ...profile, website: e.target.value })
-                    }
-                    placeholder="www.toko-anda.com"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Clock className="h-4 w-4" /> Jam Buka (Weekday)
-                  </label>
-                  <input
-                    type="text"
-                    value={profile.hours.weekday}
-                    onChange={(e) =>
-                      setProfile({
-                        ...profile,
-                        hours: { ...profile.hours, weekday: e.target.value },
-                      })
-                    }
-                    placeholder="Senin - Sabtu: 09:00 - 18:00"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Clock className="h-4 w-4" /> Jam Buka (Weekend)
-                  </label>
-                  <input
-                    type="text"
-                    value={profile.hours.weekend}
-                    onChange={(e) =>
-                      setProfile({
-                        ...profile,
-                        hours: { ...profile.hours, weekend: e.target.value },
-                      })
-                    }
-                    placeholder="Minggu: Tutup / 10:00 - 15:00"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    )
+    </div>
+  )
 }
-

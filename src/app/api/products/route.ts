@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { auth } from '@/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -219,6 +220,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (
+      !session?.user ||
+      (session.user.role !== 'STORE_ADMIN' &&
+        session.user.role !== 'ADMIN' &&
+        session.user.role !== 'SUPER_ADMIN')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Akses ditolak. Silakan login sebagai pengelola toko atau admin.',
+        },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const {
       name,
@@ -248,11 +265,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Default to the first store if storeId not provided
+    // Role-based store resolution:
+    // STORE_ADMIN is strictly locked to their own storeId.
+    // SUPER_ADMIN / ADMIN can assign to any store.
     let finalStoreId = storeId
-    if (!finalStoreId) {
-      const firstStore = await prisma.store.findFirst()
-      finalStoreId = firstStore?.id
+    if (session.user.role === 'STORE_ADMIN') {
+      let storeAdminStoreId = session.user.storeId
+      if (!storeAdminStoreId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        storeAdminStoreId = u?.storeId || null
+      }
+      if (!storeAdminStoreId) {
+        return NextResponse.json(
+          {
+            error:
+              'Akun toko Anda belum terhubung dengan data cabang toko fisik.',
+          },
+          { status: 403 }
+        )
+      }
+      finalStoreId = storeAdminStoreId
+    } else {
+      if (!finalStoreId) {
+        const firstStore = await prisma.store.findFirst()
+        finalStoreId = firstStore?.id
+      }
     }
 
     const newProduct = await prisma.product.create({

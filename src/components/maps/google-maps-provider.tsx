@@ -15,11 +15,13 @@ const libraries: Libraries = ['places', 'geometry']
 interface GoogleMapsContextType {
   isLoaded: boolean
   loadError: Error | undefined
+  isConfigured: boolean
 }
 
 const GoogleMapsContext = createContext<GoogleMapsContextType>({
   isLoaded: false,
   loadError: undefined,
+  isConfigured: false,
 })
 
 export function useGoogleMaps() {
@@ -37,12 +39,16 @@ interface GoogleMapsProviderProps {
 // Track if Google Maps is already loaded globally
 let isGoogleMapsLoaded = false
 
-export default function GoogleMapsProvider({
+function GoogleMapsScriptLoader({
+  apiKey,
   children,
-}: GoogleMapsProviderProps) {
+}: {
+  apiKey: string
+  children: ReactNode
+}) {
   const [manuallyLoaded, setManuallyLoaded] = useState(false)
 
-  // Check if Google Maps is already available (loaded by another instance or external script)
+  // Check if Google Maps is already available
   useEffect(() => {
     if (typeof window !== 'undefined' && window.google?.maps?.places) {
       isGoogleMapsLoaded = true
@@ -50,11 +56,9 @@ export default function GoogleMapsProvider({
     }
   }, [])
 
-  // Only use useLoadScript if not already loaded
   const { isLoaded: hookLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    googleMapsApiKey: apiKey,
     libraries,
-    // Prevent loading if already loaded
     ...(isGoogleMapsLoaded || manuallyLoaded
       ? { preventGoogleFontsLoading: true }
       : {}),
@@ -62,7 +66,6 @@ export default function GoogleMapsProvider({
 
   const isLoaded = hookLoaded || manuallyLoaded || isGoogleMapsLoaded
 
-  // Update global flag when loaded
   useEffect(() => {
     if (hookLoaded) {
       isGoogleMapsLoaded = true
@@ -89,8 +92,38 @@ export default function GoogleMapsProvider({
   }
 
   return (
-    <GoogleMapsContext.Provider value={{ isLoaded, loadError }}>
+    <GoogleMapsContext.Provider
+      value={{
+        isLoaded,
+        loadError,
+        isConfigured: true,
+      }}
+    >
       {children}
     </GoogleMapsContext.Provider>
+  )
+}
+
+export default function GoogleMapsProvider({
+  children,
+}: GoogleMapsProviderProps) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || ''
+
+  if (!apiKey) {
+    return (
+      <GoogleMapsContext.Provider
+        value={{
+          isLoaded: false,
+          loadError: undefined,
+          isConfigured: false,
+        }}
+      >
+        {children}
+      </GoogleMapsContext.Provider>
+    )
+  }
+
+  return (
+    <GoogleMapsScriptLoader apiKey={apiKey}>{children}</GoogleMapsScriptLoader>
   )
 }

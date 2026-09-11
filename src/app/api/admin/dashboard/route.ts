@@ -13,6 +13,54 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (session.user.role === 'STORE_ADMIN') {
+      if (!session.user.storeId) {
+        return NextResponse.json({
+          stats: {
+            totalUsers: 0,
+            totalTechnicians: 0,
+            totalMitras: 0,
+            totalProducts: 0,
+            totalOrders: 0,
+            pendingMitras: 0,
+            byRole: {},
+          },
+          recentUsers: [],
+          charts: {
+            monthlyData: {},
+            topProducts: [],
+            topServices: [],
+            topRentals: [],
+          },
+        })
+      }
+
+      const storeId = session.user.storeId
+      const [totalProducts, totalOrders] = await Promise.all([
+        prisma.product.count({ where: { storeId, isActive: true } }),
+        prisma.order.count({ where: { storeId } }),
+      ])
+
+      return NextResponse.json({
+        stats: {
+          totalUsers: 0,
+          totalTechnicians: 0,
+          totalMitras: 0,
+          totalProducts,
+          totalOrders,
+          pendingMitras: 0,
+          byRole: {},
+        },
+        recentUsers: [],
+        charts: {
+          monthlyData: {},
+          topProducts: [],
+          topServices: [],
+          topRentals: [],
+        },
+      })
+    }
+
     // Get all stats in parallel
     const [
       totalUsers,

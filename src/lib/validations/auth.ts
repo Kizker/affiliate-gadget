@@ -106,9 +106,53 @@ export const resendVerificationSchema = z.object({
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Store Data Application schema
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const storeDataSchema = z.object({
+  userId: z.string().nullable().optional(),
+  storeName: z
+    .string()
+    .trim()
+    .min(3, 'Nama toko minimal 3 karakter')
+    .max(100, 'Nama toko maksimal 100 karakter'),
+  companyName: z
+    .string()
+    .trim()
+    .min(3, 'Nama PT/badan usaha minimal 3 karakter')
+    .max(150, 'Nama PT/badan usaha maksimal 150 karakter'),
+  taxId: z.string().trim().nullable().optional().or(z.literal('')),
+  address: z
+    .string()
+    .trim()
+    .min(10, 'Alamat fisik toko minimal 10 karakter')
+    .max(500, 'Alamat fisik toko maksimal 500 karakter'),
+  city: z
+    .string()
+    .trim()
+    .min(2, 'Nama kota minimal 2 karakter')
+    .max(100, 'Nama kota maksimal 100 karakter'),
+  province: z
+    .string()
+    .trim()
+    .min(2, 'Nama provinsi minimal 2 karakter')
+    .max(100, 'Nama provinsi maksimal 100 karakter'),
+  postalCode: z.string().trim().nullable().optional().or(z.literal('')),
+  phone: z
+    .string()
+    .trim()
+    .min(8, 'Nomor telepon minimal 8 karakter')
+    .max(20, 'Nomor telepon maksimal 20 karakter'),
+  bankName: z.string().trim().nullable().optional().or(z.literal('')),
+  accountNumber: z.string().trim().nullable().optional().or(z.literal('')),
+  accountName: z.string().trim().nullable().optional().or(z.literal('')),
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Inferred types
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type LoginInput = z.infer<typeof loginSchema>
 export type RegisterInput = z.infer<typeof registerSchema>
 export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>
+export type StoreDataInput = z.infer<typeof storeDataSchema>

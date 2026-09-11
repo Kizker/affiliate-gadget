@@ -1,6 +1,6 @@
 import 'next-auth'
 import '@auth/core/types'
-import { UserRole } from '@prisma/client'
+import { UserRole, MitraStatus } from '@prisma/client'
 
 declare module 'next-auth' {
   interface Session {
@@ -12,7 +12,7 @@ declare module 'next-auth' {
       role: UserRole
       storeId?: string | null
       isTechnician?: boolean
-      mitraStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null
+      mitraStatus?: MitraStatus | null
     }
   }
 
@@ -20,7 +20,7 @@ declare module 'next-auth' {
     role?: UserRole
     storeId?: string | null
     isTechnician?: boolean
-    mitraStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null
+    mitraStatus?: MitraStatus | null
   }
 }
 
@@ -29,7 +29,7 @@ declare module '@auth/core/types' {
     role?: UserRole
     storeId?: string | null
     isTechnician?: boolean
-    mitraStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null
+    mitraStatus?: MitraStatus | null
   }
 }
 

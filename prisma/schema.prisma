@@ -44,6 +44,7 @@ model User {
   assignedComplaints     Complaint[]        @relation("ComplaintAssignee")
   messages               messages[]
   mitra                  Mitra?
+  storeApplication       StoreApplication?
   notifications          Notification[]
   claimedOrders                     Order[]            @relation("ClaimedOrders")
   paymentRequestedOrders             Order[]            @relation("PaymentRequestedOrders")
@@ -939,6 +940,7 @@ enum CourierType {
 }
 
 enum MitraStatus {
+  NEEDS_STORE_DATA
   PENDING
   APPROVED
   REJECTED
@@ -1099,4 +1101,27 @@ enum ReturnStatus {
   APPROVED
   REJECTED
   COMPLETED
+}
+
+model StoreApplication {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  storeName       String
+  companyName     String
+  taxId           String?
+  address         String
+  city            String
+  province        String
+  postalCode      String?
+  phone           String
+  bankName        String?
+  accountNumber   String?
+  accountName     String?
+  rejectionReason String?
+  submittedAt     DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("store_applications")
 }

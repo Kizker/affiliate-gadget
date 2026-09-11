@@ -174,174 +174,169 @@ export function SectionHeroClean() {
                 className="relative flex h-[430px] w-full items-center justify-center sm:h-[460px]"
                 style={{ perspective: '1200px' }}
               >
-                {!mounted ? (
-                  // Skeleton placeholder that matches SSR — prevents hydration mismatch
-                  <div className="absolute h-[85%] w-[80%] animate-pulse rounded-3xl bg-slate-100 dark:bg-slate-800" />
-                ) : (
-                  showcaseItems.map((item, idx) => {
-                    // Calculate circular offset: -1 (left), 0 (center/front), 1 (right)
-                    let diff = (idx - activeSlide + totalSlides) % totalSlides
-                    if (diff === 2) diff = -1
+                {showcaseItems.map((item, idx) => {
+                  // Calculate circular offset: -1 (left), 0 (center/front), 1 (right)
+                  let diff = (idx - activeSlide + totalSlides) % totalSlides
+                  if (diff === 2) diff = -1
 
-                    const isCenter = diff === 0
-                    const isLeft = diff === -1
-                    const isRight = diff === 1
+                  const isCenter = diff === 0
+                  const isLeft = diff === -1
+                  const isRight = diff === 1
 
-                    // Motion values based on 3D depth position
-                    const motionValues = isCenter
+                  // Motion values based on 3D depth position
+                  const motionValues = isCenter
+                    ? {
+                        x: '0%',
+                        scale: 1,
+                        opacity: 1,
+                        rotateY: 0,
+                        zIndex: 30,
+                        filter: 'blur(0px)',
+                      }
+                    : isLeft
                       ? {
-                          x: '0%',
-                          scale: 1,
-                          opacity: 1,
-                          rotateY: 0,
-                          zIndex: 30,
-                          filter: 'blur(0px)',
+                          x: '-34%',
+                          scale: 0.84,
+                          opacity: 0.35,
+                          rotateY: 8,
+                          zIndex: 10,
+                          filter: 'blur(0.3px)',
                         }
-                      : isLeft
-                        ? {
-                            x: '-34%',
-                            scale: 0.84,
-                            opacity: 0.35,
-                            rotateY: 8,
-                            zIndex: 10,
-                            filter: 'blur(0.3px)',
-                          }
-                        : {
-                            x: '34%',
-                            scale: 0.84,
-                            opacity: 0.35,
-                            rotateY: -8,
-                            zIndex: 10,
-                            filter: 'blur(0.3px)',
-                          }
+                      : {
+                          x: '34%',
+                          scale: 0.84,
+                          opacity: 0.35,
+                          rotateY: -8,
+                          zIndex: 10,
+                          filter: 'blur(0.3px)',
+                        }
 
-                    return (
-                      <motion.div
-                        key={item.id}
-                        animate={motionValues}
-                        initial={false}
-                        transition={{
-                          type: 'spring',
-                          stiffness: 110,
-                          damping: 19,
-                          mass: 1.1,
-                        }}
-                        onClick={(e) => {
-                          if (isLeft)
-                            setActiveSlide(
-                              (prev) => (prev - 1 + totalSlides) % totalSlides
-                            )
-                          if (isRight)
-                            setActiveSlide((prev) => (prev + 1) % totalSlides)
-                          if (isCenter) {
-                            const target = e.target as HTMLElement
-                            if (
-                              !target.closest('a') &&
-                              !target.closest('button')
-                            ) {
-                              router.push(item.href)
-                            }
+                  return (
+                    <motion.div
+                      key={item.id}
+                      animate={motionValues}
+                      initial={false}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 110,
+                        damping: 19,
+                        mass: 1.1,
+                      }}
+                      onClick={(e) => {
+                        if (isLeft)
+                          setActiveSlide(
+                            (prev) => (prev - 1 + totalSlides) % totalSlides
+                          )
+                        if (isRight)
+                          setActiveSlide((prev) => (prev + 1) % totalSlides)
+                        if (isCenter) {
+                          const target = e.target as HTMLElement
+                          if (
+                            !target.closest('a') &&
+                            !target.closest('button')
+                          ) {
+                            router.push(item.href)
                           }
+                        }
+                      }}
+                      className={`absolute w-[86%] cursor-pointer overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-xl will-change-transform dark:border-slate-800 dark:bg-slate-900 sm:w-[80%] sm:p-5 ${
+                        isCenter
+                          ? 'shadow-2xl shadow-slate-900/15 dark:shadow-black/70'
+                          : 'hover:opacity-60'
+                      }`}
+                      style={{
+                        transformStyle: 'preserve-3d',
+                        transformOrigin: 'center center',
+                      }}
+                    >
+                      {/* Product Image Stage */}
+                      <Link
+                        href={isCenter ? item.href : '#'}
+                        onClick={(e) => {
+                          if (!isCenter) e.preventDefault()
                         }}
-                        className={`absolute w-[86%] cursor-pointer overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-xl will-change-transform dark:border-slate-800 dark:bg-slate-900 sm:w-[80%] sm:p-5 ${
-                          isCenter
-                            ? 'shadow-2xl shadow-slate-900/15 dark:shadow-black/70'
-                            : 'hover:opacity-60'
-                        }`}
-                        style={{
-                          transformStyle: 'preserve-3d',
-                          transformOrigin: 'center center',
-                        }}
+                        className={`block ${isCenter ? 'cursor-pointer' : ''}`}
                       >
-                        {/* Product Image Stage */}
+                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950">
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            priority={isCenter}
+                            sizes="(max-width: 640px) 100vw, 400px"
+                            unoptimized
+                            className="h-full w-full object-cover"
+                          />
+
+                          {/* Top-Left: Brand Badge */}
+                          <div className="absolute left-2.5 top-2.5 z-10 flex items-center gap-1 rounded-full bg-slate-950/85 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur-md">
+                            <Sparkles className="h-2.5 w-2.5 text-orange-400" />
+                            <span>{item.brand}</span>
+                          </div>
+
+                          {/* Top-Right: Solid Rating Capsule */}
+                          <div className="absolute right-2.5 top-2.5 z-10 flex items-center gap-1 rounded-full border border-slate-200/90 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-900 shadow-md dark:border-slate-700/80 dark:bg-slate-900 dark:text-white">
+                            <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+                            <span className="font-extrabold tabular-nums">
+                              {item.rating.toFixed(1)}
+                            </span>
+                            <span className="text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500">
+                              ({item.reviewCount})
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+
+                      {/* Product Metadata & Action (Consistent Fixed Height Layout) */}
+                      <div className="mt-3.5 space-y-2">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="max-w-[170px] truncate font-semibold text-blue-600 dark:text-blue-400">
+                            {item.tagline}
+                          </span>
+                          <span className="max-w-[140px] truncate text-right text-slate-400">
+                            {item.store}
+                          </span>
+                        </div>
+
                         <Link
                           href={isCenter ? item.href : '#'}
                           onClick={(e) => {
                             if (!isCenter) e.preventDefault()
                           }}
-                          className={`block ${isCenter ? 'cursor-pointer' : ''}`}
+                          className={`block ${isCenter ? 'cursor-pointer transition-colors hover:text-orange-600' : ''}`}
                         >
-                          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950">
-                            <Image
-                              src={item.image}
-                              alt={item.name}
-                              fill
-                              priority={isCenter}
-                              sizes="(max-width: 640px) 100vw, 400px"
-                              unoptimized
-                              className="h-full w-full object-cover"
-                            />
-
-                            {/* Top-Left: Brand Badge */}
-                            <div className="absolute left-2.5 top-2.5 z-10 flex items-center gap-1 rounded-full bg-slate-950/85 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur-md">
-                              <Sparkles className="h-2.5 w-2.5 text-orange-400" />
-                              <span>{item.brand}</span>
-                            </div>
-
-                            {/* Top-Right: Solid Rating Capsule */}
-                            <div className="absolute right-2.5 top-2.5 z-10 flex items-center gap-1 rounded-full border border-slate-200/90 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-900 shadow-md dark:border-slate-700/80 dark:bg-slate-900 dark:text-white">
-                              <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
-                              <span className="font-extrabold tabular-nums">
-                                {item.rating.toFixed(1)}
-                              </span>
-                              <span className="text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500">
-                                ({item.reviewCount})
-                              </span>
-                            </div>
-                          </div>
+                          <h3 className="truncate text-base font-black tracking-tight text-slate-950 transition-colors dark:text-white sm:text-lg">
+                            {item.name}
+                          </h3>
                         </Link>
 
-                        {/* Product Metadata & Action (Consistent Fixed Height Layout) */}
-                        <div className="mt-3.5 space-y-2">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="max-w-[170px] truncate font-semibold text-blue-600 dark:text-blue-400">
-                              {item.tagline}
+                        {/* Price & Action Button */}
+                        <div className="flex items-center justify-between border-t border-slate-100 pt-1 dark:border-slate-800/80">
+                          <div className="flex flex-col">
+                            <span className="text-lg font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
+                              {item.price}
                             </span>
-                            <span className="max-w-[140px] truncate text-right text-slate-400">
-                              {item.store}
+                            <span className="text-[10px] tabular-nums text-slate-400 line-through">
+                              {item.originalPrice}
                             </span>
                           </div>
 
-                          <Link
-                            href={isCenter ? item.href : '#'}
-                            onClick={(e) => {
-                              if (!isCenter) e.preventDefault()
-                            }}
-                            className={`block ${isCenter ? 'cursor-pointer transition-colors hover:text-orange-600' : ''}`}
+                          <div
+                            className={`transition-opacity duration-300 ${isCenter ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
                           >
-                            <h3 className="truncate text-base font-black tracking-tight text-slate-950 transition-colors dark:text-white sm:text-lg">
-                              {item.name}
-                            </h3>
-                          </Link>
-
-                          {/* Price & Action Button */}
-                          <div className="flex items-center justify-between border-t border-slate-100 pt-1 dark:border-slate-800/80">
-                            <div className="flex flex-col">
-                              <span className="text-lg font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
-                                {item.price}
-                              </span>
-                              <span className="text-[10px] tabular-nums text-slate-400 line-through">
-                                {item.originalPrice}
-                              </span>
-                            </div>
-
-                            <div
-                              className={`transition-opacity duration-300 ${isCenter ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+                            <Link
+                              href={item.href}
+                              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95"
                             >
-                              <Link
-                                href={item.href}
-                                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95"
-                              >
-                                <span>Beli Sekarang</span>
-                                <ArrowRight className="h-3.5 w-3.5" />
-                              </Link>
-                            </div>
+                              <span>Beli Sekarang</span>
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
                           </div>
                         </div>
-                      </motion.div>
-                    )
-                  })
-                )}
+                      </div>
+                    </motion.div>
+                  )
+                })}
               </div>
             </div>
           </div>

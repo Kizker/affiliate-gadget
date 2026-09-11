@@ -478,8 +478,13 @@ export default function MitraDashboard() {
       const profileResponse = await fetch('/api/mitra/profile')
 
       if (profileResponse.status === 404) {
-        // No profile, redirect to edit
-        router.push('/dashboard/mitra/profile/edit')
+        const mitraStatus = (session?.user as { mitraStatus?: string })
+          ?.mitraStatus
+        if (session?.user?.role === 'MITRA' && mitraStatus !== 'APPROVED') {
+          router.push('/dashboard/mitra/pending')
+        } else {
+          router.push('/dashboard/mitra/profile/edit')
+        }
         return
       }
 
@@ -529,9 +534,15 @@ export default function MitraDashboard() {
 
   useEffect(() => {
     if (status === 'authenticated') {
+      const mitraStatus = (session?.user as { mitraStatus?: string })
+        ?.mitraStatus
+      if (session?.user?.role === 'MITRA' && mitraStatus !== 'APPROVED') {
+        router.push('/dashboard/mitra/pending')
+        return
+      }
       fetchAnalytics()
     }
-  }, [status, fetchAnalytics])
+  }, [status, session, router, fetchAnalytics])
 
   // Auto-refresh analytics every 30 seconds
   useEffect(() => {

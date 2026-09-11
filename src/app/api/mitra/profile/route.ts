@@ -11,13 +11,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is a mitra
+    // Check if user is a mitra or store admin
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true },
+      select: {
+        role: true,
+        storeApplication: true,
+      },
     })
 
-    if (user?.role !== 'MITRA') {
+    if (user?.role !== 'MITRA' && user?.role !== 'STORE_ADMIN') {
       return NextResponse.json(
         { error: 'User is not a mitra' },
         { status: 403 }
@@ -38,6 +41,19 @@ export async function GET() {
     })
 
     if (!mitra) {
+      if (user?.storeApplication) {
+        return NextResponse.json({
+          businessName: user.storeApplication.storeName,
+          companyName: user.storeApplication.companyName,
+          address: user.storeApplication.address,
+          city: user.storeApplication.city,
+          province: user.storeApplication.province,
+          phone: user.storeApplication.phone,
+          services: [],
+          images: [],
+          features: [],
+        })
+      }
       return NextResponse.json(
         { error: 'Mitra profile not found' },
         { status: 404 }
@@ -63,25 +79,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is a mitra
+    // Check if user is a mitra or store admin
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true, mitraStatus: true },
+      select: { id: true, role: true, mitraStatus: true, storeId: true },
     })
 
-    if (user?.role !== 'MITRA') {
+    if (user?.role !== 'MITRA' && user?.role !== 'STORE_ADMIN') {
       return NextResponse.json(
         { error: 'User is not a mitra' },
         { status: 403 }
       )
     }
 
-    if (user?.mitraStatus !== 'APPROVED') {
-      return NextResponse.json(
-        { error: 'Mitra account is not approved yet' },
-        { status: 403 }
-      )
-    }
+    const isAlreadyApproved =
+      user?.mitraStatus === 'APPROVED' || user?.role === 'STORE_ADMIN'
 
     const body = await request.json()
 
@@ -123,7 +135,7 @@ export async function POST(request: NextRequest) {
           weekendHours: body.weekendHours || null,
           latitude: body.latitude || null,
           longitude: body.longitude || null,
-          // Delete existing services and images, will be recreated
+          isApproved: isAlreadyApproved ? true : false,
         },
         include: {
           services: true,
@@ -159,7 +171,7 @@ export async function POST(request: NextRequest) {
           weekendHours: body.weekendHours || null,
           latitude: body.latitude || null,
           longitude: body.longitude || null,
-          isApproved: true, // Auto-approve since user is already approved
+          isApproved: isAlreadyApproved ? true : false,
         },
         include: {
           services: true,
@@ -176,13 +188,13 @@ export async function POST(request: NextRequest) {
             name: string
             description?: string
             icon?: string
-            price?: number
+            price?: number | string
           }) => ({
             mitraId: mitra.id,
             name: service.name,
             description: service.description || null,
             icon: service.icon || null,
-            price: service.price || null,
+            price: service.price ? String(service.price) : null,
           })
         ),
       })
@@ -199,6 +211,65 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // If unapproved mitra submits profile, mark status as PENDING and upsert StoreApplication
+    // so Superadmin can review and approve it in Admin CMS
+    if (!isAlreadyApproved) {
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: session.user.id },
+          data: {
+            mitraStatus: 'PENDING',
+          },
+        }),
+        prisma.storeApplication.upsert({
+          where: { userId: session.user.id },
+          create: {
+            userId: session.user.id,
+            storeName: body.businessName,
+            companyName: body.companyName || body.businessName,
+            taxId: body.taxId || null,
+            address: body.address,
+            city: body.city,
+            province: body.province || 'Indonesia',
+            postalCode: body.postalCode || null,
+            phone: body.phone,
+            bankName: body.bankName || null,
+            accountNumber: body.accountNumber || null,
+            accountName: body.accountName || null,
+            rejectionReason: null,
+          },
+          update: {
+            storeName: body.businessName,
+            companyName: body.companyName || body.businessName,
+            taxId: body.taxId || null,
+            address: body.address,
+            city: body.city,
+            province: body.province || 'Indonesia',
+            postalCode: body.postalCode || null,
+            phone: body.phone,
+            bankName: body.bankName || null,
+            accountNumber: body.accountNumber || null,
+            accountName: body.accountName || null,
+            rejectionReason: null,
+          },
+        }),
+      ])
+    } else if (user?.storeId) {
+      // If store is already approved and has storeId, keep Store record in sync
+      await prisma.store.update({
+        where: { id: user.storeId },
+        data: {
+          name: body.businessName,
+          address: body.address,
+          city: body.city,
+          province: body.province || undefined,
+          phone: body.phone,
+          tagline: body.tagline || undefined,
+          description: body.description || undefined,
+        },
+      })
+    }
+
     // Fetch updated mitra with relations
     const updatedMitra = await prisma.mitra.findUnique({
       where: { id: mitra.id },
@@ -212,7 +283,11 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(updatedMitra)
+    return NextResponse.json({
+      ...updatedMitra,
+      isPendingReview: !isAlreadyApproved,
+      mitraStatus: isAlreadyApproved ? 'APPROVED' : 'PENDING',
+    })
   } catch (error) {
     console.error('Error saving mitra profile:', error)
     const errorMessage =

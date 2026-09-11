@@ -13,11 +13,16 @@ const ADMIN_STAFF_ROLES = [
   'CONTENT_EDITOR',
 ]
 
-function getCmsDashboardUrl(role?: string | null, mitraStatus?: string | null): string {
+function getCmsDashboardUrl(
+  role?: string | null,
+  mitraStatus?: string | null
+): string {
   if (role && ADMIN_STAFF_ROLES.includes(role)) return '/dashboard/admin'
   if (role === 'TECHNICIAN') return '/dashboard/teknisi'
   if (role === 'MITRA') {
-    return mitraStatus === 'PENDING' ? '/dashboard/mitra/pending' : '/dashboard/mitra'
+    return mitraStatus === 'APPROVED'
+      ? '/dashboard/mitra'
+      : '/dashboard/mitra/pending'
   }
   return '/'
 }
@@ -30,9 +35,11 @@ export default auth((req) => {
   const isAdminRoute = pathname.startsWith('/dashboard/admin')
   const isMitraRoute = pathname.startsWith('/dashboard/mitra')
   const isTechnicianRoute = pathname.startsWith('/dashboard/teknisi')
-  const isDashboardGenericRoute = pathname === '/dashboard' || pathname === '/dashboard/customer'
+  const isDashboardGenericRoute =
+    pathname === '/dashboard' || pathname === '/dashboard/customer'
   const isAuthRoute = pathname === '/login' || pathname === '/register'
-  const isCartOrCheckout = pathname.startsWith('/cart') || pathname.startsWith('/checkout')
+  const isCartOrCheckout =
+    pathname.startsWith('/cart') || pathname.startsWith('/checkout')
   const isRootPublicRoute = pathname === '/'
 
   // Protected routes that require authentication
@@ -71,8 +78,22 @@ export default auth((req) => {
     if (isStaffOrPartner) {
       const destinationCms = getCmsDashboardUrl(userRole, mitraStatus)
 
+      // Exception: Calon mitra yang baru mendaftar (NEEDS_STORE_DATA) diizinkan tetap di /register untuk mengisi Step 2 (Form Data Toko)
+      if (
+        isMitra &&
+        mitraStatus === 'NEEDS_STORE_DATA' &&
+        pathname === '/register'
+      ) {
+        return NextResponse.next()
+      }
+
       // Redirect dari halaman publik root (/), login, register, cart, checkout, atau generic dashboard
-      if (isRootPublicRoute || isAuthRoute || isCartOrCheckout || isDashboardGenericRoute) {
+      if (
+        isRootPublicRoute ||
+        isAuthRoute ||
+        isCartOrCheckout ||
+        isDashboardGenericRoute
+      ) {
         return NextResponse.redirect(new URL(destinationCms, req.url))
       }
 
@@ -91,17 +112,30 @@ export default auth((req) => {
         if (!isMitra) {
           return NextResponse.redirect(new URL(destinationCms, req.url))
         }
-        if (mitraStatus === 'PENDING' && !pathname.startsWith('/dashboard/mitra/pending')) {
-          return NextResponse.redirect(new URL('/dashboard/mitra/pending', req.url))
+        if (
+          mitraStatus !== 'APPROVED' &&
+          !pathname.startsWith('/dashboard/mitra/pending')
+        ) {
+          return NextResponse.redirect(
+            new URL('/dashboard/mitra/pending', req.url)
+          )
         }
-        if (mitraStatus === 'APPROVED' && pathname.startsWith('/dashboard/mitra/pending')) {
+        if (
+          mitraStatus === 'APPROVED' &&
+          pathname.startsWith('/dashboard/mitra/pending')
+        ) {
           return NextResponse.redirect(new URL('/dashboard/mitra', req.url))
         }
       }
     } else {
       // B. Customer Role
       // Jika mengakses area dashboard admin/mitra/teknisi/dashboard umum -> kembalikan ke beranda publik
-      if (isAdminRoute || isMitraRoute || isTechnicianRoute || isDashboardGenericRoute) {
+      if (
+        isAdminRoute ||
+        isMitraRoute ||
+        isTechnicianRoute ||
+        isDashboardGenericRoute
+      ) {
         return NextResponse.redirect(new URL('/', req.url))
       }
       if (isAuthRoute) {
@@ -147,4 +181,3 @@ export const config = {
     '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|site.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|bmp|woff|woff2|ttf|eot|mp4|webm|pdf)$).*)',
   ],
 }
-

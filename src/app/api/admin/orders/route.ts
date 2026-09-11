@@ -35,7 +35,26 @@ export async function GET(request: Request) {
     const andConditions: import('@prisma/client').Prisma.OrderWhereInput[] = []
 
     // 1. Store Admin scoping (Akun Toko Mandiri)
-    if (user.role === 'STORE_ADMIN' && user.storeId) {
+    if (user.role === 'STORE_ADMIN') {
+      if (!user.storeId) {
+        return NextResponse.json({
+          orders: [],
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          },
+          stats: {
+            total: 0,
+            pendingPayment: 0,
+            paid: 0,
+            inProgress: 0,
+            completed: 0,
+            cancelled: 0,
+          },
+        })
+      }
       andConditions.push({
         OR: [
           { storeId: user.storeId },
@@ -60,7 +79,13 @@ export async function GET(request: Request) {
           { user: { name: { contains: search, mode: 'insensitive' } } },
           { user: { email: { contains: search, mode: 'insensitive' } } },
           { user: { phone: { contains: search, mode: 'insensitive' } } },
-          { items: { some: { product: { name: { contains: search, mode: 'insensitive' } } } } },
+          {
+            items: {
+              some: {
+                product: { name: { contains: search, mode: 'insensitive' } },
+              },
+            },
+          },
         ],
       })
     }

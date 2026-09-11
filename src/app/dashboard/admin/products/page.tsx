@@ -89,9 +89,10 @@ export default function ProductsPage() {
   const brands = ['ALL', 'Apple', 'Samsung', 'Xiaomi', 'ASUS', 'Vivo', 'Oppo']
 
   const fetchProducts = useCallback(async () => {
+    if (status === 'loading') return
     setLoading(true)
     try {
-      let url = '/api/gadgets?'
+      let url = '/api/gadgets?scoped=true&'
       if (selectedBrand !== 'ALL')
         url += `brand=${encodeURIComponent(selectedBrand)}&`
       if (isStoreAdmin && userStoreId)
@@ -108,7 +109,7 @@ export default function ProductsPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedBrand, isStoreAdmin, userStoreId])
+  }, [selectedBrand, isStoreAdmin, userStoreId, status])
 
   useEffect(() => {
     fetchProducts()

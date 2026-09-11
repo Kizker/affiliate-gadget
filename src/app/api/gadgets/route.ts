@@ -1,14 +1,37 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { auth } from '@/auth'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const brand = searchParams.get('brand') || ''
-    const storeId = searchParams.get('storeId') || ''
-    const minPrice = searchParams.get('minPrice') ? parseFloat(searchParams.get('minPrice')!) : undefined
-    const maxPrice = searchParams.get('maxPrice') ? parseFloat(searchParams.get('maxPrice')!) : undefined
+    let storeId = searchParams.get('storeId') || ''
+    const scoped = searchParams.get('scoped') === 'true'
+    const minPrice = searchParams.get('minPrice')
+      ? parseFloat(searchParams.get('minPrice')!)
+      : undefined
+    const maxPrice = searchParams.get('maxPrice')
+      ? parseFloat(searchParams.get('maxPrice')!)
+      : undefined
+
+    if (scoped && !storeId) {
+      const session = await auth()
+      if (session?.user?.role === 'STORE_ADMIN') {
+        let effectiveStoreId = session.user.storeId
+        if (!effectiveStoreId && session.user.id) {
+          const u = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { storeId: true },
+          })
+          effectiveStoreId = u?.storeId || null
+        }
+        if (effectiveStoreId) {
+          storeId = effectiveStoreId
+        }
+      }
+    }
 
     const where: any = {
       isActive: true,
@@ -52,10 +75,7 @@ export async function GET(request: Request) {
         },
         variants: true,
       },
-      orderBy: [
-        { promotionPriority: 'desc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ promotionPriority: 'desc' }, { createdAt: 'desc' }],
     })
 
     return NextResponse.json(
@@ -71,6 +91,9 @@ export async function GET(request: Request) {
     )
   } catch (error) {
     console.error('Error fetching gadgets:', error)
-    return NextResponse.json({ success: false, error: 'Gagal memuat katalog gadget' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: 'Gagal memuat katalog gadget' },
+      { status: 500 }
+    )
   }
 }

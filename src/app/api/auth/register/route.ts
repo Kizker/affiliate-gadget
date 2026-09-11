@@ -141,12 +141,14 @@ export async function POST(req: NextRequest) {
         role: role as 'CUSTOMER' | 'MITRA',
         isActive: true, // [DEV-MODE] Active immediately (original: false pending email verification)
         emailVerified: new Date(), // [DEV-MODE] Auto-verified (original: null)
-        mitraStatus: role === 'MITRA' ? 'PENDING' : null,
+        mitraStatus: role === 'MITRA' ? 'NEEDS_STORE_DATA' : null,
       },
       select: {
         id: true,
         name: true,
         email: true,
+        role: true,
+        mitraStatus: true,
       },
     })
 
@@ -180,7 +182,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       {
-        message: 'Registrasi berhasil! Akun Anda telah siap digunakan.',
+        message:
+          role === 'MITRA'
+            ? 'Akun dasar mitra berhasil dibuat. Silakan lengkapi data toko Anda.'
+            : 'Registrasi berhasil! Akun Anda telah siap digunakan.',
+        userId: newUser.id,
+        role: newUser.role,
+        needsStoreData: role === 'MITRA',
       },
       { status: 201 }
     )

@@ -53,7 +53,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Store Admin (Akun Toko) strictly manages products for their own store
-    if (session.user.role === 'STORE_ADMIN' && session.user.storeId) {
+    if (session.user.role === 'STORE_ADMIN') {
+      if (!session.user.storeId) {
+        return NextResponse.json({
+          products: [],
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          },
+          stats: {
+            total: 0,
+            active: 0,
+            lowStock: 0,
+            outOfStock: 0,
+          },
+        })
+      }
       where.storeId = session.user.storeId
     }
 
@@ -148,7 +165,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create product
-    const storeIdToAssign = body.storeId || (session.user.role === 'STORE_ADMIN' ? session.user.storeId : undefined)
+    const storeIdToAssign =
+      body.storeId ||
+      (session.user.role === 'STORE_ADMIN' ? session.user.storeId : undefined)
 
     const product = await prisma.product.create({
       data: {

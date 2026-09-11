@@ -95,6 +95,15 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-11 (Mitra Onboarding Lifecycle, Store Scope Isolation, Dedicated Detail Page & Modern Dialog System):**
+  - **1. Mitra Onboarding & Store Application Architecture:** Integrasi form registrasi mitra toko offline (`/register` & `/api/auth/register/store-data`), model database `StoreApplication`, penanganan status pendaftaran `PENDING`, upload dokumen legalitas PT, dan rekening bank mandiri toko.
+  - **2. Single-Store Role Isolation (`STORE_ADMIN`):** Isolasi kepemilikan toko berbasis `storeId` pada dashboard mitra, manajemen produk, manajemen pesanan, omzet toko, dan sidebar. Akun cabang toko mandiri hanya melihat inventori & transaksi toko fisiknya sendiri tanpa bercampur dengan toko lain.
+  - **3. Mitra Pending Review Status & Revalidation Fix:** Penyempurnaan halaman `/dashboard/mitra/pending` dengan sinkronisasi status otomatis, eliminasi hydration mismatch, dan penanganan tombol refresh berkala tanpa looping reloads.
+  - **4. Dedicated Mitra Detail Page ([`/dashboard/admin/mitras/[id]`](file:///src/app/dashboard/admin/mitras/[id]/page.tsx)):** Transformasi modal popup usang menjadi halaman detail penuh yang mewah dan responsif, dilengkapi kartu bento identitas badan usaha PT, jam operasional, rekening bank, peta lokasi GPS, dan riwayat pengajuan.
+  - **5. Tab Table Synchronization & Compact Address Layout:** Sinkronisasi visual presisi antara tab "Semua Toko" dan "Menunggu Review" (`table-fixed`, format alamat ringkas 2-baris, dan tombol aksi kapsul `rounded-full`).
+  - **6. Modern Dialog System (Zero Native Browser Alerts):** Menggantikan seluruh `confirm()` dan `alert()` bawaan browser saat menyetujui, menolak, atau menghapus toko dengan modal dialog modern (`ApproveModal`, `RejectModal`, `DeleteModal`) berlatar glassmorphism dan rincian konsekuensi aksi.
+  - **7. Verification & Test Suite:** 100% lulus kompilasi TypeScript (`pnpm tsc --noEmit` = 0 error) dan 11 test suites dengan 102 unit tests lulus 100% (`pnpm test:unit`).
+
 - **2026-09-10 (Order-to-Store Chat Linking, Product Card Render Fix & Direct Room Auto-Selection):**
   - **1. Order-to-Store Chat Resolution ([`store-room/route.ts`](file:///src/app/api/customer/chat/store-room/route.ts)):** Menerima parameter `orderId`, menyelesaikan relasi `storeId` secara otomatis via database query ke tabel `Order`, memetakan pesanan ke kamar chat toko cabang terkait atau kamar spesifik pesanan tanpa duplikasi.
   - **2. Customer Chat Auto-Open & Selection ([`chat/page.tsx`](file:///src/app/dashboard/customer/chat/page.tsx)):** Ekstraksi parameter `orderId`, proteksi auto-select desktop dari pembukaan kamar default yang salah, inisialisasi kamar chat toko otomatis, sinkronisasi URL state `?orderId=...` secara bersih, dan aktivasi langsung ruang chat toko pada antarmuka pelanggan.

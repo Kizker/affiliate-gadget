@@ -140,14 +140,52 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Only include authorized callback from authConfig
     authorized: authConfig.callbacks?.authorized,
     async jwt({ token, user, trigger, session }: any) {
-      // Handle client-side session update (e.g. after uploading a new profile picture)
-      if (trigger === 'update' && session) {
-        const updateData = session.user || session
-        if (updateData.image !== undefined) {
-          token.image = updateData.image
+      // Handle client-side session update (e.g. after status change, role upgrade, or profile edit)
+      if (trigger === 'update') {
+        if (token.id) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.id },
+              select: {
+                name: true,
+                image: true,
+                role: true,
+                storeId: true,
+                mitraStatus: true,
+                technician: { select: { id: true } },
+              },
+            })
+            if (dbUser) {
+              token.name = dbUser.name
+              token.role = dbUser.role
+              token.storeId = dbUser.storeId
+              token.mitraStatus = dbUser.mitraStatus
+              token.isTechnician = !!dbUser.technician
+              if (
+                dbUser.image &&
+                !dbUser.image.startsWith('data:') &&
+                dbUser.image.length < 500
+              ) {
+                token.image = dbUser.image
+              }
+            }
+          } catch (e) {
+            console.error(
+              'Error refreshing token from DB on update trigger:',
+              e
+            )
+          }
         }
-        if (updateData.name !== undefined) {
-          token.name = updateData.name
+
+        if (session) {
+          const updateData = session.user || session
+          if (updateData.image !== undefined) token.image = updateData.image
+          if (updateData.name !== undefined) token.name = updateData.name
+          if (updateData.role !== undefined) token.role = updateData.role
+          if (updateData.mitraStatus !== undefined)
+            token.mitraStatus = updateData.mitraStatus
+          if (updateData.storeId !== undefined)
+            token.storeId = updateData.storeId
         }
       }
 
@@ -169,6 +207,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.isTechnician = (user as any).isTechnician || false
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.mitraStatus = (user as any).mitraStatus || null
+      }
+
+      // If token is missing storeId, check if database now has storeId linked
+      if (token.id && !token.storeId) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { storeId: true, role: true },
+          })
+          if (dbUser?.storeId) {
+            token.storeId = dbUser.storeId
+            token.role = dbUser.role
+          }
+        } catch {
+          // ignore error to avoid blocking jwt
+        }
       }
 
       // Remove raw huge picture to prevent bloat

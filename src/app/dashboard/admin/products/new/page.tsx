@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import {
   ArrowLeft,
   Smartphone,
@@ -22,6 +23,10 @@ import { formatRupiahInput, parseRupiahInput } from '@/lib/utils'
 
 export default function NewGadgetProductPage() {
   const router = useRouter()
+  const { data: session } = useSession()
+  const isStoreAdmin = session?.user?.role === 'STORE_ADMIN'
+  const userStoreId = session?.user?.storeId
+
   const [loading, setLoading] = useState(false)
   const [stores, setStores] = useState<any[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -75,29 +80,47 @@ export default function NewGadgetProductPage() {
     },
   ])
 
+  const fetchStores = useCallback(async () => {
+    try {
+      const res = await fetch('/api/stores?scoped=true')
+      const data = await res.json()
+      if (data.success && data.data) {
+        let storeList = data.data
+        if (isStoreAdmin && userStoreId) {
+          const matched = storeList.filter((s: any) => s.id === userStoreId)
+          if (matched.length > 0) {
+            storeList = matched
+          }
+        }
+        setStores(storeList)
+        if (isStoreAdmin && userStoreId) {
+          setForm((prev) => ({ ...prev, storeId: userStoreId }))
+        } else if (storeList.length > 0) {
+          setForm((prev) => ({
+            ...prev,
+            storeId: prev.storeId || storeList[0].id,
+          }))
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }, [isStoreAdmin, userStoreId])
+
   useEffect(() => {
     fetchStores()
     // Revoke blob URLs on unmount
     return () => {
       imagePreviews.forEach((url) => URL.revokeObjectURL(url))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fetchStores])
 
-  const fetchStores = async () => {
-    try {
-      const res = await fetch('/api/stores')
-      const data = await res.json()
-      if (data.success && data.data) {
-        setStores(data.data)
-        if (data.data.length > 0) {
-          setForm((prev) => ({ ...prev, storeId: data.data[0].id }))
-        }
-      }
-    } catch (e) {
-      console.error(e)
+  // Sync storeId whenever session loads userStoreId
+  useEffect(() => {
+    if (isStoreAdmin && userStoreId) {
+      setForm((prev) => ({ ...prev, storeId: userStoreId }))
     }
-  }
+  }, [isStoreAdmin, userStoreId])
 
   const addVariant = () => {
     setVariants((prev) => [
@@ -215,8 +238,16 @@ export default function NewGadgetProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const numericPrice = parseRupiahInput(form.price)
+    const finalStoreId =
+      isStoreAdmin && userStoreId ? userStoreId : form.storeId
+
     if (!form.name || !numericPrice) {
       toast.error('Nama gadget dan harga wajib diisi')
+      return
+    }
+
+    if (!finalStoreId) {
+      toast.error('Toko pemilik wajib dipilih')
       return
     }
 
@@ -234,6 +265,7 @@ export default function NewGadgetProductPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          storeId: finalStoreId,
           images: finalImages,
           price: numericPrice,
           originalPrice: form.originalPrice
@@ -326,20 +358,46 @@ export default function NewGadgetProductPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Toko Pemilik *
-              </label>
-              <select
-                value={form.storeId}
-                onChange={(e) => setForm({ ...form, storeId: e.target.value })}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                {stores.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.city || 'Indonesia'})
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Toko Pemilik *
+                </label>
+                {isStoreAdmin && (
+                  <span className="rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                    Toko Anda (Otomatis)
+                  </span>
+                )}
+              </div>
+
+              {isStoreAdmin ? (
+                stores.length > 0 ? (
+                  <div className="flex items-center gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-100/80 px-4 py-3 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200">
+                    <Building2 className="h-4 w-4 shrink-0 text-orange-500" />
+                    <span className="truncate">
+                      {stores[0].name} ({stores[0].city || 'Indonesia'})
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-100/80 px-4 py-3 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Memuat cabang toko Anda...</span>
+                  </div>
+                )
+              ) : (
+                <select
+                  value={form.storeId}
+                  onChange={(e) =>
+                    setForm({ ...form, storeId: e.target.value })
+                  }
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  {stores.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.city || 'Indonesia'})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="space-y-1.5">

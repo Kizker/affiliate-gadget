@@ -218,6 +218,11 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
   const pathname = usePathname()
   const { data: session } = useSession()
 
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const [liveAvatar, setLiveAvatar] = useState<string | null>(null)
 
   useEffect(() => {
@@ -238,7 +243,9 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
       window.removeEventListener('profile-updated', handleProfileUpdated)
   }, [])
 
-  const displayUserImage = liveAvatar || session?.user?.image || null
+  const displayUserImage = mounted
+    ? liveAvatar || session?.user?.image || null
+    : null
 
   const isMobileOpen = sidebarCtx ? sidebarCtx.isMobileOpen : localOpen
   const isCollapsed = sidebarCtx ? sidebarCtx.isCollapsed : false
@@ -262,7 +269,15 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
     }
   }
 
-  const effectiveRole = forceRole || session?.user.role
+  const fallbackRole = useMemo(() => {
+    if (pathname.startsWith('/dashboard/mitra')) return 'STORE_ADMIN'
+    if (pathname.startsWith('/dashboard/customer')) return 'CUSTOMER'
+    if (pathname.startsWith('/dashboard/teknisi')) return 'TECHNICIAN'
+    return 'SUPER_ADMIN'
+  }, [pathname])
+
+  const effectiveRole =
+    forceRole || (mounted ? session?.user?.role : fallbackRole) || fallbackRole
 
   // Determine sections based on user role
   const navSections = useMemo(() => {
@@ -292,18 +307,21 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
 
   // Get user initials
   const userInitials = useMemo(() => {
-    const name = session?.user?.name || 'Admin'
+    const name =
+      (mounted ? session?.user?.name : null) ||
+      (effectiveRole === 'STORE_ADMIN' ? 'Mitra Toko' : 'Admin')
     const parts = name.trim().split(' ')
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
     }
     return name.slice(0, 2).toUpperCase()
-  }, [session?.user?.name])
+  }, [mounted, session?.user?.name, effectiveRole])
 
   return (
     <>
       {/* Mobile Menu Toggle Button (Floating when header is not visible) */}
       <button
+        suppressHydrationWarning
         onClick={toggleMobile}
         aria-label={isMobileOpen ? 'Tutup Menu Navigasi' : 'Buka Menu Navigasi'}
         className={`fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 bg-white/90 text-slate-800 shadow-md backdrop-blur-md transition-all active:scale-95 dark:border-slate-800 dark:bg-slate-900/90 dark:text-white lg:hidden`}
@@ -325,6 +343,7 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
 
       {/* Sidebar Container */}
       <aside
+        suppressHydrationWarning
         className={`fixed left-0 top-0 z-40 h-screen transform border-r transition-all duration-300 ease-in-out ${
           isMobileOpen
             ? 'w-64 translate-x-0'
@@ -353,7 +372,10 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                     alt="Affiliate Gadget Logo"
                     className="shadow-2xs h-7 w-7 shrink-0 rounded-lg object-contain"
                   />
-                  <div className="flex min-w-0 flex-col">
+                  <div
+                    className="flex min-w-0 flex-col"
+                    suppressHydrationWarning
+                  >
                     <span className="truncate text-sm font-black leading-tight tracking-tight text-slate-950 dark:text-white">
                       Affiliate<span className="text-orange-500">Gadget</span>
                     </span>
@@ -534,8 +556,14 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
 
             {/* User Profile Section */}
             {!isCollapsed ? (
-              <div className="shadow-2xs flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex min-w-0 items-center gap-2.5">
+              <div
+                suppressHydrationWarning
+                className="shadow-2xs flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-2 dark:border-slate-800 dark:bg-slate-900"
+              >
+                <div
+                  className="flex min-w-0 items-center gap-2.5"
+                  suppressHydrationWarning
+                >
                   {/* User Avatar */}
                   {displayUserImage ? (
                     <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-lg border border-slate-200/80 bg-slate-100 dark:border-slate-700">
@@ -554,20 +582,36 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                   )}
 
                   {/* User Info */}
-                  <div className="flex min-w-0 flex-col">
-                    <p className="truncate text-xs font-semibold leading-tight text-slate-900 dark:text-white">
-                      {(session?.user?.name || 'Administrator')
+                  <div
+                    className="flex min-w-0 flex-col"
+                    suppressHydrationWarning
+                  >
+                    <p
+                      suppressHydrationWarning
+                      className="truncate text-xs font-semibold leading-tight text-slate-900 dark:text-white"
+                    >
+                      {(
+                        (mounted ? session?.user?.name : null) ||
+                        (effectiveRole === 'STORE_ADMIN'
+                          ? 'Mitra Toko'
+                          : 'Administrator')
+                      )
                         .replace(/Multi-PT/gi, '')
-                        .trim() || 'Super Admin'}
+                        .trim()}
                     </p>
-                    <span className="mt-0.5 truncate text-[10px] font-medium leading-none text-slate-400 dark:text-slate-500">
+                    <span
+                      suppressHydrationWarning
+                      className="mt-0.5 truncate text-[10px] font-medium leading-none text-slate-400 dark:text-slate-500"
+                    >
                       {effectiveRole === 'STORE_ADMIN'
                         ? 'Akun Toko'
                         : effectiveRole === 'SUPER_ADMIN'
                           ? 'Superadmin Platform'
                           : effectiveRole === 'ADMIN'
                             ? 'Admin Platform'
-                            : 'Customer'}
+                            : effectiveRole === 'TECHNICIAN'
+                              ? 'Teknisi Servis'
+                              : 'Customer'}
                     </span>
                   </div>
                 </div>
@@ -583,7 +627,10 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                 </button>
               </div>
             ) : (
-              <div className="group relative flex flex-col items-center">
+              <div
+                className="group relative flex flex-col items-center"
+                suppressHydrationWarning
+              >
                 {displayUserImage ? (
                   <button
                     onClick={() => signOut({ callbackUrl: '/' })}
@@ -609,14 +656,28 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                 )}
 
                 {/* Floating Tooltip with Logout */}
-                <div className="pointer-events-none invisible absolute bottom-0 left-full z-50 ml-3 flex min-w-36 scale-95 flex-col gap-1 whitespace-nowrap rounded-xl bg-slate-900 p-2.5 text-xs text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:scale-100 group-hover:opacity-100 dark:bg-slate-800 dark:text-slate-100">
-                  <p className="truncate font-bold text-white">
-                    {(session?.user?.name || 'Administrator')
+                <div
+                  suppressHydrationWarning
+                  className="pointer-events-none invisible absolute bottom-0 left-full z-50 ml-3 flex min-w-36 scale-95 flex-col gap-1 whitespace-nowrap rounded-xl bg-slate-900 p-2.5 text-xs text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:scale-100 group-hover:opacity-100 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  <p
+                    className="truncate font-bold text-white"
+                    suppressHydrationWarning
+                  >
+                    {(
+                      (mounted ? session?.user?.name : null) ||
+                      (effectiveRole === 'STORE_ADMIN'
+                        ? 'Mitra Toko'
+                        : 'Administrator')
+                    )
                       .replace(/Multi-PT/gi, '')
-                      .trim() || 'Super Admin'}
+                      .trim()}
                   </p>
-                  <p className="truncate text-[10px] text-slate-400">
-                    {session?.user?.role || 'SUPER_ADMIN'}
+                  <p
+                    className="truncate text-[10px] text-slate-400"
+                    suppressHydrationWarning
+                  >
+                    {(mounted ? session?.user?.role : null) || effectiveRole}
                   </p>
                   <div className="mt-1 border-t border-slate-800 pt-1 text-[10px] font-semibold text-red-400">
                     Klik untuk Logout ↗

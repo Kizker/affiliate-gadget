@@ -18,6 +18,15 @@ export async function GET() {
         email: true,
         role: true,
         image: true,
+        storeId: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            companyName: true,
+          },
+        },
         technician: {
           select: { id: true },
         },

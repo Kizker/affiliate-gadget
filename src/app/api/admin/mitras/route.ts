@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-// GET /api/admin/mitras - List all stores & mitras with complete operational & legal data
+// GET /api/admin/mitras - List all stores & mitras with complete operational & legal data + pending applicants
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession()
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit
 
-    // First check if we have Store records (Official Stores with PT Legalitas)
+    // 1. Build query for Store records
     const storeWhere: Record<string, unknown> = {}
     if (search) {
       storeWhere.OR = [
@@ -35,173 +35,220 @@ export async function GET(req: NextRequest) {
     if (city) {
       storeWhere.city = city
     }
-    if (approved !== null && approved !== '') {
-      storeWhere.isActive = approved === 'true'
+    if (approved === 'true') {
+      storeWhere.isActive = true
     }
 
-    const storeCount = await db.store.count({ where: storeWhere })
+    const isPendingTab = approved === 'false'
 
-    if (storeCount > 0) {
-      const stores = await db.store.findMany({
-        where: storeWhere,
-        skip,
-        take: limit,
+    // Query stores (hanya jika bukan tab khusus Menunggu Review)
+    const stores = isPendingTab
+      ? []
+      : await db.store.findMany({
+          where: storeWhere,
+          include: {
+            bankAccounts: true,
+            schedules: true,
+            _count: {
+              select: {
+                products: true,
+                orders: true,
+                liveStreams: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
+
+    const mappedStores = stores.map((s) => ({
+      id: s.id,
+      businessName: s.name,
+      name: s.name,
+      slug: s.slug,
+      companyName: s.companyName,
+      taxId: s.taxId,
+      tagline: s.tagline,
+      description: s.description,
+      address: s.address,
+      city: s.city,
+      province: s.province,
+      postalCode: s.postalCode,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      phone: s.phone,
+      whatsapp: s.whatsapp,
+      email: s.email,
+      rating: s.rating,
+      totalReview: s.totalReview,
+      totalSales: s.totalSales,
+      commissionRate: s.commissionRate,
+      isOwnerStore: s.isOwnerStore,
+      isApproved: s.isActive,
+      isActive: s.isActive,
+      source: 'store' as const,
+      createdAt: s.createdAt.toISOString(),
+      bankAccounts: s.bankAccounts,
+      schedules: s.schedules,
+      user: {
+        id: s.id,
+        name: s.companyName,
+        email: s.email || `${s.slug}@affiliategadget.com`,
+        phone: s.phone,
+        isActive: s.isActive,
+        mitraStatus: s.isActive ? 'APPROVED' : 'PENDING',
+      },
+      _count: {
+        services: s._count.products,
+        products: s._count.products,
+        orders: s._count.orders,
+        images: 4,
+        reviews: s.totalReview,
+      },
+    }))
+
+    // 2. Query pending applicants from StoreApplication (when approved is false or ALL)
+    let mappedApplicants: typeof mappedStores = []
+
+    if (approved !== 'true') {
+      const applicantWhere: Record<string, unknown> = {
+        user: {
+          role: 'MITRA',
+          mitraStatus: 'PENDING',
+        },
+      }
+
+      if (search) {
+        applicantWhere.OR = [
+          { storeName: { contains: search, mode: 'insensitive' } },
+          { companyName: { contains: search, mode: 'insensitive' } },
+          { city: { contains: search, mode: 'insensitive' } },
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+          { user: { email: { contains: search, mode: 'insensitive' } } },
+        ]
+      }
+      if (city) {
+        applicantWhere.city = city
+      }
+
+      const pendingApplications = await (db as any).storeApplication.findMany({
+        where: applicantWhere,
         include: {
-          bankAccounts: true,
-          schedules: true,
-          _count: {
+          user: {
             select: {
-              products: true,
-              orders: true,
-              liveStreams: true,
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              isActive: true,
+              mitraStatus: true,
             },
           },
         },
         orderBy: {
-          createdAt: 'asc',
+          submittedAt: 'desc',
         },
       })
 
-      const [totalActive, totalInactive, uniqueCities] = await Promise.all([
-        db.store.count({ where: { isActive: true } }),
-        db.store.count({ where: { isActive: false } }),
-        db.store.findMany({
-          select: { city: true },
-          distinct: ['city'],
-        }),
-      ])
-
-      const mappedStores = stores.map((s) => ({
-        id: s.id,
-        businessName: s.name,
-        name: s.name,
-        slug: s.slug,
-        companyName: s.companyName,
-        taxId: s.taxId,
-        tagline: s.tagline,
-        description: s.description,
-        address: s.address,
-        city: s.city,
-        province: s.province,
-        postalCode: s.postalCode,
-        latitude: s.latitude,
-        longitude: s.longitude,
-        phone: s.phone,
-        whatsapp: s.whatsapp,
-        email: s.email,
-        rating: s.rating,
-        totalReview: s.totalReview,
-        totalSales: s.totalSales,
-        commissionRate: s.commissionRate,
-        isOwnerStore: s.isOwnerStore,
-        isApproved: s.isActive,
-        isActive: s.isActive,
-        createdAt: s.createdAt.toISOString(),
-        bankAccounts: s.bankAccounts,
-        schedules: s.schedules,
+      mappedApplicants = pendingApplications.map((app: any) => ({
+        id: `applicant_${app.id}`,
+        businessName: app.storeName,
+        name: app.storeName,
+        slug: '',
+        companyName: app.companyName,
+        taxId: app.taxId,
+        tagline: null,
+        description: null,
+        address: app.address,
+        city: app.city,
+        province: app.province,
+        postalCode: app.postalCode,
+        latitude: null,
+        longitude: null,
+        phone: app.phone,
+        whatsapp: null,
+        email: app.user.email,
+        rating: 0,
+        totalReview: 0,
+        totalSales: 0,
+        commissionRate: 2.0,
+        isOwnerStore: false,
+        isApproved: false,
+        isActive: false,
+        source: 'pending_applicant' as any,
+        rejectionReason: app.rejectionReason,
+        createdAt: app.submittedAt.toISOString(),
+        bankAccounts:
+          app.bankName && app.accountNumber
+            ? [
+                {
+                  id: `bank_${app.id}`,
+                  storeId: '',
+                  bankName: app.bankName,
+                  accountNumber: app.accountNumber,
+                  accountName: app.accountName || app.companyName,
+                  isPrimary: true,
+                  createdAt: app.submittedAt,
+                  updatedAt: app.updatedAt,
+                },
+              ]
+            : [],
+        schedules: [],
         user: {
-          id: s.id,
-          name: s.companyName,
-          email: s.email || `${s.slug}@affiliategadget.com`,
-          phone: s.phone,
-          isActive: s.isActive,
-          mitraStatus: s.isActive ? 'APPROVED' : 'PENDING',
+          id: app.user.id,
+          name: app.user.name || app.companyName,
+          email: app.user.email,
+          phone: app.user.phone || app.phone,
+          isActive: app.user.isActive,
+          mitraStatus: app.user.mitraStatus,
         },
         _count: {
-          services: s._count.products,
-          products: s._count.products,
-          orders: s._count.orders,
-          images: 4,
-          reviews: s.totalReview,
+          services: 0,
+          products: 0,
+          orders: 0,
+          images: 0,
+          reviews: 0,
         },
       }))
-
-      return NextResponse.json({
-        mitras: mappedStores,
-        pagination: {
-          page,
-          limit,
-          total: storeCount,
-          totalPages: Math.ceil(storeCount / limit),
-        },
-        stats: {
-          total: storeCount,
-          approved: totalActive,
-          pending: totalInactive,
-          cities: uniqueCities.length,
-        },
-      })
     }
 
-    // Fallback to legacy Mitra table if no store records
-    const where: Record<string, unknown> = {}
+    // Combine items based on filter
+    const combinedList = [...mappedApplicants, ...mappedStores]
 
-    if (search) {
-      where.businessName = {
-        contains: search,
-        mode: 'insensitive',
-      }
-    }
-
-    if (city) {
-      where.city = city
-    }
-
-    if (approved !== null && approved !== '') {
-      where.isApproved = approved === 'true'
-    }
-
-    const total = await db.mitra.count({ where })
-
-    const mitras = await db.mitra.findMany({
-      where,
-      skip,
-      take: limit,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            isActive: true,
-            mitraStatus: true,
-          },
-        },
-        _count: {
-          select: {
-            services: true,
-            images: true,
-            reviews: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
-
-    const [approvedCount, pendingCount, uniqueCities] = await Promise.all([
-      db.mitra.count({ where: { isApproved: true } }),
-      db.mitra.count({ where: { isApproved: false } }),
-      db.mitra.findMany({
+    // Calculate stats
+    const [
+      totalActiveStores,
+      totalInactiveStores,
+      totalPendingApplicants,
+      uniqueCities,
+    ] = await Promise.all([
+      db.store.count({ where: { isActive: true } }),
+      db.store.count({ where: { isActive: false } }),
+      (db as any).storeApplication.count({
+        where: { user: { role: 'MITRA', mitraStatus: 'PENDING' } },
+      }),
+      db.store.findMany({
         select: { city: true },
         distinct: ['city'],
       }),
     ])
 
+    const totalCount = combinedList.length
+    const paginatedItems = combinedList.slice(skip, skip + limit)
+
     return NextResponse.json({
-      mitras,
+      mitras: paginatedItems,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit) || 1,
       },
       stats: {
-        total,
-        approved: approvedCount,
-        pending: pendingCount,
+        total: totalActiveStores + totalInactiveStores + totalPendingApplicants,
+        approved: totalActiveStores,
+        pending: totalPendingApplicants,
         cities: uniqueCities.length,
       },
     })
@@ -214,7 +261,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/admin/mitras - Create new mitra
+// POST /api/admin/mitras - Create new mitra (Manual Store Creation)
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession()
@@ -228,140 +275,87 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const {
-      userId,
-      businessName,
-      tagline,
-      description,
-      banner,
+      name,
+      companyName,
+      taxId,
       address,
       city,
       province,
-      latitude,
-      longitude,
+      postalCode,
       phone,
-      whatsapp,
       email,
-      website,
-      features,
-      weekdayHours,
-      weekendHours,
-      isApproved,
-      services,
-      images,
+      whatsapp,
+      bankName,
+      accountNumber,
+      accountName,
+      commissionRate,
+      isOwnerStore,
     } = body
 
-    // Validate required fields
-    if (!userId || !businessName || !address || !city || !province || !phone) {
+    if (!name || !companyName || !address || !city || !province || !phone) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        {
+          error:
+            'Data wajib belum lengkap (Nama Toko, PT, Alamat, Kota, Provinsi, Telepon).',
+        },
         { status: 400 }
       )
     }
 
-    // Check if user exists and doesn't already have a mitra profile
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      include: { mitra: true },
+    // Generate unique slug
+    let baseSlug = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+
+    if (!baseSlug) baseSlug = `store-${Date.now()}`
+
+    let slug = baseSlug
+    const existingSlug = await db.store.findUnique({ where: { slug } })
+    if (existingSlug) {
+      slug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`
+    }
+
+    const newStore = await db.store.create({
+      data: {
+        name,
+        slug,
+        companyName,
+        taxId: taxId || null,
+        address,
+        city,
+        province,
+        postalCode: postalCode || null,
+        phone,
+        email: email || null,
+        whatsapp: whatsapp || null,
+        commissionRate: commissionRate ? parseFloat(commissionRate) : 2.0,
+        isOwnerStore: Boolean(isOwnerStore),
+        isActive: true,
+        rating: 5.0,
+        bankAccounts:
+          bankName && accountNumber
+            ? {
+                create: {
+                  bankName,
+                  accountNumber,
+                  accountName: accountName || companyName,
+                  isPrimary: true,
+                },
+              }
+            : undefined,
+      },
+      include: {
+        bankAccounts: true,
+      },
     })
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    if (user.mitra) {
-      return NextResponse.json(
-        { error: 'User already has a mitra profile' },
-        { status: 400 }
-      )
-    }
-
-    // Create mitra with services and images in a transaction
-    const mitra = await db.$transaction(async (tx) => {
-      // Create mitra
-      const newMitra = await tx.mitra.create({
-        data: {
-          userId,
-          businessName,
-          tagline: tagline || null,
-          description: description || null,
-          banner: banner || null,
-          address,
-          city,
-          province,
-          latitude: latitude || null,
-          longitude: longitude || null,
-          phone,
-          whatsapp: whatsapp || null,
-          email: email || null,
-          website: website || null,
-          features: features || [],
-          weekdayHours: weekdayHours || null,
-          weekendHours: weekendHours || null,
-          isApproved: isApproved || false,
-        },
-      })
-
-      // Create services if provided
-      if (services && Array.isArray(services) && services.length > 0) {
-        await tx.mitraService.createMany({
-          data: services.map(
-            (svc: {
-              name: string
-              price: string
-              icon?: string
-              description?: string
-            }) => ({
-              mitraId: newMitra.id,
-              name: svc.name,
-              price: svc.price,
-              icon: svc.icon || '💻',
-              description: svc.description || null,
-            })
-          ),
-        })
-      }
-
-      // Create images if provided
-      if (images && Array.isArray(images) && images.length > 0) {
-        await tx.mitraImage.createMany({
-          data: images.map((img: { url: string }) => ({
-            mitraId: newMitra.id,
-            url: img.url,
-          })),
-        })
-      }
-
-      // Return mitra with related data
-      return tx.mitra.findUnique({
-        where: { id: newMitra.id },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-          services: true,
-          images: true,
-        },
-      })
-    })
-
-    // Update user mitraStatus if approved
-    if (isApproved) {
-      await db.user.update({
-        where: { id: userId },
-        data: { mitraStatus: 'APPROVED' },
-      })
-    }
-
-    return NextResponse.json(mitra, { status: 201 })
+    return NextResponse.json(newStore, { status: 201 })
   } catch (error) {
-    console.error('Error creating mitra:', error)
+    console.error('Error creating store:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Gagal membuat toko baru.' },
       { status: 500 }
     )
   }

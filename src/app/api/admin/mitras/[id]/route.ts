@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from '@/lib/auth'
+import { auth } from '@/auth'
 import { db } from '@/lib/db'
 
 // GET /api/admin/mitras/[id] - Get store / mitra detail
@@ -9,13 +9,103 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const session = await getServerSession()
+    const session = await auth()
 
     if (
-      !session ||
+      !session?.user ||
       (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
     ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // 0. Check if it is a pending applicant
+    if (id.startsWith('applicant_')) {
+      const appId = id.replace('applicant_', '')
+      const app = await (db as any).storeApplication.findUnique({
+        where: { id: appId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              isActive: true,
+              mitraStatus: true,
+            },
+          },
+        },
+      })
+
+      if (!app) {
+        return NextResponse.json(
+          { error: 'Data pendaftar tidak ditemukan' },
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        id,
+        businessName: app.storeName,
+        name: app.storeName,
+        slug: '',
+        companyName: app.companyName,
+        taxId: app.taxId,
+        tagline: null,
+        description: null,
+        banner: '',
+        address: app.address,
+        city: app.city,
+        province: app.province,
+        postalCode: app.postalCode,
+        latitude: null,
+        longitude: null,
+        phone: app.phone,
+        whatsapp: null,
+        email: app.user?.email || '',
+        website: null,
+        commissionRate: 2.0,
+        isOwnerStore: false,
+        rating: 5.0,
+        totalReview: 0,
+        totalSales: 0,
+        totalViews: 0,
+        totalInquiries: 0,
+        isApproved: false,
+        isActive: false,
+        source: 'pending_applicant',
+        createdAt: app.submittedAt.toISOString(),
+        bankAccounts:
+          app.bankName && app.accountNumber
+            ? [
+                {
+                  id: `bank_${app.id}`,
+                  storeId: '',
+                  bankName: app.bankName,
+                  accountNumber: app.accountNumber,
+                  accountName: app.accountName || app.companyName,
+                  isPrimary: true,
+                  createdAt: app.submittedAt,
+                  updatedAt: app.updatedAt,
+                },
+              ]
+            : [],
+        schedules: [],
+        features: [],
+        weekdayHours: 'Senin - Jumat: 10:00 - 21:00',
+        weekendHours: 'Sabtu - Minggu: 10:00 - 21:30',
+        services: [],
+        images: [],
+        reviews: [],
+        user: app.user,
+        _count: {
+          services: 0,
+          products: 0,
+          orders: 0,
+          images: 0,
+          reviews: 0,
+        },
+      })
     }
 
     // 1. First check if it is a Store record (Official store)
@@ -164,10 +254,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const session = await getServerSession()
+    const session = await auth()
 
     if (
-      !session ||
+      !session?.user ||
       (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
     ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -200,6 +290,115 @@ export async function PUT(
       isActive,
     } = body
 
+    // 0. Check if it is a pending applicant
+    if (id.startsWith('applicant_')) {
+      const appId = id.replace('applicant_', '')
+      const app = await (db as any).storeApplication.findUnique({
+        where: { id: appId },
+        include: { user: true },
+      })
+
+      if (!app) {
+        return NextResponse.json(
+          { error: 'Pengajuan pendaftar tidak ditemukan' },
+          { status: 404 }
+        )
+      }
+
+      if (isApproved !== false) {
+        // Approve applicant and create Store
+        let baseSlug = (app.storeName || 'toko')
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+        if (!baseSlug) baseSlug = `toko-${Date.now()}`
+
+        let finalSlug = baseSlug
+        const existingStoreWithSlug = await db.store.findUnique({
+          where: { slug: finalSlug },
+          select: { id: true },
+        })
+        if (existingStoreWithSlug) {
+          finalSlug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`
+        }
+
+        const result = await db.$transaction(async (tx) => {
+          const newStore = await tx.store.create({
+            data: {
+              name: app.storeName,
+              slug: finalSlug,
+              companyName: app.companyName,
+              taxId: app.taxId || null,
+              address: app.address,
+              city: app.city,
+              province: app.province,
+              postalCode: app.postalCode || null,
+              phone: app.phone,
+              email: app.user.email,
+              isActive: true,
+              rating: 5.0,
+              commissionRate:
+                commissionRate !== undefined ? parseFloat(commissionRate) : 2.0,
+              bankAccounts:
+                app.bankName && app.accountNumber
+                  ? {
+                      create: {
+                        bankName: app.bankName,
+                        accountNumber: app.accountNumber,
+                        accountName: app.accountName || app.companyName,
+                        isPrimary: true,
+                      },
+                    }
+                  : undefined,
+            },
+          })
+
+          const updatedUser = await tx.user.update({
+            where: { id: app.user.id },
+            data: {
+              role: 'STORE_ADMIN',
+              storeId: newStore.id,
+              mitraStatus: 'APPROVED',
+              isActive: true,
+            },
+          })
+
+          const existingMitra = await tx.mitra.findUnique({
+            where: { userId: app.user.id },
+          })
+          if (existingMitra) {
+            await tx.mitra.update({
+              where: { id: existingMitra.id },
+              data: { isApproved: true },
+            })
+          }
+
+          return { newStore, updatedUser }
+        })
+
+        return NextResponse.json({
+          success: true,
+          message: `Toko "${app.storeName}" berhasil disetujui dan diaktifkan.`,
+          store: result.newStore,
+          businessName: result.newStore.name,
+          isApproved: true,
+          isActive: true,
+        })
+      } else {
+        await db.user.update({
+          where: { id: app.user.id },
+          data: { mitraStatus: 'REJECTED' },
+        })
+        return NextResponse.json({
+          success: true,
+          message: `Pendaftaran toko "${app.storeName}" ditangguhkan.`,
+          isApproved: false,
+          isActive: false,
+        })
+      }
+    }
+
     // 1. Check if it is a Store record
     const existingStore = await db.store.findUnique({
       where: { id },
@@ -218,12 +417,15 @@ export async function PUT(
       if (city !== undefined) storeUpdateData.city = city
       if (province !== undefined) storeUpdateData.province = province
       if (postalCode !== undefined) storeUpdateData.postalCode = postalCode
-      if (latitude !== undefined) storeUpdateData.latitude = latitude ? parseFloat(latitude) : null
-      if (longitude !== undefined) storeUpdateData.longitude = longitude ? parseFloat(longitude) : null
+      if (latitude !== undefined)
+        storeUpdateData.latitude = latitude ? parseFloat(latitude) : null
+      if (longitude !== undefined)
+        storeUpdateData.longitude = longitude ? parseFloat(longitude) : null
       if (phone !== undefined) storeUpdateData.phone = phone
       if (whatsapp !== undefined) storeUpdateData.whatsapp = whatsapp
       if (email !== undefined) storeUpdateData.email = email
-      if (commissionRate !== undefined) storeUpdateData.commissionRate = parseFloat(commissionRate)
+      if (commissionRate !== undefined)
+        storeUpdateData.commissionRate = parseFloat(commissionRate)
       if (isActive !== undefined) storeUpdateData.isActive = isActive
       if (isApproved !== undefined) storeUpdateData.isActive = isApproved
 
@@ -249,7 +451,10 @@ export async function PUT(
     })
 
     if (!existingMitra) {
-      return NextResponse.json({ error: 'Store or Mitra not found' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Store or Mitra not found' },
+        { status: 404 }
+      )
     }
 
     // Prepare update data
@@ -261,8 +466,10 @@ export async function PUT(
     if (address !== undefined) updateData.address = address
     if (city !== undefined) updateData.city = city
     if (province !== undefined) updateData.province = province
-    if (latitude !== undefined) updateData.latitude = latitude ? parseFloat(latitude) : null
-    if (longitude !== undefined) updateData.longitude = longitude ? parseFloat(longitude) : null
+    if (latitude !== undefined)
+      updateData.latitude = latitude ? parseFloat(latitude) : null
+    if (longitude !== undefined)
+      updateData.longitude = longitude ? parseFloat(longitude) : null
     if (phone !== undefined) updateData.phone = phone
     if (whatsapp !== undefined) updateData.whatsapp = whatsapp
     if (email !== undefined) updateData.email = email
@@ -317,13 +524,34 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const session = await getServerSession()
+    const session = await auth()
 
     if (
-      !session ||
+      !session?.user ||
       (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')
     ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // 0. Check if it is an applicant record
+    if (id.startsWith('applicant_')) {
+      const appId = id.replace('applicant_', '')
+      const app = await (db as any).storeApplication.findUnique({
+        where: { id: appId },
+      })
+      if (app) {
+        await (db as any).storeApplication.delete({ where: { id: appId } })
+        await db.user.update({
+          where: { id: app.userId },
+          data: {
+            mitraStatus: null,
+            role: 'CUSTOMER',
+          },
+        })
+      }
+      return NextResponse.json({
+        message: 'Pengajuan pendaftar berhasil dihapus',
+      })
     }
 
     // 1. Check if it is a Store record
@@ -345,7 +573,10 @@ export async function DELETE(
     })
 
     if (!existingMitra) {
-      return NextResponse.json({ error: 'Store or Mitra not found' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Store or Mitra not found' },
+        { status: 404 }
+      )
     }
 
     // Hard delete - actually remove from database
