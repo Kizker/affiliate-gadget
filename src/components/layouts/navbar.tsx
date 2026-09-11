@@ -37,7 +37,9 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
 
   const { items } = useCartStore()
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(session?.user?.image || null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    session?.user?.image || null
+  )
 
   useEffect(() => {
     setMounted(true)
@@ -92,7 +94,8 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   }
 
   const getChatLink = () => {
-    if (!mounted || !session) return '/login?callbackUrl=/dashboard/customer/chat'
+    if (!mounted || !session)
+      return '/login?callbackUrl=/dashboard/customer/chat'
     const role = (session.user as any)?.role
     if (
       role === 'SUPER_ADMIN' ||
@@ -123,7 +126,8 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
       return '/dashboard/admin'
     }
     if (role === 'MITRA') return '/dashboard/mitra'
-    if ((session.user as any)?.isTechnician || role === 'TECHNICIAN') return '/dashboard/teknisi'
+    if ((session.user as any)?.isTechnician || role === 'TECHNICIAN')
+      return '/dashboard/teknisi'
     return '/'
   }
 
@@ -133,37 +137,37 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
     { href: '/toko', label: 'Toko' },
   ]
 
-  const isSearchPage = pathname.startsWith('/gadget') || pathname.startsWith('/toko')
+  const isSearchPage =
+    pathname.startsWith('/gadget') || pathname.startsWith('/toko')
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 shadow-[0_2px_20px_rgba(0,0,0,0.02)]'
-          : 'bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-slate-100/70 dark:border-slate-900'
+          ? 'border-b border-slate-200/50 bg-white/85 shadow-[0_2px_20px_rgba(0,0,0,0.02)] backdrop-blur-xl dark:border-slate-800/50 dark:bg-slate-950/85'
+          : 'border-b border-slate-100/70 bg-white/70 backdrop-blur-md dark:border-slate-900 dark:bg-slate-950/70'
       }`}
     >
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-2 sm:gap-4">
-          
           {/* 1. Brand Logo (Clean & High Contrast with Official Logo) */}
           <Link
             href="/"
-            className="flex items-center gap-2 sm:gap-2.5 shrink-0 group focus:outline-none"
+            className="group flex shrink-0 items-center gap-2 focus:outline-none sm:gap-2.5"
             aria-label="Affiliate Gadget Beranda"
           >
             <img
               src="/logo.png"
               alt="Affiliate Gadget Logo"
-              className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl object-contain shadow-2xs transition-transform duration-200 group-hover:scale-105"
+              className="shadow-2xs h-7 w-7 rounded-xl object-contain transition-transform duration-200 group-hover:scale-105 sm:h-8 sm:w-8"
             />
-            <span className="text-sm sm:text-base font-black tracking-tight text-slate-950 dark:text-white leading-none">
+            <span className="text-sm font-black leading-none tracking-tight text-slate-950 dark:text-white sm:text-base">
               Affiliate<span className="text-orange-500">Gadget</span>
             </span>
           </Link>
 
           {/* 2. Center: Dedicated Floating Nav Island (Ultra-Clean Whitespace) */}
-          <nav className="hidden md:flex items-center rounded-full bg-slate-100/70 p-1 backdrop-blur-xs border border-slate-200/40 dark:bg-slate-900/60 dark:border-slate-800/60">
+          <nav className="backdrop-blur-xs hidden items-center rounded-full border border-slate-200/40 bg-slate-100/70 p-1 dark:border-slate-800/60 dark:bg-slate-900/60 md:flex">
             {navLinks.map((link) => {
               const isActive =
                 link.href === '/'
@@ -175,8 +179,8 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                   href={link.href}
                   className={`rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide transition-all duration-200 ${
                     isActive
-                      ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-950 hover:bg-white/60 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/50'
+                      ? 'shadow-xs bg-slate-950 text-white dark:bg-white dark:text-slate-950'
+                      : 'text-slate-600 hover:bg-white/60 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white'
                   }`}
                 >
                   {link.label}
@@ -186,32 +190,32 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
           </nav>
 
           {/* 3. Right: Utility & Action Cluster */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
             {/* Minimalist Search Capsule (Hidden on /gadget and /toko where in-page search is active) */}
             {!isSearchPage && (
               <form
                 onSubmit={handleSearchSubmit}
-                className="hidden lg:flex relative items-center animate-in fade-in duration-200"
+                className="relative hidden items-center duration-200 animate-in fade-in lg:flex"
               >
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari..."
-                  className="w-32 xl:w-36 focus:w-48 rounded-full border border-slate-200/70 bg-slate-50/80 py-1.5 pl-8 pr-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-300 focus:border-slate-300 focus:bg-white focus:shadow-xs dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-100 dark:focus:border-slate-700"
+                  className="focus:shadow-xs w-32 rounded-full border border-slate-200/70 bg-slate-50/80 py-1.5 pl-8 pr-3 text-xs font-medium text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-400 focus:w-48 focus:border-slate-300 focus:bg-white dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-100 dark:focus:border-slate-700 xl:w-36"
                 />
-                <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-slate-400" />
               </form>
             )}
 
             {/* Live Chat / Pesan Button (Placed Next to Cart) */}
             <Link
               href={getChatLink()}
-              className={`relative flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 ${
-                pathname.startsWith('/dashboard/customer/chat') || pathname.startsWith('/dashboard/admin/chat')
-                  ? 'border-slate-900 bg-slate-950 text-white shadow-xs dark:border-white dark:bg-white dark:text-slate-950'
-                  : 'border-slate-200/70 bg-white text-slate-700 shadow-xs hover:bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+              className={`h-8.5 w-8.5 relative flex items-center justify-center rounded-full border transition-all duration-200 active:scale-95 sm:h-9 sm:w-9 ${
+                pathname.startsWith('/dashboard/customer/chat') ||
+                pathname.startsWith('/dashboard/admin/chat')
+                  ? 'shadow-xs border-slate-900 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
+                  : 'shadow-xs border-slate-200/70 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
               aria-label="Pesan Live Chat"
               title="Pesan & Live Chat"
@@ -222,17 +226,17 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
             {/* Cart Button */}
             <Link
               href="/cart"
-              className={`relative flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 ${
+              className={`h-8.5 w-8.5 relative flex items-center justify-center rounded-full border transition-all duration-200 active:scale-95 sm:h-9 sm:w-9 ${
                 pathname === '/cart'
-                  ? 'border-slate-900 bg-slate-950 text-white shadow-xs dark:border-white dark:bg-white dark:text-slate-950'
-                  : 'border-slate-200/70 bg-white text-slate-700 shadow-xs hover:bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                  ? 'shadow-xs border-slate-900 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
+                  : 'shadow-xs border-slate-200/70 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
               aria-label="Keranjang Belanja"
               title="Keranjang Belanja"
             >
               <ShoppingCart className="h-4 w-4" />
               {mounted && itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9.5px] font-semibold leading-none text-white shadow-xs animate-in zoom-in duration-150">
+                <span className="shadow-xs absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9.5px] font-semibold leading-none text-white duration-150 animate-in zoom-in">
                   {itemCount > 9 ? '9+' : itemCount}
                 </span>
               )}
@@ -240,15 +244,15 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
 
             {/* User Session Auth Control */}
             {!mounted || status === 'loading' ? (
-              <div className="h-8 w-14 sm:w-16 animate-pulse rounded-full bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 w-14 animate-pulse rounded-full bg-slate-100 dark:bg-slate-800 sm:w-16" />
             ) : session?.user ? (
               <div className="relative">
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-slate-200/70 bg-white p-1 sm:py-1 sm:pl-1 sm:pr-2.5 text-xs font-semibold text-slate-800 shadow-xs transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                  className="shadow-xs flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-white p-1 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 sm:gap-2 sm:py-1 sm:pl-1 sm:pr-2.5"
                 >
                   {avatarUrl ? (
-                    <div className="relative h-6 w-6 overflow-hidden rounded-full border border-slate-200/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shrink-0">
+                    <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-slate-200/80 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                       <img
                         src={avatarUrl}
                         alt={session.user.name || 'Avatar'}
@@ -257,22 +261,22 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                       />
                     </div>
                   ) : (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-white font-black text-[10px] dark:bg-blue-600 shrink-0">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-950 text-[10px] font-black text-white dark:bg-blue-600">
                       {(session.user.name || 'U').charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span className="max-w-[80px] truncate hidden sm:inline-block">
+                  <span className="hidden max-w-[80px] truncate sm:inline-block">
                     {session.user.name?.split(' ')[0] || 'Akun'}
                   </span>
-                  <ChevronDown className="h-3 w-3 text-slate-400 hidden sm:inline-block" />
+                  <ChevronDown className="hidden h-3 w-3 text-slate-400 sm:inline-block" />
                 </button>
 
                 {/* Dropdown Menu */}
                 {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-60 rounded-2xl border border-slate-200/80 bg-white p-2 shadow-xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in zoom-in-95 duration-150 z-50">
-                    <div className="flex items-center gap-3 px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                  <div className="absolute right-0 z-50 mt-2 w-60 rounded-2xl border border-slate-200/80 bg-white p-2 shadow-xl duration-150 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex items-center gap-3 border-b border-slate-100 px-3 py-2.5 dark:border-slate-800">
                       {avatarUrl ? (
-                        <div className="relative h-9 w-9 overflow-hidden rounded-full border border-slate-200/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shrink-0">
+                        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200/80 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                           <img
                             src={avatarUrl}
                             alt={session.user.name || 'Avatar'}
@@ -281,15 +285,15 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                           />
                         </div>
                       ) : (
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-950 text-white font-black text-xs shrink-0 dark:bg-blue-600">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-white dark:bg-blue-600">
                           {(session.user.name || 'U').charAt(0).toUpperCase()}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
                           {session.user.name}
                         </p>
-                        <p className="text-[10px] text-slate-400 truncate">
+                        <p className="truncate text-[10px] text-slate-400">
                           {session.user.email}
                         </p>
                         <span className="mt-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -299,25 +303,29 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                     </div>
 
                     <div className="py-1">
-                      {((session.user as any)?.role === 'CUSTOMER' || !(session.user as any)?.role) ? (
+                      {(session.user as any)?.role === 'CUSTOMER' ||
+                      !(session.user as any)?.role ? (
                         <>
                           <Link
                             href="/dashboard/customer/orders"
                             className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                           >
-                            <ShoppingBag className="h-3.5 w-3.5 text-slate-400" /> Pesanan Saya
+                            <ShoppingBag className="h-3.5 w-3.5 text-slate-400" />{' '}
+                            Pesanan Saya
                           </Link>
                           <Link
                             href="/dashboard/customer/settings"
                             className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                           >
-                            <User className="h-3.5 w-3.5 text-slate-400" /> Profil Saya
+                            <User className="h-3.5 w-3.5 text-slate-400" />{' '}
+                            Profil Saya
                           </Link>
                           <Link
                             href="/hubungi-kami"
                             className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                           >
-                            <HelpCircle className="h-3.5 w-3.5 text-slate-400" /> Bantuan
+                            <HelpCircle className="h-3.5 w-3.5 text-slate-400" />{' '}
+                            Bantuan
                           </Link>
                         </>
                       ) : (
@@ -325,12 +333,13 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                           href={getDashboardLink()}
                           className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
-                          <User className="h-3.5 w-3.5 text-slate-400" /> Panel Dashboard
+                          <User className="h-3.5 w-3.5 text-slate-400" /> Panel
+                          Dashboard
                         </Link>
                       )}
                     </div>
 
-                    <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <div className="border-t border-slate-100 pt-1 dark:border-slate-800">
                       <button
                         onClick={() => signOut({ callbackUrl: '/' })}
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
@@ -346,7 +355,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                 {/* Mobile icon button: direct link to /login on small screens */}
                 <Link
                   href="/login"
-                  className="flex sm:hidden h-8.5 w-8.5 items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-700 shadow-xs hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 transition-all active:scale-95"
+                  className="h-8.5 w-8.5 shadow-xs flex items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-700 transition-all hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:hidden"
                   aria-label="Masuk Akun"
                   title="Masuk Akun"
                 >
@@ -354,16 +363,16 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                 </Link>
 
                 {/* Tablet & Desktop text buttons */}
-                <div className="hidden sm:flex items-center gap-1">
+                <div className="hidden items-center gap-1 sm:flex">
                   <Link
                     href="/login"
-                    className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950 hover:bg-slate-100/70 transition-colors dark:text-slate-300 dark:hover:bg-slate-800"
+                    className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
                     Masuk
                   </Link>
                   <Link
                     href="/register"
-                    className="inline-flex items-center justify-center rounded-full bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-600 transition-all duration-200 active:scale-95"
+                    className="shadow-xs inline-flex items-center justify-center rounded-full bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white transition-all duration-200 hover:bg-orange-600 active:scale-95"
                   >
                     Daftar
                   </Link>
@@ -374,32 +383,38 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
             {/* Mobile Menu Toggle Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-700 md:hidden dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all"
+              className="h-8.5 w-8.5 shadow-xs flex items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-700 transition-all hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 sm:h-9 sm:w-9 md:hidden"
               aria-label="Toggle Menu"
             >
-              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {mobileMenuOpen ? (
+                <X className="h-4 w-4" />
+              ) : (
+                <Menu className="h-4 w-4" />
+              )}
             </button>
-
           </div>
-
         </div>
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="mt-2 rounded-3xl border border-slate-200/80 bg-white p-3.5 shadow-2xl md:hidden dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="mt-2 rounded-3xl border border-slate-200/80 bg-white p-3.5 shadow-2xl duration-150 animate-in fade-in slide-in-from-top-2 dark:border-slate-800 dark:bg-slate-900 md:hidden">
             {/* Auth Banner for Mobile Guests */}
             {!session?.user && (
-              <div className="mb-3 flex items-center justify-between gap-2.5 rounded-2xl bg-slate-50 p-2.5 border border-slate-100 dark:bg-slate-800/60 dark:border-slate-800">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400 shrink-0">
+              <div className="mb-3 flex items-center justify-between gap-2.5 rounded-2xl border border-slate-100 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-800/60">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400">
                     <User className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">Masuk ke Akun</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Nikmati promo & cek pesanan</p>
+                    <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                      Masuk ke Akun
+                    </p>
+                    <p className="truncate text-[10px] text-slate-500 dark:text-slate-400">
+                      Nikmati promo & cek pesanan
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <Link
                     href="/login"
                     onClick={() => setMobileMenuOpen(false)}
@@ -410,7 +425,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                   <Link
                     href="/register"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-600"
+                    className="shadow-xs rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-600"
                   >
                     Daftar
                   </Link>
@@ -420,24 +435,33 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
 
             {/* Profile Banner for Mobile Logged-in Users */}
             {session?.user && (
-              <div className="mb-3 flex items-center gap-3 rounded-2xl bg-slate-50 p-2.5 border border-slate-100 dark:bg-slate-800/60 dark:border-slate-800">
+              <div className="mb-3 flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-800/60">
                 {avatarUrl ? (
-                  <div className="relative h-9 w-9 overflow-hidden rounded-full border border-slate-200/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shrink-0">
-                    <img src={avatarUrl} alt={session.user.name || 'Avatar'} className="h-full w-full object-cover" onError={() => setAvatarUrl(null)} />
+                  <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200/80 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                    <img
+                      src={avatarUrl}
+                      alt={session.user.name || 'Avatar'}
+                      className="h-full w-full object-cover"
+                      onError={() => setAvatarUrl(null)}
+                    />
                   </div>
                 ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-950 text-white font-black text-xs shrink-0 dark:bg-blue-600">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-white dark:bg-blue-600">
                     {(session.user.name || 'U').charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{session.user.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{session.user.email}</p>
+                  <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                    {session.user.name}
+                  </p>
+                  <p className="truncate text-[10px] text-slate-400">
+                    {session.user.email}
+                  </p>
                 </div>
                 <Link
                   href={getDashboardLink()}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-xl bg-slate-950 px-2.5 py-1 text-[11px] font-bold text-white dark:bg-white dark:text-slate-950 shrink-0"
+                  className="shrink-0 rounded-xl bg-slate-950 px-2.5 py-1 text-[11px] font-bold text-white dark:bg-white dark:text-slate-950"
                 >
                   Dashboard
                 </Link>
@@ -446,7 +470,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
 
             {/* Search Input for Mobile (Hidden on /gadget and /toko) */}
             {!isSearchPage && (
-              <form onSubmit={handleSearchSubmit} className="mb-3 relative">
+              <form onSubmit={handleSearchSubmit} className="relative mb-3">
                 <input
                   type="text"
                   value={searchQuery}
@@ -509,7 +533,6 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
             </nav>
           </div>
         )}
-
       </div>
     </header>
   )

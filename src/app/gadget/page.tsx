@@ -169,7 +169,7 @@ function GadgetKatalogContent() {
                   >
                     <Link
                       href={`/gadget/${item.id}`}
-                      className="block focus:outline-none cursor-pointer"
+                      className="block cursor-pointer focus:outline-none"
                     >
                       {/* 1. Media Header (Square Cropped Hero Photo) */}
                       <div className="relative mb-3.5 aspect-square w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60">

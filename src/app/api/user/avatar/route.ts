@@ -1,181 +1,130 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
-
-// -----------------------------------------------------------------------
-// Avatar Upload Strategy (Multi-Tier, Production-Safe)
-//
-// Tier 1: Cloudinary (if env vars configured)
-// Tier 2: Local filesystem write to public/uploads/avatars/
-// Tier 3: Base64 data URL stored directly in DB (always works, zero deps)
-//
-// Tier 3 ensures the feature NEVER fails on any hosting environment,
-// including VPS without writable public/ dir or mismatched sharp binaries.
-// -----------------------------------------------------------------------
-
-const isCloudinaryConfigured = Boolean(
-  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME &&
-  process.env.CLOUDINARY_API_KEY &&
-  process.env.CLOUDINARY_API_SECRET
-)
+import { writeFile, mkdir } from 'fs/promises'
+import path from 'path'
+import { existsSync } from 'fs'
 
 /**
- * Resize + compress image to 400x400 WebP using sharp (if available).
- * Falls back to original buffer if sharp fails (e.g., arch mismatch on VPS).
+ * POST /api/user/avatar
+ *
+ * Menyimpan foto profil langsung ke VPS filesystem (public/uploads/avatars/).
+ * Tanpa Cloudinary, tanpa sharp — pure Node.js fs, zero external deps.
+ *
+ * Nginx dikonfigurasi untuk serve /uploads/ langsung dari disk,
+ * sehingga file langsung accessible via URL tanpa Next.js route.
  */
-async function compressImage(
-  buffer: Buffer
-): Promise<{ buffer: Buffer; mimeType: string }> {
-  try {
-    // Dynamic import avoids crashing the module if sharp native binary is missing
-    const sharp = (await import('sharp')).default
-    const compressed = await sharp(buffer)
-      .resize(400, 400, { fit: 'cover', position: 'center' })
-      .webp({ quality: 82 })
-      .toBuffer()
-    return { buffer: compressed, mimeType: 'image/webp' }
-  } catch {
-    // sharp unavailable (arch mismatch etc.) — use original
-    return { buffer, mimeType: 'image/jpeg' }
-  }
-}
-
-/**
- * Tier 1: Upload to Cloudinary
- */
-async function uploadToCloudinary(
-  buffer: Buffer,
-  userId: string
-): Promise<string | null> {
-  if (!isCloudinaryConfigured) return null
-  try {
-    const { v2: cloudinary } = await import('cloudinary')
-    cloudinary.config({
-      cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    })
-    const result = await new Promise<{ secure_url: string }>(
-      (resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              folder: 'avatars',
-              public_id: `user-${userId}-${Date.now()}`,
-              resource_type: 'image',
-              transformation: [
-                { width: 400, height: 400, crop: 'fill', gravity: 'face' },
-              ],
-            },
-            (err, res) => {
-              if (err || !res) reject(err || new Error('No result'))
-              else resolve(res as { secure_url: string })
-            }
-          )
-          .end(buffer)
-      }
-    )
-    return result.secure_url
-  } catch (err) {
-    console.warn('[avatar] Cloudinary upload failed:', err)
-    return null
-  }
-}
-
-/**
- * Tier 2: Write to local filesystem (public/uploads/avatars/)
- */
-async function uploadToLocalFs(
-  buffer: Buffer,
-  userId: string
-): Promise<string | null> {
-  try {
-    const { writeFile, mkdir } = await import('fs/promises')
-    const { existsSync } = await import('fs')
-    const path = await import('path')
-
-    const dir = path.join(process.cwd(), 'public', 'uploads', 'avatars')
-    if (!existsSync(dir)) {
-      await mkdir(dir, { recursive: true })
-    }
-    const filename = `avatar-${userId}-${Date.now()}.webp`
-    await writeFile(path.join(dir, filename), buffer)
-    return `/uploads/avatars/${filename}`
-  } catch (err) {
-    console.warn('[avatar] Local filesystem write failed:', err)
-    return null
-  }
-}
-
-/**
- * Tier 3: Base64 data URL — stored directly in DB.
- * Works on ALL environments without any storage dependency.
- * Avatar images are small (~30-50KB after resize) so this is safe.
- */
-function toDataUrl(buffer: Buffer, mimeType: string): string {
-  return `data:${mimeType};base64,${buffer.toString('base64')}`
-}
-
 export async function POST(request: NextRequest) {
+  let session
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    session = await auth()
+  } catch {
+    return NextResponse.json({ error: 'Sesi tidak valid' }, { status: 401 })
+  }
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Tidak terautentikasi' }, { status: 401 })
+  }
+
+  let formData
+  try {
+    formData = await request.formData()
+  } catch {
+    return NextResponse.json(
+      { error: 'Gagal membaca data form' },
+      { status: 400 }
+    )
+  }
+
+  const file = formData.get('avatar') as File | null
+
+  if (!file || typeof file === 'string') {
+    return NextResponse.json(
+      { error: 'Tidak ada berkas yang dipilih' },
+      { status: 400 }
+    )
+  }
+
+  // Validasi tipe file
+  if (!file.type.startsWith('image/')) {
+    return NextResponse.json(
+      { error: 'Berkas harus berupa gambar (JPG, PNG, atau WebP)' },
+      { status: 400 }
+    )
+  }
+
+  // Validasi ukuran (5MB max)
+  if (file.size > 5 * 1024 * 1024) {
+    return NextResponse.json(
+      { error: 'Ukuran foto maksimal 5MB' },
+      { status: 400 }
+    )
+  }
+
+  // Baca file ke buffer
+  let buffer: Buffer
+  try {
+    const bytes = await file.arrayBuffer()
+    buffer = Buffer.from(bytes)
+  } catch {
+    return NextResponse.json({ error: 'Gagal membaca berkas' }, { status: 500 })
+  }
+
+  // Tentukan ekstensi dari MIME type
+  const mimeToExt: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'image/avif': 'avif',
+  }
+  const ext = mimeToExt[file.type] ?? 'jpg'
+  const filename = `avatar-${session.user.id}-${Date.now()}.${ext}`
+
+  // Path upload: /var/www/affiliate-gadget/public/uploads/avatars/
+  // process.cwd() di production = /var/www/affiliate-gadget
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'avatars')
+
+  try {
+    if (!existsSync(uploadsDir)) {
+      await mkdir(uploadsDir, { recursive: true, mode: 0o755 })
     }
+  } catch (mkdirErr) {
+    console.error('[avatar] mkdir failed:', mkdirErr)
+    return NextResponse.json(
+      { error: 'Gagal membuat direktori penyimpanan. Hubungi admin.' },
+      { status: 500 }
+    )
+  }
 
-    const formData = await request.formData()
-    const file = formData.get('avatar') as File | null
+  const filepath = path.join(uploadsDir, filename)
 
-    if (!file) {
-      return NextResponse.json(
-        { error: 'Tidak ada berkas yang dipilih' },
-        { status: 400 }
-      )
-    }
+  try {
+    await writeFile(filepath, buffer, { mode: 0o644 })
+  } catch (writeErr) {
+    console.error('[avatar] writeFile failed:', writeErr)
+    return NextResponse.json(
+      { error: 'Gagal menyimpan berkas ke server. Hubungi admin.' },
+      { status: 500 }
+    )
+  }
 
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json(
-        { error: 'Berkas harus berupa gambar (JPG, PNG, atau WebP)' },
-        { status: 400 }
-      )
-    }
+  const avatarUrl = `/uploads/avatars/${filename}`
 
-    // Validate file size (5MB max before processing)
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'Ukuran foto maksimal 5MB' },
-        { status: 400 }
-      )
-    }
-
-    const rawBuffer = Buffer.from(await file.arrayBuffer())
-    const { buffer: processedBuffer, mimeType } = await compressImage(rawBuffer)
-
-    // --- Tier 1: Cloudinary ---
-    let avatarUrl = await uploadToCloudinary(processedBuffer, session.user.id)
-
-    // --- Tier 2: Local filesystem ---
-    if (!avatarUrl) {
-      avatarUrl = await uploadToLocalFs(processedBuffer, session.user.id)
-    }
-
-    // --- Tier 3: Base64 data URL (always-works fallback) ---
-    if (!avatarUrl) {
-      avatarUrl = toDataUrl(processedBuffer, mimeType)
-    }
-
-    // Persist avatar URL to database
+  // Simpan URL ke database
+  try {
     await prisma.user.update({
       where: { id: session.user.id },
       data: { image: avatarUrl },
     })
-
-    return NextResponse.json({ success: true, avatarUrl })
-  } catch (error) {
-    console.error('[avatar] Unexpected error:', error)
+  } catch (dbErr) {
+    console.error('[avatar] DB update failed:', dbErr)
     return NextResponse.json(
-      { error: 'Gagal memproses upload foto profil. Silakan coba lagi.' },
+      { error: 'Foto tersimpan tapi gagal memperbarui profil. Coba lagi.' },
       { status: 500 }
     )
   }
+
+  return NextResponse.json({ success: true, avatarUrl })
 }
