@@ -127,7 +127,10 @@ export function SectionProductShowcase() {
               key={product.id}
               className="group relative flex flex-col justify-between rounded-3xl border border-slate-200/80 bg-white p-4 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
             >
-              <div>
+              <Link
+                href={`/gadget/${product.id}`}
+                className="block focus:outline-none cursor-pointer"
+              >
                 {/* 1. Media Header (Square Cropped Hero Photo) */}
                 <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80 mb-3.5">
                   <img
@@ -179,7 +182,7 @@ export function SectionProductShowcase() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
 
               {/* 3. Action Button (Action Orange) */}
               <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800/80">

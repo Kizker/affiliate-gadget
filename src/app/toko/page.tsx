@@ -63,8 +63,8 @@ export default function TokoDirectoryPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col justify-between">
       <Navbar variant="light" />
 
-      <main className="pt-28 pb-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <main className="pt-24 sm:pt-28 pb-20">
+        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
           
 
           {/* Unified Filter & Search Control Panel */}
@@ -76,7 +76,7 @@ export default function TokoDirectoryPage() {
                   key={c}
                   type="button"
                   onClick={() => setSelectedCity(c)}
-                  className={`rounded-2xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
+                  className={`rounded-2xl px-3.5 sm:px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
                     selectedCity === c
                       ? 'bg-slate-950 text-white shadow-2xs dark:bg-white dark:text-slate-950'
                       : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100/80 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'
@@ -144,13 +144,13 @@ export default function TokoDirectoryPage() {
                   </div>
 
                   {/* Foreground Content */}
-                  <div className="relative z-10 p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+                  <div className="relative z-10 p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-5">
                     
                     {/* Left Section: Square Profile Image & Info */}
-                    <div className="flex items-start gap-4 sm:gap-5 flex-1 min-w-0">
+                    <div className="flex items-start gap-3.5 sm:gap-5 flex-1 min-w-0">
                       
                       {/* Square Profile Photo */}
-                      <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs dark:border-slate-700 dark:bg-slate-800">
+                      <div className="relative h-14 w-14 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs dark:border-slate-700 dark:bg-slate-800">
                         <Image
                           src={store.logo || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'}
                           alt={store.name}
@@ -160,13 +160,13 @@ export default function TokoDirectoryPage() {
                         />
                       </div>
 
-                      <div className="space-y-2 flex-1 min-w-0">
+                      <div className="space-y-1.5 sm:space-y-2 flex-1 min-w-0">
                         {/* Store Name & City Badge */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-base sm:text-lg font-bold text-slate-950 dark:text-white group-hover:text-orange-600 transition-colors">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          <h2 className="text-sm sm:text-lg font-bold text-slate-950 dark:text-white group-hover:text-orange-600 transition-colors">
                             {store.name}
                           </h2>
-                          <span className="rounded-full bg-white/90 border border-slate-200/80 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 shadow-2xs backdrop-blur-xs dark:bg-slate-800/90 dark:border-slate-700 dark:text-slate-300">
+                          <span className="rounded-full bg-white/90 border border-slate-200/80 px-2 sm:px-2.5 py-0.5 text-[9.5px] sm:text-[10px] font-semibold text-slate-700 shadow-2xs backdrop-blur-xs dark:bg-slate-800/90 dark:border-slate-700 dark:text-slate-300">
                             {store.city}
                           </span>
                         </div>
@@ -174,42 +174,42 @@ export default function TokoDirectoryPage() {
                         {/* Full Address */}
                         <div className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                           <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
-                          <p className="leading-relaxed">
+                          <p className="leading-relaxed text-[11px] sm:text-xs line-clamp-2 sm:line-clamp-none">
                             {store.address}
                           </p>
                         </div>
 
                         {/* Operational Hours & Guarantee Badges */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-xs text-slate-500">
-                          <div className="flex items-center gap-1.5 text-[11px]">
-                            <Clock className="h-3.5 w-3.5 text-slate-400" />
+                        <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 pt-0.5 sm:pt-1 text-xs text-slate-500">
+                          <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px]">
+                            <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span>Buka 09:00 - 21:00 WIB</span>
                           </div>
 
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
                             <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>Klaim Garansi 30 Hari & Servis Kilat</span>
+                            <span>Garansi 30 Hari & Servis Kilat</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Right Action CTAs */}
-                    <div className="flex flex-row lg:flex-col sm:items-end justify-between lg:justify-center gap-2.5 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-200/60 dark:border-slate-800 shrink-0">
+                    <div className="grid grid-cols-2 sm:flex sm:flex-row lg:flex-col sm:items-end justify-between lg:justify-center gap-2 sm:gap-2.5 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-200/60 dark:border-slate-800 shrink-0">
                       <Link
                         href={`/toko/${store.slug}`}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-slate-950 px-5 py-2.5 text-xs font-bold text-white shadow-2xs hover:bg-slate-800 active:scale-[0.99] transition dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 w-full sm:w-auto"
+                        className="inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-2xl bg-slate-950 px-3 sm:px-5 py-2.5 text-xs font-bold text-white shadow-2xs hover:bg-slate-800 active:scale-[0.99] transition dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 w-full sm:w-auto text-center"
                       >
-                        <span>Lihat Stok & Profil</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
+                        <span className="truncate">Lihat Stok</span>
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                       </Link>
 
                       <Link
                         href={`/dashboard/customer/chat?storeId=${store.id}`}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-xs px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300 dark:hover:bg-orange-950/40 dark:hover:text-orange-300 transition w-full sm:w-auto shadow-2xs"
+                        className="inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-xs px-3 sm:px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300 dark:hover:bg-orange-950/40 dark:hover:text-orange-300 transition w-full sm:w-auto shadow-2xs text-center"
                       >
-                        <MessageSquare className="h-3.5 w-3.5 text-orange-500" />
-                        <span>Chat Toko</span>
+                        <MessageSquare className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                        <span className="truncate">Chat Toko</span>
                       </Link>
                     </div>
 

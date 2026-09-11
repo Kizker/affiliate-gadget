@@ -255,7 +255,10 @@ export default function StoreDetailPage() {
                       key={item.id}
                       className="shadow-xs group relative flex flex-col justify-between rounded-3xl border border-slate-200/80 bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
                     >
-                      <div>
+                      <Link
+                        href={`/gadget/${item.id}`}
+                        className="block focus:outline-none cursor-pointer"
+                      >
                         {/* 1. Media Header (Square Cropped Hero Photo) */}
                         <div className="relative mb-3.5 aspect-square w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60">
                           <Image
@@ -326,7 +329,7 @@ export default function StoreDetailPage() {
                             )}
                           </div>
                         </div>
-                      </div>
+                      </Link>
 
                       {/* 3. Bottom CTA (Action Orange) */}
                       <div className="mt-3.5 flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800/80">
