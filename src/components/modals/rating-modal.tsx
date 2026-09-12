@@ -11,7 +11,10 @@ interface RatingModalProps {
   orderNumber: string
   existingRating?: number
   existingComment?: string
-  onSuccess: () => void
+  onSuccess: (updatedReview?: {
+    rating: number
+    comment: string | null
+  }) => void
 }
 
 const RATING_LABELS: Record<number, { text: string; color: string }> = {
@@ -19,7 +22,10 @@ const RATING_LABELS: Record<number, { text: string; color: string }> = {
   2: { text: 'Kurang Puas', color: 'text-amber-600 dark:text-amber-400' },
   3: { text: 'Cukup Baik', color: 'text-blue-600 dark:text-blue-400' },
   4: { text: 'Sangat Puas', color: 'text-emerald-600 dark:text-emerald-400' },
-  5: { text: 'Luar Biasa / Sempurna', color: 'text-amber-500 dark:text-amber-400' },
+  5: {
+    text: 'Luar Biasa / Sempurna',
+    color: 'text-amber-500 dark:text-amber-400',
+  },
 }
 
 const QUICK_TAGS = [
@@ -43,12 +49,50 @@ export function RatingModal({
   const [hoveredRating, setHoveredRating] = useState(0)
   const [comment, setComment] = useState(existingComment || '')
   const [submitting, setSubmitting] = useState(false)
+  const [isEditing, setIsEditing] = useState(
+    Boolean(existingRating && existingRating > 0)
+  )
 
-  // Reset state when modal opens
+  // Reset state or fetch existing review when modal opens
   useEffect(() => {
-    if (isOpen) {
-      setRating(existingRating || 5)
+    if (!isOpen) return
+
+    if (
+      existingRating !== undefined &&
+      existingRating !== null &&
+      existingRating > 0
+    ) {
+      setRating(existingRating)
       setComment(existingComment || '')
+      setIsEditing(true)
+      setHoveredRating(0)
+    } else if (orderId) {
+      // Fallback: Fetch existing review for this order from server
+      fetch(`/api/orders/${orderId}/review`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.review) {
+            setRating(data.review.rating || 5)
+            setComment(data.review.comment || '')
+            setIsEditing(true)
+          } else {
+            setRating(5)
+            setComment('')
+            setIsEditing(false)
+          }
+        })
+        .catch(() => {
+          setRating(5)
+          setComment('')
+          setIsEditing(false)
+        })
+        .finally(() => {
+          setHoveredRating(0)
+        })
+    } else {
+      setRating(5)
+      setComment('')
+      setIsEditing(false)
       setHoveredRating(0)
     }
   }, [isOpen, orderId, existingRating, existingComment])
@@ -60,7 +104,14 @@ export function RatingModal({
 
   const handleAddTag = (tag: string) => {
     if (comment.includes(tag)) {
-      setComment((prev) => prev.replace(tag, '').replace(/,\s*,/g, ',').trim())
+      setComment((prev) =>
+        prev
+          .replace(tag, '')
+          .replace(/,\s*,/g, ',')
+          .replace(/^,\s*/, '')
+          .replace(/,\s*$/, '')
+          .trim()
+      )
     } else {
       setComment((prev) => (prev ? `${prev}, ${tag}` : tag))
     }
@@ -83,8 +134,13 @@ export function RatingModal({
       })
 
       if (res.ok) {
-        toast.success('Ulasan dan rating berhasil disimpan!')
-        onSuccess()
+        const data = await res.json()
+        toast.success(
+          isEditing
+            ? 'Ulasan Anda berhasil diperbarui!'
+            : 'Ulasan dan rating berhasil disimpan!'
+        )
+        onSuccess(data?.review || { rating, comment })
         onClose()
       } else {
         const error = await res.json()
@@ -99,38 +155,36 @@ export function RatingModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
+    <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
       {/* Modal Surface */}
-      <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-7 shadow-2xl duration-200 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900">
-        
+      <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl duration-200 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-950 dark:text-white tracking-tight">
-                {existingRating ? 'Edit Ulasan Gadget' : 'Beri Ulasan Gadget'}
+              <h2 className="text-base font-black tracking-tight text-slate-950 dark:text-white sm:text-lg">
+                {isEditing ? 'Ubah Ulasan Gadget' : 'Beri Ulasan Gadget'}
               </h2>
-              <span className="rounded-full bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
                 Terverifikasi
               </span>
             </div>
-            <p className="font-mono text-xs text-slate-500 mt-0.5">
+            <p className="mt-0.5 font-mono text-xs text-slate-500">
               Pesanan #{orderNumber}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white transition cursor-pointer"
+            className="cursor-pointer rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-5">
-          
           {/* Interactive Star Rating Center */}
           <div className="flex flex-col items-center justify-center py-2 text-center">
-            <div className="flex items-center gap-1.5 sm:gap-2 mb-2">
+            <div className="mb-2 flex items-center gap-1.5 sm:gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
@@ -138,13 +192,13 @@ export function RatingModal({
                   onClick={() => setRating(star)}
                   onMouseEnter={() => setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
-                  className="p-1 transition-all duration-150 hover:scale-120 active:scale-95 cursor-pointer"
+                  className="hover:scale-120 cursor-pointer p-1 transition-all duration-150 active:scale-95"
                   title={`${star} Bintang`}
                 >
                   <Star
-                    className={`h-8 w-8 sm:h-9 sm:w-9 transition-colors ${
+                    className={`h-8 w-8 transition-colors sm:h-9 sm:w-9 ${
                       star <= activeRating
-                        ? 'fill-amber-400 text-amber-400 drop-shadow-xs'
+                        ? 'drop-shadow-xs fill-amber-400 text-amber-400'
                         : 'text-slate-200 dark:text-slate-700'
                     }`}
                   />
@@ -153,14 +207,16 @@ export function RatingModal({
             </div>
 
             {/* Dynamic Emotion Label */}
-            <span className={`text-xs font-bold transition-all ${currentFeedback.color}`}>
+            <span
+              className={`text-xs font-bold transition-all ${currentFeedback.color}`}
+            >
               {activeRating} dari 5 Bintang • {currentFeedback.text}
             </span>
           </div>
 
           {/* Quick Tag Recommendations */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+            <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Poin Kepuasan Cepat (Opsional):
             </label>
             <div className="flex flex-wrap gap-1.5">
@@ -171,10 +227,10 @@ export function RatingModal({
                     key={tag}
                     type="button"
                     onClick={() => handleAddTag(tag)}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer border ${
+                    className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
                       isSelected
-                        ? 'bg-slate-950 text-white border-slate-950 dark:bg-white dark:text-slate-950 dark:border-white shadow-2xs'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/70 dark:bg-slate-800/60 dark:border-slate-800 dark:text-slate-300'
+                        ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
+                        : 'border-slate-200/70 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'
                     }`}
                   >
                     {tag}
@@ -186,45 +242,43 @@ export function RatingModal({
 
           {/* Comment Textarea */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
               Catatan Pengalaman (Opsional)
             </label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={3}
-              className="w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white transition leading-relaxed"
+              className="w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium leading-relaxed text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white"
               placeholder="Ceritakan kepuasan Anda mengenai kondisi fisik unit gadget, kelengkapan bonus 3-in-1, atau kecepatan pengiriman..."
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-2 flex items-center justify-end gap-2.5">
+          <div className="flex items-center justify-end gap-2.5 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="cursor-pointer rounded-full px-5 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={submitting || rating === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 text-white px-6 py-2.5 text-xs font-bold shadow-xs transition active:scale-95 disabled:opacity-40 cursor-pointer"
+              className="shadow-xs inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
             >
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Menyimpan...</span>
+                  <span>{isEditing ? 'Memperbarui...' : 'Menyimpan...'}</span>
                 </>
               ) : (
-                <span>Simpan Ulasan</span>
+                <span>{isEditing ? 'Perbarui Ulasan' : 'Simpan Ulasan'}</span>
               )}
             </button>
           </div>
-
         </form>
-
       </div>
     </div>
   )

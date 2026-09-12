@@ -878,21 +878,21 @@ export default function AdminComplaintsPage() {
 
                                 <div className="flex items-center gap-2">
                                   <button
+                                    type="button"
                                     onClick={() => handleResolve(complaint.id)}
                                     disabled={
-                                      (actionLoading &&
-                                        activeActionId === complaint.id) ||
-                                      !resolution.trim()
+                                      actionLoading &&
+                                      activeActionId === complaint.id
                                     }
-                                    className="px-4.5 shadow-xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+                                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-emerald-600/25 transition-all hover:bg-emerald-700 hover:shadow-emerald-600/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                                   >
                                     {actionLoading &&
                                     activeActionId === complaint.id ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
-                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                      <CheckCircle2 className="h-4 w-4" />
                                     )}
-                                    <span>Setujui & Selesaikan Klaim</span>
+                                    <span>Selesaikan Klaim</span>
                                   </button>
                                 </div>
                               </div>
@@ -977,25 +977,26 @@ export default function AdminComplaintsPage() {
 
                                 <div className="flex items-center gap-2">
                                   <button
+                                    type="button"
                                     onClick={() => setShowRejectForm(false)}
-                                    className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                    className="cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                   >
                                     Batal
                                   </button>
                                   <button
+                                    type="button"
                                     onClick={() => handleReject(complaint.id)}
                                     disabled={
-                                      (actionLoading &&
-                                        activeActionId === complaint.id) ||
-                                      !rejectionNote.trim()
+                                      actionLoading &&
+                                      activeActionId === complaint.id
                                     }
-                                    className="shadow-xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+                                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-rose-600/25 transition-all hover:bg-rose-700 hover:shadow-rose-600/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                                   >
                                     {actionLoading &&
                                     activeActionId === complaint.id ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
-                                      <XCircle className="h-3.5 w-3.5" />
+                                      <XCircle className="h-4 w-4" />
                                     )}
                                     <span>Konfirmasi Tolak Klaim</span>
                                   </button>

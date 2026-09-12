@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
 import Link from 'next/link'
 import {
   MessageSquare,
@@ -994,9 +993,9 @@ function CustomerChatContent() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-slate-50/50 dark:bg-slate-950">
+      <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-950">
         <Navbar variant="light" />
-        <div className="flex flex-1 items-center justify-center pt-24">
+        <div className="flex flex-1 items-center justify-center pt-20">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
         </div>
       </div>
@@ -1004,7 +1003,7 @@ function CustomerChatContent() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50/50 font-sans dark:bg-slate-950">
+    <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-slate-50/50 font-sans dark:bg-slate-950">
       <Navbar variant="light" />
 
       {/* Hidden file input for Photo & Video */}
@@ -1081,10 +1080,10 @@ function CustomerChatContent() {
           document.body
         )}
 
-      <main className="flex-1 pb-10 pt-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <main className="flex flex-1 flex-col overflow-hidden pb-2 pt-16 sm:pb-4 sm:pt-20">
+        <div className="mx-auto flex h-full w-full max-w-7xl flex-1 flex-col px-2 sm:px-6 lg:px-8">
           {/* Single-Surface Bento Chat Hub Container */}
-          <div className="shadow-xs grid h-[calc(100vh-10.5rem)] max-h-[calc(100vh-10.5rem)] min-h-[450px] grid-cols-1 overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-12">
+          <div className="shadow-xs grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl lg:grid-cols-12">
             {/* Left Pane: Integrated Control & Conversation List (4 Cols) */}
             <div
               className={`flex h-full min-h-0 flex-col overflow-hidden border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:col-span-4 xl:col-span-4 ${
@@ -1871,8 +1870,6 @@ function CustomerChatContent() {
           </div>
         </div>
       </main>
-
-      <Footer variant="light" />
     </div>
   )
 }

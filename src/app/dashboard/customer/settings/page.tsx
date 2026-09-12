@@ -947,8 +947,8 @@ export default function CustomerSettingsPage() {
               >
                 {/* 1. Ubah Kata Sandi */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div>
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="min-w-0 pr-2">
                       <h2 className="text-sm font-bold text-slate-950">
                         Ubah Kata Sandi Akun
                       </h2>
@@ -957,9 +957,9 @@ export default function CustomerSettingsPage() {
                         keamanan akun
                       </p>
                     </div>
-                    <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                      <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                      Enkripsi Terproteksi
+                    <span className="shadow-2xs inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                      <ShieldCheck className="h-3 w-3 shrink-0 text-emerald-600" />
+                      Terproteksi
                     </span>
                   </div>
 
@@ -1053,7 +1053,7 @@ export default function CustomerSettingsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2">
+                  <div className="flex items-center justify-between gap-3 pt-2">
                     <div className="text-[11px] text-slate-400">
                       Minimal 6 karakter, kombinasikan huruf dan angka untuk
                       keamanan maksimal.
@@ -1067,14 +1067,14 @@ export default function CustomerSettingsPage() {
                         !newPassword ||
                         !confirmPassword
                       }
-                      className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+                      className="shadow-xs inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 sm:px-6 sm:py-2.5"
                     >
                       {saving ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                       ) : (
-                        <Check className="h-3.5 w-3.5" />
+                        <Check className="h-3.5 w-3.5 shrink-0" />
                       )}
-                      <span>Perbarui Kata Sandi</span>
+                      <span>Perbarui</span>
                     </button>
                   </div>
                 </div>
@@ -1197,26 +1197,25 @@ export default function CustomerSettingsPage() {
 
                   <div className="space-y-3">
                     {/* Current Device */}
-                    <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4">
-                      <div className="flex items-center gap-3.5">
-                        <div className="shadow-xs flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3.5 sm:p-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="shadow-xs flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
                           <Laptop className="h-5 w-5" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-slate-950">
-                              MacBook / Desktop (macOS)
-                            </span>
-                            <span className="py-0.2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 text-[9px] font-black text-emerald-800">
-                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                              Aktif Sekarang
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-400">
+                        <div className="min-w-0">
+                          <span className="block truncate text-xs font-black text-slate-950">
+                            MacBook / Desktop (macOS)
+                          </span>
+                          <p className="truncate text-[11px] text-slate-400">
                             Google Chrome • Jakarta, Indonesia (Sesi Saat Ini)
                           </p>
                         </div>
                       </div>
+
+                      <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                        Aktif
+                      </span>
                     </div>
 
                     {/* Smartphone Device */}

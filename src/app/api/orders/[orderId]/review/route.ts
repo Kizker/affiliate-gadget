@@ -54,13 +54,19 @@ export async function POST(
       )
     }
 
-    const firstProductItem = order.items.find((i) => i.type === 'PRODUCT' && i.productId)
+    const firstProductItem = order.items.find(
+      (i) => i.type === 'PRODUCT' && i.productId
+    )
     const reviewType = firstProductItem ? 'PRODUCT' : 'TECHNICIAN'
     const productId = firstProductItem?.productId || null
     const variantName = firstProductItem?.variantName || null
 
-    const sanitizedImages = Array.isArray(images) ? images.filter((img) => typeof img === 'string') : []
-    const sanitizedVideos = Array.isArray(videos) ? videos.filter((vid) => typeof vid === 'string') : []
+    const sanitizedImages = Array.isArray(images)
+      ? images.filter((img) => typeof img === 'string')
+      : []
+    const sanitizedVideos = Array.isArray(videos)
+      ? videos.filter((vid) => typeof vid === 'string')
+      : []
 
     // Check if review already exists
     const existingReview = await prisma.review.findFirst({
@@ -78,8 +84,14 @@ export async function POST(
         data: {
           rating: Number(rating),
           comment: comment?.trim() || null,
-          images: sanitizedImages,
-          videos: sanitizedVideos,
+          images:
+            sanitizedImages.length > 0
+              ? sanitizedImages
+              : existingReview.images,
+          videos:
+            sanitizedVideos.length > 0
+              ? sanitizedVideos
+              : existingReview.videos,
           productId: productId || existingReview.productId,
           storeId: order.storeId || existingReview.storeId,
           variantName: variantName || existingReview.variantName,
@@ -104,16 +116,20 @@ export async function POST(
     }
 
     // If product review, recalculate rating & totalReview
-    if (productId) {
+    const targetProductId = productId || existingReview?.productId
+    if (targetProductId) {
       const allProductReviews = await prisma.review.findMany({
-        where: { productId, type: 'PRODUCT' },
+        where: { productId: targetProductId, type: 'PRODUCT' },
         select: { rating: true },
       })
       const total = allProductReviews.length
-      const avg = total > 0 ? allProductReviews.reduce((acc, r) => acc + r.rating, 0) / total : 5.0
+      const avg =
+        total > 0
+          ? allProductReviews.reduce((acc, r) => acc + r.rating, 0) / total
+          : 5.0
 
       await prisma.product.update({
-        where: { id: productId },
+        where: { id: targetProductId },
         data: {
           rating: Number(avg.toFixed(1)),
           totalReview: total,

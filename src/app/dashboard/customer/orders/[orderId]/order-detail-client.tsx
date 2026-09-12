@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
@@ -122,7 +122,13 @@ interface OrderDetailProps {
       createdAt: string
       resolvedAt?: string | null
     }>
-    review?: { rating: number; comment: string | null } | null
+    review?: {
+      id?: string
+      rating: number
+      comment: string | null
+      images?: string[]
+      videos?: string[]
+    } | null
   }
 }
 
@@ -191,6 +197,15 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
   const [isCancelling, setIsCancelling] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
 
+  // Review state
+  const [currentReview, setCurrentReview] = useState(order.review ?? null)
+
+  useEffect(() => {
+    if (order.review) {
+      setCurrentReview(order.review)
+    }
+  }, [order.review])
+
   // Rating Modal state
   const [ratingModal, setRatingModal] = useState<{
     isOpen: boolean
@@ -221,8 +236,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
       isOpen: true,
       orderId: order.id,
       orderNumber: order.orderNumber,
-      existingRating: order.review?.rating,
-      existingComment: order.review?.comment,
+      existingRating: currentReview?.rating,
+      existingComment: currentReview?.comment,
     })
   }
 
@@ -474,9 +489,9 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                     className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     <Star
-                      className={`h-3.5 w-3.5 ${order.review ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`}
+                      className={`h-3.5 w-3.5 ${currentReview ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`}
                     />
-                    <span>{order.review ? 'Lihat Ulasan' : 'Beri Ulasan'}</span>
+                    <span>{currentReview ? 'Ubah Ulasan' : 'Beri Ulasan'}</span>
                   </button>
                 )}
               </div>
@@ -1157,10 +1172,17 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         onClose={() => setRatingModal((prev) => ({ ...prev, isOpen: false }))}
         orderId={ratingModal.orderId}
         orderNumber={ratingModal.orderNumber}
-        existingRating={ratingModal.existingRating}
-        existingComment={ratingModal.existingComment ?? undefined}
-        onSuccess={() => {
-          toast.success('Ulasan Anda berhasil disimpan!')
+        existingRating={currentReview?.rating ?? ratingModal.existingRating}
+        existingComment={
+          currentReview?.comment ?? ratingModal.existingComment ?? undefined
+        }
+        onSuccess={(updatedReview) => {
+          if (updatedReview) {
+            setCurrentReview((prev) => ({
+              ...(prev ?? {}),
+              ...updatedReview,
+            }))
+          }
           router.refresh()
         }}
       />

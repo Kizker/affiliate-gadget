@@ -30,7 +30,9 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
       items: {
         include: {
           service: { select: { id: true, name: true, category: true } },
-          product: { select: { id: true, name: true, images: true, brand: true } },
+          product: {
+            select: { id: true, name: true, images: true, brand: true },
+          },
           rentalItem: { select: { id: true, name: true, images: true } },
         },
       },
@@ -82,9 +84,15 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
         orderBy: { createdAt: 'desc' },
       },
       reviews: {
-        where: { type: 'TECHNICIAN' },
         take: 1,
-        select: { rating: true, comment: true },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          images: true,
+          videos: true,
+        },
       },
     },
   })
