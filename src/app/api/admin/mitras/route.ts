@@ -112,127 +112,144 @@ export async function GET(req: NextRequest) {
     let mappedApplicants: typeof mappedStores = []
 
     if (approved !== 'true') {
-      const applicantWhere: Record<string, unknown> = {
-        user: {
-          role: 'MITRA',
-          mitraStatus: 'PENDING',
-        },
-      }
-
-      if (search) {
-        applicantWhere.OR = [
-          { storeName: { contains: search, mode: 'insensitive' } },
-          { companyName: { contains: search, mode: 'insensitive' } },
-          { city: { contains: search, mode: 'insensitive' } },
-          { user: { name: { contains: search, mode: 'insensitive' } } },
-          { user: { email: { contains: search, mode: 'insensitive' } } },
-        ]
-      }
-      if (city) {
-        applicantWhere.city = city
-      }
-
-      const pendingApplications = await (db as any).storeApplication.findMany({
-        where: applicantWhere,
-        include: {
+      try {
+        const applicantWhere: Record<string, unknown> = {
           user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              isActive: true,
-              mitraStatus: true,
-            },
+            role: 'MITRA',
+            mitraStatus: 'PENDING',
           },
-        },
-        orderBy: {
-          submittedAt: 'desc',
-        },
-      })
+        }
 
-      mappedApplicants = pendingApplications.map((app: any) => ({
-        id: `applicant_${app.id}`,
-        businessName: app.storeName,
-        name: app.storeName,
-        slug: '',
-        companyName: app.companyName,
-        taxId: app.taxId,
-        tagline: null,
-        description: null,
-        address: app.address,
-        city: app.city,
-        province: app.province,
-        postalCode: app.postalCode,
-        latitude: null,
-        longitude: null,
-        phone: app.phone,
-        whatsapp: null,
-        email: app.user.email,
-        rating: 0,
-        totalReview: 0,
-        totalSales: 0,
-        commissionRate: 2.0,
-        isOwnerStore: false,
-        isApproved: false,
-        isActive: false,
-        source: 'pending_applicant' as any,
-        rejectionReason: app.rejectionReason,
-        createdAt: app.submittedAt.toISOString(),
-        bankAccounts:
-          app.bankName && app.accountNumber
-            ? [
-                {
-                  id: `bank_${app.id}`,
-                  storeId: '',
-                  bankName: app.bankName,
-                  accountNumber: app.accountNumber,
-                  accountName: app.accountName || app.companyName,
-                  isPrimary: true,
-                  createdAt: app.submittedAt,
-                  updatedAt: app.updatedAt,
+        if (search) {
+          applicantWhere.OR = [
+            { storeName: { contains: search, mode: 'insensitive' } },
+            { companyName: { contains: search, mode: 'insensitive' } },
+            { city: { contains: search, mode: 'insensitive' } },
+            { user: { name: { contains: search, mode: 'insensitive' } } },
+            { user: { email: { contains: search, mode: 'insensitive' } } },
+          ]
+        }
+        if (city) {
+          applicantWhere.city = city
+        }
+
+        const pendingApplications = await (db as any).storeApplication.findMany(
+          {
+            where: applicantWhere,
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  isActive: true,
+                  mitraStatus: true,
                 },
-              ]
-            : [],
-        schedules: [],
-        user: {
-          id: app.user.id,
-          name: app.user.name || app.companyName,
-          email: app.user.email,
-          phone: app.user.phone || app.phone,
-          isActive: app.user.isActive,
-          mitraStatus: app.user.mitraStatus,
-        },
-        _count: {
-          services: 0,
-          products: 0,
-          orders: 0,
-          images: 0,
-          reviews: 0,
-        },
-      }))
+              },
+            },
+            orderBy: {
+              submittedAt: 'desc',
+            },
+          }
+        )
+
+        mappedApplicants = (pendingApplications || []).map((app: any) => ({
+          id: `applicant_${app.id}`,
+          businessName: app.storeName,
+          name: app.storeName,
+          slug: '',
+          companyName: app.companyName,
+          taxId: app.taxId,
+          tagline: null,
+          description: null,
+          address: app.address,
+          city: app.city,
+          province: app.province,
+          postalCode: app.postalCode,
+          latitude: null,
+          longitude: null,
+          phone: app.phone,
+          whatsapp: null,
+          email: app.user?.email || '',
+          rating: 0,
+          totalReview: 0,
+          totalSales: 0,
+          commissionRate: 2.0,
+          isOwnerStore: false,
+          isApproved: false,
+          isActive: false,
+          source: 'pending_applicant' as any,
+          rejectionReason: app.rejectionReason,
+          createdAt: app.submittedAt
+            ? app.submittedAt instanceof Date
+              ? app.submittedAt.toISOString()
+              : new Date(app.submittedAt).toISOString()
+            : new Date().toISOString(),
+          bankAccounts:
+            app.bankName && app.accountNumber
+              ? [
+                  {
+                    id: `bank_${app.id}`,
+                    storeId: '',
+                    bankName: app.bankName,
+                    accountNumber: app.accountNumber,
+                    accountName: app.accountName || app.companyName,
+                    isPrimary: true,
+                    createdAt: app.submittedAt,
+                    updatedAt: app.updatedAt,
+                  },
+                ]
+              : [],
+          schedules: [],
+          user: {
+            id: app.user?.id || '',
+            name: app.user?.name || app.companyName,
+            email: app.user?.email || '',
+            phone: app.user?.phone || app.phone,
+            isActive: app.user?.isActive ?? false,
+            mitraStatus: app.user?.mitraStatus || 'PENDING',
+          },
+          _count: {
+            services: 0,
+            products: 0,
+            orders: 0,
+            images: 0,
+            reviews: 0,
+          },
+        }))
+      } catch (appError) {
+        console.warn(
+          'Warning: Failed to fetch storeApplication (table may not exist or schema desync):',
+          appError
+        )
+        mappedApplicants = []
+      }
     }
 
     // Combine items based on filter
     const combinedList = [...mappedApplicants, ...mappedStores]
 
     // Calculate stats
-    const [
-      totalActiveStores,
-      totalInactiveStores,
-      totalPendingApplicants,
-      uniqueCities,
-    ] = await Promise.all([
-      db.store.count({ where: { isActive: true } }),
-      db.store.count({ where: { isActive: false } }),
-      (db as any).storeApplication.count({
+    let totalPendingApplicants = 0
+    try {
+      totalPendingApplicants = await (db as any).storeApplication.count({
         where: { user: { role: 'MITRA', mitraStatus: 'PENDING' } },
-      }),
-      db.store.findMany({
-        select: { city: true },
-        distinct: ['city'],
-      }),
-    ])
+      })
+    } catch (countError) {
+      console.warn('Warning: Failed to count storeApplication:', countError)
+      totalPendingApplicants = 0
+    }
+
+    const [totalActiveStores, totalInactiveStores, uniqueCities] =
+      await Promise.all([
+        db.store.count({ where: { isActive: true } }),
+        db.store.count({ where: { isActive: false } }),
+        db.store.findMany({
+          select: { city: true },
+          distinct: ['city'],
+        }),
+      ])
 
     const totalCount = combinedList.length
     const paginatedItems = combinedList.slice(skip, skip + limit)
