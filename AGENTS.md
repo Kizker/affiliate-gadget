@@ -95,6 +95,10 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-12 (Homepage React Hydration Mismatch & Invalid HTML Tag Nesting Fix):**
+  - **1. Root Cause Resolution ([`src/app/page.tsx`](file:///src/app/page.tsx)):** Mengeliminasi tag pembungkus `<footer>` redundan di luar komponen `<Footer variant="light" />` yang menyebabkan invalid HTML5 tag nesting (`<footer>` di dalam `<footer>`). Parser browser menutup paksa tag footer luar sebelum tag dalam, merusak hierarki DOM tree dan memicu React 19 hydration mismatch error pada homepage.
+  - **2. Verification & Test Suite:** 100% lolos kompilasi TypeScript (`pnpm tsc --noEmit` = 0 error) dan 11 test suites dengan 102 unit tests lolos 100% (`pnpm test:unit`).
+
 - **2026-09-11 (Mitra Onboarding Lifecycle, Store Scope Isolation, Dedicated Detail Page & Modern Dialog System):**
   - **1. Mitra Onboarding & Store Application Architecture:** Integrasi form registrasi mitra toko offline (`/register` & `/api/auth/register/store-data`), model database `StoreApplication`, penanganan status pendaftaran `PENDING`, upload dokumen legalitas PT, dan rekening bank mandiri toko.
   - **2. Single-Store Role Isolation (`STORE_ADMIN`):** Isolasi kepemilikan toko berbasis `storeId` pada dashboard mitra, manajemen produk, manajemen pesanan, omzet toko, dan sidebar. Akun cabang toko mandiri hanya melihat inventori & transaksi toko fisiknya sendiri tanpa bercampur dengan toko lain.

@@ -16,7 +16,7 @@ export default function HomePage() {
       {/* Scroll snap container — fullscreen scroll */}
       <div
         id="snap-container"
-        className="h-screen overflow-y-scroll bg-white text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="h-screen overflow-y-scroll bg-white text-slate-900 [scrollbar-width:none] selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100 [&::-webkit-scrollbar]:hidden"
       >
         {/* 1. Hero — Section 1 */}
         <SectionHeroClean />
@@ -31,9 +31,7 @@ export default function HomePage() {
         <SectionStoreSpotlight />
 
         {/* 5. Footer — Section 5 */}
-        <footer>
-          <Footer variant="light" />
-        </footer>
+        <Footer variant="light" />
       </div>
     </>
   )
