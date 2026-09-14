@@ -21,7 +21,10 @@ export async function GET(
     })
 
     if (!product) {
-      return NextResponse.json({ success: false, error: 'Produk gadget tidak ditemukan' }, { status: 404 })
+      return NextResponse.json(
+        { success: false, error: 'Produk gadget tidak ditemukan' },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json(
@@ -31,12 +34,18 @@ export async function GET(
       },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
         },
       }
     )
   } catch (error) {
     console.error('Error fetching gadget detail:', error)
-    return NextResponse.json({ success: false, error: 'Gagal memuat detail gadget' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: 'Gagal memuat detail gadget' },
+      { status: 500 }
+    )
   }
 }

@@ -33,8 +33,18 @@ export async function GET(request: Request) {
       }
     }
 
-    const where: any = {
-      isActive: true,
+    const sort = searchParams.get('sort') || ''
+    const statusParam = searchParams.get('status') || ''
+
+    const where: any = {}
+
+    // Public view only sees active products, while admin/scoped can see both unless specified
+    if (!scoped && statusParam !== 'all') {
+      where.isActive = true
+    } else if (statusParam === 'active') {
+      where.isActive = true
+    } else if (statusParam === 'inactive') {
+      where.isActive = false
     }
 
     if (search) {
@@ -60,6 +70,22 @@ export async function GET(request: Request) {
       if (maxPrice !== undefined) where.price.lte = maxPrice
     }
 
+    // Determine ordering
+    let orderBy: any = [{ promotionPriority: 'desc' }, { createdAt: 'desc' }]
+    if (scoped || sort === 'latest') {
+      orderBy = [{ createdAt: 'desc' }]
+    } else if (sort === 'oldest') {
+      orderBy = [{ createdAt: 'asc' }]
+    } else if (sort === 'price_desc') {
+      orderBy = [{ price: 'desc' }, { createdAt: 'desc' }]
+    } else if (sort === 'price_asc') {
+      orderBy = [{ price: 'asc' }, { createdAt: 'desc' }]
+    } else if (sort === 'stock_desc') {
+      orderBy = [{ stock: 'desc' }, { createdAt: 'desc' }]
+    } else if (sort === 'priority') {
+      orderBy = [{ promotionPriority: 'desc' }, { createdAt: 'desc' }]
+    }
+
     const products = await prisma.product.findMany({
       where,
       include: {
@@ -75,8 +101,12 @@ export async function GET(request: Request) {
         },
         variants: true,
       },
-      orderBy: [{ promotionPriority: 'desc' }, { createdAt: 'desc' }],
+      orderBy,
     })
+
+    const cacheHeaders = scoped
+      ? { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+      : { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' }
 
     return NextResponse.json(
       {
@@ -84,9 +114,7 @@ export async function GET(request: Request) {
         data: products,
       },
       {
-        headers: {
-          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
-        },
+        headers: cacheHeaders,
       }
     )
   } catch (error) {

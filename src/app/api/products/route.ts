@@ -327,6 +327,7 @@ export async function POST(request: NextRequest) {
             ram: v.ram,
             storage: v.storage,
             color: v.color,
+            image: v.image || null,
             price: parseFloat(String(v.price || price).replace(/\./g, '')),
             stock: parseInt(String(v.stock || stock)) || 0,
             sku: v.sku,

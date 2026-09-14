@@ -145,6 +145,7 @@ export async function PATCH(
               ram: v.ram,
               storage: v.storage,
               color: v.color,
+              image: v.image || null,
               price: parseFloat(
                 String(v.price || price || existing.price).replace(/\./g, '')
               ),

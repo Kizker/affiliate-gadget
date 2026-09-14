@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
@@ -46,6 +46,23 @@ export default function GadgetDetailPage() {
 
   const { addItem } = useCartStore()
 
+  // Aggregate all unique images from product and variants for thumbnails (must be before early returns)
+  const allImages = useMemo(() => {
+    if (!product) return []
+    const list: string[] = []
+    if (Array.isArray(product.images)) {
+      product.images.forEach((img: string) => {
+        if (img && !list.includes(img)) list.push(img)
+      })
+    }
+    if (Array.isArray(product.variants)) {
+      product.variants.forEach((v: any) => {
+        if (v.image && !list.includes(v.image)) list.push(v.image)
+      })
+    }
+    return list
+  }, [product])
+
   useEffect(() => {
     if (id) {
       fetchProductDetail()
@@ -55,18 +72,28 @@ export default function GadgetDetailPage() {
   const fetchProductDetail = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/gadgets/${id}`)
+      const res = await fetch(`/api/gadgets/${id}?t=${Date.now()}`, {
+        cache: 'no-store',
+      })
       const data = await res.json()
       if (data.success && data.data) {
         setProduct(data.data)
-        if (data.data.images && data.data.images.length > 0) {
-          setSelectedImage(data.data.images[0])
-        }
+        let initialImage =
+          data.data.images && data.data.images.length > 0
+            ? data.data.images[0]
+            : ''
         if (data.data.variants && data.data.variants.length > 0) {
           const firstWithStock = data.data.variants.find(
             (v: any) => (v.stock || 0) > 0
           )
-          setSelectedVariant(firstWithStock || data.data.variants[0])
+          const chosenVariant = firstWithStock || data.data.variants[0]
+          setSelectedVariant(chosenVariant)
+          if (chosenVariant.image) {
+            initialImage = chosenVariant.image
+          }
+        }
+        if (initialImage) {
+          setSelectedImage(initialImage)
         }
       }
     } catch (e) {
@@ -90,6 +117,11 @@ export default function GadgetDetailPage() {
     const priceToUse = selectedVariant ? selectedVariant.price : product.price
     const variantName = selectedVariant ? selectedVariant.name : undefined
     const variantId = selectedVariant ? selectedVariant.id : undefined
+    const imageToUse =
+      selectedVariant?.image ||
+      selectedImage ||
+      (product.images && product.images[0]) ||
+      ''
 
     addItem({
       type: 'PRODUCT',
@@ -98,7 +130,7 @@ export default function GadgetDetailPage() {
       variantName: variantName,
       name: `${product.name} ${variantName ? `(${variantName})` : ''}`,
       price: priceToUse,
-      image: selectedImage || (product.images && product.images[0]) || '',
+      image: imageToUse,
       quantity: quantity,
       stock: selectedVariant?.stock || product.stock,
       notes: `${product.warrantyDays || 30} Hari Garansi Toko + Free Bonus 3-in-1`,
@@ -181,6 +213,11 @@ export default function GadgetDetailPage() {
 
   const handleSelectVariant = (variant: any) => {
     setSelectedVariant(variant)
+    if (variant.image) {
+      setSelectedImage(variant.image)
+    } else if (product?.images && product.images.length > 0) {
+      setSelectedImage(product.images[0])
+    }
     const variantStock = Number(variant.stock) || 0
     if (variantStock <= 0) {
       setQuantity(0)
@@ -256,6 +293,7 @@ export default function GadgetDetailPage() {
                 {/* Image clipped with padding effect via absolute inset */}
                 <div className="absolute inset-5 overflow-hidden rounded-2xl">
                   <Image
+                    key={selectedImage}
                     src={
                       selectedImage ||
                       product.images?.[0] ||
@@ -266,7 +304,7 @@ export default function GadgetDetailPage() {
                     sizes="500px"
                     priority
                     unoptimized
-                    className="object-contain transition-transform duration-300"
+                    className="object-contain transition-all duration-300"
                   />
                 </div>
                 {/* Warranty Stamp */}
@@ -277,29 +315,40 @@ export default function GadgetDetailPage() {
               </div>
 
               {/* Thumbnails */}
-              {product.images && product.images.length > 1 && (
+              {allImages && allImages.length > 1 && (
                 <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
-                  {product.images.map((img: string, i: number) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setSelectedImage(img)}
-                      className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border transition-all duration-200 ${
-                        selectedImage === img
-                          ? 'border-slate-950 ring-2 ring-slate-950/20 dark:border-white dark:ring-white/20'
-                          : 'border-slate-200/80 opacity-70 hover:opacity-100 dark:border-slate-800'
-                      }`}
-                    >
-                      <Image
-                        src={img}
-                        alt="Thumbnail"
-                        fill
-                        sizes="64px"
-                        unoptimized
-                        className="object-cover"
-                      />
-                    </button>
-                  ))}
+                  {allImages.map((img: string, i: number) => {
+                    const isSelected = selectedImage === img
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setSelectedImage(img)
+                          const matchingVar = product.variants?.find(
+                            (v: any) => v.image === img
+                          )
+                          if (matchingVar) {
+                            handleSelectVariant(matchingVar)
+                          }
+                        }}
+                        className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border transition-all duration-200 ${
+                          isSelected
+                            ? 'border-slate-950 ring-2 ring-slate-950/20 dark:border-white dark:ring-white/20'
+                            : 'border-slate-200/80 opacity-70 hover:opacity-100 dark:border-slate-800'
+                        }`}
+                      >
+                        <Image
+                          src={img}
+                          alt="Thumbnail"
+                          fill
+                          sizes="64px"
+                          unoptimized
+                          className="object-cover"
+                        />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
 
@@ -308,6 +357,7 @@ export default function GadgetDetailPage() {
                 {/* Image clipped with padding effect via absolute inset — same as desktop */}
                 <div className="absolute inset-4 overflow-hidden rounded-2xl">
                   <Image
+                    key={selectedImage}
                     src={
                       selectedImage ||
                       product.images?.[0] ||
@@ -331,8 +381,8 @@ export default function GadgetDetailPage() {
               {/* Store Identity Mini-Bento */}
               {product.store && (
                 <div className="shadow-xs space-y-3 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                       {product.store.logo ? (
                         <img
                           src={product.store.logo}
@@ -344,11 +394,11 @@ export default function GadgetDetailPage() {
                           <Store className="h-5 w-5" />
                         </div>
                       )}
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-950 dark:text-white">
+                      <div className="min-w-0">
+                        <h4 className="truncate text-xs font-bold text-slate-950 dark:text-white">
                           {product.store.name}
                         </h4>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
                           {product.store.city}
                         </p>
                       </div>
@@ -356,10 +406,12 @@ export default function GadgetDetailPage() {
 
                     <Link
                       href={`/toko/${product.store.slug}`}
-                      className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:px-3 sm:text-[11px]"
                     >
-                      <span>Profil Toko</span>
-                      <ArrowRight className="h-3 w-3" />
+                      <span>
+                        Profil<span className="hidden sm:inline"> Toko</span>
+                      </span>
+                      <ArrowRight className="h-3 w-3 shrink-0" />
                     </Link>
                   </div>
 
@@ -483,41 +535,72 @@ export default function GadgetDetailPage() {
                                   : 'border-slate-200/80 bg-slate-50/50 text-slate-700 hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300'
                             }`}
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="text-xs font-bold leading-tight">
-                                {variant.name}
+                            <div className="flex items-center gap-2.5">
+                              {variant.image && (
+                                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-800">
+                                  <Image
+                                    src={variant.image}
+                                    alt={variant.name}
+                                    fill
+                                    sizes="44px"
+                                    unoptimized
+                                    className="object-contain p-0.5"
+                                  />
+                                </div>
+                              )}
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="truncate text-xs font-bold leading-tight">
+                                    {variant.name}
+                                  </div>
+                                  {/* Variant Stock Badge */}
+                                  <span
+                                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                      isSelected
+                                        ? variantStock > 5
+                                          ? 'bg-white/20 text-white dark:bg-slate-950/20 dark:text-slate-950'
+                                          : variantStock > 0
+                                            ? 'bg-amber-400/30 text-amber-200 dark:bg-amber-500/20 dark:text-amber-800'
+                                            : 'bg-rose-400/30 text-rose-200 dark:bg-rose-500/20 dark:text-rose-800'
+                                        : variantStock > 5
+                                          ? 'border border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                          : variantStock > 0
+                                            ? 'border border-amber-200/60 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                                            : 'border border-rose-200/60 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                                    }`}
+                                  >
+                                    {variantStock > 5
+                                      ? `Stok: ${variantStock}`
+                                      : variantStock > 0
+                                        ? `Sisa ${variantStock}!`
+                                        : 'Habis'}
+                                  </span>
+                                </div>
+
+                                <div className="mt-1 flex items-center justify-between gap-2">
+                                  <span
+                                    className={`text-[11px] font-medium ${
+                                      isSelected
+                                        ? 'text-slate-300 dark:text-slate-600'
+                                        : 'text-slate-400'
+                                    }`}
+                                  >
+                                    Rp {variant.price.toLocaleString('id-ID')}
+                                  </span>
+                                  {variant.color && (
+                                    <span
+                                      className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${
+                                        isSelected
+                                          ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900'
+                                          : 'bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                      }`}
+                                    >
+                                      {variant.color}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              {/* Variant Stock Badge */}
-                              <span
-                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                  isSelected
-                                    ? variantStock > 5
-                                      ? 'bg-white/20 text-white dark:bg-slate-950/20 dark:text-slate-950'
-                                      : variantStock > 0
-                                        ? 'bg-amber-400/30 text-amber-200 dark:bg-amber-500/20 dark:text-amber-800'
-                                        : 'bg-rose-400/30 text-rose-200 dark:bg-rose-500/20 dark:text-rose-800'
-                                    : variantStock > 5
-                                      ? 'border border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                      : variantStock > 0
-                                        ? 'border border-amber-200/60 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                                        : 'border border-rose-200/60 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                                }`}
-                              >
-                                {variantStock > 5
-                                  ? `Stok: ${variantStock}`
-                                  : variantStock > 0
-                                    ? `Sisa ${variantStock}!`
-                                    : 'Habis'}
-                              </span>
-                            </div>
-                            <div
-                              className={`mt-1 text-[11px] font-medium ${
-                                isSelected
-                                  ? 'text-slate-300 dark:text-slate-600'
-                                  : 'text-slate-400'
-                              }`}
-                            >
-                              Rp {variant.price.toLocaleString('id-ID')}
                             </div>
                           </button>
                         )
@@ -641,15 +724,130 @@ export default function GadgetDetailPage() {
                 </div>
               </div>
 
-              {/* Secondary Bento Panel: Description Section */}
-              <div className="shadow-xs space-y-3 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Deskripsi & Jaminan Unit
-                </h3>
-                <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                  {product.description ||
-                    'Unit smartphone second original bergaransi toko fisik 30 hari tukar unit. Seluruh unit telah melalui uji fungsi komprehensif teknisi (layar, kamera, baterai, sinyal & IMEI bebas blokir), dan dilengkapi bonus aksesoris 3-in-1.'}
-                </p>
+              {/* Secondary Bento Panel: Description & Specifications Section */}
+              <div className="shadow-xs space-y-5 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Deskripsi & Jaminan Unit
+                  </h3>
+                  <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                    {product.description ||
+                      'Unit smartphone second original bergaransi toko fisik 30 hari tukar unit. Seluruh unit telah melalui uji fungsi komprehensif teknisi (layar, kamera, baterai, sinyal & IMEI bebas blokir), dan dilengkapi bonus aksesoris 3-in-1.'}
+                  </p>
+                </div>
+
+                {/* Spesifikasi Varian Dinamis */}
+                <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5 dark:border-slate-700/60">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-orange-500" />
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        Spesifikasi Varian{' '}
+                        {selectedVariant ? `: ${selectedVariant.name}` : ''}
+                      </h4>
+                    </div>
+                    {selectedVariant?.sku && (
+                      <span className="font-mono text-[10px] text-slate-400">
+                        SKU: {selectedVariant.sku}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-3 py-2 dark:border-slate-700/60 dark:bg-slate-900/60">
+                      <span className="text-slate-400">Storage :</span>
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {selectedVariant?.storage ||
+                          (product.specs as any)?.['Storage'] ||
+                          (product.specs as any)?.['ROM'] ||
+                          '-'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-3 py-2 dark:border-slate-700/60 dark:bg-slate-900/60">
+                      <span className="text-slate-400">RAM :</span>
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {selectedVariant?.ram ||
+                          (product.specs as any)?.['RAM'] ||
+                          '-'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-3 py-2 dark:border-slate-700/60 dark:bg-slate-900/60">
+                      <span className="text-slate-400">Warna :</span>
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {selectedVariant?.color ||
+                          (product.specs as any)?.['Warna'] ||
+                          '-'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-3 py-2 dark:border-slate-700/60 dark:bg-slate-900/60">
+                      <span className="text-slate-400">Kondisi Fisik :</span>
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {product.condition === 'SECOND_MULUS'
+                          ? 'Second Mulus (95% - 98%)'
+                          : product.condition === 'GRADE_A'
+                            ? 'Second Grade A (Normal 100%)'
+                            : product.condition === 'LIKE_NEW'
+                              ? 'Second Like New (Mulus 99%)'
+                              : product.condition || 'Second Teruji'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-3 py-2 dark:border-slate-700/60 dark:bg-slate-900/60">
+                      <span className="text-slate-400">Garansi Unit :</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {product.warrantyDays || 30} Hari Tukar Unit
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-3 py-2 dark:border-slate-700/60 dark:bg-slate-900/60">
+                      <span className="text-slate-400">
+                        Ketersediaan Stok :
+                      </span>
+                      <span
+                        className={`font-bold ${
+                          (selectedVariant?.stock ?? product.stock) > 0
+                            ? 'text-slate-900 dark:text-white'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {(selectedVariant?.stock ?? product.stock) > 0
+                          ? `${selectedVariant?.stock ?? product.stock} Unit Siap Kirim`
+                          : 'Stok Habis'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Spesifikasi Tambahan Hardware (Jika ada) */}
+                {product.specs && Object.keys(product.specs).length > 0 && (
+                  <div className="space-y-2.5 border-t border-slate-100 pt-2 dark:border-slate-800">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Spesifikasi Tambahan
+                    </h4>
+                    <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                      {Object.entries(product.specs).map(([key, value]) => {
+                        if (['Storage', 'ROM', 'RAM', 'Warna'].includes(key))
+                          return null
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-baseline justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/30"
+                          >
+                            <span className="shrink-0 text-slate-400">
+                              {key} :
+                            </span>
+                            <span className="truncate text-right font-medium text-slate-800 dark:text-slate-200">
+                              {String(value)}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -20,6 +20,52 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatRupiahInput, parseRupiahInput } from '@/lib/utils'
+import { CreatableCombobox } from '@/components/ui/creatable-combobox'
+
+const BRAND_OPTIONS = [
+  'Apple',
+  'Samsung',
+  'Xiaomi',
+  'ASUS ROG',
+  'Vivo',
+  'Oppo',
+  'Google Pixel',
+  'Realme',
+  'Infinix',
+  'Sony',
+  'Huawei',
+  'Nothing',
+]
+
+const CONDITION_OPTIONS = [
+  { value: 'LIKE_NEW', label: 'Second Like New (Mulus 99%)' },
+  { value: 'SECOND_MULUS', label: 'Second Mulus (95% - 98%)' },
+  { value: 'GRADE_A', label: 'Second Grade A (Normal 100%)' },
+  { value: 'BARU', label: 'Baru BNIB (Segel Pabrik)' },
+]
+
+const RAM_OPTIONS = ['4GB', '6GB', '8GB', '12GB', '16GB', '18GB', '24GB']
+const STORAGE_OPTIONS = ['64GB', '128GB', '256GB', '512GB', '1TB', '2TB']
+const COLOR_OPTIONS = [
+  'Black Titanium',
+  'Natural Titanium',
+  'White Titanium',
+  'Blue Titanium',
+  'Desert Titanium',
+  'Midnight',
+  'Starlight',
+  'Space Gray',
+  'Silver',
+  'Gold',
+  'Graphite',
+  'Phantom Black',
+  'Titanium Gray',
+  'Titanium Violet',
+  'Titanium Yellow',
+  'Deep Purple',
+  'Hitam',
+  'Putih',
+]
 
 export default function NewGadgetProductPage() {
   const router = useRouter()
@@ -67,6 +113,7 @@ export default function NewGadgetProductPage() {
       ram: '8GB',
       storage: '128GB',
       color: 'Black Titanium',
+      image: '',
       price: '',
       stock: '3',
     },
@@ -75,6 +122,7 @@ export default function NewGadgetProductPage() {
       ram: '8GB',
       storage: '256GB',
       color: 'Natural Titanium',
+      image: '',
       price: '',
       stock: '2',
     },
@@ -126,10 +174,11 @@ export default function NewGadgetProductPage() {
     setVariants((prev) => [
       ...prev,
       {
-        name: 'Varian Baru',
+        name: '',
         ram: '8GB',
-        storage: '128GB',
-        color: 'Midnight',
+        storage: '256GB',
+        color: 'Natural Titanium',
+        image: '',
         price: form.price,
         stock: '1',
       },
@@ -146,6 +195,33 @@ export default function NewGadgetProductPage() {
       updated[index] = { ...updated[index], [field]: value }
       return updated
     })
+  }
+
+  const handleVariantImageUpload = async (index: number, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('File harus berupa format gambar')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Maksimal ukuran foto 10MB')
+      return
+    }
+    try {
+      const fd = new FormData()
+      fd.append('images', file)
+      const res = await fetch('/api/products/upload-images', {
+        method: 'POST',
+        body: fd,
+      })
+      const data = await res.json()
+      if (!res.ok || !data.urls?.[0]) {
+        throw new Error(data.error || 'Gagal upload foto varian')
+      }
+      updateVariant(index, 'image', data.urls[0])
+      toast.success('Foto varian berhasil diunggah')
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal upload foto varian')
+    }
   }
 
   // ─── Image Upload Handlers ───────────────────────────────────────────────
@@ -272,8 +348,16 @@ export default function NewGadgetProductPage() {
             ? parseRupiahInput(form.originalPrice)
             : undefined,
           variants: variants.map((v) => ({
-            ...v,
+            name:
+              v.name ||
+              `${v.storage || ''} ${v.color ? `- ${v.color}` : ''}`.trim() ||
+              'Standar',
+            ram: v.ram,
+            storage: v.storage,
+            color: v.color,
+            image: v.image || undefined,
             price: v.price ? parseRupiahInput(v.price) : numericPrice,
+            stock: parseInt(String(v.stock), 10) || 0,
           })),
         }),
       })
@@ -343,18 +427,12 @@ export default function NewGadgetProductPage() {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 Merek (Brand) *
               </label>
-              <select
+              <CreatableCombobox
                 value={form.brand}
-                onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <option value="Apple">Apple</option>
-                <option value="Samsung">Samsung</option>
-                <option value="Xiaomi">Xiaomi</option>
-                <option value="ASUS">ASUS ROG</option>
-                <option value="Vivo">Vivo</option>
-                <option value="Oppo">Oppo</option>
-              </select>
+                onChange={(val) => setForm({ ...form, brand: val })}
+                options={BRAND_OPTIONS}
+                placeholder="Pilih atau ketik merek baru..."
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -451,17 +529,12 @@ export default function NewGadgetProductPage() {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 Kondisi Fisik
               </label>
-              <select
+              <CreatableCombobox
                 value={form.condition}
-                onChange={(e) =>
-                  setForm({ ...form, condition: e.target.value })
-                }
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <option value="LIKE_NEW">Second Like New (Mulus 99%)</option>
-                <option value="SECOND_MULUS">Second Mulus (95% - 98%)</option>
-                <option value="GRADE_A">Second Grade A (Normal 100%)</option>
-              </select>
+                onChange={(val) => setForm({ ...form, condition: val })}
+                options={CONDITION_OPTIONS}
+                placeholder="Pilih atau ketik kondisi fisik..."
+              />
             </div>
           </div>
 
@@ -632,61 +705,234 @@ export default function NewGadgetProductPage() {
           </div>
 
           {/* Variants */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-slate-800">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Varian RAM / Storage / Warna
-              </h3>
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30 sm:p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                  Daftar Varian Gadget ({variants.length})
+                </h3>
+                <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  Kustomisasi RAM, Storage, Warna &amp; Foto Spesifik per Varian
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={addVariant}
-                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700"
+                className="shadow-xs inline-flex cursor-pointer items-center gap-1 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
               >
-                <Plus className="h-3.5 w-3.5" /> Tambah Varian
+                <Plus className="h-3.5 w-3.5" />
+                <span>Tambah Varian</span>
               </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {variants.map((v, i) => (
                 <div
                   key={i}
-                  className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/60 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40"
+                  className="shadow-2xs space-y-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
                 >
-                  <input
-                    type="text"
-                    placeholder="Nama Varian (mis: 256GB Titanium)"
-                    value={v.name}
-                    onChange={(e) => updateVariant(i, 'name', e.target.value)}
-                    className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-900"
-                  />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Harga Varian (Rp)"
-                    value={formatRupiahInput(v.price)}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, '')
-                      updateVariant(i, 'price', raw)
-                    }}
-                    className="w-36 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-900"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Stok"
-                    value={v.stock}
-                    onChange={(e) => updateVariant(i, 'stock', e.target.value)}
-                    className="w-20 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none dark:border-slate-700 dark:bg-slate-900"
-                  />
-                  {variants.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeVariant(i)}
-                      className="p-2 text-slate-400 transition hover:text-red-500"
-                      aria-label="Hapus Varian"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+                  {/* Variant Top Bar: Header, Photo Slot, Delete */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        Varian #{i + 1}
+                      </span>
+                      {v.name && (
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                          {v.name}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Variant Photo uploader & preview */}
+                      <div className="flex items-center gap-2">
+                        {v.image ? (
+                          <div className="group relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                            <img
+                              src={v.image}
+                              alt={`Foto Varian ${i + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateVariant(i, 'image', '')}
+                              className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/60 text-[10px] font-bold text-white opacity-0 transition group-hover:opacity-100"
+                              title="Hapus Foto Varian"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:border-orange-500 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            <Upload className="h-3 w-3 text-orange-500" />
+                            <span>Upload Foto Varian</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleVariantImageUpload(i, file)
+                                e.target.value = ''
+                              }}
+                            />
+                          </label>
+                        )}
+
+                        {/* Quick pick from already uploaded product gallery */}
+                        {uploadedImages.length > 0 && !v.image && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400">
+                              atau pilih:
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {uploadedImages
+                                .slice(0, 4)
+                                .map((imgUrl, imgIdx) => (
+                                  <button
+                                    key={imgIdx}
+                                    type="button"
+                                    onClick={() =>
+                                      updateVariant(i, 'image', imgUrl)
+                                    }
+                                    className="h-7 w-7 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 transition hover:border-orange-500"
+                                    title="Gunakan foto produk ini"
+                                  >
+                                    <img
+                                      src={imgUrl}
+                                      alt=""
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </button>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {variants.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeVariant(i)}
+                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/20"
+                          title="Hapus varian ini"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Inputs Grid: Nama, RAM, Storage, Warna, Harga, Stok */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                    <div className="lg:col-span-2">
+                      <CreatableCombobox
+                        label="Nama Varian"
+                        placeholder="e.g. 256GB - Natural Titanium"
+                        size="sm"
+                        value={v.name}
+                        options={[
+                          `${v.storage || '256GB'} - ${v.color || 'Natural Titanium'}`,
+                          'Standar',
+                          'Paket Spesial',
+                        ].filter(Boolean)}
+                        onChange={(val) => updateVariant(i, 'name', val)}
+                      />
+                    </div>
+
+                    <div>
+                      <CreatableCombobox
+                        label="RAM"
+                        placeholder="8GB"
+                        size="sm"
+                        value={v.ram}
+                        options={RAM_OPTIONS}
+                        onChange={(val) => updateVariant(i, 'ram', val)}
+                      />
+                    </div>
+
+                    <div>
+                      <CreatableCombobox
+                        label="Storage"
+                        placeholder="256GB"
+                        size="sm"
+                        value={v.storage}
+                        options={STORAGE_OPTIONS}
+                        onChange={(val) => {
+                          updateVariant(i, 'storage', val)
+                          if (
+                            !v.name ||
+                            v.name === 'Varian Baru' ||
+                            v.name.includes('GB')
+                          ) {
+                            updateVariant(
+                              i,
+                              'name',
+                              `${val} - ${v.color || 'Natural Titanium'}`
+                            )
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <CreatableCombobox
+                        label="Warna"
+                        placeholder="Natural Titanium"
+                        size="sm"
+                        value={v.color}
+                        options={COLOR_OPTIONS}
+                        onChange={(val) => {
+                          updateVariant(i, 'color', val)
+                          if (
+                            !v.name ||
+                            v.name === 'Varian Baru' ||
+                            v.name.includes('GB')
+                          ) {
+                            updateVariant(
+                              i,
+                              'name',
+                              `${v.storage || '256GB'} - ${val}`
+                            )
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Harga Varian (Rp)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatRupiahInput(v.price)}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, '')
+                          updateVariant(i, 'price', raw)
+                        }}
+                        placeholder={
+                          formatRupiahInput(form.price) || '18.999.000'
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Stok Unit
+                      </label>
+                      <input
+                        type="number"
+                        value={v.stock}
+                        onChange={(e) =>
+                          updateVariant(i, 'stock', e.target.value)
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

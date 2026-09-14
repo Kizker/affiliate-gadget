@@ -227,6 +227,7 @@ model ProductVariant {
   ram       String?
   storage   String?
   color     String?
+  image     String?
   price     Float
   stock     Int      @default(0)
   sku       String?
