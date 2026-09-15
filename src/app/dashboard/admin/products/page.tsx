@@ -125,12 +125,13 @@ export default function ProductsPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `katalog_gadget_template_${new Date().toISOString().slice(0, 10)}.xlsx`
+      const nowStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+      a.download = `mass_update_sales_info_${nowStr}.xlsx`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      toast.success('Data katalog Excel berhasil diekspor!')
+      toast.success('Data katalog format Shopee berhasil diekspor!')
     } catch (err: any) {
       toast.error(err.message || 'Gagal mengekspor file Excel.')
     } finally {

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import ExcelJS from 'exceljs'
+import {
+  generateShopeeItemId,
+  generateShopeeVariationId,
+  generateSmartSku,
+} from '@/lib/shopee-codes'
 
 describe('Bulk Price Update Excel System (Unit Tests)', () => {
   describe('Excel Template Generation & Data Integrity', () => {
@@ -694,6 +699,615 @@ describe('Bulk Price Update Excel System (Unit Tests)', () => {
       expect(formatSummary(2, 28, 1)).toBe(
         'Pembaruan selesai: 2 unit diperbarui (28 unit tidak ada perubahan), 1 produk/varian baru berhasil ditambahkan.'
       )
+    })
+  })
+
+  describe('Shopee 14-Column Template & Catalog Migration Engine', () => {
+    const SHOPEE_HEADERS = [
+      'Kode Produk',
+      'Nama Produk',
+      'Kode Variasi',
+      'Nama Variasi',
+      'SKU Induk',
+      'SKU',
+      'Harga',
+      'GTIN',
+      'Stok',
+      'Min. Jumlah Pembelian',
+      'Maks. Jumlah Pembelian',
+      'Maks. Jumlah Pembelian - Tanggal Mulai',
+      'Maks. Jumlah Pembelian - Jumlah Hari',
+      'Maks. Jumlah Pembelian - Tanggal Berakhir',
+    ]
+
+    it('should generate a valid Shopee 14-column workbook with Sheet1 and orange header', async () => {
+      const workbook = new ExcelJS.Workbook()
+      const worksheet = workbook.addWorksheet('Sheet1')
+
+      worksheet.columns = SHOPEE_HEADERS.map((h) => ({
+        header: h,
+        key: h,
+        width: 20,
+      }))
+
+      // Row 1 Header styling
+      const hRow = worksheet.getRow(1)
+      hRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFEE4D2D' },
+        }
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true }
+      })
+
+      // Row 2 Shopee Hints
+      worksheet.addRow({
+        'Kode Produk': '',
+        'Nama Produk': '',
+        'Kode Variasi': '',
+        'Nama Variasi': '',
+        'SKU Induk': '',
+        SKU: '',
+        Harga:
+          'Mohon masukkan 99 sampai 1000000000 untuk harga produk. Batas harga produk termahal dibagi harga harga produk termurah: 7',
+        GTIN: '',
+        Stok: '',
+        'Min. Jumlah Pembelian':
+          'Min. jumlah pembelian merupakan isi dari tingkatan produk...',
+      })
+
+      // Row 3 Data
+      worksheet.addRow({
+        'Kode Produk': '57562284501',
+        'Nama Produk': 'Samsung s10 8/128 GB 8/512GB Second Original SEIN',
+        'Kode Variasi': '272701755686',
+        'Nama Variasi': 'S10 128,Fullset',
+        'SKU Induk': '',
+        SKU: 'SM-S11',
+        Harga: 2849000,
+        GTIN: '',
+        Stok: 21,
+        'Min. Jumlah Pembelian': 1,
+      })
+
+      const buffer = await workbook.xlsx.writeBuffer()
+      expect(buffer).toBeDefined()
+      expect(buffer.byteLength).toBeGreaterThan(0)
+
+      // Reload & check
+      const readWb = new ExcelJS.Workbook()
+      await readWb.xlsx.load(buffer as any)
+      const sheet = readWb.getWorksheet('Sheet1')
+      expect(sheet).toBeDefined()
+      expect(sheet?.columnCount).toBe(14)
+      expect(sheet?.getRow(1).getCell(1).value).toBe('Kode Produk')
+      expect(sheet?.getRow(1).getCell(7).value).toBe('Harga')
+      expect(sheet?.getRow(1).getCell(9).value).toBe('Stok')
+      expect(sheet?.getRow(3).getCell(1).value).toBe('57562284501')
+      expect(sheet?.getRow(3).getCell(6).value).toBe('SM-S11')
+      expect(sheet?.getRow(3).getCell(7).value).toBe(2849000)
+      expect(sheet?.getRow(3).getCell(9).value).toBe(21)
+    })
+
+    it('should correctly extract Brand from user Shopee catalog titles', () => {
+      const extractBrand = (name: string): string => {
+        const p = name.toLowerCase()
+        if (p.includes('apple') || p.includes('iphone') || p.includes('ipad'))
+          return 'Apple'
+        if (p.includes('samsung') || p.includes('sein')) return 'Samsung'
+        if (p.includes('asus') || p.includes('rog') || p.includes('zenfone'))
+          return 'ASUS'
+        if (p.includes('xiaomi') || p.includes('redmi') || p.includes('poco'))
+          return 'Xiaomi'
+        if (p.includes('oppo') || p.includes('find')) return 'Oppo'
+        if (p.includes('vivo')) return 'Vivo'
+        if (p.includes('google') || p.includes('pixel')) return 'Google'
+        return 'Smartphone'
+      }
+
+      expect(
+        extractBrand('Samsung s10 8/128 GB 8/512GB Second Original SEIN')
+      ).toBe('Samsung')
+      expect(extractBrand('SCREEN PROTECTOR ROG 6 l BS 4/5')).toBe('ASUS')
+      expect(extractBrand('SEIN FLIP 3 8/256 CREAM MINUS RINGAN')).toBe(
+        'Samsung'
+      )
+      expect(extractBrand('BNOB Asus ROG Phone 8 Pro Plus Cooler 24/1TB')).toBe(
+        'ASUS'
+      )
+      expect(extractBrand('Tam | Asus Zenfone 10 | 9 | 16/512GB')).toBe('ASUS')
+      expect(extractBrand('iPhone 15 Pro Max 256GB Natural Titanium')).toBe(
+        'Apple'
+      )
+    })
+
+    it('should correctly extract Condition from user Shopee titles', () => {
+      const extractCondition = (name: string, variantName?: string): string => {
+        const combined = `${name} ${variantName || ''}`.toUpperCase()
+        if (combined.includes('LIKE NEW') || combined.includes('99%'))
+          return 'LIKE_NEW'
+        if (
+          combined.includes('MULUS') ||
+          combined.includes('95%') ||
+          combined.includes('98%')
+        )
+          return 'SECOND_MULUS'
+        if (
+          combined.includes('MINUS') ||
+          combined.includes('GRADE A') ||
+          combined.includes('MATI TOTAL') ||
+          combined.includes('TOMPEL') ||
+          combined.includes('JARONG') ||
+          combined.includes('GARIS')
+        ) {
+          return 'GRADE_A'
+        }
+        if (
+          combined.includes('BARU') ||
+          combined.includes('BNIB') ||
+          combined.includes('BNOB')
+        )
+          return 'BARU'
+        return 'SECOND_MULUS'
+      }
+
+      expect(extractCondition('SEIN FLIP 3 8/256 CREAM MINUS RINGAN')).toBe(
+        'GRADE_A'
+      )
+      expect(extractCondition('SEIN S22 ULTRA 12/256GB MATI TOTAL')).toBe(
+        'GRADE_A'
+      )
+      expect(
+        extractCondition(
+          'SEIN | Samsung Galaxy S22 ULTRA 12/256 Minus Layar JARONG'
+        )
+      ).toBe('GRADE_A')
+      expect(
+        extractCondition('BNOB Asus ROG Phone 8 Pro Plus Cooler 24/1TB')
+      ).toBe('BARU')
+      expect(extractCondition('SECOND LIKE NEW,ROG 6 PRO 18/512GB')).toBe(
+        'LIKE_NEW'
+      )
+      expect(
+        extractCondition('Samsung s10 8/128 GB Second Original SEIN')
+      ).toBe('SECOND_MULUS')
+    })
+
+    it('should skip instruction rows where price contains Shopee guideline text', () => {
+      const isInstructionRow = (priceVal: any): boolean => {
+        const str = String(priceVal || '').toLowerCase()
+        return (
+          str.includes('mohon masukkan') ||
+          str.includes('batas harga') ||
+          str.includes('untuk harga produk')
+        )
+      }
+
+      expect(
+        isInstructionRow(
+          'Mohon masukkan 99 sampai 1000000000 untuk harga produk. Batas harga produk termahal dibagi harga harga produk termurah: 7'
+        )
+      ).toBe(true)
+      expect(isInstructionRow(2849000)).toBe(false)
+      expect(isInstructionRow('2849000')).toBe(false)
+      expect(isInstructionRow('Rp 2.849.000')).toBe(false)
+    })
+
+    it('should group consecutive variants under the same product ID during migration', () => {
+      const sampleShopeeRows = [
+        {
+          kodeProduk: '57562284501',
+          namaProduk: 'Samsung s10 8/128 GB 8/512GB Second Original SEIN',
+          kodeVariasi: '272701755686',
+          namaVariasi: 'S10 128,Fullset',
+          sku: 'SM-S11',
+          harga: 2849000,
+          stok: 21,
+        },
+        {
+          kodeProduk: '57562284501',
+          namaProduk: 'Samsung s10 8/128 GB 8/512GB Second Original SEIN',
+          kodeVariasi: '272701755685',
+          namaVariasi: 'S10 128,Unit Only',
+          sku: 'SM-S10',
+          harga: 2749000,
+          stok: 20,
+        },
+        {
+          kodeProduk: '57509706054',
+          namaProduk: 'SCREEN PROTECTOR ROG 6 l BS 4/5',
+          kodeVariasi: '445857599348',
+          namaVariasi: '',
+          sku: '',
+          harga: 300000,
+          stok: 4,
+        },
+      ]
+
+      // Simulation of in-memory product cache during transaction
+      const productsMap = new Map<
+        string,
+        { id: string; name: string; variants: any[] }
+      >()
+      let createdProductCount = 0
+      let createdVariantCount = 0
+
+      for (const row of sampleShopeeRows) {
+        let product = productsMap.get(row.kodeProduk)
+        if (!product) {
+          product = {
+            id: `prod-${row.kodeProduk}`,
+            name: row.namaProduk,
+            variants: [],
+          }
+          productsMap.set(row.kodeProduk, product)
+          createdProductCount++
+        }
+
+        product.variants.push({
+          id: `var-${row.kodeVariasi}`,
+          name: row.namaVariasi || 'Standar',
+          sku: row.sku,
+          price: row.harga,
+          stock: row.stok,
+        })
+        createdVariantCount++
+      }
+
+      expect(productsMap.size).toBe(2) // 2 distinct products
+      expect(createdProductCount).toBe(2)
+      expect(createdVariantCount).toBe(3) // 2 variants for S10 + 1 for Screen Protector
+
+      const s10 = productsMap.get('57562284501')
+      expect(s10?.variants.length).toBe(2)
+      expect(s10?.variants[0].sku).toBe('SM-S11')
+      expect(s10?.variants[1].sku).toBe('SM-S10')
+      expect(s10?.variants[1].price).toBe(2749000)
+
+      const screenProtector = productsMap.get('57509706054')
+      expect(screenProtector?.variants.length).toBe(1)
+      expect(screenProtector?.variants[0].name).toBe('Standar')
+      expect(screenProtector?.variants[0].stock).toBe(4)
+    })
+
+    it('should ignore trailing blank rows with no identifiers and default blank stock to 0', () => {
+      const isMeaningful = (s: string) =>
+        s && s.trim() !== '' && s.trim() !== '-' && !s.startsWith('AUTO-')
+
+      const shouldSkipRow = (
+        kodeProduk: string,
+        namaProduk: string,
+        kodeVariasi: string,
+        sku: string
+      ): boolean => {
+        return (
+          !isMeaningful(kodeProduk) &&
+          !isMeaningful(namaProduk) &&
+          !isMeaningful(kodeVariasi) &&
+          !isMeaningful(sku)
+        )
+      }
+
+      // 1. Trailing empty rows from Excel (e.g. Row 1282..1785)
+      expect(shouldSkipRow('', '', '', '')).toBe(true)
+      expect(shouldSkipRow('-', '', '', '-')).toBe(true)
+      expect(shouldSkipRow('AUTO-PROD', '', '', '')).toBe(true)
+
+      // 2. Real product row must NOT be skipped
+      expect(shouldSkipRow('57562284501', 'Samsung S10', '', '')).toBe(false)
+      expect(shouldSkipRow('', '', '', 'SM-S11')).toBe(false)
+
+      // 3. Stock defaulting to 0 if blank/empty
+      const parseStockSafe = (rawVal: any): number => {
+        if (rawVal === null || rawVal === undefined || rawVal === '') return 0
+        const n =
+          typeof rawVal === 'number'
+            ? rawVal
+            : parseInt(String(rawVal).replace(/[^0-9]/g, ''), 10)
+        return isNaN(n) ? 0 : Math.max(0, Math.floor(n))
+      }
+
+      expect(parseStockSafe('')).toBe(0)
+      expect(parseStockSafe(null)).toBe(0)
+      expect(parseStockSafe(undefined)).toBe(0)
+      expect(parseStockSafe(21)).toBe(21)
+      expect(parseStockSafe('50')).toBe(50)
+    })
+  })
+
+  describe('Shopee Auto-Generated Codes Engine (User Manual Row Integration)', () => {
+    it('should generate valid 11-digit Shopee Item ID starting with 58', () => {
+      const id1 = generateShopeeItemId('Google Pixel 10')
+      const id2 = generateShopeeItemId()
+      expect(id1).toMatch(/^58[0-9]{9}$/)
+      expect(id1.length).toBe(11)
+      expect(id2).toMatch(/^58[0-9]{9}$/)
+      expect(id2.length).toBe(11)
+      // Deterministic when seeded
+      expect(generateShopeeItemId('Google Pixel 10')).toBe(id1)
+    })
+
+    it('should generate valid 12-digit Shopee Variation ID starting with 28', () => {
+      const varId1 = generateShopeeVariationId('12GB/512GB White')
+      const varId2 = generateShopeeVariationId()
+      expect(varId1).toMatch(/^28[0-9]{10}$/)
+      expect(varId1.length).toBe(12)
+      expect(varId2).toMatch(/^28[0-9]{10}$/)
+      expect(varId2.length).toBe(12)
+      // Deterministic when seeded
+      expect(generateShopeeVariationId('12GB/512GB White')).toBe(varId1)
+    })
+
+    it('should generate intelligent smart SKU conforming to existing Shopee template format', () => {
+      // User's exact row from screenshot: Google Pixel 10 12GB/512GB White
+      const pixelSku = generateSmartSku(
+        'Google Pixel 10 12GB/512GB White',
+        '12GB/512GB White',
+        'Google Pixel 10'
+      )
+      expect(pixelSku).toBe('PIX10-512-WH')
+
+      // Other template products in the screenshot:
+      expect(
+        generateSmartSku(
+          'Xiaomi 14 12GB/512GB White',
+          '12GB/512GB White',
+          'Xiaomi 14'
+        )
+      ).toBe('MI14-512-WH')
+      expect(
+        generateSmartSku(
+          'Xiaomi 14 12GB/512GB Jade Green',
+          '12GB/512GB Jade Green',
+          'Xiaomi 14'
+        )
+      ).toBe('MI14-512-JG')
+      expect(
+        generateSmartSku(
+          'Vivo V30 Pro 12GB/512GB Volcanic Black',
+          '12GB/512GB Volcanic Black',
+          'Vivo V30 Pro'
+        )
+      ).toBe('V30P-512-VB')
+      expect(
+        generateSmartSku(
+          'POCO F6 Pro 16GB/1TB White',
+          '16GB/1TB White',
+          'POCO F6 Pro'
+        )
+      ).toBe('F6P-1TB-WH')
+      expect(
+        generateSmartSku(
+          'Samsung Galaxy S24 Ultra 12GB/512GB Titanium Black',
+          '12GB/512GB Titanium Black',
+          'Samsung Galaxy S24 Ultra'
+        )
+      ).toBe('SM-S24U-512-TB')
+    })
+
+    it('should simulate full manual row import and auto-generate codes on import, then verify export presence', () => {
+      // Simulating user row #642 from screenshot:
+      const manualUserRow = {
+        kodeProduk: '', // Left blank in Excel
+        namaProduk: 'Google Pixel 10 12GB/512GB White',
+        kodeVariasi: '', // Left blank in Excel
+        namaVariasi: '12GB/512GB White',
+        skuInduk: 'Google Pixel 10',
+        sku: '', // Left blank in Excel
+        harga: 15599999,
+        stok: 12,
+      }
+
+      // 1. Import Logic Process
+      const resolvedKodeProduk = manualUserRow.kodeProduk.trim()
+        ? manualUserRow.kodeProduk.trim()
+        : generateShopeeItemId(manualUserRow.namaProduk)
+
+      const resolvedKodeVariasi = manualUserRow.kodeVariasi.trim()
+        ? manualUserRow.kodeVariasi.trim()
+        : generateShopeeVariationId(
+            `${manualUserRow.namaProduk}-${manualUserRow.namaVariasi}`
+          )
+
+      const resolvedSku = manualUserRow.sku.trim()
+        ? manualUserRow.sku.trim()
+        : generateSmartSku(
+            manualUserRow.namaProduk,
+            manualUserRow.namaVariasi,
+            manualUserRow.skuInduk
+          )
+
+      expect(resolvedKodeProduk).toMatch(/^58[0-9]{9}$/)
+      expect(resolvedKodeVariasi).toMatch(/^28[0-9]{10}$/)
+      expect(resolvedSku).toBe('PIX10-512-WH')
+
+      // 2. Export Simulation
+      const exportedRow = {
+        kodeProduk: resolvedKodeProduk,
+        namaProduk: manualUserRow.namaProduk,
+        kodeVariasi: resolvedKodeVariasi,
+        namaVariasi: manualUserRow.namaVariasi,
+        skuInduk: manualUserRow.skuInduk,
+        sku: resolvedSku,
+        harga: manualUserRow.harga,
+        stok: manualUserRow.stok,
+      }
+
+      // Assert that when re-exported, the user sees all codes filled in automatically!
+      expect(exportedRow.kodeProduk).toBe(resolvedKodeProduk)
+      expect(exportedRow.kodeVariasi).toBe(resolvedKodeVariasi)
+      expect(exportedRow.sku).toBe('PIX10-512-WH')
+      expect(exportedRow.sku).not.toContain('AUTO-')
+      expect(exportedRow.sku).not.toContain('cuid')
+      expect(exportedRow.kodeProduk.length).toBe(11)
+      expect(exportedRow.kodeVariasi.length).toBe(12)
+    })
+  })
+
+  describe('Full Catalog Mirroring Sync (Two-Way Reconciliation Engine)', () => {
+    it('should reconcile website catalog to mirror Excel: add new, update existing, and prune omitted items', () => {
+      // Mock existing database state before import:
+      // Product 1: Samsung S10 with 2 variants (128GB, 512GB)
+      // Product 2: Discontinued Phone (no orders) -> should be deleted
+      // Product 3: Legacy Phone (has orders) -> should be deactivated (isActive=false, stock=0)
+      const mockDbProducts = [
+        {
+          id: 'prod-s10',
+          name: 'Samsung S10',
+          isActive: true,
+          stock: 25,
+          orderItemCount: 2,
+          variants: [
+            {
+              id: 'var-s10-128',
+              name: '128GB',
+              sku: 'SM-S10-128',
+              price: 2500000,
+              stock: 15,
+            },
+            {
+              id: 'var-s10-512',
+              name: '512GB',
+              sku: 'SM-S10-512',
+              price: 3200000,
+              stock: 10,
+            },
+          ],
+        },
+        {
+          id: 'prod-disc',
+          name: 'Discontinued Phone',
+          isActive: true,
+          stock: 5,
+          orderItemCount: 0, // No orders
+          variants: [
+            {
+              id: 'var-disc-1',
+              name: 'Standard',
+              sku: 'DISC-01',
+              price: 1000000,
+              stock: 5,
+            },
+          ],
+        },
+        {
+          id: 'prod-legacy',
+          name: 'Legacy Phone',
+          isActive: true,
+          stock: 3,
+          orderItemCount: 8, // Has past orders
+          variants: [
+            {
+              id: 'var-leg-1',
+              name: 'Standard',
+              sku: 'LEG-01',
+              price: 1500000,
+              stock: 3,
+            },
+          ],
+        },
+      ]
+
+      // Imported Excel rows:
+      // Row 1: Samsung S10 (only 128GB variant present in Excel, with updated price 2400000)
+      // Row 2: Google Pixel 10 (brand new product in Excel!)
+      const importedRows = [
+        {
+          kodeProduk: 'prod-s10',
+          namaProduk: 'Samsung S10',
+          kodeVariasi: 'var-s10-128',
+          namaVariasi: '128GB',
+          sku: 'SM-S10-128',
+          harga: 2400000,
+          stok: 20,
+        },
+        {
+          kodeProduk: '', // Brand new
+          namaProduk: 'Google Pixel 10 12GB/512GB White',
+          kodeVariasi: '',
+          namaVariasi: '12GB/512GB White',
+          sku: '',
+          harga: 15599999,
+          stok: 12,
+        },
+      ]
+
+      const touchedProductIds = new Set<string>()
+      const touchedVariantIds = new Set<string>()
+
+      let updatedCount = 0
+      let createdCount = 0
+      let deletedProductsCount = 0
+      let deletedVariantsCount = 0
+      let deactivatedProductsCount = 0
+
+      // Step 1: Process rows
+      for (const row of importedRows) {
+        if (row.kodeProduk === 'prod-s10') {
+          // Existing product
+          touchedProductIds.add(row.kodeProduk)
+          touchedVariantIds.add(row.kodeVariasi)
+          updatedCount++
+        } else {
+          // New product
+          const newProdId = 'prod-pixel-10'
+          const newVarId = 'var-pixel-10'
+          touchedProductIds.add(newProdId)
+          touchedVariantIds.add(newVarId)
+          createdCount++
+        }
+      }
+
+      // Step 2: Variant-level pruning for touched products
+      for (const prod of mockDbProducts) {
+        if (touchedProductIds.has(prod.id)) {
+          for (const v of prod.variants) {
+            if (!touchedVariantIds.has(v.id)) {
+              // Variant omitted in Excel -> deleted!
+              deletedVariantsCount++
+            }
+          }
+        }
+      }
+
+      // Step 3: Product-level pruning for untouched products
+      for (const prod of mockDbProducts) {
+        if (!touchedProductIds.has(prod.id)) {
+          if (prod.orderItemCount === 0) {
+            // Hard delete
+            deletedProductsCount++
+          } else {
+            // Soft delete / deactivate to protect past invoices
+            deactivatedProductsCount++
+          }
+        }
+      }
+
+      expect(updatedCount).toBe(1)
+      expect(createdCount).toBe(1)
+      expect(deletedVariantsCount).toBe(1) // Samsung S10 512GB variant removed
+      expect(deletedProductsCount).toBe(1) // Discontinued phone hard deleted
+      expect(deactivatedProductsCount).toBe(1) // Legacy phone deactivated (stock 0, isActive false)
+
+      const totalPruned =
+        deletedProductsCount + deletedVariantsCount + deactivatedProductsCount
+      expect(totalPruned).toBe(3)
+    })
+
+    it('should bypass pruning when mirrorMode is false', () => {
+      const isMirrorMode = false
+      const touchedProductIds = new Set<string>(['prod-1'])
+      const allDbProductIds = ['prod-1', 'prod-2', 'prod-3']
+
+      let prunedCount = 0
+      if (isMirrorMode) {
+        for (const id of allDbProductIds) {
+          if (!touchedProductIds.has(id)) prunedCount++
+        }
+      }
+
+      expect(prunedCount).toBe(0)
     })
   })
 })

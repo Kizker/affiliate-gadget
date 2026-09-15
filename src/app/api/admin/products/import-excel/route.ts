@@ -2,6 +2,132 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import ExcelJS from 'exceljs'
+import {
+  generateShopeeItemId,
+  generateShopeeVariationId,
+  generateSmartSku,
+  extractModelCode,
+} from '@/lib/shopee-codes'
+
+// Helper: Extract brand from product title
+function extractBrand(productName: string): string {
+  if (!productName) return 'Smartphone'
+  const p = productName.toLowerCase()
+  if (p.includes('apple') || p.includes('iphone') || p.includes('ipad'))
+    return 'Apple'
+  if (p.includes('samsung') || p.includes('sein')) return 'Samsung'
+  if (p.includes('asus') || p.includes('rog') || p.includes('zenfone'))
+    return 'ASUS'
+  if (p.includes('xiaomi') || p.includes('redmi') || p.includes('poco'))
+    return 'Xiaomi'
+  if (p.includes('oppo') || p.includes('find')) return 'Oppo'
+  if (p.includes('vivo')) return 'Vivo'
+  if (p.includes('infinix')) return 'Infinix'
+  if (p.includes('realme')) return 'Realme'
+  if (p.includes('pixel') || p.includes('google')) return 'Google'
+  if (p.includes('huawei')) return 'Huawei'
+  if (p.includes('sony') || p.includes('xperia')) return 'Sony'
+  if (p.includes('nothing')) return 'Nothing'
+  if (p.includes('blackberry')) return 'Blackberry'
+  return 'Smartphone'
+}
+
+// Helper: Extract clean model name
+function extractModel(productName: string, skuInduk?: string): string {
+  if (skuInduk && skuInduk.trim()) return skuInduk.trim()
+  if (!productName) return 'Gadget'
+
+  const cleaned = productName
+    .replace(/^sein\s*\|\s*/i, '')
+    .replace(/^sein\s+/i, '')
+    .replace(/^\[\s*tam\s*\]\s*/i, '')
+    .replace(/^tam\s*\|\s*/i, '')
+    .replace(/^bnob\s+/i, '')
+    .replace(/^bnib\s+/i, '')
+    .replace(/^resmi\s+sein\s+/i, '')
+    .replace(/\s+second\s+original.*$/i, '')
+    .replace(/\s+second\s+fullset.*$/i, '')
+    .replace(/\s+second\s+resmi.*$/i, '')
+    .replace(/\s+resmi\s+indonesia.*$/i, '')
+    .replace(/\s+minus\s+.*$/i, '')
+    .replace(/\s+ex\s+display.*$/i, '')
+    .replace(/\s+[0-9]+(?:\/[0-9]+)?\s*(?:gb|tb)?.*$/i, '')
+    .trim()
+
+  return cleaned || productName.slice(0, 30)
+}
+
+// Helper: Extract condition from title/variants
+function extractCondition(productName: string, variantName?: string): string {
+  const combined = `${productName} ${variantName || ''}`.toUpperCase()
+  if (combined.includes('LIKE NEW') || combined.includes('99%'))
+    return 'LIKE_NEW'
+  if (
+    combined.includes('MULUS') ||
+    combined.includes('95%') ||
+    combined.includes('98%')
+  )
+    return 'SECOND_MULUS'
+  if (
+    combined.includes('MINUS') ||
+    combined.includes('GRADE A') ||
+    combined.includes('MATI TOTAL') ||
+    combined.includes('TOMPEL') ||
+    combined.includes('JARONG') ||
+    combined.includes('GARIS') ||
+    combined.includes('LECET')
+  ) {
+    return 'GRADE_A'
+  }
+  if (
+    combined.includes('BARU') ||
+    combined.includes('BNIB') ||
+    combined.includes('BNOB')
+  )
+    return 'BARU'
+  return 'SECOND_MULUS'
+}
+
+// Helper: Parse RAM, Storage, and Color from text
+function extractVariantSpecs(variantName: string, productName: string) {
+  const target = `${variantName || ''} ${productName || ''}`
+
+  let ram = ''
+  let storage = ''
+  let color = ''
+
+  // RAM Match (e.g. 8GB or 12/256)
+  const ramSlashMatch = target.match(
+    /\b([0-9]{1,2})\s*\/\s*([0-9]{2,4}(?:GB|TB)?)/i
+  )
+  if (ramSlashMatch) {
+    ram = `${ramSlashMatch[1]}GB`
+    storage = ramSlashMatch[2].toUpperCase()
+    if (!storage.endsWith('GB') && !storage.endsWith('TB')) storage += 'GB'
+  } else {
+    const ramOnlyMatch = target.match(/\b([0-9]{1,2})\s*GB\b/i)
+    if (ramOnlyMatch) ram = `${ramOnlyMatch[1]}GB`
+
+    const storageMatch = target.match(/\b(64|128|256|512|1TB|1\s*TB)\b/i)
+    if (storageMatch) {
+      storage = storageMatch[1].toUpperCase().replace(/\s+/g, '')
+      if (!storage.endsWith('GB') && !storage.endsWith('TB')) storage += 'GB'
+    }
+  }
+
+  // Color / Package
+  if (variantName) {
+    if (variantName.includes(',')) {
+      color = variantName.split(',').slice(1).join(',').trim()
+    } else if (variantName.includes('-')) {
+      color = variantName.split('-').slice(1).join('-').trim()
+    } else {
+      color = variantName.trim()
+    }
+  }
+
+  return { ram, storage, color }
+}
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +146,11 @@ export async function POST(request: Request) {
 
     const formData = await request.formData()
     const file = formData.get('file') as File | null
+    const mirrorModeParam = formData.get('mirrorMode')
+    const isMirrorMode =
+      mirrorModeParam === null ||
+      mirrorModeParam === 'true' ||
+      mirrorModeParam === '1'
 
     if (!file) {
       return NextResponse.json(
@@ -46,7 +177,9 @@ export async function POST(request: Request) {
     await workbook.xlsx.load(buffer as any)
 
     const worksheet =
-      workbook.getWorksheet('Katalog Produk & SKU') || workbook.worksheets[0]
+      workbook.getWorksheet('Sheet1') ||
+      workbook.getWorksheet('Katalog Produk & SKU') ||
+      workbook.worksheets[0]
 
     if (!worksheet) {
       return NextResponse.json(
@@ -58,66 +191,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Dynamic Column Discovery
-    let skuCol = 1
-    let variantIdCol = 2
-    let productIdCol = 3
-    let modelCol = 4
-    let ramCol = 5
-    let storageCol = 6
-    let colorCol = 7
-    let prodNameCol = 8
-    let varNameCol = 9
-    let brandCol = 10
-    let conditionCol = 11
-    let priceCol = 12
-    let origPriceCol = 13
-    let stockCol = 14
-    let storeCol = 15
-    let statusCol = 16
-    let descCol = 17
-    let chipsetCol = 18
-    let displayCol = 19
-    let cameraCol = 20
-    let batteryCol = 21
-
-    const headerRow = worksheet.getRow(1)
-    headerRow.eachCell((cell, colNumber) => {
-      const val = String(cell.value || '')
-        .toLowerCase()
-        .trim()
-      if (val.includes('sku')) skuCol = colNumber
-      else if (val.includes('id varian')) variantIdCol = colNumber
-      else if (val.includes('id produk')) productIdCol = colNumber
-      else if (val.includes('model') || val.includes('nama dasar'))
-        modelCol = colNumber
-      else if (val === 'ram' || val.includes('ram')) ramCol = colNumber
-      else if (val.includes('penyimpanan') || val.includes('storage'))
-        storageCol = colNumber
-      else if (val.includes('warna') || val.includes('color'))
-        colorCol = colNumber
-      else if (val.includes('nama produk')) prodNameCol = colNumber
-      else if (val.includes('nama varian')) varNameCol = colNumber
-      else if (val.includes('merek') || val.includes('brand'))
-        brandCol = colNumber
-      else if (val.includes('kondisi')) conditionCol = colNumber
-      else if (val.includes('harga jual')) priceCol = colNumber
-      else if (val.includes('harga coret')) origPriceCol = colNumber
-      else if (val.includes('stok')) stockCol = colNumber
-      else if (val.includes('toko')) storeCol = colNumber
-      else if (val.includes('status')) statusCol = colNumber
-      else if (val.includes('deskripsi')) descCol = colNumber
-      else if (val.includes('chipset')) chipsetCol = colNumber
-      else if (val.includes('layar') || val.includes('display'))
-        displayCol = colNumber
-      else if (val.includes('kamera') || val.includes('camera'))
-        cameraCol = colNumber
-      else if (val.includes('baterai') || val.includes('battery'))
-        batteryCol = colNumber
-    })
-
-    const parseCellString = (cell: ExcelJS.Cell): string => {
-      if (cell.value === null || cell.value === undefined) return ''
+    const parseCellString = (cell: ExcelJS.Cell | undefined): string => {
+      if (!cell || cell.value === null || cell.value === undefined) return ''
       if (typeof cell.value === 'object') {
         const obj: any = cell.value
         return String(obj.result ?? obj.text ?? obj.richText?.[0]?.text ?? '')
@@ -125,13 +200,167 @@ export async function POST(request: Request) {
       return String(cell.value).trim()
     }
 
-    const parseCellNumber = (cell: ExcelJS.Cell): number | null => {
-      if (cell.value === null || cell.value === undefined) return null
+    const parseCellNumber = (cell: ExcelJS.Cell | undefined): number | null => {
+      if (!cell || cell.value === null || cell.value === undefined) return null
       if (typeof cell.value === 'number') return cell.value
       const strVal = parseCellString(cell).replace(/[^0-9]/g, '')
       if (!strVal) return null
       const parsed = parseInt(strVal, 10)
       return isNaN(parsed) ? null : parsed
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // DYNAMIC HEADER DETECTION (Rows 1 to 5)
+    // ─────────────────────────────────────────────────────────────
+    let headerRowNumber = 1
+    let isShopeeFormat = false
+
+    // Column mapping pointers
+    let kodeProdukCol = -1
+    let namaProdukCol = -1
+    let kodeVariasiCol = -1
+    let namaVariasiCol = -1
+    let skuIndukCol = -1
+    let skuCol = -1
+    let hargaCol = -1
+    let gtinCol = -1
+    let stokCol = -1
+    let minBeliCol = -1
+    let maksBeliCol = -1
+
+    // Legacy format columns
+    let variantIdCol = -1
+    let productIdCol = -1
+    let modelCol = -1
+    let ramCol = -1
+    let storageCol = -1
+    let colorCol = -1
+    let brandCol = -1
+    let conditionCol = -1
+    let origPriceCol = -1
+    let storeCol = -1
+    let statusCol = -1
+    let descCol = -1
+    let chipsetCol = -1
+    let displayCol = -1
+    let cameraCol = -1
+    let batteryCol = -1
+
+    for (let r = 1; r <= Math.min(worksheet.rowCount, 5); r++) {
+      const row = worksheet.getRow(r)
+      let foundHeaderCount = 0
+
+      row.eachCell((cell, colNumber) => {
+        const text = parseCellString(cell).toLowerCase().trim()
+        if (text === 'kode produk' || text.includes('kode produk')) {
+          kodeProdukCol = colNumber
+          foundHeaderCount++
+        } else if (text === 'nama produk' || text.includes('nama produk')) {
+          namaProdukCol = colNumber
+          foundHeaderCount++
+        } else if (text === 'kode variasi' || text.includes('kode variasi')) {
+          kodeVariasiCol = colNumber
+          foundHeaderCount++
+        } else if (text === 'nama variasi' || text.includes('nama variasi')) {
+          namaVariasiCol = colNumber
+          foundHeaderCount++
+        } else if (text === 'sku induk' || text.includes('sku induk')) {
+          skuIndukCol = colNumber
+        } else if (text === 'sku' || text.includes('sku')) {
+          skuCol = colNumber
+          foundHeaderCount++
+        } else if (text === 'harga' || text.includes('harga')) {
+          hargaCol = colNumber
+          foundHeaderCount++
+        } else if (text === 'stok' || text.includes('stok')) {
+          stokCol = colNumber
+          foundHeaderCount++
+        } else if (text.includes('id varian')) {
+          variantIdCol = colNumber
+          foundHeaderCount++
+        } else if (text.includes('id produk')) {
+          productIdCol = colNumber
+          foundHeaderCount++
+        } else if (text.includes('model')) {
+          modelCol = colNumber
+        } else if (text === 'ram') {
+          ramCol = colNumber
+        } else if (text.includes('penyimpanan') || text.includes('storage')) {
+          storageCol = colNumber
+        } else if (text.includes('warna') || text.includes('color')) {
+          colorCol = colNumber
+        } else if (text.includes('merek') || text.includes('brand')) {
+          brandCol = colNumber
+        } else if (text.includes('kondisi')) {
+          conditionCol = colNumber
+        } else if (text.includes('harga coret')) {
+          origPriceCol = colNumber
+        } else if (text.includes('toko')) {
+          storeCol = colNumber
+        } else if (text.includes('status')) {
+          statusCol = colNumber
+        } else if (text.includes('deskripsi')) {
+          descCol = colNumber
+        } else if (text.includes('chipset')) {
+          chipsetCol = colNumber
+        } else if (text.includes('layar')) {
+          displayCol = colNumber
+        } else if (text.includes('kamera')) {
+          cameraCol = colNumber
+        } else if (text.includes('baterai')) {
+          batteryCol = colNumber
+        }
+      })
+
+      if (foundHeaderCount >= 3) {
+        headerRowNumber = r
+        if (
+          kodeProdukCol !== -1 ||
+          kodeVariasiCol !== -1 ||
+          namaVariasiCol !== -1
+        ) {
+          isShopeeFormat = true
+        }
+        break
+      }
+    }
+
+    // Fallback column positions for Shopee format if not discovered
+    if (isShopeeFormat) {
+      if (kodeProdukCol === -1) kodeProdukCol = 1
+      if (namaProdukCol === -1) namaProdukCol = 2
+      if (kodeVariasiCol === -1) kodeVariasiCol = 3
+      if (namaVariasiCol === -1) namaVariasiCol = 4
+      if (skuIndukCol === -1) skuIndukCol = 5
+      if (skuCol === -1) skuCol = 6
+      if (hargaCol === -1) hargaCol = 7
+      if (gtinCol === -1) gtinCol = 8
+      if (stokCol === -1) stokCol = 9
+      if (minBeliCol === -1) minBeliCol = 10
+      if (maksBeliCol === -1) maksBeliCol = 11
+    } else {
+      // Legacy format fallbacks
+      if (skuCol === -1) skuCol = 1
+      if (variantIdCol === -1) variantIdCol = 2
+      if (productIdCol === -1) productIdCol = 3
+      if (modelCol === -1) modelCol = 4
+      if (ramCol === -1) ramCol = 5
+      if (storageCol === -1) storageCol = 6
+      if (colorCol === -1) colorCol = 7
+      if (namaProdukCol === -1) namaProdukCol = 8
+      if (namaVariasiCol === -1) namaVariasiCol = 9
+      if (brandCol === -1) brandCol = 10
+      if (conditionCol === -1) conditionCol = 11
+      if (hargaCol === -1) hargaCol = 12
+      if (origPriceCol === -1) origPriceCol = 13
+      if (stokCol === -1) stokCol = 14
+      if (storeCol === -1) storeCol = 15
+      if (statusCol === -1) statusCol = 16
+      if (descCol === -1) descCol = 17
+      if (chipsetCol === -1) chipsetCol = 18
+      if (displayCol === -1) displayCol = 19
+      if (cameraCol === -1) cameraCol = 20
+      if (batteryCol === -1) batteryCol = 21
     }
 
     // Fetch all stores in memory to resolve store matching
@@ -152,238 +381,165 @@ export async function POST(request: Request) {
       return found?.id || defaultStoreId
     }
 
-    const mapCondition = (rawCond: string): string => {
-      const c = rawCond.toUpperCase().trim()
-      if (c.includes('LIKE NEW') || c.includes('99%')) return 'LIKE_NEW'
-      if (c.includes('MULUS') || c.includes('95%') || c.includes('98%'))
-        return 'SECOND_MULUS'
-      if (c.includes('GRADE A') || c.includes('100%')) return 'GRADE_A'
-      if (c.includes('BARU') || c.includes('BNIB')) return 'BARU'
-      return rawCond || 'LIKE_NEW'
-    }
-
-    const generateSmartSku = (
-      productName: string,
-      variantName: string,
+    interface ParsedRow {
       rowNumber: number
-    ): string => {
-      if (!productName) return `SKU-${Date.now().toString().slice(-6)}`
-      const p = productName.trim()
-      const v = (variantName || '').trim()
-
-      const pWords = p.split(/\s+/)
-      let modelCode = ''
-      if (pWords.length >= 2) {
-        const brandLower = pWords[0].toLowerCase()
-        if (
-          [
-            'samsung',
-            'oppo',
-            'vivo',
-            'asus',
-            'xiaomi',
-            'blackberry',
-            'google',
-            'realme',
-            'infinix',
-          ].includes(brandLower)
-        ) {
-          if (pWords[1].toLowerCase() === 'galaxy' && pWords.length >= 3) {
-            modelCode = pWords[2]
-            if (pWords[3]) modelCode += pWords[3][0].toUpperCase()
-          } else if (pWords[1].toLowerCase() === 'find' && pWords.length >= 3) {
-            modelCode = pWords[2]
-            if (pWords[3]) modelCode += pWords[3][0].toUpperCase()
-          } else if (pWords[1].toLowerCase() === 'rog' && pWords.length >= 3) {
-            modelCode = 'ROG' + (pWords[3] || pWords[2])
-            if (pWords.some((w) => w.toLowerCase() === 'pro')) modelCode += 'P'
-          } else {
-            modelCode = pWords[1]
-          }
-        } else if (brandLower === 'iphone') {
-          modelCode = 'IP' + pWords[1]
-          if (pWords.some((w) => w.toLowerCase() === 'pro')) modelCode += 'P'
-          if (pWords.some((w) => w.toLowerCase() === 'max')) modelCode += 'M'
-        } else {
-          modelCode = pWords[1] || pWords[0].slice(0, 4)
-        }
-      } else {
-        modelCode = p.slice(0, 4)
-      }
-      modelCode = modelCode.toUpperCase()
-
-      // Storage
-      let storageCode = ''
-      const storageTarget = v.includes(' / ') ? v.split(' / ')[1] : v
-      const storageMatch = storageTarget.match(/([0-9]+(?:GB|TB)?)/i)
-      if (storageMatch) {
-        storageCode = storageMatch[1].toUpperCase().replace('GB', '')
-      } else {
-        storageCode = String(rowNumber).padStart(3, '0')
-      }
-
-      // Color
-      let colorCode = ''
-      if (v.includes('-')) {
-        const colorPart = v.split('-').slice(1).join('-').trim()
-        const cWords = colorPart.split(/\s+/).filter(Boolean)
-        if (cWords.length >= 2) {
-          colorCode = (cWords[0][0] + cWords[1][0]).toUpperCase()
-        } else if (cWords.length === 1) {
-          colorCode = cWords[0].slice(0, 2).toUpperCase()
-        }
-      } else {
-        colorCode = 'DF'
-      }
-
-      return `${modelCode}-${storageCode}-${colorCode}`
-    }
-
-    const rowsToProcess: Array<{
-      rowNumber: number
+      kodeProduk: string
+      namaProduk: string
+      kodeVariasi: string
+      namaVariasi: string
+      skuInduk: string
       sku: string
-      variantId: string
-      productId: string
-      model: string
-      ram: string
-      storage: string
-      color: string
-      productName: string
-      variantName: string
-      brand: string
-      condition: string
-      price: number
-      originalPrice: number | null
-      stock: number
-      storeName: string
-      isActive: boolean | null
-      description: string
-      chipset: string
-      layar: string
-      kamera: string
-      baterai: string
-    }> = []
+      harga: number
+      stok: number
+      // Optional/Extended fields for legacy support
+      ram?: string
+      storage?: string
+      color?: string
+      model?: string
+      brand?: string
+      condition?: string
+      originalPrice?: number | null
+      storeName?: string
+      isActive?: boolean | null
+      description?: string
+      chipset?: string
+      layar?: string
+      kamera?: string
+      baterai?: string
+    }
 
+    const rowsToProcess: ParsedRow[] = []
     const errors: Array<{ row: number; sku?: string; reason: string }> = []
 
     worksheet.eachRow((row, rowNumber) => {
-      // Skip header row
-      if (rowNumber === 1) return
+      // Skip header row and preceding rows
+      if (rowNumber <= headerRowNumber) return
 
+      const rawHargaStr = parseCellString(row.getCell(hargaCol))
+
+      // Check if this is an instruction/guideline row (Shopee Row 2)
+      if (
+        rawHargaStr.includes('Mohon masukkan') ||
+        rawHargaStr.includes('Batas harga') ||
+        rawHargaStr.includes('untuk harga produk') ||
+        parseCellString(row.getCell(namaProdukCol)).includes(
+          'Min. jumlah pembelian'
+        )
+      ) {
+        return // Skip instruction row!
+      }
+
+      const kodeProduk = parseCellString(
+        row.getCell(kodeProdukCol !== -1 ? kodeProdukCol : productIdCol)
+      )
+      const namaProduk = parseCellString(row.getCell(namaProdukCol))
+      const kodeVariasi = parseCellString(
+        row.getCell(kodeVariasiCol !== -1 ? kodeVariasiCol : variantIdCol)
+      )
+      const namaVariasi = parseCellString(row.getCell(namaVariasiCol))
+      const skuInduk = parseCellString(
+        row.getCell(skuIndukCol !== -1 ? skuIndukCol : modelCol)
+      )
       const sku = parseCellString(row.getCell(skuCol))
-      const variantId = parseCellString(row.getCell(variantIdCol))
-      const productId = parseCellString(row.getCell(productIdCol))
-      const model = parseCellString(row.getCell(modelCol))
-      const ram = parseCellString(row.getCell(ramCol))
-      const storage = parseCellString(row.getCell(storageCol))
-      const color = parseCellString(row.getCell(colorCol))
-      let productName = parseCellString(row.getCell(prodNameCol))
-      let variantName = parseCellString(row.getCell(varNameCol))
-      const brand = parseCellString(row.getCell(brandCol))
-      const condition = parseCellString(row.getCell(conditionCol))
-      const price = parseCellNumber(row.getCell(priceCol))
-      const originalPrice = parseCellNumber(row.getCell(origPriceCol))
-      const stock = parseCellNumber(row.getCell(stockCol))
-      const storeName = parseCellString(row.getCell(storeCol))
-      const statusRaw = parseCellString(row.getCell(statusCol)).toUpperCase()
-      const description = parseCellString(row.getCell(descCol))
-      const chipset = parseCellString(row.getCell(chipsetCol))
-      const layar = parseCellString(row.getCell(displayCol))
-      const kamera = parseCellString(row.getCell(cameraCol))
-      const baterai = parseCellString(row.getCell(batteryCol))
+      const price = parseCellNumber(row.getCell(hargaCol))
 
-      // Fallback auto-format if formula was not evaluated by spreadsheet editor
-      const ramStorage =
-        ram && storage
-          ? `${ram}/${storage}`
-          : ram
-            ? ram
-            : storage
-              ? storage
-              : ''
-      if (!productName && model) {
-        productName = `${model} ${ramStorage} ${color}`
-          .replace(/\s+/g, ' ')
-          .trim()
-      }
-      if (!variantName && (ram || storage || color)) {
-        variantName = `${ramStorage} ${color}`.replace(/\s+/g, ' ').trim()
-      }
+      const isMeaningful = (s: string) =>
+        s && s.trim() !== '' && s.trim() !== '-' && !s.startsWith('AUTO-')
 
-      // If entire row is empty or formula produced empty values, skip
+      // If row has no meaningful identifiers at all (blank or trailing formatted row), skip immediately!
       if (
-        !productName &&
-        !model &&
-        !sku &&
-        !variantId &&
-        !productId &&
-        price === null &&
-        stock === null
+        !isMeaningful(kodeProduk) &&
+        !isMeaningful(namaProduk) &&
+        !isMeaningful(kodeVariasi) &&
+        !isMeaningful(sku)
       ) {
-        return
+        return // Skip blank or trailing decorative rows
       }
 
-      // If price or stock is missing on a row that has a product name or sku, validate
-      if (
-        !productName &&
-        !model &&
-        !variantId &&
-        !productId &&
-        (!sku || sku.startsWith('SKU-AUTO-'))
-      ) {
-        return // Blank template row
-      }
-
+      // If price is missing or invalid, record error
       if (price === null || price < 0) {
         errors.push({
           row: rowNumber,
-          sku: sku || productName || model || '-',
-          reason: `Harga jual wajib berupa angka valid >= 0 (Ditemukan: "${parseCellString(row.getCell(priceCol))}").`,
+          sku: sku || namaProduk || kodeProduk || '-',
+          reason: `Harga wajib berupa angka valid >= 0 (Ditemukan: "${rawHargaStr}").`,
         })
         return
       }
 
-      if (stock === null || stock < 0) {
-        errors.push({
-          row: rowNumber,
-          sku: sku || productName || model || '-',
-          reason: `Stok wajib berupa angka bulat >= 0 (Ditemukan: "${parseCellString(row.getCell(stockCol))}").`,
-        })
-        return
-      }
+      // Safe stock parsing: if stock cell is blank or empty, safely default to 0 (stok habis)
+      const rawStockNum = parseCellNumber(row.getCell(stokCol))
+      const stock =
+        rawStockNum !== null ? Math.max(0, Math.floor(rawStockNum)) : 0
 
+      // Parse legacy fields if present
+      let ram = ''
+      let storage = ''
+      let color = ''
+      let brand = ''
+      let condition = ''
+      let originalPrice: number | null = null
+      let storeName = ''
       let isActive: boolean | null = null
-      if (
-        statusRaw.includes('NON') ||
-        statusRaw.includes('TIDAK') ||
-        statusRaw === 'FALSE' ||
-        statusRaw === '0'
-      ) {
-        isActive = false
-      } else if (
-        statusRaw.includes('AKTIF') ||
-        statusRaw === 'TRUE' ||
-        statusRaw === '1'
-      ) {
-        isActive = true
+      let description = ''
+      let chipset = ''
+      let layar = ''
+      let kamera = ''
+      let baterai = ''
+
+      if (!isShopeeFormat) {
+        ram = parseCellString(row.getCell(ramCol))
+        storage = parseCellString(row.getCell(storageCol))
+        color = parseCellString(row.getCell(colorCol))
+        brand = parseCellString(row.getCell(brandCol))
+        condition = parseCellString(row.getCell(conditionCol))
+        originalPrice = parseCellNumber(row.getCell(origPriceCol))
+        storeName = parseCellString(row.getCell(storeCol))
+        const statusRaw = parseCellString(row.getCell(statusCol)).toUpperCase()
+        if (
+          statusRaw.includes('NON') ||
+          statusRaw === 'FALSE' ||
+          statusRaw === '0'
+        ) {
+          isActive = false
+        } else if (
+          statusRaw.includes('AKTIF') ||
+          statusRaw === 'TRUE' ||
+          statusRaw === '1'
+        ) {
+          isActive = true
+        }
+        description = parseCellString(row.getCell(descCol))
+        chipset = parseCellString(row.getCell(chipsetCol))
+        layar = parseCellString(row.getCell(displayCol))
+        kamera = parseCellString(row.getCell(cameraCol))
+        baterai = parseCellString(row.getCell(batteryCol))
+      } else {
+        // In Shopee format, extract RAM, storage, and color from variant/product name
+        const specsExtracted = extractVariantSpecs(namaVariasi, namaProduk)
+        ram = specsExtracted.ram
+        storage = specsExtracted.storage
+        color = specsExtracted.color
+        brand = extractBrand(namaProduk)
+        condition = extractCondition(namaProduk, namaVariasi)
       }
 
       rowsToProcess.push({
         rowNumber,
+        kodeProduk,
+        namaProduk,
+        kodeVariasi,
+        namaVariasi,
+        skuInduk,
         sku,
-        variantId,
-        productId,
-        model,
+        harga: price,
+        stok: Math.floor(stock),
         ram,
         storage,
         color,
-        productName,
-        variantName,
+        model: skuInduk,
         brand,
         condition,
-        price,
         originalPrice,
-        stock: Math.floor(stock),
         storeName,
         isActive,
         description,
@@ -407,12 +563,22 @@ export async function POST(request: Request) {
     let updatedCount = 0
     let createdCount = 0
     let unchangedCount = 0
+    let deletedProductsCount = 0
+    let deletedVariantsCount = 0
+    let deactivatedProductsCount = 0
     let skippedCount = errors.length
 
-    // Execute atomic bulk update and insert in Prisma transaction
+    // ─────────────────────────────────────────────────────────────
+    // TRANSACTION: MULTI-TIER MATCHING & CATALOG MIGRATION
+    // ─────────────────────────────────────────────────────────────
     await prisma.$transaction(
       async (tx) => {
         const touchedProductIds = new Set<string>()
+        const touchedVariantIds = new Set<string>()
+
+        // In-memory cache for newly created or referenced products in this transaction
+        // Key: kodeProduk OR normalized namaProduk OR normalized model
+        const cachedProducts = new Map<string, any>()
 
         for (const item of rowsToProcess) {
           let processed = false
@@ -431,196 +597,58 @@ export async function POST(request: Request) {
             item.sku && !item.sku.startsWith('SKU-AUTO-')
               ? item.sku.trim()
               : null
+          const cleanKodeVariasi =
+            item.kodeVariasi && !isAutoOrEmpty(item.kodeVariasi)
+              ? item.kodeVariasi.trim()
+              : null
+          const cleanKodeProduk =
+            item.kodeProduk && !isAutoOrEmpty(item.kodeProduk)
+              ? item.kodeProduk.trim()
+              : null
 
           // ─── 1. Match by Existing Variant ID ────────────────────────
-          if (!isAutoOrEmpty(item.variantId)) {
+          if (cleanKodeVariasi) {
             const variant = await tx.productVariant.findUnique({
-              where: { id: item.variantId },
-              include: { product: { include: { variants: true } } },
+              where: { id: cleanKodeVariasi },
+              include: { product: true },
             })
 
             if (variant) {
               let hasChanges = false
               const variantUpdates: any = {}
 
-              // Variant field comparisons
-              if (Number(variant.price) !== Number(item.price)) {
-                variantUpdates.price = item.price
+              if (Number(variant.price) !== Number(item.harga)) {
+                variantUpdates.price = item.harga
                 hasChanges = true
               }
-              if (Number(variant.stock) !== Number(item.stock)) {
-                variantUpdates.stock = item.stock
+              if (Number(variant.stock) !== Number(item.stok)) {
+                variantUpdates.stock = item.stok
                 hasChanges = true
               }
-              const isGeneratedVariantSku =
-                cleanSku === `SKU-${variant.id.slice(-8).toUpperCase()}`
-              if (
-                cleanSku &&
-                cleanSku !== (variant.sku || '').trim() &&
-                !(isGeneratedVariantSku && !variant.sku)
-              ) {
+              if (cleanSku && cleanSku !== variant.sku) {
                 variantUpdates.sku = cleanSku
                 hasChanges = true
               }
               if (
-                item.variantName &&
-                item.variantName.trim() !== (variant.name || '').trim()
+                item.namaVariasi &&
+                item.namaVariasi.trim() !== (variant.name || '').trim()
               ) {
-                variantUpdates.name = item.variantName.trim()
+                variantUpdates.name = item.namaVariasi.trim()
                 hasChanges = true
-              }
-              if (item.ram && item.ram.trim() !== (variant.ram || '').trim()) {
-                variantUpdates.ram = item.ram.trim()
-                hasChanges = true
-              }
-              if (
-                item.storage &&
-                item.storage.trim() !== (variant.storage || '').trim()
-              ) {
-                variantUpdates.storage = item.storage.trim()
-                hasChanges = true
-              }
-              if (
-                item.color &&
-                item.color.trim() !== (variant.color || '').trim()
-              ) {
-                variantUpdates.color = item.color.trim()
-                hasChanges = true
-              }
-
-              // Parent Product field comparisons
-              const prodUpdates: any = {}
-              const prod = variant.product
-              const hasMultipleVariants = (prod.variants?.length ?? 1) > 1
-
-              const currentProdModel = (
-                prod.model ||
-                prod.name
-                  .replace(/\s+[0-9]+GB\/[0-9]+(?:GB|TB)?.*$/i, '')
-                  .replace(/\s+[0-9]+(?:GB|TB).*$/i, '')
-              ).trim()
-
-              if (item.model && item.model.trim() !== currentProdModel) {
-                prodUpdates.model = item.model.trim()
-                hasChanges = true
-              }
-
-              // Product name comparison:
-              // For single-variant products, prod.name reflects the full variant title
-              // For multi-variant products, prod.name reflects the base model
-              if (!hasMultipleVariants) {
-                if (
-                  item.productName &&
-                  item.productName.trim() !== (prod.name || '').trim()
-                ) {
-                  prodUpdates.name = item.productName.trim()
-                  hasChanges = true
-                }
-              } else if (item.model && item.model.trim() !== currentProdModel) {
-                prodUpdates.name = item.model.trim()
-                hasChanges = true
-              }
-
-              if (
-                item.brand &&
-                item.brand.trim() !== (prod.brand || '').trim()
-              ) {
-                prodUpdates.brand = item.brand.trim()
-                hasChanges = true
-              }
-              if (item.condition) {
-                const targetCond = mapCondition(item.condition)
-                if (targetCond !== prod.condition) {
-                  prodUpdates.condition = targetCond
-                  hasChanges = true
-                }
-              }
-              if (
-                item.description &&
-                item.description.trim() !== (prod.description || '').trim()
-              ) {
-                prodUpdates.description = item.description.trim()
-                hasChanges = true
-              }
-              if (
-                item.originalPrice !== null &&
-                Number(item.originalPrice) !== Number(prod.originalPrice || 0)
-              ) {
-                prodUpdates.originalPrice = item.originalPrice
-                hasChanges = true
-              }
-              if (item.isActive !== null && item.isActive !== prod.isActive) {
-                prodUpdates.isActive = item.isActive
-                hasChanges = true
-              }
-              if (item.storeName) {
-                const storeId = findStoreId(item.storeName)
-                if (storeId && storeId !== prod.storeId) {
-                  prodUpdates.storeId = storeId
-                  hasChanges = true
-                }
-              }
-
-              // Technical specs comparison
-              if (item.chipset || item.layar || item.kamera || item.baterai) {
-                const currentSpecs = (prod.specs as any) || {}
-                let specsChanged = false
-                const nextSpecs = { ...currentSpecs }
-
-                if (
-                  item.chipset &&
-                  item.chipset.trim() !== (currentSpecs.Chipset || '').trim()
-                ) {
-                  nextSpecs.Chipset = item.chipset.trim()
-                  specsChanged = true
-                }
-                if (
-                  item.layar &&
-                  item.layar.trim() !== (currentSpecs.Layar || '').trim()
-                ) {
-                  nextSpecs.Layar = item.layar.trim()
-                  specsChanged = true
-                }
-                if (
-                  item.kamera &&
-                  item.kamera.trim() !== (currentSpecs.Kamera || '').trim()
-                ) {
-                  nextSpecs.Kamera = item.kamera.trim()
-                  specsChanged = true
-                }
-                if (
-                  item.baterai &&
-                  item.baterai.trim() !== (currentSpecs.Baterai || '').trim()
-                ) {
-                  nextSpecs.Baterai = item.baterai.trim()
-                  specsChanged = true
-                }
-
-                if (specsChanged) {
-                  prodUpdates.specs = nextSpecs
-                  hasChanges = true
-                }
               }
 
               if (hasChanges) {
-                if (Object.keys(variantUpdates).length > 0) {
-                  await tx.productVariant.update({
-                    where: { id: variant.id },
-                    data: variantUpdates,
-                  })
-                }
-                if (Object.keys(prodUpdates).length > 0) {
-                  await tx.product.update({
-                    where: { id: prod.id },
-                    data: prodUpdates,
-                  })
-                }
-                touchedProductIds.add(variant.productId)
+                await tx.productVariant.update({
+                  where: { id: variant.id },
+                  data: variantUpdates,
+                })
                 updatedCount++
               } else {
                 unchangedCount++
               }
 
+              touchedProductIds.add(variant.productId)
+              touchedVariantIds.add(variant.id)
               processed = true
             }
           }
@@ -629,453 +657,305 @@ export async function POST(request: Request) {
           if (!processed && cleanSku) {
             const variant = await tx.productVariant.findFirst({
               where: { sku: cleanSku },
-              include: { product: { include: { variants: true } } },
+              include: { product: true },
             })
 
             if (variant) {
               let hasChanges = false
               const variantUpdates: any = {}
 
-              if (Number(variant.price) !== Number(item.price)) {
-                variantUpdates.price = item.price
+              if (Number(variant.price) !== Number(item.harga)) {
+                variantUpdates.price = item.harga
                 hasChanges = true
               }
-              if (Number(variant.stock) !== Number(item.stock)) {
-                variantUpdates.stock = item.stock
-                hasChanges = true
-              }
-              if (
-                item.variantName &&
-                item.variantName.trim() !== (variant.name || '').trim()
-              ) {
-                variantUpdates.name = item.variantName.trim()
-                hasChanges = true
-              }
-              if (item.ram && item.ram.trim() !== (variant.ram || '').trim()) {
-                variantUpdates.ram = item.ram.trim()
+              if (Number(variant.stock) !== Number(item.stok)) {
+                variantUpdates.stock = item.stok
                 hasChanges = true
               }
               if (
-                item.storage &&
-                item.storage.trim() !== (variant.storage || '').trim()
+                item.namaVariasi &&
+                item.namaVariasi.trim() !== (variant.name || '').trim()
               ) {
-                variantUpdates.storage = item.storage.trim()
+                variantUpdates.name = item.namaVariasi.trim()
                 hasChanges = true
-              }
-              if (
-                item.color &&
-                item.color.trim() !== (variant.color || '').trim()
-              ) {
-                variantUpdates.color = item.color.trim()
-                hasChanges = true
-              }
-
-              const prodUpdates: any = {}
-              const prod = variant.product
-              const hasMultipleVariants = (prod.variants?.length ?? 1) > 1
-
-              const currentProdModel = (
-                prod.model ||
-                prod.name
-                  .replace(/\s+[0-9]+GB\/[0-9]+(?:GB|TB)?.*$/i, '')
-                  .replace(/\s+[0-9]+(?:GB|TB).*$/i, '')
-              ).trim()
-
-              if (item.model && item.model.trim() !== currentProdModel) {
-                prodUpdates.model = item.model.trim()
-                hasChanges = true
-              }
-
-              if (!hasMultipleVariants) {
-                if (
-                  item.productName &&
-                  item.productName.trim() !== (prod.name || '').trim()
-                ) {
-                  prodUpdates.name = item.productName.trim()
-                  hasChanges = true
-                }
-              } else if (item.model && item.model.trim() !== currentProdModel) {
-                prodUpdates.name = item.model.trim()
-                hasChanges = true
-              }
-
-              if (
-                item.brand &&
-                item.brand.trim() !== (prod.brand || '').trim()
-              ) {
-                prodUpdates.brand = item.brand.trim()
-                hasChanges = true
-              }
-              if (item.condition) {
-                const targetCond = mapCondition(item.condition)
-                if (targetCond !== prod.condition) {
-                  prodUpdates.condition = targetCond
-                  hasChanges = true
-                }
-              }
-              if (
-                item.description &&
-                item.description.trim() !== (prod.description || '').trim()
-              ) {
-                prodUpdates.description = item.description.trim()
-                hasChanges = true
-              }
-              if (
-                item.originalPrice !== null &&
-                Number(item.originalPrice) !== Number(prod.originalPrice || 0)
-              ) {
-                prodUpdates.originalPrice = item.originalPrice
-                hasChanges = true
-              }
-              if (item.isActive !== null && item.isActive !== prod.isActive) {
-                prodUpdates.isActive = item.isActive
-                hasChanges = true
-              }
-              if (item.storeName) {
-                const storeId = findStoreId(item.storeName)
-                if (storeId && storeId !== prod.storeId) {
-                  prodUpdates.storeId = storeId
-                  hasChanges = true
-                }
-              }
-
-              if (item.chipset || item.layar || item.kamera || item.baterai) {
-                const currentSpecs = (prod.specs as any) || {}
-                let specsChanged = false
-                const nextSpecs = { ...currentSpecs }
-
-                if (
-                  item.chipset &&
-                  item.chipset.trim() !== (currentSpecs.Chipset || '').trim()
-                ) {
-                  nextSpecs.Chipset = item.chipset.trim()
-                  specsChanged = true
-                }
-                if (
-                  item.layar &&
-                  item.layar.trim() !== (currentSpecs.Layar || '').trim()
-                ) {
-                  nextSpecs.Layar = item.layar.trim()
-                  specsChanged = true
-                }
-                if (
-                  item.kamera &&
-                  item.kamera.trim() !== (currentSpecs.Kamera || '').trim()
-                ) {
-                  nextSpecs.Kamera = item.kamera.trim()
-                  specsChanged = true
-                }
-                if (
-                  item.baterai &&
-                  item.baterai.trim() !== (currentSpecs.Baterai || '').trim()
-                ) {
-                  nextSpecs.Baterai = item.baterai.trim()
-                  specsChanged = true
-                }
-
-                if (specsChanged) {
-                  prodUpdates.specs = nextSpecs
-                  hasChanges = true
-                }
               }
 
               if (hasChanges) {
-                if (Object.keys(variantUpdates).length > 0) {
-                  await tx.productVariant.update({
-                    where: { id: variant.id },
-                    data: variantUpdates,
-                  })
-                }
-                if (Object.keys(prodUpdates).length > 0) {
-                  await tx.product.update({
-                    where: { id: prod.id },
-                    data: prodUpdates,
-                  })
-                }
-                touchedProductIds.add(variant.productId)
+                await tx.productVariant.update({
+                  where: { id: variant.id },
+                  data: variantUpdates,
+                })
                 updatedCount++
               } else {
                 unchangedCount++
               }
 
+              touchedProductIds.add(variant.productId)
+              touchedVariantIds.add(variant.id)
               processed = true
             }
           }
 
-          // ─── 3. Match by Existing Product ID ────────────────────────
-          if (!processed && !isAutoOrEmpty(item.productId)) {
-            const product = await tx.product.findUnique({
-              where: { id: item.productId },
-              include: { variants: true },
-            })
+          // ─── 3. Match Product by Kode Produk / Shopee Item ID / Name ─
+          if (!processed) {
+            let product: any = null
+
+            // Check cache by Kode Produk or Name or Model
+            if (cleanKodeProduk && cachedProducts.has(cleanKodeProduk)) {
+              product = cachedProducts.get(cleanKodeProduk)
+            } else if (
+              item.namaProduk &&
+              cachedProducts.has(item.namaProduk.toLowerCase().trim())
+            ) {
+              product = cachedProducts.get(item.namaProduk.toLowerCase().trim())
+            } else if (
+              item.skuInduk &&
+              cachedProducts.has(item.skuInduk.toLowerCase().trim())
+            ) {
+              product = cachedProducts.get(item.skuInduk.toLowerCase().trim())
+            }
+
+            // If not in cache, query database by ID or Shopee Item ID
+            if (!product && cleanKodeProduk) {
+              product = await tx.product.findUnique({
+                where: { id: cleanKodeProduk },
+                include: { variants: true },
+              })
+
+              if (!product) {
+                product = await tx.product.findFirst({
+                  where: {
+                    specs: {
+                      path: ['shopeeItemId'],
+                      equals: cleanKodeProduk,
+                    },
+                  },
+                  include: { variants: true },
+                })
+              }
+            }
+
+            // If still not found, query database by Name
+            if (!product && item.namaProduk) {
+              product = await tx.product.findFirst({
+                where: {
+                  name: {
+                    equals: item.namaProduk.trim(),
+                    mode: 'insensitive',
+                  },
+                },
+                include: { variants: true },
+              })
+            }
+
+            // If still not found and skuInduk is provided, query by model
+            if (!product && item.skuInduk) {
+              product = await tx.product.findFirst({
+                where: {
+                  model: {
+                    equals: item.skuInduk.trim(),
+                    mode: 'insensitive',
+                  },
+                },
+                include: { variants: true },
+              })
+            }
 
             if (product) {
-              const storeId = findStoreId(item.storeName)
-              let hasChanges = false
-              const prodUpdates: any = {}
+              // Product exists: Search for variant inside this product
+              const variants: any[] = product.variants || []
+              let matchedVariant: any = null
 
-              const hasMultipleVariants = (product.variants?.length ?? 1) > 1
-              const currentProdModel = (
-                product.model ||
-                product.name
-                  .replace(/\s+[0-9]+GB\/[0-9]+(?:GB|TB)?.*$/i, '')
-                  .replace(/\s+[0-9]+(?:GB|TB).*$/i, '')
-              ).trim()
-
-              if (item.model && item.model.trim() !== currentProdModel) {
-                prodUpdates.model = item.model.trim()
-                hasChanges = true
+              if (cleanSku) {
+                matchedVariant = variants.find((v) => v.sku === cleanSku)
               }
-
-              if (!hasMultipleVariants) {
-                if (Number(product.price) !== Number(item.price)) {
-                  prodUpdates.price = item.price
-                  hasChanges = true
-                }
-                if (
-                  item.productName &&
-                  item.productName.trim() !== (product.name || '').trim()
-                ) {
-                  prodUpdates.name = item.productName.trim()
-                  hasChanges = true
-                }
-              } else if (item.model && item.model.trim() !== currentProdModel) {
-                prodUpdates.name = item.model.trim()
-                hasChanges = true
-              }
-
-              if (
-                item.brand &&
-                item.brand.trim() !== (product.brand || '').trim()
-              ) {
-                prodUpdates.brand = item.brand.trim()
-                hasChanges = true
-              }
-              if (item.condition) {
-                const targetCond = mapCondition(item.condition)
-                if (targetCond !== product.condition) {
-                  prodUpdates.condition = targetCond
-                  hasChanges = true
-                }
+              if (!matchedVariant && item.namaVariasi) {
+                matchedVariant = variants.find(
+                  (v) =>
+                    (v.name || '').toLowerCase().trim() ===
+                    item.namaVariasi.toLowerCase().trim()
+                )
               }
               if (
-                item.description &&
-                item.description.trim() !== (product.description || '').trim()
+                !matchedVariant &&
+                variants.length === 1 &&
+                (!item.namaVariasi || item.namaVariasi === 'Standar')
               ) {
-                prodUpdates.description = item.description.trim()
-                hasChanges = true
-              }
-              if (
-                item.originalPrice !== null &&
-                Number(item.originalPrice) !==
-                  Number(product.originalPrice || 0)
-              ) {
-                prodUpdates.originalPrice = item.originalPrice
-                hasChanges = true
-              }
-              if (
-                item.isActive !== null &&
-                item.isActive !== product.isActive
-              ) {
-                prodUpdates.isActive = item.isActive
-                hasChanges = true
-              }
-              if (storeId && storeId !== product.storeId) {
-                prodUpdates.storeId = storeId
-                hasChanges = true
+                matchedVariant = variants[0]
               }
 
-              if (item.chipset || item.layar || item.kamera || item.baterai) {
-                const currentSpecs = (product.specs as any) || {}
-                let specsChanged = false
-                const nextSpecs = { ...currentSpecs }
+              if (matchedVariant) {
+                // Existing variant found -> Update price / stock / sku
+                let hasChanges = false
+                const variantUpdates: any = {}
 
-                if (
-                  item.chipset &&
-                  item.chipset.trim() !== (currentSpecs.Chipset || '').trim()
-                ) {
-                  nextSpecs.Chipset = item.chipset.trim()
-                  specsChanged = true
-                }
-                if (
-                  item.layar &&
-                  item.layar.trim() !== (currentSpecs.Layar || '').trim()
-                ) {
-                  nextSpecs.Layar = item.layar.trim()
-                  specsChanged = true
-                }
-                if (
-                  item.kamera &&
-                  item.kamera.trim() !== (currentSpecs.Kamera || '').trim()
-                ) {
-                  nextSpecs.Kamera = item.kamera.trim()
-                  specsChanged = true
-                }
-                if (
-                  item.baterai &&
-                  item.baterai.trim() !== (currentSpecs.Baterai || '').trim()
-                ) {
-                  nextSpecs.Baterai = item.baterai.trim()
-                  specsChanged = true
-                }
-
-                if (specsChanged) {
-                  prodUpdates.specs = nextSpecs
+                if (Number(matchedVariant.price) !== Number(item.harga)) {
+                  variantUpdates.price = item.harga
                   hasChanges = true
                 }
-              }
-
-              // If product has no variants, treat as simple product
-              if (!product.variants || product.variants.length === 0) {
-                if (Number(product.stock) !== Number(item.stock)) {
-                  prodUpdates.stock = item.stock
+                if (Number(matchedVariant.stock) !== Number(item.stok)) {
+                  variantUpdates.stock = item.stok
                   hasChanges = true
                 }
+                if (cleanSku && cleanSku !== matchedVariant.sku) {
+                  variantUpdates.sku = cleanSku
+                  hasChanges = true
+                }
+
                 if (hasChanges) {
-                  await tx.product.update({
-                    where: { id: product.id },
-                    data: prodUpdates,
+                  await tx.productVariant.update({
+                    where: { id: matchedVariant.id },
+                    data: variantUpdates,
                   })
                   updatedCount++
                 } else {
                   unchangedCount++
                 }
+
+                touchedProductIds.add(product.id)
+                touchedVariantIds.add(matchedVariant.id)
                 processed = true
               } else {
-                // If it has variants and user provided a new variant name, create variant!
-                if (
-                  item.variantName &&
-                  item.variantName !== 'Standar' &&
-                  !product.variants.some(
-                    (v) =>
-                      v.name.toLowerCase() === item.variantName.toLowerCase()
+                // Variant not found in existing product -> Create new variant
+                // Auto-generate smart structured SKU conforming to template
+                const finalSku =
+                  cleanSku ||
+                  generateSmartSku(
+                    product.name,
+                    item.namaVariasi,
+                    item.skuInduk || product.model
                   )
-                ) {
-                  const newSku =
-                    cleanSku ||
-                    generateSmartSku(
-                      item.productName || item.model,
-                      item.variantName,
-                      item.rowNumber
-                    )
-                  await tx.productVariant.create({
-                    data: {
-                      productId: product.id,
-                      name: item.variantName,
-                      ram: item.ram || null,
-                      storage: item.storage || null,
-                      color: item.color || null,
-                      price: item.price,
-                      stock: item.stock,
-                      sku: newSku,
-                    },
-                  })
-                  if (hasChanges) {
-                    await tx.product.update({
-                      where: { id: product.id },
-                      data: prodUpdates,
-                    })
-                  }
-                  touchedProductIds.add(product.id)
-                  createdCount++
-                  processed = true
-                } else {
-                  if (hasChanges) {
-                    await tx.product.update({
-                      where: { id: product.id },
-                      data: prodUpdates,
-                    })
-                    touchedProductIds.add(product.id)
-                    updatedCount++
-                  } else {
-                    unchangedCount++
-                  }
-                  processed = true
+
+                // Auto-generate Shopee 12-digit variation ID if not provided
+                const newVarCode =
+                  cleanKodeVariasi || generateShopeeVariationId()
+
+                const newVariant = await tx.productVariant.create({
+                  data: {
+                    productId: product.id,
+                    name: item.namaVariasi || 'Standar',
+                    ram: item.ram || null,
+                    storage: item.storage || null,
+                    color: item.color || null,
+                    price: item.harga,
+                    stock: item.stok,
+                    sku: finalSku,
+                  },
+                })
+
+                // Save variation code in specs.shopeeVariationMap
+                const prodSpecs = (product.specs as any) || {}
+                prodSpecs.shopeeVariationMap = {
+                  ...(prodSpecs.shopeeVariationMap || {}),
+                  [newVariant.id]: newVarCode,
+                  [newVariant.name]: newVarCode,
                 }
+                await tx.product.update({
+                  where: { id: product.id },
+                  data: { specs: prodSpecs },
+                })
+
+                variants.push(newVariant)
+                touchedProductIds.add(product.id)
+                touchedVariantIds.add(newVariant.id)
+                createdCount++
+                processed = true
               }
-            }
-          }
-
-          // ─── 4. NEW PRODUCT / VARIANT (Auto-Creation) ──────────────
-          if (!processed) {
-            // Check if user provided a product name or model
-            const targetName =
-              item.productName ||
-              (item.model
-                ? `${item.model} ${item.ram}/${item.storage} ${item.color}`.trim()
-                : 'Gadget Baru')
-
-            const existingByName = await tx.product.findFirst({
-              where: { name: { equals: targetName, mode: 'insensitive' } },
-              include: { variants: true },
-            })
-
-            const storeId = findStoreId(item.storeName)
-            const finalSku =
-              cleanSku ||
-              generateSmartSku(targetName, item.variantName, item.rowNumber)
-
-            if (existingByName) {
-              // Add new variant to existing product
-              await tx.productVariant.create({
-                data: {
-                  productId: existingByName.id,
-                  name:
-                    item.variantName ||
-                    `Varian ${existingByName.variants.length + 1}`,
-                  ram: item.ram || null,
-                  storage: item.storage || null,
-                  color: item.color || null,
-                  price: item.price,
-                  stock: item.stock,
-                  sku: finalSku,
-                },
-              })
-              touchedProductIds.add(existingByName.id)
-              createdCount++
-              processed = true
             } else {
-              // Create brand new Product AND its ProductVariant
-              const newSpecs: any = {}
-              if (item.chipset) newSpecs.Chipset = item.chipset
-              if (item.layar) newSpecs.Layar = item.layar
-              if (item.kamera) newSpecs.Kamera = item.kamera
-              if (item.baterai) newSpecs.Baterai = item.baterai
+              // ─── 4. Product does not exist -> CREATE NEW PRODUCT & VARIANT (Catalog Migration)
+              const brand = item.brand || extractBrand(item.namaProduk)
+              const model =
+                item.skuInduk || extractModel(item.namaProduk, item.model)
+              const condition =
+                item.condition ||
+                extractCondition(item.namaProduk, item.namaVariasi)
+              const storeId = findStoreId(item.storeName || '')
+
+              // Auto-generate authentic 11-digit Shopee Item ID if blank
+              const finalKodeProduk = cleanKodeProduk || generateShopeeItemId()
+              // Auto-generate authentic 12-digit Shopee Variation ID if blank
+              const finalKodeVariasi =
+                cleanKodeVariasi || generateShopeeVariationId()
+
+              const specsObj: any = {
+                shopeeItemId: finalKodeProduk,
+                shopeeVariationMap: {},
+                Brand: brand,
+                Model: model,
+              }
+              if (item.chipset) specsObj.Chipset = item.chipset
+              if (item.layar) specsObj.Layar = item.layar
+              if (item.kamera) specsObj.Kamera = item.kamera
+              if (item.baterai) specsObj.Baterai = item.baterai
 
               const newProduct = await tx.product.create({
                 data: {
-                  name: targetName,
-                  model: item.model || null,
-                  brand: item.brand || 'Smartphone',
-                  condition: mapCondition(item.condition),
+                  name: item.namaProduk || 'Gadget Baru',
+                  model: model,
+                  brand: brand,
                   category: 'Smartphone',
-                  price: item.price,
-                  originalPrice: item.originalPrice,
-                  stock: item.stock,
+                  condition: condition,
+                  price: item.harga,
+                  stock: item.stok,
                   storeId: storeId,
-                  isActive: item.isActive ?? true,
-                  description: item.description || null,
-                  specs: Object.keys(newSpecs).length > 0 ? newSpecs : null,
+                  description:
+                    item.description ||
+                    `Unit ${item.namaProduk} resmi teruji fungsional 100%, garansi toko 30 hari tukar unit terjamin.`,
+                  specs: specsObj,
                   images: [
                     'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80',
                   ],
                 },
               })
 
-              await tx.productVariant.create({
+              // Auto-generate smart structured SKU conforming to template
+              const finalSku =
+                cleanSku ||
+                generateSmartSku(newProduct.name, item.namaVariasi, model)
+
+              const newVariant = await tx.productVariant.create({
                 data: {
                   productId: newProduct.id,
-                  name: item.variantName || 'Standar',
+                  name: item.namaVariasi || 'Standar',
                   ram: item.ram || null,
                   storage: item.storage || null,
                   color: item.color || null,
-                  price: item.price,
-                  stock: item.stock,
+                  price: item.harga,
+                  stock: item.stok,
                   sku: finalSku,
                 },
               })
 
+              // Map variation code into specs.shopeeVariationMap
+              specsObj.shopeeVariationMap[newVariant.id] = finalKodeVariasi
+              specsObj.shopeeVariationMap[newVariant.name] = finalKodeVariasi
+              await tx.product.update({
+                where: { id: newProduct.id },
+                data: { specs: specsObj },
+              })
+
+              // Cache product to link subsequent rows of the same product
+              const productEntry = {
+                id: newProduct.id,
+                name: newProduct.name,
+                model: newProduct.model,
+                specs: specsObj,
+                variants: [newVariant],
+              }
+
+              cachedProducts.set(finalKodeProduk, productEntry)
+              if (item.namaProduk) {
+                cachedProducts.set(
+                  item.namaProduk.toLowerCase().trim(),
+                  productEntry
+                )
+              }
+              if (model) {
+                cachedProducts.set(model.toLowerCase().trim(), productEntry)
+              }
+
               touchedProductIds.add(newProduct.id)
+              touchedVariantIds.add(newVariant.id)
               createdCount++
               processed = true
             }
@@ -1085,13 +965,84 @@ export async function POST(request: Request) {
             skippedCount++
             errors.push({
               row: item.rowNumber,
-              sku: item.sku || item.productName || '-',
+              sku: item.sku || item.namaProduk || item.kodeProduk || '-',
               reason: 'Gagal memproses baris produk ke database.',
             })
           }
         }
 
-        // ─── 5. Synchronize Total Stock & Display Price for Touched Products ────
+        // ─── 5. FULL CATALOG MIRRORING (Two-Way Reconciliation Sync) ──
+        if (isMirrorMode && rowsToProcess.length > 0) {
+          // A. Variant-Level Pruning: Delete old variants from touched products that were NOT in Excel
+          for (const prodId of touchedProductIds) {
+            const existingVariants = await tx.productVariant.findMany({
+              where: { productId: prodId },
+            })
+            for (const ev of existingVariants) {
+              if (!touchedVariantIds.has(ev.id)) {
+                await tx.cartItem.deleteMany({ where: { variantId: ev.id } })
+                await tx.productVariant.delete({ where: { id: ev.id } })
+                deletedVariantsCount++
+              }
+            }
+          }
+
+          // B. Product-Level Pruning: Remove or deactivate products in website NOT present in Excel
+          const allDbProducts = await tx.product.findMany({
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              _count: {
+                select: {
+                  orderItems: true,
+                },
+              },
+            },
+          })
+
+          for (const dbProd of allDbProducts) {
+            if (!touchedProductIds.has(dbProd.id)) {
+              if (dbProd._count.orderItems === 0) {
+                // Hard delete: Clean relations and delete product
+                try {
+                  await tx.cartItem.deleteMany({
+                    where: { productId: dbProd.id },
+                  })
+                  await tx.review.deleteMany({
+                    where: { productId: dbProd.id },
+                  })
+                  await tx.product.delete({ where: { id: dbProd.id } })
+                  deletedProductsCount++
+                } catch {
+                  // Fallback to deactivation if relation constraint met
+                  await tx.product.update({
+                    where: { id: dbProd.id },
+                    data: { isActive: false, stock: 0 },
+                  })
+                  await tx.productVariant.updateMany({
+                    where: { productId: dbProd.id },
+                    data: { stock: 0 },
+                  })
+                  deactivatedProductsCount++
+                }
+              } else {
+                // Past order reference: soft-delete to preserve invoice & legal receipts
+                await tx.product.update({
+                  where: { id: dbProd.id },
+                  data: { isActive: false, stock: 0 },
+                })
+                await tx.productVariant.updateMany({
+                  where: { productId: dbProd.id },
+                  data: { stock: 0 },
+                })
+                deactivatedProductsCount++
+              }
+            }
+          }
+        }
+
+        // ─── 6. Synchronize Total Stock & Lowest Price for Touched Products ────
         for (const prodId of touchedProductIds) {
           const variants = await tx.productVariant.findMany({
             where: { productId: prodId },
@@ -1107,6 +1058,7 @@ export async function POST(request: Request) {
             await tx.product.update({
               where: { id: prodId },
               data: {
+                isActive: true, // Re-activate if it was previously inactive
                 stock: totalStock,
                 ...(minPrice > 0 ? { price: minPrice } : {}),
               },
@@ -1114,21 +1066,28 @@ export async function POST(request: Request) {
           }
         }
       },
-      { timeout: 45000 }
+      { timeout: 60000 }
     )
 
+    const totalDeleted =
+      deletedProductsCount + deletedVariantsCount + deactivatedProductsCount
+
     let summaryMsg = ''
-    if (updatedCount === 0 && createdCount === 0) {
-      summaryMsg = `Pemeriksaan selesai: Tidak ada perubahan data (${unchangedCount} unit sama dengan database).`
+    if (updatedCount === 0 && createdCount === 0 && totalDeleted === 0) {
+      summaryMsg = `Pemeriksaan selesai: Katalog website sudah 100% identik dengan Excel (${unchangedCount} unit sama).`
     } else {
-      summaryMsg = `Pembaruan selesai: ${updatedCount} unit diperbarui`
-      if (unchangedCount > 0) {
-        summaryMsg += ` (${unchangedCount} unit tidak ada perubahan)`
-      }
-      if (createdCount > 0) {
-        summaryMsg += `, ${createdCount} produk/varian baru berhasil ditambahkan`
-      }
-      summaryMsg += '.'
+      summaryMsg = `Sinkronisasi katalog berhasil:`
+      const parts: string[] = []
+      if (updatedCount > 0) parts.push(`${updatedCount} unit diperbarui`)
+      if (createdCount > 0)
+        parts.push(`${createdCount} produk/varian baru ditambahkan`)
+      if (totalDeleted > 0)
+        parts.push(
+          `${totalDeleted} item dihapus dari website (mirroring Excel)`
+        )
+      if (unchangedCount > 0) parts.push(`${unchangedCount} unit sama`)
+      if (skippedCount > 0) parts.push(`${skippedCount} baris dilewati`)
+      summaryMsg += ' ' + parts.join(', ') + '.'
     }
 
     return NextResponse.json({
@@ -1138,16 +1097,20 @@ export async function POST(request: Request) {
       updatedCount,
       unchangedCount,
       createdCount,
+      deletedCount: totalDeleted,
+      deletedProductsCount,
+      deletedVariantsCount,
+      deactivatedProductsCount,
       skippedCount,
-      errors: errors.slice(0, 50),
+      errors,
     })
   } catch (error: any) {
-    console.error('Error importing Excel catalog update:', error)
+    console.error('Error importing Excel catalog:', error)
     return NextResponse.json(
       {
         error:
-          'Gagal memproses pembaruan massal: ' +
-          (error?.message || 'Terjadi kesalahan server'),
+          'Terjadi kesalahan saat memproses file Excel: ' +
+          (error?.message || 'Internal Server Error'),
       },
       { status: 500 }
     )
