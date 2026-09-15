@@ -95,6 +95,13 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-15 (Shopee 14-Column Excel Catalog Sync, Auto-Code Generation & Two-Way Catalog Mirroring Engine):**
+  - **1. Shopee Template Alignment ([`export-excel/route.ts`](file:///src/app/api/admin/products/export-excel/route.ts)):** Ekspor data katalog ke dalam format resmi 14 kolom Shopee (`Kode Produk`, `Nama Produk`, `Kode Variasi`, `Nama Variasi`, `SKU Induk`, `SKU`, `Harga`, `GTIN`, `Stok`, dsb) dengan filter produk aktif (`where: { isActive: true }`).
+  - **2. Auto-Code & Smart SKU Generator ([`src/lib/shopee-codes.ts`](file:///src/lib/shopee-codes.ts)):** Otomatis men-generate 11-digit kode produk Shopee, 12-digit kode variasi Shopee, dan SKU pintar terstruktur `[MODEL]-[STORAGE]-[COLOR]` (misal `PIX10-512-WH`) saat pengguna menambahkan baris secara manual tanpa mengisi kode teknis.
+  - **3. Full Catalog Two-Way Mirroring Sync ([`import-excel/route.ts`](file:///src/app/api/admin/products/import-excel/route.ts)):** Rekonsiliasi katalog dua arah: item baru di Excel otomatis ditambahkan ke website, item sama diperbarui harga/stoknya, dan item/varian yang tidak ada di Excel otomatis dihapus atau dinonaktifkan dari website (`deletedCount`).
+  - **4. Bulk Update Modal UI Polish ([`bulk-price-update-modal.tsx`](file:///src/components/admin/bulk-price-update-modal.tsx)):** Checkbox toggle _Sinkronisasi Total (Mirroring)_ aktif secara default dan kartu ringkasan hasil dengan metrik _Dihapus dari Web_.
+  - **5. Verification & Test Suite:** 15 test suites dengan 173 unit tests lolos 100% (`pnpm test:unit`) dan TypeScript 0 error (`pnpm tsc --noEmit`).
+
 - **2026-09-15 (Product Weight Data Flow Consistency & Weight-Based Shipping Calculation Engine):**
   - **1. Weight Data Flow Synchronization ([`src/app/api/cart/route.ts`](file:///src/app/api/cart/route.ts)):** Menyertakan field `weightGram`, `pricePerKg`, dan `storeId` pada `product.select` query keranjang sehingga data berat produk fisik (misal 2000g) tidak lagi hilang atau jatuh ke fallback default 500g.
   - **2. Cart Store Revalidation & Preservation ([`src/lib/store/cart-store.ts`](file:///src/lib/store/cart-store.ts)):** Memperbarui `setUserId` dan `syncFromServer` agar menarik data produk teranyar dari server pada mount `/cart` dan `/checkout` dengan tetap mempertahankan pilihan item user (`selectedItems`).
