@@ -14,6 +14,8 @@ interface SparepartActionsProps {
     price: number
     stock: number
     images: string[]
+    weightGram?: number
+    pricePerKg?: number
   }
   isInStock: boolean
 }
@@ -123,6 +125,8 @@ export default function SparepartActions({
           image: product.images[0] || '',
           type: 'PRODUCT',
           stock: product.stock,
+          weightGram: product.weightGram,
+          pricePerKg: product.pricePerKg,
         }}
         isOpen={showCartModal}
         onClose={() => setShowCartModal(false)}

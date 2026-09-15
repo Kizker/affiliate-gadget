@@ -4,25 +4,27 @@ import React from 'react'
 import { SidebarProvider, useSidebar } from '@/context/sidebar-context'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Toaster } from 'sonner'
-import {
-  PanelLeft,
-  ExternalLink,
-  Store,
-} from 'lucide-react'
-
+import { PanelLeft, ExternalLink, Store } from 'lucide-react'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-function AdminLayoutInner({ children }: { children: React.ReactNode }) {
-  const { isCollapsed, toggleCollapse, toggleMobile, isMobileOpen } = useSidebar()
+function AdminLayoutInner({
+  children,
+  userRole,
+}: {
+  children: React.ReactNode
+  userRole?: string
+}) {
+  const { isCollapsed, toggleCollapse, toggleMobile, isMobileOpen } =
+    useSidebar()
   const pathname = usePathname()
   const isChatPage = pathname === '/dashboard/admin/chat'
 
   return (
     <div className="relative min-h-screen bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
       {/* Sidebar - Shows menu based on actual role */}
-      <Sidebar variant="light" />
+      <Sidebar variant="light" forceRole={userRole} />
 
       {/* Main Content Area with Desktop Left Offset that adjusts dynamically */}
       <div
@@ -31,22 +33,20 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         } ${isChatPage ? 'h-screen max-h-screen overflow-hidden' : ''}`}
       >
         {/* Top Control Bar (Desktop & Mobile) */}
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-900/80 sm:px-6 lg:px-8 shrink-0">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-900/80 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             {/* Mobile Menu Hamburger */}
             <button
               onClick={toggleMobile}
               aria-label={isMobileOpen ? 'Tutup Menu' : 'Buka Menu'}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-700 shadow-2xs hover:bg-slate-100 active:scale-95 lg:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="shadow-2xs flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-700 hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 lg:hidden"
             >
               <PanelLeft className="h-4 w-4" />
             </button>
           </div>
 
-
           {/* Right Header Quick Links */}
           <div className="flex items-center gap-2">
-
             <Link
               href="/"
               target="_blank"
@@ -64,13 +64,15 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         <main
           className={`relative z-10 w-full overflow-x-hidden ${
             isChatPage
-              ? 'flex-1 min-h-0 flex flex-col p-2 sm:p-3 overflow-hidden'
+              ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-2 sm:p-3'
               : 'min-h-[calc(100vh-3.5rem)] pb-12 pt-4 sm:pt-6'
           }`}
         >
           <div
             className={`mx-auto w-full max-w-[1600px] transition-all duration-300 ${
-              isChatPage ? 'h-full flex flex-col px-0 min-h-0' : 'px-3 sm:px-6 lg:px-8 xl:px-10'
+              isChatPage
+                ? 'flex h-full min-h-0 flex-col px-0'
+                : 'px-3 sm:px-6 lg:px-8 xl:px-10'
             }`}
           >
             {children}
@@ -78,7 +80,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </main>
 
         <footer
-          className={`border-t border-slate-200/60 text-center text-[11px] font-medium text-slate-400 dark:border-slate-800 dark:text-slate-500 shrink-0 ${
+          className={`shrink-0 border-t border-slate-200/60 text-center text-[11px] font-medium text-slate-400 dark:border-slate-800 dark:text-slate-500 ${
             isChatPage ? 'py-2.5' : 'py-4'
           }`}
         >
@@ -103,10 +105,16 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
+export function AdminLayoutClient({
+  children,
+  userRole,
+}: {
+  children: React.ReactNode
+  userRole?: string
+}) {
   return (
     <SidebarProvider>
-      <AdminLayoutInner>{children}</AdminLayoutInner>
+      <AdminLayoutInner userRole={userRole}>{children}</AdminLayoutInner>
     </SidebarProvider>
   )
 }

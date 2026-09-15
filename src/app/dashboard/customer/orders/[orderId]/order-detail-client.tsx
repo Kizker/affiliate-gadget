@@ -30,6 +30,7 @@ import {
   RefreshCw,
   Play,
   ArrowRight,
+  Tag,
 } from 'lucide-react'
 import { RatingModal } from '@/components/modals/rating-modal'
 import { ComplaintModal } from '@/components/customer/complaint-modal'
@@ -46,7 +47,10 @@ interface OrderDetailProps {
     status: string
     total: number
     subtotal?: number
+    voucherCode?: string | null
+    discountAmount?: number
     shippingCost?: number
+    insuranceRate?: number
     insuranceFee?: number
     courierCode?: string | null
     courierService?: string | null
@@ -1013,7 +1017,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
 
                   <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                     <span className="flex items-center gap-1">
-                      Asuransi Pengiriman
+                      Asuransi Pengiriman ({order.insuranceRate ?? 0.2}%)
                       <ShieldCheck className="h-3 w-3 text-blue-500" />
                     </span>
                     <span className="font-mono font-semibold text-slate-900 dark:text-white">
@@ -1027,6 +1031,19 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                     <span>Paket Bonus 3-in-1</span>
                     <span>Gratis (Rp 0)</span>
                   </div>
+
+                  {order.discountAmount && order.discountAmount > 0 && (
+                    <div className="flex items-center justify-between font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" />
+                        Diskon Voucher{' '}
+                        {order.voucherCode ? `(${order.voucherCode})` : ''}
+                      </span>
+                      <span className="font-mono">
+                        - {formatPrice(order.discountAmount)}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Total Tagihan Bar */}
                   <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">

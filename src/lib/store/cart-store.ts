@@ -106,19 +106,26 @@ export const useCartStore = create<CartStore>()(
         }
 
         const currentUserId = get().userId
-        if (currentUserId === userId && get().items.length > 0) return // Already loaded for this user
-
-        // User is logging in - clear local state first, then fetch cart from server
-        set({ userId, items: [], selectedItems: [], isLoading: true })
+        set({ userId, isLoading: true })
         try {
           const res = await fetch('/api/cart')
           if (res.ok) {
             const data = await res.json()
+            const serverItems: CartItem[] = data.items || []
+            const currentSelected = get().selectedItems
+            const selected =
+              currentSelected.length > 0
+                ? currentSelected.filter((id) =>
+                    serverItems.some((item) => item.id === id)
+                  )
+                : serverItems.map((item) => item.id)
+
             set({
-              items: data.items || [],
-              selectedItems: (data.items || []).map(
-                (item: CartItem) => item.id
-              ),
+              items: serverItems,
+              selectedItems:
+                selected.length > 0
+                  ? selected
+                  : serverItems.map((item) => item.id),
               isLoading: false,
             })
           } else {
@@ -134,23 +141,32 @@ export const useCartStore = create<CartStore>()(
         const userId = get().userId
         if (!userId) return
 
-        set({ isLoading: true })
+        set({ isSyncing: true })
         try {
           const res = await fetch('/api/cart')
           if (res.ok) {
             const data = await res.json()
+            const serverItems: CartItem[] = data.items || []
+            const currentSelected = get().selectedItems
+            const selected =
+              currentSelected.length > 0
+                ? currentSelected.filter((id) =>
+                    serverItems.some((item) => item.id === id)
+                  )
+                : serverItems.map((item) => item.id)
+
             set({
-              items: data.items || [],
-              selectedItems: (data.items || []).map(
-                (item: CartItem) => item.id
-              ),
-              isLoading: false,
+              items: serverItems,
+              selectedItems:
+                selected.length > 0
+                  ? selected
+                  : serverItems.map((item) => item.id),
             })
           }
         } catch (error) {
           console.error('Error syncing cart:', error)
         } finally {
-          set({ isLoading: false })
+          set({ isSyncing: false })
         }
       },
 

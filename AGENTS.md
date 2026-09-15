@@ -95,6 +95,20 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-15 (Product Weight Data Flow Consistency & Weight-Based Shipping Calculation Engine):**
+  - **1. Weight Data Flow Synchronization ([`src/app/api/cart/route.ts`](file:///src/app/api/cart/route.ts)):** Menyertakan field `weightGram`, `pricePerKg`, dan `storeId` pada `product.select` query keranjang sehingga data berat produk fisik (misal 2000g) tidak lagi hilang atau jatuh ke fallback default 500g.
+  - **2. Cart Store Revalidation & Preservation ([`src/lib/store/cart-store.ts`](file:///src/lib/store/cart-store.ts)):** Memperbarui `setUserId` dan `syncFromServer` agar menarik data produk teranyar dari server pada mount `/cart` dan `/checkout` dengan tetap mempertahankan pilihan item user (`selectedItems`).
+  - **3. Transparent Checkout Weight UI ([`src/app/checkout/page.tsx`](file:///src/app/checkout/page.tsx)):** Menampilkan berat riil per unit pada ringkasan pesanan (`• 2 kg / unit` atau `• 500g / unit`) dan total berat pada baris ongkos kirim (`Ongkos Kirim (2 kg · JNE REG)`).
+  - **4. Backend Order Variant & Item Persistence ([`src/app/api/checkout/route.ts`](file:///src/app/api/checkout/route.ts)):** Sinkronisasi harga varian dan penyimpanan `variantId` serta `variantName` pada pembuatan record `OrderItem`.
+  - **5. Unit Tests & Verification:** 15 test suites dengan 161 unit tests lolos 100% (`pnpm test:unit`) dan TypeScript 0 error (`pnpm tsc --noEmit`).
+
+- **2026-09-15 (Voucher Promo System Architecture: Superadmin Management & Customer Checkout Discount Engine):**
+  - **1. Skema Database Prisma ([`prisma/schema.prisma`](file:///prisma/schema.prisma)):** Model `Voucher` (kode unik, diskon persen, cap maksimal, minimum belanja, kuota total, kuota per-user, masa berlaku) dan model `VoucherUsage` dengan relasi ke `Order` & `User`.
+  - **2. Superadmin Voucher CMS Hub ([`/dashboard/admin/vouchers`](file:///src/app/dashboard/admin/vouchers/page.tsx)):** Manajemen penuh voucher (tambah, edit, toggle aktif/nonaktif, hapus, filter, search, countdown masa berlaku, dan progress pemakaian kuota).
+  - **3. Real-Time Strict Voucher Validation API ([`/api/vouchers/validate`](file:///src/app/api/vouchers/validate/route.ts)):** Endpoint validasi ketat server-side dengan error message spesifik (kode salah, nonaktif, belum mulai, expired, kuota habis, batas per-user tercapai, atau minimum belanja belum terpenuhi).
+  - **4. Checkout Promo Integration ([`src/app/checkout/page.tsx`](file:///src/app/checkout/page.tsx)):** Form input voucher di bawah Total Tagihan dengan live feedback, chip status diskon terpasang, pengurangan otomatis total tagihan, dan recalculation saat subtotal berubah.
+  - **5. Server-Side Atomic Checkout Protection ([`src/app/api/checkout/route.ts`](file:///src/app/api/checkout/route.ts)):** Verifikasi kuota atomik database `updateMany` (`usedCount: { increment: 1 }`), pencatatan `VoucherUsage`, dan revalidasi integritas kalkulasi diskon di sisi server.
+
 - **2026-09-12 (Admin Mitras API 500 Fault Tolerance & Database Desync Protection):**
   - **1. Root Cause & Fault Tolerance ([`src/app/api/admin/mitras/route.ts`](file:///src/app/api/admin/mitras/route.ts)):** Mengatasi crash HTTP 500 pada rute `/api/admin/mitras` akibat desinkronisasi skema database pada server yang belum menjalankan `prisma db push` untuk model `StoreApplication`. Membungkus query pendaftar pending dan kalkulasi total pendaftar dalam blok `try/catch` mandiri sehingga kegagalan tabel `store_applications` tidak lagi melumpuhkan seluruh antarmuka daftar toko fisik utama.
   - **2. Null Safety & Date Formatting Hardening:** Menambahkan null-coalescing guard pada relasi pengguna applicant (`app.user?.email`, `app.user?.id`, dsb) dan defensive date parser pada `app.submittedAt` untuk mencegah `TypeError` runtime.

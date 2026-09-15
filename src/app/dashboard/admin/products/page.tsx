@@ -52,6 +52,7 @@ interface ProductItem {
   originalPrice: number | null
   stock: number
   weightGram?: number
+  pricePerKg?: number
   description: string | null
   images: string[]
   specs?: any

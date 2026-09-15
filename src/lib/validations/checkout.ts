@@ -2,12 +2,15 @@ import { z } from 'zod'
 
 export const checkoutItemSchema = z
   .object({
+    id: z.string().optional().nullable(),
     type: z.enum(['PRODUCT', 'RENTAL', 'SERVICE'], {
       required_error: 'Tipe item wajib ditentukan',
     }),
-    productId: z.string().trim().min(1).optional(),
-    rentalItemId: z.string().trim().min(1).optional(),
-    serviceId: z.string().trim().min(1).optional(),
+    productId: z.string().trim().min(1).optional().nullable(),
+    variantId: z.string().trim().optional().nullable(),
+    variantName: z.string().optional().nullable(),
+    rentalItemId: z.string().trim().min(1).optional().nullable(),
+    serviceId: z.string().trim().min(1).optional().nullable(),
     quantity: z
       .number({ invalid_type_error: 'Jumlah harus berupa angka' })
       .int('Jumlah harus berupa bilangan bulat')
@@ -18,25 +21,41 @@ export const checkoutItemSchema = z
       .int('Hari sewa harus berupa bilangan bulat')
       .positive('Hari sewa harus minimal 1 hari')
       .max(90, 'Maksimal durasi sewa 90 hari')
-      .optional(),
-    name: z.string().max(255).optional(),
+      .optional()
+      .nullable(),
+    name: z.string().max(255).optional().nullable(),
+    price: z.number().nonnegative().optional().nullable(),
+    image: z.string().optional().nullable(),
+    stock: z.number().optional().nullable(),
+    weightGram: z.number().optional().nullable(),
+    pricePerKg: z.number().optional().nullable(),
+    notes: z.string().optional().nullable(),
   })
   .superRefine((data, ctx) => {
-    if (data.type === 'PRODUCT' && !data.productId) {
+    if (
+      data.type === 'PRODUCT' &&
+      (!data.productId || data.productId.trim() === '')
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['productId'],
         message: 'productId wajib diisi untuk item produk',
       })
     }
-    if (data.type === 'RENTAL' && !data.rentalItemId) {
+    if (
+      data.type === 'RENTAL' &&
+      (!data.rentalItemId || data.rentalItemId.trim() === '')
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['rentalItemId'],
         message: 'rentalItemId wajib diisi untuk item sewa',
       })
     }
-    if (data.type === 'SERVICE' && !data.serviceId) {
+    if (
+      data.type === 'SERVICE' &&
+      (!data.serviceId || data.serviceId.trim() === '')
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['serviceId'],
@@ -55,6 +74,21 @@ export const checkoutSchema = z.object({
     .default('CASH'),
   courierCode: z.string().trim().min(1).max(50).default('JNE'),
   courierService: z.string().trim().min(1).max(50).default('REG'),
+  shippingCost: z
+    .number({ invalid_type_error: 'Biaya pengiriman harus berupa angka' })
+    .nonnegative('Biaya pengiriman tidak boleh negatif')
+    .optional()
+    .nullable(),
+  insuranceFee: z
+    .number({ invalid_type_error: 'Biaya asuransi harus berupa angka' })
+    .nonnegative('Biaya asuransi tidak boleh negatif')
+    .optional()
+    .nullable(),
+  isInsuranceMandatory: z.boolean().optional().nullable(),
+  bonusChargerIncluded: z.boolean().optional().nullable(),
+  bonusProtectorIncluded: z.boolean().optional().nullable(),
+  bonusCaseIncluded: z.boolean().optional().nullable(),
+  addressId: z.string().optional().nullable(),
   notes: z
     .string()
     .max(500, 'Catatan pengiriman maksimal 500 karakter')
@@ -72,7 +106,13 @@ export const checkoutSchema = z.object({
     .nullable(),
   recipientPhone: z
     .string()
-    .max(20, 'Nomor telepon penerima maksimal 20 digit')
+    .max(50, 'Nomor telepon penerima maksimal 50 digit')
+    .optional()
+    .nullable(),
+  voucherCode: z
+    .string()
+    .trim()
+    .max(50, 'Kode voucher maksimal 50 karakter')
     .optional()
     .nullable(),
 })
@@ -95,6 +135,11 @@ export const CHECKOUT_ERROR_CODES = {
   PRODUK_TANPA_TOKO: 'PRODUK_TANPA_TOKO',
   ORDER_CREATION_FAILED: 'ORDER_CREATION_FAILED',
   ORDER_NUMBER_CONFLICT: 'ORDER_NUMBER_CONFLICT',
+  VOUCHER_INVALID: 'VOUCHER_INVALID',
+  VOUCHER_EXPIRED: 'VOUCHER_EXPIRED',
+  VOUCHER_QUOTA_EMPTY: 'VOUCHER_QUOTA_EMPTY',
+  VOUCHER_MIN_PURCHASE: 'VOUCHER_MIN_PURCHASE',
+  VOUCHER_USER_LIMIT: 'VOUCHER_USER_LIMIT',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const
 

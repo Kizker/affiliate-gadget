@@ -248,6 +248,7 @@ export async function POST(request: NextRequest) {
       originalPrice,
       stock = 1,
       weightGram = 500,
+      pricePerKg = 20000,
       images = [],
       specs = {},
       storeId,
@@ -309,6 +310,7 @@ export async function POST(request: NextRequest) {
           : null,
         stock: parseInt(String(stock)) || 0,
         weightGram: parseInt(String(weightGram)) || 500,
+        pricePerKg: parseFloat(String(pricePerKg).replace(/\./g, '')) || 20000,
         images:
           images.length > 0
             ? images

@@ -28,6 +28,7 @@ export default function CartPage() {
   const deselectAllItems = useCartStore((state) => state.deselectAllItems)
   const removeSelectedItems = useCartStore((state) => state.removeSelectedItems)
   const setUserId = useCartStore((state) => state.setUserId)
+  const syncFromServer = useCartStore((state) => state.syncFromServer)
   const userId = useCartStore((state) => state.userId)
 
   const allSelected = items.length > 0 && selectedItems.length === items.length
@@ -43,16 +44,16 @@ export default function CartPage() {
   }
 
   useEffect(() => {
-    if (
-      status === 'authenticated' &&
-      session?.user?.id &&
-      userId !== session.user.id
-    ) {
-      setUserId(session.user.id)
+    if (status === 'authenticated' && session?.user?.id) {
+      if (userId !== session.user.id) {
+        setUserId(session.user.id)
+      } else {
+        syncFromServer()
+      }
     } else if (status === 'unauthenticated') {
       setUserId(null)
     }
-  }, [session, status, userId, setUserId])
+  }, [session, status, userId, setUserId, syncFromServer])
 
   if (status === 'loading') {
     return (

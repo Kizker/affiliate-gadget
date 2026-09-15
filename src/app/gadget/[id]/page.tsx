@@ -133,6 +133,8 @@ export default function GadgetDetailPage() {
       image: imageToUse,
       quantity: quantity,
       stock: selectedVariant?.stock || product.stock,
+      weightGram: product.weightGram ?? 500,
+      pricePerKg: product.pricePerKg ?? 20000,
       notes: `${product.warrantyDays || 30} Hari Garansi Toko + Free Bonus 3-in-1`,
     })
 

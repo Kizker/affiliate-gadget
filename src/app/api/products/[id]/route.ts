@@ -120,6 +120,7 @@ export async function PATCH(
       originalPrice,
       stock,
       weightGram,
+      pricePerKg,
       images,
       specs,
       warrantyDays,
@@ -180,6 +181,10 @@ export async function PATCH(
           ...(stock !== undefined && { stock: parseInt(String(stock)) || 0 }),
           ...(weightGram !== undefined && {
             weightGram: parseInt(String(weightGram)) || 500,
+          }),
+          ...(pricePerKg !== undefined && {
+            pricePerKg:
+              parseFloat(String(pricePerKg).replace(/\./g, '')) || 20000,
           }),
           ...(images !== undefined && { images }),
           ...(specs !== undefined && { specs }),

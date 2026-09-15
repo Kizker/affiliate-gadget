@@ -4,7 +4,9 @@ import bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌟 Seeding Realistic Buyer Reviews with Photos & Videos for Products...')
+  console.log(
+    '🌟 Seeding Realistic Buyer Reviews with Photos & Videos for Products...'
+  )
 
   const customerPassword = await bcrypt.hash('customer123', 12)
 
@@ -14,37 +16,43 @@ async function main() {
       email: 'customer@test.com',
       name: 'Rian Pratama',
       phone: '081234567890',
-      image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+      image:
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
     },
     {
       email: 'siti.aminah@gmail.com',
       name: 'Siti Aminah',
       phone: '081298765432',
-      image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=80',
+      image:
+        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=80',
     },
     {
       email: 'dimas.setiawan@gmail.com',
       name: 'Dimas Setiawan',
       phone: '081377889900',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
+      image:
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
     },
     {
       email: 'budi.santoso@gmail.com',
       name: 'Budi Santoso',
       phone: '081255443322',
-      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80',
+      image:
+        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80',
     },
     {
       email: 'anisa.wijaya@gmail.com',
       name: 'Anisa Putri Wijaya',
       phone: '081311223344',
-      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
+      image:
+        'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
     },
     {
       email: 'hendra.kurniawan@gmail.com',
       name: 'Hendra Kurniawan',
       phone: '081199887766',
-      image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&q=80',
+      image:
+        'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&q=80',
     },
   ]
 
@@ -77,7 +85,9 @@ async function main() {
     return
   }
 
-  console.log(`📦 Found ${products.length} products. Generating rich reviews...`)
+  console.log(
+    `📦 Found ${products.length} products. Generating rich reviews...`
+  )
 
   // Sample media assets
   const gadgetPhotos = [
@@ -91,7 +101,8 @@ async function main() {
   ]
 
   // Sample short video clip (H.264 MP4 demo / unboxing preview)
-  const sampleVideo = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+  const sampleVideo =
+    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
 
   const reviewTemplates = [
     {
@@ -189,11 +200,12 @@ async function main() {
             status: 'COMPLETED',
             subtotal: product.price,
             shippingCost: 25000,
-            insuranceFee: Math.round(product.price * 0.0025),
+            insuranceRate: 0.2,
+            insuranceFee: Math.round(product.price * 0.002),
             courierCode: 'JNE',
             courierService: 'REG',
             trackingNumber: `JNE${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-            total: product.price + 25000 + Math.round(product.price * 0.0025),
+            total: product.price + 25000 + Math.round(product.price * 0.002),
             completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
             customerConfirmedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
             items: {
@@ -222,11 +234,16 @@ async function main() {
       if (!user) continue
 
       const selectedImages = tpl.hasImages
-        ? [gadgetPhotos[i % gadgetPhotos.length], gadgetPhotos[(i + 1) % gadgetPhotos.length]]
+        ? [
+            gadgetPhotos[i % gadgetPhotos.length],
+            gadgetPhotos[(i + 1) % gadgetPhotos.length],
+          ]
         : []
       const selectedVideos = tpl.hasVideo ? [sampleVideo] : []
 
-      const variantUsed = product.variants[i % (product.variants.length || 1)]?.name || primaryVariant
+      const variantUsed =
+        product.variants[i % (product.variants.length || 1)]?.name ||
+        primaryVariant
 
       const existingRev = await prisma.review.findFirst({
         where: {
@@ -279,7 +296,9 @@ async function main() {
 
     const totalReview = allRevs.length
     const averageRating =
-      totalReview > 0 ? allRevs.reduce((acc, r) => acc + r.rating, 0) / totalReview : 5.0
+      totalReview > 0
+        ? allRevs.reduce((acc, r) => acc + r.rating, 0) / totalReview
+        : 5.0
 
     await prisma.product.update({
       where: { id: product.id },
@@ -290,7 +309,9 @@ async function main() {
     })
   }
 
-  console.log('✅ Successfully seeded comprehensive buyer reviews with photos, videos, and store replies!')
+  console.log(
+    '✅ Successfully seeded comprehensive buyer reviews with photos, videos, and store replies!'
+  )
 }
 
 main()

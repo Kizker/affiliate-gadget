@@ -13,6 +13,8 @@ interface AddToCartModalProps {
     image: string
     type: 'PRODUCT' | 'RENTAL'
     stock: number
+    weightGram?: number
+    pricePerKg?: number
     pricePerDay?: number
     depositAmount?: number
   }
@@ -111,6 +113,8 @@ export default function AddToCartModal({
       price: isRental ? pricePerDay : item.price,
       quantity,
       stock: item.stock,
+      weightGram: item.weightGram,
+      pricePerKg: item.pricePerKg,
       notes: notes || undefined,
       ...(item.type === 'PRODUCT' && { productId: item.id }),
       ...(item.type === 'RENTAL' && {

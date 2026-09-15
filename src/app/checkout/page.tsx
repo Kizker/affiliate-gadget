@@ -14,6 +14,17 @@ import {
   UserAddressItem,
 } from '@/components/customer/address-modal'
 import {
+  calculateInsuranceFee,
+  INSURANCE_PERCENTAGE,
+} from '@/lib/constants/insurance'
+import {
+  calculateWeightShipping,
+  calculateBilledKg,
+  DEFAULT_PRICE_PER_KG,
+  DEFAULT_WEIGHT_GRAM,
+  WEIGHT_THRESHOLD_GRAM,
+} from '@/lib/constants/shipping'
+import {
   ShoppingCart,
   ArrowLeft,
   Copy,
@@ -30,9 +41,13 @@ import {
   Building2,
   Plus,
   Home,
+  ChevronRight,
   Star,
   Edit3,
-  ChevronRight,
+  Tag,
+  X,
+  AlertCircle,
+  CheckCircle2,
 } from 'lucide-react'
 
 interface BankAccount {
@@ -59,6 +74,8 @@ export default function CheckoutPage() {
   const selectedItemIds = useCartStore((state) => state.selectedItems)
   const removeSelectedItems = useCartStore((state) => state.removeSelectedItems)
   const setUserId = useCartStore((state) => state.setUserId)
+  const syncFromServer = useCartStore((state) => state.syncFromServer)
+  const userId = useCartStore((state) => state.userId)
 
   const selectedItems = useMemo(() => {
     return items.filter((item) => selectedItemIds.includes(item.id))
@@ -75,6 +92,19 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null)
+
+  // Voucher Promo state
+  const [voucherInput, setVoucherInput] = useState('')
+  const [isValidatingVoucher, setIsValidatingVoucher] = useState(false)
+  const [appliedVoucher, setAppliedVoucher] = useState<{
+    code: string
+    discountPercent: number
+    discountAmount: number
+    maxDiscountAmount?: number | null
+    minimumPurchase?: number
+    description?: string | null
+  } | null>(null)
+  const [voucherError, setVoucherError] = useState<string | null>(null)
 
   // Idempotency Key (LOW-04): unik per payload keranjang belanja
   const idempotencyKeyRef = useRef<string>('')
@@ -142,11 +172,23 @@ export default function CheckoutPage() {
     if (status === 'unauthenticated') {
       router.push('/login?redirect=/checkout')
     } else if (status === 'authenticated') {
-      setUserId(session.user.id)
+      if (userId !== session.user.id) {
+        setUserId(session.user.id)
+      } else {
+        syncFromServer()
+      }
       setLoading(false)
       fetchAddresses()
     }
-  }, [status, router, session, setUserId, fetchAddresses])
+  }, [
+    status,
+    router,
+    session,
+    userId,
+    setUserId,
+    syncFromServer,
+    fetchAddresses,
+  ])
 
   useEffect(() => {
     if (status === 'authenticated' && selectedItems.length > 0) {
@@ -161,11 +203,150 @@ export default function CheckoutPage() {
     return sum + itemPrice
   }, 0)
 
-  // Calculate Mandatory Shipping Insurance (0.25% of subtotal + admin fee)
-  const insuranceFee = Math.max(15000, Math.round(subtotal * 0.0025))
+  // Calculate Mandatory Shipping Insurance (0.2% flat from physical items subtotal)
+  const insuranceFee = calculateInsuranceFee(subtotal)
+
+  // Weight calculation for shipping (billed in whole kg, min 1 kg)
+  const totalWeightGram = selectedItems.reduce((sum, item) => {
+    return sum + (item.weightGram ?? DEFAULT_WEIGHT_GRAM) * item.quantity
+  }, 0)
+  const billedKg = calculateBilledKg(totalWeightGram)
+  const maxPricePerKg =
+    selectedItems.length > 0
+      ? Math.max(
+          ...selectedItems.map(
+            (item) => item.pricePerKg ?? DEFAULT_PRICE_PER_KG
+          )
+        )
+      : DEFAULT_PRICE_PER_KG
+
+  // Apakah total berat memenuhi threshold untuk penagihan per-kg (>= 1kg)
+  const isWeightBased = totalWeightGram >= WEIGHT_THRESHOLD_GRAM
+
+  const jneRegCost = calculateWeightShipping(
+    totalWeightGram,
+    maxPricePerKg,
+    'JNE',
+    'REG'
+  )
+  const jneYesCost = calculateWeightShipping(
+    totalWeightGram,
+    maxPricePerKg,
+    'JNE',
+    'YES'
+  )
+  const gojekCost = calculateWeightShipping(
+    totalWeightGram,
+    maxPricePerKg,
+    'GOJEK',
+    'INSTANT'
+  )
+  const gojekSamedayCost = calculateWeightShipping(
+    totalWeightGram,
+    maxPricePerKg,
+    'GOJEK',
+    'SAMEDAY'
+  )
+
   const shippingCost =
-    courier === 'GOJEK' ? 35000 : courierService === 'YES' ? 28000 : 15000
-  const total = subtotal + shippingCost + insuranceFee
+    courier === 'GOJEK'
+      ? courierService === 'SAMEDAY'
+        ? gojekSamedayCost
+        : gojekCost
+      : courierService === 'YES'
+        ? jneYesCost
+        : jneRegCost
+
+  const voucherDiscount = appliedVoucher ? appliedVoucher.discountAmount : 0
+  const total = Math.max(
+    0,
+    subtotal + shippingCost + insuranceFee - voucherDiscount
+  )
+
+  // Recalculate applied voucher if subtotal changes
+  useEffect(() => {
+    if (appliedVoucher) {
+      if (
+        appliedVoucher.minimumPurchase !== undefined &&
+        subtotal < appliedVoucher.minimumPurchase
+      ) {
+        toast.error(
+          `Minimum belanja Rp ${appliedVoucher.minimumPurchase.toLocaleString('id-ID')} tidak lagi terpenuhi. Voucher ${appliedVoucher.code} dilepas.`
+        )
+        setAppliedVoucher(null)
+        setVoucherError(
+          `Voucher ${appliedVoucher.code} membutuhkan minimum belanja Rp ${appliedVoucher.minimumPurchase.toLocaleString('id-ID')}`
+        )
+        return
+      }
+
+      const raw = subtotal * (appliedVoucher.discountPercent / 100)
+      const cap =
+        appliedVoucher.maxDiscountAmount !== undefined &&
+        appliedVoucher.maxDiscountAmount !== null &&
+        appliedVoucher.maxDiscountAmount > 0
+          ? Math.min(raw, appliedVoucher.maxDiscountAmount)
+          : raw
+      const newDiscount = Math.round(Math.min(subtotal, Math.max(0, cap)))
+      setAppliedVoucher((prev) =>
+        prev ? { ...prev, discountAmount: newDiscount } : null
+      )
+    }
+  }, [subtotal])
+
+  const handleApplyVoucher = async () => {
+    const trimmed = voucherInput.trim().toUpperCase()
+    if (!trimmed) {
+      setVoucherError('Silakan masukkan kode voucher terlebih dahulu')
+      return
+    }
+    setIsValidatingVoucher(true)
+    setVoucherError(null)
+    try {
+      const res = await fetch('/api/vouchers/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: trimmed,
+          subtotal,
+          orderType: 'PRODUCT',
+        }),
+      })
+      const data = await res.json()
+      if (data.valid) {
+        setAppliedVoucher({
+          code: data.voucherCode,
+          discountPercent: data.discountPercent,
+          discountAmount: data.discountAmount,
+          maxDiscountAmount: data.maxDiscountAmount,
+          minimumPurchase: data.minimumPurchase,
+          description: data.description,
+        })
+        setVoucherError(null)
+        toast.success(
+          `Voucher ${data.voucherCode} berhasil digunakan! Hemat Rp ${data.discountAmount.toLocaleString('id-ID')}`
+        )
+      } else {
+        setAppliedVoucher(null)
+        const errorMsg = data.reason || 'Kode voucher tidak valid'
+        setVoucherError(errorMsg)
+        toast.error(errorMsg)
+      }
+    } catch {
+      const fallbackMsg = 'Terjadi kesalahan sistem saat memverifikasi voucher'
+      setVoucherError(fallbackMsg)
+      toast.error(fallbackMsg)
+    } finally {
+      setIsValidatingVoucher(false)
+    }
+  }
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null)
+    setVoucherInput('')
+    setVoucherError(null)
+    toast.info('Voucher berhasil dihapus')
+  }
 
   const handleCopyAccount = async (
     accountNumber: string,
@@ -189,6 +370,16 @@ export default function CheckoutPage() {
 
     if (selectedItems.length === 0) {
       toast.error('Pilih minimal 1 item untuk checkout')
+      return
+    }
+
+    if (subtotal <= 0) {
+      toast.error('Subtotal pesanan tidak valid')
+      return
+    }
+
+    if (isNaN(insuranceFee) || insuranceFee < 0) {
+      toast.error('Perhitungan asuransi tidak valid. Harap refresh halaman.')
       return
     }
 
@@ -216,6 +407,27 @@ export default function CheckoutPage() {
           `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
       }
 
+      const sanitizedItems = selectedItems.map((item) => ({
+        id: item.id,
+        type: item.type || 'PRODUCT',
+        productId:
+          item.productId || (item.type === 'PRODUCT' ? item.id : undefined),
+        variantId: item.variantId || undefined,
+        variantName: item.variantName || undefined,
+        rentalItemId:
+          item.rentalItemId || (item.type === 'RENTAL' ? item.id : undefined),
+        serviceId:
+          item.serviceId || (item.type === 'SERVICE' ? item.id : undefined),
+        quantity: Number(item.quantity) || 1,
+        rentalDays: item.rentalDays ? Number(item.rentalDays) : undefined,
+        name: item.name || '',
+        price: Number(item.price) || 0,
+        image: item.image || '',
+        weightGram: item.weightGram,
+        pricePerKg: item.pricePerKg,
+        notes: item.notes,
+      }))
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: {
@@ -223,7 +435,7 @@ export default function CheckoutPage() {
           'X-Idempotency-Key': idempotencyKeyRef.current,
         },
         body: JSON.stringify({
-          items: selectedItems,
+          items: sanitizedItems,
           paymentMethod:
             paymentMethod === 'GATEWAY' ? 'MIDTRANS' : 'MANUAL_TRANSFER',
           courierCode: courier,
@@ -236,21 +448,30 @@ export default function CheckoutPage() {
           bonusCaseIncluded: true,
           addressId: selectedAddressId,
           deliveryAddress: addressString,
-          recipientName: selectedAddress!.recipientName,
-          recipientPhone: selectedAddress!.phone,
+          recipientName: selectedAddress?.recipientName || '',
+          recipientPhone: selectedAddress?.phone || '',
+          voucherCode: appliedVoucher?.code || null,
           notes: notes,
         }),
       })
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
+        console.error('Checkout error response:', errorData)
         // Refresh idempotency key agar user bisa mencoba kembali jika request ditolak validasi/stok
         if (typeof window !== 'undefined') {
           idempotencyKeyRef.current =
             window.crypto?.randomUUID?.() ||
             `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
         }
-        throw new Error(errorData.error || 'Gagal memproses checkout')
+        let errorMsg = errorData.error || 'Gagal memproses checkout'
+        if (errorData.details && typeof errorData.details === 'object') {
+          const detailStr = Object.entries(errorData.details)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+            .join('; ')
+          if (detailStr) errorMsg = `${errorMsg} (${detailStr})`
+        }
+        throw new Error(errorMsg)
       }
 
       const data = await res.json()
@@ -507,9 +728,11 @@ export default function CheckoutPage() {
                   />
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Pilihan Kurir Terproteksi Asuransi
-                    </label>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Pilihan Kurir Terproteksi Asuransi
+                      </label>
+                    </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <button
                         type="button"
@@ -534,8 +757,8 @@ export default function CheckoutPage() {
                           </span>
                           <span>
                             {courierService === 'YES' && courier === 'JNE'
-                              ? 'Rp 28.000'
-                              : 'Rp 15.000'}
+                              ? `Rp ${jneYesCost.toLocaleString('id-ID')}`
+                              : `Rp ${jneRegCost.toLocaleString('id-ID')}`}
                           </span>
                         </div>
                         <p
@@ -563,7 +786,7 @@ export default function CheckoutPage() {
                           <span className="flex items-center gap-1.5">
                             <Truck className="h-3.5 w-3.5" /> Gojek Instant
                           </span>
-                          <span>Rp 35.000</span>
+                          <span>Rp {gojekCost.toLocaleString('id-ID')}</span>
                         </div>
                         <p
                           className={`mt-1 text-[10px] ${courier === 'GOJEK' ? 'text-slate-300' : 'text-slate-400'}`}
@@ -596,7 +819,8 @@ export default function CheckoutPage() {
                           >
                             <span className="text-xs">JNE Reguler (REG)</span>
                             <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                              Rp 15.000 • 1-2 Hari Kerja
+                              Rp {jneRegCost.toLocaleString('id-ID')} • 1-2 Hari
+                              Kerja
                             </span>
                           </button>
 
@@ -616,7 +840,8 @@ export default function CheckoutPage() {
                               </span>
                             </span>
                             <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                              Rp 28.000 • Prioritas 1 Hari
+                              Rp {jneYesCost.toLocaleString('id-ID')} •
+                              Prioritas 1 Hari
                             </span>
                           </button>
                         </div>
@@ -793,6 +1018,15 @@ export default function CheckoutPage() {
                         <p className="text-[11px] text-slate-400">
                           {item.quantity} unit × Rp{' '}
                           {item.price.toLocaleString('id-ID')}
+                          {item.weightGram ? (
+                            <span className="ml-1.5 font-medium text-slate-500 dark:text-slate-400">
+                              •{' '}
+                              {item.weightGram >= 1000
+                                ? `${(item.weightGram / 1000).toLocaleString('id-ID')} kg`
+                                : `${item.weightGram}g`}{' '}
+                              / unit
+                            </span>
+                          ) : null}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
@@ -825,9 +1059,13 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-slate-600 dark:text-slate-400">
                     <span>
                       Ongkos Kirim (
+                      {totalWeightGram >= 1000
+                        ? `${(totalWeightGram / 1000).toLocaleString('id-ID')} kg`
+                        : `${totalWeightGram}g`}{' '}
+                      ·{' '}
                       {courier === 'JNE'
                         ? `JNE ${courierService}`
-                        : 'Gojek Instant'}
+                        : `Gojek ${courierService === 'SAMEDAY' ? 'Sameday' : 'Instant'}`}
                       )
                     </span>
                     <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
@@ -838,7 +1076,7 @@ export default function CheckoutPage() {
                   <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                     <span className="flex items-center gap-1.5">
                       <ShieldCheck className="h-3.5 w-3.5 text-blue-500" />
-                      <span>Asuransi Kurir 100%</span>
+                      <span>Asuransi Pengiriman (0,2%)</span>
                     </span>
                     <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
                       Rp {insuranceFee.toLocaleString('id-ID')}
@@ -859,6 +1097,19 @@ export default function CheckoutPage() {
                     Charger 20W + Tempered Glass + Case
                   </p>
 
+                  {/* Voucher Discount Deduction */}
+                  {voucherDiscount > 0 && (
+                    <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Tag className="h-3.5 w-3.5" />
+                        <span>Diskon Voucher ({appliedVoucher?.code})</span>
+                      </span>
+                      <span className="font-bold tabular-nums">
+                        - Rp {voucherDiscount.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Total Payment Row */}
                   <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                     <div>
@@ -874,6 +1125,112 @@ export default function CheckoutPage() {
                       Rp {total.toLocaleString('id-ID')}
                     </span>
                   </div>
+                </div>
+
+                {/* Voucher Promo Section (Below Total Tagihan, Responsive) */}
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 dark:border-slate-800 dark:bg-slate-900/60">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                      <Tag className="h-3.5 w-3.5 text-orange-500" />
+                      <span>Kode Voucher Promo</span>
+                    </div>
+                    {appliedVoucher && (
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        Voucher Terpasang
+                      </span>
+                    )}
+                  </div>
+
+                  {appliedVoucher ? (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-3 text-xs dark:border-emerald-800/70 dark:bg-emerald-950/40">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <span className="font-bold tracking-wide text-emerald-800 dark:text-emerald-200">
+                              {appliedVoucher.code}
+                            </span>
+                            <span className="rounded-md bg-emerald-200/80 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200">
+                              {appliedVoucher.discountPercent}% OFF
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                            Potongan Diskon: Hemat Rp{' '}
+                            {appliedVoucher.discountAmount.toLocaleString(
+                              'id-ID'
+                            )}
+                          </p>
+                          {appliedVoucher.maxDiscountAmount &&
+                            appliedVoucher.maxDiscountAmount > 0 && (
+                              <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80">
+                                *Maksimal diskon Rp{' '}
+                                {appliedVoucher.maxDiscountAmount.toLocaleString(
+                                  'id-ID'
+                                )}
+                              </p>
+                            )}
+                          {appliedVoucher.description && (
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                              {appliedVoucher.description}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveVoucher}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-800 transition hover:bg-red-100 hover:text-red-700 dark:bg-emerald-900/60 dark:text-emerald-200 dark:hover:bg-red-950 dark:hover:text-red-300"
+                          title="Hapus voucher"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={voucherInput}
+                          onChange={(e) => {
+                            setVoucherInput(e.target.value.toUpperCase())
+                            if (voucherError) setVoucherError(null)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              handleApplyVoucher()
+                            }
+                          }}
+                          placeholder="Contoh: HEMAT20"
+                          disabled={isValidatingVoucher}
+                          className={`w-full min-w-0 rounded-xl border bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-900 placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 focus:outline-none dark:bg-slate-800 dark:text-white ${
+                            voucherError
+                              ? 'border-red-400 focus:border-red-500 dark:border-red-700'
+                              : 'border-slate-200 focus:border-orange-500 dark:border-slate-700'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          disabled={isValidatingVoucher || !voucherInput.trim()}
+                          onClick={handleApplyVoucher}
+                          className="shrink-0 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                        >
+                          {isValidatingVoucher ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            'Gunakan'
+                          )}
+                        </button>
+                      </div>
+
+                      {voucherError && (
+                        <div className="flex items-start gap-1.5 rounded-xl border border-red-200 bg-red-50/90 p-2.5 text-[11px] font-medium leading-tight text-red-600 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-400">
+                          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
+                          <span>{voucherError}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Terms Agreement */}

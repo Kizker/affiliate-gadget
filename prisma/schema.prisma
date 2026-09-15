@@ -58,6 +58,7 @@ model User {
   hostedLiveStreams      LiveStream[]       @relation("HostLiveStreams")
   auditLogs              AuditLog[]
   emailVerificationTokens EmailVerificationToken[]
+  voucherUsages          VoucherUsage[]
 
   @@index([email])
   @@index([phone])
@@ -189,6 +190,7 @@ model Product {
   originalPrice           Float?
   stock                   Int              @default(0)
   weightGram              Int              @default(500)
+  pricePerKg              Float            @default(20000) // Rp per kg untuk kalkulasi ongkir
   images                  String[]
   specs                   Json?            // Chipset, Display, Kamera, Baterai, dll
   warrantyDays            Int              @default(30) // Garansi 30 Hari penuh
@@ -491,7 +493,12 @@ model Order {
   subtotal                        Float
   tax                             Float          @default(0)
   shippingCost                    Float          @default(0)
-  insuranceFee                    Float          @default(0)    // Asuransi Wajib Pengiriman
+  totalWeightGram                 Int?           // Total berat pesanan dalam gram
+  voucherId                       String?
+  voucherCode                     String?
+  discountAmount                  Float          @default(0)    // Potongan diskon voucher promo
+  insuranceRate                   Float          @default(0.2)  // Rate asuransi saat checkout (%, contoh: 0.2 = 0.2%)
+  insuranceFee                    Float          @default(0)    // Asuransi Wajib Pengiriman (insuranceRate% x subtotal)
   isInsuranceMandatory            Boolean        @default(true)
   commissionRate                  Float          @default(2.0)  // 1% - 3% platform commission
   commissionAmount                Float          @default(0)    // Potongan komisi platform
@@ -514,6 +521,8 @@ model Order {
   invoice                         Invoice?
   items                           OrderItem[]
   store                           Store?         @relation(fields: [storeId], references: [id])
+  voucher                         Voucher?       @relation(fields: [voucherId], references: [id])
+  voucherUsage                    VoucherUsage?
   claimedBy                       User?          @relation("ClaimedOrders", fields: [claimedById], references: [id])
   paymentRequestedBy              User?          @relation("PaymentRequestedOrders", fields: [paymentRequestedById], references: [id])
   technicianPaymentRequestedBy    User?          @relation("TechnicianPaymentRequestedOrders", fields: [technicianPaymentRequestedById], references: [id])
@@ -529,6 +538,7 @@ model Order {
   @@index([storeId])
   @@index([orderNumber])
   @@index([status])
+  @@index([voucherId])
   @@index([claimedById])
   @@index([paymentRequestedById])
   @@index([technicianPaymentRequestedById])
@@ -1125,4 +1135,44 @@ model StoreApplication {
 
   @@index([userId])
   @@map("store_applications")
+}
+
+model Voucher {
+  id                  String         @id @default(cuid())
+  code                String         @unique
+  description         String?
+  discountPercent     Float          // e.g. 10 for 10%
+  maxDiscountAmount   Float?         // Cap maksimal nominal diskon dalam Rupiah
+  minimumPurchase     Float          @default(0) // Minimal subtotal order
+  totalQuota          Int            // Total kuota voucher tersedia
+  usedCount           Int            @default(0) // Jumlah voucher yang sudah dipakai
+  usagePerUser        Int            @default(1) // Batas pemakaian per user
+  applicableOrderType CartItemType   @default(PRODUCT)
+  isActive            Boolean        @default(true)
+  validFrom           DateTime
+  validUntil          DateTime
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  usages              VoucherUsage[]
+  orders              Order[]
+
+  @@index([isActive])
+  @@index([code])
+  @@map("vouchers")
+}
+
+model VoucherUsage {
+  id              String   @id @default(cuid())
+  voucherId       String
+  userId          String
+  orderId         String   @unique
+  discountApplied Float
+  usedAt          DateTime @default(now())
+  voucher         Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([voucherId, userId])
+  @@index([userId])
+  @@map("voucher_usages")
 }

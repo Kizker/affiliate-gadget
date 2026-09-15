@@ -10,15 +10,31 @@ import {
   CHECKOUT_ERROR_CODES,
   CheckoutError,
 } from '@/lib/validations/checkout'
+import {
+  INSURANCE_PERCENTAGE,
+  calculateInsuranceFee,
+  isValidInsuranceFee,
+} from '@/lib/constants/insurance'
+import {
+  calculateWeightShipping,
+  DEFAULT_PRICE_PER_KG,
+  DEFAULT_WEIGHT_GRAM,
+  WEIGHT_THRESHOLD_GRAM,
+} from '@/lib/constants/shipping'
+import { calculateVoucherDiscountAmount } from '@/lib/constants/voucher'
 
 interface CartItem {
   type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
-  productId?: string
-  rentalItemId?: string
-  serviceId?: string
+  productId?: string | null
+  variantId?: string | null
+  variantName?: string | null
+  rentalItemId?: string | null
+  serviceId?: string | null
   quantity: number
-  rentalDays?: number
-  name?: string
+  rentalDays?: number | null
+  name?: string | null
+  weightGram?: number | null
+  pricePerKg?: number | null
 }
 
 interface CreatedOrder {
@@ -201,6 +217,7 @@ export async function POST(request: NextRequest) {
       deliveryAddress,
       recipientName,
       recipientPhone,
+      voucherCode,
     } = parseResult.data
 
     // Format optional delivery notes
@@ -264,7 +281,7 @@ export async function POST(request: NextRequest) {
 
         try {
           completeOrder = await prisma.$transaction(
-            async (tx) => {
+            async (tx: any) => {
               let subtotal = 0
 
               type VerifiedItem = {
@@ -274,6 +291,8 @@ export async function POST(request: NextRequest) {
                 storeId: string | null
                 commissionRate: number
                 technicianId: string | null
+                weightGram?: number
+                pricePerKg?: number
                 includesCharger?: boolean
                 includesScreenProtector?: boolean
                 includesCase?: boolean
@@ -320,7 +339,7 @@ export async function POST(request: NextRequest) {
 
                   const product = await tx.product.findUnique({
                     where: { id: item.productId },
-                    include: { store: true },
+                    include: { store: true, variants: true },
                   })
 
                   if (!product) {
@@ -344,17 +363,31 @@ export async function POST(request: NextRequest) {
                     )
                   }
 
-                  const itemPrice = product.price
+                  const matchedVariant =
+                    item.variantId && Array.isArray(product.variants)
+                      ? product.variants.find(
+                          (v: any) => v.id === item.variantId
+                        )
+                      : null
+                  const itemPrice = matchedVariant
+                    ? matchedVariant.price
+                    : product.price
                   const itemSubtotal = itemPrice * quantity
                   subtotal += itemSubtotal
 
                   verifiedItems.push({
-                    raw: { ...item, quantity },
+                    raw: {
+                      ...item,
+                      quantity,
+                      variantName: matchedVariant?.name || item.variantName,
+                    },
                     itemPrice,
                     itemSubtotal,
                     storeId: product.storeId,
                     commissionRate: product.store?.commissionRate ?? 2.0,
                     technicianId: null,
+                    weightGram: product.weightGram ?? DEFAULT_WEIGHT_GRAM,
+                    pricePerKg: product.pricePerKg ?? DEFAULT_PRICE_PER_KG,
                     includesCharger: product.includesCharger ?? true,
                     includesScreenProtector:
                       product.includesScreenProtector ?? true,
@@ -421,6 +454,8 @@ export async function POST(request: NextRequest) {
                     storeId: null,
                     commissionRate: 2.0,
                     technicianId: null,
+                    weightGram: DEFAULT_WEIGHT_GRAM,
+                    pricePerKg: DEFAULT_PRICE_PER_KG,
                   })
                 } else if (orderType === 'SERVICE' && item.serviceId) {
                   const service = await tx.service.findUnique({
@@ -454,6 +489,7 @@ export async function POST(request: NextRequest) {
               // Server-side shipping, insurance & commission calculation
               let shippingCost = 0
               let insuranceFee = 0
+              let totalWeightGram: number | null = null
               const detectedCourier = courierCode === 'GOJEK' ? 'GOJEK' : 'JNE'
               const detectedService =
                 detectedCourier === 'GOJEK'
@@ -465,16 +501,146 @@ export async function POST(request: NextRequest) {
                     : 'REG'
 
               if (orderType === 'PRODUCT' || orderType === 'RENTAL') {
-                shippingCost =
-                  detectedCourier === 'GOJEK'
-                    ? 35000
-                    : detectedService === 'YES'
-                      ? 28000
-                      : 15000
-                insuranceFee = Math.max(15000, Math.round(subtotal * 0.0025))
+                const accumulatedWeight = verifiedItems.reduce(
+                  (sum, vi) =>
+                    sum +
+                    (vi.weightGram ?? DEFAULT_WEIGHT_GRAM) *
+                      (vi.raw.quantity ?? 1),
+                  0
+                )
+                totalWeightGram = accumulatedWeight
+                const maxPricePerKg = Math.max(
+                  ...verifiedItems.map(
+                    (vi) => vi.pricePerKg ?? DEFAULT_PRICE_PER_KG
+                  )
+                )
+
+                // Aturan berat:
+                // < WEIGHT_THRESHOLD_GRAM (1kg) → shippingCost = 0 (biaya berdasarkan jarak/kurir)
+                // >= WEIGHT_THRESHOLD_GRAM       → ditagihkan per kg * pricePerKg * courierMultiplier
+                shippingCost = calculateWeightShipping(
+                  accumulatedWeight,
+                  maxPricePerKg,
+                  detectedCourier,
+                  detectedService
+                )
+                insuranceFee = calculateInsuranceFee(subtotal)
               }
 
-              const total = subtotal + shippingCost + insuranceFee
+              // Server integrity check for insurance
+              if (
+                !isValidInsuranceFee(
+                  subtotal,
+                  insuranceFee,
+                  orderType === 'SERVICE'
+                )
+              ) {
+                throw new CheckoutError(
+                  'Integritas kalkulasi asuransi pengiriman gagal',
+                  CHECKOUT_ERROR_CODES.INTERNAL_ERROR,
+                  500
+                )
+              }
+
+              // Voucher calculation (PRODUCT only)
+              let appliedVoucherId: string | null = null
+              let appliedVoucherCode: string | null = null
+              let appliedDiscountAmount = 0
+
+              if (orderType === 'PRODUCT' && voucherCode) {
+                const cleanCode = voucherCode.trim().toUpperCase()
+                const dbVoucher = await tx.voucher.findUnique({
+                  where: { code: cleanCode },
+                })
+
+                if (!dbVoucher) {
+                  throw new CheckoutError(
+                    `Kode voucher "${cleanCode}" tidak valid`,
+                    CHECKOUT_ERROR_CODES.VOUCHER_INVALID,
+                    400
+                  )
+                }
+
+                if (!dbVoucher.isActive) {
+                  throw new CheckoutError(
+                    'Voucher yang Anda gunakan sedang tidak aktif',
+                    CHECKOUT_ERROR_CODES.VOUCHER_INVALID,
+                    400
+                  )
+                }
+
+                const now = new Date()
+                if (now < dbVoucher.validFrom || now > dbVoucher.validUntil) {
+                  throw new CheckoutError(
+                    'Masa berlaku voucher telah berakhir',
+                    CHECKOUT_ERROR_CODES.VOUCHER_EXPIRED,
+                    400
+                  )
+                }
+
+                if (dbVoucher.usedCount >= dbVoucher.totalQuota) {
+                  throw new CheckoutError(
+                    'Kuota penukaran voucher telah habis',
+                    CHECKOUT_ERROR_CODES.VOUCHER_QUOTA_EMPTY,
+                    400
+                  )
+                }
+
+                if (subtotal < dbVoucher.minimumPurchase) {
+                  throw new CheckoutError(
+                    `Minimum belanja Rp ${dbVoucher.minimumPurchase.toLocaleString('id-ID')} untuk menggunakan voucher ini`,
+                    CHECKOUT_ERROR_CODES.VOUCHER_MIN_PURCHASE,
+                    400
+                  )
+                }
+
+                const userUsageCount = await tx.voucherUsage.count({
+                  where: {
+                    voucherId: dbVoucher.id,
+                    userId: session.user.id,
+                  },
+                })
+
+                if (userUsageCount >= dbVoucher.usagePerUser) {
+                  throw new CheckoutError(
+                    `Anda telah mencapai batas maksimal (${dbVoucher.usagePerUser}x) pemakaian voucher ini`,
+                    CHECKOUT_ERROR_CODES.VOUCHER_USER_LIMIT,
+                    400
+                  )
+                }
+
+                appliedDiscountAmount = calculateVoucherDiscountAmount(
+                  subtotal,
+                  dbVoucher.discountPercent,
+                  dbVoucher.maxDiscountAmount
+                )
+
+                const voucherUpdate = await tx.voucher.updateMany({
+                  where: {
+                    id: dbVoucher.id,
+                    usedCount: { lt: dbVoucher.totalQuota },
+                  },
+                  data: {
+                    usedCount: { increment: 1 },
+                  },
+                })
+
+                if (voucherUpdate.count === 0) {
+                  throw new CheckoutError(
+                    'Kuota voucher telah habis',
+                    CHECKOUT_ERROR_CODES.VOUCHER_QUOTA_EMPTY,
+                    400
+                  )
+                }
+
+                appliedVoucherId = dbVoucher.id
+                appliedVoucherCode = dbVoucher.code
+              }
+
+              const total = Math.max(
+                0,
+                subtotal + shippingCost + insuranceFee - appliedDiscountAmount
+              )
 
               // Store & Commission
               const detectedStoreId =
@@ -513,6 +679,12 @@ export async function POST(request: NextRequest) {
                   subtotal,
                   tax: 0,
                   shippingCost,
+                  totalWeightGram,
+                  voucherId: appliedVoucherId,
+                  voucherCode: appliedVoucherCode,
+                  discountAmount: appliedDiscountAmount,
+                  insuranceRate:
+                    orderType !== 'SERVICE' ? INSURANCE_PERCENTAGE : 0,
                   insuranceFee,
                   isInsuranceMandatory: orderType !== 'SERVICE',
                   commissionRate,
@@ -528,6 +700,17 @@ export async function POST(request: NextRequest) {
                 },
               })
 
+              if (appliedVoucherId) {
+                await tx.voucherUsage.create({
+                  data: {
+                    voucherId: appliedVoucherId,
+                    userId: session.user.id,
+                    orderId: newOrder.id,
+                    discountApplied: appliedDiscountAmount,
+                  },
+                })
+              }
+
               // Create OrderItem records
               for (const vi of verifiedItems) {
                 await tx.orderItem.create({
@@ -537,6 +720,8 @@ export async function POST(request: NextRequest) {
                     serviceId: vi.raw.serviceId || null,
                     productId: vi.raw.productId || null,
                     rentalItemId: vi.raw.rentalItemId || null,
+                    variantId: vi.raw.variantId || null,
+                    variantName: vi.raw.variantName || null,
                     quantity: vi.raw.quantity,
                     rentalDays: vi.raw.rentalDays || null,
                     price: vi.itemPrice,

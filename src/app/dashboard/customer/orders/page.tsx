@@ -22,7 +22,9 @@ export default async function CustomerOrdersPage() {
           price: true,
           subtotal: true,
           service: { select: { name: true, category: true } },
-          product: { select: { id: true, name: true, brand: true, images: true } },
+          product: {
+            select: { id: true, name: true, brand: true, images: true },
+          },
           rentalItem: { select: { name: true, images: true } },
         },
       },
@@ -89,6 +91,7 @@ export default async function CustomerOrdersPage() {
     total: order.total,
     subtotal: order.subtotal,
     shippingCost: order.shippingCost,
+    insuranceRate: order.insuranceRate,
     insuranceFee: order.insuranceFee,
     courierCode: order.courierCode,
     courierService: order.courierService,

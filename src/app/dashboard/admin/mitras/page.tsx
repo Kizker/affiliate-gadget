@@ -656,25 +656,23 @@ export default function MitrasPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed border-collapse text-left">
+            <table className="w-full min-w-[1080px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-500">
-                  <th className="w-[25%] min-w-[200px] px-4 py-3.5 sm:px-5">
+                  <th className="min-w-[220px] px-4 py-3.5 sm:px-5">
                     Toko & Badan Usaha PT
                   </th>
-                  <th className="hidden w-[18%] min-w-[140px] px-3 py-3.5 md:table-cell">
+                  <th className="hidden min-w-[150px] px-3 py-3.5 md:table-cell">
                     Alamat Fisik
                   </th>
-                  <th className="hidden w-[16%] min-w-[130px] px-3 py-3.5 sm:table-cell">
+                  <th className="hidden min-w-[140px] px-3 py-3.5 sm:table-cell">
                     Kontak & PIC
                   </th>
-                  <th className="hidden w-[16%] min-w-[130px] px-3 py-3.5 lg:table-cell">
+                  <th className="hidden min-w-[150px] px-3 py-3.5 lg:table-cell">
                     Rekening & Komisi
                   </th>
-                  <th className="w-[11%] min-w-[125px] px-3 py-3.5">
-                    Status & Tipe
-                  </th>
-                  <th className="w-[14%] min-w-[200px] px-4 py-3.5 text-right sm:px-5">
+                  <th className="min-w-[130px] px-3 py-3.5">Status & Tipe</th>
+                  <th className="w-[280px] min-w-[260px] whitespace-nowrap px-4 py-3.5 text-right sm:px-5">
                     Aksi
                   </th>
                 </tr>
@@ -725,6 +723,12 @@ export default function MitrasPage() {
                                   Baru
                                 </span>
                               )}
+                              {mitra.isOwnerStore && (
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-purple-200/80 bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/50 dark:text-purple-300">
+                                  <ShieldCheck className="h-2.5 w-2.5" />
+                                  Pusat
+                                </span>
+                              )}
                             </div>
                             <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                               <span className="max-w-[130px] truncate font-medium text-slate-600 dark:text-slate-300 sm:max-w-[160px]">
@@ -769,7 +773,7 @@ export default function MitrasPage() {
                             </span>
                           </div>
                           <p className="mt-0.5 truncate pl-5 text-[11px] text-slate-400 dark:text-slate-500">
-                            {mitra.email || '-'}
+                            {mitra.email || mitra.user?.email || '-'}
                           </p>
                         </div>
                       </td>
@@ -780,17 +784,19 @@ export default function MitrasPage() {
                           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800 dark:text-slate-200">
                             <CreditCard className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                             <span className="truncate">
-                              {primaryBank?.bankName ||
-                                (isApplicant
-                                  ? 'Belum Ada Rekening'
-                                  : 'Rekening PT')}
+                              {primaryBank?.accountName
+                                ? 'Rekening Toko'
+                                : primaryBank?.bankName
+                                  ? 'Rekening PT'
+                                  : 'Rekening Toko'}
                             </span>
                           </div>
-                          <div className="mt-0.5 flex items-center gap-1 pl-5 font-mono text-[10px] text-slate-400 dark:text-slate-500">
-                            <span className="truncate">
+                          <div className="mt-0.5 flex items-center gap-1 pl-5 text-[10px] text-slate-400 dark:text-slate-500">
+                            <span className="truncate font-medium">
+                              {primaryBank?.bankName || 'Bank Mandiri'}
                               {primaryBank?.accountNumber
-                                ? `•••${primaryBank.accountNumber.slice(-4)}`
-                                : '-'}
+                                ? ` (•••${primaryBank.accountNumber.slice(-4)})`
+                                : ''}
                             </span>
                             <span>·</span>
                             <span className="shrink-0 font-sans font-semibold text-orange-600 dark:text-orange-400">
@@ -815,14 +821,14 @@ export default function MitrasPage() {
                             <span
                               className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                                 isApplicant
-                                  ? 'animate-pulse bg-amber-500'
+                                  ? 'bg-amber-500'
                                   : mitra.isApproved
                                     ? 'bg-emerald-500'
                                     : 'bg-slate-400'
                               }`}
                             />
                             {isApplicant
-                              ? 'Menunggu Review'
+                              ? 'Pendaftar Baru'
                               : mitra.isApproved
                                 ? 'Terverifikasi'
                                 : 'Nonaktif'}
@@ -831,8 +837,8 @@ export default function MitrasPage() {
                       </td>
 
                       {/* 6. Action Buttons */}
-                      <td className="px-4 py-3.5 text-right sm:px-5">
-                        <div className="inline-flex flex-nowrap items-center justify-end gap-1">
+                      <td className="w-[280px] min-w-[260px] whitespace-nowrap px-4 py-3.5 text-right sm:px-5">
+                        <div className="flex flex-nowrap items-center justify-end gap-1.5 whitespace-nowrap">
                           {/* 1. Detail (Universal untuk semua mitra & pendaftar) */}
                           <Link
                             href={`/dashboard/admin/mitras/${mitra.id}`}
@@ -868,15 +874,6 @@ export default function MitrasPage() {
                             </>
                           ) : (
                             <>
-                              <Link
-                                href={`/toko/${mitra.slug || mitra.id}`}
-                                target="_blank"
-                                className="shadow-2xs hidden h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-500 transition hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white xl:inline-flex"
-                                title="Buka halaman publik toko"
-                              >
-                                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                              </Link>
-
                               <button
                                 onClick={() =>
                                   handleToggleApproval(
@@ -885,7 +882,7 @@ export default function MitrasPage() {
                                     storeName
                                   )
                                 }
-                                className={`shadow-2xs inline-flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 text-xs font-semibold transition ${
+                                className={`shadow-2xs inline-flex h-8 shrink-0 items-center justify-center rounded-full border px-3 text-xs font-semibold transition ${
                                   mitra.isApproved
                                     ? 'border-rose-200/80 bg-rose-50/60 text-rose-700 hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-400'
                                     : 'border-emerald-200/80 bg-emerald-50/60 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-400'
@@ -905,6 +902,15 @@ export default function MitrasPage() {
                                 title="Ubah Profil Toko"
                               >
                                 <Edit className="h-3.5 w-3.5 shrink-0" />
+                              </Link>
+
+                              <Link
+                                href={`/toko/${mitra.slug || mitra.id}`}
+                                target="_blank"
+                                className="shadow-2xs hidden h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-500 transition hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white xl:inline-flex"
+                                title="Buka halaman publik toko"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                               </Link>
 
                               <button

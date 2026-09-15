@@ -24,6 +24,9 @@ export async function GET() {
                 images: true,
                 stock: true,
                 variants: true,
+                weightGram: true,
+                pricePerKg: true,
+                storeId: true,
               },
             },
             rentalItem: {
@@ -65,6 +68,9 @@ export async function GET() {
                   images: true,
                   stock: true,
                   variants: true,
+                  weightGram: true,
+                  pricePerKg: true,
+                  storeId: true,
                 },
               },
               rentalItem: {
@@ -128,8 +134,15 @@ export async function GET() {
         rentalDays: item.rentalDays,
         name,
         price,
-        image: item.product?.images?.[0] || item.rentalItem?.images?.[0] || null,
+        image:
+          item.product?.images?.[0] || item.rentalItem?.images?.[0] || null,
         stock,
+        weightGram:
+          item.product?.weightGram ??
+          (item.type === 'PRODUCT' ? 500 : undefined),
+        pricePerKg:
+          item.product?.pricePerKg ??
+          (item.type === 'PRODUCT' ? 20000 : undefined),
       }
     })
 

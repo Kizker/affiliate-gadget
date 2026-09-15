@@ -37,6 +37,7 @@ interface Order {
   total: number
   subtotal?: number
   shippingCost?: number
+  insuranceRate?: number
   insuranceFee?: number
   courierCode?: string | null
   courierService?: string | null

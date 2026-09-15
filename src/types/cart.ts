@@ -12,6 +12,8 @@ export interface CartItem {
   quantity: number
   rentalDays?: number
   stock?: number
+  weightGram?: number // Berat produk dalam gram
+  pricePerKg?: number // Tarif dasar ongkir per kg
   notes?: string
   depositAmount?: number
 }

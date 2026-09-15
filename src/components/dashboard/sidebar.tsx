@@ -27,6 +27,7 @@ import {
   PanelLeftClose,
   Wallet,
   RotateCcw,
+  Tag,
 } from 'lucide-react'
 import { useSidebarSafe } from '@/context/sidebar-context'
 
@@ -61,6 +62,7 @@ const superAdminNavSections: NavSection[] = [
       },
       { icon: ShoppingCart, label: 'Pesanan', href: '/dashboard/admin/orders' },
       { icon: Store, label: 'Daftar Toko', href: '/dashboard/admin/mitras' },
+      { icon: Tag, label: 'Voucher Promo', href: '/dashboard/admin/vouchers' },
     ],
   },
   {
@@ -276,8 +278,7 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
     return 'SUPER_ADMIN'
   }, [pathname])
 
-  const effectiveRole =
-    forceRole || (mounted ? session?.user?.role : fallbackRole) || fallbackRole
+  const effectiveRole = forceRole || session?.user?.role || fallbackRole
 
   // Determine sections based on user role
   const navSections = useMemo(() => {

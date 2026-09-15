@@ -93,6 +93,7 @@ export default function NewGadgetProductPage() {
     originalPrice: '',
     stock: '5',
     weightGram: '500',
+    pricePerKg: '20000',
     storeId: '',
     description: '',
     warrantyDays: '30',
@@ -347,6 +348,8 @@ export default function NewGadgetProductPage() {
           originalPrice: form.originalPrice
             ? parseRupiahInput(form.originalPrice)
             : undefined,
+          weightGram: parseInt(form.weightGram, 10) || 500,
+          pricePerKg: parseRupiahInput(form.pricePerKg) || 20000,
           variants: variants.map((v) => ({
             name:
               v.name ||
@@ -535,6 +538,46 @@ export default function NewGadgetProductPage() {
                 options={CONDITION_OPTIONS}
                 placeholder="Pilih atau ketik kondisi fisik..."
               />
+            </div>
+
+            {/* ─── Berat & Tarif Ongkir per Kg ─── */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Berat Produk (gram) *
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={form.weightGram}
+                onChange={(e) =>
+                  setForm({ ...form, weightGram: e.target.value })
+                }
+                placeholder="500"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <p className="text-[10px] text-slate-400">
+                Berat unit dalam gram (misal: 500 = 0,5 kg)
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Tarif Ongkir Dasar per Kg (Rp) *
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={formatRupiahInput(form.pricePerKg)}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '')
+                  setForm({ ...form, pricePerKg: raw })
+                }}
+                placeholder="20.000"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <p className="text-[10px] text-slate-400">
+                Tarif dasar ongkir per kg (default: Rp 20.000)
+              </p>
             </div>
           </div>
 
