@@ -95,6 +95,12 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-16 (Shopee-Style 2-Column Mobile Product Grid & Compact 2x2 Viewport Engine):**
+  - **1. 2-Column Mobile Grid Standard (`grid-cols-2`):** Mengadaptasi seluruh showcase dan katalog produk dari layout 1 kolom besar (`grid-cols-1`) menjadi format 2 kolom Shopee-style (`grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4`) pada halaman `/gadget`, `section-product-showcase.tsx`, `section-featured-gadgets.tsx`, dan `/toko/[slug]`.
+  - **2. Compact 2x2 Screen Budgeting:** Penyesuaian proporsi elemen kartu (padding `p-2 sm:p-4`, border-radius `rounded-2xl sm:rounded-3xl`, title `text-xs leading-tight`, rating pill mini `text-[9px]`, dan action button `py-1.5 text-[11px]`) agar 4 produk (2 baris x 2 kolom) muat tampil secara proporsional dalam 1 layar mobile tanpa terpotong berlebihan.
+  - **3. Consistent Visual & E-Commerce Theme Preservation:** Tetap mempertahankan palet warna Action Orange, Trust Blue, Dark Mode styling, interaksi direct chat WhatsApp/Store, dan data badge stok semantic tanpa mengubah tema visual platform.
+  - **4. Verification & Health:** TypeScript 0 error (`pnpm tsc --noEmit`) dan 16 test suites dengan 180 unit tests lolos 100% (`pnpm test:unit`).
+
 - **2026-09-16 (4-Level Catalog Hierarchy & Bulk Color Variant Update Engine):**
   - **1. 4-Level Hierarchy Engine ([`src/lib/catalog-hierarchy.ts`](file:///src/lib/catalog-hierarchy.ts)):** Normalisasi cerdas kapasitas (`RAM/Storage`, misal `12/512`), pembersihan nama varian warna murni, dan konstruksi pohon hirarki 4 level (`Merek` -> `Seri` -> `Kapasitas RAM/Storage` -> `Varian Warna`) dengan deteksi konsistensi harga (`isAllSamePrice`) dan kalkulasi agregat stok.
   - **2. Catalog Hierarchy Endpoint ([`/api/admin/products/variants/hierarchy`](file:///src/app/api/admin/products/variants/hierarchy/route.ts)):** Endpoint hirarki multi-role (`SUPER_ADMIN` & `STORE_ADMIN` dengan isolasi toko cabang) dilengkapi filter pencarian real-time dan ringkasan metrik statistik katalog.

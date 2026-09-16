@@ -72,10 +72,10 @@ function GadgetKatalogContent() {
     <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar variant="light" />
 
-      <main className="pb-20 pt-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <main className="pb-16 pt-20 sm:pb-20 sm:pt-28">
+        <div className="mx-auto max-w-7xl px-2.5 sm:px-6 lg:px-8">
           {/* Unified Filter, Search & Sort Control Panel */}
-          <div className="shadow-2xs mb-8 flex flex-col items-stretch justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:p-3 lg:flex-row lg:items-center">
+          <div className="shadow-2xs mb-3.5 flex flex-col items-stretch justify-between gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 sm:mb-8 sm:rounded-3xl sm:p-3 lg:flex-row lg:items-center">
             {/* Left: Brand Pills Segment */}
             <div className="no-scrollbar flex items-center gap-1 overflow-x-auto py-0.5">
               {brands.map((b) => (
@@ -83,7 +83,7 @@ function GadgetKatalogContent() {
                   key={b}
                   type="button"
                   onClick={() => setBrand(b)}
-                  className={`whitespace-nowrap rounded-2xl px-4 py-2 text-xs font-semibold transition-all duration-200 ${
+                  className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all duration-200 sm:rounded-2xl sm:px-4 sm:py-2 sm:text-xs ${
                     brand === b
                       ? 'shadow-2xs bg-slate-950 text-white dark:bg-white dark:text-slate-950'
                       : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
@@ -98,19 +98,19 @@ function GadgetKatalogContent() {
             <div className="flex items-center gap-2 border-t border-slate-100 pt-2 dark:border-slate-800 lg:border-t-0 lg:pt-0">
               {/* Search Box */}
               <div className="relative flex-1 sm:w-64 lg:w-72">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Cari iPhone, Samsung, Xiaomi..."
-                  className="w-full rounded-2xl border border-slate-200/70 bg-slate-50/80 py-2 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="w-full rounded-xl border border-slate-200/70 bg-slate-50/80 py-1.5 pl-8 pr-8 text-[11px] font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:rounded-2xl sm:py-2 sm:pl-9 sm:text-xs"
                 />
                 {search && (
                   <button
                     type="button"
                     onClick={() => setSearch('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -122,7 +122,7 @@ function GadgetKatalogContent() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="cursor-pointer appearance-none rounded-2xl border border-slate-200/70 bg-slate-50/80 py-2 pl-3.5 pr-8 text-xs font-semibold text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  className="cursor-pointer appearance-none rounded-xl border border-slate-200/70 bg-slate-50/80 py-1.5 pl-2.5 pr-7 text-[11px] font-semibold text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:rounded-2xl sm:py-2 sm:pl-3.5 sm:pr-8 sm:text-xs"
                 >
                   <option value="DEFAULT">Urutan Terbaru</option>
                   <option value="PRICE_LOW">Harga Terendah</option>
@@ -133,7 +133,7 @@ function GadgetKatalogContent() {
             </div>
           </div>
 
-          {/* Products Grid */}
+          {/* Products Grid: 2 Columns on Mobile, fits 2 rows in viewport */}
           {loading ? (
             <div className="py-24 text-center text-slate-400">
               <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-orange-500" />
@@ -142,7 +142,7 @@ function GadgetKatalogContent() {
               </p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="shadow-xs space-y-3 rounded-3xl border border-slate-200/80 bg-white p-10 py-20 text-center dark:border-slate-800 dark:bg-slate-900">
+            <div className="shadow-xs space-y-3 rounded-2xl border border-slate-200/80 bg-white p-6 py-16 text-center dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl sm:p-10 sm:py-20">
               <Smartphone className="mx-auto h-10 w-10 text-slate-300" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 Tidak ada produk yang cocok
@@ -152,7 +152,7 @@ function GadgetKatalogContent() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
               {filtered.map((item) => {
                 const totalStock =
                   item.variants && item.variants.length > 0
@@ -165,14 +165,14 @@ function GadgetKatalogContent() {
                 return (
                   <div
                     key={item.id}
-                    className="shadow-xs group relative flex flex-col justify-between rounded-3xl border border-slate-200/80 bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+                    className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4"
                   >
                     <Link
                       href={`/gadget/${item.id}`}
                       className="block cursor-pointer focus:outline-none"
                     >
                       {/* 1. Media Header (Square Cropped Hero Photo) */}
-                      <div className="relative mb-3.5 aspect-square w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60">
+                      <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60 sm:mb-3.5 sm:rounded-2xl">
                         <Image
                           src={
                             (item.images && item.images[0]) ||
@@ -180,30 +180,30 @@ function GadgetKatalogContent() {
                           }
                           alt={item.name}
                           fill
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
                           unoptimized
                           className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
 
                         {/* Top-Right: Solid Clean Rating Capsule */}
-                        <div className="absolute right-2.5 top-2.5 z-10 flex select-none items-center gap-1.5 rounded-full border border-slate-200/90 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-900 shadow-md transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white">
-                          <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+                        <div className="absolute right-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:right-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
+                          <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400 sm:h-3 sm:w-3" />
                           <span className="font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white">
                             {(item.rating || 5.0).toFixed(1)}
                           </span>
-                          <span className="text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500">
+                          <span className="hidden text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500 sm:inline">
                             ({item.totalReview || 0})
                           </span>
                         </div>
                       </div>
 
                       {/* 2. Product Identity & Details */}
-                      <div className="space-y-2 px-1">
+                      <div className="space-y-1.5 px-0.5 sm:space-y-2">
                         {/* Store & Semantic Stock Row */}
-                        <div className="flex items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center justify-between gap-1 text-[10px] sm:text-xs">
                           <div className="flex min-w-0 items-center gap-1 truncate font-medium text-slate-400">
-                            <Store className="h-3 w-3 shrink-0 text-slate-400" />
-                            <span className="truncate text-[11px]">
+                            <Store className="h-2.5 w-2.5 shrink-0 text-slate-400 sm:h-3 sm:w-3" />
+                            <span className="truncate text-[10px] sm:text-[11px]">
                               {item.store
                                 ? item.store.name
                                 : 'Affiliate Gadget Official'}
@@ -213,20 +213,16 @@ function GadgetKatalogContent() {
                           {/* Semantic Stock Pill */}
                           <div className="shrink-0">
                             {totalStock > 5 ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/90 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                <Package className="h-2.5 w-2.5 text-slate-500" />
+                              <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:gap-1 sm:text-[10px]">
+                                <Package className="hidden h-2.5 w-2.5 text-slate-500 sm:inline" />
                                 <span>{totalStock} Unit</span>
                               </span>
                             ) : totalStock > 0 ? (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                                <span className="relative flex h-1.5 w-1.5">
-                                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-                                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                                </span>
+                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:text-[10px]">
                                 <span>Sisa {totalStock}!</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200/60 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200/60 bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 sm:text-[10px]">
                                 <span>Habis</span>
                               </span>
                             )}
@@ -234,19 +230,19 @@ function GadgetKatalogContent() {
                         </div>
 
                         {/* Title */}
-                        <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-snug text-slate-900 transition-colors group-hover:text-orange-600 dark:text-white">
+                        <h3 className="line-clamp-2 min-h-[2rem] text-xs font-bold leading-tight text-slate-900 transition-colors group-hover:text-orange-600 dark:text-white sm:min-h-[2.5rem] sm:text-sm sm:leading-snug">
                           {item.name}
                         </h3>
 
                         {/* Price Row (Solid & Clear Formatting) */}
-                        <div className="flex items-baseline justify-between gap-2 pt-0.5">
-                          <div className="flex flex-wrap items-baseline gap-2">
-                            <span className="whitespace-nowrap text-base font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-lg">
+                        <div className="flex items-baseline justify-between gap-1 pt-0.5">
+                          <div className="flex flex-wrap items-baseline gap-1">
+                            <span className="whitespace-nowrap text-xs font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-base sm:text-lg">
                               Rp {item.price.toLocaleString('id-ID')}
                             </span>
                             {item.originalPrice &&
                               item.originalPrice > item.price && (
-                                <span className="whitespace-nowrap text-xs font-normal tabular-nums text-slate-400 line-through">
+                                <span className="hidden whitespace-nowrap text-xs font-normal tabular-nums text-slate-400 line-through sm:inline">
                                   Rp{' '}
                                   {item.originalPrice.toLocaleString('id-ID')}
                                 </span>
@@ -254,7 +250,7 @@ function GadgetKatalogContent() {
                           </div>
 
                           {item.variants && item.variants.length > 1 && (
-                            <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800">
+                            <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 dark:bg-slate-800 sm:text-[10px]">
                               {item.variants.length} Varian
                             </span>
                           )}
@@ -263,10 +259,10 @@ function GadgetKatalogContent() {
                     </Link>
 
                     {/* 3. Action Buttons */}
-                    <div className="mt-3.5 flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800/80">
+                    <div className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 dark:border-slate-800/80 sm:mt-3.5 sm:gap-2 sm:pt-3">
                       <Link
                         href={`/gadget/${item.id}`}
-                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-bold transition-all duration-200 ${
+                        className={`flex flex-1 items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-bold transition-all duration-200 sm:rounded-2xl sm:py-2.5 sm:text-xs ${
                           totalStock > 0
                             ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/25 hover:bg-orange-600 active:scale-[0.98]'
                             : 'cursor-not-allowed bg-slate-100 text-slate-400 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-500'
@@ -275,16 +271,16 @@ function GadgetKatalogContent() {
                         <span>
                           {totalStock > 0 ? 'Lihat Detail' : 'Stok Habis'}
                         </span>
-                        <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                        <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-3.5 sm:w-3.5" />
                       </Link>
 
                       {item.store?.id && (
                         <Link
                           href={`/dashboard/customer/chat?storeId=${item.store.id}&productId=${item.id}&productName=${encodeURIComponent(item.name || '')}&productPrice=${item.price || 0}&productImage=${encodeURIComponent(item.images?.[0] || '')}`}
-                          className="shadow-2xs flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-orange-800 dark:hover:bg-orange-950/40 dark:hover:text-orange-300"
+                          className="shadow-2xs flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-orange-800 dark:hover:bg-orange-950/40 dark:hover:text-orange-300 sm:h-9 sm:w-9 sm:rounded-2xl"
                           title="Chat Toko tentang produk ini"
                         >
-                          <MessageSquare className="h-4 w-4" />
+                          <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Link>
                       )}
                     </div>
