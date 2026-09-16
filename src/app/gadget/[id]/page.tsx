@@ -16,6 +16,7 @@ import {
   Truck,
   Store,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   ArrowRight,
   MessageSquare,
@@ -229,6 +230,52 @@ export default function GadgetDetailPage() {
     }
   }
 
+  // Find matching variant that corresponds to the given image
+  const findVariantForImage = (imgUrl: string) => {
+    if (!product?.variants || product.variants.length === 0) return null
+    const exactMatch = product.variants.find(
+      (v: any) => v.image && v.image === imgUrl
+    )
+    if (exactMatch) return exactMatch
+
+    const baseImg = imgUrl.split('?')[0]
+    return (
+      product.variants.find(
+        (v: any) => v.image && v.image.split('?')[0] === baseImg
+      ) || null
+    )
+  }
+
+  // Desktop handlers for next and previous images with instant variant sync
+  const handleNextImageDesktop = () => {
+    if (!allImages || allImages.length <= 1) return
+    const currentIdx = allImages.indexOf(selectedImage)
+    const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % allImages.length : 0
+    const nextImg = allImages[nextIdx]
+    setSelectedImage(nextImg)
+
+    const matchingVar = findVariantForImage(nextImg)
+    if (matchingVar) {
+      handleSelectVariant(matchingVar)
+    }
+  }
+
+  const handlePrevImageDesktop = () => {
+    if (!allImages || allImages.length <= 1) return
+    const currentIdx = allImages.indexOf(selectedImage)
+    const prevIdx =
+      currentIdx >= 0
+        ? (currentIdx - 1 + allImages.length) % allImages.length
+        : allImages.length - 1
+    const prevImg = allImages[prevIdx]
+    setSelectedImage(prevImg)
+
+    const matchingVar = findVariantForImage(prevImg)
+    if (matchingVar) {
+      handleSelectVariant(matchingVar)
+    }
+  }
+
   const currentPrice = selectedVariant ? selectedVariant.price : product.price
   const discountAmount =
     product.originalPrice && product.originalPrice > currentPrice
@@ -316,7 +363,7 @@ export default function GadgetDetailPage() {
               {/* Left Column: Media Gallery & Store Card (5 cols) */}
               <div className="space-y-4 lg:col-span-5">
                 {/* Main Image Container — Desktop only */}
-                <div className="shadow-xs relative hidden aspect-square overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 lg:block">
+                <div className="shadow-xs group relative hidden aspect-square select-none overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 lg:block">
                   {/* Image clipped with padding effect via absolute inset */}
                   <div className="absolute inset-5 overflow-hidden rounded-2xl">
                     <Image
@@ -335,10 +382,32 @@ export default function GadgetDetailPage() {
                     />
                   </div>
                   {/* Warranty Stamp */}
-                  <div className="absolute left-4 top-4 z-10 flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white/95 px-3 py-1 text-[10px] font-semibold text-slate-700 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
+                  <div className="pointer-events-none absolute left-4 top-4 z-10 flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white/95 px-3 py-1 text-[10px] font-semibold text-slate-700 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Garansi 30 Hari Ganti Baru</span>
                   </div>
+
+                  {/* Desktop Prev & Next Arrows (Direct Variant Referencing) */}
+                  {allImages && allImages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handlePrevImageDesktop}
+                        className="absolute left-3.5 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-800 shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-90 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-100"
+                        aria-label="Gambar Sebelumnya"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleNextImageDesktop}
+                        className="absolute right-3.5 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-800 shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-90 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-100"
+                        aria-label="Gambar Selanjutnya"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {/* Thumbnails */}
@@ -352,9 +421,7 @@ export default function GadgetDetailPage() {
                           type="button"
                           onClick={() => {
                             setSelectedImage(img)
-                            const matchingVar = product.variants?.find(
-                              (v: any) => v.image === img
-                            )
+                            const matchingVar = findVariantForImage(img)
                             if (matchingVar) {
                               handleSelectVariant(matchingVar)
                             }

@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   Share2,
   Heart,
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   ChevronUp,
@@ -89,9 +90,99 @@ export function ShopeeMobileProductDetail({
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Touch swipe state for image gallery
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const minSwipeDistance = 40
+
   const currentImageIdx = allImages.indexOf(selectedImage)
   const displayIdx = currentImageIdx >= 0 ? currentImageIdx + 1 : 1
   const totalImagesCount = allImages.length > 0 ? allImages.length : 1
+
+  // Find matching variant that corresponds to the given image
+  const findVariantForImage = (imgUrl: string) => {
+    if (!product?.variants || product.variants.length === 0) return null
+    const exactMatch = product.variants.find(
+      (v: any) => v.image && v.image === imgUrl
+    )
+    if (exactMatch) return exactMatch
+
+    const baseImg = imgUrl.split('?')[0]
+    return (
+      product.variants.find(
+        (v: any) => v.image && v.image.split('?')[0] === baseImg
+      ) || null
+    )
+  }
+
+  // Handle switching to next image and syncing to corresponding variant
+  const handleNextImage = () => {
+    if (!allImages || allImages.length <= 1) return
+    const currentIdx = allImages.indexOf(selectedImage)
+    const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % allImages.length : 0
+    const nextImg = allImages[nextIdx]
+    onSelectImage(nextImg)
+
+    const matchingVariant = findVariantForImage(nextImg)
+    if (matchingVariant) {
+      onSelectVariant(matchingVariant)
+      setTimeout(() => {
+        document
+          .getElementById(`variant-btn-${matchingVariant.id}`)
+          ?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center',
+          })
+      }, 50)
+    }
+  }
+
+  // Handle switching to previous image and syncing to corresponding variant
+  const handlePrevImage = () => {
+    if (!allImages || allImages.length <= 1) return
+    const currentIdx = allImages.indexOf(selectedImage)
+    const prevIdx =
+      currentIdx >= 0
+        ? (currentIdx - 1 + allImages.length) % allImages.length
+        : allImages.length - 1
+    const prevImg = allImages[prevIdx]
+    onSelectImage(prevImg)
+
+    const matchingVariant = findVariantForImage(prevImg)
+    if (matchingVariant) {
+      onSelectVariant(matchingVariant)
+      setTimeout(() => {
+        document
+          .getElementById(`variant-btn-${matchingVariant.id}`)
+          ?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center',
+          })
+      }, 50)
+    }
+  }
+
+  // Touch swipe event handlers
+  const onTouchStartHandler = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMoveHandler = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEndHandler = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    if (distance > minSwipeDistance) {
+      handleNextImage()
+    } else if (distance < -minSwipeDistance) {
+      handlePrevImage()
+    }
+  }
 
   const handleShare = async () => {
     try {
@@ -192,8 +283,13 @@ export function ShopeeMobileProductDetail({
         </div>
       </header>
 
-      {/* 2. Hero Square Media Gallery */}
-      <div className="relative aspect-square w-full border-b border-slate-200/60 bg-white dark:border-slate-800 dark:bg-slate-900">
+      {/* 2. Hero Square Media Gallery with Swipe & Next/Prev Controls */}
+      <div
+        className="relative aspect-square w-full select-none border-b border-slate-200/60 bg-white dark:border-slate-800 dark:bg-slate-900"
+        onTouchStart={onTouchStartHandler}
+        onTouchMove={onTouchMoveHandler}
+        onTouchEnd={onTouchEndHandler}
+      >
         <Image
           src={
             selectedImage ||
@@ -207,14 +303,42 @@ export function ShopeeMobileProductDetail({
           className="object-contain p-6 transition-all duration-300"
         />
 
+        {/* Previous & Next Navigation Buttons (Direct Variant Referencing) */}
+        {allImages && allImages.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePrevImage()
+              }}
+              className="absolute left-2.5 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-800 shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-90 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-100"
+              aria-label="Gambar Sebelumnya"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleNextImage()
+              }}
+              className="absolute right-2.5 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-800 shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-90 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-100"
+              aria-label="Gambar Selanjutnya"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </>
+        )}
+
         {/* Subtle Warranty Badge on bottom-left */}
-        <div className="shadow-xs backdrop-blur-xs absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white/95 px-3 py-1 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
+        <div className="shadow-xs backdrop-blur-xs pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white/95 px-3 py-1 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>Garansi 30 Hari Tukar Unit</span>
         </div>
 
         {/* Clean Slide Counter on bottom-right */}
-        <div className="shadow-xs backdrop-blur-xs absolute bottom-3 right-3 z-10 rounded-full border border-slate-200/60 bg-white/90 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300">
+        <div className="shadow-xs backdrop-blur-xs pointer-events-none absolute bottom-3 right-3 z-10 rounded-full border border-slate-200/60 bg-white/90 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300">
           {displayIdx} / {totalImagesCount}
         </div>
       </div>
@@ -318,6 +442,7 @@ export function ShopeeMobileProductDetail({
               return (
                 <button
                   key={v.id}
+                  id={`variant-btn-${v.id}`}
                   type="button"
                   onClick={() => onSelectVariant(v)}
                   disabled={vStock <= 0}

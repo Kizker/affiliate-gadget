@@ -95,6 +95,13 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-16 (Hero Image Navigation Buttons & Instant Variant Synchronization Engine):**
+  - **1. Direct Image-to-Variant Synchronization ([`shopee-mobile-product-detail.tsx`](file:///src/components/gadget/shopee-mobile-product-detail.tsx) & [`src/app/gadget/[id]/page.tsx`](file:///src/app/gadget/[id]/page.tsx)):** Navigasi ke gambar berikutnya atau sebelumnya secara cerdas mengidentifikasi varian produk yang bersangkutan (`findVariantForImage`) dan langsung memicu perubahan varian aktif (`onSelectVariant(matchingVariant)` / `handleSelectVariant(matchingVar)`). Pilihan varian, harga varian, nama varian, ketersediaan stok, dan seleksi tombol otomatis berpindah serempak tanpa jeda.
+  - **2. Mobile & Desktop Frosted Glass Controls:** Tombol panah Next (`ChevronRight`) dan Prev (`ChevronLeft`) bertema frosted glass mewah (`backdrop-blur-md`, border halus, dan micro-interaction `active:scale-90 hover:scale-105`) yang terintegrasi rapi pada hero container mobile dan desktop main showcase.
+  - **3. Native Mobile Touch Gesture Integration:** Hero media gallery mendukung horizontal swipe gestures (`onTouchStart`, `onTouchMove`, `onTouchEnd`) dengan threshold 40px untuk transisi gambar & varian yang mulus dan intuitif.
+  - **4. Auto-Scroll Variant Focus:** Selector varian otomatis menggulir secara mulus (`scrollIntoView({ behavior: 'smooth', inline: 'center' })`) memusatkan kartu varian aktif saat gambar berpindah.
+  - **5. Verification & Health:** TypeScript 0 error (`pnpm tsc --noEmit`) dan 16 test suites dengan 180 unit tests lulus 100% (`pnpm test:unit`).
+
 - **2026-09-16 (Refined Luxury Mobile Product Detail Page & Zero-Dummy Real Data Engine):**
   - **1. Zero-Dummy Real Data Enforcement ([`shopee-mobile-product-detail.tsx`](file:///src/components/gadget/shopee-mobile-product-detail.tsx)):** Menghapus seluruh data tiruan/dummy seperti simulasi cicilan, "100+ Terjual", badge stiker "MALL" & "ORI", garansi keterlambatan voucher dummy, dan metrik palsu "100% Chat Dibalas". Seluruh data kini 100% riil dari database (stok riil, nama PT fisik toko, kota cabang, review nyata pembeli).
   - **2. Clean Luxury Aesthetic Transformation:** Mengeliminasi warna-warna norak yang bertabrakan (garish red/orange Shopee stickers) menjadi palet mewah clean canvas (Slate-50/White, Trust Blue, soft emerald trust badges, dan Action Orange eksklusif pada CTA utama "Beli Sekarang").
