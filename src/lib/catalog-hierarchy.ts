@@ -18,6 +18,10 @@ export interface ColorVariantItem {
   productName: string
   productActive: boolean
   storeName?: string
+  storeCity?: string
+  images?: string[]
+  condition?: string
+  warrantyDays?: number
 }
 
 export interface CapacityGroup {
@@ -33,10 +37,21 @@ export interface CapacityGroup {
 }
 
 export interface SeriesGroup {
-  seriesName: string // e.g. "Samsung S24 FE"
+  seriesName: string // e.g. "Samsung Galaxy S24 FE"
   model: string
   capacities: CapacityGroup[]
   totalVariants: number
+  totalStock: number
+  minPrice: number
+  maxPrice: number
+  productId?: string
+  productName?: string
+  images?: string[]
+  storeName?: string
+  storeCity?: string
+  condition?: string
+  warrantyDays?: number
+  isActive?: boolean
 }
 
 export interface BrandGroup {
@@ -44,6 +59,7 @@ export interface BrandGroup {
   series: SeriesGroup[]
   totalSeries: number
   totalVariants: number
+  totalStock: number
 }
 
 /**
@@ -143,34 +159,92 @@ export function extractCleanColor(
 }
 
 /**
- * Normalizes series / model name: e.g. "Samsung S24 FE"
+ * Normalizes series / model name into clean, human-readable names
+ * e.g. "SEIN | Samsung Galaxy S24 5G..." -> "Samsung Galaxy S24"
  */
 export function normalizeSeries(
   productName: string,
-  model?: string | null
+  model?: string | null,
+  brand?: string | null
 ): string {
+  const cleanBrand = (brand || '').trim()
+
+  // If model is already a clean, specific series (not a messy raw Shopee title)
   if (model && model.trim() && model.trim() !== 'Gadget') {
-    return model.trim()
+    const m = model.trim()
+    const isMessy =
+      /sein|tam|second|resmi|bnob|bnib|fullset|minus|garansi|layar|original/i.test(
+        m
+      ) || m.includes('|')
+    if (!isMessy) {
+      return m
+    }
   }
 
-  const cleaned = productName
-    .replace(/^sein\s*\|\s*/i, '')
-    .replace(/^sein\s+/i, '')
+  const raw =
+    model && model.trim() && model.trim() !== 'Gadget'
+      ? model.trim()
+      : productName
+
+  let s = raw
     .replace(/^\[\s*tam\s*\]\s*/i, '')
     .replace(/^tam\s*\|\s*/i, '')
+    .replace(/^sein\s*\|\s*/i, '')
+    .replace(/^sein\s+/i, '')
+    .replace(/^resmi\s+sein\s+/i, '')
     .replace(/^bnob\s+/i, '')
     .replace(/^bnib\s+/i, '')
-    .replace(/^resmi\s+sein\s+/i, '')
+    .replace(/^second\s+/i, '')
+    .replace(/^[|/l\-–—\s]+/, '')
     .replace(/\s+second\s+original.*$/i, '')
     .replace(/\s+second\s+fullset.*$/i, '')
     .replace(/\s+second\s+resmi.*$/i, '')
     .replace(/\s+resmi\s+indonesia.*$/i, '')
+    .replace(/\s+second\s+indo.*$/i, '')
     .replace(/\s+minus\s+.*$/i, '')
     .replace(/\s+ex\s+display.*$/i, '')
-    .replace(/\s+[0-9]+(?:\/[0-9]+)?\s*(?:gb|tb)?.*$/i, '')
+    .replace(/\s+garansi\s+resmi.*$/i, '')
+    // ONLY strip actual capacities e.g. " 12/512GB", " 128GB", " 1TB", NOT model numbers like 15 or 24
+    .replace(/\s+[0-9]{1,2}\s*(?:gb)?\s*\/\s*[0-9]{2,4}\s*(?:gb|tb)?.*$/i, '')
+    .replace(/\s+(?:64|128|256|512)\s*(?:gb)?\b.*$/i, '')
+    .replace(/\s+[12]\s*tb\b.*$/i, '')
+    .replace(/[|/l\-–—\s]+$/, '')
+    .replace(/\s{2,}/g, ' ')
     .trim()
 
-  return cleaned || productName.slice(0, 30)
+  // Standardize Samsung naming
+  if (/^samsung/i.test(cleanBrand) || /^samsung/i.test(s)) {
+    const hasGalaxy = /galaxy/i.test(raw)
+    s = s.replace(/^samsung\s+/i, '')
+    s = s.replace(/^galaxy\s+/i, '')
+    s = s.replace(/^s([0-9]{2})\b/i, 'S$1')
+    s = s.replace(/^note\b/i, 'Note')
+    s = s.replace(/^z\s*fold\b/i, 'Z Fold')
+    s = s.replace(/^z\s*flip\b/i, 'Z Flip')
+    s = s.replace(/^fold\b/i, 'Z Fold')
+    s = s.replace(/^flip\b/i, 'Z Flip')
+    s = s.replace(/\bultra\b/i, 'Ultra')
+    s = s.replace(/\bplus\b/i, 'Plus')
+    s = s.replace(/\bfe\b/i, 'FE')
+    s = s.replace(/\blite\b/i, 'Lite')
+    const prefix = hasGalaxy ? 'Samsung Galaxy' : 'Samsung'
+    return `${prefix} ${s}`.replace(/\s{2,}/g, ' ').trim()
+  }
+
+  // Apple naming
+  if (/^apple/i.test(cleanBrand) || /^iphone/i.test(s) || /^ipad/i.test(s)) {
+    if (!/^iphone/i.test(s) && !/^ipad/i.test(s)) {
+      s = `iPhone ${s}`
+    }
+    return s.replace(/\s{2,}/g, ' ').trim()
+  }
+
+  // Other brands: ensure brand prefix
+  if (cleanBrand && !s.toLowerCase().startsWith(cleanBrand.toLowerCase())) {
+    s = `${cleanBrand} ${s}`
+  }
+
+  return s.replace(/\s{2,}/g, ' ').trim() || productName.slice(0, 30)
 }
 
 /**
@@ -179,12 +253,15 @@ export function normalizeSeries(
 export function buildCatalogHierarchy(products: any[]): BrandGroup[] {
   const brandMap = new Map<
     string,
-    Map<string, Map<string, ColorVariantItem[]>>
+    Map<
+      string,
+      { productMeta: any; capacities: Map<string, ColorVariantItem[]> }
+    >
   >()
 
   for (const product of products) {
     const brand = (product.brand || 'Lainnya').trim()
-    const series = normalizeSeries(product.name, product.model)
+    const series = normalizeSeries(product.name, product.model, brand)
 
     if (!brandMap.has(brand)) {
       brandMap.set(brand, new Map())
@@ -192,9 +269,13 @@ export function buildCatalogHierarchy(products: any[]): BrandGroup[] {
     const seriesMap = brandMap.get(brand)!
 
     if (!seriesMap.has(series)) {
-      seriesMap.set(series, new Map())
+      seriesMap.set(series, {
+        productMeta: product,
+        capacities: new Map(),
+      })
     }
-    const capacityMap = seriesMap.get(series)!
+    const seriesData = seriesMap.get(series)!
+    const capacityMap = seriesData.capacities
 
     const variants =
       product.variants && product.variants.length > 0
@@ -239,6 +320,10 @@ export function buildCatalogHierarchy(products: any[]): BrandGroup[] {
         productName: product.name,
         productActive: Boolean(product.isActive),
         storeName: product.store?.name || undefined,
+        storeCity: product.store?.city || undefined,
+        images: product.images || [],
+        condition: product.condition || 'BARU',
+        warrantyDays: product.warrantyDays || 30,
       })
     }
   }
@@ -249,13 +334,20 @@ export function buildCatalogHierarchy(products: any[]): BrandGroup[] {
   for (const [brand, seriesMap] of brandMap.entries()) {
     const seriesList: SeriesGroup[] = []
     let brandTotalVariants = 0
+    let brandTotalStock = 0
 
-    for (const [seriesName, capacityMap] of seriesMap.entries()) {
+    for (const [seriesName, seriesData] of seriesMap.entries()) {
       const capacitiesList: CapacityGroup[] = []
       let seriesTotalVariants = 0
+      let seriesTotalStock = 0
+      const allSeriesPrices: number[] = []
 
-      for (const [capacityKey, variantsList] of capacityMap.entries()) {
+      for (const [
+        capacityKey,
+        variantsList,
+      ] of seriesData.capacities.entries()) {
         const prices = variantsList.map((v) => v.price)
+        allSeriesPrices.push(...prices)
         const minPrice = Math.min(...prices)
         const maxPrice = Math.max(...prices)
         const isAllSamePrice = minPrice === maxPrice
@@ -275,19 +367,42 @@ export function buildCatalogHierarchy(products: any[]): BrandGroup[] {
         })
 
         seriesTotalVariants += variantsList.length
+        seriesTotalStock += totalStock
       }
 
-      // Sort capacities by storage/ram
+      // Sort capacities logically
       capacitiesList.sort((a, b) => a.capacityKey.localeCompare(b.capacityKey))
+
+      const pMeta = seriesData.productMeta || {}
+      const minSeriesPrice =
+        allSeriesPrices.length > 0
+          ? Math.min(...allSeriesPrices)
+          : pMeta.price || 0
+      const maxSeriesPrice =
+        allSeriesPrices.length > 0
+          ? Math.max(...allSeriesPrices)
+          : pMeta.price || 0
 
       seriesList.push({
         seriesName,
         model: seriesName,
         capacities: capacitiesList,
         totalVariants: seriesTotalVariants,
+        totalStock: seriesTotalStock,
+        minPrice: minSeriesPrice,
+        maxPrice: maxSeriesPrice,
+        productId: pMeta.id,
+        productName: pMeta.name,
+        images: pMeta.images || [],
+        storeName: pMeta.store?.name,
+        storeCity: pMeta.store?.city,
+        condition: pMeta.condition,
+        warrantyDays: pMeta.warrantyDays,
+        isActive: pMeta.isActive,
       })
 
       brandTotalVariants += seriesTotalVariants
+      brandTotalStock += seriesTotalStock
     }
 
     // Sort series alphabetically
@@ -298,6 +413,7 @@ export function buildCatalogHierarchy(products: any[]): BrandGroup[] {
       series: seriesList,
       totalSeries: seriesList.length,
       totalVariants: brandTotalVariants,
+      totalStock: brandTotalStock,
     })
   }
 

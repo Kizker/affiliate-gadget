@@ -22,8 +22,13 @@ export async function GET(request: Request) {
     const brand = searchParams.get('brand')
     const query = searchParams.get('q')
 
-    const whereClause: any = {
-      isActive: true,
+    const statusParam = searchParams.get('status')
+    const whereClause: any = {}
+
+    if (statusParam === 'AKTIF') {
+      whereClause.isActive = true
+    } else if (statusParam === 'NONAKTIF') {
+      whereClause.isActive = false
     }
 
     // Role-based store isolation

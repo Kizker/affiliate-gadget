@@ -63,25 +63,57 @@ export async function PATCH(request: Request) {
       )
     }
 
-    // Role-based store check: Fetch variants and verify ownership
-    const existingVariants = await prisma.productVariant.findMany({
-      where: {
-        id: { in: variantIds },
-      },
-      include: {
-        product: {
-          select: {
-            id: true,
-            storeId: true,
-            name: true,
-          },
-        },
-      },
-    })
+    const standaloneProductIds = variantIds
+      .filter((id) => id.startsWith('prod-only-'))
+      .map((id) => id.replace('prod-only-', ''))
+    const realVariantIds = variantIds.filter(
+      (id) => !id.startsWith('prod-only-')
+    )
 
-    if (existingVariants.length === 0) {
+    // Role-based store check: Fetch variants and verify ownership
+    const existingVariants =
+      realVariantIds.length > 0
+        ? await prisma.productVariant.findMany({
+            where: {
+              id: { in: realVariantIds },
+            },
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  storeId: true,
+                  name: true,
+                },
+              },
+            },
+          })
+        : []
+
+    const existingStandaloneProducts =
+      standaloneProductIds.length > 0
+        ? await prisma.product.findMany({
+            where: {
+              id: { in: standaloneProductIds },
+            },
+            select: {
+              id: true,
+              storeId: true,
+              name: true,
+              price: true,
+              stock: true,
+            },
+          })
+        : []
+
+    if (
+      existingVariants.length === 0 &&
+      existingStandaloneProducts.length === 0
+    ) {
       return NextResponse.json(
-        { error: 'Tidak ada varian yang ditemukan dengan ID yang diberikan.' },
+        {
+          error:
+            'Tidak ada varian atau produk yang ditemukan dengan ID yang diberikan.',
+        },
         { status: 404 }
       )
     }
@@ -89,10 +121,13 @@ export async function PATCH(request: Request) {
     // Store admin isolation
     if (role === 'STORE_ADMIN') {
       const userStoreId = session.user.storeId
-      const unauthorized = existingVariants.some(
+      const unauthorizedVariant = existingVariants.some(
         (v) => v.product?.storeId !== userStoreId
       )
-      if (unauthorized) {
+      const unauthorizedProd = existingStandaloneProducts.some(
+        (p) => p.storeId !== userStoreId
+      )
+      if (unauthorizedVariant || unauthorizedProd) {
         return NextResponse.json(
           {
             error:
@@ -109,6 +144,28 @@ export async function PATCH(request: Request) {
     const result = await prisma.$transaction(async (tx) => {
       let updatedCount = 0
 
+      // 1. Update standalone products
+      for (const prod of existingStandaloneProducts) {
+        const updateData: any = {}
+        if (hasPriceUpdate) updateData.price = Number(newPrice)
+        if (hasStockUpdate) {
+          updateData.stock = Math.floor(Number(newStock))
+        } else if (hasStockAdj) {
+          const currentStock = Number(prod.stock) || 0
+          updateData.stock = Math.max(0, currentStock + Number(stockAdjustment))
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await tx.product.update({
+            where: { id: prod.id },
+            data: updateData,
+          })
+          updatedCount++
+          affectedProductIds.add(prod.id)
+        }
+      }
+
+      // 2. Update real variants
       for (const variant of existingVariants) {
         const updateData: any = {}
 
