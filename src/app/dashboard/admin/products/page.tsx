@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
+  Palette,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -29,6 +30,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { BulkPriceUpdateModal } from '@/components/admin/bulk-price-update-modal'
+import { BulkColorVariantModal } from '@/components/admin/bulk-color-variant-modal'
 
 interface ProductVariant {
   id?: string
@@ -112,6 +114,9 @@ export default function ProductsPage() {
   // Bulk Excel Update Modal State (Superadmin only)
   const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+
+  // Bulk Color Variant Hierarchy Modal State
+  const [isColorVariantModalOpen, setIsColorVariantModalOpen] = useState(false)
 
   const handleExportExcel = async () => {
     setIsExporting(true)
@@ -417,6 +422,19 @@ export default function ProductsPage() {
                 <span className="hidden sm:inline">Update Massal</span>
               </button>
             </>
+          )}
+
+          {/* Bulk Color Variant Hierarchy Update */}
+          {(isSuperAdmin || isStoreAdmin) && (
+            <button
+              type="button"
+              onClick={() => setIsColorVariantModalOpen(true)}
+              className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl border border-amber-200/90 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-700 transition-all hover:bg-amber-100 active:scale-95 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/60"
+              title="Update massal harga varian warna berbasis hierarki (Merek -> Seri -> Kapasitas -> Warna)"
+            >
+              <Palette className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="hidden sm:inline">Update Varian Warna</span>
+            </button>
           )}
 
           <Link
@@ -753,6 +771,17 @@ export default function ProductsPage() {
         <BulkPriceUpdateModal
           isOpen={isBulkUpdateOpen}
           onClose={() => setIsBulkUpdateOpen(false)}
+          onSuccess={() => {
+            fetchProducts()
+          }}
+        />
+      )}
+
+      {/* Bulk Color Variant Hierarchy Modal */}
+      {(isSuperAdmin || isStoreAdmin) && (
+        <BulkColorVariantModal
+          isOpen={isColorVariantModalOpen}
+          onClose={() => setIsColorVariantModalOpen(false)}
           onSuccess={() => {
             fetchProducts()
           }}
