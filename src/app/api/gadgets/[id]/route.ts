@@ -14,6 +14,25 @@ export async function GET(
           include: {
             bankAccounts: true,
             schedules: true,
+            products: {
+              where: { isActive: true, id: { not: id } },
+              take: 6,
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                originalPrice: true,
+                images: true,
+                rating: true,
+                totalReview: true,
+                stock: true,
+              },
+            },
+            _count: {
+              select: {
+                products: true,
+              },
+            },
           },
         },
         variants: true,
@@ -27,10 +46,34 @@ export async function GET(
       )
     }
 
+    const relatedProducts = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        id: { not: id },
+      },
+      take: 6,
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        originalPrice: true,
+        images: true,
+        rating: true,
+        totalReview: true,
+        stock: true,
+        store: {
+          select: { name: true, city: true },
+        },
+      },
+    })
+
     return NextResponse.json(
       {
         success: true,
-        data: product,
+        data: {
+          ...product,
+          relatedProducts,
+        },
       },
       {
         headers: {
