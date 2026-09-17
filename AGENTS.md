@@ -95,6 +95,12 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-17 (Production Database Column Desync Fix & Remote VPS Live Sync):**
+  - **1. Root Cause Analysis:** Di database live PostgreSQL pada VPS Hostinger, kolom `pricePerKg` belum ditambahkan ke tabel `products`. Akibatnya, pemanggilan `prisma.product.findUnique()` / `prisma.product.findMany()` mengalami crash HTTP 500 (`The column products.pricePerKg does not exist in the current database`), menyebabkan halaman katalog produk di dashboard admin tampil kosong dan migrasi/upload massal file Excel Shopee gagal.
+  - **2. Direct Database Schema Migration:** Mengeksekusi penambahan kolom `pricePerKg DOUBLE PRECISION NOT NULL DEFAULT 20000` dan `weightGram INTEGER NOT NULL DEFAULT 500` ke tabel `products` di container PostgreSQL live, serta menyinkronkan seluruh skema Prisma via `npx prisma db push`.
+  - **3. Git Pull & Live Container Rebuild:** Mengupdate repo di VPS ke commit terbaru `0d7b251`, melakukan rebuild container Next.js `affiliate-gadget-app`, dan me-restart container.
+  - **4. Live Verification:** Verifikasi API `http://localhost:3000/api/gadgets` mengembalikan data katalog 14 produk secara normal tanpa error (HTTP 200).
+
 - **2026-09-17 (Direct Buy Now Engine — Zero Cart Pollution & Instant Checkout Architecture):**
   - **1. Direct Checkout Isolation ([`page.tsx`](file:///src/app/gadget/[id]/page.tsx)):** Memperbaiki tombol "Beli Sekarang" (`handleBuyNow`) agar tidak lagi memanggil `handleAddToCart()`. Mencegah penambahan item ke tabel `Cart` di database/server, tidak memicu toast keranjang, tidak menambah counter badge keranjang, dan langsung mengalihkan pengguna ke `/checkout?buyNow=1`.
   - **2. Dedicated Direct Purchase State ([`cart-store.ts`](file:///src/lib/store/cart-store.ts)):** Mengintroduksi state `buyNowItem`, `setBuyNowItem`, dan `clearBuyNowItem` dengan sinkronisasi ganda (Zustand persist + `sessionStorage` fallback) agar data produk, varian pilihan, kuantitas, berat, dan toko cabang tetap utuh dan tahan reload.
