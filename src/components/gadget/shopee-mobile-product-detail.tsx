@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -50,6 +50,126 @@ interface ShopeeMobileProductDetailProps {
   isAddedToCart: boolean
 }
 
+const getConditionBadge = (item: any) => {
+  const cond = item.condition || 'LIKE_NEW'
+  switch (cond) {
+    case 'LIKE_NEW':
+      return {
+        label: 'Like New 99%',
+        color:
+          'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+      }
+    case 'SECOND_MULUS':
+      return {
+        label: 'Mulus 95-98%',
+        color:
+          'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+      }
+    case 'GRADE_A':
+      return {
+        label: 'Grade A 100%',
+        color:
+          'bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+      }
+    default:
+      return {
+        label: 'Teruji Normal',
+        color:
+          'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+      }
+  }
+}
+
+function ProductCatalogMiniCard({ item }: { item: any }) {
+  const badge = getConditionBadge(item)
+  const strikePrice =
+    item.originalPrice && item.originalPrice > item.price
+      ? item.originalPrice
+      : Math.round((item.price || 0) * 1.25)
+  const storeCleanName = (
+    item.store?.name ||
+    item.store?.city ||
+    'Toko Resmi PT'
+  )
+    .replace('Affiliate Gadget - ', '')
+    .replace('AffiliateGadget Store - ', '')
+
+  return (
+    <div className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700">
+      <Link href={`/gadget/${item.id}`} className="block">
+        {/* Image Box */}
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
+          <Image
+            src={
+              (item.images && item.images[0]) ||
+              'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+            }
+            alt={item.name}
+            fill
+            sizes="(max-width: 640px) 50vw, 25vw"
+            className="object-cover transition-transform duration-300 hover:scale-105"
+          />
+
+          {/* Condition Badge (Top Left) */}
+          <span
+            className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
+          >
+            <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
+            <span>{badge.label}</span>
+          </span>
+        </div>
+
+        {/* Meta Section */}
+        <div className="mt-2 space-y-1">
+          {/* Rating & Review Count */}
+          <div className="flex items-center gap-1">
+            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+            <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
+              {(item.rating || 4.9).toFixed(1)}
+            </span>
+            <span className="text-[10px] font-medium text-slate-400">
+              ({item.totalReview || item.reviewCount || 38})
+            </span>
+          </div>
+
+          {/* Product Name */}
+          <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
+            {item.name}
+          </h3>
+
+          {/* Feature Perks Pills */}
+          <div className="flex flex-wrap items-center gap-1 pt-0.5">
+            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+              Garansi 30 Hari
+            </span>
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              Bonus 3-in-1
+            </span>
+          </div>
+
+          {/* Price Row */}
+          <div className="pt-1">
+            <span className="block text-sm font-black leading-tight text-orange-500">
+              Rp {(item.price || 0).toLocaleString('id-ID')}
+            </span>
+            {strikePrice > (item.price || 0) && (
+              <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
+                Rp {strikePrice.toLocaleString('id-ID')}
+              </span>
+            )}
+          </div>
+
+          {/* Store Location */}
+          <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+            <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+            <span className="truncate">{storeCleanName}</span>
+          </div>
+        </div>
+      </Link>
+    </div>
+  )
+}
+
 export function ShopeeMobileProductDetail({
   product,
   selectedVariant,
@@ -90,10 +210,7 @@ export function ShopeeMobileProductDetail({
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Touch swipe state for image gallery
-  const [touchStart, setTouchStart] = useState<number | null>(null)
-  const [touchEnd, setTouchEnd] = useState<number | null>(null)
-  const minSwipeDistance = 40
+  const galleryRef = useRef<HTMLDivElement>(null)
 
   const currentImageIdx = allImages.indexOf(selectedImage)
   const displayIdx = currentImageIdx >= 0 ? currentImageIdx + 1 : 1
@@ -115,73 +232,62 @@ export function ShopeeMobileProductDetail({
     )
   }
 
-  // Handle switching to next image and syncing to corresponding variant
-  const handleNextImage = () => {
-    if (!allImages || allImages.length <= 1) return
-    const currentIdx = allImages.indexOf(selectedImage)
-    const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % allImages.length : 0
-    const nextImg = allImages[nextIdx]
-    onSelectImage(nextImg)
+  // Sync gallery scroll position whenever selectedImage changes (e.g. from variant button)
+  useEffect(() => {
+    if (!galleryRef.current || !allImages || allImages.length <= 1) return
+    const idx = allImages.indexOf(selectedImage)
+    if (idx >= 0) {
+      const targetLeft = idx * galleryRef.current.clientWidth
+      if (Math.abs(galleryRef.current.scrollLeft - targetLeft) > 10) {
+        galleryRef.current.scrollTo({ left: targetLeft, behavior: 'smooth' })
+      }
+    }
+  }, [selectedImage, allImages])
 
-    const matchingVariant = findVariantForImage(nextImg)
-    if (matchingVariant) {
-      onSelectVariant(matchingVariant)
-      setTimeout(() => {
-        document
-          .getElementById(`variant-btn-${matchingVariant.id}`)
-          ?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'center',
-          })
-      }, 50)
+  // Handle native touch swipe / horizontal scroll
+  const handleGalleryScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget
+    const width = target.clientWidth
+    if (width <= 0) return
+    const index = Math.round(target.scrollLeft / width)
+    if (
+      index >= 0 &&
+      index < allImages.length &&
+      allImages[index] !== selectedImage
+    ) {
+      const nextImg = allImages[index]
+      onSelectImage(nextImg)
+
+      const matchingVariant = findVariantForImage(nextImg)
+      if (matchingVariant && matchingVariant.id !== selectedVariant?.id) {
+        onSelectVariant(matchingVariant)
+      }
     }
   }
 
-  // Handle switching to previous image and syncing to corresponding variant
+  // Handle switching to next image with button
+  const handleNextImage = () => {
+    if (!galleryRef.current || !allImages || allImages.length <= 1) return
+    const currentIdx = allImages.indexOf(selectedImage)
+    const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % allImages.length : 0
+    galleryRef.current.scrollTo({
+      left: nextIdx * galleryRef.current.clientWidth,
+      behavior: 'smooth',
+    })
+  }
+
+  // Handle switching to previous image with button
   const handlePrevImage = () => {
-    if (!allImages || allImages.length <= 1) return
+    if (!galleryRef.current || !allImages || allImages.length <= 1) return
     const currentIdx = allImages.indexOf(selectedImage)
     const prevIdx =
       currentIdx >= 0
         ? (currentIdx - 1 + allImages.length) % allImages.length
         : allImages.length - 1
-    const prevImg = allImages[prevIdx]
-    onSelectImage(prevImg)
-
-    const matchingVariant = findVariantForImage(prevImg)
-    if (matchingVariant) {
-      onSelectVariant(matchingVariant)
-      setTimeout(() => {
-        document
-          .getElementById(`variant-btn-${matchingVariant.id}`)
-          ?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'center',
-          })
-      }, 50)
-    }
-  }
-
-  // Touch swipe event handlers
-  const onTouchStartHandler = (e: React.TouchEvent) => {
-    setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientX)
-  }
-
-  const onTouchMoveHandler = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-
-  const onTouchEndHandler = () => {
-    if (!touchStart || !touchEnd) return
-    const distance = touchStart - touchEnd
-    if (distance > minSwipeDistance) {
-      handleNextImage()
-    } else if (distance < -minSwipeDistance) {
-      handlePrevImage()
-    }
+    galleryRef.current.scrollTo({
+      left: prevIdx * galleryRef.current.clientWidth,
+      behavior: 'smooth',
+    })
   }
 
   const handleShare = async () => {
@@ -283,27 +389,49 @@ export function ShopeeMobileProductDetail({
         </div>
       </header>
 
-      {/* 2. Hero Square Media Gallery with Swipe & Next/Prev Controls */}
-      <div
-        className="relative aspect-square w-full select-none border-b border-slate-200/60 bg-white dark:border-slate-800 dark:bg-slate-900"
-        onTouchStart={onTouchStartHandler}
-        onTouchMove={onTouchMoveHandler}
-        onTouchEnd={onTouchEndHandler}
-      >
-        <Image
-          src={
-            selectedImage ||
-            product.images?.[0] ||
-            'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=900&q=80'
-          }
-          alt={product.name}
-          fill
-          priority
-          unoptimized
-          className="object-contain p-6 transition-all duration-300"
-        />
+      {/* 2. Hero Square Media Gallery with Native Horizontal Slide & Next/Prev Controls */}
+      <div className="relative aspect-square w-full select-none overflow-hidden border-b border-slate-200/60 bg-white dark:border-slate-800 dark:bg-slate-900">
+        {/* Horizontal Slider Track: Bisa di-slide/swipe langsung dengan jari */}
+        <div
+          ref={galleryRef}
+          onScroll={handleGalleryScroll}
+          className="scrollbar-none no-scrollbar flex h-full w-full touch-pan-x snap-x snap-mandatory overflow-x-auto"
+        >
+          {allImages.length > 0 ? (
+            allImages.map((imgUrl, idx) => (
+              <div
+                key={imgUrl + idx}
+                className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-6"
+              >
+                <Image
+                  src={imgUrl}
+                  alt={`${product.name} - ${idx + 1}`}
+                  fill
+                  priority={idx === 0}
+                  unoptimized
+                  className="object-contain p-6 transition-all duration-300"
+                />
+              </div>
+            ))
+          ) : (
+            <div className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-6">
+              <Image
+                src={
+                  selectedImage ||
+                  product.images?.[0] ||
+                  'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=900&q=80'
+                }
+                alt={product.name}
+                fill
+                priority
+                unoptimized
+                className="object-contain p-6"
+              />
+            </div>
+          )}
+        </div>
 
-        {/* Previous & Next Navigation Buttons (Direct Variant Referencing) */}
+        {/* Previous & Next Navigation Buttons (Tetap Ada Sesuai Permintaan) */}
         {allImages && allImages.length > 1 && (
           <>
             <button
@@ -430,7 +558,7 @@ export function ShopeeMobileProductDetail({
             )}
           </div>
 
-          <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+          <div className="grid grid-cols-2 gap-2">
             {product.variants.map((v: any) => {
               const isSelected = selectedVariant?.id === v.id
               const vImg =
@@ -446,7 +574,7 @@ export function ShopeeMobileProductDetail({
                   type="button"
                   onClick={() => onSelectVariant(v)}
                   disabled={vStock <= 0}
-                  className={`flex shrink-0 items-center gap-2 rounded-xl border p-2 text-left transition-all ${
+                  className={`flex w-full items-center gap-2 rounded-xl border p-2 text-left transition-all ${
                     isSelected
                       ? 'shadow-xs border-orange-500 bg-orange-50/25 text-slate-900 ring-1 ring-orange-500/40 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
                       : vStock <= 0
@@ -464,7 +592,7 @@ export function ShopeeMobileProductDetail({
                       className="object-contain p-0.5"
                     />
                   </div>
-                  <div className="min-w-0 pr-1">
+                  <div className="min-w-0 flex-1 pr-1">
                     <p
                       className={`truncate text-xs leading-tight ${
                         isSelected
@@ -647,7 +775,7 @@ export function ShopeeMobileProductDetail({
         </div>
       )}
 
-      {/* 9. Produk Lain dari Toko Ini (Jika ada) */}
+      {/* 9. Produk Lain dari Toko Ini (Jika ada - Format Kartu Katalog Konsisten) */}
       {otherStoreProducts.length > 0 && (
         <div className="mt-2 border-y border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <div className="mb-3 flex items-center justify-between">
@@ -663,38 +791,10 @@ export function ShopeeMobileProductDetail({
             </Link>
           </div>
 
-          <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
-            {otherStoreProducts.map((item: any) => {
-              const itemImg =
-                item.images?.[0] ||
-                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'
-              return (
-                <Link
-                  key={item.id}
-                  href={`/gadget/${item.id}`}
-                  className="w-28 shrink-0 rounded-xl border border-slate-200/70 bg-white p-2 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950"
-                >
-                  <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-slate-50 dark:bg-slate-900">
-                    <Image
-                      src={itemImg}
-                      alt={item.name}
-                      fill
-                      sizes="112px"
-                      unoptimized
-                      className="object-contain p-1"
-                    />
-                  </div>
-                  <div className="mt-1.5 space-y-0.5">
-                    <p className="line-clamp-2 min-h-[2rem] text-[10px] font-medium leading-tight text-slate-900 dark:text-white">
-                      {item.name}
-                    </p>
-                    <p className="text-[11px] font-bold text-slate-950 dark:text-white">
-                      Rp {(item.price || 0).toLocaleString('id-ID')}
-                    </p>
-                  </div>
-                </Link>
-              )
-            })}
+          <div className="grid grid-cols-2 gap-2.5">
+            {otherStoreProducts.map((item: any) => (
+              <ProductCatalogMiniCard key={item.id} item={item} />
+            ))}
           </div>
         </div>
       )}
@@ -804,7 +904,7 @@ export function ShopeeMobileProductDetail({
         />
       </div>
 
-      {/* 13. Rekomendasi Gadget Terkait (2 Kolom Bersih) */}
+      {/* 13. Rekomendasi Gadget Terkait (Format Kartu Katalog Konsisten) */}
       {relatedProducts.length > 0 && (
         <div className="mt-4 px-3">
           <div className="mb-3 px-1">
@@ -813,50 +913,10 @@ export function ShopeeMobileProductDetail({
             </h3>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            {relatedProducts.map((rel: any) => {
-              const relImg =
-                rel.images?.[0] ||
-                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'
-              return (
-                <Link
-                  key={rel.id}
-                  href={`/gadget/${rel.id}`}
-                  className="shadow-xs group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-2.5 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
-                >
-                  <div>
-                    <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-950">
-                      <Image
-                        src={relImg}
-                        alt={rel.name}
-                        fill
-                        sizes="180px"
-                        unoptimized
-                        className="object-contain p-2 transition-transform duration-300 group-hover:scale-105"
-                      />
-                    </div>
-
-                    <div className="mt-2 space-y-1">
-                      <h4 className="line-clamp-2 min-h-[2rem] text-xs font-bold leading-tight text-slate-900 dark:text-white">
-                        {rel.name}
-                      </h4>
-                      <p className="text-xs font-black text-slate-950 dark:text-white">
-                        Rp {(rel.price || 0).toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-1.5 text-[10px] text-slate-400 dark:border-slate-800">
-                    <span className="truncate">
-                      {rel.store?.city || 'Toko Resmi'}
-                    </span>
-                    <span className="shrink-0 font-semibold text-emerald-600">
-                      Garansi 30H
-                    </span>
-                  </div>
-                </Link>
-              )
-            })}
+          <div className="grid grid-cols-2 gap-2.5">
+            {relatedProducts.map((rel: any) => (
+              <ProductCatalogMiniCard key={rel.id} item={rel} />
+            ))}
           </div>
         </div>
       )}

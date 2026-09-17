@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Navbar } from '@/components/layouts/navbar'
+import { Navbar, MobileTopNav, MobileBottomNav } from '@/components/layouts'
 import Link from 'next/link'
 import {
   MessageSquare,
@@ -994,9 +994,21 @@ function CustomerChatContent() {
   if (status === 'loading' || loading) {
     return (
       <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-950">
-        <Navbar variant="light" />
+        <div className="block shrink-0 md:hidden">
+          <MobileTopNav
+            showBack
+            backHref="/dashboard/customer"
+            title="Pusat Chat Toko"
+          />
+        </div>
+        <div className="hidden shrink-0 md:block">
+          <Navbar variant="light" />
+        </div>
         <div className="flex flex-1 items-center justify-center pt-20">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        </div>
+        <div className="block shrink-0 md:hidden">
+          <MobileBottomNav />
         </div>
       </div>
     )
@@ -1004,7 +1016,18 @@ function CustomerChatContent() {
 
   return (
     <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-slate-50/50 font-sans dark:bg-slate-950">
-      <Navbar variant="light" />
+      {/* 1. Top Navigation: Mobile Top Nav & Desktop Navbar */}
+      <div className="block shrink-0 md:hidden">
+        <MobileTopNav
+          showBack
+          backHref={showChatOnMobile ? undefined : '/dashboard/customer'}
+          onBack={showChatOnMobile ? handleBackToList : undefined}
+          title={showChatOnMobile ? activeStoreTitle : 'Pusat Chat Toko'}
+        />
+      </div>
+      <div className="hidden shrink-0 md:block">
+        <Navbar variant="light" />
+      </div>
 
       {/* Hidden file input for Photo & Video */}
       <input
@@ -1080,7 +1103,7 @@ function CustomerChatContent() {
           document.body
         )}
 
-      <main className="flex flex-1 flex-col overflow-hidden pb-2 pt-16 sm:pb-4 sm:pt-20">
+      <main className="flex flex-1 flex-col overflow-hidden pb-16 pt-1.5 md:pb-4 md:pt-20">
         <div className="mx-auto flex h-full w-full max-w-7xl flex-1 flex-col px-2 sm:px-6 lg:px-8">
           {/* Single-Surface Bento Chat Hub Container */}
           <div className="shadow-xs grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl lg:grid-cols-12">
@@ -1092,18 +1115,6 @@ function CustomerChatContent() {
             >
               {/* Integrated Sidebar Header */}
               <div className="shrink-0 space-y-2.5 border-b border-slate-100 p-3 dark:border-slate-800 sm:p-3.5">
-                {/* Search Capsule */}
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Cari toko, no. pesanan..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  />
-                </div>
-
                 {/* Segmented Filter Pills */}
                 <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
                   {[
@@ -1870,6 +1881,11 @@ function CustomerChatContent() {
           </div>
         </div>
       </main>
+
+      {/* 2. Mobile Bottom Navigation Bar */}
+      <div className="block shrink-0 md:hidden">
+        <MobileBottomNav />
+      </div>
     </div>
   )
 }
@@ -1879,9 +1895,21 @@ export default function CustomerChatPage() {
     <React.Suspense
       fallback={
         <div className="flex min-h-screen flex-col bg-slate-50/50 dark:bg-slate-950">
-          <Navbar variant="light" />
+          <div className="block shrink-0 md:hidden">
+            <MobileTopNav
+              showBack
+              backHref="/dashboard/customer"
+              title="Pusat Chat Toko"
+            />
+          </div>
+          <div className="hidden shrink-0 md:block">
+            <Navbar variant="light" />
+          </div>
           <div className="flex flex-1 items-center justify-center pt-24">
             <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+          </div>
+          <div className="block shrink-0 md:hidden">
+            <MobileBottomNav />
           </div>
         </div>
       }

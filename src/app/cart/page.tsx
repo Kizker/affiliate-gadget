@@ -3,8 +3,12 @@
 import { useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
+import {
+  Navbar,
+  Footer,
+  MobileTopNav,
+  MobileBottomNav,
+} from '@/components/layouts'
 import CartItem from '@/components/cart/cart-item'
 import CartSummary from '@/components/cart/cart-summary'
 import { useCartStore } from '@/lib/store/cart-store'
@@ -30,6 +34,11 @@ export default function CartPage() {
   const setUserId = useCartStore((state) => state.setUserId)
   const syncFromServer = useCartStore((state) => state.syncFromServer)
   const userId = useCartStore((state) => state.userId)
+  const getSelectedSummary = useCartStore((state) => state.getSelectedSummary)
+
+  const { total: selectedTotal, itemCount: selectedCount } =
+    getSelectedSummary()
+  const hasSelected = selectedItems.length > 0
 
   const allSelected = items.length > 0 && selectedItems.length === items.length
   const someSelected =
@@ -57,20 +66,37 @@ export default function CartPage() {
 
   if (status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
+        <div className="block md:hidden">
+          <MobileTopNav showBack backHref="/gadget" title="Keranjang Belanja" />
+        </div>
+        <div className="hidden md:block">
+          <Navbar variant="light" />
+        </div>
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        </div>
+        <div className="block md:hidden">
+          <MobileBottomNav />
+        </div>
       </div>
     )
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <Navbar variant="light" />
+      {/* 1. Top Navigation: Mobile Top Nav & Desktop Navbar */}
+      <div className="block md:hidden">
+        <MobileTopNav showBack backHref="/gadget" title="Keranjang Belanja" />
+      </div>
+      <div className="hidden md:block">
+        <Navbar variant="light" />
+      </div>
 
-      <main className="flex min-h-screen flex-col pb-20 pt-28 sm:pb-24 sm:pt-32">
-        <div className="mx-auto my-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Page Header */}
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <main className="flex flex-1 flex-col pb-32 pt-2 sm:pb-36 sm:pt-4 md:pb-24 md:pt-28 lg:pt-32">
+        <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8">
+          {/* Page Header (Desktop Only - Disembunyikan di Mobile karena sudah ada di MobileTopNav) */}
+          <div className="mb-6 hidden flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:flex">
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
                 Keranjang Belanja
@@ -205,8 +231,8 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {/* Right Column: Order Summary Sidebar (4 cols, Sticky) */}
-              <div className="sticky top-28 lg:col-span-4">
+              {/* Right Column: Order Summary Sidebar (Desktop Only - Disembunyikan di Mobile) */}
+              <div className="sticky top-28 hidden lg:col-span-4 lg:block">
                 <CartSummary />
               </div>
             </div>
@@ -214,7 +240,42 @@ export default function CartPage() {
         </div>
       </main>
 
-      <Footer variant="light" />
+      {/* 2. Floating Mobile Checkout Bar (Hanya Muncul Saat Ada Item yang Diceklist) */}
+      {status === 'authenticated' && hasSelected && (
+        <aside
+          aria-label="Bar Ringkasan Checkout Mobile"
+          className="pointer-events-none fixed inset-x-0 bottom-[58px] z-40 px-3 pb-1.5 duration-200 animate-in fade-in slide-in-from-bottom-3 md:hidden"
+        >
+          <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
+            {/* Kiri: Total Harga Barang Diceklist */}
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[11px] font-medium leading-tight text-slate-500 dark:text-slate-400">
+                Total ({selectedCount} barang):
+              </span>
+              <span className="mt-0.5 truncate text-base font-extrabold tabular-nums leading-tight tracking-tight text-orange-500">
+                Rp {selectedTotal.toLocaleString('id-ID')}
+              </span>
+            </div>
+
+            {/* Kanan: Button Lanjut ke Checkout */}
+            <Link
+              href="/checkout"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95"
+            >
+              <span>Lanjut ke Checkout</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </aside>
+      )}
+
+      {/* 3. Bottom Navigation: Mobile Bottom Nav & Desktop Footer */}
+      <div className="block md:hidden">
+        <MobileBottomNav />
+      </div>
+      <div className="hidden md:block">
+        <Footer variant="light" />
+      </div>
     </div>
   )
 }

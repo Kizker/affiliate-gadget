@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
+import { MobileBottomNav } from '@/components/layouts/mobile-bottom-nav'
+import { MobileStoreProfileView } from '@/components/store/mobile-store-profile-view'
 import {
   Store,
   MapPin,
@@ -25,6 +28,7 @@ import {
 export default function StoreDetailPage() {
   const params = useParams()
   const slug = params?.slug as string
+  const { data: session, status } = useSession()
 
   const [store, setStore] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -52,26 +56,41 @@ export default function StoreDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-        <Navbar variant="light" />
-        <div className="flex h-96 items-center justify-center pt-28">
-          <div className="text-center text-slate-400">
-            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-orange-500" />
-            <p className="text-xs font-medium">Memuat profil toko resmi...</p>
+      <>
+        {/* Mobile Loading Skeleton */}
+        <div className="block md:hidden">
+          <div className="flex h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center dark:bg-slate-950">
+            <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-orange-500" />
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+              Memuat profil gerai toko resmi...
+            </p>
           </div>
+          <MobileBottomNav activeTab="toko" />
         </div>
-        <Footer variant="light" />
-      </div>
+
+        {/* Desktop Loading */}
+        <div className="hidden min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex">
+          <Navbar variant="light" />
+          <div className="flex h-96 items-center justify-center pt-28">
+            <div className="text-center text-slate-400">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-orange-500" />
+              <p className="text-xs font-medium">Memuat profil toko resmi...</p>
+            </div>
+          </div>
+          <Footer variant="light" />
+        </div>
+      </>
     )
   }
 
   if (!store) {
     return (
-      <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-        <Navbar variant="light" />
-        <div className="container mx-auto max-w-md px-4 py-36 text-center">
-          <div className="shadow-xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-10 dark:border-slate-800 dark:bg-slate-900">
-            <h1 className="text-lg font-bold text-slate-950 dark:text-white">
+      <>
+        {/* Mobile Not Found */}
+        <div className="block min-h-screen bg-slate-50 px-4 py-24 text-center dark:bg-slate-950 md:hidden">
+          <div className="space-y-3 rounded-3xl border border-slate-200/80 bg-white p-8 dark:border-slate-800 dark:bg-slate-900">
+            <Store className="mx-auto h-10 w-10 text-slate-300" />
+            <h1 className="text-base font-bold text-slate-950 dark:text-white">
               Toko Tidak Ditemukan
             </h1>
             <p className="text-xs text-slate-500">
@@ -80,309 +99,347 @@ export default function StoreDetailPage() {
             <div className="pt-2">
               <Link
                 href="/toko"
-                className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
+                className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white"
               >
                 Kembali ke Direktori Toko
               </Link>
             </div>
           </div>
+          <MobileBottomNav activeTab="toko" />
         </div>
-        <Footer variant="light" />
-      </div>
+
+        {/* Desktop Not Found */}
+        <div className="hidden min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex">
+          <Navbar variant="light" />
+          <div className="container mx-auto max-w-md px-4 py-36 text-center">
+            <div className="shadow-xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-10 dark:border-slate-800 dark:bg-slate-900">
+              <h1 className="text-lg font-bold text-slate-950 dark:text-white">
+                Toko Tidak Ditemukan
+              </h1>
+              <p className="text-xs text-slate-500">
+                Tautan toko mungkin tidak valid atau belum terdaftar.
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/toko"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
+                >
+                  Kembali ke Direktori Toko
+                </Link>
+              </div>
+            </div>
+          </div>
+          <Footer variant="light" />
+        </div>
+      </>
     )
   }
 
   return (
-    <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <Navbar variant="light" />
+    <>
+      {/* 1. Mobile View — Figma Screen 5: Detail Profil Toko */}
+      <div className="block md:hidden">
+        <MobileStoreProfileView
+          store={store}
+          session={session}
+          status={status}
+        />
+        <MobileBottomNav activeTab="toko" />
+      </div>
 
-      <main className="pb-20 pt-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Breadcrumb Navigation */}
-          <nav
-            className="mb-6 flex items-center gap-2 text-xs font-normal text-slate-500"
-            aria-label="Breadcrumb"
-          >
-            <Link
-              href="/"
-              className="transition-colors hover:text-slate-900 dark:hover:text-white"
+      {/* 2. Desktop View — Rich Store Profile with Hero Banner */}
+      <div className="hidden min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex">
+        <Navbar variant="light" />
+
+        <main className="pb-20 pt-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            {/* Breadcrumb Navigation */}
+            <nav
+              className="mb-6 flex items-center gap-2 text-xs font-normal text-slate-500"
+              aria-label="Breadcrumb"
             >
-              Beranda
-            </Link>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <Link
-              href="/toko"
-              className="transition-colors hover:text-slate-900 dark:hover:text-white"
-            >
-              Daftar Toko
-            </Link>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="max-w-xs truncate font-medium text-slate-800 dark:text-slate-200">
-              {store.name}
-            </span>
-          </nav>
+              <Link
+                href="/"
+                className="transition-colors hover:text-slate-900 dark:hover:text-white"
+              >
+                Beranda
+              </Link>
+              <span className="text-slate-300 dark:text-slate-700">/</span>
+              <Link
+                href="/toko"
+                className="transition-colors hover:text-slate-900 dark:hover:text-white"
+              >
+                Daftar Toko
+              </Link>
+              <span className="text-slate-300 dark:text-slate-700">/</span>
+              <span className="max-w-xs truncate font-medium text-slate-800 dark:text-slate-200">
+                {store.name}
+              </span>
+            </nav>
 
-          {/* Store Profile Showcase Card with Banner Background & Radiant White Gradient */}
-          <div className="shadow-xs group relative mb-10 overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">
-            {/* Background Cover Image with Striking White Radiant Gradient */}
-            <div className="absolute inset-0 z-0">
-              <Image
-                src={
-                  store.banner ||
-                  'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1200&q=80'
-                }
-                alt={store.name}
-                fill
-                sizes="(max-width: 1280px) 100vw, 1200px"
-                priority
-                unoptimized={!!store.banner?.startsWith('/')}
-                className="sm:object-right-center object-cover object-right opacity-75 transition-transform duration-700 group-hover:scale-105 dark:opacity-40"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/20 dark:from-slate-950 dark:via-slate-950/85 dark:to-slate-950/20" />
-              <div className="absolute inset-0 bg-gradient-to-t from-white/60 via-transparent to-white/30 dark:from-slate-950/60 dark:to-transparent" />
-            </div>
-
-            {/* Foreground Content */}
-            <div className="relative z-10 flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
-              {/* Left Section: Square Profile Image & Info */}
-              <div className="flex min-w-0 flex-1 flex-col items-start gap-5 sm:flex-row sm:items-center">
-                {/* Square Profile Photo */}
-                <div className="shadow-2xs relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-800 sm:h-24 sm:w-24">
-                  <Image
-                    src={
-                      store.logo ||
-                      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'
-                    }
-                    alt={store.name}
-                    fill
-                    sizes="96px"
-                    unoptimized={!!store.logo?.startsWith('/')}
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl lg:text-3xl">
-                      {store.name}
-                    </h1>
-                    <span className="shadow-2xs backdrop-blur-xs rounded-full border border-slate-200/80 bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300">
-                      {store.city}
-                    </span>
-                  </div>
-
-                  <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                    {store.tagline ||
-                      'Toko Resmi Penjualan & Servis Kilat Smartphone Bergaransi 30 Hari'}
-                  </p>
-
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-xs text-slate-500">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="line-clamp-1">{store.address}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span>Buka 09:00 - 21:00 WIB</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
-                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                      <span>Klaim Garansi 30 Hari & Servis Kilat</span>
-                    </div>
-                  </div>
-                </div>
+            {/* Store Profile Showcase Card with Banner Background & Radiant White Gradient */}
+            <div className="shadow-xs group relative mb-10 overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">
+              {/* Background Cover Image with Striking White Radiant Gradient */}
+              <div className="absolute inset-0 z-0">
+                <Image
+                  src={
+                    store.banner ||
+                    'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=1200&q=80'
+                  }
+                  alt={store.name}
+                  fill
+                  sizes="(max-width: 1280px) 100vw, 1200px"
+                  priority
+                  unoptimized={!!store.banner?.startsWith('/')}
+                  className="sm:object-right-center object-cover object-right opacity-75 transition-transform duration-700 group-hover:scale-105 dark:opacity-40"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/20 dark:from-slate-950 dark:via-slate-950/85 dark:to-slate-950/20" />
+                <div className="absolute inset-0 bg-gradient-to-t from-white/60 via-transparent to-white/30 dark:from-slate-950/60 dark:to-transparent" />
               </div>
 
-              {/* Right Section: Action CTAs */}
-              <div className="flex shrink-0 flex-row justify-start gap-2.5 border-t border-slate-200/60 pt-3 dark:border-slate-800 sm:flex-col sm:items-end lg:border-t-0 lg:pt-0">
-                <Link
-                  href={`/dashboard/customer/chat?storeId=${store.id}`}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.99] sm:w-auto"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Chat Toko</span>
-                </Link>
+              {/* Foreground Content */}
+              <div className="relative z-10 flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+                {/* Left Section: Square Profile Image & Info */}
+                <div className="flex min-w-0 flex-1 flex-col items-start gap-5 sm:flex-row sm:items-center">
+                  {/* Square Profile Photo */}
+                  <div className="shadow-2xs relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-800 sm:h-24 sm:w-24">
+                    <Image
+                      src={
+                        store.logo ||
+                        'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'
+                      }
+                      alt={store.name}
+                      fill
+                      sizes="96px"
+                      unoptimized={!!store.logo?.startsWith('/')}
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
 
-                {store.mapsUrl && (
-                  <a
-                    href={store.mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="backdrop-blur-xs shadow-2xs inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300 sm:w-auto"
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl lg:text-3xl">
+                        {store.name}
+                      </h1>
+                      <span className="shadow-2xs backdrop-blur-xs rounded-full border border-slate-200/80 bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300">
+                        {store.city}
+                      </span>
+                    </div>
+
+                    <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                      {store.tagline ||
+                        'Toko Resmi Penjualan & Servis Kilat Smartphone Bergaransi 30 Hari'}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-xs text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        <span className="line-clamp-1">{store.address}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        <span>Buka 09:00 - 21:00 WIB</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
+                        <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                        <span>Klaim Garansi 30 Hari & Servis Kilat</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Section: Action CTAs */}
+                <div className="flex shrink-0 flex-row justify-start gap-2.5 border-t border-slate-200/60 pt-3 dark:border-slate-800 sm:flex-col sm:items-end lg:border-t-0 lg:pt-0">
+                  <Link
+                    href={`/dashboard/customer/chat?storeId=${store.id}`}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.99] sm:w-auto"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    <span>Petunjuk Lokasi Maps</span>
-                  </a>
+                    <MessageSquare className="h-4 w-4" />
+                    <span>Chat Toko</span>
+                  </Link>
+
+                  {store.mapsUrl && (
+                    <a
+                      href={store.mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="backdrop-blur-xs shadow-2xs inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300 sm:w-auto"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>Petunjuk Lokasi Maps</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Store Specific Inventory Showcase */}
+            <div className="space-y-6 pt-2">
+              <div className="flex flex-col gap-4 pb-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+                    Inventori Gadget Ready Stock
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+                    Unit smartphone siap beli langsung di toko atau kirim instan
+                    dengan garansi 30 hari.
+                  </p>
+                </div>
+
+                {store.products && store.products.length > 0 && (
+                  <div className="shadow-2xs inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:self-auto">
+                    <Smartphone className="h-3.5 w-3.5 text-orange-500" />
+                    <span>{store.products.length} Gadget Tersedia</span>
+                  </div>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Store Specific Inventory Showcase */}
-          <div className="space-y-6 pt-2">
-            <div className="flex flex-col gap-4 pb-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
-                  Inventori Gadget Ready Stock
-                </h2>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
-                  Unit smartphone siap beli langsung di toko atau kirim instan
-                  dengan garansi 30 hari.
-                </p>
-              </div>
+              {store.products && store.products.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+                  {store.products.map((item: any) => {
+                    const totalStock =
+                      item.variants && item.variants.length > 0
+                        ? item.variants.reduce(
+                            (sum: number, v: any) =>
+                              sum + (Number(v.stock) || 0),
+                            0
+                          )
+                        : Number(item.stock) || 0
 
-              {store.products && store.products.length > 0 && (
-                <div className="shadow-2xs inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:self-auto">
-                  <Smartphone className="h-3.5 w-3.5 text-orange-500" />
-                  <span>{store.products.length} Gadget Tersedia</span>
-                </div>
-              )}
-            </div>
-
-            {store.products && store.products.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
-                {store.products.map((item: any) => {
-                  const totalStock =
-                    item.variants && item.variants.length > 0
-                      ? item.variants.reduce(
-                          (sum: number, v: any) => sum + (Number(v.stock) || 0),
-                          0
-                        )
-                      : Number(item.stock) || 0
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4"
-                    >
-                      <Link
-                        href={`/gadget/${item.id}`}
-                        className="block cursor-pointer focus:outline-none"
+                    return (
+                      <div
+                        key={item.id}
+                        className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4"
                       >
-                        {/* 1. Media Header (Square Cropped Hero Photo) */}
-                        <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60 sm:mb-3.5 sm:rounded-2xl">
-                          <Image
-                            src={
-                              (item.images && item.images[0]) ||
-                              'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
-                            }
-                            alt={item.name}
-                            fill
-                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                            unoptimized
-                            className="object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
+                        <Link
+                          href={`/gadget/${item.id}`}
+                          className="block cursor-pointer focus:outline-none"
+                        >
+                          {/* 1. Media Header (Square Cropped Hero Photo) */}
+                          <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60 sm:mb-3.5 sm:rounded-2xl">
+                            <Image
+                              src={
+                                (item.images && item.images[0]) ||
+                                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+                              }
+                              alt={item.name}
+                              fill
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                              unoptimized
+                              className="object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
 
-                          {/* Top-Right: Solid Clean Rating Capsule */}
-                          <div className="absolute right-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:right-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
-                            <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400 sm:h-3 sm:w-3" />
-                            <span className="font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white">
-                              {(item.rating || 5.0).toFixed(1)}
-                            </span>
-                            <span className="hidden text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500 sm:inline">
-                              ({item.totalReview || 0})
-                            </span>
+                            {/* Top-Right: Solid Clean Rating Capsule */}
+                            <div className="absolute right-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:right-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
+                              <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400 sm:h-3 sm:w-3" />
+                              <span className="font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white">
+                                {(item.rating || 5.0).toFixed(1)}
+                              </span>
+                              <span className="hidden text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500 sm:inline">
+                                ({item.totalReview || 0})
+                              </span>
+                            </div>
                           </div>
-                        </div>
 
-                        {/* 2. Product Identity & Details */}
-                        <div className="space-y-1.5 px-0.5 sm:space-y-2">
-                          <div className="flex items-center justify-between gap-1 text-[10px] sm:text-xs">
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 sm:text-[10px]">
-                              {item.brand || 'Gadget'}
-                            </span>
+                          {/* 2. Product Identity & Details */}
+                          <div className="space-y-1.5 px-0.5 sm:space-y-2">
+                            <div className="flex items-center justify-between gap-1 text-[10px] sm:text-xs">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 sm:text-[10px]">
+                                {item.brand || 'Gadget'}
+                              </span>
 
-                            {/* Semantic Stock Pill */}
-                            <div className="shrink-0">
-                              {totalStock > 5 ? (
-                                <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:gap-1 sm:text-[10px]">
-                                  <Package className="hidden h-2.5 w-2.5 text-slate-500 sm:inline" />
-                                  <span>{totalStock} Unit</span>
-                                </span>
-                              ) : totalStock > 0 ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:text-[10px]">
-                                  <span>Sisa {totalStock}!</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-rose-200/60 bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 sm:text-[10px]">
-                                  <span>Habis</span>
+                              {/* Semantic Stock Pill */}
+                              <div className="shrink-0">
+                                {totalStock > 5 ? (
+                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:gap-1 sm:text-[10px]">
+                                    <Package className="hidden h-2.5 w-2.5 text-slate-500 sm:inline" />
+                                    <span>{totalStock} Unit</span>
+                                  </span>
+                                ) : totalStock > 0 ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:text-[10px]">
+                                    <span>Sisa {totalStock}!</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-rose-200/60 bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 sm:text-[10px]">
+                                    <span>Habis</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <h3 className="line-clamp-2 min-h-[2rem] text-xs font-bold leading-tight text-slate-900 transition-colors group-hover:text-orange-600 dark:text-white sm:min-h-[2.5rem] sm:text-sm sm:leading-snug">
+                              {item.name}
+                            </h3>
+
+                            <div className="flex items-baseline justify-between gap-1 pt-0.5">
+                              <span className="whitespace-nowrap text-xs font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-base sm:text-lg">
+                                Rp {item.price.toLocaleString('id-ID')}
+                              </span>
+                              {item.variants && item.variants.length > 1 && (
+                                <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 dark:bg-slate-800 sm:text-[10px]">
+                                  {item.variants.length} Varian
                                 </span>
                               )}
                             </div>
                           </div>
+                        </Link>
 
-                          <h3 className="line-clamp-2 min-h-[2rem] text-xs font-bold leading-tight text-slate-900 transition-colors group-hover:text-orange-600 dark:text-white sm:min-h-[2.5rem] sm:text-sm sm:leading-snug">
-                            {item.name}
-                          </h3>
-
-                          <div className="flex items-baseline justify-between gap-1 pt-0.5">
-                            <span className="whitespace-nowrap text-xs font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-base sm:text-lg">
-                              Rp {item.price.toLocaleString('id-ID')}
+                        {/* 3. Bottom CTA (Action Orange) */}
+                        <div className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 dark:border-slate-800/80 sm:mt-3.5 sm:gap-2 sm:pt-3">
+                          <Link
+                            href={`/gadget/${item.id}`}
+                            className={`flex flex-1 items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-bold transition-all duration-200 sm:rounded-2xl sm:py-2.5 sm:text-xs ${
+                              totalStock > 0
+                                ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/25 hover:bg-orange-600 active:scale-[0.98]'
+                                : 'cursor-not-allowed bg-slate-100 text-slate-400 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-500'
+                            }`}
+                          >
+                            <span>
+                              {totalStock > 0 ? 'Lihat Detail' : 'Stok Habis'}
                             </span>
-                            {item.variants && item.variants.length > 1 && (
-                              <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 dark:bg-slate-800 sm:text-[10px]">
-                                {item.variants.length} Varian
-                              </span>
-                            )}
-                          </div>
+                            <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-3.5 sm:w-3.5" />
+                          </Link>
+
+                          <Link
+                            href={`/dashboard/customer/chat?storeId=${store.id}&productId=${item.id}&productName=${encodeURIComponent(item.name || '')}&productPrice=${item.price || 0}&productImage=${encodeURIComponent(item.images?.[0] || '')}`}
+                            className="shadow-2xs flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-orange-800 dark:hover:bg-orange-950/40 dark:hover:text-orange-300 sm:h-9 sm:w-9 sm:rounded-2xl"
+                            title={`Chat toko tentang ${item.name}`}
+                          >
+                            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Link>
                         </div>
-                      </Link>
-
-                      {/* 3. Bottom CTA (Action Orange) */}
-                      <div className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 dark:border-slate-800/80 sm:mt-3.5 sm:gap-2 sm:pt-3">
-                        <Link
-                          href={`/gadget/${item.id}`}
-                          className={`flex flex-1 items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-bold transition-all duration-200 sm:rounded-2xl sm:py-2.5 sm:text-xs ${
-                            totalStock > 0
-                              ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/25 hover:bg-orange-600 active:scale-[0.98]'
-                              : 'cursor-not-allowed bg-slate-100 text-slate-400 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-500'
-                          }`}
-                        >
-                          <span>
-                            {totalStock > 0 ? 'Lihat Detail' : 'Stok Habis'}
-                          </span>
-                          <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-3.5 sm:w-3.5" />
-                        </Link>
-
-                        <Link
-                          href={`/dashboard/customer/chat?storeId=${store.id}&productId=${item.id}&productName=${encodeURIComponent(item.name || '')}&productPrice=${item.price || 0}&productImage=${encodeURIComponent(item.images?.[0] || '')}`}
-                          className="shadow-2xs flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-orange-800 dark:hover:bg-orange-950/40 dark:hover:text-orange-300 sm:h-9 sm:w-9 sm:rounded-2xl"
-                          title={`Chat toko tentang ${item.name}`}
-                        >
-                          <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Link>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="space-y-3 rounded-3xl border border-dashed border-slate-200/80 bg-white p-12 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900">
-                <Smartphone className="mx-auto h-10 w-10 text-slate-300" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Belum ada unit khusus yang diposting untuk toko ini
-                </h3>
-                <p className="text-slate-500">
-                  Anda dapat melihat seluruh inventori gadget ready stock di
-                  katalog utama.
-                </p>
-                <div className="pt-2">
-                  <Link
-                    href="/gadget"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
-                  >
-                    Buka Katalog Produk <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
+                    )
+                  })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="space-y-3 rounded-3xl border border-dashed border-slate-200/80 bg-white p-12 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+                  <Smartphone className="mx-auto h-10 w-10 text-slate-300" />
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Belum ada unit khusus yang diposting untuk toko ini
+                  </h3>
+                  <p className="text-slate-500">
+                    Anda dapat melihat seluruh inventori gadget ready stock di
+                    katalog utama.
+                  </p>
+                  <div className="pt-2">
+                    <Link
+                      href="/gadget"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
+                    >
+                      Buka Katalog Produk <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
 
-      <Footer variant="light" />
-    </div>
+        <Footer variant="light" />
+      </div>
+    </>
   )
 }
