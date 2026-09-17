@@ -448,7 +448,7 @@ export function ShopeeMobileProductDetail({
                   disabled={vStock <= 0}
                   className={`flex shrink-0 items-center gap-2 rounded-xl border p-2 text-left transition-all ${
                     isSelected
-                      ? 'shadow-xs border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
+                      ? 'shadow-xs border-orange-500 bg-orange-50/25 text-slate-900 ring-1 ring-orange-500/40 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
                       : vStock <= 0
                         ? 'border-slate-200/50 bg-slate-50 text-slate-400 opacity-50 dark:border-slate-800 dark:bg-slate-900'
                         : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300'
@@ -465,14 +465,20 @@ export function ShopeeMobileProductDetail({
                     />
                   </div>
                   <div className="min-w-0 pr-1">
-                    <p className="truncate text-xs font-bold leading-tight">
+                    <p
+                      className={`truncate text-xs leading-tight ${
+                        isSelected
+                          ? 'font-bold text-slate-900 dark:text-white'
+                          : 'font-semibold text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
                       {v.name}
                     </p>
                     <p
-                      className={`text-[10px] font-medium ${
+                      className={`text-[10px] ${
                         isSelected
-                          ? 'text-slate-200 dark:text-slate-700'
-                          : 'text-slate-500 dark:text-slate-400'
+                          ? 'font-bold text-orange-600 dark:text-orange-400'
+                          : 'font-medium text-slate-500 dark:text-slate-400'
                       }`}
                     >
                       Rp {v.price.toLocaleString('id-ID')}

@@ -573,10 +573,10 @@ export default function GadgetDetailPage() {
                   {/* 1. Header & Price */}
                   <div className="space-y-3 border-b border-slate-100 pb-5 dark:border-slate-800">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-slate-100 px-3 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         {product.brand || 'Smartphone'}
                       </span>
-                      <span className="rounded-full border border-emerald-200/40 bg-emerald-50 px-3 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         Kondisi:{' '}
                         {product.condition === 'SECOND_MULUS'
                           ? 'Second Mulus (95% - 98%)'
@@ -586,16 +586,8 @@ export default function GadgetDetailPage() {
                       </span>
 
                       {/* Total Product Stock Badge */}
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 text-[10px] font-bold ${
-                          totalStock > 5
-                            ? 'border-slate-200/90 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                            : totalStock > 0
-                              ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/50 dark:text-amber-300'
-                              : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800/60 dark:bg-rose-950/50 dark:text-rose-300'
-                        }`}
-                      >
-                        <Package className="h-3 w-3 shrink-0 text-orange-500" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        <Package className="h-3 w-3 shrink-0 text-slate-500" />
                         <span>Total Stok: {totalStock} Unit</span>
                       </span>
                     </div>
@@ -634,12 +626,12 @@ export default function GadgetDetailPage() {
                               {selectedVariant.name}
                             </span>
                             <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                (selectedVariant.stock || 0) > 5
-                                  ? 'border border-emerald-200/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                  : (selectedVariant.stock || 0) > 0
-                                    ? 'border border-amber-200/50 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                                    : 'border border-rose-200/50 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                              className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
+                                (selectedVariant.stock || 0) <= 0
+                                  ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+                                  : (selectedVariant.stock || 0) <= 3
+                                    ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400'
+                                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                               }`}
                             >
                               {(selectedVariant.stock || 0) > 0
@@ -655,18 +647,23 @@ export default function GadgetDetailPage() {
                           const isSelected = selectedVariant?.id === variant.id
                           const variantStock = Number(variant.stock) || 0
                           const isVarOutOfStock = variantStock <= 0
+                          const hasDuplicateColorInName =
+                            variant.color &&
+                            variant.name
+                              .toLowerCase()
+                              .includes(variant.color.toLowerCase())
 
                           return (
                             <button
                               key={variant.id}
                               type="button"
                               onClick={() => handleSelectVariant(variant)}
-                              className={`rounded-2xl border p-3 text-left transition-all duration-200 ${
+                              className={`relative rounded-2xl border p-3 text-left transition-all duration-200 ${
                                 isSelected
-                                  ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
+                                  ? 'shadow-xs border-orange-500 bg-orange-50/20 text-slate-900 ring-1 ring-orange-500/40 dark:border-orange-500 dark:bg-orange-950/15 dark:text-white'
                                   : isVarOutOfStock
-                                    ? 'border-slate-200/60 bg-slate-100/60 text-slate-400 opacity-60 dark:border-slate-800 dark:bg-slate-900/40'
-                                    : 'border-slate-200/80 bg-slate-50/50 text-slate-700 hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300'
+                                    ? 'border-slate-200/60 bg-slate-100/40 text-slate-400 opacity-50 dark:border-slate-800 dark:bg-slate-900/40'
+                                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
                               }`}
                             >
                               <div className="flex items-center gap-2.5">
@@ -685,54 +682,49 @@ export default function GadgetDetailPage() {
 
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-start justify-between gap-2">
-                                    <div className="truncate text-xs font-bold leading-tight">
+                                    <div
+                                      className={`truncate text-xs leading-tight ${
+                                        isSelected
+                                          ? 'font-bold text-slate-900 dark:text-white'
+                                          : 'font-semibold text-slate-800 dark:text-slate-200'
+                                      }`}
+                                    >
                                       {variant.name}
                                     </div>
                                     {/* Variant Stock Badge */}
                                     <span
-                                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                        isSelected
-                                          ? variantStock > 5
-                                            ? 'bg-white/20 text-white dark:bg-slate-950/20 dark:text-slate-950'
-                                            : variantStock > 0
-                                              ? 'bg-amber-400/30 text-amber-200 dark:bg-amber-500/20 dark:text-amber-800'
-                                              : 'bg-rose-400/30 text-rose-200 dark:bg-rose-500/20 dark:text-rose-800'
-                                          : variantStock > 5
-                                            ? 'border border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                            : variantStock > 0
-                                              ? 'border border-amber-200/60 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                                              : 'border border-rose-200/60 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                        variantStock <= 0
+                                          ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+                                          : variantStock <= 3
+                                            ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400'
+                                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                       }`}
                                     >
                                       {variantStock > 5
                                         ? `Stok: ${variantStock}`
                                         : variantStock > 0
-                                          ? `Sisa ${variantStock}!`
+                                          ? `Sisa ${variantStock}`
                                           : 'Habis'}
                                     </span>
                                   </div>
 
                                   <div className="mt-1 flex items-center justify-between gap-2">
                                     <span
-                                      className={`text-[11px] font-medium ${
+                                      className={`text-[11px] ${
                                         isSelected
-                                          ? 'text-slate-300 dark:text-slate-600'
-                                          : 'text-slate-400'
+                                          ? 'font-bold text-orange-600 dark:text-orange-400'
+                                          : 'font-medium text-slate-500 dark:text-slate-400'
                                       }`}
                                     >
                                       Rp {variant.price.toLocaleString('id-ID')}
                                     </span>
-                                    {variant.color && (
-                                      <span
-                                        className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${
-                                          isSelected
-                                            ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900'
-                                            : 'bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                                        }`}
-                                      >
-                                        {variant.color}
-                                      </span>
-                                    )}
+                                    {variant.color &&
+                                      !hasDuplicateColorInName && (
+                                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                          {variant.color}
+                                        </span>
+                                      )}
                                   </div>
                                 </div>
                               </div>
