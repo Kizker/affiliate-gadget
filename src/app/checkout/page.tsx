@@ -76,10 +76,38 @@ export default function CheckoutPage() {
   const setUserId = useCartStore((state) => state.setUserId)
   const syncFromServer = useCartStore((state) => state.syncFromServer)
   const userId = useCartStore((state) => state.userId)
+  const buyNowItem = useCartStore((state) => state.buyNowItem)
+  const clearBuyNowItem = useCartStore((state) => state.clearBuyNowItem)
+
+  const [isDirectBuy, setIsDirectBuy] = useState(false)
+  const [directItem, setDirectItem] = useState<any>(null)
+
+  // Detect Buy Now mode from URL parameter or cached direct item
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get('buyNow') === '1') {
+        setIsDirectBuy(true)
+        let item = buyNowItem
+        if (!item) {
+          try {
+            const stored = sessionStorage.getItem('affiliate_gadget_buy_now')
+            if (stored) item = JSON.parse(stored)
+          } catch {}
+        }
+        if (item) {
+          setDirectItem(item)
+        }
+      }
+    }
+  }, [buyNowItem])
 
   const selectedItems = useMemo(() => {
+    if (isDirectBuy && directItem) {
+      return [directItem]
+    }
     return items.filter((item) => selectedItemIds.includes(item.id))
-  }, [items, selectedItemIds])
+  }, [isDirectBuy, directItem, items, selectedItemIds])
 
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [courier, setCourier] = useState<'JNE' | 'GOJEK'>('JNE')
@@ -106,7 +134,7 @@ export default function CheckoutPage() {
   } | null>(null)
   const [voucherError, setVoucherError] = useState<string | null>(null)
 
-  // Idempotency Key (LOW-04): unik per payload keranjang belanja
+  // Idempotency Key (LOW-04): unik per payload keranjang atau pesanan langsung
   const idempotencyKeyRef = useRef<string>('')
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -114,7 +142,7 @@ export default function CheckoutPage() {
         window.crypto?.randomUUID?.() ||
         `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
     }
-  }, [selectedItemIds])
+  }, [selectedItemIds, isDirectBuy, directItem])
 
   // Address state
   const [addresses, setAddresses] = useState<UserAddressItem[]>([])
@@ -170,7 +198,8 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?redirect=/checkout')
+      const redirectTarget = isDirectBuy ? '/checkout?buyNow=1' : '/checkout'
+      router.push(`/login?redirect=${encodeURIComponent(redirectTarget)}`)
     } else if (status === 'authenticated') {
       if (userId !== session.user.id) {
         setUserId(session.user.id)
@@ -188,6 +217,7 @@ export default function CheckoutPage() {
     setUserId,
     syncFromServer,
     fetchAddresses,
+    isDirectBuy,
   ])
 
   useEffect(() => {
@@ -475,7 +505,16 @@ export default function CheckoutPage() {
       }
 
       const data = await res.json()
-      removeSelectedItems()
+      if (isDirectBuy) {
+        clearBuyNowItem()
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('affiliate_gadget_buy_now')
+          } catch {}
+        }
+      } else {
+        removeSelectedItems()
+      }
 
       const orderIds = (data.orders || [])
         .map((o: CheckoutOrderResponseItem) => o.order?.id || o.id)
@@ -511,18 +550,20 @@ export default function CheckoutPage() {
             <ShoppingCart className="h-8 w-8" />
           </div>
           <h2 className="text-lg font-bold text-slate-950 dark:text-white">
-            Tidak Ada Item yang Dipilih
+            {isDirectBuy ? 'Unit Belum Dipilih' : 'Tidak Ada Item yang Dipilih'}
           </h2>
           <p className="text-xs text-slate-500">
-            Pilih gadget resmi di keranjang Anda sebelum melanjutkan proses
-            checkout.
+            {isDirectBuy
+              ? 'Silakan pilih unit gadget resmi di katalog sebelum melanjutkan checkout.'
+              : 'Pilih gadget resmi di keranjang Anda sebelum melanjutkan proses checkout.'}
           </p>
           <div className="pt-2">
             <Link
-              href="/cart"
+              href={isDirectBuy ? '/gadget' : '/cart'}
               className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
             >
-              <ArrowLeft className="h-4 w-4" /> Kembali ke Keranjang
+              <ArrowLeft className="h-4 w-4" />{' '}
+              {isDirectBuy ? 'Kembali ke Katalog' : 'Kembali ke Keranjang'}
             </Link>
           </div>
         </div>
@@ -540,19 +581,29 @@ export default function CheckoutPage() {
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <Link
-                href="/cart"
+                href={
+                  isDirectBuy && directItem?.productId
+                    ? `/gadget/${directItem.productId}`
+                    : '/cart'
+                }
                 className="shadow-2xs flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-white text-slate-600 transition-all hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-white"
-                title="Kembali ke Keranjang"
-                aria-label="Kembali ke Keranjang"
+                title={
+                  isDirectBuy ? 'Kembali ke Produk' : 'Kembali ke Keranjang'
+                }
+                aria-label={
+                  isDirectBuy ? 'Kembali ke Produk' : 'Kembali ke Keranjang'
+                }
               >
                 <ArrowLeft className="h-4 w-4" />
               </Link>
               <div>
                 <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
-                  Checkout Pesanan
+                  {isDirectBuy ? 'Checkout Langsung' : 'Checkout Pesanan'}
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Lengkapi pengiriman & konfirmasi pembayaran resmi
+                  {isDirectBuy
+                    ? 'Konfirmasi pesanan unit gadget & pengiriman resmi'
+                    : 'Lengkapi pengiriman & konfirmasi pembayaran resmi'}
                 </p>
               </div>
             </div>

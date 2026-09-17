@@ -24,6 +24,9 @@ interface CartStore {
   getSelectedSummary: () => CartSummary
   syncFromServer: () => Promise<void>
   setItems: (items: CartItem[]) => void
+  buyNowItem: CartItem | null
+  setBuyNowItem: (item: CartItem | null) => void
+  clearBuyNowItem: () => void
 }
 
 // Debounce helper
@@ -91,15 +94,25 @@ export const useCartStore = create<CartStore>()(
       userId: null,
       isLoading: false,
       isSyncing: false,
+      buyNowItem: null,
+      setBuyNowItem: (item) => set({ buyNowItem: item }),
+      clearBuyNowItem: () => set({ buyNowItem: null }),
 
       setUserId: async (userId) => {
         if (!userId) {
           // User is logging out or is unauthenticated guest:
           // ALWAYS clear local cart state and remove persisted storage
-          set({ items: [], selectedItems: [], userId: null, isLoading: false })
+          set({
+            items: [],
+            selectedItems: [],
+            userId: null,
+            isLoading: false,
+            buyNowItem: null,
+          })
           if (typeof window !== 'undefined') {
             try {
               localStorage.removeItem('affiliate-gadget-cart-storage')
+              sessionStorage.removeItem('affiliate_gadget_buy_now')
             } catch {}
           }
           return

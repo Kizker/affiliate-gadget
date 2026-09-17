@@ -46,7 +46,7 @@ export default function GadgetDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [isAddedToCart, setIsAddedToCart] = useState(false)
 
-  const { addItem } = useCartStore()
+  const { addItem, setBuyNowItem } = useCartStore()
 
   // Aggregate all unique images from product and variants for thumbnails (must be before early returns)
   const allImages = useMemo(() => {
@@ -148,14 +148,54 @@ export default function GadgetDetailPage() {
   const handleBuyNow = () => {
     if (!product) return
 
+    const priceToUse = selectedVariant ? selectedVariant.price : product.price
+    const variantName = selectedVariant ? selectedVariant.name : undefined
+    const variantId = selectedVariant ? selectedVariant.id : undefined
+    const imageToUse =
+      selectedVariant?.image ||
+      selectedImage ||
+      (product.images && product.images[0]) ||
+      ''
+
+    const directItem = {
+      id: `buynow-${product.id}-${variantId || 'base'}-${Date.now()}`,
+      type: 'PRODUCT' as const,
+      productId: product.id,
+      variantId: variantId,
+      variantName: variantName,
+      name: `${product.name} ${variantName ? `(${variantName})` : ''}`,
+      price: priceToUse,
+      image: imageToUse,
+      quantity: quantity,
+      stock: selectedVariant?.stock || product.stock,
+      weightGram: product.weightGram ?? 500,
+      pricePerKg: product.pricePerKg ?? 20000,
+      notes: `${product.warrantyDays || 30} Hari Garansi Toko + Free Bonus 3-in-1`,
+    }
+
+    // Set Buy Now item langsung tanpa memasukkan ke keranjang belanja umum
+    setBuyNowItem(directItem)
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(
+          'affiliate_gadget_buy_now',
+          JSON.stringify(directItem)
+        )
+      } catch {}
+    }
+
     if (status === 'unauthenticated') {
-      toast.error('Silakan masuk terlebih dahulu untuk melanjutkan pembelian.')
-      router.push(`/login?callbackUrl=${encodeURIComponent(`/gadget/${id}`)}`)
+      toast.info(
+        'Silakan masuk terlebih dahulu untuk melanjutkan pembelian langsung.'
+      )
+      router.push(
+        `/login?callbackUrl=${encodeURIComponent('/checkout?buyNow=1')}`
+      )
       return
     }
 
-    handleAddToCart()
-    router.push('/cart')
+    // Langsung menuju ke checkout khusus item ini!
+    router.push('/checkout?buyNow=1')
   }
 
   if (loading) {
