@@ -84,8 +84,8 @@ export function SectionFeaturedGadgets() {
                     onClick={() => setSelectedCategory(c.id)}
                     className={`cursor-pointer whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold transition-all duration-200 sm:px-3.5 sm:py-1.5 sm:text-xs ${
                       isSelected
-                        ? 'bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-950 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                        ? 'shadow-xs border border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
+                        : 'border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
                     }`}
                   >
                     {c.label}

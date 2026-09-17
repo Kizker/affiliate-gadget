@@ -193,7 +193,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                   href={link.href}
                   className={`rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide transition-all duration-200 ${
                     isActive
-                      ? 'shadow-xs bg-slate-950 text-white dark:bg-white dark:text-slate-950'
+                      ? 'shadow-xs border border-orange-500/20 bg-orange-50 font-bold text-orange-600 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-400'
                       : 'text-slate-600 hover:bg-white/60 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white'
                   }`}
                 >
@@ -228,7 +228,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
               className={`h-8.5 w-8.5 relative flex items-center justify-center rounded-full border transition-all duration-200 active:scale-95 sm:h-9 sm:w-9 ${
                 pathname.startsWith('/dashboard/customer/chat') ||
                 pathname.startsWith('/dashboard/admin/chat')
-                  ? 'shadow-xs border-slate-900 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
+                  ? 'shadow-xs border-orange-500 bg-orange-50 text-orange-600 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'
                   : 'shadow-xs border-slate-200/70 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
               aria-label="Pesan Live Chat"
@@ -242,7 +242,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
               href="/cart"
               className={`h-8.5 w-8.5 relative flex items-center justify-center rounded-full border transition-all duration-200 active:scale-95 sm:h-9 sm:w-9 ${
                 pathname === '/cart'
-                  ? 'shadow-xs border-slate-900 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
+                  ? 'shadow-xs border-orange-500 bg-orange-50 text-orange-600 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'
                   : 'shadow-xs border-slate-200/70 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
               aria-label="Keranjang Belanja"
@@ -512,7 +512,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center justify-between rounded-xl px-4 py-2.5 text-xs font-bold transition-colors ${
                       isActive
-                        ? 'bg-slate-950 text-white dark:bg-blue-600'
+                        ? 'bg-orange-50 font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400'
                         : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
                     }`}
                   >
@@ -527,7 +527,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center justify-between rounded-xl px-4 py-2.5 text-xs font-bold transition-colors ${
                   pathname === '/servis-lcd'
-                    ? 'bg-slate-950 text-white dark:bg-blue-600'
+                    ? 'bg-orange-50 font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400'
                     : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
@@ -540,7 +540,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center justify-between rounded-xl px-4 py-2.5 text-xs font-bold transition-colors ${
                   pathname === '/garansi'
-                    ? 'bg-slate-950 text-white dark:bg-blue-600'
+                    ? 'bg-orange-50 font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400'
                     : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >

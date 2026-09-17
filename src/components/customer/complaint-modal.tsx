@@ -27,11 +27,31 @@ const isVideoUrl = (url?: string | null) => {
 }
 
 const COMMON_ISSUES = [
-  { id: 'lcd', label: 'Layar & LCD', fullText: 'Kendala Layar LCD / Touchscreen bergaris atau blank' },
-  { id: 'battery', label: 'Baterai & Daya', fullText: 'Kendala Baterai / Pengisian Daya tidak masuk' },
-  { id: 'hardware', label: 'Kamera & Audio', fullText: 'Kamera / Speaker / Mic bermasalah' },
-  { id: 'system', label: 'Mati Total / Mesin', fullText: 'Unit Mati Total / Masalah Mesin & Bootloop' },
-  { id: 'other', label: 'Lainnya / Fisik', fullText: 'Fisik / Tombol / Komponen Unit Tidak Berfungsi' },
+  {
+    id: 'lcd',
+    label: 'Layar & LCD',
+    fullText: 'Kendala Layar LCD / Touchscreen bergaris atau blank',
+  },
+  {
+    id: 'battery',
+    label: 'Baterai & Daya',
+    fullText: 'Kendala Baterai / Pengisian Daya tidak masuk',
+  },
+  {
+    id: 'hardware',
+    label: 'Kamera & Audio',
+    fullText: 'Kamera / Speaker / Mic bermasalah',
+  },
+  {
+    id: 'system',
+    label: 'Mati Total / Mesin',
+    fullText: 'Unit Mati Total / Masalah Mesin & Bootloop',
+  },
+  {
+    id: 'other',
+    label: 'Lainnya / Fisik',
+    fullText: 'Fisik / Tombol / Komponen Unit Tidak Berfungsi',
+  },
 ]
 
 export function ComplaintModal({
@@ -49,7 +69,7 @@ export function ComplaintModal({
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleSelectPreset = (preset: typeof COMMON_ISSUES[0]) => {
+  const handleSelectPreset = (preset: (typeof COMMON_ISSUES)[0]) => {
     setSelectedPreset(preset.id)
     setSubject(preset.fullText)
   }
@@ -151,28 +171,27 @@ export function ComplaintModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
+    <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
       {/* Modal Surface */}
-      <div className="relative w-full max-w-lg rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-7 shadow-2xl duration-200 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900">
-        
+      <div className="relative w-full max-w-lg rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl duration-200 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-950 dark:text-white tracking-tight">
+              <h2 className="text-base font-black tracking-tight text-slate-950 dark:text-white sm:text-lg">
                 Klaim Garansi 30 Hari
               </h2>
-              <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                 Tukar Unit
               </span>
             </div>
-            <p className="font-mono text-xs text-slate-500 mt-0.5">
+            <p className="mt-0.5 font-mono text-xs text-slate-500">
               Pesanan #{orderNumber}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white transition cursor-pointer"
+            className="cursor-pointer rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
@@ -180,24 +199,24 @@ export function ComplaintModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          
           {/* Preset Issue Quick Select (Segmented Chips) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+            <label className="mb-2 block text-xs font-bold text-slate-700 dark:text-slate-300">
               Pilih Kategori Kendala:
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
               {COMMON_ISSUES.map((preset) => {
-                const isSelected = selectedPreset === preset.id || subject === preset.fullText
+                const isSelected =
+                  selectedPreset === preset.id || subject === preset.fullText
                 return (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => handleSelectPreset(preset)}
-                    className={`rounded-xl px-3 py-2 text-xs font-semibold text-center transition cursor-pointer border ${
+                    className={`cursor-pointer rounded-xl border px-3 py-2 text-center text-xs font-semibold transition ${
                       isSelected
-                        ? 'bg-slate-950 text-white border-slate-950 dark:bg-white dark:text-slate-950 dark:border-white shadow-2xs'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/70 dark:bg-slate-800/60 dark:border-slate-800 dark:text-slate-300'
+                        ? 'shadow-xs border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
+                        : 'border-slate-200/70 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'
                     }`}
                   >
                     {preset.label}
@@ -209,7 +228,7 @@ export function ComplaintModal({
 
           {/* Subject Field */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
               Subjek Kendala <span className="text-orange-500">*</span>
             </label>
             <input
@@ -220,29 +239,30 @@ export function ComplaintModal({
                 setSelectedPreset(null)
               }}
               placeholder="Contoh: Layar LCD blank setelah 5 hari pemakaian"
-              className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white transition"
+              className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white"
               required
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Rincian Masalah / Gejala Kerusakan <span className="text-orange-500">*</span>
+            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Rincian Masalah / Gejala Kerusakan{' '}
+              <span className="text-orange-500">*</span>
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Jelaskan secara singkat kendala yang dialami agar teknisi toko dapat menyiapkan unit pengganti teruji..."
               rows={3}
-              className="w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white transition leading-relaxed"
+              className="w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium leading-relaxed text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white"
               required
             />
           </div>
 
           {/* Media (Photo & Video) Upload */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="mb-1.5 flex items-center justify-between">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Bukti Foto / Video Kerusakan (Opsional)
               </label>
@@ -260,8 +280,11 @@ export function ComplaintModal({
                       className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-800"
                     >
                       {isVideo ? (
-                        <div className="relative h-full w-full bg-slate-900 flex items-center justify-center">
-                          <video src={url} className="h-full w-full object-cover opacity-80" />
+                        <div className="relative flex h-full w-full items-center justify-center bg-slate-900">
+                          <video
+                            src={url}
+                            className="h-full w-full object-cover opacity-80"
+                          />
                           <Play className="absolute h-4 w-4 fill-white text-white" />
                         </div>
                       ) : (
@@ -274,7 +297,7 @@ export function ComplaintModal({
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute right-1 top-1 rounded-full bg-slate-950/80 p-1 text-white opacity-0 group-hover:opacity-100 hover:bg-rose-600 transition cursor-pointer z-10"
+                        className="absolute right-1 top-1 z-10 cursor-pointer rounded-full bg-slate-950/80 p-1 text-white opacity-0 transition hover:bg-rose-600 group-hover:opacity-100"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -290,7 +313,7 @@ export function ComplaintModal({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200/90 bg-slate-50/50 hover:bg-slate-100/60 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 transition cursor-pointer"
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200/90 bg-slate-50/50 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100/60 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400 dark:hover:bg-slate-800/80"
               >
                 {uploading ? (
                   <>
@@ -317,18 +340,18 @@ export function ComplaintModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-3 flex items-center justify-end gap-2.5">
+          <div className="flex items-center justify-end gap-2.5 pt-3">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="cursor-pointer rounded-full px-5 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={submitting || !subject.trim() || !description.trim()}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 text-white px-6 py-2.5 text-xs font-bold shadow-xs transition active:scale-95 disabled:opacity-40 cursor-pointer"
+              className="shadow-xs inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
             >
               {submitting ? (
                 <>
@@ -341,7 +364,6 @@ export function ComplaintModal({
             </button>
           </div>
         </form>
-
       </div>
     </div>
   )

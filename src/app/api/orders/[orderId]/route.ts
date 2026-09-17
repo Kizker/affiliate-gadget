@@ -85,6 +85,22 @@ export async function GET(
             },
           },
         },
+        payment: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            bankAccounts: {
+              select: {
+                bankName: true,
+                accountNumber: true,
+                accountName: true,
+                isPrimary: true,
+              },
+            },
+          },
+        },
       },
     })
 

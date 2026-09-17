@@ -34,27 +34,32 @@ const COMMON_REASONS = [
   {
     id: 'PRODUK_RUSAK',
     label: 'Cacat Fisik / Pecah',
-    fullText: 'Unit memiliki cacat fisik, baret dalam, atau layar retak saat kemasan pertama kali dibuka',
+    fullText:
+      'Unit memiliki cacat fisik, baret dalam, atau layar retak saat kemasan pertama kali dibuka',
   },
   {
     id: 'MATI_TOTAL_DOA',
     label: 'Mati Total (DOA)',
-    fullText: 'Unit mati total, bootloop, atau tidak merespons daya pengisian saat dinyalakan',
+    fullText:
+      'Unit mati total, bootloop, atau tidak merespons daya pengisian saat dinyalakan',
   },
   {
     id: 'SALAH_VARIAN',
     label: 'Salah Varian / Warna',
-    fullText: 'Varian kapasitas memori internal, RAM, atau warna tidak sesuai dengan invoice pesanan',
+    fullText:
+      'Varian kapasitas memori internal, RAM, atau warna tidak sesuai dengan invoice pesanan',
   },
   {
     id: 'BONUS_KURANG',
     label: 'Aksesoris / Bonus Kurang',
-    fullText: 'Paket bonus 3-in-1 (Charger / Case / Antigores) atau kelengkapan aksesoris tidak ada di dalam paket',
+    fullText:
+      'Paket bonus 3-in-1 (Charger / Case / Antigores) atau kelengkapan aksesoris tidak ada di dalam paket',
   },
   {
     id: 'LAINNYA',
     label: 'Kendala Fungsional Lainnya',
-    fullText: 'Fitur kamera, speaker, mic, sensor, atau sinyal seluler tidak berfungsi dengan normal',
+    fullText:
+      'Fitur kamera, speaker, mic, sensor, atau sinyal seluler tidak berfungsi dengan normal',
   },
 ]
 
@@ -78,7 +83,9 @@ export function ReturnModal({
   totalAmount,
   onSuccess,
 }: ReturnModalProps) {
-  const [returnType, setReturnType] = useState<'REFUND' | 'REPLACEMENT'>('REFUND')
+  const [returnType, setReturnType] = useState<'REFUND' | 'REPLACEMENT'>(
+    'REFUND'
+  )
   const [selectedPreset, setSelectedPreset] = useState<string>('PRODUK_RUSAK')
   const [reasonLabel, setReasonLabel] = useState(COMMON_REASONS[0].label)
   const [description, setDescription] = useState(COMMON_REASONS[0].fullText)
@@ -97,7 +104,7 @@ export function ReturnModal({
 
   if (!isOpen) return null
 
-  const handleSelectPreset = (preset: typeof COMMON_REASONS[0]) => {
+  const handleSelectPreset = (preset: (typeof COMMON_REASONS)[0]) => {
     setSelectedPreset(preset.id)
     setReasonLabel(preset.label)
     setDescription(preset.fullText)
@@ -119,7 +126,9 @@ export function ReturnModal({
         const isVideo = file.type.startsWith('video/')
 
         if (!isImage && !isVideo) {
-          toast.error(`File ${file.name} bukan format foto atau video yang didukung.`)
+          toast.error(
+            `File ${file.name} bukan format foto atau video yang didukung.`
+          )
           continue
         }
 
@@ -156,13 +165,21 @@ export function ReturnModal({
     e.preventDefault()
 
     if (!description.trim()) {
-      toast.error('Harap berikan penjelasan detail mengenai kendala unit yang dialami.')
+      toast.error(
+        'Harap berikan penjelasan detail mengenai kendala unit yang dialami.'
+      )
       return
     }
 
     if (returnType === 'REFUND') {
-      if (!bankName.trim() || !bankAccountNumber.trim() || !bankAccountName.trim()) {
-        toast.error('Harap lengkapi nama bank, nomor rekening, dan atas nama untuk pengembalian dana.')
+      if (
+        !bankName.trim() ||
+        !bankAccountNumber.trim() ||
+        !bankAccountName.trim()
+      ) {
+        toast.error(
+          'Harap lengkapi nama bank, nomor rekening, dan atas nama untuk pengembalian dana.'
+        )
         return
       }
     }
@@ -193,7 +210,9 @@ export function ReturnModal({
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Gagal mengirimkan pengajuan pengembalian')
+        throw new Error(
+          data.error || 'Gagal mengirimkan pengajuan pengembalian'
+        )
       }
 
       toast.success('Pengajuan pengembalian berhasil dikirim ke pihak toko!')
@@ -212,22 +231,22 @@ export function ReturnModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/50 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-md duration-200 animate-in fade-in sm:p-6">
       <div
-        className="relative flex flex-col w-full max-w-2xl max-h-[90vh] rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 overflow-hidden"
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky Header */}
-        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-6 py-5 dark:border-slate-800 dark:bg-slate-900 sm:px-8">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
               <RotateCcw className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-950 dark:text-white">
+              <h3 className="text-base font-black tracking-tight text-slate-950 dark:text-white sm:text-lg">
                 Pengajuan Pengembalian
               </h3>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="mt-0.5 flex items-center gap-1.5">
                 <span className="text-[11px] text-slate-400">Pesanan</span>
                 <span className="font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300">
                   #{orderNumber}
@@ -238,7 +257,7 @@ export function ReturnModal({
 
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
             aria-label="Tutup Modal"
           >
             <X className="h-4 w-4" />
@@ -246,48 +265,53 @@ export function ReturnModal({
         </div>
 
         {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-5 space-y-6 text-xs no-scrollbar">
-            
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
+          <div className="no-scrollbar flex-1 space-y-6 overflow-y-auto px-6 py-5 text-xs sm:px-8">
             {/* 1. Solution Type Selector (Refund vs Replacement) */}
             <div className="space-y-2.5">
-              <span className="text-xs font-bold text-slate-900 dark:text-white block">
+              <span className="block text-xs font-bold text-slate-900 dark:text-white">
                 Solusi yang Diinginkan
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {/* Option: REFUND */}
                 <button
                   type="button"
                   onClick={() => setReturnType('REFUND')}
-                  className={`relative flex items-start gap-3.5 p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer ${
+                  className={`relative flex cursor-pointer items-start gap-3.5 rounded-2xl border p-4 text-left transition-all duration-200 ${
                     returnType === 'REFUND'
-                      ? 'border-orange-500 bg-orange-50/40 dark:bg-orange-950/30 ring-2 ring-orange-500/20 shadow-xs'
+                      ? 'shadow-xs border-orange-500 bg-orange-50/40 ring-2 ring-orange-500/20 dark:bg-orange-950/30'
                       : 'border-slate-200/80 bg-white hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60'
                   }`}
                 >
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
-                    returnType === 'REFUND'
-                      ? 'bg-orange-500 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}>
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
+                      returnType === 'REFUND'
+                        ? 'shadow-xs bg-orange-500 text-white'
+                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
                     <CreditCard className="h-4 w-4" />
                   </div>
                   <div className="pr-4">
                     <div className="flex items-center gap-1.5">
-                      <h4 className="font-bold text-slate-950 dark:text-white text-xs">
+                      <h4 className="text-xs font-bold text-slate-950 dark:text-white">
                         Pengembalian Dana
                       </h4>
-                      <span className="rounded-md bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 px-1.5 py-0.2 text-[10px] font-black">
+                      <span className="py-0.2 rounded-md bg-orange-100 px-1.5 text-[10px] font-black text-orange-700 dark:bg-orange-950 dark:text-orange-300">
                         100%
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                      Uang kembali penuh ke rekening bank setelah unit diverifikasi.
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      Uang kembali penuh ke rekening bank setelah unit
+                      diverifikasi.
                     </p>
                   </div>
                   {returnType === 'REFUND' && (
-                    <div className="absolute top-3.5 right-3.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-white">
+                    <div className="absolute right-3.5 top-3.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-white">
                       <Check className="h-2.5 w-2.5 stroke-[3]" />
                     </div>
                   )}
@@ -297,34 +321,37 @@ export function ReturnModal({
                 <button
                   type="button"
                   onClick={() => setReturnType('REPLACEMENT')}
-                  className={`relative flex items-start gap-3.5 p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer ${
+                  className={`relative flex cursor-pointer items-start gap-3.5 rounded-2xl border p-4 text-left transition-all duration-200 ${
                     returnType === 'REPLACEMENT'
-                      ? 'border-orange-500 bg-orange-50/40 dark:bg-orange-950/30 ring-2 ring-orange-500/20 shadow-xs'
+                      ? 'shadow-xs border-orange-500 bg-orange-50/40 ring-2 ring-orange-500/20 dark:bg-orange-950/30'
                       : 'border-slate-200/80 bg-white hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60'
                   }`}
                 >
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
-                    returnType === 'REPLACEMENT'
-                      ? 'bg-orange-500 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}>
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
+                      returnType === 'REPLACEMENT'
+                        ? 'shadow-xs bg-orange-500 text-white'
+                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
                     <RefreshCw className="h-4 w-4" />
                   </div>
                   <div className="pr-4">
                     <div className="flex items-center gap-1.5">
-                      <h4 className="font-bold text-slate-950 dark:text-white text-xs">
+                      <h4 className="text-xs font-bold text-slate-950 dark:text-white">
                         Tukar Unit Pengganti
                       </h4>
-                      <span className="rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 px-1.5 py-0.2 text-[10px] font-black">
+                      <span className="py-0.2 rounded-md bg-emerald-100 px-1.5 text-[10px] font-black text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                         Unit Teruji
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                      Toko mengirimkan unit second pengganti normal, teruji fungsi 100%, dan bergaransi.
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      Toko mengirimkan unit second pengganti normal, teruji
+                      fungsi 100%, dan bergaransi.
                     </p>
                   </div>
                   {returnType === 'REPLACEMENT' && (
-                    <div className="absolute top-3.5 right-3.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-white">
+                    <div className="absolute right-3.5 top-3.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-white">
                       <Check className="h-2.5 w-2.5 stroke-[3]" />
                     </div>
                   )}
@@ -334,7 +361,7 @@ export function ReturnModal({
 
             {/* 2. Reason Category Presets */}
             <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-900 dark:text-white block">
+              <span className="block text-xs font-bold text-slate-900 dark:text-white">
                 Kategori Alasan
               </span>
               <div className="flex flex-wrap gap-2">
@@ -345,10 +372,10 @@ export function ReturnModal({
                       key={preset.id}
                       type="button"
                       onClick={() => handleSelectPreset(preset)}
-                      className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                      className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 ${
                         isSelected
-                          ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-xs'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                          ? 'shadow-xs border border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
+                          : 'border border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
                       }`}
                     >
                       {preset.label}
@@ -360,7 +387,7 @@ export function ReturnModal({
 
             {/* 3. Description Textarea */}
             <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-900 dark:text-white block">
+              <span className="block text-xs font-bold text-slate-900 dark:text-white">
                 Rincian Penjelasan Kendala
               </span>
               <textarea
@@ -375,43 +402,51 @@ export function ReturnModal({
 
             {/* 4. Bank Information (Only for REFUND) */}
             {returnType === 'REFUND' && (
-              <div className="rounded-2xl border border-orange-200/70 bg-orange-50/30 p-4 sm:p-5 space-y-3 dark:border-orange-950/60 dark:bg-orange-950/20">
-                <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-xs">
+              <div className="space-y-3 rounded-2xl border border-orange-200/70 bg-orange-50/30 p-4 dark:border-orange-950/60 dark:bg-orange-950/20 sm:p-5">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
                   <Building2 className="h-4 w-4 text-orange-500" />
                   <span>Rekening Tujuan Pengembalian Dana</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {/* Bank Name */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-slate-500">Nama Bank</label>
+                    <label className="text-[11px] font-semibold text-slate-500">
+                      Nama Bank
+                    </label>
                     <select
                       value={bankName}
                       onChange={(e) => setBankName(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-medium outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     >
                       {POPULAR_BANKS.map((b) => (
-                        <option key={b} value={b}>{b}</option>
+                        <option key={b} value={b}>
+                          {b}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   {/* Account Number */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-slate-500">Nomor Rekening</label>
+                    <label className="text-[11px] font-semibold text-slate-500">
+                      Nomor Rekening
+                    </label>
                     <input
                       type="text"
                       value={bankAccountNumber}
                       onChange={(e) => setBankAccountNumber(e.target.value)}
                       placeholder="1234567890"
-                      className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-mono font-medium outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      className="w-full rounded-xl border border-slate-200 bg-white p-2.5 font-mono text-xs font-medium outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       required
                     />
                   </div>
 
                   {/* Account Holder Name */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-slate-500">Atas Nama Rekening</label>
+                    <label className="text-[11px] font-semibold text-slate-500">
+                      Atas Nama Rekening
+                    </label>
                     <input
                       type="text"
                       value={bankAccountName}
@@ -424,9 +459,11 @@ export function ReturnModal({
                 </div>
 
                 {totalAmount && (
-                  <div className="pt-2.5 flex items-center justify-between text-xs border-t border-orange-200/60 dark:border-orange-900/60">
-                    <span className="text-slate-500">Total Nominal Refund:</span>
-                    <span className="font-mono font-black text-sm text-orange-600 dark:text-orange-400">
+                  <div className="flex items-center justify-between border-t border-orange-200/60 pt-2.5 text-xs dark:border-orange-900/60">
+                    <span className="text-slate-500">
+                      Total Nominal Refund:
+                    </span>
+                    <span className="font-mono text-sm font-black text-orange-600 dark:text-orange-400">
                       {formatPrice(totalAmount)}
                     </span>
                   </div>
@@ -437,7 +474,7 @@ export function ReturnModal({
             {/* 5. Proof of Issue (Photos & Videos) */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                <span className="block text-xs font-bold text-slate-900 dark:text-white">
                   Bukti Foto & Video Unboxing
                 </span>
                 <span className="text-[11px] text-slate-400">
@@ -445,27 +482,31 @@ export function ReturnModal({
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
+              <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
                 {/* Media Thumbnails */}
                 {images.map((url, idx) => {
                   const isVideo = isVideoUrl(url)
                   return (
                     <div
                       key={idx}
-                      className="group relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-800"
+                      className="group relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-800"
                     >
                       {isVideo ? (
                         <div className="flex h-full w-full items-center justify-center bg-slate-900 text-white">
                           <Play className="h-6 w-6 text-orange-400" />
                         </div>
                       ) : (
-                        <img src={url} alt="Bukti" className="h-full w-full object-cover" />
+                        <img
+                          src={url}
+                          alt="Bukti"
+                          className="h-full w-full object-cover"
+                        />
                       )}
 
                       <button
                         type="button"
                         onClick={() => removeMedia(idx)}
-                        className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-black/75 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                        className="absolute right-1.5 top-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/75 text-white opacity-0 transition group-hover:opacity-100"
                         title="Hapus Bukti"
                       >
                         <Trash2 className="h-3 w-3 text-rose-300" />
@@ -480,13 +521,13 @@ export function ReturnModal({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="aspect-square flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 hover:border-orange-400 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-800/40 text-slate-400 hover:text-orange-500 transition cursor-pointer"
+                    className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 text-slate-400 transition hover:border-orange-400 hover:text-orange-500 dark:border-slate-800 dark:bg-slate-800/40"
                   >
                     {uploading ? (
                       <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
                     ) : (
                       <>
-                        <Upload className="h-5 w-5 mb-1" />
+                        <Upload className="mb-1 h-5 w-5" />
                         <span className="text-[10px] font-bold">Unggah</span>
                       </>
                     )}
@@ -505,33 +546,34 @@ export function ReturnModal({
             </div>
 
             {/* 6. Terms & Agreement */}
-            <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 cursor-pointer">
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
               <input
                 type="checkbox"
                 checked={agreedTerms}
                 onChange={(e) => setAgreedTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500 accent-orange-500"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-orange-500 accent-orange-500 focus:ring-orange-500"
               />
-              <span className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                Saya menyatakan unit gadget dikembalikan lengkap dengan kotak kemasan resmi, adaptor pengisi daya, dan paket aksesoris bonus 3-in-1.
+              <span className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                Saya menyatakan unit gadget dikembalikan lengkap dengan kotak
+                kemasan resmi, adaptor pengisi daya, dan paket aksesoris bonus
+                3-in-1.
               </span>
             </label>
-
           </div>
 
           {/* Sticky Footer Action Bar */}
-          <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-8">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="cursor-pointer rounded-full px-5 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={submitting || uploading}
-              className="inline-flex items-center gap-2 rounded-full bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-6 py-2.5 text-xs font-bold shadow-sm shadow-orange-500/25 transition-all duration-200 cursor-pointer disabled:opacity-50"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-orange-500 px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 active:scale-95 disabled:opacity-50"
             >
               {submitting ? (
                 <>
@@ -546,7 +588,6 @@ export function ReturnModal({
               )}
             </button>
           </div>
-
         </form>
       </div>
     </div>

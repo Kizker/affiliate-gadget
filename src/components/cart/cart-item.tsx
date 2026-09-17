@@ -52,7 +52,7 @@ export default function CartItem({ item }: CartItemProps) {
             onClick={() => toggleItemSelection(item.id)}
             className={`flex h-5 w-5 items-center justify-center rounded-lg border transition-all duration-150 ${
               isSelected
-                ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600'
+                ? 'shadow-xs border-orange-500 bg-orange-500 text-white'
                 : 'border-slate-300 bg-slate-50 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800'
             }`}
             aria-label={`Pilih ${item.name}`}

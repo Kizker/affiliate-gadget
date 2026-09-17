@@ -85,8 +85,8 @@ function GadgetKatalogContent() {
                   onClick={() => setBrand(b)}
                   className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all duration-200 sm:rounded-2xl sm:px-4 sm:py-2 sm:text-xs ${
                     brand === b
-                      ? 'shadow-2xs bg-slate-950 text-white dark:bg-white dark:text-slate-950'
-                      : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                      ? 'shadow-xs border border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
+                      : 'border border-transparent text-slate-600 hover:bg-slate-100/80 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
                   }`}
                 >
                   {b === 'ALL' ? 'Semua Merek' : b}

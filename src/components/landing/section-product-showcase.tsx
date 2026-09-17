@@ -125,8 +125,8 @@ export function SectionProductShowcase() {
               onClick={() => setSelectedCategory(c.id)}
               className={`whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors ${
                 selectedCategory === c.id
-                  ? 'bg-slate-900 text-white shadow-sm dark:bg-blue-600'
-                  : 'border border-slate-200/80 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
+                  ? 'shadow-xs border border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
+                  : 'border border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
               }`}
             >
               {c.label}

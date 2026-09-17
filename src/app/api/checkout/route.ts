@@ -22,6 +22,7 @@ import {
   WEIGHT_THRESHOLD_GRAM,
 } from '@/lib/constants/shipping'
 import { calculateVoucherDiscountAmount } from '@/lib/constants/voucher'
+import { createMidtransSnapTransaction } from '@/lib/midtrans'
 
 interface CartItem {
   type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
@@ -842,10 +843,17 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // 7. Payment Gateway Integration:
+    // In-house custom payment modal charges Midtrans Core API on-demand (/api/payment/charge)
+    const snapToken: string | null = null
+    const snapRedirectUrl: string | null = null
+
     const responsePayload = {
       success: true,
       orders: createdOrders,
       bankAccounts,
+      snapToken,
+      snapRedirectUrl,
     }
 
     // Cache idempotency response if key provided (TTL 600 detik)

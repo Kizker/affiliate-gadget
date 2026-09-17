@@ -17,7 +17,10 @@ import {
 } from 'lucide-react'
 import GoogleMapsProvider from '@/components/maps/google-maps-provider'
 import AddressMapPicker from '@/components/maps/address-map-picker'
-import { SearchableCombobox, ComboboxOption } from '@/components/ui/searchable-combobox'
+import {
+  SearchableCombobox,
+  ComboboxOption,
+} from '@/components/ui/searchable-combobox'
 import { INDONESIA_PROVINCES } from '@/data/indonesia-regions'
 import { useToast } from '@/hooks/use-toast'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -75,7 +78,7 @@ export function AddressModal({
   const [phone, setPhone] = useState('')
   const [label, setLabel] = useState<'Rumah' | 'Kantor'>('Rumah')
   const [fullAddress, setFullAddress] = useState('')
-  
+
   // Administrative Region names
   const [province, setProvince] = useState('')
   const [city, setCity] = useState('')
@@ -115,13 +118,19 @@ export function AddressModal({
           setProvinceList(data.map((p: any) => ({ id: p.id, name: p.name })))
         } else {
           setProvinceList(
-            INDONESIA_PROVINCES.map((p, idx) => ({ id: String(idx + 1), name: p.name }))
+            INDONESIA_PROVINCES.map((p, idx) => ({
+              id: String(idx + 1),
+              name: p.name,
+            }))
           )
         }
       } catch (err) {
         console.error('Error loading provinces:', err)
         setProvinceList(
-          INDONESIA_PROVINCES.map((p, idx) => ({ id: String(idx + 1), name: p.name }))
+          INDONESIA_PROVINCES.map((p, idx) => ({
+            id: String(idx + 1),
+            name: p.name,
+          }))
         )
       } finally {
         setLoadingProvinces(false)
@@ -139,7 +148,9 @@ export function AddressModal({
     }
     setLoadingCities(true)
     try {
-      const res = await fetch(`/api/regions?type=regencies&provinceId=${provId}`)
+      const res = await fetch(
+        `/api/regions?type=regencies&provinceId=${provId}`
+      )
       if (res.ok) {
         const data = await res.json()
         setCityList(data.map((c: any) => ({ id: c.id, name: c.name })))
@@ -204,7 +215,9 @@ export function AddressModal({
       setSelectedProvinceId(opt.id)
       fetchCities(opt.id)
     } else {
-      const found = provinceList.find((p) => p.name.toLowerCase() === name.toLowerCase())
+      const found = provinceList.find(
+        (p) => p.name.toLowerCase() === name.toLowerCase()
+      )
       if (found) {
         setSelectedProvinceId(found.id)
         fetchCities(found.id)
@@ -225,7 +238,9 @@ export function AddressModal({
       setSelectedCityId(opt.id)
       fetchDistricts(opt.id)
     } else {
-      const found = cityList.find((c) => c.name.toLowerCase() === name.toLowerCase())
+      const found = cityList.find(
+        (c) => c.name.toLowerCase() === name.toLowerCase()
+      )
       if (found) {
         setSelectedCityId(found.id)
         fetchDistricts(found.id)
@@ -237,7 +252,9 @@ export function AddressModal({
 
     // Auto-fill postal code if available in static dataset
     for (const prov of INDONESIA_PROVINCES) {
-      const foundCity = prov.cities.find((c) => c.name.toLowerCase() === name.toLowerCase())
+      const foundCity = prov.cities.find(
+        (c) => c.name.toLowerCase() === name.toLowerCase()
+      )
       if (foundCity && foundCity.postalCode && !postalCode) {
         setPostalCode(foundCity.postalCode)
       }
@@ -252,7 +269,9 @@ export function AddressModal({
       setSelectedDistrictId(opt.id)
       fetchVillages(opt.id)
     } else {
-      const found = districtList.find((d) => d.name.toLowerCase() === name.toLowerCase())
+      const found = districtList.find(
+        (d) => d.name.toLowerCase() === name.toLowerCase()
+      )
       if (found) {
         setSelectedDistrictId(found.id)
         fetchVillages(found.id)
@@ -314,27 +333,51 @@ export function AddressModal({
     e.preventDefault()
 
     if (!recipientName.trim()) {
-      toast({ title: 'Wajib Diisi', description: 'Masukkan nama penerima paket.', variant: 'destructive' })
+      toast({
+        title: 'Wajib Diisi',
+        description: 'Masukkan nama penerima paket.',
+        variant: 'destructive',
+      })
       return
     }
     if (!phone.trim()) {
-      toast({ title: 'Wajib Diisi', description: 'Masukkan nomor telepon penerima.', variant: 'destructive' })
+      toast({
+        title: 'Wajib Diisi',
+        description: 'Masukkan nomor telepon penerima.',
+        variant: 'destructive',
+      })
       return
     }
     if (!fullAddress.trim()) {
-      toast({ title: 'Wajib Diisi', description: 'Masukkan detail alamat pengiriman.', variant: 'destructive' })
+      toast({
+        title: 'Wajib Diisi',
+        description: 'Masukkan detail alamat pengiriman.',
+        variant: 'destructive',
+      })
       return
     }
     if (!province.trim()) {
-      toast({ title: 'Wajib Diisi', description: 'Pilih provinsi pengiriman.', variant: 'destructive' })
+      toast({
+        title: 'Wajib Diisi',
+        description: 'Pilih provinsi pengiriman.',
+        variant: 'destructive',
+      })
       return
     }
     if (!city.trim()) {
-      toast({ title: 'Wajib Diisi', description: 'Pilih kota atau kabupaten pengiriman.', variant: 'destructive' })
+      toast({
+        title: 'Wajib Diisi',
+        description: 'Pilih kota atau kabupaten pengiriman.',
+        variant: 'destructive',
+      })
       return
     }
     if (!postalCode.trim()) {
-      toast({ title: 'Wajib Diisi', description: 'Masukkan kode pos pengiriman.', variant: 'destructive' })
+      toast({
+        title: 'Wajib Diisi',
+        description: 'Masukkan kode pos pengiriman.',
+        variant: 'destructive',
+      })
       return
     }
 
@@ -398,46 +441,46 @@ export function AddressModal({
 
   return createPortal(
     <AnimatePresence>
-      <div 
-        className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-full h-full min-h-screen z-[999999] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+      <div
+        className="fixed inset-0 bottom-0 left-0 right-0 top-0 z-[999999] flex h-full min-h-screen w-full items-center justify-center overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-md duration-200 animate-in fade-in sm:p-4 md:p-6"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose()
         }}
       >
-        
         {/* Animated Modal Container */}
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl border border-slate-200/80 bg-white shadow-2xl overflow-hidden"
+          className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          
           {/* 1. Ultra-Clean Header with Integrated Type Capsule */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-900 border border-slate-200/60 shadow-2xs">
+              <div className="shadow-2xs flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/60 bg-slate-100 text-slate-900">
                 <MapPin className="h-4 w-4 text-orange-600" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-slate-950 tracking-tight">
-                  {addressToEdit ? 'Ubah Alamat Pengiriman' : 'Tambah Alamat Baru'}
+                <h3 className="text-sm font-black tracking-tight text-slate-950">
+                  {addressToEdit
+                    ? 'Ubah Alamat Pengiriman'
+                    : 'Tambah Alamat Baru'}
                 </h3>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               {/* Sleek Segmented Capsule for Label */}
-              <div className="hidden sm:flex rounded-full border border-slate-200/70 bg-slate-100/80 p-0.5 gap-1 shadow-2xs">
+              <div className="shadow-2xs hidden gap-1 rounded-full border border-slate-200/70 bg-slate-100/80 p-0.5 sm:flex">
                 <button
                   type="button"
                   onClick={() => setLabel('Rumah')}
-                  className={`flex items-center gap-1.5 rounded-full py-1 px-3 text-[11px] font-bold transition-all cursor-pointer ${
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold transition-all ${
                     label === 'Rumah'
-                      ? 'bg-slate-950 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-950 hover:bg-white/60'
+                      ? 'shadow-xs border border-orange-200/80 bg-white text-orange-600'
+                      : 'text-slate-600 hover:bg-white/60 hover:text-slate-950'
                   }`}
                 >
                   <Home className="h-3 w-3" />
@@ -446,10 +489,10 @@ export function AddressModal({
                 <button
                   type="button"
                   onClick={() => setLabel('Kantor')}
-                  className={`flex items-center gap-1.5 rounded-full py-1 px-3 text-[11px] font-bold transition-all cursor-pointer ${
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold transition-all ${
                     label === 'Kantor'
-                      ? 'bg-slate-950 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-950 hover:bg-white/60'
+                      ? 'shadow-xs border border-orange-200/80 bg-white text-orange-600'
+                      : 'text-slate-600 hover:bg-white/60 hover:text-slate-950'
                   }`}
                 >
                   <Building2 className="h-3 w-3" />
@@ -460,7 +503,7 @@ export function AddressModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -468,13 +511,15 @@ export function AddressModal({
           </div>
 
           {/* Mobile Label Selector (Visible only on small screens) */}
-          <div className="sm:hidden px-5 pt-3 pb-0 bg-slate-50/50 border-b border-slate-100">
-            <div className="rounded-full border border-slate-200/70 bg-slate-100/80 p-0.5 flex gap-1 mb-3">
+          <div className="border-b border-slate-100 bg-slate-50/50 px-5 pb-0 pt-3 sm:hidden">
+            <div className="mb-3 flex gap-1 rounded-full border border-slate-200/70 bg-slate-100/80 p-0.5">
               <button
                 type="button"
                 onClick={() => setLabel('Rumah')}
-                className={`flex-1 flex items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-bold transition-all ${
-                  label === 'Rumah' ? 'bg-slate-950 text-white shadow-xs' : 'text-slate-600'
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-bold transition-all ${
+                  label === 'Rumah'
+                    ? 'shadow-xs border border-orange-200/80 bg-white text-orange-600'
+                    : 'text-slate-600'
                 }`}
               >
                 <Home className="h-3 w-3" />
@@ -483,8 +528,10 @@ export function AddressModal({
               <button
                 type="button"
                 onClick={() => setLabel('Kantor')}
-                className={`flex-1 flex items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-bold transition-all ${
-                  label === 'Kantor' ? 'bg-slate-950 text-white shadow-xs' : 'text-slate-600'
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-bold transition-all ${
+                  label === 'Kantor'
+                    ? 'shadow-xs border border-orange-200/80 bg-white text-orange-600'
+                    : 'text-slate-600'
                 }`}
               >
                 <Building2 className="h-3 w-3" />
@@ -494,28 +541,30 @@ export function AddressModal({
           </div>
 
           {/* 2. Scrollable Body: Balanced 2-Column Grid on Desktop */}
-          <form id="address-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6">
+          <form
+            id="address-form"
+            onSubmit={handleSubmit}
+            className="flex-1 overflow-y-auto p-5 sm:p-6"
+          >
             <GoogleMapsProvider>
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                
+              <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
                 {/* ---------------- LEFT COLUMN: FORM INPUTS (7 Cols) ---------------- */}
-                <div className="lg:col-span-7 space-y-4">
-                  
+                <div className="space-y-4 lg:col-span-7">
                   {/* Recipient Name & Phone in 2-Column Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="mb-1 block text-[11px] font-bold text-slate-700">
                         Nama Penerima <span className="text-red-500">*</span>
                       </label>
                       <div className="relative flex items-center">
-                        <User className="absolute left-3.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                        <User className="pointer-events-none absolute left-3.5 h-3.5 w-3.5 text-slate-400" />
                         <input
                           type="text"
                           value={recipientName}
                           onChange={(e) => setRecipientName(e.target.value)}
                           placeholder="Nama lengkap penerima"
                           required
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2 pl-9 pr-3.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2 pl-9 pr-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                       </div>
                     </div>
@@ -525,14 +574,14 @@ export function AddressModal({
                         Nomor WhatsApp <span className="text-red-500">*</span>
                       </label>
                       <div className="relative flex items-center">
-                        <Phone className="absolute left-3.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                        <Phone className="pointer-events-none absolute left-3.5 h-3.5 w-3.5 text-slate-400" />
                         <input
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="081234567890"
                           required
-                          className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2 pl-9 pr-3.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2 pl-9 pr-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                       </div>
                     </div>
@@ -541,7 +590,8 @@ export function AddressModal({
                   {/* Full Text Address Details */}
                   <div>
                     <label className="mb-1 block text-[11px] font-bold text-slate-700">
-                      Detail Alamat Lengkap & Patokan <span className="text-red-500">*</span>
+                      Detail Alamat Lengkap & Patokan{' '}
+                      <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       value={fullAddress}
@@ -549,12 +599,12 @@ export function AddressModal({
                       rows={2}
                       required
                       placeholder="Nama jalan, nomor rumah/gedung, blok/unit, RT/RW, patokan lokasi..."
-                      className="w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs"
+                      className="focus:shadow-xs w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                     />
                   </div>
 
                   {/* 1. Provinsi & Kota / Kabupaten */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <SearchableCombobox
                       label="Provinsi"
                       placeholder="Pilih Provinsi..."
@@ -568,7 +618,11 @@ export function AddressModal({
 
                     <SearchableCombobox
                       label="Kota / Kabupaten"
-                      placeholder={province ? 'Pilih Kota/Kab...' : 'Pilih Provinsi dahulu...'}
+                      placeholder={
+                        province
+                          ? 'Pilih Kota/Kab...'
+                          : 'Pilih Provinsi dahulu...'
+                      }
                       searchPlaceholder="Cari kota / kabupaten..."
                       options={cityList}
                       value={city}
@@ -580,10 +634,12 @@ export function AddressModal({
                   </div>
 
                   {/* 2. Kecamatan & Desa / Kelurahan */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <SearchableCombobox
                       label="Kecamatan"
-                      placeholder={city ? 'Pilih Kecamatan...' : 'Pilih Kota dahulu...'}
+                      placeholder={
+                        city ? 'Pilih Kecamatan...' : 'Pilih Kota dahulu...'
+                      }
                       searchPlaceholder="Cari kecamatan..."
                       options={districtList}
                       value={district}
@@ -594,7 +650,11 @@ export function AddressModal({
 
                     <SearchableCombobox
                       label="Desa / Kelurahan"
-                      placeholder={district ? 'Pilih Desa/Kelurahan...' : 'Pilih Kecamatan dahulu...'}
+                      placeholder={
+                        district
+                          ? 'Pilih Desa/Kelurahan...'
+                          : 'Pilih Kecamatan dahulu...'
+                      }
                       searchPlaceholder="Cari desa / kelurahan..."
                       options={villageList}
                       value={village}
@@ -605,7 +665,7 @@ export function AddressModal({
                   </div>
 
                   {/* 3. Kode Pos & Alamat Utama */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                  <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-12">
                     <div className="sm:col-span-6">
                       <label className="mb-1 block text-[11px] font-bold text-slate-700">
                         Kode Pos <span className="text-red-500">*</span>
@@ -617,31 +677,30 @@ export function AddressModal({
                         placeholder="Contoh: 12810"
                         maxLength={5}
                         required
-                        className="w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2 px-3.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-300 focus:bg-white focus:shadow-xs font-mono"
+                        className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 px-3.5 py-2 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                       />
                     </div>
 
                     <div className="sm:col-span-6 sm:pt-4">
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
+                      <label className="group inline-flex cursor-pointer select-none items-center gap-2">
                         <input
                           type="checkbox"
                           checked={isDefault}
                           onChange={(e) => setIsDefault(e.target.checked)}
-                          className="h-4 w-4 rounded border-slate-300 text-slate-950 accent-slate-950 cursor-pointer"
+                          className="h-4 w-4 cursor-pointer rounded border-slate-300 text-slate-950 accent-slate-950"
                         />
-                        <span className="text-xs font-medium text-slate-700 group-hover:text-slate-950 transition">
+                        <span className="text-xs font-medium text-slate-700 transition group-hover:text-slate-950">
                           Atur sebagai alamat utama
                         </span>
                       </label>
                     </div>
                   </div>
-
                 </div>
 
                 {/* ---------------- RIGHT COLUMN: MAP & PINPOINT GPS (5 Cols) ---------------- */}
-                <div className="lg:col-span-5 space-y-2">
+                <div className="space-y-2 lg:col-span-5">
                   {/* Embedded Compact Interactive Map with OSM/Google Maps */}
-                  <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-2xs relative">
+                  <div className="shadow-2xs relative overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100">
                     <AddressMapPicker
                       onLocationSelect={handleLocationSelect}
                       initialLat={latitude || undefined}
@@ -651,34 +710,36 @@ export function AddressModal({
                   </div>
 
                   {latitude && longitude ? (
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 font-mono">
+                    <div className="flex items-center justify-between px-1 font-mono text-[10px] text-slate-400">
                       <span>Lat: {latitude.toFixed(5)}</span>
                       <span>Lng: {longitude.toFixed(5)}</span>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-slate-400 px-1">
-                      Klik pada peta atau tombol Deteksi GPS untuk membantu kurir menemukan alamat Anda secara presisi.
+                    <p className="px-1 text-[11px] text-slate-400">
+                      Klik pada peta atau tombol Deteksi GPS untuk membantu
+                      kurir menemukan alamat Anda secara presisi.
                     </p>
                   )}
                 </div>
-
               </div>
             </GoogleMapsProvider>
           </form>
 
           {/* 3. Sticky Footer Actions (Always visible) */}
-          <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 bg-slate-50/70 shrink-0">
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 hidden sm:flex">
+          <div className="flex shrink-0 items-center justify-between border-t border-slate-100 bg-slate-50/70 px-6 py-3.5">
+            <div className="flex hidden items-center gap-1.5 text-[11px] text-slate-400 sm:flex">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Data alamat terenkripsi & sesuai standar logistik nasional.</span>
+              <span>
+                Data alamat terenkripsi & sesuai standar logistik nasional.
+              </span>
             </div>
 
-            <div className="flex items-center gap-2.5 ml-auto">
+            <div className="ml-auto flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
-                className="rounded-full border border-slate-200/80 bg-white px-5 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+                className="shadow-2xs cursor-pointer rounded-full border border-slate-200/80 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
               >
                 Batal
               </button>
@@ -686,7 +747,7 @@ export function AddressModal({
                 type="submit"
                 form="address-form"
                 disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-6 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-6 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
               >
                 {submitting ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -697,7 +758,6 @@ export function AddressModal({
               </button>
             </div>
           </div>
-
         </motion.div>
       </div>
     </AnimatePresence>,

@@ -5,7 +5,9 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import Script from 'next/script'
 import { toast } from 'sonner'
+import { loadMidtransSnap } from '@/lib/snap'
 import { useCartStore } from '@/lib/store/cart-store'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
@@ -520,6 +522,14 @@ export default function CheckoutPage() {
         .map((o: CheckoutOrderResponseItem) => o.order?.id || o.id)
         .filter(Boolean)
         .join(',')
+
+      // Trigger Custom In-House Payment Flow if payment method is GATEWAY
+      if (paymentMethod === 'GATEWAY') {
+        router.push(`/order-confirmation/multiple?orders=${orderIds}&autoPay=1`)
+        toast.success('Pesanan berhasil dibuat! Silakan selesaikan pembayaran.')
+        return
+      }
+
       router.push(`/order-confirmation/multiple?orders=${orderIds}`)
       toast.success(
         'Pesanan berhasil dibuat dengan Asuransi & Garansi 30 Hari!'
@@ -715,13 +725,7 @@ export default function CheckoutPage() {
                                     <span className="text-[11px] font-medium text-slate-500">
                                       {addr.phone}
                                     </span>
-                                    <span
-                                      className={`inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-                                        addr.label === 'Kantor'
-                                          ? 'border-blue-200/80 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300'
-                                          : 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                      }`}
-                                    >
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                                       {addr.label === 'Kantor' ? (
                                         <Building2 className="h-2.5 w-2.5" />
                                       ) : (
@@ -730,8 +734,8 @@ export default function CheckoutPage() {
                                       {addr.label || 'Rumah'}
                                     </span>
                                     {addr.isDefault && (
-                                      <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-950 px-2 py-0.5 text-[10px] font-bold text-white dark:bg-slate-100 dark:text-slate-900">
-                                        <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-orange-200/60 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-700 dark:border-orange-900/60 dark:bg-orange-950/30 dark:text-orange-300">
+                                        <Star className="h-2.5 w-2.5 fill-orange-500 text-orange-500" />
                                         Utama
                                       </span>
                                     )}
@@ -798,23 +802,30 @@ export default function CheckoutPage() {
                         }}
                         className={`rounded-2xl border p-3.5 text-left transition-all ${
                           courier === 'JNE'
-                            ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600'
-                            : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'
+                            ? 'shadow-xs border-orange-500 bg-orange-50/20 text-slate-950 ring-1 ring-orange-500/40 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
                         }`}
                       >
                         <div className="flex items-center justify-between text-xs font-bold">
                           <span className="flex items-center gap-1.5">
-                            <Truck className="h-3.5 w-3.5" /> JNE Express
+                            <Truck
+                              className={`h-3.5 w-3.5 ${courier === 'JNE' ? 'text-orange-500' : 'text-slate-400'}`}
+                            />{' '}
+                            JNE Express
                           </span>
-                          <span>
+                          <span
+                            className={
+                              courier === 'JNE'
+                                ? 'font-bold text-orange-600 dark:text-orange-400'
+                                : 'text-slate-900 dark:text-white'
+                            }
+                          >
                             {courierService === 'YES' && courier === 'JNE'
                               ? `Rp ${jneYesCost.toLocaleString('id-ID')}`
                               : `Rp ${jneRegCost.toLocaleString('id-ID')}`}
                           </span>
                         </div>
-                        <p
-                          className={`mt-1 text-[10px] ${courier === 'JNE' ? 'text-slate-300' : 'text-slate-400'}`}
-                        >
+                        <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
                           {courierService === 'YES' && courier === 'JNE'
                             ? 'Layanan YES (1 Hari Esok Sampai)'
                             : 'Layanan Reguler (1-2 Hari Kerja)'}
@@ -829,19 +840,28 @@ export default function CheckoutPage() {
                         }}
                         className={`rounded-2xl border p-3.5 text-left transition-all ${
                           courier === 'GOJEK'
-                            ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600'
-                            : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'
+                            ? 'shadow-xs border-orange-500 bg-orange-50/20 text-slate-950 ring-1 ring-orange-500/40 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
                         }`}
                       >
                         <div className="flex items-center justify-between text-xs font-bold">
                           <span className="flex items-center gap-1.5">
-                            <Truck className="h-3.5 w-3.5" /> Gojek Instant
+                            <Truck
+                              className={`h-3.5 w-3.5 ${courier === 'GOJEK' ? 'text-orange-500' : 'text-slate-400'}`}
+                            />{' '}
+                            Gojek Instant
                           </span>
-                          <span>Rp {gojekCost.toLocaleString('id-ID')}</span>
+                          <span
+                            className={
+                              courier === 'GOJEK'
+                                ? 'font-bold text-orange-600 dark:text-orange-400'
+                                : 'text-slate-900 dark:text-white'
+                            }
+                          >
+                            Rp {gojekCost.toLocaleString('id-ID')}
+                          </span>
                         </div>
-                        <p
-                          className={`mt-1 text-[10px] ${courier === 'GOJEK' ? 'text-slate-300' : 'text-slate-400'}`}
-                        >
+                        <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
                           Langsung Sampai (Maks 2 Jam)
                         </p>
                       </button>
@@ -864,7 +884,7 @@ export default function CheckoutPage() {
                             onClick={() => setCourierService('REG')}
                             className={`flex flex-col rounded-xl px-3 py-2 text-left transition-all ${
                               courierService === 'REG'
-                                ? 'shadow-2xs border border-blue-600 bg-blue-50/80 font-bold text-blue-950 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-100'
+                                ? 'shadow-xs border border-orange-500 bg-orange-50/30 font-bold text-slate-950 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
                                 : 'border border-slate-200/80 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300'
                             }`}
                           >
@@ -880,13 +900,13 @@ export default function CheckoutPage() {
                             onClick={() => setCourierService('YES')}
                             className={`flex flex-col rounded-xl px-3 py-2 text-left transition-all ${
                               courierService === 'YES'
-                                ? 'shadow-2xs border border-orange-500 bg-orange-50/80 font-bold text-orange-950 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-100'
+                                ? 'shadow-xs border border-orange-500 bg-orange-50/30 font-bold text-slate-950 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
                                 : 'border border-slate-200/80 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300'
                             }`}
                           >
                             <span className="flex items-center justify-between text-xs">
                               <span>JNE YES</span>
-                              <span className="py-0.2 rounded bg-orange-500/15 px-1 text-[9px] font-semibold text-orange-600 dark:text-orange-400">
+                              <span className="py-0.2 rounded bg-slate-100 px-1 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                                 Esok
                               </span>
                             </span>
@@ -919,7 +939,7 @@ export default function CheckoutPage() {
                   <label
                     className={`flex cursor-pointer items-start justify-between rounded-2xl border p-4 transition-all ${
                       paymentMethod === 'GATEWAY'
-                        ? 'border-slate-950 bg-slate-50 dark:border-blue-500 dark:bg-blue-950/20'
+                        ? 'border-orange-500 bg-orange-50/20 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20'
                         : 'border-slate-200 hover:border-slate-300 dark:border-slate-800'
                     }`}
                   >
@@ -929,7 +949,7 @@ export default function CheckoutPage() {
                         name="paymentMethod"
                         checked={paymentMethod === 'GATEWAY'}
                         onChange={() => setPaymentMethod('GATEWAY')}
-                        className="mt-0.5 h-4 w-4 text-slate-950 focus:ring-slate-950 dark:text-blue-600"
+                        className="mt-0.5 h-4 w-4 text-orange-500 focus:ring-orange-500"
                       />
                       <div>
                         <span className="block text-xs font-bold text-slate-950 dark:text-white">
@@ -942,7 +962,7 @@ export default function CheckoutPage() {
                         </p>
                       </div>
                     </div>
-                    <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                       Rekomendasi
                     </span>
                   </label>
@@ -951,7 +971,7 @@ export default function CheckoutPage() {
                   <label
                     className={`flex cursor-pointer items-start justify-between rounded-2xl border p-4 transition-all ${
                       paymentMethod === 'MANUAL_TRANSFER'
-                        ? 'border-slate-950 bg-slate-50 dark:border-blue-500 dark:bg-blue-950/20'
+                        ? 'border-orange-500 bg-orange-50/20 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20'
                         : 'border-slate-200 hover:border-slate-300 dark:border-slate-800'
                     }`}
                   >
@@ -961,7 +981,7 @@ export default function CheckoutPage() {
                         name="paymentMethod"
                         checked={paymentMethod === 'MANUAL_TRANSFER'}
                         onChange={() => setPaymentMethod('MANUAL_TRANSFER')}
-                        className="mt-0.5 h-4 w-4 text-slate-950 focus:ring-slate-950 dark:text-blue-600"
+                        className="mt-0.5 h-4 w-4 text-orange-500 focus:ring-orange-500"
                       />
                       <div>
                         <span className="block text-xs font-bold text-slate-950 dark:text-white">
@@ -1338,6 +1358,20 @@ export default function CheckoutPage() {
       </main>
 
       <Footer variant="light" />
+
+      {/* Midtrans Snap JS SDK with fallback client key */}
+      <Script
+        src={
+          process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true'
+            ? 'https://app.midtrans.com/snap/snap.js'
+            : 'https://app.sandbox.midtrans.com/snap/snap.js'
+        }
+        data-client-key={
+          process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ||
+          'Mid-client-WIrTyc_9rhskvlK5'
+        }
+        strategy="afterInteractive"
+      />
     </div>
   )
 }

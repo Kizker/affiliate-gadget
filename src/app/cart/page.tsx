@@ -159,9 +159,9 @@ export default function CartPage() {
                       onClick={handleSelectAll}
                       className={`flex h-5 w-5 items-center justify-center rounded-lg border transition-all duration-150 ${
                         allSelected
-                          ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-blue-600 dark:bg-blue-600'
+                          ? 'shadow-xs border-orange-500 bg-orange-500 text-white'
                           : someSelected
-                            ? 'border-slate-400 bg-slate-200 text-slate-900 dark:border-slate-600 dark:bg-slate-700'
+                            ? 'border-orange-400 bg-orange-100 text-orange-900 dark:border-orange-600 dark:bg-orange-950/50'
                             : 'border-slate-300 bg-slate-50 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800'
                       }`}
                       aria-label="Pilih semua item"

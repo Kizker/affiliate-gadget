@@ -32,6 +32,14 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'ui-avatars.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'api.sandbox.midtrans.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.midtrans.com',
+      },
     ],
   },
   serverExternalPackages: [

@@ -7,6 +7,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
+import { CustomPaymentModal } from '@/components/payment/custom-payment-modal'
+import { loadMidtransSnap } from '@/lib/snap'
 import {
   CheckCircle2,
   Package,
@@ -21,6 +23,8 @@ import {
   Sparkles,
   ShoppingBag,
   ExternalLink,
+  CreditCard,
+  Building2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -48,8 +52,24 @@ interface Order {
   createdAt: string
   items: OrderItem[]
   store?: {
+    id: string
     name: string
     city: string
+    bankName?: string
+    bankAccountNumber?: string
+    bankAccountName?: string
+    bankAccounts?: Array<{
+      bankName: string
+      accountNumber: string
+      accountName: string
+      isPrimary?: boolean
+    }>
+  }
+  payment?: {
+    id: string
+    method: 'CASH' | 'MANUAL_TRANSFER' | 'MIDTRANS'
+    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED'
+    amount: number
   }
 }
 
@@ -61,6 +81,15 @@ function MultipleOrderConfirmationContent() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [activePaymentOrder, setActivePaymentOrder] = useState<Order | null>(
+    null
+  )
+
+  const handleOpenPayment = (order: Order) => {
+    setActivePaymentOrder(order)
+    setPaymentModalOpen(true)
+  }
 
   const fetchOrders = useCallback(async () => {
     const rawIds =
@@ -109,6 +138,19 @@ function MultipleOrderConfirmationContent() {
       fetchOrders()
     }
   }, [status, router, fetchOrders])
+
+  // Automatically open CustomPaymentModal if autoPay=1 is in URL
+  useEffect(() => {
+    if (
+      orders.length > 0 &&
+      searchParams.get('autoPay') === '1' &&
+      orders[0]?.status === 'PENDING_PAYMENT' &&
+      orders[0]?.payment?.method === 'MIDTRANS'
+    ) {
+      setActivePaymentOrder(orders[0])
+      setPaymentModalOpen(true)
+    }
+  }, [orders, searchParams])
 
   const currentOrder = orders[currentIndex]
 
@@ -269,10 +311,23 @@ function MultipleOrderConfirmationContent() {
                 </div>
               </div>
 
-              <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-amber-200/50 bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:self-auto">
-                <Clock className="h-3 w-3" />
-                <span>Menunggu Konfirmasi</span>
-              </div>
+              {currentOrder.status === 'PENDING_PAYMENT' ? (
+                <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-amber-200/50 bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:self-auto">
+                  <CreditCard className="h-3 w-3" />
+                  <span>Menunggu Pembayaran</span>
+                </div>
+              ) : currentOrder.status === 'PAID' ||
+                currentOrder.payment?.status === 'SUCCESS' ? (
+                <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-emerald-200/50 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 sm:self-auto">
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span>Pembayaran Lunas</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-blue-200/50 bg-blue-50 px-3 py-1 text-[11px] font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 sm:self-auto">
+                  <Clock className="h-3 w-3" />
+                  <span>Menunggu Konfirmasi</span>
+                </div>
+              )}
             </div>
 
             {/* Items List */}
@@ -343,6 +398,84 @@ function MultipleOrderConfirmationContent() {
               </span>
             </div>
 
+            {/* Manual Transfer Instruction if PENDING_PAYMENT */}
+            {currentOrder.status === 'PENDING_PAYMENT' &&
+              currentOrder.payment?.method !== 'MIDTRANS' && (
+                <div className="border-t border-slate-100 bg-amber-50/40 p-5 dark:border-slate-800 dark:bg-amber-950/20 sm:p-6">
+                  {(() => {
+                    const primaryBank =
+                      currentOrder.store?.bankAccounts?.find(
+                        (b) => b.isPrimary
+                      ) ||
+                      currentOrder.store?.bankAccounts?.[0] ||
+                      (currentOrder.store?.bankAccountNumber
+                        ? {
+                            bankName:
+                              currentOrder.store.bankName || 'Bank Mandiri',
+                            accountNumber: currentOrder.store.bankAccountNumber,
+                            accountName:
+                              currentOrder.store.bankAccountName ||
+                              currentOrder.store.name,
+                          }
+                        : null)
+
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+                          <Building2 className="h-4 w-4 text-orange-500" />
+                          <span>Instruksi Transfer Bank Toko Resmi</span>
+                        </div>
+                        {primaryBank ? (
+                          <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+                            <div className="rounded-xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900">
+                              <span className="text-[10px] text-slate-400">
+                                Bank
+                              </span>
+                              <p className="font-semibold text-slate-900 dark:text-white">
+                                {primaryBank.bankName}
+                              </p>
+                            </div>
+                            <div className="rounded-xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900">
+                              <span className="text-[10px] text-slate-400">
+                                Nomor Rekening
+                              </span>
+                              <div className="flex items-center justify-between">
+                                <p className="font-mono font-bold text-slate-900 dark:text-white">
+                                  {primaryBank.accountNumber}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleCopy(primaryBank.accountNumber)
+                                  }
+                                  className="p-1 hover:text-orange-500"
+                                  title="Salin"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="rounded-xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900">
+                              <span className="text-[10px] text-slate-400">
+                                Atas Nama
+                              </span>
+                              <p className="font-semibold text-slate-900 dark:text-white">
+                                {primaryBank.accountName}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500">
+                            Silakan transfer total tagihan ke rekening resmi
+                            cabang toko.
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+
             {/* Guarantees Box */}
             <div className="border-t border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -383,16 +516,45 @@ function MultipleOrderConfirmationContent() {
               <span>Belanja Gadget Lainnya</span>
             </Link>
 
-            <Link
-              href="/dashboard/customer/orders"
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.99]"
-            >
-              <span>Cek Status & Klaim Garansi</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            {currentOrder.status === 'PENDING_PAYMENT' &&
+            currentOrder.payment?.method === 'MIDTRANS' ? (
+              <button
+                type="button"
+                onClick={() => handleOpenPayment(currentOrder)}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.99]"
+              >
+                <CreditCard className="h-4 w-4" />
+                <span>Bayar Sekarang via Midtrans</span>
+              </button>
+            ) : (
+              <Link
+                href="/dashboard/customer/orders"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.99]"
+              >
+                <span>Cek Status & Klaim Garansi</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
           </div>
         </div>
       </main>
+
+      {/* 100% Custom White-Label Payment Modal */}
+      {activePaymentOrder && (
+        <CustomPaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => {
+            setPaymentModalOpen(false)
+            fetchOrders()
+          }}
+          orderId={activePaymentOrder.id}
+          orderNumber={activePaymentOrder.orderNumber}
+          totalAmount={activePaymentOrder.total}
+          onPaymentSuccess={() => {
+            fetchOrders()
+          }}
+        />
+      )}
 
       <Footer variant="light" />
     </div>

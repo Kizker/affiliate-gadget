@@ -229,7 +229,7 @@ export function RatingModal({
                     onClick={() => handleAddTag(tag)}
                     className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
                       isSelected
-                        ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
+                        ? 'shadow-xs border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
                         : 'border-slate-200/70 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'
                     }`}
                   >

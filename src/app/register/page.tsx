@@ -258,15 +258,15 @@ export default function RegisterPage() {
                       }
                       className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${
                         formData.role === 'CUSTOMER'
-                          ? 'shadow-xs border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
-                          : 'border-slate-200/80 bg-slate-50/60 text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400'
+                          ? 'shadow-xs border-orange-500 bg-orange-50/25 text-slate-950 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
+                          : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'
                       }`}
                     >
                       <div
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
                           formData.role === 'CUSTOMER'
-                            ? 'bg-white/20 text-white dark:bg-slate-900/10 dark:text-slate-950'
-                            : 'shadow-2xs bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                            ? 'bg-orange-500 text-white'
+                            : 'shadow-2xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                         }`}
                       >
                         <User className="h-4 w-4" />
@@ -288,15 +288,15 @@ export default function RegisterPage() {
                       }
                       className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${
                         formData.role === 'MITRA'
-                          ? 'shadow-xs border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
-                          : 'border-slate-200/80 bg-slate-50/60 text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400'
+                          ? 'shadow-xs border-orange-500 bg-orange-50/25 text-slate-950 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
+                          : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'
                       }`}
                     >
                       <div
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
                           formData.role === 'MITRA'
-                            ? 'bg-white/20 text-white dark:bg-slate-900/10 dark:text-slate-950'
-                            : 'shadow-2xs bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                            ? 'bg-orange-500 text-white'
+                            : 'shadow-2xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                         }`}
                       >
                         <Store className="h-4 w-4" />

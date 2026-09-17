@@ -465,7 +465,7 @@ export default function CustomerSettingsPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-bold transition-all duration-200 ${
                   isActive
-                    ? 'shadow-xs bg-slate-950 text-white'
+                    ? 'shadow-xs bg-white font-bold text-orange-600'
                     : 'text-slate-600 hover:bg-white/60 hover:text-slate-950'
                 }`}
               >
@@ -657,8 +657,8 @@ export default function CustomerSettingsPage() {
                             onClick={() => setGender(item)}
                             className={`cursor-pointer rounded-full border px-3 py-2.5 text-xs font-bold transition-all ${
                               gender === item
-                                ? 'shadow-xs border-slate-950 bg-slate-950 text-white'
-                                : 'border-slate-200/70 bg-slate-50/80 text-slate-600 hover:border-slate-300 hover:bg-white'
+                                ? 'shadow-xs border-orange-500 bg-orange-50/80 font-bold text-orange-600'
+                                : 'border-slate-200/70 bg-white text-slate-600 hover:border-slate-300'
                             }`}
                           >
                             {item}

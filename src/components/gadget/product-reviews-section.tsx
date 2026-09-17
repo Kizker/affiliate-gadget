@@ -132,27 +132,33 @@ export function ProductReviewsSection({
       params.set('page', page.toString())
       params.set('limit', '15')
 
-      const res = await fetch(`/api/gadgets/${productId}/reviews?${params.toString()}`)
+      const res = await fetch(
+        `/api/gadgets/${productId}/reviews?${params.toString()}`
+      )
       const data = await res.json()
 
       if (data.success && data.data) {
         setReviews(data.data.reviews || [])
-        setStatistics(data.data.statistics || {
-          averageRating: 5.0,
-          totalReviews: 0,
-          satisfactionRate: 100,
-          starCounts: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
-          mediaCount: 0,
-          mediaGallery: [],
-        })
-        setUserEligibility(data.data.userEligibility || {
-          isLoggedIn: false,
-          canReview: false,
-          isDelivered: false,
-          eligibleOrderId: null,
-          eligibleVariantName: null,
-          existingReview: null,
-        })
+        setStatistics(
+          data.data.statistics || {
+            averageRating: 5.0,
+            totalReviews: 0,
+            satisfactionRate: 100,
+            starCounts: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+            mediaCount: 0,
+            mediaGallery: [],
+          }
+        )
+        setUserEligibility(
+          data.data.userEligibility || {
+            isLoggedIn: false,
+            canReview: false,
+            isDelivered: false,
+            eligibleOrderId: null,
+            eligibleVariantName: null,
+            existingReview: null,
+          }
+        )
       }
     } catch (error) {
       console.error('Error fetching product reviews:', error)
@@ -176,7 +182,9 @@ export function ProductReviewsSection({
     }
 
     try {
-      const res = await fetch(`/api/reviews/${reviewId}/helpful`, { method: 'POST' })
+      const res = await fetch(`/api/reviews/${reviewId}/helpful`, {
+        method: 'POST',
+      })
       const data = await res.json()
       if (res.ok && data.success) {
         setHelpfulVotes((prev) => ({ ...prev, [reviewId]: data.helpfulCount }))
@@ -196,7 +204,9 @@ export function ProductReviewsSection({
     }
 
     if (!userEligibility.canReview && !userEligibility.existingReview) {
-      toast.info('Ulasan hanya dapat diberikan setelah Anda membeli dan mengonfirmasi penerimaan barang.')
+      toast.info(
+        'Ulasan hanya dapat diberikan setelah Anda membeli dan mengonfirmasi penerimaan barang.'
+      )
     }
 
     setIsReviewModalOpen(true)
@@ -207,7 +217,9 @@ export function ProductReviewsSection({
     const parts = name.trim().split(' ')
     if (parts.length === 1) {
       const first = parts[0]
-      return first.length > 2 ? `${first.slice(0, 2)}***${first.slice(-1)}` : `${first}*`
+      return first.length > 2
+        ? `${first.slice(0, 2)}***${first.slice(-1)}`
+        : `${first}*`
     }
     return `${parts[0]} ${parts[1].charAt(0)}***`
   }
@@ -222,25 +234,25 @@ export function ProductReviewsSection({
   }
 
   return (
-    <section className="mt-12 pt-10 border-t border-slate-200/80 dark:border-slate-800" aria-label="Ulasan Pembeli">
-      
+    <section
+      className="mt-12 border-t border-slate-200/80 pt-10 dark:border-slate-800"
+      aria-label="Ulasan Pembeli"
+    >
       {/* 1. Header & Rating Overview Card */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-7">
-        
+      <div className="shadow-xs space-y-7 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8">
         {/* Section Title Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+          <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-2xl">
             Ulasan & Kepuasan Pembeli
           </h2>
         </div>
 
         {/* Rating Stats & Breakdown (Unified 2-Column Responsive Layout) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          
+        <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12">
           {/* Left Column: Big Rating Hero Score (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left space-y-3">
+          <div className="flex flex-col items-center space-y-3 text-center lg:col-span-5 lg:items-start lg:text-left">
             <div className="flex items-baseline gap-2">
-              <span className="text-5xl sm:text-6xl font-black text-slate-950 dark:text-white tabular-nums tracking-tight">
+              <span className="text-5xl font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-6xl">
                 {statistics.averageRating.toFixed(1)}
               </span>
               <span className="text-base font-bold text-slate-400">/ 5.0</span>
@@ -267,19 +279,24 @@ export function ProductReviewsSection({
 
             {statistics.totalReviews > 0 && (
               <div className="pt-0.5">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/50">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/50 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>{statistics.satisfactionRate}% Pembeli Merekomendasikan</span>
+                  <span>
+                    {statistics.satisfactionRate}% Pembeli Merekomendasikan
+                  </span>
                 </span>
               </div>
             )}
           </div>
 
           {/* Right Column: Star Breakdown Interactive Bars (7 cols) */}
-          <div className="lg:col-span-7 space-y-2.5 lg:border-l lg:border-slate-100 lg:dark:border-slate-800/80 lg:pl-10">
+          <div className="space-y-2.5 lg:col-span-7 lg:border-l lg:border-slate-100 lg:pl-10 lg:dark:border-slate-800/80">
             {[5, 4, 3, 2, 1].map((star) => {
               const count = statistics.starCounts[star] || 0
-              const percentage = statistics.totalReviews > 0 ? (count / statistics.totalReviews) * 100 : 0
+              const percentage =
+                statistics.totalReviews > 0
+                  ? (count / statistics.totalReviews) * 100
+                  : 0
               const isSelected = selectedRating === star
 
               return (
@@ -287,48 +304,47 @@ export function ProductReviewsSection({
                   key={star}
                   type="button"
                   onClick={() => setSelectedRating(isSelected ? null : star)}
-                  className={`w-full flex items-center gap-3 text-xs group cursor-pointer p-1.5 rounded-xl transition-all duration-200 ${
+                  className={`group flex w-full cursor-pointer items-center gap-3 rounded-xl p-1.5 text-xs transition-all duration-200 ${
                     isSelected
                       ? 'bg-orange-50/80 dark:bg-orange-950/30'
                       : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 w-12 shrink-0 font-bold text-slate-700 dark:text-slate-300">
+                  <div className="flex w-12 shrink-0 items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
                     <span className="tabular-nums">{star}</span>
                     <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                   </div>
 
-                  <div className="flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         isSelected
                           ? 'bg-orange-500'
                           : star >= 4
-                          ? 'bg-amber-400 group-hover:bg-amber-500'
-                          : 'bg-slate-300 dark:bg-slate-600'
+                            ? 'bg-amber-400 group-hover:bg-amber-500'
+                            : 'bg-slate-300 dark:bg-slate-600'
                       }`}
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
 
-                  <span className="w-10 text-right font-mono text-[11px] text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 font-semibold shrink-0 tabular-nums">
+                  <span className="w-10 shrink-0 text-right font-mono text-[11px] font-semibold tabular-nums text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200">
                     {count}
                   </span>
                 </button>
               )
             })}
           </div>
-
         </div>
 
         {/* 2. Customer Media Gallery Strip (Photos & Videos Carousel) */}
         {statistics.mediaGallery.length > 0 && (
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+          <div className="space-y-3 border-t border-slate-100 pt-4 dark:border-slate-800">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
                 <Camera className="h-3.5 w-3.5 text-orange-500" />
                 <span>Foto & Video dari Pembeli</span>
-                <span className="rounded-full bg-slate-100 px-2 py-0.2 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <span className="py-0.2 rounded-full bg-slate-100 px-2 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                   {statistics.mediaGallery.length}
                 </span>
               </span>
@@ -336,28 +352,38 @@ export function ProductReviewsSection({
               <button
                 type="button"
                 onClick={() => setHasMediaOnly(!hasMediaOnly)}
-                className={`text-[11px] font-bold transition cursor-pointer ${
-                  hasMediaOnly ? 'text-orange-600' : 'text-slate-400 hover:text-slate-600'
+                className={`cursor-pointer text-[11px] font-bold transition ${
+                  hasMediaOnly
+                    ? 'text-orange-600'
+                    : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
-                {hasMediaOnly ? '✓ Menampilkan Bermedia' : 'Filter Dengan Media'}
+                {hasMediaOnly
+                  ? '✓ Menampilkan Bermedia'
+                  : 'Filter Dengan Media'}
               </button>
             </div>
 
-            <div className="flex gap-2.5 overflow-x-auto pb-2 no-scrollbar">
+            <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-2">
               {statistics.mediaGallery.map((item, idx) => {
-                const isVideo = item.type === 'video' || item.url.match(/\.(mp4|webm|mov)$/i)
+                const isVideo =
+                  item.type === 'video' || item.url.match(/\.(mp4|webm|mov)$/i)
                 return (
                   <button
                     key={`strip-${idx}`}
                     type="button"
-                    onClick={() => handleOpenLightbox(statistics.mediaGallery, idx)}
-                    className="group relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-100 dark:border-slate-800 dark:bg-slate-800 transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer"
+                    onClick={() =>
+                      handleOpenLightbox(statistics.mediaGallery, idx)
+                    }
+                    className="group relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24"
                   >
                     {isVideo ? (
-                      <div className="relative h-full w-full bg-slate-950 flex items-center justify-center">
-                        <video src={item.url} className="h-full w-full object-cover opacity-60" />
-                        <div className="absolute rounded-full bg-orange-500/90 p-2 text-white shadow-sm group-hover:scale-110 transition">
+                      <div className="relative flex h-full w-full items-center justify-center bg-slate-950">
+                        <video
+                          src={item.url}
+                          className="h-full w-full object-cover opacity-60"
+                        />
+                        <div className="absolute rounded-full bg-orange-500/90 p-2 text-white shadow-sm transition group-hover:scale-110">
                           <Play className="h-3.5 w-3.5 fill-white" />
                         </div>
                       </div>
@@ -376,12 +402,10 @@ export function ProductReviewsSection({
             </div>
           </div>
         )}
-
       </div>
 
       {/* 3. Filter & Sort Toolbar */}
-      <div className="mt-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        
+      <div className="mt-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
         {/* Filter Pills */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Semua */}
@@ -391,10 +415,10 @@ export function ProductReviewsSection({
               setSelectedRating(null)
               setHasMediaOnly(false)
             }}
-            className={`rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 cursor-pointer ${
+            className={`cursor-pointer rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 ${
               selectedRating === null && !hasMediaOnly
-                ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-sm'
-                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                ? 'shadow-xs border border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
+                : 'border border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
             }`}
           >
             Semua ({statistics.totalReviews})
@@ -408,10 +432,10 @@ export function ProductReviewsSection({
                 setHasMediaOnly(!hasMediaOnly)
                 setSelectedRating(null)
               }}
-              className={`rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 ${
                 hasMediaOnly
                   ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/25'
-                  : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
               }`}
             >
               <Camera className="h-3.5 w-3.5" />
@@ -433,62 +457,66 @@ export function ProductReviewsSection({
                     setSelectedRating(isSelected ? null : star)
                     setHasMediaOnly(false)
                   }}
-                  className={`rounded-full px-3.5 py-2 text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition-all duration-200 ${
                     isSelected
                       ? 'bg-amber-400 text-slate-950 shadow-sm'
-                      : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                   }`}
                 >
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />
+                  <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
                   <span>{star} Bintang</span>
-                  <span className="text-[11px] opacity-70 font-semibold tabular-nums">({count})</span>
+                  <span className="text-[11px] font-semibold tabular-nums opacity-70">
+                    ({count})
+                  </span>
                 </button>
               )
             })}
         </div>
 
         {/* Sort Dropdown Pill */}
-        <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
+        <div className="flex shrink-0 items-center gap-2 self-start md:self-auto">
           <div className="relative">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="appearance-none rounded-full border border-slate-200/90 bg-white pl-4 pr-9 py-2 text-xs font-bold text-slate-700 outline-none hover:border-slate-300 focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 cursor-pointer shadow-2xs transition"
+              className="shadow-2xs cursor-pointer appearance-none rounded-full border border-slate-200/90 bg-white py-2 pl-4 pr-9 text-xs font-bold text-slate-700 outline-none transition hover:border-slate-300 focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             >
               <option value="newest">Paling Baru</option>
               <option value="highest">Rating Tertinggi</option>
               <option value="lowest">Rating Terendah</option>
               <option value="helpful">Paling Membantu</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           </div>
         </div>
-
       </div>
 
       {/* 4. Review Cards List */}
       <div className="mt-6 space-y-4">
         {loading ? (
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
-            <Loader2 className="mx-auto h-6 w-6 animate-spin text-orange-500 mb-2" />
-            <p className="text-xs font-medium text-slate-400">Memuat ulasan pembeli...</p>
+          <div className="shadow-xs rounded-3xl border border-slate-200/80 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
+            <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-orange-500" />
+            <p className="text-xs font-medium text-slate-400">
+              Memuat ulasan pembeli...
+            </p>
           </div>
         ) : reviews.length === 0 ? (
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
+          <div className="shadow-xs space-y-3 rounded-3xl border border-slate-200/80 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 dark:bg-orange-950/40">
               <MessageSquare className="h-6 w-6" />
             </div>
             <h4 className="text-sm font-bold text-slate-900 dark:text-white">
               Belum Ada Ulasan untuk Filter Ini
             </h4>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Jadilah yang pertama memberikan ulasan dan melampirkan foto/video unboxing unit gadget ini!
+            <p className="mx-auto max-w-sm text-xs text-slate-500">
+              Jadilah yang pertama memberikan ulasan dan melampirkan foto/video
+              unboxing unit gadget ini!
             </p>
             <div className="pt-2">
               <button
                 type="button"
                 onClick={handleOpenReviewModal}
-                className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-orange-600 transition"
+                className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600"
               >
                 <PenSquare className="h-3.5 w-3.5" />
                 <span>Beri Ulasan Sekarang</span>
@@ -521,18 +549,22 @@ export function ProductReviewsSection({
             ]
 
             const colorClass = MONOGRAM_COLORS[rIdx % MONOGRAM_COLORS.length]
-            const formattedDate = new Date(review.createdAt).toLocaleDateString('id-ID', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })
+            const formattedDate = new Date(review.createdAt).toLocaleDateString(
+              'id-ID',
+              {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              }
+            )
 
-            const currentHelpful = helpfulVotes[review.id] ?? review.helpfulCount
+            const currentHelpful =
+              helpfulVotes[review.id] ?? review.helpfulCount
 
             return (
               <div
                 key={review.id}
-                className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-4 hover:border-slate-300 transition duration-200"
+                className="shadow-xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-5 transition duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-6"
               >
                 {/* 1. Review Author Header & Badges */}
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -540,11 +572,17 @@ export function ProductReviewsSection({
                     {/* User Monogram Squircle Avatar */}
                     {review.user?.image ? (
                       <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-2xl border border-slate-200">
-                        <Image src={review.user.image} alt="Avatar" fill sizes="40px" className="object-cover" />
+                        <Image
+                          src={review.user.image}
+                          alt="Avatar"
+                          fill
+                          sizes="40px"
+                          className="object-cover"
+                        />
                       </div>
                     ) : (
                       <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border font-bold text-xs shadow-2xs ${colorClass}`}
+                        className={`shadow-2xs flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-bold ${colorClass}`}
                       >
                         {getMonogram(review.user?.name)}
                       </div>
@@ -555,13 +593,13 @@ export function ProductReviewsSection({
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white">
                           {maskName(review.user?.name)}
                         </h4>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.2 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/50">
+                        <span className="py-0.2 inline-flex items-center gap-1 rounded-full border border-emerald-200/50 bg-emerald-50 px-2 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                           <CheckCircle2 className="h-3 w-3 text-emerald-600" />
                           <span>Pembeli Terverifikasi</span>
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
+                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-400">
                         <span>{formattedDate}</span>
                         {review.variantName && (
                           <>
@@ -576,22 +614,27 @@ export function ProductReviewsSection({
                   </div>
 
                   {/* Rating Stars & Logistics Tag */}
-                  <div className="flex flex-col sm:items-end gap-1">
+                  <div className="flex flex-col gap-1 sm:items-end">
                     <div className="flex items-center gap-1 text-amber-400">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
                           className={`h-3.5 w-3.5 ${
-                            star <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200 dark:text-slate-700'
+                            star <= review.rating
+                              ? 'fill-amber-400 text-amber-400'
+                              : 'text-slate-200 dark:text-slate-700'
                           }`}
                         />
                       ))}
                     </div>
 
                     {review.order?.courierCode && (
-                      <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                      <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-400">
                         <Truck className="h-3 w-3 text-orange-500" />
-                        <span>{review.order.courierCode} {review.order.courierService || 'REG'} (Diterima)</span>
+                        <span>
+                          {review.order.courierCode}{' '}
+                          {review.order.courierService || 'REG'} (Diterima)
+                        </span>
                       </span>
                     )}
                   </div>
@@ -599,7 +642,7 @@ export function ProductReviewsSection({
 
                 {/* 2. Review Text Comment */}
                 {review.comment && (
-                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                  <p className="whitespace-pre-line text-xs leading-relaxed text-slate-700 dark:text-slate-300">
                     {review.comment}
                   </p>
                 )}
@@ -613,13 +656,18 @@ export function ProductReviewsSection({
                         <button
                           key={`rev-media-${mIdx}`}
                           type="button"
-                          onClick={() => handleOpenLightbox(reviewMediaList, mIdx)}
-                          className="group relative h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 dark:border-slate-800 dark:bg-slate-800 transition-all hover:scale-105 hover:shadow-md cursor-pointer"
+                          onClick={() =>
+                            handleOpenLightbox(reviewMediaList, mIdx)
+                          }
+                          className="group relative h-20 w-20 cursor-pointer overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 transition-all hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24"
                         >
                           {isVid ? (
-                            <div className="relative h-full w-full bg-slate-950 flex items-center justify-center">
-                              <video src={media.url} className="h-full w-full object-cover opacity-70" />
-                              <div className="absolute rounded-full bg-orange-500/90 p-2 text-white shadow-sm group-hover:scale-110 transition">
+                            <div className="relative flex h-full w-full items-center justify-center bg-slate-950">
+                              <video
+                                src={media.url}
+                                className="h-full w-full object-cover opacity-70"
+                              />
+                              <div className="absolute rounded-full bg-orange-500/90 p-2 text-white shadow-sm transition group-hover:scale-110">
                                 <Play className="h-3.5 w-3.5 fill-white" />
                               </div>
                             </div>
@@ -640,23 +688,24 @@ export function ProductReviewsSection({
 
                 {/* 4. Official Store Reply Box (If available) */}
                 {review.sellerReply && (
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-800/50 space-y-1.5">
+                  <div className="space-y-1.5 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-800/50">
                     <div className="flex items-center gap-2">
                       <div className="flex h-5 w-5 items-center justify-center rounded-lg bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300">
                         <Store className="h-3 w-3" />
                       </div>
                       <span className="text-xs font-bold text-slate-900 dark:text-white">
-                        Tanggapan Resmi Toko {review.store?.name ? `(${review.store.name})` : ''}:
+                        Tanggapan Resmi Toko{' '}
+                        {review.store?.name ? `(${review.store.name})` : ''}:
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 pl-7 leading-relaxed">
+                    <p className="pl-7 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                       {review.sellerReply}
                     </p>
                   </div>
                 )}
 
                 {/* 5. Review Footer: Helpful Vote Action */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs dark:border-slate-800/60">
                   <span className="text-[11px] text-slate-400">
                     Apakah ulasan ini bermanfaat?
                   </span>
@@ -664,17 +713,16 @@ export function ProductReviewsSection({
                   <button
                     type="button"
                     onClick={() => handleHelpfulVote(review.id)}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer border ${
+                    className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition ${
                       votedReviews[review.id]
-                        ? 'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/70 dark:bg-slate-800/60 dark:border-slate-700 dark:text-slate-300'
+                        ? 'border-orange-200 bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-300'
+                        : 'border-slate-200/70 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
                     }`}
                   >
                     <ThumbsUp className="h-3 w-3" />
                     <span>Membantu ({currentHelpful})</span>
                   </button>
                 </div>
-
               </div>
             )
           })
@@ -702,7 +750,6 @@ export function ProductReviewsSection({
           fetchReviews()
         }}
       />
-
     </section>
   )
 }

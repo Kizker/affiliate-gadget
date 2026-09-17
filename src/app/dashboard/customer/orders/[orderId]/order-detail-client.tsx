@@ -33,6 +33,7 @@ import {
   Tag,
 } from 'lucide-react'
 import { RatingModal } from '@/components/modals/rating-modal'
+import { CustomPaymentModal } from '@/components/payment/custom-payment-modal'
 import { ComplaintModal } from '@/components/customer/complaint-modal'
 import { ReturnModal } from '@/components/customer/return-modal'
 import { toast } from 'sonner'
@@ -194,6 +195,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
   const [copied, setCopied] = useState(false)
   const [complaintModalOpen, setComplaintModalOpen] = useState(false)
   const [returnModalOpen, setReturnModalOpen] = useState(false)
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState(
     'Ingin mengubah alamat pengiriman / varian'
@@ -434,15 +436,16 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                   </button>
                 )}
 
-                {/* Bayar Sekarang */}
+                {/* Bayar Sekarang via Custom Payment Modal */}
                 {order.status === 'PENDING_PAYMENT' && (
-                  <Link
-                    href={`/checkout/payment?orderId=${order.id}`}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModalOpen(true)}
                     className="shadow-xs inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
                   >
                     <CreditCard className="h-4 w-4" />
                     <span>Bayar Sekarang</span>
-                  </Link>
+                  </button>
                 )}
 
                 {/* Konfirmasi Pesanan Diterima */}
@@ -1200,6 +1203,21 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
               ...updatedReview,
             }))
           }
+          router.refresh()
+        }}
+      />
+
+      {/* 100% Custom In-House Payment Modal */}
+      <CustomPaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => {
+          setPaymentModalOpen(false)
+          router.refresh()
+        }}
+        orderId={order.id}
+        orderNumber={order.orderNumber}
+        totalAmount={order.total}
+        onPaymentSuccess={() => {
           router.refresh()
         }}
       />
