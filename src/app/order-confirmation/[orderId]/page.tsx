@@ -4,8 +4,12 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
+import {
+  Navbar,
+  Footer,
+  MobileTopNav,
+  MobileBottomNav,
+} from '@/components/layouts'
 import {
   CheckCircle2,
   Package,
@@ -96,8 +100,24 @@ export default function OrderConfirmationPage({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="block md:hidden">
+          <MobileTopNav showBack backHref="/" title="Konfirmasi Pesanan" />
+        </div>
+        <div className="hidden md:block">
+          <Navbar variant="light" />
+        </div>
+
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        </div>
+
+        <div className="block md:hidden">
+          <MobileBottomNav />
+        </div>
+        <div className="hidden md:block">
+          <Footer variant="light" />
+        </div>
       </div>
     )
   }
@@ -108,9 +128,15 @@ export default function OrderConfirmationPage({
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <Navbar variant="light" />
+      {/* 1. Top Navigation: Mobile Top Nav & Desktop Navbar */}
+      <div className="block md:hidden">
+        <MobileTopNav showBack backHref="/" title="Konfirmasi Pesanan" />
+      </div>
+      <div className="hidden md:block">
+        <Navbar variant="light" />
+      </div>
 
-      <main className="flex min-h-screen flex-col pb-20 pt-28 sm:pb-24 sm:pt-32">
+      <main className="flex min-h-screen flex-col pb-24 pt-4 sm:pt-6 md:pb-24 md:pt-28 lg:pt-32">
         <div className="mx-auto my-auto w-full max-w-2xl px-4 sm:px-6">
           {/* Success Header */}
           <div className="mb-8 space-y-3 text-center">
@@ -288,7 +314,13 @@ export default function OrderConfirmationPage({
         </div>
       </main>
 
-      <Footer variant="light" />
+      {/* 3. Bottom Navigation: Mobile Bottom Nav & Desktop Footer */}
+      <div className="block md:hidden">
+        <MobileBottomNav />
+      </div>
+      <div className="hidden md:block">
+        <Footer variant="light" />
+      </div>
     </div>
   )
 }

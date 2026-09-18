@@ -5,8 +5,12 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
+import {
+  Navbar,
+  Footer,
+  MobileTopNav,
+  MobileBottomNav,
+} from '@/components/layouts'
 import { CustomPaymentModal } from '@/components/payment/custom-payment-modal'
 import { loadMidtransSnap } from '@/lib/snap'
 import {
@@ -179,33 +183,65 @@ function MultipleOrderConfirmationContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="block md:hidden">
+          <MobileTopNav showBack backHref="/" title="Konfirmasi Pesanan" />
+        </div>
+        <div className="hidden md:block">
+          <Navbar variant="light" />
+        </div>
+
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        </div>
+
+        <div className="block md:hidden">
+          <MobileBottomNav />
+        </div>
+        <div className="hidden md:block">
+          <Footer variant="light" />
+        </div>
       </div>
     )
   }
 
   if (orders.length === 0) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
-        <div className="shadow-xs max-w-md space-y-4 rounded-3xl border border-slate-200/80 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
-            <Package className="h-8 w-8" />
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="block md:hidden">
+          <MobileTopNav showBack backHref="/" title="Konfirmasi Pesanan" />
+        </div>
+        <div className="hidden md:block">
+          <Navbar variant="light" />
+        </div>
+
+        <main className="flex flex-1 flex-col items-center justify-center px-4 pb-24 pt-4 md:pb-24 md:pt-28">
+          <div className="shadow-xs max-w-md space-y-4 rounded-3xl border border-slate-200/80 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+              <Package className="h-8 w-8" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-950 dark:text-white">
+              Pesanan Tidak Ditemukan
+            </h2>
+            <p className="text-xs text-slate-500">
+              Kami tidak dapat menemukan rincian pesanan yang Anda tuju.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
+              >
+                Kembali ke Beranda
+              </Link>
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-slate-950 dark:text-white">
-            Pesanan Tidak Ditemukan
-          </h2>
-          <p className="text-xs text-slate-500">
-            Kami tidak dapat menemukan rincian pesanan yang Anda tuju.
-          </p>
-          <div className="pt-2">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
-            >
-              Kembali ke Beranda
-            </Link>
-          </div>
+        </main>
+
+        <div className="block md:hidden">
+          <MobileBottomNav />
+        </div>
+        <div className="hidden md:block">
+          <Footer variant="light" />
         </div>
       </div>
     )
@@ -213,9 +249,15 @@ function MultipleOrderConfirmationContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <Navbar variant="light" />
+      {/* 1. Top Navigation: Mobile Top Nav & Desktop Navbar */}
+      <div className="block md:hidden">
+        <MobileTopNav showBack backHref="/" title="Konfirmasi Pesanan" />
+      </div>
+      <div className="hidden md:block">
+        <Navbar variant="light" />
+      </div>
 
-      <main className="flex min-h-screen flex-col pb-20 pt-28 sm:pb-24 sm:pt-32">
+      <main className="flex min-h-screen flex-col pb-24 pt-4 sm:pt-6 md:pb-24 md:pt-28 lg:pt-32">
         <div className="mx-auto my-auto w-full max-w-2xl px-4 sm:px-6">
           {/* Success Header */}
           <div className="mb-8 space-y-3 text-center">
@@ -556,7 +598,13 @@ function MultipleOrderConfirmationContent() {
         />
       )}
 
-      <Footer variant="light" />
+      {/* 3. Bottom Navigation: Mobile Bottom Nav & Desktop Footer */}
+      <div className="block md:hidden">
+        <MobileBottomNav />
+      </div>
+      <div className="hidden md:block">
+        <Footer variant="light" />
+      </div>
     </div>
   )
 }

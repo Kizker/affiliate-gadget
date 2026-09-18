@@ -39,12 +39,13 @@ export function MobileBottomNav({
     pathname?.startsWith('/chat')
 
   const isCartPage = pathname?.startsWith('/cart')
+  const isOrderConfirmationPage = pathname?.startsWith('/order-confirmation')
 
   // Resolve current active tab if not explicitly given
   const currentTab =
     activeTab !== undefined
       ? activeTab
-      : isChatPage || isCartPage
+      : isChatPage || isCartPage || isOrderConfirmationPage
         ? 'none'
         : pathname === '/'
           ? 'beranda'

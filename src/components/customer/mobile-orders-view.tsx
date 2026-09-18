@@ -176,17 +176,13 @@ export function MobileOrdersView({
   }, [orders, activeTab, searchQuery])
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-28 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* 1. Universal Mobile Top Nav */}
-      <MobileTopNav
-        showBack={true}
-        backHref="/dashboard/customer/settings"
-        title="Pesanan Saya"
-      />
+      <MobileTopNav showBack={true} backHref="/" title="Pesanan Saya" />
 
       {/* 2. Shopee/Tokopedia Horizontal Status Tab Bar (Sticky) */}
-      <div className="sticky top-[53px] z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
-        <div className="no-scrollbar flex overflow-x-auto">
+      <div className="sticky top-[61px] z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
+        <div className="no-scrollbar flex overflow-x-auto px-1">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key
             return (
@@ -194,7 +190,7 @@ export function MobileOrdersView({
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`relative flex shrink-0 items-center gap-1 px-4 py-3 text-xs font-semibold transition-colors ${
+                className={`relative flex shrink-0 items-center gap-1.5 px-3.5 py-3 text-xs font-semibold transition-colors ${
                   isActive
                     ? 'border-b-2 border-orange-500 font-bold text-orange-500'
                     : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -203,7 +199,7 @@ export function MobileOrdersView({
                 <span>{tab.label}</span>
                 {tab.count > 0 && (
                   <span
-                    className={`py-0.2 rounded-full px-1.5 text-[10px] font-bold ${
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                       isActive
                         ? 'bg-orange-100 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400'
                         : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
@@ -218,16 +214,16 @@ export function MobileOrdersView({
         </div>
       </div>
 
-      {/* 3. Search Bar Capsule (Shopee Style) */}
-      <div className="border-b border-slate-200/60 bg-white px-3.5 py-2.5 dark:border-slate-800 dark:bg-slate-900">
+      {/* 3. Search Bar Capsule */}
+      <div className="border-b border-slate-200/80 bg-white px-3.5 py-2.5 dark:border-slate-800 dark:bg-slate-900">
         <div className="relative flex items-center">
-          <Search className="absolute left-3 h-3.5 w-3.5 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3.5 h-3.5 w-3.5 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari pesanan, nomor resi, atau produk..."
-            className="w-full rounded-full border border-slate-200/80 bg-slate-50 py-1.5 pl-8 pr-8 text-xs font-medium outline-none transition focus:border-orange-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/90 py-2 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-800"
           />
           {searchQuery && (
             <button

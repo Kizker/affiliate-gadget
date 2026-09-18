@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Navbar } from '@/components/layouts/navbar'
+import {
+  Navbar,
+  Footer,
+  MobileTopNav,
+  MobileBottomNav,
+} from '@/components/layouts'
 import Link from 'next/link'
 import {
   Calendar,
@@ -108,10 +113,7 @@ export default function RentalConfirmationPage({
         <h2 className="mt-4 text-xl font-bold text-gray-900">
           Pesanan tidak ditemukan
         </h2>
-        <Link
-          href="/"
-          className="mt-4 text-purple-600 hover:underline"
-        >
+        <Link href="/" className="mt-4 text-purple-600 hover:underline">
           Kembali ke Beranda
         </Link>
       </div>
@@ -129,9 +131,18 @@ export default function RentalConfirmationPage({
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-purple-50 via-white to-blue-50">
-      <Navbar variant="light" />
+      <div className="block md:hidden">
+        <MobileTopNav
+          showBack
+          backHref="/dashboard/customer/orders"
+          title="Konfirmasi Sewa"
+        />
+      </div>
+      <div className="hidden md:block">
+        <Navbar variant="light" />
+      </div>
 
-      <main className="container mx-auto flex flex-1 items-center justify-center px-3 py-4 pt-16">
+      <main className="container mx-auto flex flex-1 items-center justify-center px-3 pb-24 pt-4 md:pb-24 md:pt-16">
         <div className="w-full max-w-md">
           {/* Main Card */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
@@ -348,6 +359,13 @@ export default function RentalConfirmationPage({
           </div>
         </div>
       </main>
+
+      <div className="block md:hidden">
+        <MobileBottomNav />
+      </div>
+      <div className="hidden md:block">
+        <Footer variant="light" />
+      </div>
     </div>
   )
 }

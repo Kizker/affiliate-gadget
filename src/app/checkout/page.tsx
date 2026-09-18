@@ -1302,7 +1302,9 @@ export default function CheckoutPage() {
           </div>
         </main>
 
-        <Footer variant="light" />
+        <div className="hidden md:block">
+          <Footer variant="light" />
+        </div>
 
         {/* Midtrans Snap JS SDK with fallback client key */}
         <Script

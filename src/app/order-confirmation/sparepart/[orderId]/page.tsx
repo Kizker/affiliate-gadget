@@ -3,8 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
+import {
+  Navbar,
+  Footer,
+  MobileTopNav,
+  MobileBottomNav,
+} from '@/components/layouts'
 import Link from 'next/link'
 import {
   CheckCircle,
@@ -104,10 +108,7 @@ export default function SparepartConfirmationPage({
         <h2 className="mt-4 text-xl font-bold text-gray-900">
           Pesanan tidak ditemukan
         </h2>
-        <Link
-          href="/"
-          className="mt-4 text-blue-600 hover:underline"
-        >
+        <Link href="/" className="mt-4 text-blue-600 hover:underline">
           Kembali ke Beranda
         </Link>
       </div>
@@ -119,9 +120,18 @@ export default function SparepartConfirmationPage({
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar variant="light" />
+      <div className="block md:hidden">
+        <MobileTopNav
+          showBack
+          backHref="/dashboard/customer/orders"
+          title="Konfirmasi Pesanan"
+        />
+      </div>
+      <div className="hidden md:block">
+        <Navbar variant="light" />
+      </div>
 
-      <main className="flex flex-1 items-center justify-center px-4 pb-8 pt-24">
+      <main className="flex flex-1 items-center justify-center px-4 pb-24 pt-4 md:pb-8 md:pt-24">
         <div className="w-full max-w-lg">
           {/* Main Receipt Card */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-gray-100">
@@ -265,7 +275,13 @@ export default function SparepartConfirmationPage({
         </div>
       </main>
 
-      <Footer variant="light" />
+      {/* Bottom Navigation */}
+      <div className="block md:hidden">
+        <MobileBottomNav />
+      </div>
+      <div className="hidden md:block">
+        <Footer variant="light" />
+      </div>
     </div>
   )
 }

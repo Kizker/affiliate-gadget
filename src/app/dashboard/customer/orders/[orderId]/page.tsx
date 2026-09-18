@@ -3,8 +3,12 @@ import { redirect } from 'next/navigation'
 import prisma from '@/lib/db'
 import Link from 'next/link'
 import { Package } from 'lucide-react'
-import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
+import {
+  Navbar,
+  Footer,
+  MobileTopNav,
+  MobileBottomNav,
+} from '@/components/layouts'
 import OrderDetailClient from './order-detail-client'
 
 interface Props {
@@ -99,23 +103,39 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
 
   if (!order) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-50">
-        <Navbar variant="light" />
-        <div className="flex flex-1 items-center justify-center p-4">
+      <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
+        <div className="block md:hidden">
+          <MobileTopNav
+            showBack={true}
+            backHref="/dashboard/customer/orders"
+            title="Pesanan Tidak Ditemukan"
+          />
+        </div>
+        <div className="hidden md:block">
+          <Navbar variant="light" />
+        </div>
+
+        <main className="flex flex-1 items-center justify-center p-4 pb-24 pt-4 md:pb-24 md:pt-28">
           <div className="text-center">
-            <Package className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-            <h2 className="mb-2 text-xl font-bold text-gray-900">
+            <Package className="mx-auto mb-4 h-16 w-16 text-slate-300 dark:text-slate-700" />
+            <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
               Pesanan tidak ditemukan
             </h2>
             <Link
               href="/dashboard/customer/orders"
-              className="text-orange-600 hover:underline"
+              className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
             >
               Kembali ke Pesanan Saya
             </Link>
           </div>
+        </main>
+
+        <div className="block md:hidden">
+          <MobileBottomNav activeTab="akun" />
         </div>
-        <Footer />
+        <div className="hidden md:block">
+          <Footer variant="light" />
+        </div>
       </div>
     )
   }

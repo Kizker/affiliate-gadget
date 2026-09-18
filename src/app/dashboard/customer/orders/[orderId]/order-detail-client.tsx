@@ -2,8 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
+import {
+  Navbar,
+  Footer,
+  MobileTopNav,
+  MobileBottomNav,
+} from '@/components/layouts'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -322,12 +326,22 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <Navbar variant="light" />
+      {/* 1. Top Navigation: Mobile Top Nav & Desktop Navbar */}
+      <div className="block md:hidden">
+        <MobileTopNav
+          showBack={true}
+          backHref="/dashboard/customer/orders"
+          title={`Pesanan #${order.orderNumber}`}
+        />
+      </div>
+      <div className="hidden md:block">
+        <Navbar variant="light" />
+      </div>
 
-      <main className="flex min-h-screen flex-col pb-20 pt-28 sm:pb-24 sm:pt-32">
-        <div className="mx-auto my-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Top Breadcrumb & Store Origin Bar */}
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <main className="flex min-h-screen flex-col pb-24 pt-4 sm:pt-6 md:pb-24 md:pt-28 lg:pt-32">
+        <div className="mx-auto my-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8">
+          {/* Top Breadcrumb & Store Origin Bar (Desktop only, already covered by MobileTopNav on mobile) */}
+          <div className="mb-6 hidden flex-wrap items-center justify-between gap-3 md:flex">
             <button
               type="button"
               onClick={() => {
@@ -1090,8 +1104,6 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         </div>
       </main>
 
-      <Footer variant="light" />
-
       {/* Cancel Order Modal */}
       {cancelModalOpen && (
         <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
@@ -1231,6 +1243,14 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
           router.refresh()
         }}
       />
+
+      {/* 3. Bottom Navigation: Mobile Bottom Nav & Desktop Footer */}
+      <div className="block md:hidden">
+        <MobileBottomNav activeTab="akun" />
+      </div>
+      <div className="hidden md:block">
+        <Footer variant="light" />
+      </div>
     </div>
   )
 }
