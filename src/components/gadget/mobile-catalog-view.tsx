@@ -239,112 +239,240 @@ export function MobileCatalogView({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
-            {gadgets.map((item) => {
-              const badge = getConditionBadge(item)
-              const isWishlisted = wishlist[item.id] || false
-              const strikePrice =
-                item.originalPrice && item.originalPrice > item.price
-                  ? item.originalPrice
-                  : Math.round(item.price * 1.25)
-              const storeCleanName = (
-                item.store?.name || 'ITC Roxy Mas Jakarta'
-              )
-                .replace('Affiliate Gadget - ', '')
-                .replace('AffiliateGadget Store - ', '')
+          <div className="grid grid-cols-2 items-start gap-2.5">
+            {/* Kolom Kiri */}
+            <div className="flex min-w-0 flex-col gap-2.5">
+              {gadgets
+                .filter((_, idx) => idx % 2 === 0)
+                .map((item) => {
+                  const badge = getConditionBadge(item)
+                  const isWishlisted = wishlist[item.id] || false
+                  const strikePrice =
+                    item.originalPrice && item.originalPrice > item.price
+                      ? item.originalPrice
+                      : Math.round(item.price * 1.25)
+                  const storeCleanName = (
+                    item.store?.name || 'ITC Roxy Mas Jakarta'
+                  )
+                    .replace('Affiliate Gadget - ', '')
+                    .replace('AffiliateGadget Store - ', '')
 
-              return (
-                <div
-                  key={item.id}
-                  className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
-                >
-                  <Link href={`/gadget/${item.id}`} className="block">
-                    {/* Image Box */}
-                    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
-                      <Image
-                        src={
-                          (item.images && item.images[0]) ||
-                          'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
-                        }
-                        alt={item.name}
-                        fill
-                        sizes="(max-width: 640px) 50vw, 25vw"
-                        className="object-cover transition-transform duration-300 hover:scale-105"
-                      />
+                  const imgSrc =
+                    (item.images && item.images[0]) ||
+                    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
 
-                      {/* Condition Badge (Top Left) */}
-                      <span
-                        className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
-                      >
-                        <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
-                        <span>{badge.label}</span>
-                      </span>
+                  return (
+                    <div
+                      key={item.id}
+                      className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
+                    >
+                      <Link href={`/gadget/${item.id}`} className="block">
+                        {/* Dynamic Resolution Image Box (No Cropping, Natural Height) */}
+                        <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
+                          <img
+                            src={imgSrc}
+                            alt={item.name}
+                            loading="lazy"
+                            onError={(e) => {
+                              ;(e.currentTarget as HTMLImageElement).src =
+                                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+                            }}
+                            className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
+                          />
 
-                      {/* Wishlist Button (Top Right) */}
-                      <button
-                        type="button"
-                        onClick={(e) => toggleWishlist(item.id, item.name, e)}
-                        className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
-                        aria-label="Wishlist"
-                      >
-                        <Heart
-                          className={`h-3.5 w-3.5 transition-colors ${
-                            isWishlisted
-                              ? 'fill-rose-500 text-rose-500'
-                              : 'text-slate-400'
-                          }`}
-                        />
-                      </button>
+                          {/* Condition Badge (Top Left) */}
+                          <span
+                            className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
+                          >
+                            <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
+                            <span>{badge.label}</span>
+                          </span>
+
+                          {/* Wishlist Button (Top Right) */}
+                          <button
+                            type="button"
+                            onClick={(e) =>
+                              toggleWishlist(item.id, item.name, e)
+                            }
+                            className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
+                            aria-label="Wishlist"
+                          >
+                            <Heart
+                              className={`h-3.5 w-3.5 transition-colors ${
+                                isWishlisted
+                                  ? 'fill-rose-500 text-rose-500'
+                                  : 'text-slate-400'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Meta Section */}
+                        <div className="mt-2 space-y-1">
+                          {/* Rating & Review Count */}
+                          <div className="flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                            <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
+                              {(item.rating || 4.9).toFixed(1)}
+                            </span>
+                            <span className="text-[10px] font-medium text-slate-400">
+                              ({item.totalReview || 38})
+                            </span>
+                          </div>
+
+                          {/* Product Name */}
+                          <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
+                            {item.name}
+                          </h3>
+
+                          {/* Feature Perks Pills */}
+                          <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                              Garansi 30 Hari
+                            </span>
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              Bonus 3-in-1
+                            </span>
+                          </div>
+
+                          {/* Price Row */}
+                          <div className="pt-1">
+                            <span className="block text-sm font-black leading-tight text-orange-500">
+                              Rp {item.price.toLocaleString('id-ID')}
+                            </span>
+                            <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
+                              Rp {strikePrice.toLocaleString('id-ID')}
+                            </span>
+                          </div>
+
+                          {/* Store Location */}
+                          <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                            <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+                            <span className="truncate">{storeCleanName}</span>
+                          </div>
+                        </div>
+                      </Link>
                     </div>
+                  )
+                })}
+            </div>
 
-                    {/* Meta Section */}
-                    <div className="mt-2 space-y-1">
-                      {/* Rating & Review Count */}
-                      <div className="flex items-center gap-1">
-                        <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                        <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
-                          {(item.rating || 4.9).toFixed(1)}
-                        </span>
-                        <span className="text-[10px] font-medium text-slate-400">
-                          ({item.totalReview || 38})
-                        </span>
-                      </div>
+            {/* Kolom Kanan */}
+            <div className="flex min-w-0 flex-col gap-2.5">
+              {gadgets
+                .filter((_, idx) => idx % 2 === 1)
+                .map((item) => {
+                  const badge = getConditionBadge(item)
+                  const isWishlisted = wishlist[item.id] || false
+                  const strikePrice =
+                    item.originalPrice && item.originalPrice > item.price
+                      ? item.originalPrice
+                      : Math.round(item.price * 1.25)
+                  const storeCleanName = (
+                    item.store?.name || 'ITC Roxy Mas Jakarta'
+                  )
+                    .replace('Affiliate Gadget - ', '')
+                    .replace('AffiliateGadget Store - ', '')
 
-                      {/* Product Name */}
-                      <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
-                        {item.name}
-                      </h3>
+                  const imgSrc =
+                    (item.images && item.images[0]) ||
+                    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
 
-                      {/* Feature Perks Pills */}
-                      <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                        <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                          Garansi 30 Hari
-                        </span>
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          Bonus 3-in-1
-                        </span>
-                      </div>
+                  return (
+                    <div
+                      key={item.id}
+                      className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
+                    >
+                      <Link href={`/gadget/${item.id}`} className="block">
+                        {/* Dynamic Resolution Image Box (No Cropping, Natural Height) */}
+                        <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
+                          <img
+                            src={imgSrc}
+                            alt={item.name}
+                            loading="lazy"
+                            onError={(e) => {
+                              ;(e.currentTarget as HTMLImageElement).src =
+                                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+                            }}
+                            className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
+                          />
 
-                      {/* Price Row */}
-                      <div className="pt-1">
-                        <span className="block text-sm font-black leading-tight text-orange-500">
-                          Rp {item.price.toLocaleString('id-ID')}
-                        </span>
-                        <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
-                          Rp {strikePrice.toLocaleString('id-ID')}
-                        </span>
-                      </div>
+                          {/* Condition Badge (Top Left) */}
+                          <span
+                            className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
+                          >
+                            <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
+                            <span>{badge.label}</span>
+                          </span>
 
-                      {/* Store Location */}
-                      <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                        <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
-                        <span className="truncate">{storeCleanName}</span>
-                      </div>
+                          {/* Wishlist Button (Top Right) */}
+                          <button
+                            type="button"
+                            onClick={(e) =>
+                              toggleWishlist(item.id, item.name, e)
+                            }
+                            className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
+                            aria-label="Wishlist"
+                          >
+                            <Heart
+                              className={`h-3.5 w-3.5 transition-colors ${
+                                isWishlisted
+                                  ? 'fill-rose-500 text-rose-500'
+                                  : 'text-slate-400'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Meta Section */}
+                        <div className="mt-2 space-y-1">
+                          {/* Rating & Review Count */}
+                          <div className="flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                            <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
+                              {(item.rating || 4.9).toFixed(1)}
+                            </span>
+                            <span className="text-[10px] font-medium text-slate-400">
+                              ({item.totalReview || 38})
+                            </span>
+                          </div>
+
+                          {/* Product Name */}
+                          <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
+                            {item.name}
+                          </h3>
+
+                          {/* Feature Perks Pills */}
+                          <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                              Garansi 30 Hari
+                            </span>
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              Bonus 3-in-1
+                            </span>
+                          </div>
+
+                          {/* Price Row */}
+                          <div className="pt-1">
+                            <span className="block text-sm font-black leading-tight text-orange-500">
+                              Rp {item.price.toLocaleString('id-ID')}
+                            </span>
+                            <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
+                              Rp {strikePrice.toLocaleString('id-ID')}
+                            </span>
+                          </div>
+
+                          {/* Store Location */}
+                          <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                            <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+                            <span className="truncate">{storeCleanName}</span>
+                          </div>
+                        </div>
+                      </Link>
                     </div>
-                  </Link>
-                </div>
-              )
-            })}
+                  )
+                })}
+            </div>
           </div>
         )}
       </section>

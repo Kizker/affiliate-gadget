@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   MessageSquare,
   MapPin,
@@ -30,6 +31,7 @@ export function MobileStoreProfileView({
   session,
   status,
 }: MobileStoreProfileViewProps) {
+  const router = useRouter()
   const { items } = useCartStore()
 
   const cartCount =
@@ -43,8 +45,16 @@ export function MobileStoreProfileView({
         session?.user?.role === 'ADMIN' ||
         session?.user?.role === 'STORE_ADMIN'
         ? '/dashboard/admin'
-        : '/dashboard/customer'
-      : '/login?callbackUrl=/dashboard/customer'
+        : '/dashboard/customer/settings'
+      : '/login?callbackUrl=/dashboard/customer/settings'
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/toko')
+    }
+  }
 
   const storeBanner =
     store.banner && !store.banner.includes('placeholder')
@@ -128,14 +138,15 @@ export function MobileStoreProfileView({
         {/* Top Badges Bar: Button Kembali & Share */}
         <div className="absolute inset-x-3 top-3 z-10 flex items-center justify-between">
           {/* Button Kembali (Menggantikan Label Toko Resmi) */}
-          <Link
-            href="/toko"
-            className="shadow-xs inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/50 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md transition-all hover:bg-black/70 active:scale-95"
-            aria-label="Kembali ke Direktori Toko"
+          <button
+            type="button"
+            onClick={handleBack}
+            className="shadow-xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/25 bg-black/50 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md transition-all hover:bg-black/70 active:scale-95"
+            aria-label="Kembali"
           >
             <ArrowLeft className="h-4 w-4 text-white" />
             <span>Kembali</span>
-          </Link>
+          </button>
 
           {/* Share Button */}
           <button

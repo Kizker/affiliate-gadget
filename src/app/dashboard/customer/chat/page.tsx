@@ -997,7 +997,7 @@ function CustomerChatContent() {
         <div className="block shrink-0 md:hidden">
           <MobileTopNav
             showBack
-            backHref="/dashboard/customer"
+            backHref="/dashboard/customer/settings"
             title="Pusat Chat Toko"
           />
         </div>
@@ -1020,7 +1020,9 @@ function CustomerChatContent() {
       <div className="block shrink-0 md:hidden">
         <MobileTopNav
           showBack
-          backHref={showChatOnMobile ? undefined : '/dashboard/customer'}
+          backHref={
+            showChatOnMobile ? undefined : '/dashboard/customer/settings'
+          }
           onBack={showChatOnMobile ? handleBackToList : undefined}
           title={showChatOnMobile ? activeStoreTitle : 'Pusat Chat Toko'}
         />
@@ -1439,8 +1441,8 @@ function CustomerChatContent() {
                               </div>
                             )}
                             {isMedia ? (
-                              /* Full-Bleed Modern Media Bubble (Apple/Telegram Style) */
-                              <div className="shadow-xs group relative max-w-[85%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[70%]">
+                              /* Full-Bleed Modern Media Bubble (Compact Mobile Friendly) */
+                              <div className="shadow-xs group relative max-w-[65%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[240px]">
                                 {isVideo ? (
                                   <div className="relative">
                                     <video
@@ -1451,7 +1453,7 @@ function CustomerChatContent() {
                                       disableRemotePlayback
                                       playsInline
                                       preload="metadata"
-                                      className="clean-video-player block max-h-[300px] w-full max-w-[280px] rounded-2xl bg-black object-cover sm:max-h-[360px] sm:max-w-[340px]"
+                                      className="clean-video-player block max-h-[160px] w-full max-w-[200px] rounded-2xl bg-black object-cover sm:max-h-[220px] sm:max-w-[240px]"
                                     />
                                     {/* Floating Theater Mode Button */}
                                     <button
@@ -1463,9 +1465,9 @@ function CustomerChatContent() {
                                         })
                                       }
                                       title="Perbesar Layar Penuh"
-                                      className="shadow-xs absolute right-2.5 top-2.5 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/85"
+                                      className="shadow-xs absolute right-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/85"
                                     >
-                                      <Maximize2 className="h-3.5 w-3.5" />
+                                      <Maximize2 className="h-3 w-3" />
                                     </button>
                                   </div>
                                 ) : (
@@ -1481,18 +1483,18 @@ function CustomerChatContent() {
                                     <img
                                       src={msg.mediaUrl!}
                                       alt="Foto Lampiran"
-                                      className="group-hover:scale-102 block max-h-[280px] max-w-[280px] rounded-2xl object-cover transition-transform duration-200 sm:max-h-[340px] sm:max-w-[340px]"
+                                      className="group-hover:scale-102 block max-h-[160px] w-auto max-w-[200px] rounded-2xl object-cover transition-transform duration-200 sm:max-h-[220px] sm:max-w-[240px]"
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
-                                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md">
-                                        <ZoomIn className="h-4 w-4" />
+                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md">
+                                        <ZoomIn className="h-3.5 w-3.5" />
                                       </div>
                                     </div>
                                   </div>
                                 )}
 
                                 {/* Floating Glassmorphic Timestamp Pill */}
-                                <div className="shadow-xs pointer-events-none absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-md">
+                                <div className="shadow-xs pointer-events-none absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-medium text-white/95 backdrop-blur-md">
                                   <span>{formattedTime}</span>
                                   {isMe && (
                                     <CheckCheck className="inline h-3 w-3 text-blue-400" />
@@ -1500,7 +1502,7 @@ function CustomerChatContent() {
                                 </div>
                               </div>
                             ) : isProduct ? (
-                              /* Standalone Luxury Product Card (High Quality Visual Card) */
+                              /* Standalone Luxury Product Card (Compact Mobile Friendly) */
                               (() => {
                                 try {
                                   const p: Record<string, unknown> =
@@ -1528,57 +1530,57 @@ function CustomerChatContent() {
                                     msg.messageType === 'product_reference'
 
                                   return (
-                                    <div className="max-w-[88%] space-y-3 rounded-3xl border border-slate-200/90 bg-white p-4 text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[380px]">
+                                    <div className="shadow-xs max-w-[80%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[300px]">
                                       {/* Top Header Info Pill */}
-                                      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-0.5 text-[10px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                                          <Package className="h-3 w-3" />
+                                      <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                                          <Package className="h-2.5 w-2.5" />
                                           {isReference
                                             ? 'Produk Ditanyakan'
                                             : 'Rekomendasi Toko'}
                                         </span>
-                                        <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                                        <div className="flex items-center gap-1 text-[9px] text-slate-400">
                                           <span>{formattedTime}</span>
                                           {isMe && (
-                                            <CheckCheck className="inline h-3 w-3 text-blue-500" />
+                                            <CheckCheck className="inline h-2.5 w-2.5 text-blue-500" />
                                           )}
                                         </div>
                                       </div>
 
                                       {/* Main Product Snippet */}
-                                      <div className="flex items-center gap-3">
+                                      <div className="flex items-center gap-2">
                                         {prodImage ? (
                                           <img
                                             src={prodImage as string}
                                             alt={prodName}
-                                            className="h-16 w-16 shrink-0 rounded-2xl border border-slate-100 bg-slate-50 object-cover p-1 dark:border-slate-800 dark:bg-slate-800"
+                                            className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover p-0.5 dark:border-slate-800 dark:bg-slate-800"
                                           />
                                         ) : (
-                                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-orange-200/60 bg-orange-50 dark:border-orange-900/40 dark:bg-orange-950/40">
-                                            <Package className="h-7 w-7 text-orange-500" />
+                                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-orange-200/60 bg-orange-50 dark:border-orange-900/40 dark:bg-orange-950/40">
+                                            <Package className="h-5 w-5 text-orange-500" />
                                           </div>
                                         )}
 
                                         <div className="min-w-0 flex-1">
                                           {typeof p.brand === 'string' &&
                                             p.brand && (
-                                              <span className="text-[9.5px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                              <span className="block text-[8.5px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
                                                 {p.brand}
                                               </span>
                                             )}
                                           <p
-                                            className="truncate text-xs font-bold text-slate-900 dark:text-white"
+                                            className="truncate text-[11px] font-bold leading-tight text-slate-950 dark:text-white"
                                             title={prodName}
                                           >
                                             {prodName}
                                           </p>
                                           {typeof p.variantName === 'string' &&
                                             p.variantName && (
-                                              <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                              <p className="truncate text-[9.5px] font-medium text-slate-500 dark:text-slate-400">
                                                 Varian: {p.variantName}
                                               </p>
                                             )}
-                                          <p className="mt-0.5 font-mono text-sm font-black text-orange-600 dark:text-orange-400 sm:text-base">
+                                          <p className="mt-0.5 font-mono text-xs font-black text-orange-600 dark:text-orange-400">
                                             Rp{' '}
                                             {(
                                               Number(prodPrice) || 0
@@ -1588,8 +1590,8 @@ function CustomerChatContent() {
                                       </div>
 
                                       {/* Footer CTA */}
-                                      <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-slate-800">
-                                        <span className="text-[10.5px] text-slate-400">
+                                      <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 dark:border-slate-800">
+                                        <span className="text-[9.5px] text-slate-400">
                                           {isMe
                                             ? 'Pertanyaan Anda'
                                             : activeStoreTitle || 'Toko Resmi'}
@@ -1599,10 +1601,10 @@ function CustomerChatContent() {
                                             href={`/gadget/${prodId}`}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="shadow-2xs inline-flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1 text-[11px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                                            className="shadow-2xs inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                                           >
                                             <span>Lihat Unit</span>
-                                            <ExternalLink className="h-3 w-3" />
+                                            <ExternalLink className="h-2.5 w-2.5" />
                                           </a>
                                         )}
                                       </div>
@@ -1898,7 +1900,7 @@ export default function CustomerChatPage() {
           <div className="block shrink-0 md:hidden">
             <MobileTopNav
               showBack
-              backHref="/dashboard/customer"
+              backHref="/dashboard/customer/settings"
               title="Pusat Chat Toko"
             />
           </div>

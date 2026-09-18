@@ -797,38 +797,41 @@ export default function AdminChatPage() {
         const prodId = data.productId || data.id
 
         return (
-          <div className="shadow-2xs max-w-xs space-y-2.5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-sm">
-            <div className="flex items-center gap-3">
+          <div className="shadow-2xs max-w-[80%] space-y-2 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[300px]">
+            <div className="flex items-center gap-2">
               {prodImage ? (
                 <img
                   src={prodImage}
                   alt={prodName}
-                  className="h-14 w-14 shrink-0 rounded-xl border bg-slate-50 object-contain p-1 dark:border-slate-800 dark:bg-slate-800"
+                  className="h-11 w-11 shrink-0 rounded-xl border bg-slate-50 object-contain p-0.5 dark:border-slate-800 dark:bg-slate-800"
                 />
               ) : (
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-orange-200/60 bg-orange-50 dark:border-orange-900/40 dark:bg-orange-950/40">
-                  <Package className="h-6 w-6 text-orange-500" />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-orange-200/60 bg-orange-50 dark:border-orange-900/40 dark:bg-orange-950/40">
+                  <Package className="h-5 w-5 text-orange-500" />
                 </div>
               )}
               <div className="min-w-0 flex-1">
                 {data.brand && (
-                  <span className="text-[9.5px] font-black uppercase text-orange-600 dark:text-orange-400">
+                  <span className="block text-[8.5px] font-black uppercase text-orange-600 dark:text-orange-400">
                     {data.brand}
                   </span>
                 )}
-                <p className="truncate text-xs font-bold" title={prodName}>
+                <p
+                  className="truncate text-[11px] font-bold leading-tight"
+                  title={prodName}
+                >
                   {prodName}
                 </p>
                 {data.variantName && (
-                  <p className="truncate text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
+                  <p className="truncate text-[9.5px] font-medium text-slate-500 dark:text-slate-400">
                     Varian: {data.variantName}
                   </p>
                 )}
-                <p className="mt-0.5 font-mono text-xs font-black text-orange-600 dark:text-orange-400 sm:text-sm">
+                <p className="mt-0.5 font-mono text-xs font-black text-orange-600 dark:text-orange-400">
                   Rp {(Number(prodPrice) || 0).toLocaleString('id-ID')}
                 </p>
                 {data.stock !== undefined && (
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[9.5px] text-slate-400">
                     Stok Cabang: {data.stock} Unit
                   </p>
                 )}
@@ -1321,8 +1324,8 @@ export default function AdminChatPage() {
                           className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
                         >
                           {isMedia ? (
-                            /* Full-Bleed Modern Media Bubble (Apple/Telegram Style) */
-                            <div className="shadow-xs group relative max-w-[85%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[70%]">
+                            /* Full-Bleed Modern Media Bubble (Compact Mobile Friendly) */
+                            <div className="shadow-xs group relative max-w-[65%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[240px]">
                               {isVideo ? (
                                 <div className="relative">
                                   <video
@@ -1333,7 +1336,7 @@ export default function AdminChatPage() {
                                     disableRemotePlayback
                                     playsInline
                                     preload="metadata"
-                                    className="clean-video-player block max-h-[300px] w-full max-w-[280px] rounded-2xl bg-black object-cover sm:max-h-[360px] sm:max-w-[340px]"
+                                    className="clean-video-player block max-h-[160px] w-full max-w-[200px] rounded-2xl bg-black object-cover sm:max-h-[220px] sm:max-w-[240px]"
                                   />
                                   {/* Floating Theater Mode Button */}
                                   <button
@@ -1345,9 +1348,9 @@ export default function AdminChatPage() {
                                       })
                                     }
                                     title="Perbesar Layar Penuh"
-                                    className="shadow-xs absolute right-2.5 top-2.5 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/85"
+                                    className="shadow-xs absolute right-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/85"
                                   >
-                                    <Maximize2 className="h-3.5 w-3.5" />
+                                    <Maximize2 className="h-3 w-3" />
                                   </button>
                                 </div>
                               ) : (
@@ -1363,11 +1366,11 @@ export default function AdminChatPage() {
                                   <img
                                     src={message.mediaUrl!}
                                     alt="Foto Lampiran"
-                                    className="group-hover:scale-102 block max-h-[280px] max-w-[280px] rounded-2xl object-cover transition-transform duration-200 sm:max-h-[340px] sm:max-w-[340px]"
+                                    className="group-hover:scale-102 block max-h-[160px] w-auto max-w-[200px] rounded-2xl object-cover transition-transform duration-200 sm:max-h-[220px] sm:max-w-[240px]"
                                   />
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md">
-                                      <ZoomIn className="h-4 w-4" />
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md">
+                                      <ZoomIn className="h-3.5 w-3.5" />
                                     </div>
                                   </div>
                                 </div>

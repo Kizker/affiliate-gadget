@@ -95,10 +95,10 @@ function ProductCatalogMiniCard({ item }: { item: any }) {
     .replace('AffiliateGadget Store - ', '')
 
   return (
-    <div className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700">
+    <div className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700">
       <Link href={`/gadget/${item.id}`} className="block">
         {/* Image Box */}
-        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
+        <div className="relative aspect-[4/3] max-h-[130px] w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
           <Image
             src={
               (item.images && item.images[0]) ||
@@ -120,47 +120,47 @@ function ProductCatalogMiniCard({ item }: { item: any }) {
         </div>
 
         {/* Meta Section */}
-        <div className="mt-2 space-y-1">
+        <div className="mt-1.5 space-y-1">
           {/* Rating & Review Count */}
           <div className="flex items-center gap-1">
             <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-            <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
+            <span className="text-[10.5px] font-extrabold text-slate-900 dark:text-white">
               {(item.rating || 4.9).toFixed(1)}
             </span>
-            <span className="text-[10px] font-medium text-slate-400">
+            <span className="text-[9.5px] font-medium text-slate-400">
               ({item.totalReview || item.reviewCount || 38})
             </span>
           </div>
 
           {/* Product Name */}
-          <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
+          <h3 className="line-clamp-2 min-h-[28px] text-[11px] font-bold leading-tight text-slate-950 dark:text-white">
             {item.name}
           </h3>
 
           {/* Feature Perks Pills */}
           <div className="flex flex-wrap items-center gap-1 pt-0.5">
-            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[8.5px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
               Garansi 30 Hari
             </span>
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[8.5px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               Bonus 3-in-1
             </span>
           </div>
 
           {/* Price Row */}
-          <div className="pt-1">
-            <span className="block text-sm font-black leading-tight text-orange-500">
+          <div className="pt-0.5">
+            <span className="block text-xs font-black leading-tight text-orange-500">
               Rp {(item.price || 0).toLocaleString('id-ID')}
             </span>
             {strikePrice > (item.price || 0) && (
-              <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
+              <span className="mt-0.5 block text-[9.5px] leading-none text-slate-400 line-through">
                 Rp {strikePrice.toLocaleString('id-ID')}
               </span>
             )}
           </div>
 
           {/* Store Location */}
-          <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-1 truncate pt-0.5 text-[9.5px] text-slate-500 dark:text-slate-400">
             <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
             <span className="truncate">{storeCleanName}</span>
           </div>
@@ -389,8 +389,8 @@ export function ShopeeMobileProductDetail({
         </div>
       </header>
 
-      {/* 2. Hero Square Media Gallery with Native Horizontal Slide & Next/Prev Controls */}
-      <div className="relative aspect-square w-full select-none overflow-hidden border-b border-slate-200/60 bg-white dark:border-slate-800 dark:bg-slate-900">
+      {/* 2. Hero Media Gallery with Native Horizontal Slide & Next/Prev Controls */}
+      <div className="relative aspect-[4/3] max-h-[250px] w-full select-none overflow-hidden border-b border-slate-200/60 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-h-[280px]">
         {/* Horizontal Slider Track: Bisa di-slide/swipe langsung dengan jari */}
         <div
           ref={galleryRef}
@@ -401,7 +401,7 @@ export function ShopeeMobileProductDetail({
             allImages.map((imgUrl, idx) => (
               <div
                 key={imgUrl + idx}
-                className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-6"
+                className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-2.5 sm:p-3"
               >
                 <Image
                   src={imgUrl}
@@ -409,12 +409,12 @@ export function ShopeeMobileProductDetail({
                   fill
                   priority={idx === 0}
                   unoptimized
-                  className="object-contain p-6 transition-all duration-300"
+                  className="object-contain p-2 transition-all duration-300"
                 />
               </div>
             ))
           ) : (
-            <div className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-6">
+            <div className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-2.5 sm:p-3">
               <Image
                 src={
                   selectedImage ||
@@ -425,13 +425,13 @@ export function ShopeeMobileProductDetail({
                 fill
                 priority
                 unoptimized
-                className="object-contain p-6"
+                className="object-contain p-2"
               />
             </div>
           )}
         </div>
 
-        {/* Previous & Next Navigation Buttons (Tetap Ada Sesuai Permintaan) */}
+        {/* Previous & Next Navigation Buttons */}
         {allImages && allImages.length > 1 && (
           <>
             <button
@@ -440,7 +440,7 @@ export function ShopeeMobileProductDetail({
                 e.stopPropagation()
                 handlePrevImage()
               }}
-              className="absolute left-2.5 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-800 shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-90 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-100"
+              className="absolute left-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-800 shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-90 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-100"
               aria-label="Gambar Sebelumnya"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -451,7 +451,7 @@ export function ShopeeMobileProductDetail({
                 e.stopPropagation()
                 handleNextImage()
               }}
-              className="absolute right-2.5 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-800 shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-90 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-100"
+              className="absolute right-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-800 shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-90 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-100"
               aria-label="Gambar Selanjutnya"
             >
               <ChevronRight className="h-4 w-4" />
@@ -460,29 +460,29 @@ export function ShopeeMobileProductDetail({
         )}
 
         {/* Subtle Warranty Badge on bottom-left */}
-        <div className="shadow-xs backdrop-blur-xs pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white/95 px-3 py-1 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
-          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+        <div className="shadow-xs backdrop-blur-xs pointer-events-none absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-full border border-slate-200/80 bg-white/95 px-2.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
+          <ShieldCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
           <span>Garansi 30 Hari Tukar Unit</span>
         </div>
 
         {/* Clean Slide Counter on bottom-right */}
-        <div className="shadow-xs backdrop-blur-xs pointer-events-none absolute bottom-3 right-3 z-10 rounded-full border border-slate-200/60 bg-white/90 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300">
+        <div className="shadow-xs backdrop-blur-xs pointer-events-none absolute bottom-2 right-2 z-10 rounded-full border border-slate-200/60 bg-white/90 px-2 py-0.5 text-[9px] font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300">
           {displayIdx} / {totalImagesCount}
         </div>
       </div>
 
       {/* 3. Product Primary Info & Pricing */}
-      <div className="space-y-3 border-b border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div className="space-y-2 border-b border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         {/* Semantic Badges: Brand & Condition */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
             {product.brand || 'Gadget'}
           </span>
-          <span className="rounded-full border border-emerald-200/60 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <span className="rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
             {conditionLabel}
           </span>
           <span
-            className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+            className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
               availableStock > 5
                 ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                 : availableStock > 0
@@ -495,23 +495,23 @@ export function ShopeeMobileProductDetail({
         </div>
 
         {/* Product Title */}
-        <h1 className="text-base font-bold leading-snug text-slate-950 dark:text-white">
+        <h1 className="text-sm font-bold leading-snug text-slate-950 dark:text-white">
           {product.name}
         </h1>
 
         {/* Price Row */}
-        <div className="flex items-baseline justify-between gap-3 pt-0.5">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-2xl font-black tabular-nums tracking-tight text-slate-950 dark:text-white">
+        <div className="flex items-baseline justify-between gap-2 pt-0.5">
+          <div className="flex flex-wrap items-baseline gap-1.5">
+            <span className="text-xl font-black tabular-nums tracking-tight text-slate-950 dark:text-white">
               Rp {currentPrice.toLocaleString('id-ID')}
             </span>
 
             {product.originalPrice && product.originalPrice > currentPrice && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-normal tabular-nums text-slate-400 line-through">
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-normal tabular-nums text-slate-400 line-through">
                   Rp {product.originalPrice.toLocaleString('id-ID')}
                 </span>
-                <span className="rounded-md border border-rose-200/60 bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
+                <span className="rounded-md border border-rose-200/60 bg-rose-50 px-1 py-0.5 text-[9px] font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
                   Hemat Rp {discountAmount.toLocaleString('id-ID')}
                 </span>
               </div>
@@ -529,11 +529,11 @@ export function ShopeeMobileProductDetail({
                   : 'Ditambahkan ke Favorit!'
               )
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200/80 bg-slate-50 text-slate-500 transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-400"
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200/80 bg-slate-50 text-slate-500 transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-400"
             aria-label="Simpan ke Favorit"
           >
             <Heart
-              className={`h-4 w-4 ${
+              className={`h-3.5 w-3.5 ${
                 isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
               }`}
             />
@@ -543,13 +543,13 @@ export function ShopeeMobileProductDetail({
 
       {/* 4. Elegant Variant Selector */}
       {product.variants && product.variants.length > 0 && (
-        <div className="mt-2 space-y-2.5 border-y border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="mt-1.5 space-y-2 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-slate-900 dark:text-white">
               Pilihan Varian ({product.variants.length})
             </span>
             {selectedVariant && (
-              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                 Terpilih:{' '}
                 <strong className="text-slate-900 dark:text-white">
                   {selectedVariant.name}
@@ -574,7 +574,7 @@ export function ShopeeMobileProductDetail({
                   type="button"
                   onClick={() => onSelectVariant(v)}
                   disabled={vStock <= 0}
-                  className={`flex w-full items-center gap-2 rounded-xl border p-2 text-left transition-all ${
+                  className={`flex w-full items-center gap-1.5 rounded-xl border p-1.5 text-left transition-all ${
                     isSelected
                       ? 'shadow-xs border-orange-500 bg-orange-50/25 text-slate-900 ring-1 ring-orange-500/40 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
                       : vStock <= 0
@@ -582,19 +582,19 @@ export function ShopeeMobileProductDetail({
                         : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300'
                   }`}
                 >
-                  <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+                  <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
                     <Image
                       src={vImg}
                       alt={v.name}
                       fill
-                      sizes="36px"
+                      sizes="32px"
                       unoptimized
                       className="object-contain p-0.5"
                     />
                   </div>
-                  <div className="min-w-0 flex-1 pr-1">
+                  <div className="min-w-0 flex-1 pr-0.5">
                     <p
-                      className={`truncate text-xs leading-tight ${
+                      className={`truncate text-[11px] leading-tight ${
                         isSelected
                           ? 'font-bold text-slate-900 dark:text-white'
                           : 'font-semibold text-slate-700 dark:text-slate-300'
@@ -603,7 +603,7 @@ export function ShopeeMobileProductDetail({
                       {v.name}
                     </p>
                     <p
-                      className={`text-[10px] ${
+                      className={`text-[9.5px] ${
                         isSelected
                           ? 'font-bold text-orange-600 dark:text-orange-400'
                           : 'font-medium text-slate-500 dark:text-slate-400'
@@ -620,93 +620,93 @@ export function ShopeeMobileProductDetail({
       )}
 
       {/* 5. Quantity Stepper */}
-      <div className="mt-2 flex items-center justify-between border-y border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div className="mt-1.5 flex items-center justify-between border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <div>
           <span className="text-xs font-bold text-slate-900 dark:text-white">
             Jumlah Pesanan
           </span>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[10px] text-slate-400">
             Maksimal pembelian {availableStock} unit
           </p>
         </div>
 
-        <div className="flex items-center rounded-xl border border-slate-200/80 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-800/60">
+        <div className="flex items-center rounded-xl border border-slate-200/80 bg-slate-50 p-0.5 dark:border-slate-800 dark:bg-slate-800/60">
           <button
             type="button"
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
             disabled={isOutOfStock || quantity <= 1}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent dark:text-slate-300 dark:hover:bg-slate-700"
+            className="h-6.5 w-6.5 flex items-center justify-center rounded-lg text-slate-600 transition hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent dark:text-slate-300 dark:hover:bg-slate-700"
             aria-label="Kurangi jumlah"
           >
-            <Minus className="h-3.5 w-3.5" />
+            <Minus className="h-3 w-3" />
           </button>
-          <span className="w-8 text-center text-xs font-bold tabular-nums text-slate-900 dark:text-white">
+          <span className="w-7 text-center text-xs font-bold tabular-nums text-slate-900 dark:text-white">
             {isOutOfStock ? 0 : quantity}
           </span>
           <button
             type="button"
             onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
             disabled={isOutOfStock || quantity >= availableStock}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent dark:text-slate-300 dark:hover:bg-slate-700"
+            className="h-6.5 w-6.5 flex items-center justify-center rounded-lg text-slate-600 transition hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent dark:text-slate-300 dark:hover:bg-slate-700"
             aria-label="Tambah jumlah"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-3 w-3" />
           </button>
         </div>
       </div>
 
       {/* 6. Paket Bonus 3-in-1 Reassurance Card (Clean Minimalist) */}
-      <div className="mt-2 space-y-2.5 border-y border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div className="mt-1.5 space-y-2 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Gift className="h-4 w-4 text-orange-500" />
+          <div className="flex items-center gap-1.5">
+            <Gift className="h-3.5 w-3.5 text-orange-500" />
             <h3 className="text-xs font-bold text-slate-900 dark:text-white">
               Paket Bonus Aksesoris 3-in-1
             </h3>
           </div>
-          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
             Gratis (Rp 0)
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 pt-1 text-[11px] text-slate-600 dark:text-slate-300">
-          <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/70 p-2 dark:border-slate-800 dark:bg-slate-800/40">
-            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+        <div className="grid grid-cols-3 gap-1.5 pt-0.5 text-[10px] text-slate-600 dark:text-slate-300">
+          <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/70 p-1.5 dark:border-slate-800 dark:bg-slate-800/40">
+            <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" />
             <span className="truncate">Charger 20W</span>
           </div>
-          <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/70 p-2 dark:border-slate-800 dark:bg-slate-800/40">
-            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+          <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/70 p-1.5 dark:border-slate-800 dark:bg-slate-800/40">
+            <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" />
             <span className="truncate">Antigores 9D</span>
           </div>
-          <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/70 p-2 dark:border-slate-800 dark:bg-slate-800/40">
-            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+          <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/70 p-1.5 dark:border-slate-800 dark:bg-slate-800/40">
+            <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" />
             <span className="truncate">Matte Case</span>
           </div>
         </div>
       </div>
 
       {/* 7. Shipping & Physical Warranty Info Rows */}
-      <div className="mt-2 space-y-0 divide-y divide-slate-100 border-y border-slate-200/70 bg-white text-xs dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center gap-3 p-3.5">
+      <div className="mt-1.5 space-y-0 divide-y divide-slate-100 border-y border-slate-200/70 bg-white text-xs dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center gap-2.5 p-2.5">
           <Truck className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
           <div className="min-w-0 flex-1">
-            <p className="font-bold text-slate-900 dark:text-white">
+            <p className="text-xs font-bold text-slate-900 dark:text-white">
               Logistik Terproteksi (JNE & Gojek)
             </p>
-            <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="truncate text-[10px] text-slate-500 dark:text-slate-400">
               Wajib Asuransi 100% • Dikirim dari{' '}
               {product.store?.city || 'Toko Cabang'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 p-3.5">
+        <div className="flex items-center gap-2.5 p-2.5">
           <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div className="min-w-0 flex-1">
-            <p className="font-bold text-slate-900 dark:text-white">
+            <p className="text-xs font-bold text-slate-900 dark:text-white">
               Garansi Toko Fisik 30 Hari
             </p>
-            <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="truncate text-[10px] text-slate-500 dark:text-slate-400">
               Tukar Unit Baru • Bebas Blokir IMEI Seumur Hidup
             </p>
           </div>
@@ -715,18 +715,18 @@ export function ShopeeMobileProductDetail({
 
       {/* 8. Real Store Profile Card */}
       {product.store && (
-        <div className="mt-2 space-y-3 border-y border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
+        <div className="mt-1.5 space-y-2 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
               {product.store.logo ? (
                 <img
                   src={product.store.logo}
                   alt={product.store.name}
-                  className="h-11 w-11 shrink-0 rounded-2xl border border-slate-200/80 object-cover dark:border-slate-700"
+                  className="h-9 w-9 shrink-0 rounded-xl border border-slate-200/80 object-cover dark:border-slate-700"
                 />
               ) : (
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                  <Store className="h-5 w-5" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  <Store className="h-4 w-4" />
                 </div>
               )}
 
@@ -735,12 +735,12 @@ export function ShopeeMobileProductDetail({
                   {product.store.name}
                 </h3>
                 {product.store.companyName && (
-                  <p className="truncate text-[11px] text-slate-400">
+                  <p className="truncate text-[10px] text-slate-400">
                     {product.store.companyName}
                   </p>
                 )}
-                <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                  <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
+                <div className="flex items-center gap-1 text-[9.5px] text-slate-500">
+                  <MapPin className="h-2.5 w-2.5 shrink-0 text-slate-400" />
                   <span className="truncate">{product.store.city}</span>
                 </div>
               </div>
@@ -748,7 +748,7 @@ export function ShopeeMobileProductDetail({
 
             <Link
               href={`/toko/${product.store.slug}`}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               <span>Lihat Toko</span>
               <ChevronRight className="h-3 w-3" />
@@ -756,20 +756,20 @@ export function ShopeeMobileProductDetail({
           </div>
 
           {/* Real store metrics */}
-          <div className="grid grid-cols-2 divide-x divide-slate-100 border-t border-slate-100 pt-2.5 text-center text-xs dark:divide-slate-800 dark:border-slate-800">
+          <div className="grid grid-cols-2 divide-x divide-slate-100 border-t border-slate-100 pt-2 text-center text-xs dark:divide-slate-800 dark:border-slate-800">
             <div>
-              <p className="font-bold text-slate-900 dark:text-white">
+              <p className="text-xs font-bold text-slate-900 dark:text-white">
                 {product.store?._count?.products ||
                   otherStoreProducts.length ||
                   1}
               </p>
-              <p className="text-[10px] text-slate-400">Katalog Tersedia</p>
+              <p className="text-[9.5px] text-slate-400">Katalog Tersedia</p>
             </div>
             <div>
-              <p className="font-bold text-emerald-600 dark:text-emerald-400">
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                 Terverifikasi
               </p>
-              <p className="text-[10px] text-slate-400">Toko Fisik Resmi</p>
+              <p className="text-[9.5px] text-slate-400">Toko Fisik Resmi</p>
             </div>
           </div>
         </div>
@@ -777,21 +777,21 @@ export function ShopeeMobileProductDetail({
 
       {/* 9. Produk Lain dari Toko Ini (Jika ada - Format Kartu Katalog Konsisten) */}
       {otherStoreProducts.length > 0 && (
-        <div className="mt-2 border-y border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <div className="mb-3 flex items-center justify-between">
+        <div className="mt-1.5 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-2.5 flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Unit Lain di Toko Ini
             </h3>
             <Link
               href={`/toko/${product.store?.slug}`}
-              className="flex items-center gap-0.5 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              className="flex items-center gap-0.5 text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400"
             >
               Lihat Semua
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2">
             {otherStoreProducts.map((item: any) => (
               <ProductCatalogMiniCard key={item.id} item={item} />
             ))}
@@ -800,7 +800,7 @@ export function ShopeeMobileProductDetail({
       )}
 
       {/* 10. Spesifikasi Hardware Accordion */}
-      <div className="mt-2 border-y border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div className="mt-1.5 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <button
           type="button"
           onClick={() => setIsSpecsExpanded(!isSpecsExpanded)}
@@ -809,7 +809,7 @@ export function ShopeeMobileProductDetail({
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Spesifikasi Detail
           </h3>
-          <div className="flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
+          <div className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
             <span>
               {isSpecsExpanded ? 'Tutup Spesifikasi' : 'Buka Spesifikasi'}
             </span>
@@ -822,7 +822,7 @@ export function ShopeeMobileProductDetail({
         </button>
 
         {isSpecsExpanded && (
-          <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
+          <div className="mt-2.5 space-y-1.5 border-t border-slate-100 pt-2.5 text-xs dark:border-slate-800">
             <div className="flex justify-between border-b border-slate-50 py-1 dark:border-slate-800/60">
               <span className="text-slate-400">Merek</span>
               <span className="font-bold text-slate-900 dark:text-white">
@@ -866,8 +866,8 @@ export function ShopeeMobileProductDetail({
       </div>
 
       {/* 11. Deskripsi Produk */}
-      <div className="mt-2 border-y border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+      <div className="mt-1.5 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+        <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
           Deskripsi & Catatan Unit
         </h3>
         <div
@@ -884,7 +884,7 @@ export function ShopeeMobileProductDetail({
         <button
           type="button"
           onClick={() => setIsDescExpanded(!isDescExpanded)}
-          className="mt-2.5 flex w-full items-center justify-center gap-1 border-t border-slate-100 pt-2 text-xs font-bold text-blue-600 dark:border-slate-800 dark:text-blue-400"
+          className="mt-2 flex w-full items-center justify-center gap-1 border-t border-slate-100 pt-1.5 text-xs font-bold text-blue-600 dark:border-slate-800 dark:text-blue-400"
         >
           <span>{isDescExpanded ? 'Lebih Sedikit' : 'Baca Selengkapnya'}</span>
           {isDescExpanded ? (
@@ -896,7 +896,7 @@ export function ShopeeMobileProductDetail({
       </div>
 
       {/* 12. Ulasan Pembeli */}
-      <div className="mt-2 border-y border-slate-200/70 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div className="mt-1.5 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <ProductReviewsSection
           productId={product.id}
           productName={product.name}
@@ -906,14 +906,14 @@ export function ShopeeMobileProductDetail({
 
       {/* 13. Rekomendasi Gadget Terkait (Format Kartu Katalog Konsisten) */}
       {relatedProducts.length > 0 && (
-        <div className="mt-4 px-3">
-          <div className="mb-3 px-1">
+        <div className="mt-3 px-3">
+          <div className="mb-2.5 px-1">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Rekomendasi Gadget Lainnya
             </h3>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2">
             {relatedProducts.map((rel: any) => (
               <ProductCatalogMiniCard key={rel.id} item={rel} />
             ))}

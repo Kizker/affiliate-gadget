@@ -129,13 +129,14 @@ export default auth((req) => {
       }
     } else {
       // B. Customer Role
-      // Jika mengakses area dashboard admin/mitra/teknisi/dashboard umum -> kembalikan ke beranda publik
-      if (
-        isAdminRoute ||
-        isMitraRoute ||
-        isTechnicianRoute ||
-        isDashboardGenericRoute
-      ) {
+      // Jika mengakses dashboard generic (/dashboard atau /dashboard/customer) -> arahkan ke settings akun
+      if (isDashboardGenericRoute) {
+        return NextResponse.redirect(
+          new URL('/dashboard/customer/settings', req.url)
+        )
+      }
+      // Jika mengakses area dashboard internal admin/mitra/teknisi -> kembalikan ke beranda publik
+      if (isAdminRoute || isMitraRoute || isTechnicianRoute) {
         return NextResponse.redirect(new URL('/', req.url))
       }
       if (isAuthRoute) {

@@ -28,6 +28,7 @@ import {
   Undo2,
 } from 'lucide-react'
 import { ReturnModal } from '@/components/customer/return-modal'
+import { MobileOrdersView } from '@/components/customer/mobile-orders-view'
 import { toast } from 'sonner'
 
 interface Order {
@@ -258,321 +259,341 @@ export default function OrdersClient({
   }, [initialOrders, selectedStatus, searchQuery])
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50/60 font-sans dark:bg-slate-950">
-      <Navbar variant="light" />
+    <>
+      {/* 1. Mobile Shopee/Tokopedia-Style View */}
+      <div className="block md:hidden">
+        <MobileOrdersView
+          orders={initialOrders}
+          onOpenReturnModal={(order) => {
+            setReturnModal({
+              isOpen: true,
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              totalAmount: order.total,
+            })
+          }}
+        />
+      </div>
 
-      <main className="flex-1 pb-20 pt-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Unified Control Panel: Status Filter Pills & Search Capsule (Sesuai Desain Manajemen Produk) */}
-          <div className="shadow-2xs mb-6 flex flex-col items-stretch justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:p-3 lg:flex-row lg:items-center">
-            {/* Left: Status Filter Pills */}
-            <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
-              {filterOptions.map((opt) => {
-                const isActive = selectedStatus === opt.value
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => setSelectedStatus(opt.value)}
-                    className={`flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 ${
-                      isActive
-                        ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
-                        : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
-                    }`}
-                  >
-                    <span>{opt.label}</span>
-                    {opt.count > 0 && (
-                      <span
-                        className={`py-0.2 rounded-full px-1.5 text-[10px] font-black ${
-                          isActive
-                            ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
-                            : 'bg-slate-200/70 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        {opt.count}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
+      {/* 2. Desktop View */}
+      <div className="hidden min-h-screen flex-col bg-slate-50/60 font-sans dark:bg-slate-950 md:flex">
+        <Navbar variant="light" />
 
-            {/* Right: Search Capsule */}
-            <div className="flex w-full items-center gap-2 lg:w-auto">
-              <div className="relative flex-1 lg:w-72">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari pesanan, nomor resi..."
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                />
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
+        <main className="flex-1 pb-20 pt-24">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            {/* Unified Control Panel: Status Filter Pills & Search Capsule (Sesuai Desain Manajemen Produk) */}
+            <div className="shadow-2xs mb-6 flex flex-col items-stretch justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:p-3 lg:flex-row lg:items-center">
+              {/* Left: Status Filter Pills */}
+              <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
+                {filterOptions.map((opt) => {
+                  const isActive = selectedStatus === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setSelectedStatus(opt.value)}
+                      className={`flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 ${
+                        isActive
+                          ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
+                          : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {opt.count > 0 && (
+                        <span
+                          className={`py-0.2 rounded-full px-1.5 text-[10px] font-black ${
+                            isActive
+                              ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
+                              : 'bg-slate-200/70 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          {opt.count}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Right: Search Capsule */}
+              <div className="flex w-full items-center gap-2 lg:w-auto">
+                <div className="relative flex-1 lg:w-72">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari pesanan, nomor resi..."
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  />
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Orders Bento List */}
-          {filteredOrders.length === 0 ? (
-            <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
-                <Package className="h-7 w-7" />
+            {/* Orders Bento List */}
+            {filteredOrders.length === 0 ? (
+              <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+                  <Package className="h-7 w-7" />
+                </div>
+                <h3 className="mt-4 text-base font-bold text-slate-900 dark:text-white">
+                  Belum Ada Pesanan Ditemukan
+                </h3>
+                <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-slate-500">
+                  {searchQuery
+                    ? `Tidak ada transaksi yang cocok dengan kata kunci "${searchQuery}".`
+                    : 'Anda belum memiliki transaksi pesanan pada status yang dipilih.'}
+                </p>
+                <Link
+                  href="/gadget"
+                  className="shadow-xs mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950"
+                >
+                  Jelajahi Katalog Gadget
+                </Link>
               </div>
-              <h3 className="mt-4 text-base font-bold text-slate-900 dark:text-white">
-                Belum Ada Pesanan Ditemukan
-              </h3>
-              <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-slate-500">
-                {searchQuery
-                  ? `Tidak ada transaksi yang cocok dengan kata kunci "${searchQuery}".`
-                  : 'Anda belum memiliki transaksi pesanan pada status yang dipilih.'}
-              </p>
-              <Link
-                href="/gadget"
-                className="shadow-xs mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950"
-              >
-                Jelajahi Katalog Gadget
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredOrders.map((order) => {
-                const currentStatus =
-                  statusConfig[order.status] || statusConfig.PROCESSING
-                const StatusIcon = currentStatus.icon
-                const firstItem = order.items[0]
-                const itemImage =
-                  firstItem?.product?.images?.[0] ||
-                  firstItem?.rentalItem?.images?.[0] ||
-                  DEFAULT_GADGET_IMAGE
+            ) : (
+              <div className="space-y-4">
+                {filteredOrders.map((order) => {
+                  const currentStatus =
+                    statusConfig[order.status] || statusConfig.PROCESSING
+                  const StatusIcon = currentStatus.icon
+                  const firstItem = order.items[0]
+                  const itemImage =
+                    firstItem?.product?.images?.[0] ||
+                    firstItem?.rentalItem?.images?.[0] ||
+                    DEFAULT_GADGET_IMAGE
 
-                const formattedDate = new Date(
-                  order.createdAt
-                ).toLocaleDateString('id-ID', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                })
+                  const formattedDate = new Date(
+                    order.createdAt
+                  ).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })
 
-                return (
-                  <div
-                    key={order.id}
-                    className="shadow-2xs hover:shadow-xs rounded-3xl border border-slate-200/80 bg-white p-5 transition-all duration-200 dark:border-slate-800 dark:bg-slate-900 sm:p-6"
-                  >
-                    {/* 1. Top Meta Bar: Store Badge, Monospace Order Number & Status Pill */}
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5 dark:border-slate-800/80">
-                      <div className="flex flex-wrap items-center gap-2 text-xs sm:gap-3">
-                        <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100/90 px-3 py-1 font-bold text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-                          <Building2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                          <span>
-                            {order.store?.name || 'Cabang Resmi Toko'}
+                  return (
+                    <div
+                      key={order.id}
+                      className="shadow-2xs hover:shadow-xs rounded-3xl border border-slate-200/80 bg-white p-5 transition-all duration-200 dark:border-slate-800 dark:bg-slate-900 sm:p-6"
+                    >
+                      {/* 1. Top Meta Bar: Store Badge, Monospace Order Number & Status Pill */}
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5 dark:border-slate-800/80">
+                        <div className="flex flex-wrap items-center gap-2 text-xs sm:gap-3">
+                          <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100/90 px-3 py-1 font-bold text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                            <Building2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                            <span>
+                              {order.store?.name || 'Cabang Resmi Toko'}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() =>
+                              copyToClipboard(order.orderNumber, order.id)
+                            }
+                            title="Salin nomor pesanan"
+                            className="inline-flex cursor-pointer items-center gap-1.5 font-mono text-xs font-bold text-slate-500 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+                          >
+                            <span>#{order.orderNumber}</span>
+                            {copiedId === order.id ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5 text-slate-400" />
+                            )}
+                          </button>
+
+                          <span className="hidden text-slate-300 dark:text-slate-700 sm:inline">
+                            •
+                          </span>
+
+                          <span className="hidden text-xs text-slate-400 sm:inline">
+                            {formattedDate}
                           </span>
                         </div>
 
-                        <button
-                          onClick={() =>
-                            copyToClipboard(order.orderNumber, order.id)
-                          }
-                          title="Salin nomor pesanan"
-                          className="inline-flex cursor-pointer items-center gap-1.5 font-mono text-xs font-bold text-slate-500 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+                        {/* Semantic Status Badge */}
+                        <div
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-xs font-bold ${currentStatus.badgeBg}`}
                         >
-                          <span>#{order.orderNumber}</span>
-                          {copiedId === order.id ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-600" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5 text-slate-400" />
-                          )}
-                        </button>
-
-                        <span className="hidden text-slate-300 dark:text-slate-700 sm:inline">
-                          •
-                        </span>
-
-                        <span className="hidden text-xs text-slate-400 sm:inline">
-                          {formattedDate}
-                        </span>
-                      </div>
-
-                      {/* Semantic Status Badge */}
-                      <div
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-xs font-bold ${currentStatus.badgeBg}`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${currentStatus.dotColor}`}
-                        />
-                        <span>{currentStatus.label}</span>
-                      </div>
-                    </div>
-
-                    {/* 2. Main Body: Product Item (Left) & Financial + Action (Right) */}
-                    <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
-                      {/* Left: Thumbnail & Gadget Details */}
-                      <div className="flex min-w-0 flex-1 items-start gap-4 sm:items-center">
-                        <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/80 p-2 dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24">
-                          <img
-                            src={itemImage}
-                            alt={firstItem?.product?.name || 'Gadget'}
-                            className="h-full w-full object-contain"
-                            onError={(e) => {
-                              e.currentTarget.src = DEFAULT_GADGET_IMAGE
-                            }}
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${currentStatus.dotColor}`}
                           />
+                          <span>{currentStatus.label}</span>
                         </div>
+                      </div>
 
-                        <div className="min-w-0 flex-1">
-                          {firstItem?.product?.brand && (
-                            <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                              {firstItem.product.brand}
-                            </span>
-                          )}
-                          <h3 className="line-clamp-1 text-base font-bold leading-snug text-slate-900 dark:text-white sm:text-lg">
-                            {firstItem?.product?.name ||
-                              firstItem?.service?.name ||
-                              'Unit Smartphone Original'}
-                          </h3>
+                      {/* 2. Main Body: Product Item (Left) & Financial + Action (Right) */}
+                      <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
+                        {/* Left: Thumbnail & Gadget Details */}
+                        <div className="flex min-w-0 flex-1 items-start gap-4 sm:items-center">
+                          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/80 p-2 dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24">
+                            <img
+                              src={itemImage}
+                              alt={firstItem?.product?.name || 'Gadget'}
+                              className="h-full w-full object-contain"
+                              onError={(e) => {
+                                e.currentTarget.src = DEFAULT_GADGET_IMAGE
+                              }}
+                            />
+                          </div>
 
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            <span className="font-medium text-slate-700 dark:text-slate-300">
-                              {firstItem?.quantity || 1} Unit
-                            </span>
-                            {order.items.length > 1 && (
-                              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                +{order.items.length - 1} produk lainnya
+                          <div className="min-w-0 flex-1">
+                            {firstItem?.product?.brand && (
+                              <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                {firstItem.product.brand}
                               </span>
                             )}
-                            <span className="text-slate-300 dark:text-slate-700">
-                              •
-                            </span>
-                            <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
-                              <Sparkles className="h-3 w-3" /> Paket Bonus
-                              3-in-1
-                            </span>
-                          </div>
+                            <h3 className="line-clamp-1 text-base font-bold leading-snug text-slate-900 dark:text-white sm:text-lg">
+                              {firstItem?.product?.name ||
+                                firstItem?.service?.name ||
+                                'Unit Smartphone Original'}
+                            </h3>
 
-                          {/* Badges: Logistics & 30-Day Guarantee */}
-                          <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              <Truck className="h-3.5 w-3.5 text-orange-500" />
-                              {order.courierCode || 'JNE'}{' '}
-                              {order.courierService || 'REG'}
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                              Garansi 30 Hari Ganti Baru
-                            </span>
-
-                            {/* Return Status Chip if exists */}
-                            {order.returnRequests &&
-                              order.returnRequests.length > 0 && (
-                                <span
-                                  className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold ${
-                                    order.returnRequests[0].status ===
-                                      'APPROVED' ||
-                                    order.returnRequests[0].status ===
-                                      'COMPLETED'
-                                      ? 'border border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                      : order.returnRequests[0].status ===
-                                          'REJECTED'
-                                        ? 'border border-rose-200/80 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
-                                        : 'border border-amber-200/80 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                                  }`}
-                                >
-                                  <RotateCcw className="h-3 w-3" />
-                                  <span>
-                                    {order.returnRequests[0].status ===
-                                    'APPROVED'
-                                      ? 'Retur Disetujui'
-                                      : order.returnRequests[0].status ===
-                                          'COMPLETED'
-                                        ? 'Retur Selesai'
-                                        : order.returnRequests[0].status ===
-                                            'REJECTED'
-                                          ? 'Retur Ditolak'
-                                          : 'Pengajuan Retur Diproses'}
-                                  </span>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              <span className="font-medium text-slate-700 dark:text-slate-300">
+                                {firstItem?.quantity || 1} Unit
+                              </span>
+                              {order.items.length > 1 && (
+                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  +{order.items.length - 1} produk lainnya
                                 </span>
                               )}
+                              <span className="text-slate-300 dark:text-slate-700">
+                                •
+                              </span>
+                              <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                <Sparkles className="h-3 w-3" /> Paket Bonus
+                                3-in-1
+                              </span>
+                            </div>
+
+                            {/* Badges: Logistics & 30-Day Guarantee */}
+                            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                <Truck className="h-3.5 w-3.5 text-orange-500" />
+                                {order.courierCode || 'JNE'}{' '}
+                                {order.courierService || 'REG'}
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                                Garansi 30 Hari Ganti Baru
+                              </span>
+
+                              {/* Return Status Chip if exists */}
+                              {order.returnRequests &&
+                                order.returnRequests.length > 0 && (
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+                                      order.returnRequests[0].status ===
+                                        'APPROVED' ||
+                                      order.returnRequests[0].status ===
+                                        'COMPLETED'
+                                        ? 'border border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                        : order.returnRequests[0].status ===
+                                            'REJECTED'
+                                          ? 'border border-rose-200/80 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                                          : 'border border-amber-200/80 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                                    }`}
+                                  >
+                                    <RotateCcw className="h-3 w-3" />
+                                    <span>
+                                      {order.returnRequests[0].status ===
+                                      'APPROVED'
+                                        ? 'Retur Disetujui'
+                                        : order.returnRequests[0].status ===
+                                            'COMPLETED'
+                                          ? 'Retur Selesai'
+                                          : order.returnRequests[0].status ===
+                                              'REJECTED'
+                                            ? 'Retur Ditolak'
+                                            : 'Pengajuan Retur Diproses'}
+                                    </span>
+                                  </span>
+                                )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Right: Total Price & Quick Action Buttons */}
-                      <div className="flex w-full shrink-0 items-start justify-between gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:items-center lg:w-auto lg:flex-col lg:items-end lg:border-t-0 lg:pt-0">
-                        <div className="flex flex-col lg:items-end">
-                          <span className="text-xs font-medium text-slate-400">
-                            Total Pembayaran:
-                          </span>
-                          <span className="font-mono text-xl font-black text-slate-950 dark:text-white sm:text-2xl">
-                            {formatPrice(order.total)}
-                          </span>
-                        </div>
+                        {/* Right: Total Price & Quick Action Buttons */}
+                        <div className="flex w-full shrink-0 items-start justify-between gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:items-center lg:w-auto lg:flex-col lg:items-end lg:border-t-0 lg:pt-0">
+                          <div className="flex flex-col lg:items-end">
+                            <span className="text-xs font-medium text-slate-400">
+                              Total Pembayaran:
+                            </span>
+                            <span className="font-mono text-xl font-black text-slate-950 dark:text-white sm:text-2xl">
+                              {formatPrice(order.total)}
+                            </span>
+                          </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Link
-                            href={`/dashboard/customer/chat?orderId=${order.id}${order.store?.id ? `&storeId=${order.store.id}` : ''}`}
-                            className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                          >
-                            <MessageSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                            <span>Chat Toko</span>
-                          </Link>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              href={`/dashboard/customer/chat?orderId=${order.id}${order.store?.id ? `&storeId=${order.store.id}` : ''}`}
+                              className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                            >
+                              <MessageSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                              <span>Chat Toko</span>
+                            </Link>
 
-                          {/* Ajukan Pengembalian for COMPLETED orders */}
-                          {order.status === 'COMPLETED' &&
-                            (!order.returnRequests ||
-                              order.returnRequests.length === 0 ||
-                              order.returnRequests[0].status ===
-                                'REJECTED') && (
-                              <button
-                                onClick={() =>
-                                  setReturnModal({
-                                    isOpen: true,
-                                    orderId: order.id,
-                                    orderNumber: order.orderNumber,
-                                    totalAmount: order.total,
-                                  })
-                                }
-                                className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3.5 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                            {/* Ajukan Pengembalian for COMPLETED orders */}
+                            {order.status === 'COMPLETED' &&
+                              (!order.returnRequests ||
+                                order.returnRequests.length === 0 ||
+                                order.returnRequests[0].status ===
+                                  'REJECTED') && (
+                                <button
+                                  onClick={() =>
+                                    setReturnModal({
+                                      isOpen: true,
+                                      orderId: order.id,
+                                      orderNumber: order.orderNumber,
+                                      totalAmount: order.total,
+                                    })
+                                  }
+                                  className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3.5 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5 text-orange-600" />
+                                  <span>Ajukan Pengembalian</span>
+                                </button>
+                              )}
+
+                            {order.status === 'PENDING_PAYMENT' ? (
+                              <Link
+                                href={`/dashboard/customer/orders/${order.id}`}
+                                className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
                               >
-                                <RotateCcw className="h-3.5 w-3.5 text-orange-600" />
-                                <span>Ajukan Pengembalian</span>
-                              </button>
+                                <CreditCard className="h-3.5 w-3.5" />
+                                <span>Bayar Sekarang</span>
+                              </Link>
+                            ) : (
+                              <Link
+                                href={`/dashboard/customer/orders/${order.id}`}
+                                className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950"
+                              >
+                                <span>Rincian Pesanan</span>
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              </Link>
                             )}
-
-                          {order.status === 'PENDING_PAYMENT' ? (
-                            <Link
-                              href={`/dashboard/customer/orders/${order.id}`}
-                              className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
-                            >
-                              <CreditCard className="h-3.5 w-3.5" />
-                              <span>Bayar Sekarang</span>
-                            </Link>
-                          ) : (
-                            <Link
-                              href={`/dashboard/customer/orders/${order.id}`}
-                              className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950"
-                            >
-                              <span>Rincian Pesanan</span>
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
-                          )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </main>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </main>
 
-      {/* Return Modal */}
+        <Footer variant="light" />
+      </div>
+
+      {/* Return Modal (Shared) */}
       <ReturnModal
         isOpen={returnModal.isOpen}
         onClose={() => setReturnModal((prev) => ({ ...prev, isOpen: false }))}
@@ -581,8 +602,6 @@ export default function OrdersClient({
         totalAmount={returnModal.totalAmount}
         onSuccess={() => router.refresh()}
       />
-
-      <Footer variant="light" />
-    </div>
+    </>
   )
 }

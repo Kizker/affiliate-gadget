@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Star,
@@ -55,6 +56,7 @@ interface MitraDetailClientProps {
 }
 
 export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
+  const router = useRouter()
   const { data: session } = useSession()
   const [refreshReviews, setRefreshReviews] = useState(0)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
@@ -156,13 +158,23 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
           <div className="relative z-10 flex h-full flex-col">
             {/* Back Button */}
             <div className="p-6">
-              <Link
-                href="/rekomendasi"
-                className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white backdrop-blur-md transition-all hover:bg-white/30"
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    typeof window !== 'undefined' &&
+                    window.history.length > 1
+                  ) {
+                    router.back()
+                  } else {
+                    router.push('/rekomendasi')
+                  }
+                }}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white backdrop-blur-md transition-all hover:bg-white/30"
               >
                 <ArrowLeft className="h-5 w-5" />
-                Kembali
-              </Link>
+                <span>Kembali</span>
+              </button>
             </div>
 
             {/* Hero Content */}

@@ -328,13 +328,23 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         <div className="mx-auto my-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Top Breadcrumb & Store Origin Bar */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-            <Link
-              href="/dashboard/customer/orders"
-              className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 transition-colors hover:text-slate-950 dark:hover:text-white"
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  typeof window !== 'undefined' &&
+                  window.history.length > 1
+                ) {
+                  router.back()
+                } else {
+                  router.push('/dashboard/customer/orders')
+                }
+              }}
+              className="inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-500 transition-colors hover:text-slate-950 dark:hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
-              Kembali ke Pesanan Saya
-            </Link>
+              <span>Kembali</span>
+            </button>
 
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-slate-400">

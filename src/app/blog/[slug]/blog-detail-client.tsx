@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import {
@@ -48,6 +49,7 @@ export default function BlogDetailClient({
   article,
   relatedArticles,
 }: BlogDetailClientProps) {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [readingProgress, setReadingProgress] = useState(0)
 
@@ -145,7 +147,9 @@ export default function BlogDetailClient({
                 <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/20 bg-gradient-to-br from-blue-400 to-cyan-300 font-bold text-slate-900">
                   A
                 </div>
-                <span className="font-medium text-white">Admin Affiliate Gadget</span>
+                <span className="font-medium text-white">
+                  Admin Affiliate Gadget
+                </span>
               </div>
               <div className="hidden h-1.5 w-1.5 rounded-full bg-slate-500 md:block"></div>
               <div className="flex items-center gap-2">
@@ -169,13 +173,23 @@ export default function BlogDetailClient({
 
             {/* Action Buttons in Hero */}
             <div className="flex items-center justify-center gap-4">
-              <Link
-                href="/blog"
-                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/20"
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    typeof window !== 'undefined' &&
+                    window.history.length > 1
+                  ) {
+                    router.back()
+                  } else {
+                    router.push('/blog')
+                  }
+                }}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/20"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Kembali
-              </Link>
+                <span>Kembali</span>
+              </button>
               <button
                 onClick={handleShare}
                 className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-blue-700"
