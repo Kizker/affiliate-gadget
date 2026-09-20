@@ -213,40 +213,42 @@ export async function GET(
         },
       })
 
-      if (existingUserReview) {
+      // Strictly check for completed order by this user containing this product
+      const deliveredOrder = await prisma.order.findFirst({
+        where: {
+          userId: session.user.id,
+          status: 'COMPLETED',
+          items: {
+            some: {
+              productId: productId,
+            },
+          },
+        },
+        include: {
+          items: {
+            where: { productId: productId },
+            take: 1,
+          },
+        },
+        orderBy: { completedAt: 'desc' },
+      })
+
+      // Customer can ONLY review if they have an actual verified COMPLETED order for this product
+      if (deliveredOrder) {
         userEligibility.canReview = true
         userEligibility.isDelivered = true
+        userEligibility.eligibleOrderId = deliveredOrder.id
+        userEligibility.eligibleVariantName =
+          existingUserReview?.variantName ||
+          deliveredOrder.items[0]?.variantName ||
+          null
         userEligibility.existingReview = existingUserReview
-        userEligibility.eligibleOrderId = existingUserReview.orderId
-        userEligibility.eligibleVariantName = existingUserReview.variantName
       } else {
-        // Look for completed/delivered order by this user containing this product
-        const deliveredOrder = await prisma.order.findFirst({
-          where: {
-            userId: session.user.id,
-            status: 'COMPLETED',
-            items: {
-              some: {
-                productId: productId,
-              },
-            },
-          },
-          include: {
-            items: {
-              where: { productId: productId },
-              take: 1,
-            },
-          },
-          orderBy: { completedAt: 'desc' },
-        })
-
-        if (deliveredOrder) {
-          userEligibility.canReview = true
-          userEligibility.isDelivered = true
-          userEligibility.eligibleOrderId = deliveredOrder.id
-          userEligibility.eligibleVariantName =
-            deliveredOrder.items[0]?.variantName || null
-        }
+        userEligibility.canReview = false
+        userEligibility.isDelivered = false
+        userEligibility.eligibleOrderId = null
+        userEligibility.eligibleVariantName = null
+        userEligibility.existingReview = null
       }
     }
 
@@ -328,12 +330,29 @@ export async function POST(
       )
     }
 
-    // Check if user has purchased and received the product, or find latest delivered order
-    let resolvedOrderId = orderId
-    let resolvedVariant = variantName
+    // Strictly check if user has purchased and received the product with COMPLETED status
+    let completedOrder = null
+    if (orderId) {
+      completedOrder = await prisma.order.findFirst({
+        where: {
+          id: orderId,
+          userId: session.user.id,
+          status: 'COMPLETED',
+          items: {
+            some: { productId: productId },
+          },
+        },
+        include: {
+          items: {
+            where: { productId: productId },
+            take: 1,
+          },
+        },
+      })
+    }
 
-    if (!resolvedOrderId) {
-      const deliveredOrder = await prisma.order.findFirst({
+    if (!completedOrder) {
+      completedOrder = await prisma.order.findFirst({
         where: {
           userId: session.user.id,
           status: 'COMPLETED',
@@ -349,13 +368,6 @@ export async function POST(
         },
         orderBy: { completedAt: 'desc' },
       })
-
-      if (deliveredOrder) {
-        resolvedOrderId = deliveredOrder.id
-        if (!resolvedVariant) {
-          resolvedVariant = deliveredOrder.items[0]?.variantName
-        }
-      }
     }
 
     // Check existing review
@@ -366,6 +378,25 @@ export async function POST(
         type: 'PRODUCT',
       },
     })
+
+    // If user has no verified completed order, forbid review creation immediately
+    if (!completedOrder) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Ulasan hanya dapat diberikan oleh customer yang telah membeli produk ini dan status pesanannya sudah selesai.',
+        },
+        { status: 403 }
+      )
+    }
+
+    const resolvedOrderId = completedOrder.id
+    const resolvedVariant =
+      variantName ||
+      completedOrder.items[0]?.variantName ||
+      existingReview?.variantName ||
+      null
 
     // Clean image and video arrays
     const sanitizedImages = Array.isArray(images)
@@ -391,7 +422,10 @@ export async function POST(
           videos: sanitizedVideos,
           variantName: resolvedVariant || existingReview.variantName,
           orderId: resolvedOrderId || existingReview.orderId,
-          storeId: product.storeId || existingReview.storeId,
+          storeId:
+            completedOrder?.storeId ||
+            product.storeId ||
+            existingReview.storeId,
         },
         include: {
           user: { select: { id: true, name: true, image: true } },
@@ -399,14 +433,14 @@ export async function POST(
         },
       })
     } else {
-      // Create new product review
+      // Create new product review tied to completed order
       review = await prisma.review.create({
         data: {
           userId: session.user.id,
           productId: productId,
-          storeId: product.storeId,
-          orderId: resolvedOrderId || null,
-          variantName: resolvedVariant || null,
+          storeId: completedOrder?.storeId || product.storeId,
+          orderId: resolvedOrderId,
+          variantName: resolvedVariant,
           type: 'PRODUCT',
           rating: Number(rating),
           comment: comment?.trim() || null,
