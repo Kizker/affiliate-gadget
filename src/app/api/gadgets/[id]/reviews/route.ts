@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+const ELIGIBLE_CHECKOUT_STATUSES = [
+  'PENDING_PAYMENT',
+  'PAID',
+  'IN_PROGRESS',
+  'SHIPPED',
+  'COMPLETED',
+]
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -213,11 +224,11 @@ export async function GET(
         },
       })
 
-      // Strictly check for completed order by this user containing this product
-      const deliveredOrder = await prisma.order.findFirst({
+      // Check for completed checkout order by this user containing this product
+      const checkedOutOrder = await prisma.order.findFirst({
         where: {
           userId: session.user.id,
-          status: 'COMPLETED',
+          status: { in: ELIGIBLE_CHECKOUT_STATUSES as any },
           items: {
             some: {
               productId: productId,
@@ -230,17 +241,17 @@ export async function GET(
             take: 1,
           },
         },
-        orderBy: { completedAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
       })
 
-      // Customer can ONLY review if they have an actual verified COMPLETED order for this product
-      if (deliveredOrder) {
+      // Customer can ONLY review if they have completed checkout for this product
+      if (checkedOutOrder) {
         userEligibility.canReview = true
-        userEligibility.isDelivered = true
-        userEligibility.eligibleOrderId = deliveredOrder.id
+        userEligibility.isDelivered = checkedOutOrder.status === 'COMPLETED'
+        userEligibility.eligibleOrderId = checkedOutOrder.id
         userEligibility.eligibleVariantName =
           existingUserReview?.variantName ||
-          deliveredOrder.items[0]?.variantName ||
+          checkedOutOrder.items[0]?.variantName ||
           null
         userEligibility.existingReview = existingUserReview
       } else {
@@ -330,14 +341,14 @@ export async function POST(
       )
     }
 
-    // Strictly check if user has purchased and received the product with COMPLETED status
-    let completedOrder = null
+    // Strictly check if user has checked out the product
+    let checkedOutOrder = null
     if (orderId) {
-      completedOrder = await prisma.order.findFirst({
+      checkedOutOrder = await prisma.order.findFirst({
         where: {
           id: orderId,
           userId: session.user.id,
-          status: 'COMPLETED',
+          status: { in: ELIGIBLE_CHECKOUT_STATUSES as any },
           items: {
             some: { productId: productId },
           },
@@ -351,11 +362,11 @@ export async function POST(
       })
     }
 
-    if (!completedOrder) {
-      completedOrder = await prisma.order.findFirst({
+    if (!checkedOutOrder) {
+      checkedOutOrder = await prisma.order.findFirst({
         where: {
           userId: session.user.id,
-          status: 'COMPLETED',
+          status: { in: ELIGIBLE_CHECKOUT_STATUSES as any },
           items: {
             some: { productId: productId },
           },
@@ -366,7 +377,7 @@ export async function POST(
             take: 1,
           },
         },
-        orderBy: { completedAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
       })
     }
 
@@ -379,22 +390,22 @@ export async function POST(
       },
     })
 
-    // If user has no verified completed order, forbid review creation immediately
-    if (!completedOrder) {
+    // If user has not completed checkout for this product, forbid review creation immediately
+    if (!checkedOutOrder) {
       return NextResponse.json(
         {
           success: false,
           error:
-            'Ulasan hanya dapat diberikan oleh customer yang telah membeli produk ini dan status pesanannya sudah selesai.',
+            'Ulasan hanya dapat diberikan oleh customer yang telah selesai checkout produk ini.',
         },
         { status: 403 }
       )
     }
 
-    const resolvedOrderId = completedOrder.id
+    const resolvedOrderId = checkedOutOrder.id
     const resolvedVariant =
       variantName ||
-      completedOrder.items[0]?.variantName ||
+      checkedOutOrder.items[0]?.variantName ||
       existingReview?.variantName ||
       null
 
@@ -423,7 +434,7 @@ export async function POST(
           variantName: resolvedVariant || existingReview.variantName,
           orderId: resolvedOrderId || existingReview.orderId,
           storeId:
-            completedOrder?.storeId ||
+            checkedOutOrder?.storeId ||
             product.storeId ||
             existingReview.storeId,
         },
@@ -433,12 +444,12 @@ export async function POST(
         },
       })
     } else {
-      // Create new product review tied to completed order
+      // Create new product review tied to completed checkout order
       review = await prisma.review.create({
         data: {
           userId: session.user.id,
           productId: productId,
-          storeId: completedOrder?.storeId || product.storeId,
+          storeId: checkedOutOrder?.storeId || product.storeId,
           orderId: resolvedOrderId,
           variantName: resolvedVariant,
           type: 'PRODUCT',

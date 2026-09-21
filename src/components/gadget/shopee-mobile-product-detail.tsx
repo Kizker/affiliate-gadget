@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner'
 import { useCartStore } from '@/lib/store/cart-store'
 import { ProductReviewsSection } from './product-reviews-section'
+import { ProductShareModal } from './product-share-modal'
 
 interface ShopeeMobileProductDetailProps {
   product: any
@@ -197,6 +198,8 @@ export function ShopeeMobileProductDetail({
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [isDescExpanded, setIsDescExpanded] = useState(false)
   const [isSpecsExpanded, setIsSpecsExpanded] = useState(false)
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
 
   // Scroll listener for sticky header styling and back-to-top button
   useEffect(() => {
@@ -211,6 +214,17 @@ export function ShopeeMobileProductDetail({
   }, [])
 
   const galleryRef = useRef<HTMLDivElement>(null)
+  const isProgrammaticScrollRef = useRef(false)
+  const programmaticTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Cleanup programmatic scroll timer
+  useEffect(() => {
+    return () => {
+      if (programmaticTimeoutRef.current) {
+        clearTimeout(programmaticTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const currentImageIdx = allImages.indexOf(selectedImage)
   const displayIdx = currentImageIdx >= 0 ? currentImageIdx + 1 : 1
@@ -235,11 +249,22 @@ export function ShopeeMobileProductDetail({
   // Sync gallery scroll position whenever selectedImage changes (e.g. from variant button)
   useEffect(() => {
     if (!galleryRef.current || !allImages || allImages.length <= 1) return
-    const idx = allImages.indexOf(selectedImage)
+    let idx = allImages.indexOf(selectedImage)
+    if (idx < 0) {
+      const baseImg = selectedImage.split('?')[0]
+      idx = allImages.findIndex((img) => img.split('?')[0] === baseImg)
+    }
     if (idx >= 0) {
       const targetLeft = idx * galleryRef.current.clientWidth
-      if (Math.abs(galleryRef.current.scrollLeft - targetLeft) > 10) {
+      if (Math.abs(galleryRef.current.scrollLeft - targetLeft) > 5) {
+        isProgrammaticScrollRef.current = true
+        if (programmaticTimeoutRef.current) {
+          clearTimeout(programmaticTimeoutRef.current)
+        }
         galleryRef.current.scrollTo({ left: targetLeft, behavior: 'smooth' })
+        programmaticTimeoutRef.current = setTimeout(() => {
+          isProgrammaticScrollRef.current = false
+        }, 500)
       }
     }
   }, [selectedImage, allImages])
@@ -249,6 +274,26 @@ export function ShopeeMobileProductDetail({
     const target = e.currentTarget
     const width = target.clientWidth
     if (width <= 0) return
+
+    // If scrolling programmatically (e.g. triggered by variant button click), do NOT revert variant
+    if (isProgrammaticScrollRef.current) {
+      let currentIdx = allImages.indexOf(selectedImage)
+      if (currentIdx < 0) {
+        const baseImg = selectedImage.split('?')[0]
+        currentIdx = allImages.findIndex((img) => img.split('?')[0] === baseImg)
+      }
+      if (currentIdx >= 0) {
+        const scrolledIdx = Math.round(target.scrollLeft / width)
+        if (
+          scrolledIdx === currentIdx &&
+          Math.abs(target.scrollLeft - currentIdx * width) < 5
+        ) {
+          isProgrammaticScrollRef.current = false
+        }
+      }
+      return
+    }
+
     const index = Math.round(target.scrollLeft / width)
     if (
       index >= 0 &&
@@ -270,10 +315,13 @@ export function ShopeeMobileProductDetail({
     if (!galleryRef.current || !allImages || allImages.length <= 1) return
     const currentIdx = allImages.indexOf(selectedImage)
     const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % allImages.length : 0
-    galleryRef.current.scrollTo({
-      left: nextIdx * galleryRef.current.clientWidth,
-      behavior: 'smooth',
-    })
+    const nextImg = allImages[nextIdx]
+    onSelectImage(nextImg)
+
+    const matchingVariant = findVariantForImage(nextImg)
+    if (matchingVariant && matchingVariant.id !== selectedVariant?.id) {
+      onSelectVariant(matchingVariant)
+    }
   }
 
   // Handle switching to previous image with button
@@ -284,21 +332,17 @@ export function ShopeeMobileProductDetail({
       currentIdx >= 0
         ? (currentIdx - 1 + allImages.length) % allImages.length
         : allImages.length - 1
-    galleryRef.current.scrollTo({
-      left: prevIdx * galleryRef.current.clientWidth,
-      behavior: 'smooth',
-    })
+    const prevImg = allImages[prevIdx]
+    onSelectImage(prevImg)
+
+    const matchingVariant = findVariantForImage(prevImg)
+    if (matchingVariant && matchingVariant.id !== selectedVariant?.id) {
+      onSelectVariant(matchingVariant)
+    }
   }
 
-  const handleShare = async () => {
-    try {
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(window.location.href)
-        toast.success('Tautan produk berhasil disalin!')
-      }
-    } catch {
-      toast.info('Bagikan halaman ini ke rekan Anda!')
-    }
+  const handleShare = () => {
+    setIsShareModalOpen(true)
   }
 
   const scrollToTop = () => {
@@ -318,30 +362,61 @@ export function ShopeeMobileProductDetail({
           ? 'Second Like New (Mulus 99%)'
           : product.condition || 'Second Teruji'
 
+  const handleBack = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+    }
+
+    if (typeof window !== 'undefined') {
+      const isFromSameSite =
+        document.referrer &&
+        document.referrer.includes(window.location.host) &&
+        !document.referrer.endsWith(window.location.pathname)
+
+      if (isFromSameSite && window.history.length > 1) {
+        window.history.back()
+
+        // Fallback: If after 200ms page hasn't navigated away, push to /gadget
+        setTimeout(() => {
+          if (
+            typeof window !== 'undefined' &&
+            window.location.pathname.startsWith('/gadget/')
+          ) {
+            router.push('/gadget')
+          }
+        }, 200)
+        return
+      }
+    }
+
+    // Default guaranteed navigation to catalog
+    router.push('/gadget')
+  }
+
   return (
     <div className="relative min-h-screen bg-slate-50 pb-24 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* 1. Sleek Floating Header App Bar */}
       <header
-        className={`fixed left-0 right-0 top-0 z-40 transition-all duration-200 ${
+        className={`fixed left-0 right-0 top-0 z-50 transition-all duration-200 ${
           isScrolled
-            ? 'shadow-xs border-b border-slate-200/80 bg-white/95 py-2.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95'
-            : 'bg-gradient-to-b from-black/40 via-transparent to-transparent py-3'
+            ? 'shadow-xs border-b border-slate-200/80 bg-white/95 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95'
+            : 'bg-gradient-to-b from-black/40 via-transparent to-transparent pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]'
         }`}
       >
         <div className="flex items-center justify-between px-3">
-          {/* Back Button */}
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className={`flex h-9 w-9 items-center justify-center rounded-full transition-all ${
+          {/* Back Button: Guaranteed Link with Smart Fallback */}
+          <Link
+            href="/gadget"
+            onClick={handleBack}
+            className={`relative z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-all active:scale-90 ${
               isScrolled
                 ? 'bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-white'
                 : 'shadow-xs border border-white/20 bg-white/80 text-slate-900 backdrop-blur-md hover:bg-white dark:bg-slate-900/80 dark:text-white'
             }`}
-            aria-label="Kembali"
+            aria-label="Kembali ke Katalog"
           >
             <ArrowLeft className="h-4 w-4" />
-          </button>
+          </Link>
 
           {/* Center Product Title (revealed when scrolled) */}
           <div
@@ -395,6 +470,18 @@ export function ShopeeMobileProductDetail({
         <div
           ref={galleryRef}
           onScroll={handleGalleryScroll}
+          onTouchStart={() => {
+            isProgrammaticScrollRef.current = false
+            if (programmaticTimeoutRef.current) {
+              clearTimeout(programmaticTimeoutRef.current)
+            }
+          }}
+          onPointerDown={() => {
+            isProgrammaticScrollRef.current = false
+            if (programmaticTimeoutRef.current) {
+              clearTimeout(programmaticTimeoutRef.current)
+            }
+          }}
           className="scrollbar-none no-scrollbar flex h-full w-full touch-pan-x snap-x snap-mandatory overflow-x-auto"
         >
           {allImages.length > 0 ? (
@@ -901,6 +988,7 @@ export function ShopeeMobileProductDetail({
           productId={product.id}
           productName={product.name}
           storeName={product.store?.name}
+          onReviewModalChange={setIsReviewModalOpen}
         />
       </div>
 
@@ -922,7 +1010,7 @@ export function ShopeeMobileProductDetail({
       )}
 
       {/* Floating Scroll To Top Button */}
-      {showBackToTop && (
+      {showBackToTop && !isReviewModalOpen && !isShareModalOpen && (
         <button
           type="button"
           onClick={scrollToTop}
@@ -934,45 +1022,57 @@ export function ShopeeMobileProductDetail({
       )}
 
       {/* 14. Ergonomic Modern Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center border-t border-slate-200/80 bg-white px-3 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-        {/* Chat Store Button */}
-        <button
-          type="button"
-          onClick={handleChatStore}
-          className="flex flex-col items-center justify-center px-3 text-slate-600 transition hover:text-slate-950 active:scale-95 dark:text-slate-400 dark:hover:text-white"
-        >
-          <MessageSquare className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-          <span className="mt-1 text-[10px] font-semibold">Chat Toko</span>
-        </button>
+      {!isReviewModalOpen && !isShareModalOpen && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center border-t border-slate-200/80 bg-white px-3 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+          {/* Chat Store Button */}
+          <button
+            type="button"
+            onClick={handleChatStore}
+            className="flex flex-col items-center justify-center px-3 text-slate-600 transition hover:text-slate-950 active:scale-95 dark:text-slate-400 dark:hover:text-white"
+          >
+            <MessageSquare className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+            <span className="mt-1 text-[10px] font-semibold">Chat Toko</span>
+          </button>
 
-        {/* Add To Cart Button */}
-        <button
-          type="button"
-          onClick={handleAddToCart}
-          disabled={isOutOfStock}
-          className="relative flex flex-col items-center justify-center px-3 text-slate-600 transition hover:text-slate-950 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:text-white"
-        >
-          <ShoppingBag className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-          <span className="mt-1 text-[10px] font-semibold">
-            {isAddedToCart ? 'Masuk!' : '+ Keranjang'}
-          </span>
-          {totalCartCount > 0 && (
-            <span className="absolute right-2 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-black text-white">
-              {totalCartCount > 99 ? '99+' : totalCartCount}
+          {/* Add To Cart Button */}
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={isOutOfStock}
+            className="relative flex flex-col items-center justify-center px-3 text-slate-600 transition hover:text-slate-950 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:text-white"
+          >
+            <ShoppingBag className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+            <span className="mt-1 text-[10px] font-semibold">
+              {isAddedToCart ? 'Masuk!' : '+ Keranjang'}
             </span>
-          )}
-        </button>
+            {totalCartCount > 0 && (
+              <span className="absolute right-2 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-black text-white">
+                {totalCartCount > 99 ? '99+' : totalCartCount}
+              </span>
+            )}
+          </button>
 
-        {/* Buy Now Button (Vibrant Action Orange with Crisp Typography) */}
-        <button
-          type="button"
-          onClick={handleBuyNow}
-          disabled={isOutOfStock}
-          className="ml-2 flex h-11 flex-1 items-center justify-center rounded-2xl bg-orange-500 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800"
-        >
-          {isOutOfStock ? 'Stok Habis' : 'Beli Sekarang'}
-        </button>
-      </div>
+          {/* Buy Now Button (Vibrant Action Orange with Crisp Typography) */}
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            disabled={isOutOfStock}
+            className="ml-2 flex h-11 flex-1 items-center justify-center rounded-2xl bg-orange-500 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800"
+          >
+            {isOutOfStock ? 'Stok Habis' : 'Beli Sekarang'}
+          </button>
+        </div>
+      )}
+
+      {/* 15. Clean & Aesthetic Product Share Modal */}
+      <ProductShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        product={product}
+        selectedVariant={selectedVariant}
+        currentPrice={currentPrice}
+        selectedImage={selectedImage}
+      />
     </div>
   )
 }

@@ -69,6 +69,13 @@ interface ChatRoom {
       price?: number
       quantity?: number
     }>
+    returnRequests?: Array<{
+      id: string
+      status: string
+      type: string
+      reason?: string
+      reasonLabel?: string
+    }>
   } | null
   store?: {
     id: string
@@ -169,12 +176,17 @@ function CustomerChatContent() {
   const searchParams = useSearchParams()
 
   const paramOrderId = searchParams.get('orderId')
+  const paramOrderNumber = searchParams.get('orderNumber')
   const paramStoreId = searchParams.get('storeId')
   const paramProductId = searchParams.get('productId')
   const paramProductName = searchParams.get('productName')
   const paramProductPrice = searchParams.get('productPrice')
   const paramVariantName = searchParams.get('variantName')
   const paramProductImage = searchParams.get('productImage')
+  const paramReturnId = searchParams.get('returnId')
+  const paramReturnReason = searchParams.get('returnReason')
+  const paramReturnStatus = searchParams.get('returnStatus')
+  const paramReturnType = searchParams.get('returnType')
 
   const [activeProductContext, setActiveProductContext] = useState<{
     productId?: string
@@ -184,11 +196,28 @@ function CustomerChatContent() {
     variantName?: string
   } | null>(null)
 
+  const [activeOrderContext, setActiveOrderContext] = useState<{
+    orderId: string
+    orderNumber?: string
+    status?: string
+    total?: number
+    productName?: string
+    productImage?: string
+    productPrice?: number
+    returnRequest?: {
+      id?: string
+      status?: string
+      reason?: string
+      type?: string
+    } | null
+  } | null>(null)
+
   const [isInitializingRoom, setIsInitializingRoom] = useState(false)
   const lastInitializedKeyRef = useRef<string | null>(null)
   const loadedRoomIdRef = useRef<string | null>(null)
   const hasAutoSelectedRef = useRef(false)
   const isSendingRef = useRef(false)
+  const sentContextsRef = useRef<Set<string>>(new Set())
 
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
@@ -500,6 +529,7 @@ function CustomerChatContent() {
     (room: ChatRoom) => {
       loadedRoomIdRef.current = room.id
       setActiveProductContext(null)
+      setActiveOrderContext(null)
       setSelectedRoom(room)
       setShowChatOnMobile(true)
       setShouldScrollToBottom(true)
@@ -551,18 +581,48 @@ function CustomerChatContent() {
       ? Number(paramProductPrice)
       : undefined
 
-    const initKey = `${paramOrderId || ''}_${paramStoreId || ''}_${paramProductId || ''}_${resolvedProductName || ''}_${resolvedVariantName || ''}`
+    const resolvedOrderNumber = safeParam(paramOrderNumber)
+    const resolvedReturnReason = safeParam(paramReturnReason)
+    const resolvedReturnStatus = safeParam(paramReturnStatus)
+    const resolvedReturnType = safeParam(paramReturnType)
+
+    const initKey = `${paramOrderId || ''}_${paramStoreId || ''}_${paramProductId || ''}_${resolvedProductName || ''}_${resolvedVariantName || ''}_${resolvedReturnReason || ''}`
     if (lastInitializedKeyRef.current === initKey) return
     lastInitializedKeyRef.current = initKey
 
-    if (paramProductId || resolvedProductName) {
-      setActiveProductContext({
-        productId: paramProductId || undefined,
-        productName: resolvedProductName,
-        productPrice: resolvedProductPrice,
-        productImage: resolvedProductImage,
-        variantName: resolvedVariantName,
-      })
+    const isAlreadySent =
+      (paramOrderId && sentContextsRef.current.has(paramOrderId)) ||
+      (resolvedOrderNumber &&
+        sentContextsRef.current.has(resolvedOrderNumber)) ||
+      (paramProductId && sentContextsRef.current.has(paramProductId))
+
+    if (!isAlreadySent) {
+      if (paramProductId || resolvedProductName) {
+        setActiveProductContext({
+          productId: paramProductId || undefined,
+          productName: resolvedProductName,
+          productPrice: resolvedProductPrice,
+          productImage: resolvedProductImage,
+          variantName: resolvedVariantName,
+        })
+      }
+
+      if (paramOrderId) {
+        setActiveOrderContext({
+          orderId: paramOrderId,
+          orderNumber: resolvedOrderNumber,
+          productName: resolvedProductName,
+          productImage: resolvedProductImage,
+          productPrice: resolvedProductPrice,
+          returnRequest: resolvedReturnReason
+            ? {
+                reason: resolvedReturnReason,
+                status: resolvedReturnStatus || 'PENDING',
+                type: resolvedReturnType || 'REFUND',
+              }
+            : null,
+        })
+      }
     }
 
     async function initStoreRoom() {
@@ -573,6 +633,11 @@ function CustomerChatContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orderId: paramOrderId || undefined,
+            orderNumber: resolvedOrderNumber || undefined,
+            returnId: paramReturnId || undefined,
+            returnReason: resolvedReturnReason || undefined,
+            returnStatus: resolvedReturnStatus || undefined,
+            returnType: resolvedReturnType || undefined,
             storeId: paramStoreId || undefined,
             productId: paramProductId || undefined,
             productName: resolvedProductName,
@@ -629,6 +694,56 @@ function CustomerChatContent() {
           })
           setLoading(false)
 
+          // Check if messages already have this order or return discussed
+          const hasExistingOrderMessage = data.messages?.some(
+            (m: any) =>
+              m.messageType === 'return_reference' ||
+              m.messageType === 'order_reference' ||
+              (data.order?.orderNumber &&
+                m.content?.includes(data.order.orderNumber)) ||
+              (data.order?.id && m.content?.includes(data.order.id))
+          )
+
+          if (hasExistingOrderMessage) {
+            // Already sent previously, do NOT show floating draft popup or prefill input!
+            if (data.order?.id) sentContextsRef.current.add(data.order.id)
+            if (data.order?.orderNumber)
+              sentContextsRef.current.add(data.order.orderNumber)
+            setActiveOrderContext(null)
+          } else if (data.order && !isAlreadySent) {
+            const firstItem = data.order.items?.[0]
+            const prod = firstItem?.product
+            const ret = data.order.returnRequests?.[0]
+            setActiveOrderContext((prev) => ({
+              orderId: data.order.id,
+              orderNumber: data.order.orderNumber || prev?.orderNumber,
+              status: data.order.status,
+              total: data.order.total,
+              productName: prod?.name || prev?.productName,
+              productImage: prod?.images?.[0] || prev?.productImage,
+              productPrice: firstItem?.price || prev?.productPrice,
+              returnRequest: ret
+                ? {
+                    id: ret.id,
+                    status: ret.status,
+                    reason: ret.reasonLabel || ret.reason,
+                    type: ret.type,
+                  }
+                : prev?.returnRequest || null,
+            }))
+
+            setMessageInput((currentInput) => {
+              if (!currentInput.trim()) {
+                if (ret) {
+                  return `Halo admin, saya ingin menanyakan perkembangan pengajuan retur untuk pesanan #${data.order.orderNumber} (${prod?.name || 'unit'}, Kendala: ${ret.reasonLabel || ret.reason || '-'}). Mohon bantuannya.`
+                } else {
+                  return `Halo admin, saya ingin menanyakan pesanan saya #${data.order.orderNumber} (${prod?.name || 'unit'}).`
+                }
+              }
+              return currentInput
+            })
+          }
+
           // Refresh rooms list in background
           fetchRooms(true)
 
@@ -663,12 +778,16 @@ function CustomerChatContent() {
   }, [
     status,
     paramOrderId,
+    paramOrderNumber,
     paramStoreId,
     paramProductId,
     paramProductName,
     paramProductPrice,
     paramVariantName,
     paramProductImage,
+    paramReturnReason,
+    paramReturnStatus,
+    paramReturnType,
     fetchRooms,
     session?.user?.id,
     router,
@@ -679,20 +798,91 @@ function CustomerChatContent() {
   }
 
   // Send message with optimistic instant feedback without any page reload
-  const handleSendMessage = async () => {
-    if (!messageInput.trim() || !selectedRoom || sending) return
+  const handleSendMessage = async (
+    overrideContent?: string | React.MouseEvent
+  ) => {
+    const rawContent = (
+      typeof overrideContent === 'string' ? overrideContent : messageInput
+    ).trim()
+    if (!rawContent || !selectedRoom || sending) return
+    const content = rawContent
 
-    const content = messageInput.trim()
+    const currentOrderContext = activeOrderContext
+    const currentProductContext = !activeOrderContext
+      ? activeProductContext
+      : null
+
+    // Instantly dismiss context pop up so it NEVER shows again!
+    if (currentOrderContext) {
+      setActiveOrderContext(null)
+      if (currentOrderContext.orderId)
+        sentContextsRef.current.add(currentOrderContext.orderId)
+      if (currentOrderContext.orderNumber)
+        sentContextsRef.current.add(currentOrderContext.orderNumber)
+    }
+    if (currentProductContext) {
+      setActiveProductContext(null)
+      if (currentProductContext.productId)
+        sentContextsRef.current.add(currentProductContext.productId)
+    }
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '/dashboard/customer/chat')
+    }
+
     setMessageInput('')
     setSending(true)
     isSendingRef.current = true // Block polling overwrite while message is in transit
+
+    let messageType:
+      | 'text'
+      | 'order_reference'
+      | 'return_reference'
+      | 'product_reference' = 'text'
+    let contentToSend = rawContent
+
+    if (currentOrderContext) {
+      messageType = currentOrderContext.returnRequest
+        ? 'return_reference'
+        : 'order_reference'
+      contentToSend = JSON.stringify({
+        type: messageType,
+        orderId: currentOrderContext.orderId,
+        orderNumber: currentOrderContext.orderNumber,
+        productName: currentOrderContext.productName,
+        productPrice: currentOrderContext.productPrice,
+        productImage: currentOrderContext.productImage,
+        note: rawContent, // Context and caption sent together!
+        ...(currentOrderContext.returnRequest
+          ? {
+              returnId: currentOrderContext.returnRequest.id,
+              returnReason: currentOrderContext.returnRequest.reason,
+              returnStatus: currentOrderContext.returnRequest.status,
+              returnType: currentOrderContext.returnRequest.type,
+            }
+          : {
+              orderTotal: currentOrderContext.total,
+              orderStatus: currentOrderContext.status,
+            }),
+      })
+    } else if (currentProductContext) {
+      messageType = 'product_reference'
+      contentToSend = JSON.stringify({
+        type: 'product_reference',
+        productId: currentProductContext.productId,
+        productName: currentProductContext.productName,
+        productPrice: currentProductContext.productPrice,
+        productImage: currentProductContext.productImage,
+        variantName: currentProductContext.variantName,
+        note: rawContent, // Context and caption sent together!
+      })
+    }
 
     // Optimistic message append
     const tempId = `temp-${Date.now()}`
     const optimisticMsg: Message = {
       id: tempId,
-      content,
-      messageType: 'text',
+      content: contentToSend,
+      messageType,
       mediaUrl: null,
       createdAt: new Date().toISOString(),
       sender: {
@@ -712,7 +902,8 @@ function CustomerChatContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             roomId: selectedRoom.id,
-            content,
+            content: contentToSend,
+            messageType,
           }),
         })
       } else {
@@ -720,7 +911,7 @@ function CustomerChatContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content,
+            content: contentToSend,
           }),
         })
       }
@@ -742,8 +933,8 @@ function CustomerChatContent() {
                 lastMessageAt: new Date().toISOString(),
                 messages: [
                   {
-                    content,
-                    messageType: 'text',
+                    content: contentToSend,
+                    messageType,
                     createdAt: new Date().toISOString(),
                     senderId: session?.user?.id,
                   },
@@ -1316,27 +1507,53 @@ function CustomerChatContent() {
                   </div>
 
                   {/* Contextual Order Banner (If order linked) */}
-                  {selectedRoom.order && (
+                  {(selectedRoom.order || activeOrderContext) && (
                     <div className="flex shrink-0 items-center justify-between border-b border-blue-100/70 bg-blue-50/50 px-4 py-2 text-xs dark:border-blue-900/30 dark:bg-blue-950/20">
                       <div className="flex items-center gap-2 truncate">
                         <Package className="h-3.5 w-3.5 shrink-0 text-blue-600" />
                         <span className="truncate font-mono font-bold text-blue-950 dark:text-blue-200">
-                          Order #{selectedRoom.order.orderNumber}
+                          Order #
+                          {selectedRoom.order?.orderNumber ||
+                            activeOrderContext?.orderNumber}
                         </span>
-                        {selectedRoom.order.status && (
-                          <span className="py-0.2 rounded bg-blue-100/80 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
-                            {selectedRoom.order.status}
+                        {activeOrderContext?.returnRequest ||
+                        (selectedRoom.order?.returnRequests &&
+                          selectedRoom.order.returnRequests.length > 0) ? (
+                          <span className="py-0.2 rounded bg-purple-100 px-1.5 text-[9.5px] font-bold text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                            Retur:{' '}
+                            {(activeOrderContext?.returnRequest?.status ||
+                              selectedRoom.order?.returnRequests?.[0]
+                                ?.status) === 'APPROVED'
+                              ? 'Disetujui'
+                              : (activeOrderContext?.returnRequest?.status ||
+                                    selectedRoom.order?.returnRequests?.[0]
+                                      ?.status) === 'REJECTED'
+                                ? 'Ditolak'
+                                : (activeOrderContext?.returnRequest?.status ||
+                                      selectedRoom.order?.returnRequests?.[0]
+                                        ?.status) === 'COMPLETED'
+                                  ? 'Selesai'
+                                  : 'Menunggu Verifikasi Toko'}
                           </span>
-                        )}
+                        ) : selectedRoom.order?.status ||
+                          activeOrderContext?.status ? (
+                          <span className="py-0.2 rounded bg-blue-100/80 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                            {selectedRoom.order?.status ||
+                              activeOrderContext?.status}
+                          </span>
+                        ) : null}
                       </div>
 
-                      <Link
-                        href={`/dashboard/customer/orders/${selectedRoom.order.id}`}
-                        className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-blue-600 transition hover:text-blue-700 hover:underline"
-                      >
-                        <span>Lihat Rincian</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </Link>
+                      {(selectedRoom.order?.id ||
+                        activeOrderContext?.orderId) && (
+                        <Link
+                          href={`/dashboard/customer/orders/${selectedRoom.order?.id || activeOrderContext?.orderId}`}
+                          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-blue-600 transition hover:text-blue-700 hover:underline"
+                        >
+                          <span>Lihat Rincian</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      )}
                     </div>
                   )}
 
@@ -1393,9 +1610,33 @@ function CustomerChatContent() {
                           }
                         }
 
-                        const isOrder =
+                        const isOrderOrReturn =
+                          msg.messageType === 'return_reference' ||
+                          msg.messageType === 'order_reference' ||
                           msg.messageType === 'order' ||
-                          parsedContent?.orderNumber !== undefined
+                          parsedContent?.type === 'return_reference' ||
+                          parsedContent?.type === 'order_reference' ||
+                          parsedContent?.type === 'order' ||
+                          (parsedContent !== null &&
+                            parsedContent.orderNumber !== undefined)
+
+                        // Detect legacy or prefilled plain text message patterns (e.g. from previous sends)
+                        const returnTextMatch =
+                          !parsedContent &&
+                          contentTrimmed.match(
+                            /Halo admin, saya ingin menanyakan perkembangan pengajuan retur untuk pesanan #([^\s(]+)(?:\s*\(([^,)]+)(?:,\s*Kendala:\s*([^)]+))?\))?/i
+                          )
+                        const orderTextMatch =
+                          !parsedContent &&
+                          !returnTextMatch &&
+                          contentTrimmed.match(
+                            /Halo admin, saya ingin menanyakan (?:tentang pesanan saya|pesanan saya) #([^\s(]+)(?:\s*\(([^)]+)\))?/i
+                          )
+
+                        const isStructuredInquiry =
+                          isOrderOrReturn ||
+                          Boolean(returnTextMatch) ||
+                          Boolean(orderTextMatch)
 
                         const isProduct =
                           msg.messageType === 'product' ||
@@ -1501,6 +1742,228 @@ function CustomerChatContent() {
                                   )}
                                 </div>
                               </div>
+                            ) : isStructuredInquiry ? (
+                              /* Standalone Luxury Order / Return Card (Compact Mobile Friendly, identical to product card) */
+                              (() => {
+                                try {
+                                  const p: Record<string, unknown> =
+                                    parsedContent ?? {}
+                                  const isReturn =
+                                    Boolean(returnTextMatch) ||
+                                    msg.messageType === 'return_reference' ||
+                                    p.type === 'return_reference' ||
+                                    p.returnReason !== undefined ||
+                                    p.returnId !== undefined
+
+                                  const orderNumber =
+                                    (p.orderNumber as string) ||
+                                    (returnTextMatch && returnTextMatch[1]) ||
+                                    (orderTextMatch && orderTextMatch[1]) ||
+                                    selectedRoom?.order?.orderNumber ||
+                                    ''
+
+                                  const orderId =
+                                    (p.orderId as string) ||
+                                    selectedRoom?.order?.id ||
+                                    activeOrderContext?.orderId ||
+                                    ''
+
+                                  const prodName =
+                                    (p.productName as string) ||
+                                    (p.name as string) ||
+                                    (returnTextMatch && returnTextMatch[2]) ||
+                                    (orderTextMatch && orderTextMatch[2]) ||
+                                    activeOrderContext?.productName ||
+                                    selectedRoom?.order?.items?.[0]?.product
+                                      ?.name ||
+                                    'Produk Pesanan'
+
+                                  const rawPrice =
+                                    p.productPrice !== undefined
+                                      ? p.productPrice
+                                      : p.price !== undefined
+                                        ? p.price
+                                        : p.orderTotal !== undefined
+                                          ? p.orderTotal
+                                          : activeOrderContext?.productPrice ||
+                                            selectedRoom?.order?.items?.[0]
+                                              ?.price ||
+                                            selectedRoom?.order?.total ||
+                                            0
+
+                                  const prodPrice = Number(rawPrice) || 0
+
+                                  const rawImage =
+                                    p.productImage ||
+                                    p.image ||
+                                    activeOrderContext?.productImage ||
+                                    selectedRoom?.order?.items?.[0]?.product
+                                      ?.images?.[0] ||
+                                    null
+
+                                  const prodImage = Array.isArray(rawImage)
+                                    ? (rawImage[0] as string)
+                                    : typeof rawImage === 'string' &&
+                                        rawImage.trim() !== ''
+                                      ? rawImage
+                                      : null
+
+                                  const brand =
+                                    (p.brand as string) ||
+                                    selectedRoom?.order?.items?.[0]?.product
+                                      ?.brand ||
+                                    null
+
+                                  const variantName =
+                                    (p.variantName as string) || null
+
+                                  const returnReason =
+                                    (p.returnReason as string) ||
+                                    (returnTextMatch && returnTextMatch[3]) ||
+                                    activeOrderContext?.returnRequest?.reason ||
+                                    null
+
+                                  const returnStatus =
+                                    (p.returnStatus as string) ||
+                                    activeOrderContext?.returnRequest?.status ||
+                                    'PENDING'
+
+                                  return (
+                                    <div className="shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px]">
+                                      {/* Top Header Info Pill */}
+                                      <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
+                                        <span
+                                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                                            isReturn
+                                              ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400'
+                                              : 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
+                                          }`}
+                                        >
+                                          {isReturn ? (
+                                            <RotateCcw className="h-2.5 w-2.5" />
+                                          ) : (
+                                            <Package className="h-2.5 w-2.5" />
+                                          )}
+                                          {isReturn
+                                            ? 'Pengajuan Retur'
+                                            : 'Rincian Pesanan'}
+                                        </span>
+                                        <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                                          <span>{formattedTime}</span>
+                                          {isMe && (
+                                            <CheckCheck className="inline h-2.5 w-2.5 text-blue-500" />
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Main Product / Order Snippet */}
+                                      <div className="flex items-center gap-2">
+                                        {prodImage ? (
+                                          <img
+                                            src={prodImage}
+                                            alt={prodName}
+                                            className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover p-0.5 dark:border-slate-800 dark:bg-slate-800"
+                                          />
+                                        ) : (
+                                          <div
+                                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
+                                              isReturn
+                                                ? 'border-purple-200/60 bg-purple-50 dark:border-purple-900/40 dark:bg-purple-950/40'
+                                                : 'border-blue-200/60 bg-blue-50 dark:border-blue-900/40 dark:bg-blue-950/40'
+                                            }`}
+                                          >
+                                            {isReturn ? (
+                                              <RotateCcw className="h-5 w-5 text-purple-500" />
+                                            ) : (
+                                              <Package className="h-5 w-5 text-blue-500" />
+                                            )}
+                                          </div>
+                                        )}
+
+                                        <div className="min-w-0 flex-1">
+                                          {brand && (
+                                            <span className="block text-[8.5px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                              {brand}
+                                            </span>
+                                          )}
+                                          <p
+                                            className="truncate text-[11px] font-bold leading-tight text-slate-950 dark:text-white"
+                                            title={prodName}
+                                          >
+                                            {prodName}
+                                          </p>
+                                          {orderNumber && (
+                                            <p className="truncate font-mono text-[9.5px] font-bold text-blue-600 dark:text-blue-400">
+                                              #{orderNumber}
+                                            </p>
+                                          )}
+                                          {isReturn && returnReason && (
+                                            <p className="truncate text-[9.5px] font-medium text-purple-600 dark:text-purple-400">
+                                              Kendala: {returnReason}
+                                            </p>
+                                          )}
+                                          {variantName && !orderNumber && (
+                                            <p className="truncate text-[9.5px] font-medium text-slate-500 dark:text-slate-400">
+                                              Varian: {variantName}
+                                            </p>
+                                          )}
+                                          {prodPrice > 0 && (
+                                            <p className="mt-0.5 font-mono text-xs font-black text-orange-600 dark:text-orange-400">
+                                              Rp{' '}
+                                              {prodPrice.toLocaleString(
+                                                'id-ID'
+                                              )}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Customer Note / Caption sent together */}
+                                      {typeof p.note === 'string' &&
+                                        p.note.trim() !== '' && (
+                                          <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
+                                            <p className="whitespace-pre-wrap break-words leading-relaxed">
+                                              {p.note}
+                                            </p>
+                                          </div>
+                                        )}
+
+                                      {/* Footer CTA */}
+                                      <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 dark:border-slate-800">
+                                        <span className="text-[9.5px] text-slate-400">
+                                          {isReturn
+                                            ? returnStatus === 'APPROVED'
+                                              ? 'Disetujui'
+                                              : returnStatus === 'REJECTED'
+                                                ? 'Ditolak'
+                                                : 'Menunggu Verifikasi Toko'
+                                            : isMe
+                                              ? 'Pertanyaan Anda'
+                                              : activeStoreTitle ||
+                                                'Toko Resmi'}
+                                        </span>
+                                        {(orderId || orderNumber) && (
+                                          <Link
+                                            href={`/dashboard/customer/orders/${orderId || orderNumber}`}
+                                            className="shadow-2xs inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                                          >
+                                            <span>Lihat Pesanan</span>
+                                            <ExternalLink className="h-2.5 w-2.5" />
+                                          </Link>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                } catch {
+                                  return (
+                                    <div className="shadow-2xs max-w-[80%] rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-900 sm:max-w-[70%]">
+                                      <p className="whitespace-pre-wrap">
+                                        {msg.content}
+                                      </p>
+                                    </div>
+                                  )
+                                }
+                              })()
                             ) : isProduct ? (
                               /* Standalone Luxury Product Card (Compact Mobile Friendly) */
                               (() => {
@@ -1589,6 +2052,16 @@ function CustomerChatContent() {
                                         </div>
                                       </div>
 
+                                      {/* Customer Note / Caption sent together */}
+                                      {typeof p.note === 'string' &&
+                                        p.note.trim() !== '' && (
+                                          <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
+                                            <p className="whitespace-pre-wrap break-words leading-relaxed">
+                                              {p.note}
+                                            </p>
+                                          </div>
+                                        )}
+
                                       {/* Footer CTA */}
                                       <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 dark:border-slate-800">
                                         <span className="text-[9.5px] text-slate-400">
@@ -1636,99 +2109,9 @@ function CustomerChatContent() {
                                     </p>
                                   </div>
                                 )}
-                                {isOrder ? (
-                                  (() => {
-                                    try {
-                                      const orderData = JSON.parse(msg.content)
-                                      return (
-                                        <div className="shadow-2xs max-w-sm space-y-2.5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                                          <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-                                            <div className="flex min-w-0 items-center gap-1.5">
-                                              <ShoppingBag className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                                              <span className="truncate font-mono text-xs font-bold">
-                                                #{orderData.orderNumber}
-                                              </span>
-                                            </div>
-                                            <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider text-blue-600 dark:bg-blue-950 dark:text-blue-400">
-                                              {orderData.status || 'Pesanan'}
-                                            </span>
-                                          </div>
-
-                                          {orderData.items &&
-                                            orderData.items.length > 0 && (
-                                              <div className="space-y-2">
-                                                {orderData.items.map(
-                                                  (it: any, idx: number) => {
-                                                    const name =
-                                                      it.product?.name ||
-                                                      it.rentalItem?.name ||
-                                                      it.service?.name ||
-                                                      it.name ||
-                                                      'Unit Gadget'
-                                                    const img =
-                                                      it.product?.images?.[0] ||
-                                                      it.rentalItem
-                                                        ?.images?.[0] ||
-                                                      it.image
-                                                    return (
-                                                      <div
-                                                        key={idx}
-                                                        className="flex items-center gap-2.5"
-                                                      >
-                                                        {img && (
-                                                          <img
-                                                            src={img}
-                                                            alt=""
-                                                            className="h-10 w-10 shrink-0 rounded-xl border bg-slate-50 object-contain p-1"
-                                                          />
-                                                        )}
-                                                        <div className="min-w-0 flex-1">
-                                                          <p className="truncate text-xs font-medium text-slate-800 dark:text-slate-200">
-                                                            {name}
-                                                          </p>
-                                                          <p className="font-mono text-[10px] text-slate-400">
-                                                            {it.quantity || 1}x
-                                                            • Rp{' '}
-                                                            {(
-                                                              it.price || 0
-                                                            ).toLocaleString(
-                                                              'id-ID'
-                                                            )}
-                                                          </p>
-                                                        </div>
-                                                      </div>
-                                                    )
-                                                  }
-                                                )}
-                                              </div>
-                                            )}
-
-                                          <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs dark:border-slate-800">
-                                            <span className="text-[11px] text-slate-500">
-                                              Total Pesanan:
-                                            </span>
-                                            <span className="font-mono text-xs font-black text-orange-600 dark:text-orange-400 sm:text-sm">
-                                              Rp{' '}
-                                              {orderData.total?.toLocaleString(
-                                                'id-ID'
-                                              )}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      )
-                                    } catch {
-                                      return (
-                                        <p className="whitespace-pre-wrap break-words break-all text-xs leading-relaxed sm:text-[13px]">
-                                          {msg.content}
-                                        </p>
-                                      )
-                                    }
-                                  })()
-                                ) : (
-                                  <p className="whitespace-pre-wrap break-words break-all text-xs leading-relaxed sm:text-[13px]">
-                                    {msg.content}
-                                  </p>
-                                )}
+                                <p className="whitespace-pre-wrap break-words break-all text-xs leading-relaxed sm:text-[13px]">
+                                  {msg.content}
+                                </p>
 
                                 <div
                                   className={`mt-1.5 flex items-center justify-end gap-1 text-[9.5px] font-medium ${
@@ -1818,6 +2201,142 @@ function CustomerChatContent() {
                     </div>
                   )}
 
+                  {/* Contextual Pinned Order / Return Bar if customer entered from an order/return */}
+                  {activeOrderContext && (
+                    <div
+                      className={`flex items-center justify-between gap-3 border-t px-4 py-2.5 ${
+                        activeOrderContext.returnRequest
+                          ? 'border-purple-200/80 bg-gradient-to-r from-purple-50/90 via-orange-50/40 to-white dark:border-purple-900/40 dark:from-purple-950/40 dark:via-slate-900 dark:to-slate-900'
+                          : 'border-blue-100 bg-blue-50/80 dark:border-blue-900/40 dark:bg-blue-950/30'
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        {activeOrderContext.productImage ? (
+                          <img
+                            src={activeOrderContext.productImage}
+                            alt=""
+                            className={`h-11 w-11 shrink-0 rounded-xl border bg-white object-cover p-0.5 ${
+                              activeOrderContext.returnRequest
+                                ? 'border-purple-200 dark:border-purple-800'
+                                : 'border-blue-200 dark:border-blue-800'
+                            }`}
+                          />
+                        ) : (
+                          <div
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                              activeOrderContext.returnRequest
+                                ? 'bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400'
+                                : 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
+                            }`}
+                          >
+                            {activeOrderContext.returnRequest ? (
+                              <RotateCcw className="h-5 w-5" />
+                            ) : (
+                              <Package className="h-5 w-5" />
+                            )}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`rounded-md px-1.5 py-0.5 text-[9.5px] font-black uppercase tracking-wider ${
+                                activeOrderContext.returnRequest
+                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300'
+                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300'
+                              }`}
+                            >
+                              {activeOrderContext.returnRequest
+                                ? 'Pengajuan Retur'
+                                : 'Pesanan'}
+                            </span>
+                            {activeOrderContext.orderNumber && (
+                              <span className="truncate font-mono text-[11px] font-bold text-slate-900 dark:text-white">
+                                #{activeOrderContext.orderNumber}
+                              </span>
+                            )}
+                          </div>
+                          {activeOrderContext.productName && (
+                            <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
+                              {activeOrderContext.productName}
+                            </p>
+                          )}
+                          {activeOrderContext.returnRequest ? (
+                            <p className="truncate text-[11px] font-medium text-purple-700 dark:text-purple-300">
+                              Kendala:{' '}
+                              {activeOrderContext.returnRequest.reason ||
+                                'Kendala Unit'}{' '}
+                              • Status:{' '}
+                              {activeOrderContext.returnRequest.status ===
+                              'APPROVED'
+                                ? 'Disetujui'
+                                : activeOrderContext.returnRequest.status ===
+                                    'REJECTED'
+                                  ? 'Ditolak'
+                                  : activeOrderContext.returnRequest.status ===
+                                      'COMPLETED'
+                                    ? 'Selesai'
+                                    : 'Menunggu Verifikasi Toko'}
+                            </p>
+                          ) : activeOrderContext.total ? (
+                            <p className="font-mono text-[11px] font-bold text-orange-600 dark:text-orange-400">
+                              Rp{' '}
+                              {activeOrderContext.total.toLocaleString('id-ID')}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const defaultMsg = activeOrderContext.returnRequest
+                              ? `Halo admin, mohon bantuannya untuk mengecek perkembangan pengajuan retur untuk pesanan #${activeOrderContext.orderNumber || ''} ya, terima kasih.`
+                              : `Halo admin, mohon bantuannya untuk mengecek status pesanan #${activeOrderContext.orderNumber || ''} ya, terima kasih.`
+                            const msgToSend = messageInput.trim() || defaultMsg
+                            handleSendMessage(msgToSend)
+                          }}
+                          className={`shadow-2xs cursor-pointer items-center gap-1 rounded-full border px-3 py-1 text-[10.5px] font-bold transition sm:inline-flex ${
+                            activeOrderContext.returnRequest
+                              ? 'border-purple-300 bg-purple-600 text-white hover:bg-purple-700'
+                              : 'border-blue-300 bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          <span>
+                            {activeOrderContext.returnRequest
+                              ? 'Tanya Status Retur'
+                              : 'Tanya Pesanan'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (activeOrderContext.orderId)
+                              sentContextsRef.current.add(
+                                activeOrderContext.orderId
+                              )
+                            if (activeOrderContext.orderNumber)
+                              sentContextsRef.current.add(
+                                activeOrderContext.orderNumber
+                              )
+                            setActiveOrderContext(null)
+                            if (typeof window !== 'undefined') {
+                              window.history.replaceState(
+                                null,
+                                '',
+                                '/dashboard/customer/chat'
+                              )
+                            }
+                          }}
+                          className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+                          title="Tutup ringkasan"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Bottom Message Input Bar */}
                   <div className="shrink-0 border-t border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-3.5">
                     <div className="flex items-center gap-2">
@@ -1851,7 +2370,7 @@ function CustomerChatContent() {
 
                       <button
                         type="button"
-                        onClick={handleSendMessage}
+                        onClick={() => handleSendMessage()}
                         disabled={!messageInput.trim() || sending}
                         className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950"
                         title="Kirim Pesan"

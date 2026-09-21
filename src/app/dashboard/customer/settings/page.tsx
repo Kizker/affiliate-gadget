@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -46,6 +47,9 @@ import {
   Truck,
   RotateCcw,
   ChevronRight,
+  X,
+  MessageSquare,
+  ExternalLink,
 } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -93,16 +97,47 @@ export default function CustomerSettingsPage() {
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Security data
+  // Security & Session data
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true)
-  const [loginAlertsEnabled, setLoginAlertsEnabled] = useState(true)
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [securityLoading, setSecurityLoading] = useState(false)
+  const [currentSession, setCurrentSession] = useState<{
+    id: string
+    deviceType: 'desktop' | 'mobile' | 'tablet'
+    deviceLabel: string
+    browser: string
+    browserLabel: string
+    os: string
+    location: string
+    ip: string
+    lastActive: string
+    isCurrent: boolean
+  } | null>(null)
+  const [otherSessions, setOtherSessions] = useState<
+    Array<{
+      id: string
+      deviceLabel: string
+      browser: string
+      location: string
+      lastActive: string
+      ip: string
+    }>
+  >([])
   const [loggingOutOther, setLoggingOutOther] = useState(false)
+
+  // OTP WhatsApp Verification states
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpWhatsappUrl, setOtpWhatsappUrl] = useState('')
+  const [otpExpiresIn, setOtpExpiresIn] = useState(0)
+  const [otpPreview, setOtpPreview] = useState('')
+  const [requestingOtp, setRequestingOtp] = useState(false)
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
 
   // Fetch full profile
   const fetchProfile = useCallback(async () => {
@@ -183,6 +218,32 @@ export default function CustomerSettingsPage() {
     }
   }, [])
 
+  // Fetch Security & Active Sessions
+  const fetchSecurity = useCallback(async () => {
+    try {
+      const res = await fetch('/api/user/security')
+      if (res.ok) {
+        const data = await res.json()
+        setTwoFactorEnabled(data.twoFactorEnabled || false)
+        if (data.currentSession) {
+          setCurrentSession(data.currentSession)
+        }
+        setOtherSessions(data.otherSessions || [])
+      }
+    } catch (error) {
+      console.error('Error fetching security info:', error)
+    }
+  }, [])
+
+  // Countdown timer for OTP
+  useEffect(() => {
+    if (otpExpiresIn <= 0) return
+    const interval = setInterval(() => {
+      setOtpExpiresIn((prev) => Math.max(0, prev - 1))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [otpExpiresIn])
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login?callbackUrl=/dashboard/customer/settings')
@@ -190,8 +251,16 @@ export default function CustomerSettingsPage() {
       fetchProfile()
       fetchAddresses()
       fetchOrderStats()
+      fetchSecurity()
     }
-  }, [status, router, fetchProfile, fetchAddresses, fetchOrderStats])
+  }, [
+    status,
+    router,
+    fetchProfile,
+    fetchAddresses,
+    fetchOrderStats,
+    fetchSecurity,
+  ])
 
   const handleSelectSubView = (
     view: 'overview' | 'profile' | 'address' | 'security'
@@ -212,8 +281,7 @@ export default function CustomerSettingsPage() {
 
     if (!file.type.startsWith('image/')) {
       toast({
-        title: 'Format Tidak Sesuai',
-        description: 'Pilih berkas gambar yang valid (JPG, PNG, atau WebP).',
+        title: 'Format harus JPG, PNG, atau WebP',
         variant: 'destructive',
       })
       return
@@ -221,8 +289,7 @@ export default function CustomerSettingsPage() {
 
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: 'Ukuran Terlalu Besar',
-        description: 'Ukuran berkas foto maksimal 5MB.',
+        title: 'Ukuran foto maksimal 5MB',
         variant: 'destructive',
       })
       return
@@ -249,22 +316,19 @@ export default function CustomerSettingsPage() {
         setAvatarPreview(data.avatarUrl)
         await update()
         toast({
-          title: 'Foto Profil Diperbarui',
-          description: 'Foto profil baru Anda berhasil disimpan.',
+          title: 'Foto profil berhasil disimpan',
         })
       } else {
         const error = await res.json()
         toast({
-          title: 'Gagal Upload',
-          description: error.error || 'Gagal mengunggah foto profil.',
+          title: error.error || 'Gagal mengunggah foto',
           variant: 'destructive',
         })
       }
     } catch (error) {
       console.error('Error uploading avatar:', error)
       toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan sistem saat mengunggah foto profil.',
+        title: 'Gagal mengunggah foto',
         variant: 'destructive',
       })
     } finally {
@@ -275,16 +339,14 @@ export default function CustomerSettingsPage() {
   const handleSaveProfile = async () => {
     if (!name.trim()) {
       toast({
-        title: 'Nama Wajib Diisi',
-        description: 'Silakan masukkan nama lengkap sesuai identitas Anda.',
+        title: 'Nama lengkap wajib diisi',
         variant: 'destructive',
       })
       return
     }
     if (!email.trim()) {
       toast({
-        title: 'Email Wajib Diisi',
-        description: 'Silakan masukkan alamat email akun Anda.',
+        title: 'Alamat email wajib diisi',
         variant: 'destructive',
       })
       return
@@ -311,23 +373,18 @@ export default function CustomerSettingsPage() {
       if (res.ok) {
         await update()
         toast({
-          title: 'Biodata Tersimpan',
-          description:
-            data.message ||
-            'Perubahan data profil pembeli berhasil diperbarui.',
+          title: 'Biodata berhasil disimpan',
         })
       } else {
         toast({
-          title: 'Gagal Menyimpan',
-          description: data.error || 'Gagal memperbarui profil.',
+          title: data.error || 'Gagal menyimpan profil',
           variant: 'destructive',
         })
       }
     } catch (error) {
       console.error('Error updating profile:', error)
       toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan sistem saat menyimpan profil.',
+        title: 'Gagal menyimpan profil',
         variant: 'destructive',
       })
     } finally {
@@ -408,8 +465,7 @@ export default function CustomerSettingsPage() {
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       toast({
-        title: 'Password Tidak Cocok',
-        description: 'Konfirmasi password baru tidak sesuai.',
+        title: 'Konfirmasi password tidak cocok',
         variant: 'destructive',
       })
       return
@@ -417,8 +473,7 @@ export default function CustomerSettingsPage() {
 
     if (newPassword.length < 6) {
       toast({
-        title: 'Password Terlalu Pendek',
-        description: 'Password baru minimal harus 6 karakter kombinasi.',
+        title: 'Password minimal 6 karakter',
         variant: 'destructive',
       })
       return
@@ -426,10 +481,13 @@ export default function CustomerSettingsPage() {
 
     setSaving(true)
     try {
-      const res = await fetch('/api/user/password', {
+      const res = await fetch('/api/user/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
       })
 
       if (res.ok) {
@@ -437,22 +495,19 @@ export default function CustomerSettingsPage() {
         setNewPassword('')
         setConfirmPassword('')
         toast({
-          title: 'Password Berhasil Diubah',
-          description: 'Gunakan kata sandi baru Anda saat login berikutnya.',
+          title: 'Kata sandi berhasil diubah',
         })
       } else {
         const error = await res.json()
         toast({
-          title: 'Gagal Mengubah Password',
-          description: error.error || 'Password lama tidak sesuai.',
+          title: error.error || 'Password lama tidak sesuai',
           variant: 'destructive',
         })
       }
     } catch (error) {
       console.error('Error changing password:', error)
       toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan sistem saat mengubah password.',
+        title: 'Gagal mengubah password',
         variant: 'destructive',
       })
     } finally {
@@ -460,16 +515,162 @@ export default function CustomerSettingsPage() {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Security Handlers: 2FA WhatsApp & Sessions
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleToggle2Fa = async () => {
+    if (twoFactorEnabled) {
+      setSecurityLoading(true)
+      try {
+        const res = await fetch('/api/user/security', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'disable_2fa' }),
+        })
+        if (res.ok) {
+          setTwoFactorEnabled(false)
+          toast({ title: '2FA WhatsApp dinonaktifkan' })
+        } else {
+          toast({ title: 'Gagal menonaktifkan 2FA', variant: 'destructive' })
+        }
+      } catch (err) {
+        toast({ title: 'Gagal menonaktifkan 2FA', variant: 'destructive' })
+      } finally {
+        setSecurityLoading(false)
+      }
+      return
+    }
+
+    if (!phone || phone.trim().length < 8) {
+      toast({
+        title: 'Nomor WhatsApp belum terdaftar di profil',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setRequestingOtp(true)
+    try {
+      const res = await fetch('/api/user/security', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'request_otp' }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setOtpWhatsappUrl(data.whatsappUrl || '')
+        setOtpPreview(data.otpPreview || '')
+        setOtpExpiresIn(data.expiresInSeconds || 300)
+        setOtpCode('')
+        setIsOtpModalOpen(true)
+        toast({ title: 'Kode OTP WhatsApp dikirim' })
+      } else {
+        toast({
+          title: data.error || 'Gagal meminta kode OTP',
+          variant: 'destructive',
+        })
+      }
+    } catch (err) {
+      toast({
+        title: 'Gagal menghubungi server',
+        variant: 'destructive',
+      })
+    } finally {
+      setRequestingOtp(false)
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.trim().length < 6) {
+      toast({
+        title: 'Masukkan 6 digit kode OTP',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setVerifyingOtp(true)
+    try {
+      const res = await fetch('/api/user/security', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify_otp', otp: otpCode.trim() }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setTwoFactorEnabled(true)
+        setIsOtpModalOpen(false)
+        setOtpCode('')
+        toast({ title: '2FA WhatsApp berhasil aktif' })
+      } else {
+        toast({
+          title: data.error || 'Kode OTP tidak cocok',
+          variant: 'destructive',
+        })
+      }
+    } catch (err) {
+      toast({
+        title: 'Gagal memverifikasi OTP',
+        variant: 'destructive',
+      })
+    } finally {
+      setVerifyingOtp(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (otpExpiresIn > 240) return
+    setRequestingOtp(true)
+    try {
+      const res = await fetch('/api/user/security', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'request_otp' }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setOtpWhatsappUrl(data.whatsappUrl || '')
+        setOtpPreview(data.otpPreview || '')
+        setOtpExpiresIn(data.expiresInSeconds || 300)
+        toast({ title: 'Kode OTP baru dikirim ke WhatsApp' })
+      } else {
+        toast({
+          title: data.error || 'Gagal mengirim ulang OTP',
+          variant: 'destructive',
+        })
+      }
+    } catch (err) {
+      toast({ title: 'Gagal mengirim ulang OTP', variant: 'destructive' })
+    } finally {
+      setRequestingOtp(false)
+    }
+  }
+
   const handleLogoutOtherDevices = async () => {
     setLoggingOutOther(true)
-    setTimeout(() => {
-      setLoggingOutOther(false)
-      toast({
-        title: 'Sesi Lain Dikeluarkan',
-        description:
-          'Semua perangkat lain telah berhasil di-logout dari akun Anda.',
+    try {
+      const res = await fetch('/api/user/security', {
+        method: 'DELETE',
       })
-    }, 1200)
+      if (res.ok) {
+        setOtherSessions([])
+        toast({
+          title: 'Semua perangkat lain dikeluarkan',
+        })
+      } else {
+        toast({
+          title: 'Gagal mengeluarkan perangkat lain',
+          variant: 'destructive',
+        })
+      }
+    } catch (err) {
+      toast({
+        title: 'Gagal memproses pengeluaran sesi',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoggingOutOther(false)
+    }
   }
 
   if (loading) {
@@ -734,13 +935,13 @@ export default function CustomerSettingsPage() {
             </div>
           </div>
 
-          {/* Save Button */}
-          <div className="flex items-center justify-end border-t border-slate-100 pt-4">
+          {/* Save Button (Desktop only — Mobile uses top-right header action button) */}
+          <div className="hidden items-center justify-end border-t border-slate-100 pt-4 md:flex">
             <button
               type="button"
               onClick={handleSaveProfile}
               disabled={saving}
-              className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+              className="shadow-xs inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1074,7 +1275,7 @@ export default function CustomerSettingsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3 pt-2">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-[11px] text-slate-400">
                 Minimal 6 karakter, kombinasikan huruf dan angka untuk keamanan
                 maksimal.
@@ -1085,14 +1286,14 @@ export default function CustomerSettingsPage() {
                 disabled={
                   saving || !currentPassword || !newPassword || !confirmPassword
                 }
-                className="shadow-xs inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 sm:px-6 sm:py-2.5"
+                className="shadow-xs hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 md:inline-flex md:w-auto"
               >
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                 ) : (
                   <Check className="h-3.5 w-3.5 shrink-0" />
                 )}
-                <span>Perbarui</span>
+                <span>Perbarui Kata Sandi</span>
               </button>
             </div>
           </div>
@@ -1108,75 +1309,52 @@ export default function CustomerSettingsPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {/* 2FA Toggle */}
-              <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4">
-                <div className="space-y-1 pr-4">
-                  <div className="flex items-center gap-1.5">
+            <div className="grid grid-cols-1 gap-4">
+              {/* 2FA Toggle (WhatsApp OTP) */}
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 transition-all">
+                <div className="space-y-1.5 pr-4">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs font-bold text-slate-900">
                       Verifikasi 2 Langkah (OTP WhatsApp)
                     </span>
-                    <span className="py-0.2 rounded-full bg-emerald-100 px-2 text-[9px] font-black text-emerald-700">
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black text-emerald-700">
                       DIREKOMENDASIKAN
                     </span>
+                    {twoFactorEnabled && (
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[9px] font-bold text-orange-700">
+                        Aktif
+                      </span>
+                    )}
                   </div>
                   <p className="text-[11px] text-slate-500">
                     Minta kode OTP verifikasi WhatsApp saat login dari browser
-                    baru.
+                    baru atau transaksi sensitif.
                   </p>
+                  {phone ? (
+                    <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                      <MessageSquare className="h-3 w-3" />
+                      <span>
+                        Nomor WA:{' '}
+                        {phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-amber-600">
+                      Nomor telepon belum diatur di biodata.
+                    </p>
+                  )}
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setTwoFactorEnabled(!twoFactorEnabled)
-                    toast({
-                      title: twoFactorEnabled
-                        ? '2FA Dinonaktifkan'
-                        : '2FA Diaktifkan',
-                      description:
-                        'Pengaturan keamanan 2 langkah berhasil diperbarui.',
-                    })
-                  }}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    twoFactorEnabled ? 'bg-slate-950' : 'bg-slate-300'
+                  disabled={securityLoading || requestingOtp}
+                  onClick={handleToggle2Fa}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+                    twoFactorEnabled ? 'bg-orange-600' : 'bg-slate-300'
                   }`}
                 >
                   <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                       twoFactorEnabled ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Login Alerts Toggle */}
-              <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4">
-                <div className="space-y-1 pr-4">
-                  <span className="text-xs font-bold text-slate-900">
-                    Notifikasi Login Mencurigakan
-                  </span>
-                  <p className="text-[11px] text-slate-500">
-                    Kirim peringatan instan ke email jika ada aktivitas login
-                    asing.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginAlertsEnabled(!loginAlertsEnabled)
-                    toast({
-                      title: 'Pengaturan Disimpan',
-                      description:
-                        'Notifikasi keamanan email telah diperbarui.',
-                    })
-                  }}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    loginAlertsEnabled ? 'bg-slate-950' : 'bg-slate-300'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      loginAlertsEnabled ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -1196,34 +1374,43 @@ export default function CustomerSettingsPage() {
                   Anda
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleLogoutOtherDevices}
-                disabled={loggingOutOther}
-                className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 self-start rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 sm:self-auto"
-              >
-                {loggingOutOther ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <LogOut className="h-3.5 w-3.5 text-rose-500" />
-                )}
-                <span>Keluarkan Perangkat Lain</span>
-              </button>
+              {otherSessions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleLogoutOtherDevices}
+                  disabled={loggingOutOther}
+                  className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 self-start rounded-full border border-rose-200 bg-rose-50/70 px-4 py-1.5 text-xs font-bold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 disabled:opacity-50 sm:self-auto"
+                >
+                  {loggingOutOther ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <LogOut className="h-3.5 w-3.5 text-rose-600" />
+                  )}
+                  <span>Keluarkan Perangkat Lain</span>
+                </button>
+              )}
             </div>
 
             <div className="space-y-3">
-              {/* Current Device */}
+              {/* Current Device (Accurately Detected from User-Agent) */}
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3.5 sm:p-4">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="shadow-xs flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                    <Laptop className="h-5 w-5" />
+                    {currentSession?.deviceType === 'mobile' ? (
+                      <Smartphone className="h-5 w-5" />
+                    ) : (
+                      <Laptop className="h-5 w-5" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <span className="block truncate text-xs font-black text-slate-950">
-                      MacBook / Desktop (macOS)
+                      {currentSession?.deviceLabel ||
+                        'PC / Desktop (Windows 11 / 10)'}
                     </span>
                     <p className="truncate text-[11px] text-slate-400">
-                      Google Chrome • Jakarta, Indonesia (Sesi Saat Ini)
+                      {currentSession?.browserLabel || 'Google Chrome'} •{' '}
+                      {currentSession?.location || 'Jakarta, Indonesia'} • (Sesi
+                      Saat Ini)
                     </p>
                   </div>
                 </div>
@@ -1234,22 +1421,33 @@ export default function CustomerSettingsPage() {
                 </span>
               </div>
 
-              {/* Smartphone Device */}
-              <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="shadow-2xs flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                    <Smartphone className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-black text-slate-950">
-                      iPhone 15 Pro (iOS Mobile)
-                    </span>
-                    <p className="text-[11px] text-slate-400">
-                      Safari Mobile • Terakhir aktif 2 hari yang lalu
-                    </p>
+              {/* Other Sessions if any */}
+              {otherSessions.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-3.5 sm:p-4"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className="shadow-2xs flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                      <Smartphone className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-slate-950">
+                        {s.deviceLabel}
+                      </span>
+                      <p className="text-[11px] text-slate-400">
+                        {s.browser} • {s.location} • {s.lastActive}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
+
+              {otherSessions.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-200 p-3.5 text-center text-xs text-slate-400">
+                  Hanya perangkat ini yang sedang aktif mengakses akun Anda
+                </div>
+              )}
             </div>
           </div>
         </motion.div>
@@ -1271,7 +1469,7 @@ export default function CustomerSettingsPage() {
       <Toaster />
 
       {/* 1. Mobile View: Modular Customer Account Hub & Subviews (No Footer) */}
-      <div className="block md:hidden">
+      <div className="block h-dvh max-h-screen w-full overflow-hidden md:hidden">
         <MobileCustomerAccountView
           user={{
             name,
@@ -1286,6 +1484,13 @@ export default function CustomerSettingsPage() {
           setActiveSubView={handleSelectSubView}
           onAvatarClick={handleAvatarClick}
           onSignOut={() => signOut({ callbackUrl: '/' })}
+          onSaveProfile={handleSaveProfile}
+          onSavePassword={handleChangePassword}
+          onAddAddress={() => {
+            setAddressToEdit(null)
+            setIsAddressModalOpen(true)
+          }}
+          saving={saving}
         >
           {activeSubView !== 'overview' && renderTabContent()}
         </MobileCustomerAccountView>
@@ -1439,6 +1644,128 @@ export default function CustomerSettingsPage() {
           </div>
         </main>
       </div>
+
+      {/* WhatsApp 2FA OTP Verification Modal */}
+      {isOtpModalOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="backdrop-blur-xs fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/70 p-4 duration-200 animate-in fade-in">
+            <div className="relative w-full max-w-sm rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl duration-200 animate-in zoom-in-95">
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setIsOtpModalOpen(false)}
+                className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              {/* Modal Header */}
+              <div className="flex flex-col items-center text-center">
+                <div className="shadow-xs mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600">
+                  <ShieldCheck className="h-6 w-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-950">
+                  Verifikasi OTP WhatsApp
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Masukkan 6 digit kode yang dikirimkan ke nomor WhatsApp:{' '}
+                  <span className="font-bold text-slate-900">
+                    {phone
+                      ? phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
+                      : ''}
+                  </span>
+                </p>
+              </div>
+
+              {/* WhatsApp Link CTA */}
+              {otpWhatsappUrl && (
+                <a
+                  href={otpWhatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shadow-xs mt-4 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Buka Pesan OTP WhatsApp</span>
+                  <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+                </a>
+              )}
+
+              {/* OTP Input */}
+              <div className="mt-5 space-y-2">
+                <label className="block text-center text-[11px] font-bold text-slate-600">
+                  KODE VERIFIKASI 6-DIGIT
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) =>
+                    setOtpCode(e.target.value.replace(/\D/g, ''))
+                  }
+                  placeholder="123456"
+                  autoFocus
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 text-center font-mono text-2xl font-black tracking-[0.35em] text-slate-950 outline-none transition focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/20"
+                />
+                {otpPreview && (
+                  <p className="text-center text-[10px] text-slate-400">
+                    Simulasi Kode:{' '}
+                    <span className="font-mono font-bold text-emerald-600">
+                      {otpPreview}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* Expiry & Resend */}
+              <div className="mt-4 flex items-center justify-between text-[11px] text-slate-500">
+                <span>
+                  Berlaku:{' '}
+                  <strong className="font-mono text-slate-800">
+                    {Math.floor(otpExpiresIn / 60)}:
+                    {(otpExpiresIn % 60).toString().padStart(2, '0')}
+                  </strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={requestingOtp || otpExpiresIn > 240}
+                  className="font-bold text-orange-600 hover:underline disabled:opacity-40 disabled:hover:no-underline"
+                >
+                  {requestingOtp ? 'Mengirim...' : 'Kirim Ulang'}
+                </button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsOtpModalOpen(false)}
+                  className="w-1/2 rounded-full border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyOtp}
+                  disabled={verifyingOtp || otpCode.length < 6}
+                  className="shadow-xs flex w-1/2 items-center justify-center gap-1.5 rounded-full bg-slate-950 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+                >
+                  {verifyingOtp ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )}
+                  <span>Verifikasi</span>
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   )
 }

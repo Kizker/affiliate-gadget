@@ -702,7 +702,10 @@ export default function AdminChatPage() {
       case 'mitra':
         return '🏢 Rekomendasi Mitra'
       case 'order':
+      case 'order_reference':
         return '📋 Rincian Pesanan'
+      case 'return_reference':
+        return '🔄 Pengajuan Retur'
       case 'image':
         return '📷 Lampiran Foto'
       case 'video':
@@ -765,8 +768,15 @@ export default function AdminChatPage() {
   // Render message content for text/catalog/order
   const renderMessageContent = (message: Message, isAdmin: boolean) => {
     const contentTrimmed = message.content?.trim() || ''
+    const isReturn =
+      message.messageType === 'return_reference' ||
+      (contentTrimmed.startsWith('{') &&
+        (contentTrimmed.includes('"returnReason"') ||
+          contentTrimmed.includes('"return_reference"')))
     const isOrder =
+      isReturn ||
       message.messageType === 'order' ||
+      message.messageType === 'order_reference' ||
       (contentTrimmed.startsWith('{') &&
         contentTrimmed.includes('"orderNumber"'))
     const isProduct =
@@ -837,6 +847,13 @@ export default function AdminChatPage() {
                 )}
               </div>
             </div>
+            {data.note && (
+              <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
+                <p className="whitespace-pre-wrap break-words leading-relaxed">
+                  {data.note}
+                </p>
+              </div>
+            )}
             <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-[10.5px] font-semibold dark:border-slate-800">
               <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
                 <Package className="h-3 w-3" />
@@ -868,19 +885,85 @@ export default function AdminChatPage() {
     if (isOrder) {
       try {
         const data = JSON.parse(message.content)
+        const isReturnCard =
+          isReturn ||
+          data.type === 'return_reference' ||
+          Boolean(data.returnReason)
+
         return (
           <div className="shadow-2xs max-w-sm space-y-2.5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white">
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
               <div className="flex min-w-0 items-center gap-1.5">
-                <ShoppingBag className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                {isReturnCard ? (
+                  <RotateCcw className="h-4 w-4 shrink-0 text-purple-600 dark:text-purple-400" />
+                ) : (
+                  <ShoppingBag className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                )}
                 <span className="truncate font-mono text-xs font-bold">
                   #{data.orderNumber}
                 </span>
               </div>
-              <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider text-blue-600 dark:bg-blue-950 dark:text-blue-400">
-                {data.status || 'Pesanan'}
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider ${
+                  isReturnCard
+                    ? 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400'
+                    : 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
+                }`}
+              >
+                {isReturnCard
+                  ? data.returnStatus === 'APPROVED'
+                    ? 'Retur Disetujui'
+                    : data.returnStatus === 'REJECTED'
+                      ? 'Retur Ditolak'
+                      : 'Verifikasi Retur'
+                  : data.status || 'Pesanan'}
               </span>
             </div>
+
+            {/* Single Product / Return Item Snippet if from reference */}
+            {(data.productName || data.name) && (
+              <div className="flex items-center gap-2.5">
+                {data.productImage || data.image ? (
+                  <img
+                    src={data.productImage || data.image}
+                    alt=""
+                    className="h-11 w-11 shrink-0 rounded-xl border bg-slate-50 object-contain p-1"
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-purple-200 bg-purple-50">
+                    <RotateCcw className="h-5 w-5 text-purple-600" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  {data.brand && (
+                    <span className="block text-[8.5px] font-black uppercase text-orange-600 dark:text-orange-400">
+                      {data.brand}
+                    </span>
+                  )}
+                  <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    {data.productName || data.name}
+                  </p>
+                  {isReturnCard && data.returnReason && (
+                    <p className="truncate text-[10px] font-medium text-purple-600 dark:text-purple-400">
+                      Kendala: {data.returnReason}
+                    </p>
+                  )}
+                  {data.variantName && (
+                    <p className="truncate text-[9.5px] font-medium text-slate-400">
+                      Varian: {data.variantName}
+                    </p>
+                  )}
+                  {Number(data.productPrice || data.price) > 0 && (
+                    <p className="font-mono text-[10.5px] font-bold text-orange-600 dark:text-orange-400">
+                      Rp{' '}
+                      {Number(data.productPrice || data.price).toLocaleString(
+                        'id-ID'
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {data.items && data.items.length > 0 && (
               <div className="space-y-2">
@@ -919,6 +1002,13 @@ export default function AdminChatPage() {
               </div>
             )}
 
+            {data.note && (
+              <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
+                <p className="whitespace-pre-wrap break-words leading-relaxed">
+                  {data.note}
+                </p>
+              </div>
+            )}
             <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs dark:border-slate-800">
               <span className="text-[11px] text-slate-500">Total Pesanan:</span>
               <span className="font-mono text-xs font-black text-orange-600 dark:text-orange-400 sm:text-sm">

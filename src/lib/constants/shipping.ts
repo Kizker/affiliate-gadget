@@ -20,9 +20,17 @@ export const WEIGHT_THRESHOLD_GRAM = 1_000 // 1 kg
 export const COURIER_MULTIPLIERS: Record<string, number> = {
   JNE_REG: 1.0,
   JNE_YES: 1.8,
+  JNE_OKE: 0.85,
   GOJEK_INSTANT: 2.2,
   GOJEK_SAMEDAY: 1.5,
 }
+
+export {
+  calculateShippingOptions,
+  verifyServerShippingCost,
+  type ShippingOption,
+  type ShippingCalculationResult,
+} from '@/lib/shipping/shipping-engine'
 
 /**
  * Hitung kilogram yang ditagihkan (pembulatan ke atas, minimum 1 kg).

@@ -18,6 +18,9 @@ import {
   Building2,
 } from 'lucide-react'
 import { UserAddressItem } from '@/components/customer/address-modal'
+import { ShippingOption } from '@/lib/shipping/shipping-engine'
+import { toast } from 'sonner'
+import { Truck, Clock, AlertTriangle } from 'lucide-react'
 
 interface MobileShopeeCheckoutViewProps {
   selectedItems: any[]
@@ -56,6 +59,15 @@ interface MobileShopeeCheckoutViewProps {
   submitting: boolean
   handleSubmitOrder: () => void
   backHref: string
+  // Real-time shipping engine props
+  shippingOptions?: ShippingOption[]
+  loadingShippingRates?: boolean
+  shippingDistanceKm?: number | null
+  jneRegCost?: number
+  jneYesCost?: number
+  gojekCost?: number
+  isGojekAvailable?: boolean
+  gojekUnavailableReason?: string
 }
 
 export function MobileShopeeCheckoutView({
@@ -90,6 +102,14 @@ export function MobileShopeeCheckoutView({
   submitting,
   handleSubmitOrder,
   backHref,
+  shippingOptions = [],
+  loadingShippingRates = false,
+  shippingDistanceKm = null,
+  jneRegCost = 15_000,
+  jneYesCost = 28_000,
+  gojekCost = 20_000,
+  isGojekAvailable = true,
+  gojekUnavailableReason,
 }: MobileShopeeCheckoutViewProps) {
   const [showVoucherBox, setShowVoucherBox] = useState(false)
   const [showNotesInput, setShowNotesInput] = useState(false)
@@ -300,26 +320,37 @@ export function MobileShopeeCheckoutView({
             </div>
           </div>
 
-          {/* Opsi Pengiriman Kurir */}
-          <div className="space-y-2 border-t border-slate-100 pt-1 dark:border-slate-800">
+          {/* Opsi Pengiriman Kurir (Shopee Style) */}
+          <div className="space-y-2 border-t border-slate-100 pt-2 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-950 dark:text-white">
                 Opsi Pengiriman
               </span>
-              <span className="text-[11px] text-slate-400">
-                Logistik Terproteksi
-              </span>
+              <div className="flex items-center gap-1.5">
+                {loadingShippingRates ? (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    Cek Tarif API...
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-slate-400">
+                    Logistik Terproteksi
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* Pilihan JNE */}
+            {/* Pilihan JNE Express */}
             <div
               onClick={() => {
                 setCourier('JNE')
-                setCourierService('REG')
+                if (courierService !== 'YES' && courierService !== 'REG') {
+                  setCourierService('REG')
+                }
               }}
-              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
+              className={`cursor-pointer rounded-xl border p-3 transition-all ${
                 courier === 'JNE'
-                  ? 'border-emerald-500 bg-emerald-50/25 dark:border-emerald-500 dark:bg-emerald-950/20'
+                  ? 'border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-500/30 dark:border-emerald-500 dark:bg-emerald-950/20'
                   : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
               }`}
             >
@@ -329,60 +360,162 @@ export function MobileShopeeCheckoutView({
                     className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
                       courier === 'JNE'
                         ? 'border-emerald-600 bg-emerald-600 text-white'
-                        : 'border-slate-300'
+                        : 'border-slate-300 dark:border-slate-600'
                     }`}
                   >
-                    {courier === 'JNE' && <Check className="h-2.5 w-2.5" />}
+                    {courier === 'JNE' && (
+                      <Check className="h-2.5 w-2.5 stroke-[3]" />
+                    )}
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      JNE Reguler (2-3 Hari)
-                    </span>
-                    <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                      Pengiriman berasuransi resmi antar kota
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        JNE Express
+                      </span>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        Antar Kota & Provinsi
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      {courierService === 'YES'
+                        ? 'Layanan YES (1 Hari / Esok Sampai)'
+                        : 'Layanan Reguler (2-3 Hari Kerja)'}
                     </p>
                   </div>
                 </div>
                 <span className="text-xs font-bold text-slate-900 dark:text-white">
-                  Rp {shippingCost.toLocaleString('id-ID')}
+                  Rp{' '}
+                  {(courierService === 'YES'
+                    ? jneYesCost
+                    : jneRegCost
+                  ).toLocaleString('id-ID')}
                 </span>
               </div>
+
+              {/* Sub-Pilihan Paket JNE (REG 2-3 Hari vs YES 1 Hari) */}
+              {courier === 'JNE' && (
+                <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setCourier('JNE')
+                      setCourierService('REG')
+                    }}
+                    className={`flex flex-col rounded-lg p-2 text-left transition-all ${
+                      courierService === 'REG'
+                        ? 'border border-emerald-500 bg-emerald-500/10 font-bold text-emerald-950 dark:text-emerald-300'
+                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span>JNE Reguler</span>
+                      <span className="text-[9px] font-normal text-slate-500">
+                        2-3 Hari
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      Rp {jneRegCost.toLocaleString('id-ID')}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setCourier('JNE')
+                      setCourierService('YES')
+                    }}
+                    className={`flex flex-col rounded-lg p-2 text-left transition-all ${
+                      courierService === 'YES'
+                        ? 'border border-emerald-500 bg-emerald-500/10 font-bold text-emerald-950 dark:text-emerald-300'
+                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="flex items-center gap-1">
+                        JNE YES
+                        <span className="py-0.2 rounded bg-orange-100 px-1 text-[8px] font-bold text-orange-700 dark:bg-orange-950/50 dark:text-orange-300">
+                          Kilat
+                        </span>
+                      </span>
+                      <span className="text-[9px] font-normal text-slate-500">
+                        1 Hari
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      Rp {jneYesCost.toLocaleString('id-ID')}
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Pilihan Gojek Instant */}
             <div
               onClick={() => {
+                if (!isGojekAvailable) {
+                  toast.error(
+                    gojekUnavailableReason ||
+                      'Jarak pengiriman melebihi batas maksimal 40 km untuk Gojek Instant. Silakan pilih JNE Express.'
+                  )
+                  return
+                }
                 setCourier('GOJEK')
                 setCourierService('INSTANT')
               }}
-              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
-                courier === 'GOJEK'
-                  ? 'border-emerald-500 bg-emerald-50/25 dark:border-emerald-500 dark:bg-emerald-950/20'
-                  : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
+              className={`rounded-xl border p-3 transition-all ${
+                !isGojekAvailable
+                  ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50/70 opacity-60 dark:border-slate-800 dark:bg-slate-900/40'
+                  : courier === 'GOJEK'
+                    ? 'cursor-pointer border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-500/30 dark:border-emerald-500 dark:bg-emerald-950/20'
+                    : 'cursor-pointer border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <div
                     className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                      courier === 'GOJEK'
+                      courier === 'GOJEK' && isGojekAvailable
                         ? 'border-emerald-600 bg-emerald-600 text-white'
-                        : 'border-slate-300'
+                        : 'border-slate-300 dark:border-slate-600'
                     }`}
                   >
-                    {courier === 'GOJEK' && <Check className="h-2.5 w-2.5" />}
+                    {courier === 'GOJEK' && isGojekAvailable && (
+                      <Check className="h-2.5 w-2.5 stroke-[3]" />
+                    )}
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      Gojek Instant Kurir (1-2 Jam)
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        Gojek Instant Kurir
+                      </span>
+                      {shippingDistanceKm !== null && (
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          {shippingDistanceKm.toFixed(1)} km
+                        </span>
+                      )}
+                      {!isGojekAvailable && (
+                        <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                          &gt; 40 km
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                      Khusus sesama kota cabang toko fisik
+                      {isGojekAvailable
+                        ? 'Langsung Sampai (Maks 1-2 Jam)'
+                        : 'Di luar jangkauan (maks 40 km). Gunakan JNE.'}
                     </p>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-slate-900 dark:text-white">
-                  Rp 25.000
+                <span
+                  className={`text-xs font-bold ${
+                    isGojekAvailable
+                      ? 'text-slate-900 dark:text-white'
+                      : 'text-slate-400 line-through'
+                  }`}
+                >
+                  Rp {gojekCost.toLocaleString('id-ID')}
                 </span>
               </div>
             </div>

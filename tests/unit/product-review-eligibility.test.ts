@@ -13,6 +13,7 @@ interface MockOrder {
   items: Array<{ productId: string; variantName?: string }>
   storeId: string
   completedAt?: Date
+  createdAt?: Date
 }
 
 interface MockReview {
@@ -24,7 +25,15 @@ interface MockReview {
   comment: string | null
 }
 
-describe('Product Review Eligibility Engine (Completed Orders Only)', () => {
+const ELIGIBLE_CHECKOUT_STATUSES = [
+  'PENDING_PAYMENT',
+  'PAID',
+  'IN_PROGRESS',
+  'SHIPPED',
+  'COMPLETED',
+]
+
+describe('Product Review Eligibility Engine (Completed Checkout Only)', () => {
   // Helper simulating the backend review validation logic
   function checkReviewEligibility({
     userId,
@@ -45,29 +54,29 @@ describe('Product Review Eligibility Engine (Completed Orders Only)', () => {
       }
     }
 
-    // Strictly find completed orders for this user and product
-    const completedOrder = orders.find(
+    // Find valid checked out order for this user containing this product
+    const checkedOutOrder = orders.find(
       (o) =>
         o.userId === userId &&
-        o.status === 'COMPLETED' &&
+        ELIGIBLE_CHECKOUT_STATUSES.includes(o.status) &&
         o.items.some((i) => i.productId === productId)
     )
 
-    // MUST have a completed order!
-    if (!completedOrder) {
+    // MUST have a completed checkout order!
+    if (!checkedOutOrder) {
       return {
         isLoggedIn: true,
         canReview: false,
         eligibleOrderId: null,
         error:
-          'Ulasan hanya dapat diberikan oleh customer yang telah membeli produk ini dan status pesanannya sudah selesai.',
+          'Ulasan hanya dapat diberikan oleh customer yang telah selesai checkout produk ini.',
       }
     }
 
     return {
       isLoggedIn: true,
       canReview: true,
-      eligibleOrderId: completedOrder.id,
+      eligibleOrderId: checkedOutOrder.id,
       existingReview: existingReview || null,
       error: null,
     }
@@ -86,12 +95,12 @@ describe('Product Review Eligibility Engine (Completed Orders Only)', () => {
     expect(result.error).toBe('Silakan masuk untuk memberikan ulasan')
   })
 
-  it('should forbid review if customer has no orders for the product', () => {
+  it('should forbid review if customer has never checked out this product', () => {
     const orders: MockOrder[] = [
       {
         id: 'ord-1',
         userId: 'user-1',
-        status: 'COMPLETED',
+        status: 'PAID',
         items: [{ productId: 'prod-999' }],
         storeId: 'store-1',
       },
@@ -106,25 +115,51 @@ describe('Product Review Eligibility Engine (Completed Orders Only)', () => {
 
     expect(result.isLoggedIn).toBe(true)
     expect(result.canReview).toBe(false)
-    expect(result.error).toContain('status pesanannya sudah selesai')
+    expect(result.eligibleOrderId).toBeNull()
+    expect(result.error).toContain('telah selesai checkout produk ini')
   })
 
-  it('should forbid review if order is PENDING_PAYMENT, PAID, IN_PROGRESS, or SHIPPED (not COMPLETED)', () => {
-    const nonCompletedStatuses: Array<MockOrder['status']> = [
+  it('should forbid review if customer order is CANCELLED', () => {
+    const orders: MockOrder[] = [
+      {
+        id: 'ord-cancelled',
+        userId: 'user-1',
+        status: 'CANCELLED',
+        items: [{ productId: 'prod-123' }],
+        storeId: 'store-1',
+      },
+    ]
+
+    const result = checkReviewEligibility({
+      userId: 'user-1',
+      productId: 'prod-123',
+      orders,
+      existingReview: null,
+    })
+
+    expect(result.canReview).toBe(false)
+    expect(result.eligibleOrderId).toBeNull()
+    expect(result.error).toBe(
+      'Ulasan hanya dapat diberikan oleh customer yang telah selesai checkout produk ini.'
+    )
+  })
+
+  it('should grant review eligibility across all valid completed checkout statuses', () => {
+    const validStatuses: Array<MockOrder['status']> = [
       'PENDING_PAYMENT',
       'PAID',
       'IN_PROGRESS',
       'SHIPPED',
-      'CANCELLED',
+      'COMPLETED',
     ]
 
-    for (const status of nonCompletedStatuses) {
+    for (const status of validStatuses) {
       const orders: MockOrder[] = [
         {
           id: `ord-${status}`,
           userId: 'user-1',
           status,
-          items: [{ productId: 'prod-123' }],
+          items: [{ productId: 'prod-123', variantName: '12/512GB' }],
           storeId: 'store-1',
         },
       ]
@@ -136,21 +171,20 @@ describe('Product Review Eligibility Engine (Completed Orders Only)', () => {
         existingReview: null,
       })
 
-      expect(result.canReview).toBe(false)
-      expect(result.error).toBe(
-        'Ulasan hanya dapat diberikan oleh customer yang telah membeli produk ini dan status pesanannya sudah selesai.'
-      )
+      expect(result.canReview).toBe(true)
+      expect(result.eligibleOrderId).toBe(`ord-${status}`)
+      expect(result.error).toBeNull()
     }
   })
 
-  it('should forbid review even if user has an orphan review without a COMPLETED order', () => {
+  it('should forbid review even if user has an orphan review without a completed checkout order', () => {
     const orphanReview: MockReview = {
       id: 'rev-orphan',
       userId: 'user-1',
       productId: 'prod-123',
       orderId: null,
       rating: 5,
-      comment: 'Tes ulasan tanpa beli',
+      comment: 'Tes ulasan tanpa checkout',
     }
 
     const result = checkReviewEligibility({
@@ -162,43 +196,17 @@ describe('Product Review Eligibility Engine (Completed Orders Only)', () => {
 
     expect(result.canReview).toBe(false)
     expect(result.eligibleOrderId).toBeNull()
-    expect(result.error).toContain('status pesanannya sudah selesai')
+    expect(result.error).toContain('telah selesai checkout produk ini')
   })
 
-  it('should grant review eligibility if order status is COMPLETED', () => {
-    const orders: MockOrder[] = [
-      {
-        id: 'ord-success',
-        userId: 'user-1',
-        status: 'COMPLETED',
-        items: [{ productId: 'prod-123', variantName: '12/512GB Titanium' }],
-        storeId: 'store-1',
-        completedAt: new Date(),
-      },
-    ]
-
-    const result = checkReviewEligibility({
-      userId: 'user-1',
-      productId: 'prod-123',
-      orders,
-      existingReview: null,
-    })
-
-    expect(result.isLoggedIn).toBe(true)
-    expect(result.canReview).toBe(true)
-    expect(result.eligibleOrderId).toBe('ord-success')
-    expect(result.error).toBeNull()
-  })
-
-  it('should allow customer with completed order to edit their review', () => {
+  it('should allow customer with completed checkout order to edit their review', () => {
     const orders: MockOrder[] = [
       {
         id: 'ord-success-edit',
         userId: 'user-1',
-        status: 'COMPLETED',
+        status: 'PAID',
         items: [{ productId: 'prod-123' }],
         storeId: 'store-1',
-        completedAt: new Date(),
       },
     ]
 
@@ -221,5 +229,40 @@ describe('Product Review Eligibility Engine (Completed Orders Only)', () => {
     expect(result.canReview).toBe(true)
     expect(result.eligibleOrderId).toBe('ord-success-edit')
     expect(result.existingReview).toEqual(existingReview)
+  })
+
+  it('should strictly isolate eligibility: checking out Product A gives review rights on Product A ONLY, not Product B', () => {
+    const orders: MockOrder[] = [
+      {
+        id: 'ord-product-a',
+        userId: 'customer@test.com',
+        status: 'PAID',
+        items: [{ productId: 'product-a' }],
+        storeId: 'store-1',
+      },
+    ]
+
+    // Check on Product A -> SHOULD be eligible
+    const resultA = checkReviewEligibility({
+      userId: 'customer@test.com',
+      productId: 'product-a',
+      orders,
+      existingReview: null,
+    })
+    expect(resultA.canReview).toBe(true)
+    expect(resultA.eligibleOrderId).toBe('ord-product-a')
+
+    // Check on Product B -> MUST NOT be eligible
+    const resultB = checkReviewEligibility({
+      userId: 'customer@test.com',
+      productId: 'product-b',
+      orders,
+      existingReview: null,
+    })
+    expect(resultB.canReview).toBe(false)
+    expect(resultB.eligibleOrderId).toBeNull()
+    expect(resultB.error).toBe(
+      'Ulasan hanya dapat diberikan oleh customer yang telah selesai checkout produk ini.'
+    )
   })
 })

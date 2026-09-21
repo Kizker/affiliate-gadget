@@ -20,6 +20,9 @@ import {
   Copy,
   Clock,
   Check,
+  Printer,
+  Zap,
+  Navigation,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -29,6 +32,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
+import { LiveCourierTracker } from '@/components/shipping/live-courier-tracker'
 
 interface OrderItem {
   id: string
@@ -186,6 +191,11 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState(false)
+  const [requestingPickupId, setRequestingPickupId] = useState<string | null>(
+    null
+  )
+  const [activeThermalLabel, setActiveThermalLabel] = useState<any | null>(null)
+  const [showLiveTracker, setShowLiveTracker] = useState(false)
 
   // Debounce search input
   useEffect(() => {
@@ -259,10 +269,69 @@ export default function AdminOrdersPage() {
         )
       }
     } catch (error: any) {
-      console.error('Error updating order:', error)
-      toast.error(error.message || 'Terjadi kesalahan saat memperbarui status')
+      console.error('Error updating order status:', error)
+      toast.error(error.message || 'Gagal mengubah status pesanan')
     } finally {
       setUpdatingId(null)
+    }
+  }
+
+  // Request Pick Up Kurir (Gojek / JNE) via API
+  const handleRequestPickup = async (order: Order) => {
+    try {
+      setRequestingPickupId(order.id)
+      const res = await fetch('/api/shipping/pickup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal memanggil kurir logistik')
+      }
+      toast.success(data.message || 'Kurir logistik berhasil dipesan!')
+      if (selectedOrder && selectedOrder.id === order.id) {
+        setSelectedOrder({
+          ...selectedOrder,
+          status: 'IN_PROGRESS',
+          trackingNumber: data.data.trackingNumber,
+        })
+      }
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === order.id
+            ? {
+                ...o,
+                status: 'IN_PROGRESS',
+                trackingNumber: data.data.trackingNumber,
+              }
+            : o
+        )
+      )
+      setActiveThermalLabel(data.data)
+    } catch (err: any) {
+      console.error('Error requesting pickup:', err)
+      toast.error(err.message || 'Gagal memproses request pickup')
+    } finally {
+      setRequestingPickupId(null)
+    }
+  }
+
+  // Buka Label Thermal untuk pesanan yang sudah ada
+  const handleOpenThermalLabel = async (order: Order) => {
+    try {
+      const res = await fetch(`/api/shipping/tracking/${order.id}`)
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data) {
+          setActiveThermalLabel(json.data)
+          return
+        }
+      }
+      // Fallback
+      toast.info('Menyiapkan template label thermal...')
+    } catch {
+      toast.error('Gagal memuat label thermal')
     }
   }
 
@@ -851,9 +920,27 @@ export default function AdminOrdersPage() {
                         Asuransi 100% Proteksi Kerusakan & Kehilangan Fisik
                       </span>
                     </div>
+
+                    {selectedOrder.trackingNumber && (
+                      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
+                        <span className="text-[11px] font-bold text-slate-500">
+                          Resi / AWB:
+                        </span>
+                        <span className="font-mono text-xs font-black text-slate-900 dark:text-white">
+                          {selectedOrder.trackingNumber}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Live Tracking Card (if toggled) */}
+              {showLiveTracker && (
+                <div className="mt-4">
+                  <LiveCourierTracker orderId={selectedOrder.id} />
+                </div>
+              )}
 
               {/* Dialog Footer Actions */}
               <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
@@ -882,45 +969,92 @@ export default function AdminOrdersPage() {
                 )}
 
                 {selectedOrder.status === 'PAID' && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleUpdateStatus(selectedOrder.id, 'IN_PROGRESS')
-                    }
-                    disabled={updatingId === selectedOrder.id}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-6 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-950"
-                  >
-                    {updatingId === selectedOrder.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Package className="h-4 w-4 text-orange-400" />
-                    )}
-                    <span>Proses Pesanan Sekarang</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleRequestPickup(selectedOrder)}
+                      disabled={requestingPickupId === selectedOrder.id}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+                    >
+                      {requestingPickupId === selectedOrder.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Zap className="h-4 w-4" />
+                      )}
+                      <span>
+                        Request Pick Up (
+                        {selectedOrder.courierCode === 'GOJEK'
+                          ? 'Gojek Instant'
+                          : 'JNE'}
+                        )
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleUpdateStatus(selectedOrder.id, 'IN_PROGRESS')
+                      }
+                      disabled={updatingId === selectedOrder.id}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      <span>Proses Manual</span>
+                    </button>
+                  </div>
                 )}
 
                 {selectedOrder.status === 'IN_PROGRESS' && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleUpdateStatus(selectedOrder.id, 'COMPLETED')
-                    }
-                    disabled={updatingId === selectedOrder.id}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
-                  >
-                    {updatingId === selectedOrder.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    <span>Tandai Selesai & Diterima</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenThermalLabel(selectedOrder)}
+                      className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      <Printer className="h-3.5 w-3.5 text-orange-500" />
+                      <span>Cetak Label Thermal</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowLiveTracker(!showLiveTracker)}
+                      className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      <Navigation className="h-3.5 w-3.5 text-blue-500" />
+                      <span>
+                        {showLiveTracker ? 'Tutup Lacak' : 'Lacak Kurir Live'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleUpdateStatus(selectedOrder.id, 'COMPLETED')
+                      }
+                      disabled={updatingId === selectedOrder.id}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                    >
+                      {updatingId === selectedOrder.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      <span>Tandai Selesai & Diterima</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Printable Thermal Shipping Label Modal */}
+      {activeThermalLabel && (
+        <ThermalShippingLabel
+          data={activeThermalLabel}
+          onClose={() => setActiveThermalLabel(null)}
+        />
+      )}
     </div>
   )
 }

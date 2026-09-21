@@ -35,12 +35,17 @@ import {
   Play,
   ArrowRight,
   Tag,
+  Search,
+  X,
+  Printer,
 } from 'lucide-react'
 import { RatingModal } from '@/components/modals/rating-modal'
 import { CustomPaymentModal } from '@/components/payment/custom-payment-modal'
 import { ComplaintModal } from '@/components/customer/complaint-modal'
 import { ReturnModal } from '@/components/customer/return-modal'
 import { toast } from 'sonner'
+import { LiveCourierTracker } from '@/components/shipping/live-courier-tracker'
+import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
 
 const DEFAULT_GADGET_IMAGE =
   'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'
@@ -192,6 +197,13 @@ const statusConfig: Record<
     dotColor: 'bg-rose-500',
     icon: XCircle,
   },
+  RETURNED: {
+    label: 'Dikembalikan (Retur)',
+    badgeBg:
+      'bg-purple-50/90 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:border-purple-900/60 dark:text-purple-300',
+    dotColor: 'bg-purple-500',
+    icon: RotateCcw,
+  },
 }
 
 export default function OrderDetailClient({ order }: OrderDetailProps) {
@@ -206,6 +218,27 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
   )
   const [isCancelling, setIsCancelling] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
+  const [activeThermalLabel, setActiveThermalLabel] = useState<any | null>(null)
+  const [viewingLabel, setViewingLabel] = useState(false)
+
+  const handleViewThermalLabel = async () => {
+    try {
+      setViewingLabel(true)
+      const res = await fetch(`/api/shipping/tracking/${order.id}`)
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data) {
+          setActiveThermalLabel(json.data)
+          return
+        }
+      }
+      toast.info('Menyiapkan label pengiriman...')
+    } catch {
+      toast.error('Gagal memuat label pengiriman')
+    } finally {
+      setViewingLabel(false)
+    }
+  }
 
   // Review state
   const [currentReview, setCurrentReview] = useState(order.review ?? null)
@@ -310,19 +343,103 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     }
   }
 
-  const currentStatus = statusConfig[order.status] || statusConfig.PROCESSING
-  const StatusIcon = currentStatus.icon
-
-  const canCancel =
-    order.status === 'PENDING_PAYMENT' || order.status === 'PAID'
-  const canConfirmReceived = order.status === 'IN_PROGRESS'
-  const isCompleted = order.status === 'COMPLETED'
   const latestComplaint =
     order.complaints && order.complaints.length > 0 ? order.complaints[0] : null
   const latestReturnRequest =
     order.returnRequests && order.returnRequests.length > 0
       ? order.returnRequests[0]
       : null
+
+  const [returnCourier, setReturnCourier] = useState(
+    latestReturnRequest?.returnCourier || 'JNE'
+  )
+  const [returnTrackingNumber, setReturnTrackingNumber] = useState(
+    latestReturnRequest?.returnTrackingNumber || ''
+  )
+  const [isSavingReturnTracking, setIsSavingReturnTracking] = useState(false)
+
+  const handleSaveReturnTracking = async () => {
+    if (!latestReturnRequest?.id || !returnTrackingNumber.trim()) {
+      toast.error('Masukkan nomor resi pengiriman balik')
+      return
+    }
+    setIsSavingReturnTracking(true)
+    try {
+      const res = await fetch(`/api/returns/${latestReturnRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          returnCourier,
+          returnTrackingNumber: returnTrackingNumber.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success('Nomor resi pengembalian berhasil disimpan')
+        router.refresh()
+      } else {
+        toast.error(data.error || 'Gagal menyimpan nomor resi')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat menyimpan nomor resi')
+    } finally {
+      setIsSavingReturnTracking(false)
+    }
+  }
+
+  const getDetailStatus = () => {
+    if (order.status === 'RETURNED') {
+      return statusConfig.RETURNED
+    }
+    if (latestReturnRequest) {
+      if (latestReturnRequest.status === 'PENDING') {
+        return {
+          label: 'Retur Diajukan',
+          badgeBg:
+            'bg-amber-50/90 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:border-amber-900/60 dark:text-amber-300',
+          dotColor: 'bg-amber-500',
+          icon: Clock,
+        }
+      }
+      if (latestReturnRequest.status === 'IN_REVIEW') {
+        return {
+          label: 'Retur Ditinjau',
+          badgeBg:
+            'bg-indigo-50/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/40 dark:border-indigo-900/60 dark:text-indigo-300',
+          dotColor: 'bg-indigo-500',
+          icon: Search,
+        }
+      }
+      if (latestReturnRequest.status === 'APPROVED') {
+        return {
+          label: 'Retur Disetujui',
+          badgeBg:
+            'bg-emerald-50/90 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300',
+          dotColor: 'bg-emerald-500',
+          icon: CheckCircle2,
+        }
+      }
+      if (latestReturnRequest.status === 'REJECTED') {
+        return {
+          label: 'Retur Ditolak',
+          badgeBg:
+            'bg-rose-50/90 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300',
+          dotColor: 'bg-rose-500',
+          icon: XCircle,
+        }
+      }
+      return statusConfig.RETURNED
+    }
+    return statusConfig[order.status] || statusConfig.PROCESSING
+  }
+
+  const currentStatus = getDetailStatus()
+  const StatusIcon = currentStatus.icon
+
+  const canCancel =
+    order.status === 'PENDING_PAYMENT' || order.status === 'PAID'
+  const canConfirmReceived = order.status === 'IN_PROGRESS'
+  const isCompleted = order.status === 'COMPLETED'
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -376,19 +493,19 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               {/* Order Identity & Date */}
               <div>
-                <div className="mb-1.5 flex flex-wrap items-center gap-2 sm:gap-3">
-                  <h1 className="font-mono text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <h1 className="break-all font-mono text-sm font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
                     #{order.orderNumber}
                   </h1>
                   <button
                     onClick={copyOrderNumber}
-                    className="inline-flex cursor-pointer items-center gap-1 font-mono text-xs font-bold text-slate-500 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200/80 bg-slate-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white"
                     title="Salin Nomor Pesanan"
                   >
                     {copied ? (
-                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      <Check className="h-3 w-3 text-emerald-600" />
                     ) : (
-                      <Copy className="h-3.5 w-3.5 text-slate-400" />
+                      <Copy className="h-3 w-3 text-slate-400" />
                     )}
                     <span>{copied ? 'Tersalin' : 'Salin'}</span>
                   </button>
@@ -438,13 +555,43 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5 dark:border-slate-800/80">
               {/* Left Actions: Contact Store Channels */}
               <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/dashboard/customer/chat?orderId=${order.id}${order.store?.id ? `&storeId=${order.store.id}` : ''}`}
-                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  <MessageCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                  <span>Chat Toko</span>
-                </Link>
+                {(() => {
+                  const firstItem = order.items?.[0]
+                  const firstProduct = firstItem?.product
+                  const chatParams = new URLSearchParams()
+                  chatParams.set('orderId', order.id)
+                  if (order.store?.id) chatParams.set('storeId', order.store.id)
+                  if (order.orderNumber)
+                    chatParams.set('orderNumber', order.orderNumber)
+                  if (latestReturnRequest) {
+                    chatParams.set('returnId', latestReturnRequest.id)
+                    chatParams.set(
+                      'returnReason',
+                      latestReturnRequest.reasonLabel ||
+                        latestReturnRequest.reason ||
+                        ''
+                    )
+                    chatParams.set('returnStatus', latestReturnRequest.status)
+                    if (latestReturnRequest.type)
+                      chatParams.set('returnType', latestReturnRequest.type)
+                  }
+                  if (firstProduct?.name)
+                    chatParams.set('productName', firstProduct.name)
+                  if (firstProduct?.images?.[0])
+                    chatParams.set('productImage', firstProduct.images[0])
+                  if (firstItem?.price)
+                    chatParams.set('productPrice', String(firstItem.price))
+
+                  return (
+                    <Link
+                      href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                      className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>Chat Toko</span>
+                    </Link>
+                  )
+                })()}
               </div>
 
               {/* Right Actions: Workflow CTA Buttons */}
@@ -490,9 +637,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
 
                 {/* Ajukan Pengembalian */}
                 {isCompleted &&
-                  (!order.returnRequests ||
-                    order.returnRequests.length === 0 ||
-                    latestReturnRequest?.status === 'REJECTED') && (
+                  (!latestReturnRequest ||
+                    latestReturnRequest.status === 'REJECTED') && (
                     <button
                       onClick={() => setReturnModalOpen(true)}
                       className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
@@ -503,7 +649,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                   )}
 
                 {/* Klaim Garansi 30 Hari */}
-                {isCompleted && (
+                {isCompleted && !latestReturnRequest && (
                   <button
                     onClick={() => setComplaintModalOpen(true)}
                     className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950"
@@ -514,7 +660,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 )}
 
                 {/* Rating & Review Button */}
-                {isCompleted && (
+                {isCompleted && !latestReturnRequest && (
                   <button
                     onClick={handleOpenRating}
                     className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -528,12 +674,11 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
               </div>
             </div>
           </div>
-
-          {/* Return & Refund Live Card (Senior UI/UX Bento) */}
+          {/* Return & Refund Live Card (Modern, Simple & Aesthetic Bento) */}
           {latestReturnRequest && (
-            <div className="shadow-2xs mb-6 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-              {/* Header Row: Title & Semantic Status */}
-              <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-5 dark:border-slate-800 sm:flex-row sm:items-center">
+            <div className="shadow-2xs mb-6 overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">
+              {/* Header: Title, Date & Single Clean Status Badge */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800/80 dark:bg-slate-800/30 sm:p-5">
                 <div className="flex items-center gap-3">
                   <div
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
@@ -542,7 +687,9 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                         ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
                         : latestReturnRequest.status === 'REJECTED'
                           ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400'
-                          : 'bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400'
+                          : latestReturnRequest.status === 'IN_REVIEW'
+                            ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400'
+                            : 'bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400'
                     }`}
                   >
                     {latestReturnRequest.type === 'REFUND' ? (
@@ -553,12 +700,11 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-950 dark:text-white sm:text-base">
-                      Pengajuan{' '}
                       {latestReturnRequest.type === 'REFUND'
                         ? 'Pengembalian Dana (Refund 100%)'
-                        : 'Penggantian Unit (Replacement)'}
+                        : 'Penggantian Unit Baru'}
                     </h3>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-[11px] text-slate-400">
                       Diajukan pada{' '}
                       {new Date(
                         latestReturnRequest.createdAt
@@ -572,67 +718,179 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 </div>
 
                 {/* Status Pill Badge */}
-                <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-xs font-bold ${
-                      latestReturnRequest.status === 'APPROVED'
-                        ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
-                        : latestReturnRequest.status === 'COMPLETED'
-                          ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
-                          : latestReturnRequest.status === 'REJECTED'
-                            ? 'border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300'
-                            : 'border-amber-200/80 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300'
-                    }`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        latestReturnRequest.status === 'APPROVED' ||
-                        latestReturnRequest.status === 'COMPLETED'
-                          ? 'bg-emerald-500'
-                          : latestReturnRequest.status === 'REJECTED'
-                            ? 'bg-rose-500'
-                            : 'bg-amber-500'
-                      }`}
-                    />
-                    {latestReturnRequest.status === 'APPROVED'
-                      ? 'Pengajuan Disetujui'
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
+                    latestReturnRequest.status === 'APPROVED'
+                      ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
                       : latestReturnRequest.status === 'COMPLETED'
-                        ? 'Pengembalian Selesai'
+                        ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
                         : latestReturnRequest.status === 'REJECTED'
-                          ? 'Pengajuan Ditolak'
+                          ? 'border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300'
+                          : latestReturnRequest.status === 'IN_REVIEW'
+                            ? 'border-indigo-200/80 bg-indigo-50 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300'
+                            : 'border-amber-200/80 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300'
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      latestReturnRequest.status === 'APPROVED' ||
+                      latestReturnRequest.status === 'COMPLETED'
+                        ? 'bg-emerald-500'
+                        : latestReturnRequest.status === 'REJECTED'
+                          ? 'bg-rose-500'
+                          : latestReturnRequest.status === 'IN_REVIEW'
+                            ? 'bg-indigo-500'
+                            : 'bg-amber-500'
+                    }`}
+                  />
+                  {latestReturnRequest.status === 'APPROVED'
+                    ? 'Pengajuan Disetujui'
+                    : latestReturnRequest.status === 'COMPLETED'
+                      ? 'Pengembalian Selesai'
+                      : latestReturnRequest.status === 'REJECTED'
+                        ? 'Pengajuan Ditolak'
+                        : latestReturnRequest.status === 'IN_REVIEW'
+                          ? 'Sedang Ditinjau'
                           : 'Menunggu Verifikasi Toko'}
-                  </span>
-                </div>
+                </span>
               </div>
 
-              {/* Bento Content Flow: Kendala vs Detail Rekening & Tanggapan Toko */}
-              <div className="mt-5 grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
-                {/* Kolom Kiri: Rincian Kendala & Bukti Unboxing */}
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                      Kendala & Alasan Pengembalian
-                    </span>
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                      <div className="mb-1.5 inline-block rounded-md bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-800 dark:bg-slate-700 dark:text-slate-200">
+              {/* Body Content: Stepper & Flat Information Rows */}
+              <div className="space-y-4 p-4 sm:p-6">
+                {/* 3-Step Visual Progress Stepper */}
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
+                  <div className="relative flex items-center justify-between">
+                    <div className="absolute left-8 right-8 top-3 h-0.5 bg-slate-200 dark:bg-slate-700" />
+                    <div
+                      className="absolute left-8 top-3 h-0.5 bg-orange-500 transition-all duration-500"
+                      style={{
+                        width:
+                          latestReturnRequest.status === 'COMPLETED'
+                            ? 'calc(100% - 4rem)'
+                            : latestReturnRequest.status === 'APPROVED'
+                              ? '50%'
+                              : '0%',
+                      }}
+                    />
+
+                    {/* Step 1: Diajukan */}
+                    <div className="relative z-10 flex flex-col items-center gap-1">
+                      <div className="shadow-xs flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white">
+                        <Check className="h-3 w-3 stroke-[3]" />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                        Diajukan
+                      </span>
+                    </div>
+
+                    {/* Step 2: Verifikasi Toko */}
+                    <div className="relative z-10 flex flex-col items-center gap-1">
+                      <div
+                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                          latestReturnRequest.status === 'APPROVED' ||
+                          latestReturnRequest.status === 'COMPLETED'
+                            ? 'shadow-xs bg-orange-500 text-white'
+                            : latestReturnRequest.status === 'REJECTED'
+                              ? 'shadow-xs bg-rose-500 text-white'
+                              : 'animate-pulse border-2 border-orange-500 bg-white text-orange-600 dark:bg-slate-900'
+                        }`}
+                      >
+                        {latestReturnRequest.status === 'APPROVED' ||
+                        latestReturnRequest.status === 'COMPLETED' ? (
+                          <Check className="h-3 w-3 stroke-[3]" />
+                        ) : latestReturnRequest.status === 'REJECTED' ? (
+                          <X className="h-3 w-3 stroke-[3]" />
+                        ) : (
+                          <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                        )}
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                        {latestReturnRequest.status === 'REJECTED'
+                          ? 'Ditolak'
+                          : 'Verifikasi'}
+                      </span>
+                    </div>
+
+                    {/* Step 3: Selesai */}
+                    <div className="relative z-10 flex flex-col items-center gap-1">
+                      <div
+                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                          latestReturnRequest.status === 'COMPLETED'
+                            ? 'shadow-xs bg-emerald-500 text-white'
+                            : 'border-2 border-slate-200 bg-white text-slate-300 dark:border-slate-700 dark:bg-slate-900'
+                        }`}
+                      >
+                        {latestReturnRequest.status === 'COMPLETED' ? (
+                          <Check className="h-3 w-3 stroke-[3]" />
+                        ) : (
+                          <span className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                        )}
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        {latestReturnRequest.type === 'REFUND'
+                          ? 'Refund Cair'
+                          : 'Unit Dikirim'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Flat Information Breakdown (Clean & Simple) */}
+                <div className="space-y-2.5 text-xs">
+                  {/* Kendala */}
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2.5 dark:border-slate-800">
+                    <span className="shrink-0 text-slate-400">Kendala:</span>
+                    <div className="text-right">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-800 dark:bg-slate-800 dark:text-slate-200">
                         {latestReturnRequest.reasonLabel ||
                           latestReturnRequest.reason}
-                      </div>
-                      <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                        {latestReturnRequest.description}
-                      </p>
+                      </span>
+                      {latestReturnRequest.description && (
+                        <p className="ml-auto mt-1 max-w-sm text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                          &ldquo;{latestReturnRequest.description}&rdquo;
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Lampiran Foto/Video Bukti */}
+                  {/* Rekening Refund (if REFUND) */}
+                  {latestReturnRequest.type === 'REFUND' && (
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2.5 dark:border-slate-800">
+                      <span className="shrink-0 text-slate-400">
+                        Rekening Refund:
+                      </span>
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                          {latestReturnRequest.bankName} •{' '}
+                          {latestReturnRequest.bankAccountNumber}
+                        </span>
+                        <p className="text-[11px] text-slate-400">
+                          a.n. {latestReturnRequest.bankAccountName}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Total Nilai Refund */}
+                  {latestReturnRequest.refundAmount && (
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2.5 dark:border-slate-800">
+                      <span className="shrink-0 font-semibold text-slate-600 dark:text-slate-300">
+                        Total Refund:
+                      </span>
+                      <span className="font-mono text-sm font-black text-orange-600 dark:text-orange-400">
+                        {formatPrice(latestReturnRequest.refundAmount)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Bukti Unboxing (Thumbnails) */}
                   {latestReturnRequest.images &&
                     latestReturnRequest.images.length > 0 && (
-                      <div className="space-y-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                          Bukti Foto / Video Unboxing (
-                          {latestReturnRequest.images.length})
+                      <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2.5 dark:border-slate-800">
+                        <span className="shrink-0 text-slate-400">
+                          Bukti ({latestReturnRequest.images.length}):
                         </span>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
                           {latestReturnRequest.images.map((img, i) => {
                             const isVideo = /\.(mp4|webm|mov)$/i.test(img)
                             return (
@@ -641,15 +899,15 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                                 href={img}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
+                                className="group relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 transition hover:border-orange-500 dark:border-slate-700 dark:bg-slate-800"
                               >
                                 {isVideo ? (
-                                  <Play className="h-5 w-5 text-orange-500 transition group-hover:scale-110" />
+                                  <Play className="h-4 w-4 text-orange-500" />
                                 ) : (
                                   <img
                                     src={img}
                                     alt="Bukti"
-                                    className="h-full w-full object-cover transition group-hover:scale-105"
+                                    className="h-full w-full object-cover"
                                   />
                                 )}
                               </a>
@@ -660,78 +918,93 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                     )}
                 </div>
 
-                {/* Kolom Kanan: Solusi, Info Rekening Refund, & Tanggapan Toko */}
-                <div className="space-y-3">
-                  {latestReturnRequest.type === 'REFUND' && (
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                        Rekening Pengembalian Dana
-                      </span>
-                      <div className="space-y-1.5 rounded-2xl border border-orange-100 bg-orange-50/40 p-4 dark:border-orange-900/40 dark:bg-orange-950/20">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">Bank:</span>
-                          <span className="font-bold text-slate-900 dark:text-white">
-                            {latestReturnRequest.bankName}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">
-                            Nomor Rekening:
-                          </span>
-                          <span className="font-mono font-bold text-slate-900 dark:text-white">
-                            {latestReturnRequest.bankAccountNumber}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">Atas Nama:</span>
-                          <span className="font-bold text-slate-900 dark:text-white">
-                            {latestReturnRequest.bankAccountName}
-                          </span>
-                        </div>
-                        {latestReturnRequest.refundAmount && (
-                          <div className="flex items-center justify-between border-t border-orange-200/60 pt-2 text-xs dark:border-orange-900/60">
-                            <span className="font-bold text-orange-950 dark:text-orange-300">
-                              Total Nilai Refund:
-                            </span>
-                            <span className="font-mono text-sm font-black text-orange-600 dark:text-orange-400">
-                              {formatPrice(latestReturnRequest.refundAmount)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tanggapan Toko */}
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                      Tanggapan & Tindakan Toko
-                    </span>
-                    {latestReturnRequest.storeResponse ? (
-                      <div className="rounded-2xl border border-emerald-100/90 bg-emerald-50/50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-                        <div className="mb-1 flex items-center gap-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                          <span>Instruksi Toko</span>
-                        </div>
-                        <p className="text-xs leading-relaxed text-emerald-950/80 dark:text-emerald-200/90">
-                          {latestReturnRequest.storeResponse}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl border border-amber-100/80 bg-amber-50/40 p-4 dark:border-amber-900/30 dark:bg-amber-950/20">
-                        <div className="mb-1 flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
-                          <Clock className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                          <span>Dalam Antrean Verifikasi</span>
-                        </div>
-                        <p className="text-xs leading-relaxed text-amber-900/80 dark:text-amber-200/80">
-                          Tim toko cabang sedang memeriksa kelengkapan pengajuan
-                          pengembalian Anda. Anda akan menerima instruksi
-                          pengiriman balik atau proses transfer refund segera.
-                        </p>
-                      </div>
-                    )}
+                {/* Contextual Status Info Banner */}
+                {latestReturnRequest.status === 'PENDING' && (
+                  <div className="flex items-center gap-2.5 rounded-xl border border-amber-200/60 bg-amber-50/70 p-3 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+                    <Clock className="h-4 w-4 shrink-0 text-amber-600" />
+                    <p className="leading-snug">
+                      Pengajuan sedang dalam antrean verifikasi toko cabang
+                      (estimasi 1x24 jam kerja).
+                    </p>
                   </div>
-                </div>
+                )}
+
+                {latestReturnRequest.status === 'IN_REVIEW' && (
+                  <div className="flex items-center gap-2.5 rounded-xl border border-indigo-200/60 bg-indigo-50/70 p-3 text-xs text-indigo-800 dark:border-indigo-900/40 dark:bg-indigo-950/30 dark:text-indigo-300">
+                    <Search className="h-4 w-4 shrink-0 text-indigo-600" />
+                    <p className="leading-snug">
+                      Tim toko cabang sedang memeriksa foto/video unboxing dan
+                      detail kendala Anda.
+                    </p>
+                  </div>
+                )}
+
+                {latestReturnRequest.status === 'APPROVED' && (
+                  <div className="space-y-2.5 rounded-xl border border-emerald-200/60 bg-emerald-50/70 p-3.5 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+                    <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <span>Pengajuan Disetujui — Silakan Kirim Unit</span>
+                    </div>
+                    {latestReturnRequest.storeResponse && (
+                      <p className="text-[11px] leading-relaxed text-emerald-950/80 dark:text-emerald-200/90">
+                        {latestReturnRequest.storeResponse}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-emerald-200/60 pt-2 dark:border-emerald-900/60">
+                      <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+                        Resi Pengiriman Balik:
+                      </span>
+                      {latestReturnRequest.returnTrackingNumber ? (
+                        <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-mono font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                          {latestReturnRequest.returnCourier || 'JNE'} —{' '}
+                          {latestReturnRequest.returnTrackingNumber}
+                        </span>
+                      ) : (
+                        <div className="flex w-full items-center gap-1.5 sm:w-auto">
+                          <input
+                            type="text"
+                            placeholder="Nomor resi balik..."
+                            value={returnTrackingNumber}
+                            onChange={(e) =>
+                              setReturnTrackingNumber(e.target.value)
+                            }
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-mono text-xs text-slate-900 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          />
+                          <button
+                            onClick={handleSaveReturnTracking}
+                            disabled={isSavingReturnTracking}
+                            className="rounded-lg bg-orange-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
+                          >
+                            {isSavingReturnTracking ? '...' : 'Simpan'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {latestReturnRequest.status === 'REJECTED' && (
+                  <div className="flex items-start gap-2.5 rounded-xl border border-rose-200/60 bg-rose-50/70 p-3 text-xs text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                    <div>
+                      <span className="font-bold">Pengajuan Ditolak:</span>
+                      <p className="mt-0.5 leading-snug">
+                        {latestReturnRequest.storeResponse ||
+                          'Pengajuan pengembalian belum memenuhi syarat verifikasi toko.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {latestReturnRequest.status === 'COMPLETED' && (
+                  <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200/60 bg-emerald-50/70 p-3 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                    <p className="font-medium leading-snug">
+                      Pengembalian selesai. Dana telah dikirimkan ke rekening
+                      tujuan.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -996,6 +1269,30 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                   </div>
                 </div>
               </div>
+
+              {/* Real-Time Live Courier Tracking Card */}
+              <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-5 w-5 text-orange-500" />
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Pelacakan Pengiriman & Kurir
+                    </h3>
+                  </div>
+                  <button
+                    onClick={handleViewThermalLabel}
+                    disabled={viewingLabel}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-slate-500" />
+                    <span>
+                      {viewingLabel ? 'Memuat...' : 'Lihat Label Resi'}
+                    </span>
+                  </button>
+                </div>
+
+                <LiveCourierTracker orderId={order.id} />
+              </div>
             </div>
 
             {/* Right Col (1 Col): Payment & Totals Bento */}
@@ -1243,6 +1540,14 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
           router.refresh()
         }}
       />
+
+      {/* Printable Thermal Shipping Label Modal */}
+      {activeThermalLabel && (
+        <ThermalShippingLabel
+          data={activeThermalLabel}
+          onClose={() => setActiveThermalLabel(null)}
+        />
+      )}
 
       {/* 3. Bottom Navigation: Mobile Bottom Nav & Desktop Footer */}
       <div className="block md:hidden">

@@ -334,48 +334,42 @@ export function AddressModal({
 
     if (!recipientName.trim()) {
       toast({
-        title: 'Wajib Diisi',
-        description: 'Masukkan nama penerima paket.',
+        title: 'Nama penerima wajib diisi',
         variant: 'destructive',
       })
       return
     }
     if (!phone.trim()) {
       toast({
-        title: 'Wajib Diisi',
-        description: 'Masukkan nomor telepon penerima.',
+        title: 'Nomor telepon wajib diisi',
         variant: 'destructive',
       })
       return
     }
     if (!fullAddress.trim()) {
       toast({
-        title: 'Wajib Diisi',
-        description: 'Masukkan detail alamat pengiriman.',
+        title: 'Detail alamat wajib diisi',
         variant: 'destructive',
       })
       return
     }
     if (!province.trim()) {
       toast({
-        title: 'Wajib Diisi',
-        description: 'Pilih provinsi pengiriman.',
+        title: 'Provinsi wajib dipilih',
         variant: 'destructive',
       })
       return
     }
     if (!city.trim()) {
       toast({
-        title: 'Wajib Diisi',
-        description: 'Pilih kota atau kabupaten pengiriman.',
+        title: 'Kota atau kabupaten wajib dipilih',
         variant: 'destructive',
       })
       return
     }
     if (!postalCode.trim()) {
       toast({
-        title: 'Wajib Diisi',
-        description: 'Masukkan kode pos pengiriman.',
+        title: 'Kode pos wajib diisi',
         variant: 'destructive',
       })
       return
@@ -411,25 +405,22 @@ export function AddressModal({
 
       if (res.ok) {
         toast({
-          title: addressToEdit ? 'Alamat Diperbarui' : 'Alamat Ditambahkan',
-          description: addressToEdit
-            ? 'Perubahan alamat berhasil disimpan.'
-            : 'Alamat baru berhasil ditambahkan ke daftar alamat Anda.',
+          title: addressToEdit
+            ? 'Alamat berhasil diperbarui'
+            : 'Alamat baru berhasil ditambahkan',
         })
         onSuccess()
         onClose()
       } else {
         toast({
-          title: 'Gagal Menyimpan',
-          description: data.error || 'Terjadi kesalahan saat menyimpan alamat.',
+          title: data.error || 'Gagal menyimpan alamat',
           variant: 'destructive',
         })
       }
     } catch (err) {
       console.error('Error saving address:', err)
       toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan sistem saat menyimpan alamat.',
+        title: 'Gagal menyimpan alamat',
         variant: 'destructive',
       })
     } finally {

@@ -21,6 +21,7 @@ import {
   DEFAULT_WEIGHT_GRAM,
   WEIGHT_THRESHOLD_GRAM,
 } from '@/lib/constants/shipping'
+import { verifyServerShippingCost } from '@/lib/shipping/shipping-engine'
 import { calculateVoucherDiscountAmount } from '@/lib/constants/voucher'
 import { createMidtransSnapTransaction } from '@/lib/midtrans'
 
@@ -219,6 +220,7 @@ export async function POST(request: NextRequest) {
       recipientName,
       recipientPhone,
       voucherCode,
+      addressId,
     } = parseResult.data
 
     // Format optional delivery notes
@@ -510,21 +512,84 @@ export async function POST(request: NextRequest) {
                   0
                 )
                 totalWeightGram = accumulatedWeight
-                const maxPricePerKg = Math.max(
-                  ...verifiedItems.map(
-                    (vi) => vi.pricePerKg ?? DEFAULT_PRICE_PER_KG
-                  )
+
+                // Dapatkan Store & Address untuk kalkulasi ongkir real-time
+                const storeId = verifiedItems[0]?.storeId
+                let originLoc: any = {}
+                let destLoc: any = {}
+
+                if (storeId) {
+                  const store = await tx.store.findUnique({
+                    where: { id: storeId },
+                    select: {
+                      latitude: true,
+                      longitude: true,
+                      city: true,
+                      province: true,
+                      postalCode: true,
+                    },
+                  })
+                  if (store) {
+                    originLoc = {
+                      latitude: store.latitude,
+                      longitude: store.longitude,
+                      city: store.city,
+                      province: store.province,
+                      postalCode: store.postalCode,
+                    }
+                  }
+                }
+
+                if (addressId) {
+                  const userAddr = await tx.userAddress.findUnique({
+                    where: { id: addressId },
+                    select: {
+                      latitude: true,
+                      longitude: true,
+                      city: true,
+                      province: true,
+                      district: true,
+                      postalCode: true,
+                    },
+                  })
+                  if (userAddr) {
+                    destLoc = {
+                      latitude: userAddr.latitude,
+                      longitude: userAddr.longitude,
+                      city: userAddr.city,
+                      province: userAddr.province,
+                      district: userAddr.district,
+                      postalCode: userAddr.postalCode,
+                    }
+                  }
+                }
+
+                const shippingVerification = await verifyServerShippingCost(
+                  originLoc,
+                  destLoc,
+                  detectedCourier,
+                  detectedService,
+                  verifiedItems.map((vi) => ({
+                    name: vi.raw.name,
+                    weightGram: vi.weightGram ?? DEFAULT_WEIGHT_GRAM,
+                    price: vi.itemPrice,
+                    quantity: vi.raw.quantity ?? 1,
+                  }))
                 )
 
-                // Aturan berat:
-                // < WEIGHT_THRESHOLD_GRAM (1kg) → shippingCost = 0 (biaya berdasarkan jarak/kurir)
-                // >= WEIGHT_THRESHOLD_GRAM       → ditagihkan per kg * pricePerKg * courierMultiplier
-                shippingCost = calculateWeightShipping(
-                  accumulatedWeight,
-                  maxPricePerKg,
-                  detectedCourier,
-                  detectedService
-                )
+                if (
+                  detectedCourier === 'GOJEK' &&
+                  !shippingVerification.available
+                ) {
+                  throw new CheckoutError(
+                    shippingVerification.reason ||
+                      'Pengiriman Gojek Instant tidak tersedia untuk jarak pengiriman ini. Silakan gunakan JNE Express.',
+                    CHECKOUT_ERROR_CODES.VALIDATION_FAILED,
+                    400
+                  )
+                }
+
+                shippingCost = shippingVerification.cost
                 insuranceFee = calculateInsuranceFee(subtotal)
               }
 

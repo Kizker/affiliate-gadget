@@ -58,3 +58,6 @@ database-exports/*.sql
 
 # Agents & AI tooling
 .agents
+
+# Local runtime data
+.data/

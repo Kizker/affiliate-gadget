@@ -153,6 +153,72 @@ const statusConfig: Record<
     dotColor: 'bg-rose-500',
     icon: XCircle,
   },
+  RETURNED: {
+    label: 'Dikembalikan (Retur)',
+    badgeBg:
+      'bg-purple-50/90 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:border-purple-900/60 dark:text-purple-300',
+    dotColor: 'bg-purple-500',
+    icon: RotateCcw,
+  },
+}
+
+function isReturnOrder(order: {
+  status: string
+  returnRequests?: Array<{ status: string }> | null
+}) {
+  if (order.status === 'RETURNED') return true
+  if (order.returnRequests && order.returnRequests.length > 0) return true
+  return false
+}
+
+function getStatusMeta(order: Order) {
+  const latestReturn = order.returnRequests?.[0]
+  if (order.status === 'RETURNED' || latestReturn) {
+    if (latestReturn?.status === 'PENDING') {
+      return {
+        label: 'Menunggu Verifikasi Retur',
+        badgeBg:
+          'bg-orange-50/90 text-orange-700 border-orange-200/80 dark:bg-orange-950/40 dark:border-orange-900/60 dark:text-orange-300',
+        dotColor: 'bg-orange-500',
+        icon: RotateCcw,
+      }
+    }
+    if (latestReturn?.status === 'IN_REVIEW') {
+      return {
+        label: 'Retur Sedang Ditinjau',
+        badgeBg:
+          'bg-indigo-50/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/40 dark:border-indigo-900/60 dark:text-indigo-300',
+        dotColor: 'bg-indigo-500',
+        icon: RotateCcw,
+      }
+    }
+    if (latestReturn?.status === 'APPROVED') {
+      return {
+        label: 'Retur Disetujui',
+        badgeBg:
+          'bg-emerald-50/90 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300',
+        dotColor: 'bg-emerald-500',
+        icon: RotateCcw,
+      }
+    }
+    if (latestReturn?.status === 'REJECTED') {
+      return {
+        label: 'Pengajuan Retur Ditolak',
+        badgeBg:
+          'bg-rose-50/90 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300',
+        dotColor: 'bg-rose-500',
+        icon: RotateCcw,
+      }
+    }
+    return {
+      label: 'Dikembalikan (Retur)',
+      badgeBg:
+        'bg-purple-50/90 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:border-purple-900/60 dark:text-purple-300',
+      dotColor: 'bg-purple-500',
+      icon: RotateCcw,
+    }
+  }
+  return statusConfig[order.status] || statusConfig.PROCESSING
 }
 
 const DEFAULT_GADGET_IMAGE =
@@ -192,7 +258,7 @@ export default function OrdersClient({
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  // Calculate dynamic tab counts
+  // Calculate dynamic tab counts (including RETURNED)
   const counts = useMemo(() => {
     return {
       ALL: initialOrders.length,
@@ -200,12 +266,18 @@ export default function OrdersClient({
         (o) => o.status === 'PENDING_PAYMENT'
       ).length,
       PROCESSING: initialOrders.filter(
-        (o) => o.status === 'PROCESSING' || o.status === 'PAID'
+        (o) =>
+          (o.status === 'PROCESSING' || o.status === 'PAID') &&
+          !isReturnOrder(o)
       ).length,
-      IN_PROGRESS: initialOrders.filter((o) => o.status === 'IN_PROGRESS')
-        .length,
-      COMPLETED: initialOrders.filter((o) => o.status === 'COMPLETED').length,
+      IN_PROGRESS: initialOrders.filter(
+        (o) => o.status === 'IN_PROGRESS' && !isReturnOrder(o)
+      ).length,
+      COMPLETED: initialOrders.filter(
+        (o) => o.status === 'COMPLETED' && !isReturnOrder(o)
+      ).length,
       CANCELLED: initialOrders.filter((o) => o.status === 'CANCELLED').length,
+      RETURNED: initialOrders.filter(isReturnOrder).length,
     }
   }, [initialOrders])
 
@@ -224,18 +296,27 @@ export default function OrdersClient({
     },
     { value: 'COMPLETED', label: 'Selesai', count: counts.COMPLETED },
     { value: 'CANCELLED', label: 'Dibatalkan', count: counts.CANCELLED },
+    {
+      value: 'RETURNED',
+      label: 'Dikembalikan (Retur)',
+      count: counts.RETURNED,
+    },
   ]
 
   const filteredOrders = useMemo(() => {
     return initialOrders.filter((order) => {
       // Status filter
       if (selectedStatus !== 'ALL') {
-        if (
+        if (selectedStatus === 'RETURNED') {
+          if (!isReturnOrder(order)) return false
+        } else if (
           selectedStatus === 'PROCESSING' &&
           (order.status === 'PROCESSING' || order.status === 'PAID')
         ) {
-          // match
+          if (isReturnOrder(order)) return false
         } else if (order.status !== selectedStatus) {
+          return false
+        } else if (selectedStatus === 'COMPLETED' && isReturnOrder(order)) {
           return false
         }
       }
@@ -361,8 +442,7 @@ export default function OrdersClient({
             ) : (
               <div className="space-y-4">
                 {filteredOrders.map((order) => {
-                  const currentStatus =
-                    statusConfig[order.status] || statusConfig.PROCESSING
+                  const currentStatus = getStatusMeta(order)
                   const StatusIcon = currentStatus.icon
                   const firstItem = order.items[0]
                   const itemImage =
@@ -532,13 +612,57 @@ export default function OrdersClient({
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
-                            <Link
-                              href={`/dashboard/customer/chat?orderId=${order.id}${order.store?.id ? `&storeId=${order.store.id}` : ''}`}
-                              className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                            >
-                              <MessageSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                              <span>Chat Toko</span>
-                            </Link>
+                            {(() => {
+                              const latestReturn = order.returnRequests?.[0]
+                              const firstItem = order.items?.[0]
+                              const firstProduct = firstItem?.product
+                              const chatParams = new URLSearchParams()
+                              chatParams.set('orderId', order.id)
+                              if (order.store?.id)
+                                chatParams.set('storeId', order.store.id)
+                              if (order.orderNumber)
+                                chatParams.set('orderNumber', order.orderNumber)
+                              if (latestReturn) {
+                                chatParams.set('returnId', latestReturn.id)
+                                chatParams.set(
+                                  'returnReason',
+                                  latestReturn.reasonLabel ||
+                                    latestReturn.reason ||
+                                    ''
+                                )
+                                chatParams.set(
+                                  'returnStatus',
+                                  latestReturn.status
+                                )
+                                if (latestReturn.type)
+                                  chatParams.set(
+                                    'returnType',
+                                    latestReturn.type
+                                  )
+                              }
+                              if (firstProduct?.name)
+                                chatParams.set('productName', firstProduct.name)
+                              if (firstProduct?.images?.[0])
+                                chatParams.set(
+                                  'productImage',
+                                  firstProduct.images[0]
+                                )
+                              if (firstItem?.price)
+                                chatParams.set(
+                                  'productPrice',
+                                  String(firstItem.price)
+                                )
+
+                              return (
+                                <Link
+                                  href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                  <span>Chat Toko</span>
+                                </Link>
+                              )
+                            })()}
 
                             {/* Ajukan Pengembalian for COMPLETED orders */}
                             {order.status === 'COMPLETED' &&

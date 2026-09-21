@@ -73,12 +73,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const {
-      status,
-      storeResponse,
-      returnCourier,
-      returnTrackingNumber,
-    } = body
+    const { status, storeResponse, returnCourier, returnTrackingNumber } = body
 
     const existing = await prisma.returnRequest.findUnique({
       where: { id },
@@ -103,14 +98,20 @@ export async function PUT(
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       if (returnCourier !== undefined) updateData.returnCourier = returnCourier
-      if (returnTrackingNumber !== undefined) updateData.returnTrackingNumber = returnTrackingNumber
+      if (returnTrackingNumber !== undefined)
+        updateData.returnTrackingNumber = returnTrackingNumber
     } else {
       // Admins & Store Admins can update status, response, etc.
       if (status) updateData.status = status
       if (storeResponse !== undefined) updateData.storeResponse = storeResponse
       if (returnCourier !== undefined) updateData.returnCourier = returnCourier
-      if (returnTrackingNumber !== undefined) updateData.returnTrackingNumber = returnTrackingNumber
-      if (status === 'COMPLETED' || status === 'APPROVED' || status === 'REJECTED') {
+      if (returnTrackingNumber !== undefined)
+        updateData.returnTrackingNumber = returnTrackingNumber
+      if (
+        status === 'COMPLETED' ||
+        status === 'APPROVED' ||
+        status === 'REJECTED'
+      ) {
         updateData.resolvedAt = new Date()
       }
     }
@@ -119,6 +120,14 @@ export async function PUT(
       where: { id },
       data: updateData,
     })
+
+    // If return is completed, update the parent order status to RETURNED
+    if (status === 'COMPLETED' && existing.orderId) {
+      await prisma.order.update({
+        where: { id: existing.orderId },
+        data: { status: 'RETURNED' },
+      })
+    }
 
     return NextResponse.json({
       success: true,

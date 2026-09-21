@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const {
       orderId,
+      orderNumber,
+      returnId,
+      returnReason,
+      returnStatus,
+      returnType,
       storeId: reqStoreId,
       productId,
       productName,
@@ -54,6 +59,10 @@ export async function POST(req: NextRequest) {
                 },
               },
             },
+          },
+          returnRequests: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
           },
         },
       })
@@ -122,6 +131,60 @@ export async function POST(req: NextRequest) {
         : null)
     const resolvedBrand = dbProduct?.brand || null
 
+    // Prepare order / return reference payload if order context is active
+    const effectiveOrderNumber =
+      resolvedOrder?.orderNumber || orderNumber || null
+    const latestReturn = resolvedOrder?.returnRequests?.[0] || null
+    const effectiveReturnReason =
+      latestReturn?.reasonLabel || latestReturn?.reason || returnReason || null
+    const effectiveReturnStatus =
+      latestReturn?.status || returnStatus || 'PENDING'
+    const effectiveReturnType = latestReturn?.type || returnType || 'REFUND'
+    const effectiveReturnId = latestReturn?.id || returnId || null
+    const isReturnInquiry = Boolean(
+      effectiveReturnId || effectiveReturnReason || returnReason
+    )
+    const isOrderInquiry = Boolean(orderId || effectiveOrderNumber)
+
+    const firstItem = resolvedOrder?.items?.[0]
+    const firstProduct = firstItem?.product
+    const refProductName =
+      firstProduct?.name || resolvedProductName || 'Produk Gadget'
+    const refProductPrice = firstItem?.price || resolvedProductPrice || 0
+    const refProductImage =
+      (Array.isArray(firstProduct?.images) && firstProduct.images[0]) ||
+      resolvedProductImage ||
+      null
+    const refBrand = firstProduct?.brand || resolvedBrand || null
+    const refMessageType = isReturnInquiry
+      ? 'return_reference'
+      : 'order_reference'
+
+    const orderReferencePayload = isOrderInquiry
+      ? {
+          type: refMessageType,
+          orderId: resolvedOrder?.id || orderId,
+          orderNumber: effectiveOrderNumber,
+          productId: firstProduct?.id || productId || dbProduct?.id || null,
+          productName: refProductName,
+          productPrice: refProductPrice,
+          productImage: refProductImage,
+          brand: refBrand,
+          variantName: variantName || null,
+          orderTotal: resolvedOrder?.total || null,
+          ...(isReturnInquiry
+            ? {
+                returnId: effectiveReturnId,
+                returnReason: effectiveReturnReason,
+                returnStatus: effectiveReturnStatus,
+                returnType: effectiveReturnType,
+              }
+            : {
+                orderStatus: resolvedOrder?.status || null,
+              }),
+        }
+      : null
+
     // Find active store admin for this store to automatically connect the chat room
     const storeAdmin = await prisma.user.findFirst({
       where: {
@@ -161,38 +224,15 @@ export async function POST(req: NextRequest) {
     const isNew = !room
 
     if (!room) {
-      // Create new direct room with product reference as first message if provided
-      room = await prisma.$transaction(async (tx) => {
-        const createdRoom = await tx.adminChatRoom.create({
-          data: {
-            customerId: session.user.id,
-            storeId: store.id,
-            claimedById: storeAdmin?.id || null,
-            claimedAt: storeAdmin ? new Date() : null,
-            lastMessageAt: new Date(),
-          } as any,
-        })
-
-        if (productId || resolvedProductName) {
-          await tx.adminChatMessage.create({
-            data: {
-              roomId: createdRoom.id,
-              senderId: session.user.id,
-              content: JSON.stringify({
-                type: 'product_reference',
-                productId: productId || dbProduct?.id || null,
-                productName: resolvedProductName || 'Produk Gadget',
-                productPrice: resolvedProductPrice,
-                productImage: resolvedProductImage,
-                brand: resolvedBrand,
-                variantName: variantName || null,
-              }),
-              messageType: 'product_reference',
-            },
-          })
-        }
-
-        return createdRoom
+      // Create new direct room connected with store admin
+      room = await prisma.adminChatRoom.create({
+        data: {
+          customerId: session.user.id,
+          storeId: store.id,
+          claimedById: storeAdmin?.id || null,
+          claimedAt: storeAdmin ? new Date() : null,
+          lastMessageAt: new Date(),
+        } as any,
       })
     } else {
       // If room exists but not yet assigned to store admin, auto-connect
@@ -204,58 +244,6 @@ export async function POST(req: NextRequest) {
             claimedAt: new Date(),
           },
         })
-      }
-      // Existing room: check if we should post a new product reference message
-      if (productId || resolvedProductName) {
-        const lastMessage = await prisma.adminChatMessage.findFirst({
-          where: { roomId: room.id },
-          orderBy: { createdAt: 'desc' },
-        })
-
-        let isDuplicate = false
-        if (lastMessage && lastMessage.messageType === 'product_reference') {
-          try {
-            const parsed = JSON.parse(lastMessage.content)
-            const sameProduct = productId
-              ? parsed.productId === productId
-              : Boolean(
-                  resolvedProductName &&
-                  parsed.productName === resolvedProductName
-                )
-            const sameVariant =
-              (parsed.variantName || null) === (variantName || null)
-            if (sameProduct && sameVariant) {
-              isDuplicate = true
-            }
-          } catch {
-            isDuplicate = false
-          }
-        }
-
-        if (!isDuplicate) {
-          await prisma.$transaction([
-            prisma.adminChatMessage.create({
-              data: {
-                roomId: room.id,
-                senderId: session.user.id,
-                content: JSON.stringify({
-                  type: 'product_reference',
-                  productId: productId || dbProduct?.id || null,
-                  productName: resolvedProductName || 'Produk Gadget',
-                  productPrice: resolvedProductPrice,
-                  productImage: resolvedProductImage,
-                  brand: resolvedBrand,
-                  variantName: variantName || null,
-                }),
-                messageType: 'product_reference',
-              },
-            }),
-            prisma.adminChatRoom.update({
-              where: { id: room.id },
-              data: { lastMessageAt: new Date() },
-            }),
-          ])
-        }
       }
     }
 
@@ -300,16 +288,16 @@ export async function POST(req: NextRequest) {
           }
         : null,
       orderId: room.orderId || (resolvedOrder ? resolvedOrder.id : null),
-      order:
-        room.orderId && resolvedOrder
-          ? {
-              id: resolvedOrder.id,
-              orderNumber: resolvedOrder.orderNumber,
-              status: resolvedOrder.status,
-              total: resolvedOrder.total,
-              items: resolvedOrder.items,
-            }
-          : null,
+      order: resolvedOrder
+        ? {
+            id: resolvedOrder.id,
+            orderNumber: resolvedOrder.orderNumber,
+            status: resolvedOrder.status,
+            total: resolvedOrder.total,
+            items: resolvedOrder.items,
+            returnRequests: resolvedOrder.returnRequests || [],
+          }
+        : null,
       isNew,
       messages,
     })

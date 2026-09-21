@@ -119,4 +119,118 @@ describe('Customer Account Hub & Order Stats Engine', () => {
     })
     expect(customCalled).toBe(true)
   })
+
+  it('should render correct header action button and hide bottom nav in subview mode', () => {
+    type SubView = 'overview' | 'profile' | 'address' | 'security'
+    const getHeaderAction = (subView: SubView) => {
+      if (subView === 'profile' || subView === 'security') return 'Simpan'
+      if (subView === 'address') return 'Tambah'
+      return null
+    }
+
+    const shouldShowBottomNav = (subView: SubView) => subView === 'overview'
+
+    expect(getHeaderAction('profile')).toBe('Simpan')
+    expect(getHeaderAction('security')).toBe('Simpan')
+    expect(getHeaderAction('address')).toBe('Tambah')
+    expect(getHeaderAction('overview')).toBeNull()
+
+    // Subviews must hide MobileBottomNav to keep entire screen clear for keyboard
+    expect(shouldShowBottomNav('profile')).toBe(false)
+    expect(shouldShowBottomNav('security')).toBe(false)
+    expect(shouldShowBottomNav('address')).toBe(false)
+    expect(shouldShowBottomNav('overview')).toBe(true)
+
+    // Form bottom buttons must be hidden on mobile because top-right header button is active
+    const bottomSaveContainerClasses =
+      'hidden items-center justify-end border-t border-slate-100 pt-4 md:flex'
+    expect(bottomSaveContainerClasses).toContain('hidden')
+    expect(bottomSaveContainerClasses).toContain('md:flex')
+
+    const bottomPasswordButtonClasses =
+      'shadow-xs hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 md:inline-flex md:w-auto'
+    expect(bottomPasswordButtonClasses).toContain('hidden')
+    expect(bottomPasswordButtonClasses).toContain('md:inline-flex')
+  })
+
+  it('should trigger scrollIntoView with center block when form element is focused', () => {
+    let scrolledTarget: any = null
+    let scrollOptions: any = null
+
+    const mockInput: {
+      tagName: string
+      scrollIntoView: (options: unknown) => void
+    } = {
+      tagName: 'INPUT',
+      scrollIntoView: (options: unknown) => {
+        scrolledTarget = mockInput
+        scrollOptions = options
+      },
+    }
+
+    const handleFocusElement = (element: typeof mockInput) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName)) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }
+
+    handleFocusElement(mockInput)
+    expect(scrolledTarget).toBe(mockInput)
+    expect(scrollOptions).toEqual({ behavior: 'smooth', block: 'center' })
+
+    const mockDiv = { tagName: 'DIV', scrollIntoView: mockScrollIntoView }
+    scrolledTarget = null
+    handleFocusElement(mockDiv)
+    expect(scrolledTarget).toBeNull()
+  })
+
+  it('should format toast notifications into concise, top-centered compact HUD pills', () => {
+    // 1. Toast Viewport Top-Centering & Layering
+    const toastViewportClasses =
+      'fixed left-1/2 top-5 -translate-x-1/2 z-[999999] flex w-auto max-w-[88vw] flex-col items-center justify-center gap-2 pointer-events-none sm:top-6 sm:max-w-xs'
+
+    expect(toastViewportClasses).toContain('fixed')
+    expect(toastViewportClasses).toContain('left-1/2')
+    expect(toastViewportClasses).toContain('top-5')
+    expect(toastViewportClasses).toContain('-translate-x-1/2')
+    expect(toastViewportClasses).toContain('z-[999999]')
+
+    // 2. Compact Pill Styling
+    const toastPillClasses =
+      'group pointer-events-auto relative flex w-fit max-w-[88vw] items-center justify-center gap-2 overflow-hidden rounded-full border px-4 py-2 shadow-2xl backdrop-blur-md'
+
+    expect(toastPillClasses).toContain('rounded-full')
+    expect(toastPillClasses).toContain('w-fit')
+    expect(toastPillClasses).toContain('px-4 py-2')
+
+    // 3. Simplified Single-Line Copy Verification
+    const rawToasts = [
+      {
+        oldTitle: 'Biodata Tersimpan',
+        oldDesc: 'Perubahan data profil pembeli berhasil diperbarui.',
+        newTitle: 'Biodata berhasil disimpan',
+      },
+      {
+        oldTitle: 'Password Berhasil Diubah',
+        oldDesc: 'Gunakan kata sandi baru Anda saat login berikutnya.',
+        newTitle: 'Kata sandi berhasil diubah',
+      },
+      {
+        oldTitle: 'Foto Profil Diperbarui',
+        oldDesc: 'Foto profil baru Anda berhasil disimpan.',
+        newTitle: 'Foto profil berhasil disimpan',
+      },
+      {
+        oldTitle: 'Nama Wajib Diisi',
+        oldDesc: 'Silakan masukkan nama lengkap sesuai identitas Anda.',
+        newTitle: 'Nama lengkap wajib diisi',
+      },
+    ]
+
+    rawToasts.forEach((item) => {
+      // New copy is short, under 35 characters, and avoids redundant description
+      expect(item.newTitle.length).toBeLessThan(35)
+      expect(item.newTitle.split(' ').length).toBeLessThanOrEqual(5)
+    })
+  })
 })

@@ -29,6 +29,7 @@ interface ProductReviewsSectionProps {
   productId: string
   productName: string
   storeName?: string
+  onReviewModalChange?: (isOpen: boolean) => void
 }
 
 interface ReviewItem {
@@ -77,6 +78,7 @@ export function ProductReviewsSection({
   productId,
   productName,
   storeName,
+  onReviewModalChange,
 }: ProductReviewsSectionProps) {
   const [reviews, setReviews] = useState<ReviewItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -105,6 +107,10 @@ export function ProductReviewsSection({
 
   // Modal States
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+
+  useEffect(() => {
+    onReviewModalChange?.(isReviewModalOpen)
+  }, [isReviewModalOpen, onReviewModalChange])
   const [lightboxState, setLightboxState] = useState<{
     isOpen: boolean
     mediaList: MediaItem[]
@@ -133,7 +139,14 @@ export function ProductReviewsSection({
       params.set('limit', '15')
 
       const res = await fetch(
-        `/api/gadgets/${productId}/reviews?${params.toString()}`
+        `/api/gadgets/${productId}/reviews?${params.toString()}`,
+        {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+          },
+        }
       )
       const data = await res.json()
 
@@ -205,7 +218,7 @@ export function ProductReviewsSection({
 
     if (!userEligibility.canReview || !userEligibility.eligibleOrderId) {
       toast.error(
-        'Ulasan hanya dapat diberikan oleh customer yang telah membeli produk ini dan status pesanannya sudah selesai.'
+        'Ulasan hanya dapat diberikan oleh customer yang telah selesai checkout produk ini.'
       )
       return
     }
@@ -532,8 +545,8 @@ export function ProductReviewsSection({
             </h4>
             <p className="mx-auto max-w-sm text-xs text-slate-500">
               {userEligibility.canReview
-                ? 'Pesanan Anda telah selesai! Bagikan pengalaman dan ulasan mengenai gadget ini.'
-                : 'Ulasan hanya dapat diisi oleh pembeli terverifikasi setelah pesanan selesai diterima.'}
+                ? 'Pesanan Anda telah selesai checkout! Bagikan pengalaman dan ulasan mengenai gadget ini.'
+                : 'Ulasan hanya dapat diisi oleh pembeli yang telah selesai checkout produk ini.'}
             </p>
             <div className="pt-2">
               {userEligibility.canReview ? (
@@ -552,7 +565,7 @@ export function ProductReviewsSection({
               ) : (
                 <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                   <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Khusus Pembeli dengan Pesanan Selesai</span>
+                  <span>Khusus Pembeli yang Selesai Checkout</span>
                 </div>
               )}
             </div>

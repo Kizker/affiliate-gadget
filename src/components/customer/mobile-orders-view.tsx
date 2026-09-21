@@ -12,10 +12,16 @@ import {
   Copy,
   Check,
   X,
+  RotateCcw,
 } from 'lucide-react'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { MobileBottomNav } from '@/components/layouts/mobile-bottom-nav'
 import { toast } from 'sonner'
+import {
+  ORDER_STATUS_MAP as STATUS_MAP,
+  isReturnOrder,
+  getOrderStatusMeta,
+} from '@/lib/order-return-utils'
 
 export interface OrderItem {
   type: string
@@ -56,6 +62,10 @@ export interface MobileOrder {
   returnRequests?: Array<{
     id: string
     status: string
+    type?: string | null
+    reason?: string | null
+    reasonLabel?: string | null
+    description?: string | null
   }>
 }
 
@@ -67,32 +77,7 @@ interface MobileOrdersViewProps {
 const DEFAULT_IMAGE =
   'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'
 
-const STATUS_MAP: Record<string, { label: string; textClass: string }> = {
-  PENDING_PAYMENT: {
-    label: 'Menunggu Pembayaran',
-    textClass: 'text-orange-500 font-bold',
-  },
-  PAID: {
-    label: 'Pembayaran Diterima',
-    textClass: 'text-blue-600 dark:text-blue-400 font-bold',
-  },
-  PROCESSING: {
-    label: 'Sedang Dikemas',
-    textClass: 'text-blue-600 dark:text-blue-400 font-bold',
-  },
-  IN_PROGRESS: {
-    label: 'Sedang Dikirim',
-    textClass: 'text-amber-600 dark:text-amber-400 font-bold',
-  },
-  COMPLETED: {
-    label: 'Selesai',
-    textClass: 'text-emerald-600 dark:text-emerald-400 font-bold',
-  },
-  CANCELLED: {
-    label: 'Dibatalkan',
-    textClass: 'text-slate-400 font-medium',
-  },
-}
+export { STATUS_MAP, isReturnOrder, getOrderStatusMeta }
 
 export function MobileOrdersView({
   orders,
@@ -114,18 +99,25 @@ export function MobileOrdersView({
     return `Rp ${price.toLocaleString('id-ID')}`
   }
 
-  // Hitung jumlah order per status tab
+  // Hitung jumlah order per status tab (inklusif & akurat)
   const counts = useMemo(() => {
     return {
       ALL: orders.length,
       PENDING_PAYMENT: orders.filter((o) => o.status === 'PENDING_PAYMENT')
         .length,
       PROCESSING: orders.filter(
-        (o) => o.status === 'PROCESSING' || o.status === 'PAID'
+        (o) =>
+          (o.status === 'PROCESSING' || o.status === 'PAID') &&
+          !isReturnOrder(o)
       ).length,
-      IN_PROGRESS: orders.filter((o) => o.status === 'IN_PROGRESS').length,
-      COMPLETED: orders.filter((o) => o.status === 'COMPLETED').length,
+      IN_PROGRESS: orders.filter(
+        (o) => o.status === 'IN_PROGRESS' && !isReturnOrder(o)
+      ).length,
+      COMPLETED: orders.filter(
+        (o) => o.status === 'COMPLETED' && !isReturnOrder(o)
+      ).length,
       CANCELLED: orders.filter((o) => o.status === 'CANCELLED').length,
+      RETURNED: orders.filter(isReturnOrder).length,
     }
   }, [orders])
 
@@ -140,6 +132,7 @@ export function MobileOrdersView({
     { key: 'IN_PROGRESS', label: 'Dikirim', count: counts.IN_PROGRESS },
     { key: 'COMPLETED', label: 'Selesai', count: counts.COMPLETED },
     { key: 'CANCELLED', label: 'Dibatalkan', count: counts.CANCELLED },
+    { key: 'RETURNED', label: 'Dikembalikan', count: counts.RETURNED },
   ]
 
   // Filter pesanan berdasarkan tab dan pencarian
@@ -147,12 +140,16 @@ export function MobileOrdersView({
     return orders.filter((order) => {
       // Filter status
       if (activeTab !== 'ALL') {
-        if (
+        if (activeTab === 'RETURNED') {
+          if (!isReturnOrder(order)) return false
+        } else if (
           activeTab === 'PROCESSING' &&
           (order.status === 'PROCESSING' || order.status === 'PAID')
         ) {
-          // match
+          if (isReturnOrder(order)) return false
         } else if (order.status !== activeTab) {
+          return false
+        } else if (activeTab === 'COMPLETED' && isReturnOrder(order)) {
           return false
         }
       }
@@ -261,8 +258,7 @@ export function MobileOrdersView({
           </div>
         ) : (
           filteredOrders.map((order) => {
-            const currentStatus =
-              STATUS_MAP[order.status] || STATUS_MAP.PROCESSING
+            const currentStatus = getOrderStatusMeta(order)
             const firstItem = order.items[0]
             const itemImage =
               firstItem?.product?.images?.[0] ||
@@ -388,12 +384,42 @@ export function MobileOrdersView({
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <Link
-                      href={`/dashboard/customer/chat?orderId=${order.id}${order.store?.id ? `&storeId=${order.store.id}` : ''}`}
-                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700 transition active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                    >
-                      Chat Toko
-                    </Link>
+                    {(() => {
+                      const latestReturn = order.returnRequests?.[0]
+                      const firstItem = order.items?.[0]
+                      const firstProduct = firstItem?.product
+                      const chatParams = new URLSearchParams()
+                      chatParams.set('orderId', order.id)
+                      if (order.store?.id)
+                        chatParams.set('storeId', order.store.id)
+                      if (order.orderNumber)
+                        chatParams.set('orderNumber', order.orderNumber)
+                      if (latestReturn) {
+                        chatParams.set('returnId', latestReturn.id)
+                        chatParams.set(
+                          'returnReason',
+                          latestReturn.reasonLabel || latestReturn.reason || ''
+                        )
+                        chatParams.set('returnStatus', latestReturn.status)
+                        if (latestReturn.type)
+                          chatParams.set('returnType', latestReturn.type)
+                      }
+                      if (firstProduct?.name)
+                        chatParams.set('productName', firstProduct.name)
+                      if (firstProduct?.images?.[0])
+                        chatParams.set('productImage', firstProduct.images[0])
+                      if (firstItem?.price)
+                        chatParams.set('productPrice', String(firstItem.price))
+
+                      return (
+                        <Link
+                          href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                          className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700 transition active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        >
+                          Chat Toko
+                        </Link>
+                      )
+                    })()}
 
                     {order.status === 'COMPLETED' &&
                       (!order.returnRequests ||
@@ -414,6 +440,14 @@ export function MobileOrdersView({
                         className="shadow-2xs rounded-xl bg-orange-500 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-orange-600 active:scale-95"
                       >
                         Bayar Sekarang
+                      </Link>
+                    ) : isReturnOrder(order) ? (
+                      <Link
+                        href={`/dashboard/customer/orders/${order.id}`}
+                        className="flex items-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-[11px] font-bold text-purple-700 transition active:scale-95 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        <span>Status Retur</span>
                       </Link>
                     ) : (
                       <Link

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   X,
   Star,
@@ -96,6 +97,11 @@ export function ProductReviewModal({
   const [submitting, setSubmitting] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (isOpen) {
@@ -104,10 +110,17 @@ export function ProductReviewModal({
       setImages(existingReview?.images || [])
       setVideos(existingReview?.videos || [])
       setHoveredRating(0)
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+
+    return () => {
+      document.body.style.overflow = ''
     }
   }, [isOpen, existingReview])
 
-  if (!isOpen) return null
+  if (!isOpen || !mounted) return null
 
   const activeRating = hoveredRating || rating
   const currentFeedback = RATING_FEEDBACK[activeRating] || RATING_FEEDBACK[5]
@@ -213,7 +226,7 @@ export function ProductReviewModal({
 
     if (!orderId) {
       toast.error(
-        'Ulasan hanya dapat diberikan oleh customer yang telah membeli produk ini dan status pesanannya sudah selesai.'
+        'Ulasan hanya dapat diberikan oleh customer yang telah selesai checkout produk ini.'
       )
       return
     }
@@ -250,8 +263,8 @@ export function ProductReviewModal({
     }
   }
 
-  return (
-    <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  return createPortal(
+    <div className="backdrop-blur-xs fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
       <div className="no-scrollbar relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl duration-200 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
@@ -526,6 +539,7 @@ export function ProductReviewModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

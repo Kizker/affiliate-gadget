@@ -27,6 +27,7 @@ import {
   DEFAULT_WEIGHT_GRAM,
   WEIGHT_THRESHOLD_GRAM,
 } from '@/lib/constants/shipping'
+import { ShippingOption } from '@/lib/shipping/shipping-engine'
 import {
   ShoppingCart,
   ArrowLeft,
@@ -153,6 +154,13 @@ export default function CheckoutPage() {
   )
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
 
+  // Real-time shipping states
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([])
+  const [loadingShippingRates, setLoadingShippingRates] = useState(false)
+  const [shippingDistanceKm, setShippingDistanceKm] = useState<number | null>(
+    null
+  )
+
   const selectedAddress = useMemo(
     () => addresses.find((a) => a.id === selectedAddressId) ?? null,
     [addresses, selectedAddressId]
@@ -209,6 +217,69 @@ export default function CheckoutPage() {
     isDirectBuy,
   ])
 
+  // Fetch real-time shipping options whenever selectedAddressId or selectedItems change
+  useEffect(() => {
+    if (!selectedAddressId) {
+      setShippingOptions([])
+      setShippingDistanceKm(null)
+      return
+    }
+
+    let isMounted = true
+    setLoadingShippingRates(true)
+
+    const itemsPayload = selectedItems.map((item) => ({
+      name: item.name,
+      weightGram: item.weightGram || DEFAULT_WEIGHT_GRAM,
+      price: item.price,
+      quantity: item.quantity,
+      productId:
+        item.productId || (item.type === 'PRODUCT' ? item.id : undefined),
+    }))
+
+    fetch('/api/shipping/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        addressId: selectedAddressId,
+        items: itemsPayload,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return
+        if (data.success && Array.isArray(data.options)) {
+          setShippingOptions(data.options)
+          setShippingDistanceKm(
+            typeof data.distanceKm === 'number' ? data.distanceKm : null
+          )
+
+          // Auto-switch jika Gojek sedang terpilih namun di luar radius 40 km
+          const gojekOpt = data.options.find(
+            (o: ShippingOption) => o.courierCode === 'GOJEK'
+          )
+          if (courier === 'GOJEK' && gojekOpt && !gojekOpt.available) {
+            setCourier('JNE')
+            setCourierService('REG')
+            toast.info(
+              gojekOpt.unavailableReason ||
+                'Jarak pengiriman melebihi 40 km. Beralih otomatis ke JNE Express.'
+            )
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch real-time shipping options:', err)
+      })
+      .finally(() => {
+        if (isMounted) setLoadingShippingRates(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [selectedAddressId, selectedItems, courier])
+
   const subtotal = selectedItems.reduce((sum, item) => {
     const itemPrice = item.rentalDays
       ? item.price * item.rentalDays * item.quantity
@@ -236,36 +307,46 @@ export default function CheckoutPage() {
   // Apakah total berat memenuhi threshold untuk penagihan per-kg (>= 1kg)
   const isWeightBased = totalWeightGram >= WEIGHT_THRESHOLD_GRAM
 
-  const jneRegCost = calculateWeightShipping(
+  // Ambil tarif live dari API / fallback engine
+  const liveJneReg = shippingOptions.find(
+    (o) => o.courierCode === 'JNE' && o.courierService === 'REG'
+  )
+  const liveJneYes = shippingOptions.find(
+    (o) => o.courierCode === 'JNE' && o.courierService === 'YES'
+  )
+  const liveGojekInstant = shippingOptions.find(
+    (o) => o.courierCode === 'GOJEK' && o.courierService === 'INSTANT'
+  )
+
+  const isGojekAvailable = liveGojekInstant ? liveGojekInstant.available : true
+  const gojekUnavailableReason = liveGojekInstant?.unavailableReason
+
+  const fallbackJneRegCost = calculateWeightShipping(
     totalWeightGram,
     maxPricePerKg,
     'JNE',
     'REG'
   )
-  const jneYesCost = calculateWeightShipping(
+  const fallbackJneYesCost = calculateWeightShipping(
     totalWeightGram,
     maxPricePerKg,
     'JNE',
     'YES'
   )
-  const gojekCost = calculateWeightShipping(
+  const fallbackGojekCost = calculateWeightShipping(
     totalWeightGram,
     maxPricePerKg,
     'GOJEK',
     'INSTANT'
   )
-  const gojekSamedayCost = calculateWeightShipping(
-    totalWeightGram,
-    maxPricePerKg,
-    'GOJEK',
-    'SAMEDAY'
-  )
+
+  const jneRegCost = liveJneReg ? liveJneReg.cost : fallbackJneRegCost
+  const jneYesCost = liveJneYes ? liveJneYes.cost : fallbackJneYesCost
+  const gojekCost = liveGojekInstant ? liveGojekInstant.cost : fallbackGojekCost
 
   const shippingCost =
     courier === 'GOJEK'
-      ? courierService === 'SAMEDAY'
-        ? gojekSamedayCost
-        : gojekCost
+      ? gojekCost
       : courierService === 'YES'
         ? jneYesCost
         : jneRegCost
@@ -589,6 +670,14 @@ export default function CheckoutPage() {
           submitting={submitting}
           handleSubmitOrder={handleCheckout}
           backHref={backHref}
+          shippingOptions={shippingOptions}
+          loadingShippingRates={loadingShippingRates}
+          shippingDistanceKm={shippingDistanceKm}
+          jneRegCost={jneRegCost}
+          jneYesCost={jneYesCost}
+          gojekCost={gojekCost}
+          isGojekAvailable={isGojekAvailable}
+          gojekUnavailableReason={gojekUnavailableReason}
         />
       </div>
 
@@ -804,8 +893,15 @@ export default function CheckoutPage() {
                         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                           Pilihan Kurir Terproteksi Asuransi
                         </label>
+                        {loadingShippingRates && (
+                          <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Memperbarui tarif API...
+                          </span>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {/* JNE Express */}
                         <button
                           type="button"
                           onClick={() => {
@@ -845,20 +941,30 @@ export default function CheckoutPage() {
                           <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
                             {courierService === 'YES' && courier === 'JNE'
                               ? 'Layanan YES (1 Hari Esok Sampai)'
-                              : 'Layanan Reguler (1-2 Hari Kerja)'}
+                              : 'Layanan Reguler (2-3 Hari Kerja)'}
                           </p>
                         </button>
 
+                        {/* Gojek Instant */}
                         <button
                           type="button"
                           onClick={() => {
+                            if (!isGojekAvailable) {
+                              toast.error(
+                                gojekUnavailableReason ||
+                                  'Jarak pengiriman melebihi batas maksimal 40 km untuk Gojek Instant. Silakan pilih JNE Express.'
+                              )
+                              return
+                            }
                             setCourier('GOJEK')
                             setCourierService('INSTANT')
                           }}
                           className={`rounded-2xl border p-3.5 text-left transition-all ${
-                            courier === 'GOJEK'
-                              ? 'shadow-xs border-orange-300 bg-orange-50/30 text-slate-950 ring-1 ring-orange-200/50 dark:border-orange-800/60 dark:bg-orange-950/20 dark:text-white'
-                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
+                            !isGojekAvailable
+                              ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50/70 opacity-60 dark:border-slate-800 dark:bg-slate-900/40'
+                              : courier === 'GOJEK'
+                                ? 'shadow-xs border-orange-300 bg-orange-50/30 text-slate-950 ring-1 ring-orange-200/50 dark:border-orange-800/60 dark:bg-orange-950/20 dark:text-white'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
                           }`}
                         >
                           <div className="flex items-center justify-between text-xs font-bold">
@@ -870,21 +976,38 @@ export default function CheckoutPage() {
                             </span>
                             <span
                               className={
-                                courier === 'GOJEK'
-                                  ? 'font-bold text-orange-600 dark:text-orange-400'
-                                  : 'text-slate-900 dark:text-white'
+                                !isGojekAvailable
+                                  ? 'text-slate-400 line-through'
+                                  : courier === 'GOJEK'
+                                    ? 'font-bold text-orange-600 dark:text-orange-400'
+                                    : 'text-slate-900 dark:text-white'
                               }
                             >
                               Rp {gojekCost.toLocaleString('id-ID')}
                             </span>
                           </div>
-                          <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
-                            Langsung Sampai (Maks 2 Jam)
-                          </p>
+                          <div className="mt-1 flex items-center justify-between text-[10px]">
+                            <span className="text-slate-500 dark:text-slate-400">
+                              {isGojekAvailable
+                                ? 'Langsung Sampai (Maks 1-2 Jam)'
+                                : 'Di luar radius maks 40 km'}
+                            </span>
+                            {shippingDistanceKm !== null && (
+                              <span
+                                className={`rounded px-1.5 py-0.5 font-semibold ${
+                                  isGojekAvailable
+                                    ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                                    : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                                }`}
+                              >
+                                {shippingDistanceKm.toFixed(1)} km
+                              </span>
+                            )}
+                          </div>
                         </button>
                       </div>
 
-                      {/* JNE Service Sub-Toggle (MED-08) */}
+                      {/* JNE Service Sub-Toggle */}
                       {courier === 'JNE' && (
                         <div className="mt-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-2.5 dark:border-slate-800 dark:bg-slate-900/60">
                           <div className="mb-2 flex items-center justify-between px-1">
@@ -907,7 +1030,7 @@ export default function CheckoutPage() {
                             >
                               <span className="text-xs">JNE Reguler (REG)</span>
                               <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                                Rp {jneRegCost.toLocaleString('id-ID')} • 1-2
+                                Rp {jneRegCost.toLocaleString('id-ID')} • 2-3
                                 Hari Kerja
                               </span>
                             </button>
@@ -923,13 +1046,13 @@ export default function CheckoutPage() {
                             >
                               <span className="flex items-center justify-between text-xs">
                                 <span>JNE YES</span>
-                                <span className="py-0.2 rounded bg-slate-100 px-1 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                  Esok
+                                <span className="py-0.2 rounded bg-orange-100 px-1 text-[9px] font-bold text-orange-700 dark:bg-orange-950/50 dark:text-orange-300">
+                                  1 Hari
                                 </span>
                               </span>
                               <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                                Rp {jneYesCost.toLocaleString('id-ID')} •
-                                Prioritas 1 Hari
+                                Rp {jneYesCost.toLocaleString('id-ID')} • Besok
+                                Sampai
                               </span>
                             </button>
                           </div>
