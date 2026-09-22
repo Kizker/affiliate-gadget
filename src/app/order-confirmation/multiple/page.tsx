@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
@@ -143,18 +143,41 @@ function MultipleOrderConfirmationContent() {
     }
   }, [status, router, fetchOrders])
 
-  // Automatically open CustomPaymentModal if autoPay=1 is in URL
+  const autoPayHandledRef = useRef(false)
+
+  // Automatically open CustomPaymentModal if autoPay=1 is in URL (only once on initial entry)
   useEffect(() => {
     if (
+      !autoPayHandledRef.current &&
       orders.length > 0 &&
       searchParams.get('autoPay') === '1' &&
       orders[0]?.status === 'PENDING_PAYMENT' &&
       orders[0]?.payment?.method === 'MIDTRANS'
     ) {
+      autoPayHandledRef.current = true
       setActivePaymentOrder(orders[0])
       setPaymentModalOpen(true)
+
+      // Clean autoPay query parameter from URL so it doesn't re-trigger on subsequent updates
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('autoPay')
+        window.history.replaceState({}, '', url.toString())
+      }
     }
   }, [orders, searchParams])
+
+  const handleClosePaymentModal = () => {
+    autoPayHandledRef.current = true
+    setPaymentModalOpen(false)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      if (url.searchParams.has('autoPay')) {
+        url.searchParams.delete('autoPay')
+        window.history.replaceState({}, '', url.toString())
+      }
+    }
+  }
 
   const currentOrder = orders[currentIndex]
 
@@ -585,10 +608,7 @@ function MultipleOrderConfirmationContent() {
       {activePaymentOrder && (
         <CustomPaymentModal
           isOpen={paymentModalOpen}
-          onClose={() => {
-            setPaymentModalOpen(false)
-            fetchOrders()
-          }}
+          onClose={handleClosePaymentModal}
           orderId={activePaymentOrder.id}
           orderNumber={activePaymentOrder.orderNumber}
           totalAmount={activePaymentOrder.total}

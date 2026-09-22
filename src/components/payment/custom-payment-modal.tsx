@@ -161,6 +161,21 @@ export function CustomPaymentModal({
     }
   }, [isOpen])
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (!isOpen) return
+
+    const originalOverflow = document.body.style.overflow
+    const originalOverscroll = document.body.style.overscrollBehavior
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehavior = 'none'
+
+    return () => {
+      document.body.style.overflow = originalOverflow
+      document.body.style.overscrollBehavior = originalOverscroll
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const handleSelectPayment = async (method: CustomPaymentMethod) => {
@@ -241,10 +256,18 @@ export function CustomPaymentModal({
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm animate-in fade-in">
-      <div className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center overscroll-none bg-slate-950/70 p-3 backdrop-blur-sm animate-in fade-in sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div
+        className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/40">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50/70 px-4 py-3.5 dark:border-slate-800 dark:bg-slate-800/40 sm:px-6 sm:py-4">
           <div className="flex items-center gap-2.5">
             {chargeData && !isSuccess ? (
               <button
@@ -284,7 +307,7 @@ export function CustomPaymentModal({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4 sm:p-6">
           {isSuccess ? (
             /* Success State */
             <div className="space-y-5 py-6 text-center">
@@ -394,21 +417,18 @@ export function CustomPaymentModal({
               ) : chargeData.vaNumber ? (
                 /* Bank Virtual Account Mode */
                 <div className="space-y-4">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/40">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                      Nomor Virtual Account (
-                      {chargeData.bank || 'Bank Transfer'})
-                    </span>
-                    <div className="mt-1 flex items-center justify-between">
-                      <span className="font-mono text-xl font-bold tracking-wider text-slate-900 dark:text-white">
-                        {chargeData.vaNumber}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                        Nomor Virtual Account (
+                        {chargeData.bank || 'Bank Transfer'})
                       </span>
                       <button
                         type="button"
                         onClick={() =>
                           handleCopy(chargeData.vaNumber!, 'Nomor VA')
                         }
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       >
                         {copiedText === 'Nomor VA' ? (
                           <>
@@ -417,11 +437,16 @@ export function CustomPaymentModal({
                           </>
                         ) : (
                           <>
-                            <Copy className="h-3.5 w-3.5" />
+                            <Copy className="h-3.5 w-3.5 text-orange-500" />
                             <span>Salin</span>
                           </>
                         )}
                       </button>
+                    </div>
+                    <div className="mt-2.5 rounded-xl border border-slate-200/70 bg-white p-3 dark:border-slate-700/60 dark:bg-slate-900/60">
+                      <span className="block select-all break-all font-mono text-base font-bold tracking-wider text-slate-900 dark:text-white sm:text-lg">
+                        {chargeData.vaNumber}
+                      </span>
                     </div>
                   </div>
 
@@ -447,14 +472,11 @@ export function CustomPaymentModal({
               ) : chargeData.billKey ? (
                 /* Mandiri Bill Payment */
                 <div className="space-y-4">
-                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/40">
+                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
                     <div>
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                        Kode Perusahaan (Biller Code)
-                      </span>
-                      <div className="mt-0.5 flex items-center justify-between">
-                        <span className="font-mono text-lg font-bold text-slate-900 dark:text-white">
-                          {chargeData.billerCode || '70012'}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          Kode Perusahaan (Biller Code)
                         </span>
                         <button
                           type="button"
@@ -464,40 +486,57 @@ export function CustomPaymentModal({
                               'Kode Perusahaan'
                             )
                           }
-                          className="p-1 text-slate-500 hover:text-slate-800"
+                          className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                         >
-                          <Copy className="h-4 w-4" />
+                          {copiedText === 'Kode Perusahaan' ? (
+                            <>
+                              <Check className="h-3 w-3 text-emerald-600" />
+                              <span>Tersalin</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3 text-orange-500" />
+                              <span>Salin</span>
+                            </>
+                          )}
                         </button>
+                      </div>
+                      <div className="mt-1.5 rounded-xl border border-slate-200/70 bg-white p-2.5 dark:border-slate-700/60 dark:bg-slate-900/60">
+                        <span className="block select-all break-all font-mono text-base font-bold text-slate-900 dark:text-white">
+                          {chargeData.billerCode || '70012'}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="border-t border-slate-200/60 pt-2 dark:border-slate-700">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                        Nomor Tagihan (Bill Key)
-                      </span>
-                      <div className="mt-0.5 flex items-center justify-between">
-                        <span className="font-mono text-xl font-bold tracking-wider text-slate-900 dark:text-white">
-                          {chargeData.billKey}
+                    <div className="border-t border-slate-200/60 pt-3 dark:border-slate-700">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          Nomor Tagihan (Bill Key)
                         </span>
                         <button
                           type="button"
                           onClick={() =>
                             handleCopy(chargeData.billKey!, 'Bill Key')
                           }
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                          className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                         >
                           {copiedText === 'Bill Key' ? (
                             <>
-                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              <Check className="h-3 w-3 text-emerald-600" />
                               <span>Tersalin</span>
                             </>
                           ) : (
                             <>
-                              <Copy className="h-3.5 w-3.5" />
+                              <Copy className="h-3 w-3 text-orange-500" />
                               <span>Salin</span>
                             </>
                           )}
                         </button>
+                      </div>
+                      <div className="mt-1.5 rounded-xl border border-slate-200/70 bg-white p-2.5 dark:border-slate-700/60 dark:bg-slate-900/60">
+                        <span className="block select-all break-all font-mono text-base font-bold tracking-wider text-slate-900 dark:text-white sm:text-lg">
+                          {chargeData.billKey}
+                        </span>
                       </div>
                     </div>
                   </div>

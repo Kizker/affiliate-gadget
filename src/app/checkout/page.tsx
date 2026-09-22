@@ -120,6 +120,14 @@ export default function CheckoutPage() {
     'GATEWAY' | 'MANUAL_TRANSFER'
   >('GATEWAY')
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [desktopTermsWarning, setDesktopTermsWarning] = useState(false)
+  const desktopTermsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!desktopTermsWarning) return
+    const timer = setTimeout(() => setDesktopTermsWarning(false), 700)
+    return () => clearTimeout(timer)
+  }, [desktopTermsWarning])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -445,6 +453,11 @@ export default function CheckoutPage() {
   const handleCheckout = async () => {
     if (!termsAccepted) {
       toast.error('Harap setujui syarat & ketentuan garansi 30 hari')
+      setDesktopTermsWarning(true)
+      desktopTermsRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
       return
     }
 
@@ -1373,12 +1386,22 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Terms Agreement */}
-                  <div className="pt-1">
+                  <div
+                    ref={desktopTermsRef}
+                    className={`rounded-xl p-2.5 transition-all duration-300 ${
+                      desktopTermsWarning
+                        ? 'border border-red-500 bg-red-50/70 shadow-md shadow-red-500/20 ring-2 ring-red-400 dark:border-red-500 dark:bg-red-950/30'
+                        : 'pt-1'
+                    }`}
+                  >
                     <label className="flex cursor-pointer items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                       <input
                         type="checkbox"
                         checked={termsAccepted}
-                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        onChange={(e) => {
+                          setTermsAccepted(e.target.checked)
+                          if (e.target.checked) setDesktopTermsWarning(false)
+                        }}
                         className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-950"
                       />
                       <span className="leading-snug">

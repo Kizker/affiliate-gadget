@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -114,6 +114,32 @@ export function MobileShopeeCheckoutView({
   const [showVoucherBox, setShowVoucherBox] = useState(false)
   const [showNotesInput, setShowNotesInput] = useState(false)
   const [showAddressPicker, setShowAddressPicker] = useState(false)
+  const [termsWarning, setTermsWarning] = useState(false)
+  const termsRef = useRef<HTMLDivElement>(null)
+
+  // Auto reset termsWarning setelah 700ms (berkedip sekali saja)
+  useEffect(() => {
+    if (!termsWarning) return
+    const timer = setTimeout(() => {
+      setTermsWarning(false)
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [termsWarning])
+
+  const handleBuatPesanan = () => {
+    if (!termsAccepted) {
+      setTermsWarning(true)
+      toast.error(
+        'Harap centang persetujuan syarat garansi 30 hari & asuransi!'
+      )
+      termsRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+      return
+    }
+    handleSubmitOrder()
+  }
 
   const selectedAddress =
     addresses.find((a) => a.id === selectedAddressId) ??
@@ -149,7 +175,7 @@ export function MobileShopeeCheckoutView({
   }
 
   return (
-    <div className="min-h-screen select-none bg-[#F6F6F9] pb-28 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen select-none bg-[#F6F6F9] font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* 1. Header Minimalis Shopee Style */}
       <header className="shadow-2xs sticky top-0 z-30 flex h-12 items-center justify-between border-b border-slate-200/80 bg-white px-3.5 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-2.5">
@@ -172,7 +198,7 @@ export function MobileShopeeCheckoutView({
       </header>
 
       {/* Main Form Cards Container */}
-      <main className="mx-auto max-w-md space-y-2.5 px-3 pb-28 pt-2.5">
+      <main className="mx-auto max-w-md space-y-2.5 px-3 pb-20 pt-2.5">
         {/* 2. Alamat Pengiriman Card (Shopee Style) */}
         <div
           onClick={() => {
@@ -697,12 +723,22 @@ export function MobileShopeeCheckoutView({
         </div>
 
         {/* 7. Syarat & Ketentuan Garansi Checkbox */}
-        <div className="shadow-2xs rounded-2xl border border-slate-200/70 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900">
+        <div
+          ref={termsRef}
+          className={`shadow-2xs rounded-2xl border p-3.5 transition-all duration-300 ${
+            termsWarning
+              ? 'border-red-500 bg-red-50/70 shadow-md shadow-red-500/20 ring-2 ring-red-400 dark:border-red-500 dark:bg-red-950/30'
+              : 'border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-900'
+          }`}
+        >
           <label className="flex cursor-pointer items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
             <input
               type="checkbox"
               checked={termsAccepted}
-              onChange={(e) => setTermsAccepted(e.target.checked)}
+              onChange={(e) => {
+                setTermsAccepted(e.target.checked)
+                if (e.target.checked) setTermsWarning(false)
+              }}
               className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-orange-500 accent-orange-500 focus:ring-orange-400"
             />
             <span className="select-none leading-snug">
@@ -736,7 +772,7 @@ export function MobileShopeeCheckoutView({
           {/* Sisi Kanan: Tombol Buat Pesanan */}
           <button
             type="button"
-            onClick={handleSubmitOrder}
+            onClick={handleBuatPesanan}
             disabled={submitting || !selectedAddress}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
