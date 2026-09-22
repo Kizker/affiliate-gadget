@@ -215,6 +215,8 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
       price: item.price,
       subtotal: item.subtotal,
       notes: item.notes ?? undefined,
+      variantId: item.variantId ?? undefined,
+      variantName: item.variantName ?? undefined,
       service: item.service
         ? {
             id: item.service.id,

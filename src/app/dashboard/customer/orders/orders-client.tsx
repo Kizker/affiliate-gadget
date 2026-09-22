@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
@@ -54,8 +54,11 @@ interface Order {
     phone?: string | null
   } | null
   items: Array<{
+    id?: string
     type: string
     notes?: string | null
+    variantId?: string | null
+    variantName?: string | null
     quantity?: number
     price?: number
     subtotal?: number
@@ -65,6 +68,7 @@ interface Order {
       name: string
       brand?: string | null
       images?: string[]
+      category?: string | null
     }
     rentalItem?: { name: string; images?: string[] }
   }>
@@ -133,6 +137,13 @@ const statusConfig: Record<
     icon: Package,
   },
   IN_PROGRESS: {
+    label: 'Diproses Toko',
+    badgeBg:
+      'bg-indigo-50/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/40 dark:border-indigo-900/60 dark:text-indigo-300',
+    dotColor: 'bg-indigo-500',
+    icon: Package,
+  },
+  SHIPPED: {
     label: 'Sedang Dikirim',
     badgeBg:
       'bg-orange-50/90 text-orange-700 border-orange-200/80 dark:bg-orange-950/40 dark:border-orange-900/60 dark:text-orange-300',
@@ -233,6 +244,11 @@ export default function OrdersClient({
   const [selectedStatus, setSelectedStatus] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Prevent SSR/client hydration mismatch on dynamic count badges
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Return Modal state
   const [returnModal, setReturnModal] = useState<{
@@ -267,11 +283,13 @@ export default function OrdersClient({
       ).length,
       PROCESSING: initialOrders.filter(
         (o) =>
-          (o.status === 'PROCESSING' || o.status === 'PAID') &&
+          (o.status === 'IN_PROGRESS' ||
+            o.status === 'PROCESSING' ||
+            o.status === 'PAID') &&
           !isReturnOrder(o)
       ).length,
-      IN_PROGRESS: initialOrders.filter(
-        (o) => o.status === 'IN_PROGRESS' && !isReturnOrder(o)
+      SHIPPED: initialOrders.filter(
+        (o) => o.status === 'SHIPPED' && !isReturnOrder(o)
       ).length,
       COMPLETED: initialOrders.filter(
         (o) => o.status === 'COMPLETED' && !isReturnOrder(o)
@@ -290,9 +308,9 @@ export default function OrdersClient({
     },
     { value: 'PROCESSING', label: 'Diproses Toko', count: counts.PROCESSING },
     {
-      value: 'IN_PROGRESS',
+      value: 'SHIPPED',
       label: 'Sedang Dikirim',
-      count: counts.IN_PROGRESS,
+      count: counts.SHIPPED,
     },
     { value: 'COMPLETED', label: 'Selesai', count: counts.COMPLETED },
     { value: 'CANCELLED', label: 'Dibatalkan', count: counts.CANCELLED },
@@ -309,11 +327,17 @@ export default function OrdersClient({
       if (selectedStatus !== 'ALL') {
         if (selectedStatus === 'RETURNED') {
           if (!isReturnOrder(order)) return false
-        } else if (
-          selectedStatus === 'PROCESSING' &&
-          (order.status === 'PROCESSING' || order.status === 'PAID')
-        ) {
+        } else if (selectedStatus === 'PROCESSING') {
           if (isReturnOrder(order)) return false
+          if (
+            order.status !== 'IN_PROGRESS' &&
+            order.status !== 'PROCESSING' &&
+            order.status !== 'PAID'
+          )
+            return false
+        } else if (selectedStatus === 'SHIPPED') {
+          if (isReturnOrder(order)) return false
+          if (order.status !== 'SHIPPED') return false
         } else if (order.status !== selectedStatus) {
           return false
         } else if (selectedStatus === 'COMPLETED' && isReturnOrder(order)) {
@@ -379,7 +403,8 @@ export default function OrdersClient({
                       }`}
                     >
                       <span>{opt.label}</span>
-                      {opt.count > 0 && (
+                      {/* Hanya render badge count setelah client mount — mencegah SSR/hydration mismatch */}
+                      {isMounted && opt.count > 0 && (
                         <span
                           className={`py-0.2 rounded-full px-1.5 text-[10px] font-black ${
                             isActive
@@ -532,15 +557,21 @@ export default function OrdersClient({
                             <h3 className="line-clamp-1 text-base font-bold leading-snug text-slate-900 dark:text-white sm:text-lg">
                               {firstItem?.product?.name ||
                                 firstItem?.service?.name ||
+                                firstItem?.notes ||
                                 'Unit Smartphone Original'}
                             </h3>
 
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              {firstItem?.variantName && (
+                                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                  Varian: {firstItem.variantName}
+                                </span>
+                              )}
                               <span className="font-medium text-slate-700 dark:text-slate-300">
                                 {firstItem?.quantity || 1} Unit
                               </span>
                               {order.items.length > 1 && (
-                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
                                   +{order.items.length - 1} produk lainnya
                                 </span>
                               )}
@@ -552,6 +583,34 @@ export default function OrdersClient({
                                 3-in-1
                               </span>
                             </div>
+
+                            {/* Multi-item breakdown list */}
+                            {order.items.length > 1 && (
+                              <div className="mt-2 space-y-1 rounded-xl bg-slate-50/80 p-2 text-xs text-slate-600 dark:bg-slate-800/40 dark:text-slate-300">
+                                {order.items
+                                  .slice(1)
+                                  .map((extraItem, extraIdx) => (
+                                    <div
+                                      key={extraIdx}
+                                      className="flex items-center justify-between text-[11px]"
+                                    >
+                                      <span className="truncate">
+                                        •{' '}
+                                        {extraItem.product?.name ||
+                                          extraItem.service?.name ||
+                                          extraItem.notes ||
+                                          'Item Gadget'}
+                                        {extraItem.variantName
+                                          ? ` (${extraItem.variantName})`
+                                          : ''}
+                                      </span>
+                                      <span className="ml-2 shrink-0 font-mono text-slate-400">
+                                        x{extraItem.quantity || 1}
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
 
                             {/* Badges: Logistics & 30-Day Guarantee */}
                             <div className="mt-2.5 flex flex-wrap items-center gap-2">

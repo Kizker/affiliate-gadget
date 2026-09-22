@@ -32,6 +32,10 @@ export const ORDER_STATUS_MAP: Record<
     label: 'Sedang Dikirim',
     textClass: 'text-amber-600 dark:text-amber-400 font-bold',
   },
+  SHIPPED: {
+    label: 'Sedang Dikirim',
+    textClass: 'text-amber-600 dark:text-amber-400 font-bold',
+  },
   COMPLETED: {
     label: 'Selesai',
     textClass: 'text-emerald-600 dark:text-emerald-400 font-bold',

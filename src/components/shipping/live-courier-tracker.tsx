@@ -128,25 +128,25 @@ export function LiveCourierTracker({
       <div className="p-5 sm:p-6">
         {/* Gojek Specific: Driver Card */}
         {isGojek && data.driver && (
-          <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 dark:border-emerald-950 dark:bg-emerald-950/20">
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="mb-5 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
+            <div className="flex flex-col justify-between gap-3.5 sm:flex-row sm:items-center">
               <div className="flex items-center gap-3.5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-sm">
-                  <User className="h-6 w-6" />
+                <div className="shadow-xs flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white">
+                  <User className="h-5 w-5" />
                 </div>
-                <div>
+                <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
                       {data.driver.name}
                     </span>
-                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                    <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
                       Driver Gojek
                     </span>
                   </div>
                   <p className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-400">
                     {data.driver.plateNumber}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     {data.driver.vehicleModel}
                   </p>
                 </div>
@@ -158,14 +158,14 @@ export function LiveCourierTracker({
                   href={`tel:${data.driver.phone}`}
                   className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
-                  <Phone className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                  <Phone className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                   <span>Telepon</span>
                 </a>
                 <a
                   href={`https://wa.me/${data.driver.phone.replace(/[^0-9]/g, '')}?text=Halo%20Pak%20${encodeURIComponent(data.driver.name)},%20saya%20penerima%20pesanan%20%23${data.orderNumber}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95"
+                  className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95"
                 >
                   <MessageCircle className="h-3.5 w-3.5" />
                   <span>Chat WhatsApp</span>
@@ -176,44 +176,59 @@ export function LiveCourierTracker({
         )}
 
         {/* Timeline Stepper Checkpoints */}
-        <div className="space-y-4">
-          <span className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
-            Riwayat Status Pengiriman Real-Time
-          </span>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <Clock className="h-3.5 w-3.5 text-orange-500" />
+            <span>Riwayat Status Pengiriman Real-Time</span>
+          </div>
 
-          <div className="relative pl-6 before:absolute before:bottom-2 before:left-2.5 before:top-2 before:w-[2px] before:bg-slate-200 dark:before:bg-slate-800">
+          <div className="mt-2 space-y-0">
             {data.checkpoints.map((cp, idx) => {
               const isFirst = idx === 0
+              const isLast = idx === data.checkpoints.length - 1
               return (
-                <div key={cp.id || idx} className="relative mb-5 last:mb-0">
-                  <div
-                    className={`absolute -left-6 top-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white dark:border-slate-900 ${
-                      isFirst
-                        ? 'shadow-xs bg-orange-500 text-white'
-                        : 'bg-slate-300 text-transparent dark:bg-slate-700'
-                    }`}
-                  >
-                    <div className="h-2 w-2 rounded-full bg-white" />
+                <div key={cp.id || idx} className="flex items-start gap-3.5">
+                  {/* Timeline Dot & Connector Line */}
+                  <div className="flex flex-col items-center self-stretch">
+                    <div
+                      className={`shadow-xs flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-white dark:border-slate-900 ${
+                        isFirst
+                          ? 'bg-orange-500 text-white ring-4 ring-orange-500/20'
+                          : 'bg-slate-300 text-transparent dark:bg-slate-700'
+                      }`}
+                    >
+                      <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                    </div>
+                    {!isLast && (
+                      <div className="my-1.5 min-h-[28px] w-[2px] grow bg-slate-200 dark:bg-slate-800" />
+                    )}
                   </div>
 
-                  <div className="space-y-0.5">
+                  {/* Description & Details */}
+                  <div
+                    className={`min-w-0 flex-1 space-y-1 ${
+                      !isLast ? 'pb-4' : 'pb-1'
+                    }`}
+                  >
                     <p
-                      className={`text-xs ${
+                      className={`text-xs leading-relaxed ${
                         isFirst
                           ? 'font-bold text-slate-900 dark:text-white'
-                          : 'font-medium text-slate-600 dark:text-slate-400'
+                          : 'font-medium text-slate-700 dark:text-slate-300'
                       }`}
                     >
                       {cp.description}
                     </p>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <MapPin className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                         {cp.location}
                       </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                      <span className="text-slate-300 dark:text-slate-600">
+                        •
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <Clock className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                         {new Date(cp.timestamp).toLocaleTimeString('id-ID', {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -229,9 +244,9 @@ export function LiveCourierTracker({
         </div>
 
         {/* Mandatory Insurance Footer Notice */}
-        <div className="mt-5 flex items-center gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/60 p-2.5 text-xs text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
-          <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span className="text-[11px] font-semibold">
+        <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/70 p-3 text-xs text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-xs font-semibold leading-tight">
             Paket ini diproteksi 100% asuransi kehilangan & kerusakan fisik
             selama pengiriman.
           </span>

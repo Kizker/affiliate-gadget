@@ -39,17 +39,22 @@ interface OrderItem {
   id: string
   quantity: number
   price: number
+  variantName?: string | null
+  notes?: string | null
   productId?: string | null
   rentalItemId?: string | null
   serviceId?: string | null
   product?: {
+    id?: string
     name: string
+    brand?: string | null
     images: string[]
     model?: string | null
-    brand?: string | null
+    category?: string | null
   } | null
   service?: {
     name: string
+    category?: string | null
   } | null
   rentalItem?: {
     name: string
@@ -117,6 +122,12 @@ const statusConfig: Record<
     dotClass: 'bg-blue-500',
   },
   IN_PROGRESS: {
+    label: 'Sedang Diproses',
+    badgeClass:
+      'bg-indigo-50 text-indigo-800 border border-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/80',
+    dotClass: 'bg-indigo-500',
+  },
+  SHIPPED: {
     label: 'Sedang Dikirim',
     badgeClass:
       'bg-orange-50 text-orange-800 border border-orange-200/80 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/80',
@@ -135,6 +146,16 @@ const statusConfig: Record<
     dotClass: 'bg-rose-500',
   },
 }
+
+const STATUS_TABS = [
+  { id: 'ALL', label: 'Semua Status' },
+  { id: 'PENDING_PAYMENT', label: 'Belum Dibayar' },
+  { id: 'PAID', label: 'Perlu Diproses' },
+  { id: 'IN_PROGRESS', label: 'Sedang Diproses' },
+  { id: 'SHIPPED', label: 'Sedang Dikirim' },
+  { id: 'COMPLETED', label: 'Selesai' },
+  { id: 'CANCELLED', label: 'Dibatalkan' },
+] as const
 
 function formatDate(dateStr: string, isFull = false) {
   try {
@@ -347,17 +368,14 @@ export default function AdminOrdersPage() {
       {/* 1. Unified Control Panel (Identik dengan Manajemen Produk) */}
       <div className="shadow-2xs flex flex-col items-stretch justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:p-3 xl:flex-row xl:items-center">
         {/* Left: Status Filter Pills */}
-        <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
-          {[
-            { id: 'ALL', label: 'Semua Status' },
-            { id: 'PENDING_PAYMENT', label: 'Belum Dibayar' },
-            { id: 'PAID', label: 'Perlu Diproses' },
-            { id: 'IN_PROGRESS', label: 'Sedang Dikirim' },
-            { id: 'COMPLETED', label: 'Selesai' },
-            { id: 'CANCELLED', label: 'Dibatalkan' },
-          ].map((tab) => (
+        <div
+          suppressHydrationWarning
+          className="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-slate-100/80 p-1 dark:bg-slate-800/80"
+        >
+          {STATUS_TABS.map((tab) => (
             <button
               key={tab.id}
+              suppressHydrationWarning
               onClick={() => {
                 setStatusFilter(tab.id)
                 setPage(1)
@@ -483,10 +501,25 @@ export default function AdminOrdersPage() {
                             className="shadow-2xs h-12 w-12 shrink-0 rounded-2xl border border-slate-100 object-cover dark:border-slate-800"
                           />
                           <div className="min-w-0 max-w-[280px]">
+                            {firstItem?.product?.brand && (
+                              <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                {firstItem.product.brand}
+                              </span>
+                            )}
                             <p className="line-clamp-1 font-bold text-slate-900 dark:text-white">
                               {productName}
                             </p>
-                            <div className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] text-slate-400">
+                            {firstItem?.variantName && (
+                              <span className="mt-0.5 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                {firstItem.variantName}
+                              </span>
+                            )}
+                            {order.items.length > 1 && (
+                              <span className="ml-1 inline-block text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                                +{order.items.length - 1} lainnya
+                              </span>
+                            )}
+                            <div className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-[11px] text-slate-400">
                               <span
                                 className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                 title={order.orderNumber}
@@ -628,420 +661,548 @@ export default function AdminOrdersPage() {
       {/* ========================================================================= */}
       <Dialog
         open={!!selectedOrder}
-        onOpenChange={(open) => !open && setSelectedOrder(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedOrder(null)
+            setShowLiveTracker(false)
+          }
+        }}
       >
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+        <DialogContent className="flex max-h-[90vh] max-w-3xl flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
           {selectedOrder && (
-            <div className="space-y-6">
-              {/* Header Dialog: High-Hierarchy Bento Title */}
-              <DialogHeader>
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                        <Store className="h-3 w-3 text-slate-400" />
-                        <span>
+            <div className="flex max-h-[90vh] flex-1 flex-col overflow-hidden">
+              {/* 1. Header Dialog: Pinned / Sticky Top Bar */}
+              <div className="py-4.5 shrink-0 border-b border-slate-100 bg-slate-50/80 px-6 dark:border-slate-800 dark:bg-slate-800/50 sm:px-7 sm:py-5">
+                <DialogHeader className="space-y-0 text-left">
+                  <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Store className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           {selectedOrder.store?.name || 'Pesanan Toko Cabang'}
                         </span>
-                      </span>
-                    </div>
+                      </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <DialogTitle className="font-mono text-lg font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
-                        #{selectedOrder.orderNumber}
-                      </DialogTitle>
-                      <button
-                        onClick={() =>
-                          handleCopyOrderNumber(selectedOrder.orderNumber)
-                        }
-                        title="Salin Nomor Order"
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <DialogTitle className="font-mono text-lg font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
+                          #{selectedOrder.orderNumber}
+                        </DialogTitle>
+                        <button
+                          onClick={() =>
+                            handleCopyOrderNumber(selectedOrder.orderNumber)
+                          }
+                          title="Salin Nomor Order"
+                          className="shadow-2xs inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        >
+                          {copiedId ? (
+                            <>
+                              <Check className="h-3 w-3 text-emerald-600" />
+                              <span className="text-emerald-600">Tersalin</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              <span>Salin</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <DialogDescription
+                        suppressHydrationWarning
+                        className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400"
                       >
-                        {copiedId ? (
-                          <>
-                            <Check className="h-3 w-3 text-emerald-600" />
-                            <span className="text-emerald-600">Tersalin</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3" />
-                            <span>Salin</span>
-                          </>
-                        )}
-                      </button>
+                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                        <span>
+                          Waktu Transaksi:{' '}
+                          {formatDate(selectedOrder.createdAt, true)} WIB
+                        </span>
+                      </DialogDescription>
                     </div>
 
-                    <DialogDescription
-                      suppressHydrationWarning
-                      className="flex items-center gap-1.5 text-xs font-medium text-slate-400"
-                    >
-                      <Clock className="h-3.5 w-3.5 text-slate-400" />
-                      <span>
-                        Waktu Transaksi:{' '}
-                        {formatDate(selectedOrder.createdAt, true)} WIB
-                      </span>
-                    </DialogDescription>
-                  </div>
-
-                  {/* Status Pill in Header */}
-                  <div
-                    className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-                      statusConfig[selectedOrder.status]?.badgeClass || ''
-                    }`}
-                  >
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        statusConfig[selectedOrder.status]?.dotClass || ''
+                    {/* Status Pill in Header */}
+                    <div
+                      className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold ${
+                        statusConfig[selectedOrder.status]?.badgeClass || ''
                       }`}
-                    />
-                    <span>
-                      {statusConfig[selectedOrder.status]?.label ||
-                        selectedOrder.status}
-                    </span>
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          statusConfig[selectedOrder.status]?.dotClass || ''
+                        }`}
+                      />
+                      <span>
+                        {statusConfig[selectedOrder.status]?.label ||
+                          selectedOrder.status}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </DialogHeader>
+                </DialogHeader>
+              </div>
 
-              {/* 2-Column Bento Grid Details */}
-              <div className="grid grid-cols-1 gap-5 text-xs md:grid-cols-2">
-                {/* Column 1: Items List & Financial Summary */}
-                <div className="space-y-4">
-                  {/* Products Section */}
-                  <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Unit Gadget Dipesan ({selectedOrder.items?.length || 0})
-                    </span>
+              {/* 2. Scrollable Body: Bento Grid Details & Live Tracker */}
+              <div className="flex-1 space-y-6 overflow-y-auto p-6 sm:p-7">
+                {/* 2-Column Bento Grid Details */}
+                <div className="grid grid-cols-1 gap-5 text-xs md:grid-cols-2">
+                  {/* Column 1: Items List & Financial Summary */}
+                  <div className="space-y-4">
+                    {/* Products Section */}
+                    <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Unit Gadget Dipesan ({selectedOrder.items?.length || 0})
+                      </span>
 
-                    <div className="space-y-2.5">
-                      {selectedOrder.items?.map((item, idx) => {
-                        const img =
-                          item.product?.images?.[0] ||
-                          item.rentalItem?.images?.[0] ||
-                          'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
-                        const title =
-                          item.product?.name ||
-                          item.service?.name ||
-                          item.rentalItem?.name ||
-                          'Gadget Smartphone'
+                      <div className="space-y-2.5">
+                        {selectedOrder.items?.map((item, idx) => {
+                          const img =
+                            item.product?.images?.[0] ||
+                            item.rentalItem?.images?.[0] ||
+                            'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
+                          const title =
+                            item.product?.name ||
+                            item.service?.name ||
+                            item.rentalItem?.name ||
+                            'Gadget Smartphone'
 
-                        return (
-                          <div
-                            key={idx}
-                            className="shadow-2xs flex items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              <img
-                                src={img}
-                                alt={title}
-                                className="h-12 w-12 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover dark:border-slate-800 dark:bg-slate-800"
-                              />
-                              <div className="min-w-0">
-                                <p className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
-                                  {title}
-                                </p>
-                                <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                                  {item.quantity} Unit × Rp{' '}
-                                  {item.price.toLocaleString('id-ID')}
-                                </p>
+                          return (
+                            <div
+                              key={idx}
+                              className="shadow-2xs flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <img
+                                  src={img}
+                                  alt={title}
+                                  className="h-12 w-12 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover dark:border-slate-800 dark:bg-slate-800"
+                                />
+                                <div className="min-w-0">
+                                  {item.product?.brand && (
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                      {item.product.brand}
+                                    </span>
+                                  )}
+                                  <p className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
+                                    {title}
+                                  </p>
+                                  {item.variantName && (
+                                    <span className="mt-0.5 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                      Varian: {item.variantName}
+                                    </span>
+                                  )}
+                                  {item.notes && (
+                                    <p className="mt-0.5 text-[10px] italic text-slate-500">
+                                      Catatan: {item.notes}
+                                    </p>
+                                  )}
+                                  <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                    {item.quantity} Unit × Rp{' '}
+                                    {item.price.toLocaleString('id-ID')}
+                                  </p>
+                                </div>
                               </div>
+                              <span className="whitespace-nowrap text-xs font-black tabular-nums text-slate-950 dark:text-white">
+                                Rp{' '}
+                                {(item.price * item.quantity).toLocaleString(
+                                  'id-ID'
+                                )}
+                              </span>
                             </div>
-                            <span className="whitespace-nowrap text-xs font-black tabular-nums text-slate-950 dark:text-white">
-                              Rp{' '}
-                              {(item.price * item.quantity).toLocaleString(
+                          )
+                        })}
+                      </div>
+
+                      {/* Bonus 3-in-1 Callout */}
+                      <div className="rounded-xl border border-orange-200/80 bg-orange-50/90 p-3 text-xs text-orange-950 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300">
+                        <div className="flex items-center gap-1.5 font-bold text-orange-800 dark:text-orange-200">
+                          <Gift className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                          <span>
+                            Paket Bonus 3-in-1 (Termasuk Gratis Rp 0):
+                          </span>
+                        </div>
+                        <p className="mt-1 pl-5 text-[11px] font-medium leading-relaxed text-orange-700 dark:text-orange-400">
+                          Adaptor Fast Charger + Tempered Glass 9H + Softcase
+                          Presisi
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Financial Breakdown Card */}
+                    <div className="space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Rincian Pembayaran
+                      </span>
+                      <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                        <span>Subtotal Unit:</span>
+                        <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                          Rp {selectedOrder.subtotal.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                        <span>Ongkos Kirim Kurir:</span>
+                        <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                          {selectedOrder.shippingCost
+                            ? `Rp ${selectedOrder.shippingCost.toLocaleString('id-ID')}`
+                            : 'Gratis'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                        <span>
+                          Asuransi Pengiriman (
+                          {selectedOrder.insuranceRate ?? 0.2}%):
+                        </span>
+                        <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                          {selectedOrder.insuranceFee
+                            ? `Rp ${selectedOrder.insuranceFee.toLocaleString('id-ID')}`
+                            : 'Termasuk (Rp 0)'}
+                        </span>
+                      </div>
+
+                      {selectedOrder.discountAmount !== undefined &&
+                        selectedOrder.discountAmount > 0 && (
+                          <div className="flex justify-between text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                            <span>
+                              Diskon Voucher{' '}
+                              {selectedOrder.voucherCode
+                                ? `(${selectedOrder.voucherCode})`
+                                : ''}
+                              :
+                            </span>
+                            <span className="font-bold tabular-nums">
+                              - Rp{' '}
+                              {selectedOrder.discountAmount.toLocaleString(
                                 'id-ID'
                               )}
                             </span>
                           </div>
-                        )
-                      })}
-                    </div>
+                        )}
 
-                    {/* Bonus 3-in-1 Callout */}
-                    <div className="rounded-xl border border-orange-200/70 bg-orange-50/90 p-2.5 text-[11px] text-orange-900 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
-                      <div className="flex items-center gap-1.5 font-bold text-orange-800 dark:text-orange-200">
-                        <Gift className="h-3.5 w-3.5 text-orange-600" />
-                        <span>Paket Bonus 3-in-1 (Termasuk Gratis Rp 0):</span>
+                      {/* Total Highlight */}
+                      <div className="shadow-xs mt-3 flex items-center justify-between rounded-xl bg-slate-950 p-3.5 text-white dark:bg-white dark:text-slate-950">
+                        <span className="text-xs font-bold">
+                          Total Tagihan:
+                        </span>
+                        <span className="text-base font-black tabular-nums">
+                          Rp {selectedOrder.total.toLocaleString('id-ID')}
+                        </span>
                       </div>
-                      <p className="mt-0.5 pl-5 text-[11px] text-orange-700 dark:text-orange-400">
-                        Adaptor Fast Charger + Tempered Glass 9H + Softcase
-                        Presisi
-                      </p>
                     </div>
                   </div>
 
-                  {/* Financial Breakdown Card */}
-                  <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                    <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Rincian Pembayaran
-                    </span>
-                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                      <span>Subtotal Unit:</span>
-                      <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
-                        Rp {selectedOrder.subtotal.toLocaleString('id-ID')}
+                  {/* Column 2: Customer & Shipping Details */}
+                  <div className="space-y-4">
+                    {/* Customer Card */}
+                    <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Informasi Pembeli
                       </span>
-                    </div>
-                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                      <span>Ongkos Kirim Kurir:</span>
-                      <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
-                        {selectedOrder.shippingCost
-                          ? `Rp ${selectedOrder.shippingCost.toLocaleString('id-ID')}`
-                          : 'Gratis'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                      <span>
-                        Asuransi Pengiriman (
-                        {selectedOrder.insuranceRate ?? 0.2}%):
-                      </span>
-                      <span className="font-semibold tabular-nums text-emerald-600">
-                        {selectedOrder.insuranceFee
-                          ? `Rp ${selectedOrder.insuranceFee.toLocaleString('id-ID')}`
-                          : 'Termasuk (Rp 0)'}
-                      </span>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-sm font-bold text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300">
+                          {(selectedOrder.user?.name || 'C')
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                            {selectedOrder.user?.name || 'Customer'}
+                          </p>
+                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                            {selectedOrder.user?.email}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedOrder.user?.phone && (
+                        <div className="pt-1">
+                          <a
+                            href={`https://wa.me/${selectedOrder.user.phone.replace(/[^0-9]/g, '')}?text=Halo%20${encodeURIComponent(selectedOrder.user.name || '')},%20kami%20dari%20${encodeURIComponent(selectedOrder.store?.name || 'Affiliate Gadget')}%20ingin%20mengonfirmasi%20pesanan%20%23${selectedOrder.orderNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shadow-2xs flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/80 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100 active:scale-95 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          >
+                            <Phone className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>
+                              Hubungi via WhatsApp ({selectedOrder.user.phone})
+                            </span>
+                          </a>
+                        </div>
+                      )}
                     </div>
 
-                    {selectedOrder.discountAmount !== undefined &&
-                      selectedOrder.discountAmount > 0 && (
-                        <div className="flex justify-between font-medium text-emerald-600 dark:text-emerald-400">
-                          <span>
-                            Diskon Voucher{' '}
-                            {selectedOrder.voucherCode
-                              ? `(${selectedOrder.voucherCode})`
-                              : ''}
-                            :
+                    {/* Destination Address Card */}
+                    <div className="space-y-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                      <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Alamat Tujuan Pengiriman</span>
+                      </span>
+
+                      <p className="text-xs font-semibold leading-relaxed text-slate-800 dark:text-slate-200">
+                        {selectedOrder.user?.address ||
+                          'Pengambilan langsung di Toko Cabang'}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {[
+                          selectedOrder.user?.city,
+                          selectedOrder.user?.province,
+                          selectedOrder.user?.postalCode,
+                        ]
+                          .filter(Boolean)
+                          .join(', ')}
+                      </p>
+                    </div>
+
+                    {/* Courier & Logistic Protection Card */}
+                    <div className="space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Ekspedisi & Garansi Logistik
+                      </span>
+
+                      <div className="flex items-center gap-2.5 font-bold text-slate-900 dark:text-white">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-900 dark:bg-blue-950/50">
+                          <Truck className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">
+                            {selectedOrder.courierCode || 'JNE'}{' '}
+                            {selectedOrder.courierService ||
+                              'YES (Yakin Esok Sampai)'}
+                          </p>
+                          <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                            Layanan Pengiriman Cepat Terlindungi
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 p-2.5 text-xs font-semibold text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                        <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <span className="text-[11px]">
+                          Asuransi 100% Proteksi Kerusakan & Kehilangan Fisik
+                        </span>
+                      </div>
+
+                      {selectedOrder.trackingNumber && (
+                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
+                          <span className="text-xs font-bold text-slate-500">
+                            Resi / AWB:
                           </span>
-                          <span className="font-bold tabular-nums">
-                            - Rp{' '}
-                            {selectedOrder.discountAmount.toLocaleString(
-                              'id-ID'
-                            )}
+                          <span className="font-mono text-xs font-black text-slate-900 dark:text-white">
+                            {selectedOrder.trackingNumber}
                           </span>
                         </div>
                       )}
-
-                    {/* Total Highlight */}
-                    <div className="shadow-xs mt-3 flex items-center justify-between rounded-xl bg-slate-950 p-3 text-white dark:bg-white dark:text-slate-950">
-                      <span className="text-xs font-bold">Total Tagihan:</span>
-                      <span className="text-base font-black tabular-nums">
-                        Rp {selectedOrder.total.toLocaleString('id-ID')}
-                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Column 2: Customer & Shipping Details */}
-                <div className="space-y-4">
-                  {/* Customer Card */}
-                  <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Informasi Pembeli
-                    </span>
-
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 text-sm font-bold text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300">
-                        {(selectedOrder.user?.name || 'C')
-                          .charAt(0)
-                          .toUpperCase()}
-                      </div>
-                      <div className="min-w-0 space-y-0.5">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">
-                          {selectedOrder.user?.name || 'Customer'}
-                        </p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                          {selectedOrder.user?.email}
-                        </p>
-                      </div>
-                    </div>
-
-                    {selectedOrder.user?.phone && (
-                      <div className="pt-2">
-                        <a
-                          href={`https://wa.me/${selectedOrder.user.phone.replace(/[^0-9]/g, '')}?text=Halo%20${encodeURIComponent(selectedOrder.user.name || '')},%20kami%20dari%20${encodeURIComponent(selectedOrder.store?.name || 'Affiliate Gadget')}%20ingin%20mengonfirmasi%20pesanan%20%23${selectedOrder.orderNumber}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="shadow-2xs flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 active:scale-95 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        >
-                          <Phone className="h-3.5 w-3.5 text-emerald-600" />
-                          <span>
-                            Hubungi via WhatsApp ({selectedOrder.user.phone})
-                          </span>
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Destination Address Card */}
-                  <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                    <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                      <span>Alamat Tujuan Pengiriman</span>
-                    </span>
-
-                    <p className="text-xs font-semibold leading-relaxed text-slate-800 dark:text-slate-200">
-                      {selectedOrder.user?.address ||
-                        'Pengambilan langsung di Toko Cabang'}
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      {[
-                        selectedOrder.user?.city,
-                        selectedOrder.user?.province,
-                        selectedOrder.user?.postalCode,
-                      ]
-                        .filter(Boolean)
-                        .join(', ')}
-                    </p>
-                  </div>
-
-                  {/* Courier & Logistic Protection Card */}
-                  <div className="space-y-2.5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Ekspedisi & Garansi Logistik
-                    </span>
-
-                    <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900 dark:bg-blue-950/50">
-                        <Truck className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold">
-                          {selectedOrder.courierCode || 'JNE'}{' '}
-                          {selectedOrder.courierService ||
-                            'YES (Yakin Esok Sampai)'}
-                        </p>
-                        <p className="text-[10px] font-normal text-slate-400">
-                          Layanan Pengiriman Cepat Terlindungi
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 rounded-xl border border-emerald-200/60 bg-emerald-50/80 p-2 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">
-                      <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-                      <span>
-                        Asuransi 100% Proteksi Kerusakan & Kehilangan Fisik
-                      </span>
-                    </div>
-
-                    {selectedOrder.trackingNumber && (
-                      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
-                        <span className="text-[11px] font-bold text-slate-500">
-                          Resi / AWB:
+                {/* Live Tracking Card (if toggled) */}
+                {showLiveTracker && (
+                  <div className="mt-4 space-y-2 rounded-3xl border border-blue-100 bg-blue-50/20 p-3.5 dark:border-blue-950 dark:bg-blue-950/10 sm:p-4">
+                    <div className="flex items-center justify-between px-1">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-500"></span>
                         </span>
-                        <span className="font-mono text-xs font-black text-slate-900 dark:text-white">
-                          {selectedOrder.trackingNumber}
+                        <span className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                          Pelacakan Kurir Real-Time
                         </span>
                       </div>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => setShowLiveTracker(false)}
+                        className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      >
+                        Tutup Lacak
+                      </button>
+                    </div>
+                    <LiveCourierTracker orderId={selectedOrder.id} />
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* Live Tracking Card (if toggled) */}
-              {showLiveTracker && (
-                <div className="mt-4">
-                  <LiveCourierTracker orderId={selectedOrder.id} />
-                </div>
-              )}
-
-              {/* Dialog Footer Actions */}
-              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+              {/* 3. Dialog Footer Actions: Pinned / Sticky Bottom Action Bar */}
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-800/40 sm:px-7">
                 <button
                   type="button"
-                  onClick={() => setSelectedOrder(null)}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  onClick={() => {
+                    setSelectedOrder(null)
+                    setShowLiveTracker(false)
+                  }}
+                  className="shadow-2xs rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                 >
                   Tutup
                 </button>
 
-                {selectedOrder.status === 'PENDING_PAYMENT' && (
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateStatus(selectedOrder.id, 'PAID')}
-                    disabled={updatingId === selectedOrder.id}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-amber-600/20 transition hover:bg-amber-700 active:scale-95 disabled:opacity-50"
-                  >
-                    {updatingId === selectedOrder.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    <span>Konfirmasi Pembayaran Lunas</span>
-                  </button>
-                )}
-
-                {selectedOrder.status === 'PAID' && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleRequestPickup(selectedOrder)}
-                      disabled={requestingPickupId === selectedOrder.id}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
-                    >
-                      {requestingPickupId === selectedOrder.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Zap className="h-4 w-4" />
-                      )}
-                      <span>
-                        Request Pick Up (
-                        {selectedOrder.courierCode === 'GOJEK'
-                          ? 'Gojek Instant'
-                          : 'JNE'}
-                        )
-                      </span>
-                    </button>
-
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedOrder.status === 'PENDING_PAYMENT' && (
                     <button
                       type="button"
                       onClick={() =>
-                        handleUpdateStatus(selectedOrder.id, 'IN_PROGRESS')
+                        handleUpdateStatus(selectedOrder.id, 'PAID')
                       }
                       disabled={updatingId === selectedOrder.id}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                    >
-                      <span>Proses Manual</span>
-                    </button>
-                  </div>
-                )}
-
-                {selectedOrder.status === 'IN_PROGRESS' && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenThermalLabel(selectedOrder)}
-                      className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    >
-                      <Printer className="h-3.5 w-3.5 text-orange-500" />
-                      <span>Cetak Label Thermal</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowLiveTracker(!showLiveTracker)}
-                      className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    >
-                      <Navigation className="h-3.5 w-3.5 text-blue-500" />
-                      <span>
-                        {showLiveTracker ? 'Tutup Lacak' : 'Lacak Kurir Live'}
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleUpdateStatus(selectedOrder.id, 'COMPLETED')
-                      }
-                      disabled={updatingId === selectedOrder.id}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-amber-600/20 transition hover:bg-amber-700 active:scale-95 disabled:opacity-50"
                     >
                       {updatingId === selectedOrder.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <CheckCircle2 className="h-4 w-4" />
                       )}
-                      <span>Tandai Selesai & Diterima</span>
+                      <span>Konfirmasi Pembayaran Lunas</span>
                     </button>
-                  </div>
-                )}
+                  )}
+
+                  {selectedOrder.status === 'PAID' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleRequestPickup(selectedOrder)}
+                        disabled={requestingPickupId === selectedOrder.id}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+                      >
+                        {requestingPickupId === selectedOrder.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Zap className="h-4 w-4" />
+                        )}
+                        <span>
+                          Request Pick Up (
+                          {selectedOrder.courierCode === 'GOJEK'
+                            ? 'Gojek Instant'
+                            : 'JNE'}
+                          )
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleUpdateStatus(selectedOrder.id, 'IN_PROGRESS')
+                        }
+                        disabled={updatingId === selectedOrder.id}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        <span>Proses Manual</span>
+                      </button>
+                    </>
+                  )}
+
+                  {selectedOrder.status === 'IN_PROGRESS' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenThermalLabel(selectedOrder)}
+                        className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-orange-500" />
+                        <span>Cetak Label Thermal</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowLiveTracker(!showLiveTracker)}
+                        className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-xs font-bold transition active:scale-95 ${
+                          showLiveTracker
+                            ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                        }`}
+                      >
+                        <Navigation
+                          className={`h-3.5 w-3.5 ${
+                            showLiveTracker
+                              ? 'text-blue-600 dark:text-blue-400'
+                              : 'text-blue-500'
+                          }`}
+                        />
+                        <span>
+                          {showLiveTracker ? 'Tutup Lacak' : 'Lacak Kurir Live'}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleUpdateStatus(selectedOrder.id, 'SHIPPED')
+                        }
+                        disabled={updatingId === selectedOrder.id}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-600/20 transition hover:bg-orange-700 active:scale-95 disabled:opacity-50"
+                      >
+                        {updatingId === selectedOrder.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Truck className="h-4 w-4" />
+                        )}
+                        <span>Tandai Sedang Dikirim</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleUpdateStatus(selectedOrder.id, 'COMPLETED')
+                        }
+                        disabled={updatingId === selectedOrder.id}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                      >
+                        {updatingId === selectedOrder.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4" />
+                        )}
+                        <span>Tandai Selesai & Diterima</span>
+                      </button>
+                    </>
+                  )}
+
+                  {selectedOrder.status === 'SHIPPED' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenThermalLabel(selectedOrder)}
+                        className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-orange-500" />
+                        <span>Cetak Label Thermal</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowLiveTracker(!showLiveTracker)}
+                        className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-xs font-bold transition active:scale-95 ${
+                          showLiveTracker
+                            ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                        }`}
+                      >
+                        <Navigation
+                          className={`h-3.5 w-3.5 ${
+                            showLiveTracker
+                              ? 'text-blue-600 dark:text-blue-400'
+                              : 'text-blue-500'
+                          }`}
+                        />
+                        <span>
+                          {showLiveTracker ? 'Tutup Lacak' : 'Lacak Kurir Live'}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleUpdateStatus(selectedOrder.id, 'COMPLETED')
+                        }
+                        disabled={updatingId === selectedOrder.id}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                      >
+                        {updatingId === selectedOrder.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4" />
+                        )}
+                        <span>Tandai Selesai & Diterima</span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}

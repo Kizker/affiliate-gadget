@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/hooks/use-toast'
 import {
   ShoppingCart,
   Users,
@@ -55,6 +56,7 @@ interface ReportData {
       SPAREPART: number
       SEWA: number
     }
+    storeCount?: number
   }
   orders: {
     total: number
@@ -62,8 +64,11 @@ interface ReportData {
       PENDING_PAYMENT: number
       PAID: number
       IN_PROGRESS: number
+      SHIPPED?: number
       COMPLETED: number
       CANCELLED: number
+      RETURNED?: number
+      COMPLAINED?: number
     }
   }
   technicians: {
@@ -102,6 +107,21 @@ interface ReportData {
     lowStockCount: number
     outOfStockCount: number
   }
+  stores?: {
+    total: number
+    active: number
+    topRated: Array<{
+      id: string
+      name: string
+      companyName?: string
+      city: string
+      rating: number
+      totalReview: number
+      totalSales: number
+      commissionRate?: number
+      isOwnerStore?: boolean
+    }>
+  }
   mitras: {
     total: number
     approved: number
@@ -121,6 +141,39 @@ interface ReportData {
     total: number
     claims: number
     claimRate: string
+  }
+  complaints?: {
+    total: number
+    byStatus: {
+      OPEN: number
+      IN_PROGRESS: number
+      RESOLVED: number
+      REJECTED: number
+    }
+    avgResolutionTime: string
+    recent: Array<{
+      id: string
+      subject: string
+      status: string
+      createdAt: string
+      user: {
+        name: string | null
+        email: string
+      }
+      order: {
+        orderNumber: string
+      }
+    }>
+  }
+  returns?: {
+    total: number
+    byStatus: {
+      PENDING: number
+      IN_REVIEW: number
+      APPROVED: number
+      REJECTED: number
+      COMPLETED: number
+    }
   }
   tickets: {
     total: number
@@ -152,7 +205,7 @@ interface ReportData {
     orderNumber: string
     status: string
     total: number
-    createdAt: Date
+    createdAt: Date | string
     user: {
       name: string | null
       email: string
@@ -162,10 +215,16 @@ interface ReportData {
 
 export default function ReportsPage() {
   const router = useRouter()
+  const { toast } = useToast()
+  const [mounted, setMounted] = useState(false)
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState('thisMonth')
   const [exporting, setExporting] = useState<string | null>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     fetchReportData()
@@ -318,13 +377,17 @@ export default function ReportsPage() {
       document.body.removeChild(a)
     } catch (error) {
       console.error('Error exporting:', error)
-      alert('Gagal export data')
+      toast({
+        title: 'Gagal export data',
+        description: 'Coba lagi beberapa saat.',
+        variant: 'destructive',
+      })
     } finally {
       setExporting(null)
     }
   }
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-7 w-7 animate-spin text-slate-900 dark:text-white" />
@@ -340,19 +403,15 @@ export default function ReportsPage() {
     data.revenue.byCategory.SPAREPART > 0 ||
     data.revenue.byCategory.SEWA > 0
 
-  // Chart data configurations (Modern Slate / Indigo Palette)
+  // Chart data configurations (Accurate categories without dummy fallbacks)
   const revenueByCategoryData = {
-    labels: [
-      'Smartphone & Gadget',
-      'Sparepart LCD',
-      'Aksesoris & Paket 3-in-1',
-    ],
+    labels: ['Gadget & Sparepart', 'Jasa Servis LCD', 'Sewa & Aksesoris'],
     datasets: [
       {
         data: [
-          data.revenue.byCategory.JASA || 65,
-          data.revenue.byCategory.SPAREPART || 25,
-          data.revenue.byCategory.SEWA || 10,
+          data.revenue.byCategory.SPAREPART,
+          data.revenue.byCategory.JASA,
+          data.revenue.byCategory.SEWA,
         ],
         backgroundColor: ['#0f172a', '#2563eb', '#f97316'],
         borderWidth: 0,
@@ -362,7 +421,14 @@ export default function ReportsPage() {
   }
 
   const ordersByStatusData = {
-    labels: ['Menunggu Bayar', 'Dibayar', 'Diproses Toko', 'Selesai', 'Batal'],
+    labels: [
+      'Menunggu Bayar',
+      'Dibayar',
+      'Diproses Toko',
+      'Dikirim',
+      'Selesai',
+      'Batal',
+    ],
     datasets: [
       {
         label: 'Pesanan',
@@ -370,6 +436,7 @@ export default function ReportsPage() {
           data.orders.byStatus.PENDING_PAYMENT,
           data.orders.byStatus.PAID,
           data.orders.byStatus.IN_PROGRESS,
+          data.orders.byStatus.SHIPPED || 0,
           data.orders.byStatus.COMPLETED,
           data.orders.byStatus.CANCELLED,
         ],
@@ -381,10 +448,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div
-      className="mx-auto max-w-6xl space-y-6 pb-16 pt-1"
-      suppressHydrationWarning
-    >
+    <div className="mx-auto max-w-6xl space-y-6 pb-16 pt-1">
       {/* Top Filter Bar (Zero title noise, compact period filter) */}
       <div className="flex items-center justify-end">
         <div className="shadow-2xs flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 dark:border-slate-800 dark:bg-slate-900">
@@ -448,7 +512,12 @@ export default function ReportsPage() {
                 Seluruh Cabang
               </span>
               <span className="text-slate-400 dark:text-slate-500">
-                · 5 Toko Aktif
+                ·{' '}
+                {data.revenue.storeCount ??
+                  data.stores?.active ??
+                  data.mitras.approved ??
+                  0}{' '}
+                Toko Aktif
               </span>
             </div>
           </div>
@@ -569,31 +638,43 @@ export default function ReportsPage() {
           </div>
 
           <div className="relative flex h-60 items-center justify-center pt-4">
-            <Doughnut
-              data={revenueByCategoryData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '72%',
-                plugins: {
-                  legend: {
-                    position: 'bottom',
-                    labels: {
-                      boxWidth: 10,
-                      boxHeight: 10,
-                      usePointStyle: true,
-                      font: { size: 11 },
+            {!hasRevenueData ? (
+              <div className="flex flex-col items-center justify-center text-center">
+                <DollarSign className="mb-2 h-7 w-7 text-slate-300 dark:text-slate-600" />
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Belum ada omzet pada periode ini
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                  Data transaksi terbayar akan muncul otomatis
+                </p>
+              </div>
+            ) : (
+              <Doughnut
+                data={revenueByCategoryData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  cutout: '72%',
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        usePointStyle: true,
+                        font: { size: 11 },
+                      },
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) =>
+                          ` Rp ${context.parsed.toLocaleString('id-ID')}`,
+                      },
                     },
                   },
-                  tooltip: {
-                    callbacks: {
-                      label: (context) =>
-                        ` Rp ${context.parsed.toLocaleString('id-ID')}`,
-                    },
-                  },
-                },
-              }}
-            />
+                }}
+              />
+            )}
           </div>
         </div>
 
@@ -724,14 +805,14 @@ export default function ReportsPage() {
             </div>
             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              {data.mitras.approved} Aktif
+              {data.stores?.active ?? data.mitras.approved} Aktif
             </span>
           </div>
 
           <div className="grid grid-cols-3 gap-3 pb-3 pt-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
               <p className="text-base font-bold text-slate-900 dark:text-white">
-                {data.mitras.total}
+                {data.stores?.total ?? data.mitras.total}
               </p>
               <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                 Total Toko
@@ -739,18 +820,21 @@ export default function ReportsPage() {
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
               <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                {data.mitras.approved}
+                {data.stores?.active ?? data.mitras.approved}
               </p>
               <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Terverifikasi
+                Toko Aktif
               </p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
-              <p className="text-base font-bold text-amber-600 dark:text-amber-400">
-                {data.mitras.pending}
+              <p className="text-base font-bold text-blue-600 dark:text-blue-400">
+                {data.stores?.topRated?.reduce(
+                  (sum, s) => sum + (s.totalSales || 0),
+                  0
+                ) ?? 0}
               </p>
               <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Review
+                Unit Terjual
               </p>
             </div>
           </div>
@@ -759,22 +843,41 @@ export default function ReportsPage() {
             <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Toko Rating Tertinggi
             </span>
-            {data.mitras.topRated.slice(0, 2).map((mitra) => (
-              <div
-                key={mitra.id}
-                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/40 p-2.5 dark:border-slate-800/80 dark:bg-slate-800/30"
-              >
-                <div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white">
-                    {mitra.businessName}
-                  </p>
-                  <p className="text-[11px] text-slate-400">{mitra.city}</p>
-                </div>
-                <span className="font-mono text-xs font-bold text-amber-600 dark:text-amber-400">
-                  ⭐ {mitra.rating.toFixed(1)}
-                </span>
-              </div>
-            ))}
+            {(data.stores?.topRated && data.stores.topRated.length > 0
+              ? data.stores.topRated
+              : data.mitras.topRated
+            )
+              .slice(0, 2)
+              .map(
+                (store: {
+                  id: string
+                  name?: string
+                  businessName?: string
+                  city: string
+                  totalSales?: number
+                  rating: number
+                }) => (
+                  <div
+                    key={store.id}
+                    className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/40 p-2.5 dark:border-slate-800/80 dark:bg-slate-800/30"
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        {store.name || store.businessName}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {store.city}{' '}
+                        {store.totalSales !== undefined
+                          ? `· ${store.totalSales} penjualan`
+                          : ''}
+                      </p>
+                    </div>
+                    <span className="font-mono text-xs font-bold text-amber-600 dark:text-amber-400">
+                      ⭐ {store.rating.toFixed(1)}
+                    </span>
+                  </div>
+                )
+              )}
           </div>
         </div>
       </div>
@@ -789,7 +892,7 @@ export default function ReportsPage() {
               Garansi & Layanan Servis Kilat LCD
             </h2>
             <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              Statistik klaim garansi 30 hari tukar unit dan resolusi tiket
+              Statistik klaim garansi 30 hari tukar unit dan resolusi komplain
             </p>
           </div>
           <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
@@ -808,7 +911,7 @@ export default function ReportsPage() {
           </div>
           <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
             <p className="text-base font-bold text-amber-600 dark:text-amber-400">
-              {data.warranties.claims}
+              {data.returns?.total ?? data.warranties.claims}
             </p>
             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Klaim Diajukan
@@ -816,7 +919,8 @@ export default function ReportsPage() {
           </div>
           <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
             <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-              {data.tickets.byStatus.RESOLVED}
+              {data.complaints?.byStatus.RESOLVED ??
+                data.tickets.byStatus.RESOLVED}
             </p>
             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Terselesaikan
@@ -824,7 +928,9 @@ export default function ReportsPage() {
           </div>
           <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
             <p className="font-mono text-base font-bold text-slate-900 dark:text-white">
-              {data.tickets.avgResolutionTime} Jam
+              {data.complaints?.avgResolutionTime ??
+                data.tickets.avgResolutionTime}{' '}
+              Jam
             </p>
             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Rata-rata Resolusi

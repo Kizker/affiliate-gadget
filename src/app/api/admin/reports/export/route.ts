@@ -9,7 +9,9 @@ export async function GET(request: NextRequest) {
 
     if (
       !session?.user ||
-      !['ADMIN', 'SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'].includes(session.user.role)
+      !['ADMIN', 'SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'].includes(
+        session.user.role
+      )
     ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -37,6 +39,15 @@ export async function GET(request: NextRequest) {
     const workbook = new ExcelJS.Workbook()
     workbook.creator = 'Affiliate Gadget'
     workbook.created = new Date()
+
+    // Canonical revenue statuses — must match main reports/route.ts
+    const REVENUE_STATUSES = [
+      'PAID',
+      'IN_PROGRESS',
+      'SHIPPED',
+      'COMPLETED',
+      'COMPLAINED',
+    ] as const
 
     const filename = `Affiliate Gadget_${type}_${new Date().toISOString().split('T')[0]}`
     let sheetName = type.toUpperCase()
@@ -103,7 +114,9 @@ export async function GET(request: NextRequest) {
       case 'revenue': {
         const revenueOrders = await prisma.order.findMany({
           where: {
-            status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
+            status: {
+              in: ['PAID', 'IN_PROGRESS', 'SHIPPED', 'COMPLETED', 'COMPLAINED'],
+            },
             ...dateFilter,
           },
           include: {
@@ -131,10 +144,10 @@ export async function GET(request: NextRequest) {
         ]
         rows = revenueOrders.map((order, index) => {
           const category = order.items.some((i) => i.service)
-            ? 'Jasa Servis'
+            ? 'Jasa Servis LCD'
             : order.items.some((i) => i.product)
-              ? 'Sparepart'
-              : 'Sewa Alat'
+              ? 'Gadget & Sparepart'
+              : 'Sewa & Aksesoris'
 
           return [
             index + 1,
@@ -157,7 +170,7 @@ export async function GET(request: NextRequest) {
             },
             orders: {
               where: {
-                status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
+                status: { in: [...REVENUE_STATUSES] },
                 ...dateFilter,
               },
             },
@@ -264,7 +277,15 @@ export async function GET(request: NextRequest) {
             },
             orders: {
               where: {
-                status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
+                status: {
+                  in: [
+                    'PAID',
+                    'IN_PROGRESS',
+                    'SHIPPED',
+                    'COMPLETED',
+                    'COMPLAINED',
+                  ],
+                },
               },
               select: {
                 total: true,
@@ -303,7 +324,7 @@ export async function GET(request: NextRequest) {
           where: {
             serviceId: { not: null },
             order: {
-              status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
+              status: { in: [...REVENUE_STATUSES] },
               ...dateFilter,
             },
           },
@@ -356,7 +377,7 @@ export async function GET(request: NextRequest) {
             orderItems: {
               where: {
                 order: {
-                  status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
+                  status: { in: [...REVENUE_STATUSES] },
                   ...dateFilter,
                 },
               },
@@ -502,8 +523,12 @@ function formatStatus(status: string): string {
   const statusMap: Record<string, string> = {
     PENDING_PAYMENT: 'Menunggu Pembayaran',
     PAID: 'Dibayar',
-    IN_PROGRESS: 'Diproses',
+    IN_PROGRESS: 'Diproses Toko',
+    SHIPPED: 'Dikirim',
+    RENTED: 'Disewa',
+    RETURNED: 'Dikembalikan',
     COMPLETED: 'Selesai',
+    COMPLAINED: 'Komplain',
     CANCELLED: 'Dibatalkan',
   }
   return statusMap[status] || status

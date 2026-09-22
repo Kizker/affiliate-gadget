@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
+// Canonical revenue statuses — excludes CANCELLED, RETURNED, PENDING_PAYMENT
+const REVENUE_STATUSES = [
+  'PAID',
+  'IN_PROGRESS',
+  'SHIPPED',
+  'COMPLETED',
+  'COMPLAINED',
+] as const
+
+/** Parse and validate a date string. Returns null if invalid. */
+function parseDate(value: string | null): Date | null {
+  if (!value) return null
+  const d = new Date(value)
+  return isNaN(d.getTime()) ? null : d
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()
@@ -10,45 +26,68 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Only admin, store admin, and finance admin can access reports
-    if (!['SUPER_ADMIN', 'ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'].includes(session.user.role)) {
+    // Only admin roles can access reports
+    if (
+      !['SUPER_ADMIN', 'ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'].includes(
+        session.user.role
+      )
+    ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const searchParams = request.nextUrl.searchParams
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
+    const startRaw = searchParams.get('startDate')
+    const endRaw = searchParams.get('endDate')
 
-    // Build date filter
-    const dateFilter: {
-      createdAt?: {
-        gte: Date
-        lte: Date
-      }
-    } = {}
-    if (startDate && endDate) {
-      dateFilter.createdAt = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
-      }
+    // Validate date inputs — 400 on bad format
+    const startDate = parseDate(startRaw)
+    const endDate = parseDate(endRaw)
+    if ((startRaw && !startDate) || (endRaw && !endDate)) {
+      return NextResponse.json(
+        { error: 'Invalid date format for startDate or endDate' },
+        { status: 400 }
+      )
     }
 
-    // 1. REVENUE OVERVIEW
-    const orders = await prisma.order.findMany({
-      where: {
-        status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
-        ...dateFilter,
-      },
-      include: {
-        items: {
-          include: {
-            service: true,
-            product: true,
-            rentalItem: true,
+    // Build date filter
+    const dateFilter: { createdAt?: { gte: Date; lte: Date } } = {}
+    if (startDate && endDate) {
+      dateFilter.createdAt = { gte: startDate, lte: endDate }
+    }
+
+    // STORE_ADMIN scope isolation — restrict all queries to their own store
+    const isStoreAdmin = session.user.role === 'STORE_ADMIN'
+    const storeId: string | undefined = isStoreAdmin
+      ? ((session.user as { storeId?: string }).storeId ?? undefined)
+      : undefined
+
+    // Shared store scope filter for order-level queries
+    const storeScope = storeId ? { storeId } : {}
+
+    // PARALLEL BATCH 1: Revenue orders + Order stats
+    const [orders, orderStats] = await Promise.all([
+      prisma.order.findMany({
+        where: {
+          status: { in: [...REVENUE_STATUSES] },
+          ...dateFilter,
+          ...storeScope,
+        },
+        include: {
+          items: {
+            include: {
+              service: true,
+              product: true,
+              rentalItem: true,
+            },
           },
         },
-      },
-    })
+      }),
+      prisma.order.groupBy({
+        by: ['status'],
+        where: { ...dateFilter, ...storeScope },
+        _count: true,
+      }),
+    ])
 
     let totalRevenue = 0
     const revenueByCategory = {
@@ -70,395 +109,334 @@ export async function GET(request: NextRequest) {
       })
     })
 
-    // 2. ORDER STATISTICS
-    const orderStats = await prisma.order.groupBy({
-      by: ['status'],
-      where: dateFilter,
-      _count: true,
-    })
-
     const ordersByStatus = {
       PENDING_PAYMENT: 0,
       PAID: 0,
       IN_PROGRESS: 0,
+      SHIPPED: 0,
       COMPLETED: 0,
       CANCELLED: 0,
+      RETURNED: 0,
+      COMPLAINED: 0,
     }
-
     orderStats.forEach((stat) => {
-      ordersByStatus[stat.status as keyof typeof ordersByStatus] = stat._count
+      if (stat.status in ordersByStatus) {
+        ordersByStatus[stat.status as keyof typeof ordersByStatus] = stat._count
+      }
     })
-
     const totalOrders = Object.values(ordersByStatus).reduce(
       (sum, count) => sum + count,
       0
     )
 
-    // 3. TECHNICIAN PERFORMANCE
-    const technicians = await prisma.technician.findMany({
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-        orders: {
-          where: {
-            status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
+    // PARALLEL BATCH 2: All independent queries
+    const [
+      totalCustomers,
+      newCustomers,
+      customersWithOrders,
+      productStats,
+      lowStockProducts,
+      totalProducts,
+      lowStockCount,
+      outOfStockCount,
+      totalStores,
+      activeStores,
+      topStores,
+      activeWarranties,
+      expiredWarranties,
+      totalWarranties,
+      returnClaims,
+      returnStats,
+      complaintStats,
+      resolvedComplaints,
+      recentComplaints,
+      recentOrders,
+    ] = await Promise.all([
+      prisma.user.count({ where: { role: 'CUSTOMER' } }),
+      prisma.user.count({ where: { role: 'CUSTOMER', ...dateFilter } }),
+      prisma.user.count({
+        where: { role: 'CUSTOMER', orders: { some: {} } },
+      }),
+      prisma.orderItem.groupBy({
+        by: ['productId'],
+        where: {
+          productId: { not: null },
+          order: {
+            status: { in: [...REVENUE_STATUSES] },
             ...dateFilter,
-          },
-          select: {
-            total: true,
+            ...storeScope,
           },
         },
-        _count: {
-          select: {
-            orders: true,
-          },
+        _sum: { quantity: true, subtotal: true },
+        _count: true,
+      }),
+      prisma.product.findMany({
+        where: {
+          stock: { lt: 10 },
+          isActive: true,
+          ...(storeId ? { storeId } : {}),
         },
-      },
-    })
-
-    const technicianPerformance = technicians
-      .map((tech) => ({
-        id: tech.id,
-        name: tech.user.name || tech.user.email,
-        email: tech.user.email,
-        totalOrders: tech._count.orders,
-        totalRevenue: tech.orders.reduce((sum, order) => sum + order.total, 0),
-        rating: tech.rating,
-        totalReviews: tech.totalReview,
-      }))
-      .sort((a, b) => {
-        // Sort by total orders first (descending)
-        if (b.totalOrders !== a.totalOrders) {
-          return b.totalOrders - a.totalOrders
-        }
-        // If orders are equal, sort by total reviews (descending)
-        return b.totalReviews - a.totalReviews
-      })
-      .slice(0, 10)
-
-    // 4. CUSTOMER ANALYTICS
-    const totalCustomers = await prisma.user.count({
-      where: { role: 'CUSTOMER' },
-    })
-
-    const newCustomers = await prisma.user.count({
-      where: {
-        role: 'CUSTOMER',
-        ...dateFilter,
-      },
-    })
-
-    const customersWithOrders = await prisma.user.count({
-      where: {
-        role: 'CUSTOMER',
-        orders: {
-          some: {},
+        select: { id: true, name: true, stock: true, images: true },
+        orderBy: { stock: 'asc' },
+        take: 10,
+      }),
+      prisma.product.count({ where: storeId ? { storeId } : {} }),
+      prisma.product.count({
+        where: {
+          stock: { lt: 10 },
+          isActive: true,
+          ...(storeId ? { storeId } : {}),
         },
-      },
-    })
-
-    // 5. PRODUCT PERFORMANCE
-    const productStats = await prisma.orderItem.groupBy({
-      by: ['productId'],
-      where: {
-        productId: { not: null },
-        order: {
-          status: { in: ['PAID', 'IN_PROGRESS', 'COMPLETED'] },
+      }),
+      prisma.product.count({
+        where: { stock: 0, isActive: true, ...(storeId ? { storeId } : {}) },
+      }),
+      prisma.store.count({ where: storeId ? { id: storeId } : {} }),
+      prisma.store.count({
+        where: { isActive: true, ...(storeId ? { id: storeId } : {}) },
+      }),
+      prisma.store.findMany({
+        where: { isActive: true, ...(storeId ? { id: storeId } : {}) },
+        select: {
+          id: true,
+          name: true,
+          companyName: true,
+          city: true,
+          rating: true,
+          totalReview: true,
+          totalSales: true,
+          commissionRate: true,
+          isOwnerStore: true,
+        },
+        orderBy: { rating: 'desc' },
+        take: 5,
+      }),
+      prisma.warranty.count({
+        where: { isActive: true, endDate: { gte: new Date() } },
+      }),
+      prisma.warranty.count({ where: { endDate: { lt: new Date() } } }),
+      prisma.warranty.count(),
+      prisma.returnRequest.count({
+        where: { ...dateFilter, ...(storeId ? { order: { storeId } } : {}) },
+      }),
+      prisma.returnRequest.groupBy({
+        by: ['status'],
+        where: { ...dateFilter, ...(storeId ? { order: { storeId } } : {}) },
+        _count: true,
+      }),
+      prisma.complaint.groupBy({
+        by: ['status'],
+        where: { ...dateFilter, ...(storeId ? { order: { storeId } } : {}) },
+        _count: true,
+      }),
+      prisma.complaint.findMany({
+        where: {
+          status: 'RESOLVED',
+          resolvedAt: { not: null },
           ...dateFilter,
+          ...(storeId ? { order: { storeId } } : {}),
         },
-      },
-      _sum: {
-        quantity: true,
-        subtotal: true,
-      },
-      _count: true,
-    })
-
-    const topProductsData = await Promise.all(
-      productStats
-        .sort((a, b) => (b._sum.subtotal || 0) - (a._sum.subtotal || 0))
-        .slice(0, 5)
-        .map(async (stat) => {
-          const product = await prisma.product.findUnique({
-            where: { id: stat.productId! },
-            select: {
-              name: true,
-              stock: true,
-              images: true,
+        select: { createdAt: true, resolvedAt: true },
+      }),
+      prisma.complaint.findMany({
+        where: { ...dateFilter, ...(storeId ? { order: { storeId } } : {}) },
+        include: {
+          user: { select: { name: true, email: true } },
+          order: { select: { orderNumber: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      prisma.order.findMany({
+        where: { ...dateFilter, ...storeScope },
+        include: {
+          user: { select: { name: true, email: true } },
+          items: {
+            include: {
+              product: { select: { name: true } },
+              service: { select: { name: true } },
+              rentalItem: { select: { name: true } },
             },
-          })
-          return {
-            id: stat.productId,
-            name: product?.name || 'Unknown',
-            totalSold: stat._sum.quantity || 0,
-            revenue: stat._sum.subtotal || 0,
-            stock: product?.stock || 0,
-            image: product?.images?.[0] || null,
-          }
-        })
-    )
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    ])
 
-    // Low stock products
-    const lowStockProducts = await prisma.product.findMany({
-      where: {
-        stock: { lt: 10 },
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        stock: true,
-        images: true,
-      },
-      orderBy: {
-        stock: 'asc',
-      },
-      take: 10,
+    // N+1 eliminated: resolve top products via single findMany
+    const topProductsSorted = productStats
+      .sort((a, b) => (b._sum.subtotal || 0) - (a._sum.subtotal || 0))
+      .slice(0, 5)
+    const topProductIds = topProductsSorted
+      .map((s) => s.productId)
+      .filter(Boolean) as string[]
+    const productDetails = await prisma.product.findMany({
+      where: { id: { in: topProductIds } },
+      select: { id: true, name: true, stock: true, images: true },
     })
-
-    // 6. MITRA STATISTICS
-    const mitraStats = await prisma.mitra.groupBy({
-      by: ['isApproved'],
-      _count: true,
-    })
-
-    const mitraByStatus = {
-      approved: 0,
-      pending: 0,
-    }
-
-    mitraStats.forEach((stat) => {
-      if (stat.isApproved) {
-        mitraByStatus.approved = stat._count
-      } else {
-        mitraByStatus.pending = stat._count
+    const productMap = new Map(productDetails.map((p) => [p.id, p]))
+    const topProductsData = topProductsSorted.map((stat) => {
+      const product = productMap.get(stat.productId!)
+      return {
+        id: stat.productId,
+        name: product?.name || 'Unknown',
+        totalSold: stat._sum.quantity || 0,
+        revenue: stat._sum.subtotal || 0,
+        stock: product?.stock || 0,
+        image: product?.images?.[0] || null,
       }
     })
 
-    const totalMitras = mitraByStatus.approved + mitraByStatus.pending
-
-    // Top rated mitras
-    const topMitras = await prisma.mitra.findMany({
-      where: {
-        isApproved: true,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        businessName: true,
-        city: true,
-        rating: true,
-        totalReview: true,
-        totalViews: true,
-      },
-      orderBy: {
-        rating: 'desc',
-      },
-      take: 5,
-    })
-
-    // 7. STOCK SUMMARY
-    const totalProducts = await prisma.product.count()
-    const lowStockCount = await prisma.product.count({
-      where: { stock: { lt: 10 }, isActive: true },
-    })
-    const outOfStockCount = await prisma.product.count({
-      where: { stock: 0, isActive: true },
-    })
-
-    // 8. RECENT ACTIVITY
-    const recentOrders = await prisma.order.findMany({
-      where: dateFilter,
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-        items: {
-          include: {
-            product: {
-              select: { name: true },
-            },
-            service: {
-              select: { name: true },
-            },
-            rentalItem: {
-              select: { name: true },
-            },
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 10,
-    })
-
-    // 9. WARRANTY ANALYTICS
-    const now = new Date()
-
-    // Active warranties
-    const activeWarranties = await prisma.warranty.count({
-      where: {
-        isActive: true,
-        endDate: { gte: now },
-      },
-    })
-
-    // Expired warranties
-    const expiredWarranties = await prisma.warranty.count({
-      where: {
-        endDate: { lt: now },
-      },
-    })
-
-    // Total warranties
-    const totalWarranties = await prisma.warranty.count()
-
-    // Warranty claims (tickets related to warranties)
-    const warrantyClaims = await prisma.ticket.count({
-      where: {
-        warrantyId: { not: null },
-        ...dateFilter,
-      },
-    })
-
-    // Warranty claim rate
-    const warrantyClaimRate =
-      totalWarranties > 0
-        ? ((warrantyClaims / totalWarranties) * 100).toFixed(1)
-        : 0
-
-    // 10. TICKET & COMPLAINT MANAGEMENT
-    const ticketStats = await prisma.ticket.groupBy({
-      by: ['status'],
-      where: dateFilter,
-      _count: true,
-    })
-
-    const ticketsByStatus = {
-      OPEN: 0,
-      PENDING_APPROVAL: 0,
+    // Aggregate return stats
+    const returnsByStatus = {
+      PENDING: 0,
+      IN_REVIEW: 0,
       APPROVED: 0,
       REJECTED: 0,
-      RESOLVED: 0,
-      CLOSED: 0,
+      COMPLETED: 0,
     }
-
-    ticketStats.forEach((stat) => {
-      ticketsByStatus[stat.status as keyof typeof ticketsByStatus] = stat._count
+    returnStats.forEach((stat) => {
+      if (stat.status in returnsByStatus) {
+        returnsByStatus[stat.status as keyof typeof returnsByStatus] =
+          stat._count
+      }
     })
 
-    const totalTickets = Object.values(ticketsByStatus).reduce(
-      (sum, count) => sum + count,
+    // Aggregate complaint stats
+    const complaintsByStatus = {
+      OPEN: 0,
+      IN_PROGRESS: 0,
+      RESOLVED: 0,
+      REJECTED: 0,
+    }
+    complaintStats.forEach((stat) => {
+      if (stat.status in complaintsByStatus) {
+        complaintsByStatus[stat.status as keyof typeof complaintsByStatus] =
+          stat._count
+      }
+    })
+    const totalComplaints = Object.values(complaintsByStatus).reduce(
+      (sum, c) => sum + c,
       0
     )
 
-    // Calculate average resolution time
-    const resolvedTickets = await prisma.ticket.findMany({
-      where: {
-        status: { in: ['RESOLVED', 'CLOSED'] },
-        resolvedAt: { not: null },
-        ...dateFilter,
-      },
-      select: {
-        createdAt: true,
-        resolvedAt: true,
-      },
-    })
-
+    // Avg resolution time (hours)
     let avgResolutionTime = 0
-    if (resolvedTickets.length > 0) {
-      const totalResolutionTime = resolvedTickets.reduce((sum, ticket) => {
-        const resolutionTime =
-          ticket.resolvedAt!.getTime() - ticket.createdAt.getTime()
-        return sum + resolutionTime
-      }, 0)
-      avgResolutionTime =
-        totalResolutionTime / resolvedTickets.length / (1000 * 60 * 60) // Convert to hours
+    if (resolvedComplaints.length > 0) {
+      const totalMs = resolvedComplaints.reduce(
+        (sum, item) =>
+          sum + (item.resolvedAt!.getTime() - item.createdAt.getTime()),
+        0
+      )
+      avgResolutionTime = totalMs / resolvedComplaints.length / (1000 * 60 * 60)
     }
 
-    // Recent tickets
-    const recentTickets = await prisma.ticket.findMany({
-      where: dateFilter,
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-        order: {
-          select: {
-            orderNumber: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 10,
-    })
+    const warrantyClaimRate =
+      totalWarranties > 0
+        ? ((returnClaims / totalWarranties) * 100).toFixed(1)
+        : '0.0'
 
-    // Return comprehensive report data
-    return NextResponse.json({
-      success: true,
-      data: {
-        revenue: {
-          total: totalRevenue,
-          byCategory: revenueByCategory,
+    // Return comprehensive report data with cache-prevention headers
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          revenue: {
+            total: totalRevenue,
+            byCategory: revenueByCategory,
+            storeCount: activeStores,
+          },
+          orders: {
+            total: totalOrders,
+            byStatus: ordersByStatus,
+          },
+          technicians: {
+            performance: [],
+          },
+          customers: {
+            total: totalCustomers,
+            new: newCustomers,
+            withOrders: customersWithOrders,
+            activeRate:
+              totalCustomers > 0
+                ? ((customersWithOrders / totalCustomers) * 100).toFixed(1)
+                : '0.0',
+          },
+          products: {
+            topSelling: topProductsData,
+            lowStock: lowStockProducts,
+            total: totalProducts,
+            lowStockCount,
+            outOfStockCount,
+          },
+          stores: {
+            total: totalStores,
+            active: activeStores,
+            topRated: topStores,
+          },
+          mitras: {
+            total: totalStores,
+            approved: activeStores,
+            pending: Math.max(0, totalStores - activeStores),
+            topRated: topStores.map((s) => ({
+              id: s.id,
+              businessName: s.name,
+              city: s.city,
+              rating: s.rating,
+              totalReview: s.totalReview,
+              totalViews: s.totalSales,
+            })),
+          },
+          warranties: {
+            active: activeWarranties,
+            expired: expiredWarranties,
+            total: totalWarranties,
+            claims: returnClaims,
+            claimRate: warrantyClaimRate,
+          },
+          tickets: {
+            total: totalComplaints + returnClaims,
+            byStatus: {
+              OPEN: complaintsByStatus.OPEN,
+              PENDING_APPROVAL: returnsByStatus.PENDING,
+              APPROVED: returnsByStatus.APPROVED,
+              REJECTED: complaintsByStatus.REJECTED + returnsByStatus.REJECTED,
+              RESOLVED: complaintsByStatus.RESOLVED + returnsByStatus.COMPLETED,
+              CLOSED: complaintsByStatus.RESOLVED,
+            },
+            avgResolutionTime: avgResolutionTime.toFixed(1),
+            recent: recentComplaints.map((c) => ({
+              id: c.id,
+              subject: c.subject,
+              status: c.status,
+              createdAt: c.createdAt.toISOString(),
+              user: c.user,
+              order: c.order,
+            })),
+          },
+          complaints: {
+            total: totalComplaints,
+            byStatus: complaintsByStatus,
+            avgResolutionTime: avgResolutionTime.toFixed(1),
+            recent: recentComplaints,
+          },
+          returns: {
+            total: returnClaims,
+            byStatus: returnsByStatus,
+          },
+          recentActivity: recentOrders,
         },
-        orders: {
-          total: totalOrders,
-          byStatus: ordersByStatus,
-        },
-        technicians: {
-          performance: technicianPerformance,
-        },
-        customers: {
-          total: totalCustomers,
-          new: newCustomers,
-          withOrders: customersWithOrders,
-          activeRate:
-            totalCustomers > 0
-              ? ((customersWithOrders / totalCustomers) * 100).toFixed(1)
-              : 0,
-        },
-        products: {
-          topSelling: topProductsData,
-          lowStock: lowStockProducts,
-          total: totalProducts,
-          lowStockCount,
-          outOfStockCount,
-        },
-        mitras: {
-          total: totalMitras,
-          approved: mitraByStatus.approved,
-          pending: mitraByStatus.pending,
-          topRated: topMitras,
-        },
-        warranties: {
-          active: activeWarranties,
-          expired: expiredWarranties,
-          total: totalWarranties,
-          claims: warrantyClaims,
-          claimRate: warrantyClaimRate,
-        },
-        tickets: {
-          total: totalTickets,
-          byStatus: ticketsByStatus,
-          avgResolutionTime: avgResolutionTime.toFixed(1),
-          recent: recentTickets,
-        },
-        recentActivity: recentOrders,
       },
-    })
+      {
+        headers: {
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching report data:', error)
     return NextResponse.json(

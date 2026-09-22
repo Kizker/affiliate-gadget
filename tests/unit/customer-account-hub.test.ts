@@ -178,7 +178,13 @@ describe('Customer Account Hub & Order Stats Engine', () => {
     expect(scrolledTarget).toBe(mockInput)
     expect(scrollOptions).toEqual({ behavior: 'smooth', block: 'center' })
 
-    const mockDiv = { tagName: 'DIV', scrollIntoView: mockScrollIntoView }
+    const mockDiv = {
+      tagName: 'DIV',
+      scrollIntoView: (options: unknown) => {
+        scrolledTarget = mockDiv
+        scrollOptions = options
+      },
+    }
     scrolledTarget = null
     handleFocusElement(mockDiv)
     expect(scrolledTarget).toBeNull()

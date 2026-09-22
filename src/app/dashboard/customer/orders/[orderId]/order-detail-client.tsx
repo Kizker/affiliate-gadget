@@ -90,6 +90,8 @@ interface OrderDetailProps {
       price: number
       subtotal: number
       notes?: string
+      variantId?: string
+      variantName?: string
       service?: { id: string; name: string; category: string }
       product?: {
         id: string
@@ -1191,9 +1193,20 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                               >
                                 {item.product?.name ||
                                   item.service?.name ||
+                                  item.notes ||
                                   'Unit Gadget Original'}
                               </Link>
-                              <p className="mt-0.5 text-xs text-slate-500">
+                              {item.variantName && (
+                                <span className="mt-0.5 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                  Varian: {item.variantName}
+                                </span>
+                              )}
+                              {item.notes && !item.variantName && (
+                                <p className="mt-0.5 text-xs italic text-slate-500">
+                                  Catatan: {item.notes}
+                                </p>
+                              )}
+                              <p className="mt-1 text-xs text-slate-500">
                                 {item.quantity} unit × {formatPrice(item.price)}
                               </p>
                             </div>

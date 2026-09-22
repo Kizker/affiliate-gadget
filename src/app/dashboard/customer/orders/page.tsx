@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation'
 import prisma from '@/lib/db'
 import OrdersClient from './orders-client'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function CustomerOrdersPage() {
   const session = await auth()
 
@@ -16,14 +19,23 @@ export default async function CustomerOrdersPage() {
     include: {
       items: {
         select: {
+          id: true,
           type: true,
           notes: true,
+          variantId: true,
+          variantName: true,
           quantity: true,
           price: true,
           subtotal: true,
           service: { select: { name: true, category: true } },
           product: {
-            select: { id: true, name: true, brand: true, images: true },
+            select: {
+              id: true,
+              name: true,
+              brand: true,
+              images: true,
+              category: true,
+            },
           },
           rentalItem: { select: { name: true, images: true } },
         },
@@ -109,8 +121,11 @@ export default async function CustomerOrdersPage() {
         }
       : null,
     items: order.items.map((item) => ({
+      id: item.id,
       type: item.type as string,
       notes: item.notes,
+      variantId: item.variantId,
+      variantName: item.variantName,
       quantity: item.quantity,
       price: item.price,
       subtotal: item.subtotal,
@@ -123,6 +138,7 @@ export default async function CustomerOrdersPage() {
             name: item.product.name,
             brand: item.product.brand,
             images: item.product.images,
+            category: item.product.category,
           }
         : undefined,
       rentalItem: item.rentalItem

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Package,
@@ -24,8 +24,11 @@ import {
 } from '@/lib/order-return-utils'
 
 export interface OrderItem {
+  id?: string
   type: string
   notes?: string | null
+  variantId?: string | null
+  variantName?: string | null
   quantity?: number
   price?: number
   subtotal?: number
@@ -86,6 +89,11 @@ export function MobileOrdersView({
   const [activeTab, setActiveTab] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Prevent SSR/client hydration mismatch on dynamic count badges
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const copyOrderNumber = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -107,12 +115,13 @@ export function MobileOrdersView({
         .length,
       PROCESSING: orders.filter(
         (o) =>
-          (o.status === 'PROCESSING' || o.status === 'PAID') &&
+          (o.status === 'IN_PROGRESS' ||
+            o.status === 'PROCESSING' ||
+            o.status === 'PAID') &&
           !isReturnOrder(o)
       ).length,
-      IN_PROGRESS: orders.filter(
-        (o) => o.status === 'IN_PROGRESS' && !isReturnOrder(o)
-      ).length,
+      SHIPPED: orders.filter((o) => o.status === 'SHIPPED' && !isReturnOrder(o))
+        .length,
       COMPLETED: orders.filter(
         (o) => o.status === 'COMPLETED' && !isReturnOrder(o)
       ).length,
@@ -129,7 +138,7 @@ export function MobileOrdersView({
       count: counts.PENDING_PAYMENT,
     },
     { key: 'PROCESSING', label: 'Diproses', count: counts.PROCESSING },
-    { key: 'IN_PROGRESS', label: 'Dikirim', count: counts.IN_PROGRESS },
+    { key: 'SHIPPED', label: 'Dikirim', count: counts.SHIPPED },
     { key: 'COMPLETED', label: 'Selesai', count: counts.COMPLETED },
     { key: 'CANCELLED', label: 'Dibatalkan', count: counts.CANCELLED },
     { key: 'RETURNED', label: 'Dikembalikan', count: counts.RETURNED },
@@ -142,11 +151,17 @@ export function MobileOrdersView({
       if (activeTab !== 'ALL') {
         if (activeTab === 'RETURNED') {
           if (!isReturnOrder(order)) return false
-        } else if (
-          activeTab === 'PROCESSING' &&
-          (order.status === 'PROCESSING' || order.status === 'PAID')
-        ) {
+        } else if (activeTab === 'PROCESSING') {
           if (isReturnOrder(order)) return false
+          if (
+            order.status !== 'IN_PROGRESS' &&
+            order.status !== 'PROCESSING' &&
+            order.status !== 'PAID'
+          )
+            return false
+        } else if (activeTab === 'SHIPPED') {
+          if (isReturnOrder(order)) return false
+          if (order.status !== 'SHIPPED') return false
         } else if (order.status !== activeTab) {
           return false
         } else if (activeTab === 'COMPLETED' && isReturnOrder(order)) {
@@ -194,7 +209,8 @@ export function MobileOrdersView({
                 }`}
               >
                 <span>{tab.label}</span>
-                {tab.count > 0 && (
+                {/* Hanya render badge count setelah client mount — mencegah SSR/hydration mismatch */}
+                {isMounted && tab.count > 0 && (
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                       isActive
@@ -321,22 +337,42 @@ export function MobileOrdersView({
                       <h4 className="line-clamp-1 text-xs font-bold leading-snug text-slate-900 dark:text-white">
                         {firstItem?.product?.name ||
                           firstItem?.service?.name ||
+                          firstItem?.notes ||
                           'Unit Smartphone Original'}
                       </h4>
 
-                      <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        {firstItem?.variantName && (
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {firstItem.variantName}
+                          </span>
+                        )}
                         <span>
                           {firstItem?.product?.brand || 'Gadget Terverifikasi'}
                         </span>
+                        <span>•</span>
                         <span className="font-semibold text-slate-700 dark:text-slate-300">
                           x{firstItem?.quantity || 1}
                         </span>
                       </div>
 
                       {order.items.length > 1 && (
-                        <p className="mt-1 text-[10px] text-slate-400">
-                          +{order.items.length - 1} produk lainnya
-                        </p>
+                        <div className="mt-1.5 space-y-0.5 rounded-lg bg-slate-50 p-1.5 text-[10px] text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
+                          {order.items.slice(1).map((extra, idx) => (
+                            <div key={idx} className="flex justify-between">
+                              <span className="truncate">
+                                •{' '}
+                                {extra.product?.name ||
+                                  extra.service?.name ||
+                                  extra.notes ||
+                                  'Item Gadget'}
+                              </span>
+                              <span className="ml-1 shrink-0 font-mono">
+                                x{extra.quantity || 1}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       )}
 
                       {/* Mini Feature Badges */}
