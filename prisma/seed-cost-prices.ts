@@ -135,9 +135,13 @@ export async function seedCostPrices() {
       rule.namePattern.test(product.name)
     )
 
-    const baseCostPrice = matchedRule
+    let baseCostPrice = matchedRule
       ? matchedRule.baseCostPrice
       : Math.round((product.price * 0.88) / 10000) * 10000
+
+    if (baseCostPrice >= product.price) {
+      baseCostPrice = Math.round((product.price * 0.88) / 10000) * 10000
+    }
 
     await db.product.update({
       where: { id: product.id },
@@ -150,6 +154,10 @@ export async function seedCostPrices() {
       if (matchedRule?.variantMap && matchedRule.variantMap[variant.name]) {
         variantCostPrice = matchedRule.variantMap[variant.name]
       } else if (variant.price) {
+        variantCostPrice = Math.round((variant.price * 0.88) / 10000) * 10000
+      }
+
+      if (variantCostPrice >= variant.price) {
         variantCostPrice = Math.round((variant.price * 0.88) / 10000) * 10000
       }
 
