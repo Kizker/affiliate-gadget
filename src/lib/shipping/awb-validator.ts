@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AWB (Air Waybill) / Nomor Resi Validator
  * Validasi format nomor resi per kurir untuk platform Affiliate Gadget
  * Supported: JNE REG, JNE YES, Gojek Instant
@@ -37,20 +37,21 @@ export const AWB_PATTERNS: Record<
 }
 
 /**
- * Validasi format nomor resi
- * Jika courierCode tidak diisi, auto-detect dari prefix
+ * Validasi format nomor resi atau nomor order
+ * Jika courierCode tidak diisi, auto-detect dari prefix (mendukung JNE, Gojek, Biteship WYB, dan Nomor Pesanan SPR/ORD)
  */
 export function validateAWB(
   trackingNumber: string,
   courierCode?: CourierCode
 ): AWBValidationResult {
-  const cleaned = trackingNumber.trim().toUpperCase()
+  const raw = (trackingNumber || '').trim().toUpperCase()
+  const cleaned = raw.replace(/^#/, '')
 
   if (!cleaned) {
     return {
       valid: false,
       formatted: '',
-      error: 'Nomor resi tidak boleh kosong',
+      error: 'Nomor resi atau pesanan tidak boleh kosong',
     }
   }
 
@@ -59,6 +60,30 @@ export function validateAWB(
       valid: false,
       formatted: cleaned,
       error: 'Nomor resi terlalu pendek (minimal 8 karakter)',
+    }
+  }
+
+  // 1. Dukungan pelacakan langsung via Nomor Pesanan (SPR-... / ORD-...) jika tanpa batas kurir spesifik
+  if (!courierCode) {
+    const isOrderNumber = /^(SPR|ORD)-[A-Z0-9-]+$/i.test(cleaned)
+    if (isOrderNumber) {
+      return {
+        valid: true,
+        courierCode: 'JNE',
+        courierService: 'REG',
+        formatted: cleaned,
+      }
+    }
+  }
+
+  // 2. Dukungan resi elektronik Biteship (WYB-1790144159838)
+  const isBiteshipWaybill = /^WYB-?[A-Z0-9]{8,24}$/i.test(cleaned)
+  if (isBiteshipWaybill) {
+    return {
+      valid: true,
+      courierCode: courierCode || 'JNE',
+      courierService: 'REG',
+      formatted: cleaned,
     }
   }
 
@@ -75,7 +100,7 @@ export function validateAWB(
       valid: false,
       formatted: cleaned,
       error:
-        'Format resi tidak dikenal. Gunakan format JNExxxxxxxx atau GK-xxxxxxxx',
+        'Format tidak dikenal. Masukkan nomor resi (JNE, GK-, WYB-) atau nomor pesanan (SPR-...)',
     }
   }
 
@@ -109,9 +134,10 @@ export function validateAWB(
 export function detectCourierFromAWB(
   trackingNumber: string
 ): CourierCode | null {
-  const cleaned = (trackingNumber || '').trim().toUpperCase()
+  const cleaned = (trackingNumber || '').trim().toUpperCase().replace(/^#/, '')
   if (cleaned.startsWith('JNE')) return 'JNE'
   if (cleaned.startsWith('GK-')) return 'GOJEK'
+  if (cleaned.startsWith('WYB-') || cleaned.startsWith('WYB')) return 'JNE'
   return null
 }
 

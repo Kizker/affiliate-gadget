@@ -24,9 +24,23 @@ describe('AWB Validation & Courier Auto-Detect Engine', () => {
     expect(validateAWB('GK-short', 'GOJEK').valid).toBe(false)
   })
 
+  it('validates Biteship waybill format (WYB-xxxx) accurately', () => {
+    expect(validateAWB('WYB-1790144159838').valid).toBe(true)
+    expect(validateAWB('wyb-1790144159838').valid).toBe(true)
+    expect(validateAWB('WYB1790144159838').valid).toBe(true)
+    expect(detectCourierFromAWB('WYB-1790144159838')).toBe('JNE')
+  })
+
+  it('validates platform Order Number format (SPR-xxxx / ORD-xxxx) accurately', () => {
+    expect(validateAWB('SPR-20260923-F9C71677').valid).toBe(true)
+    expect(validateAWB('#SPR-20260923-F9C71677').valid).toBe(true)
+    expect(validateAWB('ORD-20260921-9999').valid).toBe(true)
+  })
+
   it('auto-detects courier from waybill prefix', () => {
     expect(detectCourierFromAWB('JNE260923123456')).toBe('JNE')
     expect(detectCourierFromAWB('GK-260923123456')).toBe('GOJEK')
+    expect(detectCourierFromAWB('WYB-1790144159838')).toBe('JNE')
     expect(detectCourierFromAWB('UNKNOWN123')).toBeNull()
   })
 })

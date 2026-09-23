@@ -27,6 +27,7 @@ interface TrackingResult {
   success: boolean
   data?: {
     trackingNumber: string
+    orderNumber?: string
     courierCode: string
     courierService: string
     status: string
@@ -88,17 +89,18 @@ export default function CekResiPage() {
   const [searched, setSearched] = useState(false)
 
   const handleSearch = async () => {
-    const awb = awbInput.trim().toUpperCase()
-    if (!awb) return
+    const raw = awbInput.trim().toUpperCase()
+    const cleanAwb = raw.replace(/^#/, '')
+    if (!cleanAwb) return
 
     setLoading(true)
     setSearched(true)
     setResult(null)
 
     try {
-      // Try find via AWB param on a sentinel orderId
+      // Find via AWB or Order Number lookup
       const res = await fetch(
-        `/api/shipping/tracking/awb-lookup?awb=${encodeURIComponent(awb)}`
+        `/api/shipping/tracking/awb-lookup?awb=${encodeURIComponent(cleanAwb)}`
       )
       const json: TrackingResult = await res.json()
       setResult(json)
@@ -153,7 +155,8 @@ export default function CekResiPage() {
             Lacak Status Pengiriman
           </h1>
           <p className="text-sm text-slate-500">
-            Masukkan nomor resi untuk melacak posisi paket Anda secara real-time
+            Masukkan nomor resi atau nomor pesanan Anda untuk melacak posisi
+            paket secara real-time
           </p>
         </div>
 
@@ -166,7 +169,7 @@ export default function CekResiPage() {
                 value={awbInput}
                 onChange={(e) => setAwbInput(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="Contoh: JNE260923123456 atau GK-260923123456"
+                placeholder="Contoh: SPR-20260923-..., WYB-..., atau JNE..."
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-mono text-sm font-semibold outline-none transition focus:border-[#2563EB] focus:bg-white"
               />
               <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
@@ -185,8 +188,8 @@ export default function CekResiPage() {
             </button>
           </div>
           <p className="mt-2 text-center text-[11px] text-slate-400">
-            JNE Express (format: JNExxxxxxxx) · Gojek Instant (format:
-            GK-xxxxxxxx)
+            Mendukung No. Resi (JNE, Gojek, Biteship WYB) dan No. Pesanan
+            (SPR-...)
           </p>
         </div>
 
@@ -238,10 +241,11 @@ export default function CekResiPage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
             <Package className="mx-auto mb-3 h-10 w-10 text-slate-300" />
             <p className="text-sm font-semibold text-slate-700">
-              {result.error || 'Nomor resi tidak ditemukan'}
+              {result.error || 'Nomor resi atau pesanan tidak ditemukan'}
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Pastikan format resi benar atau coba beberapa saat lagi
+              Pastikan nomor pesanan atau format resi benar atau coba beberapa
+              saat lagi
             </p>
           </div>
         )}
@@ -255,11 +259,19 @@ export default function CekResiPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-200">
-                      Nomor Resi
+                      Nomor Resi / AWB
                     </p>
                     <p className="font-mono text-lg font-black text-white">
                       {data.trackingNumber}
                     </p>
+                    {data.orderNumber && (
+                      <p className="mt-1 text-xs font-medium text-blue-100">
+                        No. Pesanan:{' '}
+                        <span className="font-mono font-bold text-white">
+                          #{data.orderNumber}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-[11px] font-semibold text-blue-200">

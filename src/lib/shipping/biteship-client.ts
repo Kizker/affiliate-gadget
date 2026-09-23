@@ -520,15 +520,19 @@ export function getDynamicTrackingTimeline(
 }
 
 /**
- * Ambil data pelacakan berdasarkan nomor resi (AWB)
+ * Ambil data pelacakan berdasarkan nomor resi (AWB) atau nomor pesanan
  */
 export function getTrackingByAWB(
   trackingNumber: string
 ): ShippingBookingRecord | null {
   const store = loadShippingStore()
-  const normalized = (trackingNumber || '').trim().toUpperCase()
+  const raw = (trackingNumber || '').trim().toUpperCase()
+  const normalized = raw.replace(/^#/, '')
   const found = Object.values(store).find(
-    (record) => record.trackingNumber.toUpperCase() === normalized
+    (record) =>
+      record.trackingNumber.toUpperCase() === normalized ||
+      record.orderNumber.toUpperCase() === normalized ||
+      record.orderId.toUpperCase() === normalized
   )
   return found || null
 }
