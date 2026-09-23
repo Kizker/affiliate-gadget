@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/db'
@@ -184,5 +185,9 @@ export default async function CustomerOrdersPage() {
     })),
   }))
 
-  return <OrdersClient initialOrders={ordersData} />
+  return (
+    <Suspense fallback={null}>
+      <OrdersClient initialOrders={ordersData} />
+    </Suspense>
+  )
 }

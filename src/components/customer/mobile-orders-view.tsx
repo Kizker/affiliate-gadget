@@ -75,6 +75,7 @@ export interface MobileOrder {
 interface MobileOrdersViewProps {
   orders: MobileOrder[]
   onOpenReturnModal?: (order: MobileOrder) => void
+  initialTab?: string
 }
 
 const DEFAULT_IMAGE =
@@ -85,8 +86,9 @@ export { STATUS_MAP, isReturnOrder, getOrderStatusMeta }
 export function MobileOrdersView({
   orders,
   onOpenReturnModal,
+  initialTab,
 }: MobileOrdersViewProps) {
-  const [activeTab, setActiveTab] = useState('ALL')
+  const [activeTab, setActiveTab] = useState(initialTab || 'ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   // Prevent SSR/client hydration mismatch on dynamic count badges
@@ -94,6 +96,12 @@ export function MobileOrdersView({
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab)
+    }
+  }, [initialTab])
 
   const copyOrderNumber = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -115,13 +123,14 @@ export function MobileOrdersView({
         .length,
       PROCESSING: orders.filter(
         (o) =>
-          (o.status === 'IN_PROGRESS' ||
-            o.status === 'PROCESSING' ||
-            o.status === 'PAID') &&
+          (o.status === 'PROCESSING' || o.status === 'PAID') &&
           !isReturnOrder(o)
       ).length,
-      SHIPPED: orders.filter((o) => o.status === 'SHIPPED' && !isReturnOrder(o))
-        .length,
+      SHIPPED: orders.filter(
+        (o) =>
+          (o.status === 'SHIPPED' || o.status === 'IN_PROGRESS') &&
+          !isReturnOrder(o)
+      ).length,
       COMPLETED: orders.filter(
         (o) => o.status === 'COMPLETED' && !isReturnOrder(o)
       ).length,
@@ -153,15 +162,12 @@ export function MobileOrdersView({
           if (!isReturnOrder(order)) return false
         } else if (activeTab === 'PROCESSING') {
           if (isReturnOrder(order)) return false
-          if (
-            order.status !== 'IN_PROGRESS' &&
-            order.status !== 'PROCESSING' &&
-            order.status !== 'PAID'
-          )
+          if (order.status !== 'PROCESSING' && order.status !== 'PAID')
             return false
         } else if (activeTab === 'SHIPPED') {
           if (isReturnOrder(order)) return false
-          if (order.status !== 'SHIPPED') return false
+          if (order.status !== 'SHIPPED' && order.status !== 'IN_PROGRESS')
+            return false
         } else if (order.status !== activeTab) {
           return false
         } else if (activeTab === 'COMPLETED' && isReturnOrder(order)) {

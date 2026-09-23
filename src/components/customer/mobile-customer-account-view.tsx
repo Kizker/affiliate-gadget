@@ -39,6 +39,7 @@ export interface MobileCustomerAccountViewProps {
     processing: number
     inProgress: number
     completed: number
+    returned?: number
     total: number
   }
   addressesCount: number
@@ -290,7 +291,7 @@ export function MobileCustomerAccountView({
             <div className="grid grid-cols-5 gap-1 pt-3 text-center">
               {/* Belum Bayar */}
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=PENDING_PAYMENT"
                 className="relative flex flex-col items-center justify-center gap-1.5 rounded-xl py-1.5 transition active:scale-95"
               >
                 <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
@@ -308,7 +309,7 @@ export function MobileCustomerAccountView({
 
               {/* Diproses */}
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=PROCESSING"
                 className="relative flex flex-col items-center justify-center gap-1.5 rounded-xl py-1.5 transition active:scale-95"
               >
                 <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
@@ -326,7 +327,7 @@ export function MobileCustomerAccountView({
 
               {/* Dikirim */}
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=SHIPPED"
                 className="relative flex flex-col items-center justify-center gap-1.5 rounded-xl py-1.5 transition active:scale-95"
               >
                 <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
@@ -344,7 +345,7 @@ export function MobileCustomerAccountView({
 
               {/* Selesai */}
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=COMPLETED"
                 className="relative flex flex-col items-center justify-center gap-1.5 rounded-xl py-1.5 transition active:scale-95"
               >
                 <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
@@ -362,11 +363,16 @@ export function MobileCustomerAccountView({
 
               {/* Retur */}
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=RETURNED"
                 className="relative flex flex-col items-center justify-center gap-1.5 rounded-xl py-1.5 transition active:scale-95"
               >
                 <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
                   <RotateCcw className="h-4 w-4" />
+                  {(orderStats.returned ?? 0) > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white ring-2 ring-white dark:ring-slate-900">
+                      {orderStats.returned}
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] font-semibold leading-tight text-slate-600 dark:text-slate-300">
                   Retur

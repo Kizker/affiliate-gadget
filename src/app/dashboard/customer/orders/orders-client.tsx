@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import Link from 'next/link'
@@ -241,7 +241,9 @@ export default function OrdersClient({
   initialOrders: Order[]
 }) {
   const router = useRouter()
-  const [selectedStatus, setSelectedStatus] = useState('ALL')
+  const searchParams = useSearchParams()
+  const statusParam = searchParams?.get('status')
+  const [selectedStatus, setSelectedStatus] = useState(statusParam || 'ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   // Prevent SSR/client hydration mismatch on dynamic count badges
@@ -249,6 +251,12 @@ export default function OrdersClient({
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (statusParam) {
+      setSelectedStatus(statusParam)
+    }
+  }, [statusParam])
 
   // Return Modal state
   const [returnModal, setReturnModal] = useState<{
@@ -283,13 +291,13 @@ export default function OrdersClient({
       ).length,
       PROCESSING: initialOrders.filter(
         (o) =>
-          (o.status === 'IN_PROGRESS' ||
-            o.status === 'PROCESSING' ||
-            o.status === 'PAID') &&
+          (o.status === 'PROCESSING' || o.status === 'PAID') &&
           !isReturnOrder(o)
       ).length,
       SHIPPED: initialOrders.filter(
-        (o) => o.status === 'SHIPPED' && !isReturnOrder(o)
+        (o) =>
+          (o.status === 'SHIPPED' || o.status === 'IN_PROGRESS') &&
+          !isReturnOrder(o)
       ).length,
       COMPLETED: initialOrders.filter(
         (o) => o.status === 'COMPLETED' && !isReturnOrder(o)
@@ -329,15 +337,12 @@ export default function OrdersClient({
           if (!isReturnOrder(order)) return false
         } else if (selectedStatus === 'PROCESSING') {
           if (isReturnOrder(order)) return false
-          if (
-            order.status !== 'IN_PROGRESS' &&
-            order.status !== 'PROCESSING' &&
-            order.status !== 'PAID'
-          )
+          if (order.status !== 'PROCESSING' && order.status !== 'PAID')
             return false
         } else if (selectedStatus === 'SHIPPED') {
           if (isReturnOrder(order)) return false
-          if (order.status !== 'SHIPPED') return false
+          if (order.status !== 'SHIPPED' && order.status !== 'IN_PROGRESS')
+            return false
         } else if (order.status !== selectedStatus) {
           return false
         } else if (selectedStatus === 'COMPLETED' && isReturnOrder(order)) {
@@ -369,6 +374,7 @@ export default function OrdersClient({
       <div className="block md:hidden">
         <MobileOrdersView
           orders={initialOrders}
+          initialTab={selectedStatus}
           onOpenReturnModal={(order) => {
             setReturnModal({
               isOpen: true,

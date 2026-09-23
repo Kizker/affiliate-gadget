@@ -8,10 +8,11 @@ describe('Customer Account Hub & Order Stats Engine', () => {
       { id: '3', status: 'PAID' },
       { id: '4', status: 'PROCESSING' },
       { id: '5', status: 'IN_PROGRESS' },
-      { id: '6', status: 'COMPLETED' },
+      { id: '6', status: 'SHIPPED' },
       { id: '7', status: 'COMPLETED' },
       { id: '8', status: 'COMPLETED' },
       { id: '9', status: 'CANCELLED' },
+      { id: '10', status: 'RETURNED' },
     ]
 
     const pending = rawOrders.filter(
@@ -21,23 +22,26 @@ describe('Customer Account Hub & Order Stats Engine', () => {
       (o) => o.status === 'PROCESSING' || o.status === 'PAID'
     ).length
     const inProgress = rawOrders.filter(
-      (o) => o.status === 'IN_PROGRESS'
+      (o) => o.status === 'IN_PROGRESS' || o.status === 'SHIPPED'
     ).length
     const completed = rawOrders.filter((o) => o.status === 'COMPLETED').length
+    const returned = rawOrders.filter((o) => o.status === 'RETURNED').length
 
     const orderStats = {
       pending,
       processing,
       inProgress,
       completed,
+      returned,
       total: rawOrders.length,
     }
 
     expect(orderStats.pending).toBe(2)
     expect(orderStats.processing).toBe(2)
-    expect(orderStats.inProgress).toBe(1)
-    expect(orderStats.completed).toBe(3)
-    expect(orderStats.total).toBe(9)
+    expect(orderStats.inProgress).toBe(2)
+    expect(orderStats.completed).toBe(2)
+    expect(orderStats.returned).toBe(1)
+    expect(orderStats.total).toBe(10)
   })
 
   it('should default activeSubView to overview so user does not jump directly into profile form', () => {

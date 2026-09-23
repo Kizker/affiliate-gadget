@@ -13,6 +13,7 @@ import {
   UserAddressItem,
 } from '@/components/customer/address-modal'
 import { MobileCustomerAccountView } from '@/components/customer/mobile-customer-account-view'
+import { isReturnOrder } from '@/lib/order-return-utils'
 import {
   User,
   Lock,
@@ -74,6 +75,7 @@ export default function CustomerSettingsPage() {
     processing: 0,
     inProgress: 0,
     completed: 0,
+    returned: 0,
     total: 0,
   })
 
@@ -193,23 +195,28 @@ export default function CustomerSettingsPage() {
         const data = await res.json()
         const orders = data.orders || []
         const pending = orders.filter(
-          (o: { status: string }) => o.status === 'PENDING_PAYMENT'
+          (o: any) => o.status === 'PENDING_PAYMENT'
         ).length
         const processing = orders.filter(
-          (o: { status: string }) =>
-            o.status === 'PROCESSING' || o.status === 'PAID'
+          (o: any) =>
+            (o.status === 'PROCESSING' || o.status === 'PAID') &&
+            !isReturnOrder(o)
         ).length
         const inProgress = orders.filter(
-          (o: { status: string }) => o.status === 'IN_PROGRESS'
+          (o: any) =>
+            (o.status === 'IN_PROGRESS' || o.status === 'SHIPPED') &&
+            !isReturnOrder(o)
         ).length
         const completed = orders.filter(
-          (o: { status: string }) => o.status === 'COMPLETED'
+          (o: any) => o.status === 'COMPLETED' && !isReturnOrder(o)
         ).length
+        const returned = orders.filter((o: any) => isReturnOrder(o)).length
         setOrderStats({
           pending,
           processing,
           inProgress,
           completed,
+          returned,
           total: orders.length,
         })
       }
@@ -1529,7 +1536,7 @@ export default function CustomerSettingsPage() {
 
             <div className="grid grid-cols-2 gap-3 pt-4 sm:grid-cols-5">
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=PENDING_PAYMENT"
                 className="hover:shadow-xs group flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 transition hover:border-orange-200 hover:bg-white"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600 transition group-hover:bg-orange-500 group-hover:text-white">
@@ -1546,7 +1553,7 @@ export default function CustomerSettingsPage() {
               </Link>
 
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=PROCESSING"
                 className="hover:shadow-xs group flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 transition hover:border-blue-200 hover:bg-white"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
@@ -1563,7 +1570,7 @@ export default function CustomerSettingsPage() {
               </Link>
 
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=SHIPPED"
                 className="hover:shadow-xs group flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 transition hover:border-amber-200 hover:bg-white"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 transition group-hover:bg-amber-500 group-hover:text-white">
@@ -1580,7 +1587,7 @@ export default function CustomerSettingsPage() {
               </Link>
 
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=COMPLETED"
                 className="hover:shadow-xs group flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 transition hover:border-emerald-200 hover:bg-white"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition group-hover:bg-emerald-600 group-hover:text-white">
@@ -1597,7 +1604,7 @@ export default function CustomerSettingsPage() {
               </Link>
 
               <Link
-                href="/dashboard/customer/orders"
+                href="/dashboard/customer/orders?status=RETURNED"
                 className="hover:shadow-xs group flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 transition hover:border-rose-200 hover:bg-white"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition group-hover:bg-rose-500 group-hover:text-white">
@@ -1608,7 +1615,7 @@ export default function CustomerSettingsPage() {
                     Pengembalian
                   </span>
                   <span className="text-sm font-black text-slate-900">
-                    Retur
+                    {orderStats.returned > 0 ? orderStats.returned : 'Retur'}
                   </span>
                 </div>
               </Link>

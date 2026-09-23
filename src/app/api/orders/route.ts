@@ -85,6 +85,14 @@ export async function GET() {
           },
           take: 1,
         },
+        returnRequests: {
+          select: {
+            id: true,
+            status: true,
+            type: true,
+            reason: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
