@@ -73,6 +73,11 @@ export async function GET(request: NextRequest) {
           ...storeScope,
         },
         include: {
+          store: {
+            select: {
+              defaultPackingFee: true,
+            },
+          },
           items: {
             include: {
               service: true,
@@ -90,6 +95,14 @@ export async function GET(request: NextRequest) {
     ])
 
     let totalRevenue = 0
+    let totalGrossRevenue = 0
+    let totalCOGS = 0
+    let totalPlatformCommission = 0
+    let totalPackingCost = 0
+    let totalVoucherDiscount = 0
+    let totalShippingCost = 0
+    let totalInsuranceFee = 0
+
     const revenueByCategory = {
       JASA: 0,
       SPAREPART: 0,
@@ -98,16 +111,50 @@ export async function GET(request: NextRequest) {
 
     orders.forEach((order) => {
       totalRevenue += order.total
+      totalPlatformCommission += order.commissionAmount ?? 0
+      totalVoucherDiscount += order.discountAmount ?? 0
+      totalShippingCost += order.shippingCost ?? 0
+      totalInsuranceFee += order.insuranceFee ?? 0
+
+      // Biaya packing default toko (konfirmasi parameter: Rp 5.000 flat)
+      const packingFee = order.store?.defaultPackingFee ?? 5000
+      totalPackingCost += packingFee
+
       order.items.forEach((item) => {
+        const itemQuantity = item.quantity || 1
+        const itemGross = item.price * itemQuantity
+        const itemCost = (item.costPrice ?? 0) * itemQuantity
+
+        totalGrossRevenue += itemGross
+        totalCOGS += itemCost
+
         if (item.service) {
-          revenueByCategory.JASA += item.price * item.quantity
+          revenueByCategory.JASA += itemGross
         } else if (item.product) {
-          revenueByCategory.SPAREPART += item.price * item.quantity
+          revenueByCategory.SPAREPART += itemGross
         } else if (item.rentalItem) {
-          revenueByCategory.SEWA += item.price * (item.rentalDays || 1)
+          const rentalDays = item.rentalDays || 1
+          const rentalGross = item.price * rentalDays
+          revenueByCategory.SEWA += rentalGross
         }
       })
     })
+
+    const totalGrossProfit = totalGrossRevenue - totalCOGS
+    const grossMarginPct =
+      totalGrossRevenue > 0
+        ? Number(((totalGrossProfit / totalGrossRevenue) * 100).toFixed(2))
+        : 0
+
+    // Beban e-commerce: Komisi Platform (2%) + Packing (Rp 5.000) + Diskon Voucher
+    // Catatan: Ongkir & Asuransi pass-through kurir, tidak mengurangi laba toko
+    const totalEcommerceExpenses =
+      totalPlatformCommission + totalPackingCost + totalVoucherDiscount
+    const totalNetProfit = totalGrossProfit - totalEcommerceExpenses
+    const netMarginPct =
+      totalGrossRevenue > 0
+        ? Number(((totalNetProfit / totalGrossRevenue) * 100).toFixed(2))
+        : 0
 
     const ordersByStatus = {
       PENDING_PAYMENT: 0,
@@ -250,10 +297,11 @@ export async function GET(request: NextRequest) {
       prisma.order.findMany({
         where: { ...dateFilter, ...storeScope },
         include: {
+          store: { select: { defaultPackingFee: true } },
           user: { select: { name: true, email: true } },
           items: {
             include: {
-              product: { select: { name: true } },
+              product: { select: { name: true, costPrice: true } },
               service: { select: { name: true } },
               rentalItem: { select: { name: true } },
             },
@@ -337,13 +385,77 @@ export async function GET(request: NextRequest) {
         ? ((returnClaims / totalWarranties) * 100).toFixed(1)
         : '0.0'
 
+    const recentActivityFormatted = recentOrders.map((order) => {
+      const orderGrossRevenue = order.items.reduce(
+        (sum, item) => sum + item.price * (item.quantity || 1),
+        0
+      )
+      const orderCOGS = order.items.reduce(
+        (sum, item) => sum + (item.costPrice ?? 0) * (item.quantity || 1),
+        0
+      )
+      const orderGrossProfit = orderGrossRevenue - orderCOGS
+      const orderGrossMarginPct =
+        orderGrossRevenue > 0
+          ? Number(((orderGrossProfit / orderGrossRevenue) * 100).toFixed(2))
+          : 0
+      const orderCommission = order.commissionAmount ?? 0
+      const orderPacking = order.store?.defaultPackingFee ?? 5000
+      const orderDiscount = order.discountAmount ?? 0
+      const orderNetProfit =
+        orderGrossProfit - (orderCommission + orderPacking + orderDiscount)
+      const orderNetMarginPct =
+        orderGrossRevenue > 0
+          ? Number(((orderNetProfit / orderGrossRevenue) * 100).toFixed(2))
+          : 0
+
+      return {
+        ...order,
+        financials: {
+          grossRevenue: orderGrossRevenue,
+          cogs: orderCOGS,
+          grossProfit: orderGrossProfit,
+          grossMarginPct: orderGrossMarginPct,
+          platformCommission: orderCommission,
+          packingCost: orderPacking,
+          voucherDiscount: orderDiscount,
+          shippingCost: order.shippingCost ?? 0,
+          insuranceFee: order.insuranceFee ?? 0,
+          netProfit: orderNetProfit,
+          netMarginPct: orderNetMarginPct,
+        },
+      }
+    })
+
     // Return comprehensive report data with cache-prevention headers
     return NextResponse.json(
       {
         success: true,
         data: {
+          financials: {
+            grossRevenue: totalGrossRevenue,
+            cogs: totalCOGS,
+            grossProfit: totalGrossProfit,
+            grossMarginPct,
+            operationalExpenses: {
+              platformCommission: totalPlatformCommission,
+              packingCost: totalPackingCost,
+              voucherDiscount: totalVoucherDiscount,
+              shipping: totalShippingCost,
+              insurance: totalInsuranceFee,
+              total: totalEcommerceExpenses,
+            },
+            netProfit: totalNetProfit,
+            netMarginPct,
+          },
           revenue: {
             total: totalRevenue,
+            grossRevenue: totalGrossRevenue,
+            cogs: totalCOGS,
+            grossProfit: totalGrossProfit,
+            grossMarginPct,
+            netProfit: totalNetProfit,
+            netMarginPct,
             byCategory: revenueByCategory,
             storeCount: activeStores,
           },
@@ -425,7 +537,7 @@ export async function GET(request: NextRequest) {
             total: returnClaims,
             byStatus: returnsByStatus,
           },
-          recentActivity: recentOrders,
+          recentActivity: recentActivityFormatted,
         },
       },
       {

@@ -290,6 +290,7 @@ export async function POST(request: NextRequest) {
               type VerifiedItem = {
                 raw: CartItem
                 itemPrice: number
+                costPrice?: number
                 itemSubtotal: number
                 storeId: string | null
                 commissionRate: number
@@ -378,6 +379,13 @@ export async function POST(request: NextRequest) {
                   const itemSubtotal = itemPrice * quantity
                   subtotal += itemSubtotal
 
+                  // Snapshot HPP per unit (prioritaskan varian spesifik, fallback ke modal dasar produk)
+                  const itemCostPrice =
+                    matchedVariant?.costPrice != null &&
+                    matchedVariant.costPrice > 0
+                      ? matchedVariant.costPrice
+                      : (product.costPrice ?? 0)
+
                   verifiedItems.push({
                     raw: {
                       ...item,
@@ -385,6 +393,7 @@ export async function POST(request: NextRequest) {
                       variantName: matchedVariant?.name || item.variantName,
                     },
                     itemPrice,
+                    costPrice: itemCostPrice,
                     itemSubtotal,
                     storeId: product.storeId,
                     commissionRate: product.store?.commissionRate ?? 2.0,
@@ -791,6 +800,7 @@ export async function POST(request: NextRequest) {
                     quantity: vi.raw.quantity,
                     rentalDays: vi.raw.rentalDays || null,
                     price: vi.itemPrice,
+                    costPrice: vi.costPrice ?? 0,
                     subtotal: vi.itemSubtotal,
                     notes: null,
                   },

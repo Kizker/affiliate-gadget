@@ -20,6 +20,18 @@ export async function GET(
 
     const product = await prisma.product.findUnique({
       where: { id },
+      include: {
+        variants: {
+          orderBy: { price: 'asc' },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+          },
+        },
+      },
     })
 
     if (!product) {
@@ -68,11 +80,45 @@ export async function PATCH(
       )
     }
 
+    if (
+      body.costPrice !== undefined &&
+      body.costPrice !== null &&
+      body.costPrice !== ''
+    ) {
+      if (Number(body.costPrice) < 0) {
+        return NextResponse.json(
+          { error: 'Harga modal (costPrice) tidak boleh negatif' },
+          { status: 400 }
+        )
+      }
+    }
+
     if (body.stock !== undefined && body.stock < 0) {
       return NextResponse.json(
         { error: 'Stock must be a positive number' },
         { status: 400 }
       )
+    }
+
+    // Update variants if provided
+    if (Array.isArray(body.variants)) {
+      for (const v of body.variants) {
+        if (v.id) {
+          await prisma.productVariant.update({
+            where: { id: v.id },
+            data: {
+              ...(v.price !== undefined && { price: parseFloat(v.price) }),
+              ...(v.stock !== undefined && { stock: parseInt(v.stock) }),
+              ...(v.costPrice !== undefined && {
+                costPrice:
+                  v.costPrice !== null && v.costPrice !== ''
+                    ? parseFloat(v.costPrice)
+                    : null,
+              }),
+            },
+          })
+        }
+      }
     }
 
     // Update product
@@ -87,9 +133,20 @@ export async function PATCH(
         ...(body.brand !== undefined && { brand: body.brand }),
         ...(body.model !== undefined && { model: body.model }),
         ...(body.price !== undefined && { price: parseFloat(body.price) }),
+        ...(body.costPrice !== undefined && {
+          costPrice:
+            body.costPrice !== null && body.costPrice !== ''
+              ? parseFloat(body.costPrice)
+              : 0,
+        }),
         ...(body.stock !== undefined && { stock: parseInt(body.stock) }),
         ...(body.images && { images: body.images }),
         ...(body.isActive !== undefined && { isActive: body.isActive }),
+      },
+      include: {
+        variants: {
+          orderBy: { price: 'asc' },
+        },
       },
     })
 

@@ -52,6 +52,7 @@ interface ProductVariant {
   storage: string
   color: string
   price: number | string
+  costPrice?: number | string | null
   stock: number | string
   sku?: string | null
 }
@@ -64,6 +65,7 @@ interface ProductItem {
   category: string
   condition: string
   price: number
+  costPrice?: number | null
   originalPrice: number | null
   stock: number
   weightGram?: number
@@ -1095,6 +1097,34 @@ export default function ProductsPage() {
                                                         'id-ID'
                                                       )}
                                                     </span>
+                                                    {Boolean(
+                                                      v.costPrice &&
+                                                      v.costPrice > 0
+                                                    ) && (
+                                                      <div className="text-[10px] font-medium text-slate-400">
+                                                        HPP:{' '}
+                                                        <span className="font-mono text-slate-600 dark:text-slate-300">
+                                                          Rp{' '}
+                                                          {Number(
+                                                            v.costPrice
+                                                          ).toLocaleString(
+                                                            'id-ID'
+                                                          )}
+                                                        </span>
+                                                        <span className="ml-1 font-bold text-emerald-600 dark:text-emerald-400">
+                                                          (+
+                                                          {Math.round(
+                                                            ((v.price -
+                                                              Number(
+                                                                v.costPrice
+                                                              )) /
+                                                              v.price) *
+                                                              100
+                                                          )}
+                                                          %)
+                                                        </span>
+                                                      </div>
+                                                    )}
                                                   </td>
                                                   <td className="px-3 py-2 text-center">
                                                     <span
@@ -1228,6 +1258,25 @@ export default function ProductsPage() {
                       <span className="text-sm font-black text-slate-950 dark:text-white">
                         Rp {item.price.toLocaleString('id-ID')}
                       </span>
+                      {Boolean(
+                        item.costPrice && Number(item.costPrice) > 0
+                      ) && (
+                        <div className="mt-0.5 text-[11px] font-medium text-slate-400">
+                          HPP:{' '}
+                          <span className="font-mono text-slate-600 dark:text-slate-300">
+                            Rp {Number(item.costPrice).toLocaleString('id-ID')}
+                          </span>
+                          <span className="ml-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                            (+
+                            {Math.round(
+                              ((item.price - Number(item.costPrice)) /
+                                item.price) *
+                                100
+                            )}
+                            %)
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-4 text-center">
                       <span

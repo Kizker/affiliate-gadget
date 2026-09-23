@@ -78,6 +78,16 @@ export async function GET(request: NextRequest) {
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
+        include: {
+          variants: true,
+          store: {
+            select: {
+              id: true,
+              name: true,
+              city: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
@@ -144,9 +154,11 @@ export async function POST(request: NextRequest) {
       brand,
       model,
       price,
+      costPrice,
       stock,
       images,
       isActive,
+      variants,
     } = body
 
     // Validation
@@ -164,6 +176,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const parsedCostPrice =
+      costPrice !== undefined && costPrice !== null && costPrice !== ''
+        ? parseFloat(costPrice)
+        : 0
+
+    if (parsedCostPrice < 0) {
+      return NextResponse.json(
+        { error: 'Harga modal (costPrice) tidak boleh negatif' },
+        { status: 400 }
+      )
+    }
+
     // Create product
     const storeIdToAssign =
       body.storeId ||
@@ -177,10 +201,35 @@ export async function POST(request: NextRequest) {
         brand,
         model,
         price: parseFloat(price),
+        costPrice: parsedCostPrice,
         stock: parseInt(stock),
         images: images || [],
         isActive: isActive !== undefined ? isActive : true,
         ...(storeIdToAssign ? { storeId: storeIdToAssign } : {}),
+        ...(Array.isArray(variants) && variants.length > 0
+          ? {
+              variants: {
+                create: variants.map((v: any) => ({
+                  name: v.name,
+                  ram: v.ram || null,
+                  storage: v.storage || null,
+                  color: v.color || null,
+                  price: parseFloat(v.price) || parseFloat(price),
+                  costPrice:
+                    v.costPrice !== undefined &&
+                    v.costPrice !== null &&
+                    v.costPrice !== ''
+                      ? parseFloat(v.costPrice)
+                      : null,
+                  stock: parseInt(v.stock) || 0,
+                  sku: v.sku || null,
+                })),
+              },
+            }
+          : {}),
+      },
+      include: {
+        variants: true,
       },
     })
 

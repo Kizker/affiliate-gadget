@@ -245,6 +245,7 @@ export async function POST(request: NextRequest) {
       model,
       condition = 'BARU',
       price,
+      costPrice,
       originalPrice,
       stock = 1,
       weightGram = 500,
@@ -305,6 +306,10 @@ export async function POST(request: NextRequest) {
         model,
         condition,
         price: parseFloat(String(price).replace(/\./g, '')),
+        costPrice:
+          costPrice !== undefined && costPrice !== null
+            ? parseFloat(String(costPrice).replace(/\./g, '')) || 0
+            : 0,
         originalPrice: originalPrice
           ? parseFloat(String(originalPrice).replace(/\./g, ''))
           : null,
@@ -331,11 +336,17 @@ export async function POST(request: NextRequest) {
             color: v.color,
             image: v.image || null,
             price: parseFloat(String(v.price || price).replace(/\./g, '')),
+            costPrice:
+              v.costPrice !== undefined && v.costPrice !== null
+                ? parseFloat(String(v.costPrice).replace(/\./g, '')) || 0
+                : costPrice !== undefined && costPrice !== null
+                  ? parseFloat(String(costPrice).replace(/\./g, '')) || 0
+                  : 0,
             stock: parseInt(String(v.stock || stock)) || 0,
             sku: v.sku,
           })),
         },
-      },
+      } as any,
       include: {
         variants: true,
         store: true,

@@ -12,6 +12,7 @@ export interface ColorVariantItem {
   storage: string
   capacityKey: string
   price: number
+  costPrice?: number | null
   stock: number
   sku: string | null
   productId: string
@@ -314,6 +315,12 @@ export function buildCatalogHierarchy(products: any[]): BrandGroup[] {
         storage,
         capacityKey,
         price: Number(v.price) || 0,
+        costPrice:
+          v.costPrice !== undefined && v.costPrice !== null
+            ? Number(v.costPrice)
+            : product.costPrice !== undefined && product.costPrice !== null
+              ? Number(product.costPrice)
+              : null,
         stock: Number(v.stock) || 0,
         sku: v.sku || null,
         productId: product.id,

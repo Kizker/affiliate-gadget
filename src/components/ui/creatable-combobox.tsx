@@ -195,14 +195,14 @@ export function CreatableCombobox({
           onKeyDown={handleKeyDown}
           className={`w-full font-medium text-slate-900 outline-none transition placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500 ${
             isSmall
-              ? 'rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800'
-              : 'rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900'
+              ? 'h-9 rounded-xl border border-slate-200 bg-white px-3 pr-12 text-xs focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800'
+              : 'h-10 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 pr-14 text-xs font-medium focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900'
           } ${disabled ? 'cursor-not-allowed bg-slate-100 opacity-50 dark:bg-slate-900' : ''} ${
             isOpen ? 'border-slate-900 dark:border-slate-400' : ''
           }`}
         />
 
-        <div className="absolute right-2 flex items-center gap-1">
+        <div className="absolute right-2.5 flex items-center gap-1">
           {inputValue && !disabled && (
             <button
               type="button"

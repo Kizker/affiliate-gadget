@@ -123,8 +123,9 @@ model Store {
   whatsapp       String?
   email          String?
   isOwnerStore   Boolean            @default(false) // Unlimited Ads & Internal owner store
-  commissionRate Float              @default(2.0)   // 1% - 3% platform commission
-  rating         Float              @default(5.0)
+  commissionRate    Float              @default(2.0)   // 1% - 3% platform commission
+  defaultPackingFee Float              @default(5000)  // Biaya packing per pesanan (Rp 5.000)
+  rating            Float              @default(5.0)
   totalReview    Int                @default(0)
   totalSales     Int                @default(0)
   isActive       Boolean            @default(true)
@@ -187,6 +188,7 @@ model Product {
   model                   String?          // e.g. "iPhone 15 Pro", "Galaxy S24"
   condition               String           @default("BARU") // BARU, LIKE_NEW, SECOND_MULUS
   price                   Float
+  costPrice               Float            @default(0) // Modal dasar per unit dari supplier
   originalPrice           Float?
   stock                   Int              @default(0)
   weightGram              Int              @default(500)
@@ -231,6 +233,7 @@ model ProductVariant {
   color     String?
   image     String?
   price     Float
+  costPrice Float?   // Modal spesifik varian (opsional, fallback ke Product.costPrice)
   stock     Int      @default(0)
   sku       String?
   createdAt DateTime @default(now())
@@ -557,6 +560,7 @@ model OrderItem {
   quantity     Int          @default(1)
   rentalDays   Int?
   price        Float
+  costPrice    Float        @default(0) // Snapshot modal unit saat transaksi dibuat
   subtotal     Float
   finalPrice   Float?       // Final price set by technician (for services)
   notes        String?

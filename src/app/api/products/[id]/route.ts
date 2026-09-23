@@ -117,6 +117,7 @@ export async function PATCH(
       model,
       condition,
       price,
+      costPrice,
       originalPrice,
       stock,
       weightGram,
@@ -150,6 +151,12 @@ export async function PATCH(
               price: parseFloat(
                 String(v.price || price || existing.price).replace(/\./g, '')
               ),
+              costPrice:
+                v.costPrice !== undefined && v.costPrice !== null
+                  ? parseFloat(String(v.costPrice).replace(/\./g, '')) || 0
+                  : costPrice !== undefined && costPrice !== null
+                    ? parseFloat(String(costPrice).replace(/\./g, '')) || 0
+                    : (existing as any).costPrice || 0,
               stock: parseInt(String(v.stock || stock || existing.stock)) || 0,
               sku: v.sku || null,
             })),
@@ -172,6 +179,9 @@ export async function PATCH(
           ...(condition !== undefined && { condition }),
           ...(price !== undefined && {
             price: parseFloat(String(price).replace(/\./g, '')),
+          }),
+          ...(costPrice !== undefined && {
+            costPrice: parseFloat(String(costPrice).replace(/\./g, '')) || 0,
           }),
           ...(originalPrice !== undefined && {
             originalPrice: originalPrice

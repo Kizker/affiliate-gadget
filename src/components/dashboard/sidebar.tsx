@@ -162,6 +162,11 @@ const storeAdminNavSections: NavSection[] = [
       },
       { icon: ShoppingCart, label: 'Pesanan', href: '/dashboard/admin/orders' },
       { icon: Wallet, label: 'Keuangan', href: '/dashboard/admin/finance' },
+      {
+        icon: BarChart3,
+        label: 'Laporan Keuangan',
+        href: '/dashboard/admin/reports',
+      },
       { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
       {
         icon: ShieldCheck,

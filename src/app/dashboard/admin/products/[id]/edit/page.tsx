@@ -94,6 +94,7 @@ export default function EditProductPage() {
     model: '',
     condition: 'LIKE_NEW',
     price: '',
+    costPrice: '',
     originalPrice: '',
     stock: '5',
     weightGram: '500',
@@ -176,6 +177,10 @@ export default function EditProductPage() {
           model: p.model || '',
           condition: p.condition || 'LIKE_NEW',
           price: p.price ? String(p.price) : '',
+          costPrice:
+            p.costPrice !== undefined && p.costPrice !== null
+              ? String(p.costPrice)
+              : '',
           originalPrice: p.originalPrice ? String(p.originalPrice) : '',
           stock: String(p.stock ?? 5),
           weightGram: String(p.weightGram ?? 500),
@@ -203,6 +208,10 @@ export default function EditProductPage() {
               color: v.color || '',
               image: v.image || '',
               price: v.price ? String(v.price) : '',
+              costPrice:
+                v.costPrice !== undefined && v.costPrice !== null
+                  ? String(v.costPrice)
+                  : '',
               stock: String(v.stock ?? 1),
               sku: v.sku || '',
             }))
@@ -216,6 +225,10 @@ export default function EditProductPage() {
               color: 'Default',
               image: '',
               price: p.price ? String(p.price) : '',
+              costPrice:
+                p.costPrice !== undefined && p.costPrice !== null
+                  ? String(p.costPrice)
+                  : '',
               stock: String(p.stock ?? 1),
               sku: '',
             },
@@ -250,6 +263,7 @@ export default function EditProductPage() {
         color: 'Natural Titanium',
         image: '',
         price: form.price,
+        costPrice: form.costPrice || '',
         stock: '1',
         sku: '',
       },
@@ -402,6 +416,7 @@ export default function EditProductPage() {
         storeId: finalStoreId,
         images: finalImages,
         price: numericPrice,
+        costPrice: form.costPrice ? parseRupiahInput(form.costPrice) : 0,
         originalPrice: form.originalPrice
           ? parseRupiahInput(form.originalPrice)
           : undefined,
@@ -419,6 +434,11 @@ export default function EditProductPage() {
           color: v.color,
           image: v.image || undefined,
           price: v.price ? parseRupiahInput(v.price) : numericPrice,
+          costPrice: v.costPrice
+            ? parseRupiahInput(v.costPrice)
+            : form.costPrice
+              ? parseRupiahInput(form.costPrice)
+              : 0,
           stock: parseInt(String(v.stock), 10) || 0,
           sku: v.sku || undefined,
         })),
@@ -493,24 +513,33 @@ export default function EditProductPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Main Info */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Nama Lengkap Gadget */}
             <div className="space-y-1.5 sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Nama Lengkap Gadget *
-              </label>
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Nama Lengkap Gadget <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] text-slate-400">
+                  Sertakan Merek, Seri, Storage & Warna
+                </span>
+              </div>
               <input
                 type="text"
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Contoh: iPhone 15 Pro Max 256GB Natural Titanium"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
               />
             </div>
 
+            {/* Baris 1: Merek (Brand) & Kondisi Fisik */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Merek (Brand) *
-              </label>
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Merek (Brand) <span className="text-rose-500">*</span>
+                </label>
+              </div>
               <CreatableCombobox
                 value={form.brand}
                 onChange={(val) => setForm({ ...form, brand: val })}
@@ -520,9 +549,24 @@ export default function EditProductPage() {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Toko Pemilik *
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Kondisi Fisik <span className="text-rose-500">*</span>
+                </label>
+              </div>
+              <CreatableCombobox
+                value={form.condition}
+                onChange={(val) => setForm({ ...form, condition: val })}
+                options={CONDITION_OPTIONS}
+                placeholder="Pilih atau ketik kondisi fisik..."
+              />
+            </div>
+
+            {/* Baris 2: Toko Pemilik (Full Width) */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Toko Pemilik <span className="text-rose-500">*</span>
                 </label>
                 {isStoreAdmin && (
                   <span className="rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
@@ -530,17 +574,16 @@ export default function EditProductPage() {
                   </span>
                 )}
               </div>
-
               {isStoreAdmin ? (
                 stores.length > 0 ? (
-                  <div className="flex items-center gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-100/80 px-4 py-3 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200">
+                  <div className="flex h-10 items-center gap-2.5 rounded-xl border border-slate-200/80 bg-slate-100/80 px-3.5 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200">
                     <Building2 className="h-4 w-4 shrink-0 text-orange-500" />
                     <span className="truncate">
                       {stores[0].name} ({stores[0].city || 'Indonesia'})
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-100/80 px-4 py-3 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400">
+                  <div className="flex h-10 items-center gap-2.5 rounded-xl border border-slate-200/80 bg-slate-100/80 px-3.5 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     <span>Memuat cabang toko Anda...</span>
                   </div>
@@ -551,7 +594,7 @@ export default function EditProductPage() {
                   onChange={(e) =>
                     setForm({ ...form, storeId: e.target.value })
                   }
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -562,10 +605,16 @@ export default function EditProductPage() {
               )}
             </div>
 
+            {/* Baris 3: Harga Jual & Harga Modal / HPP */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Harga Jual (Rp) *
-              </label>
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Harga Jual (Rp) <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                  Harga Konsumen
+                </span>
+              </div>
               <input
                 type="text"
                 inputMode="numeric"
@@ -576,14 +625,43 @@ export default function EditProductPage() {
                   setForm({ ...form, price: raw })
                 }}
                 placeholder="18.999.000"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Harga Coret Pembanding (Rp)
-              </label>
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Harga Modal / HPP (Rp)
+                </label>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  Dasar Laba Bersih
+                </span>
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={formatRupiahInput(form.costPrice)}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '')
+                  setForm({ ...form, costPrice: raw })
+                }}
+                placeholder="16.500.000"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
+                title="Harga pokok modal unit untuk kalkulasi laba toko"
+              />
+            </div>
+
+            {/* Baris 4: Harga Coret Pembanding & Total Stok Unit */}
+            <div className="space-y-1.5">
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Harga Coret Pembanding (Rp)
+                </label>
+                <span className="text-[10px] text-slate-400">
+                  Coret Diskon (Opsional)
+                </span>
+              </div>
               <input
                 type="text"
                 inputMode="numeric"
@@ -593,39 +671,39 @@ export default function EditProductPage() {
                   setForm({ ...form, originalPrice: raw })
                 }}
                 placeholder="20.999.000"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Total Stok Unit
-              </label>
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Total Stok Unit <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] text-slate-400">
+                  Kuantitas Fisik Siap Jual
+                </span>
+              </div>
               <input
                 type="number"
+                min={0}
                 value={form.stock}
                 onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                placeholder="10"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
               />
             </div>
 
+            {/* Baris 5: Berat Produk & Tarif Ongkir Dasar */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Kondisi Fisik
-              </label>
-              <CreatableCombobox
-                value={form.condition}
-                onChange={(val) => setForm({ ...form, condition: val })}
-                options={CONDITION_OPTIONS}
-                placeholder="Pilih atau ketik kondisi fisik..."
-              />
-            </div>
-
-            {/* ─── Berat & Tarif Ongkir per Kg ─── */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Berat Produk (gram) *
-              </label>
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Berat Produk (gram) <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] text-slate-400">
+                  Contoh: 500 = 0,5 kg
+                </span>
+              </div>
               <input
                 type="number"
                 min={1}
@@ -634,17 +712,20 @@ export default function EditProductPage() {
                   setForm({ ...form, weightGram: e.target.value })
                 }
                 placeholder="500"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
               />
-              <p className="text-[10px] text-slate-400">
-                Berat unit dalam gram (misal: 500 = 0,5 kg)
-              </p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Tarif Ongkir Dasar per Kg (Rp) *
-              </label>
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Tarif Ongkir Dasar per Kg (Rp){' '}
+                  <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] text-slate-400">
+                  Default: Rp 20.000 / kg
+                </span>
+              </div>
               <input
                 type="text"
                 inputMode="numeric"
@@ -654,11 +735,8 @@ export default function EditProductPage() {
                   setForm({ ...form, pricePerKg: raw })
                 }}
                 placeholder="20.000"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
               />
-              <p className="text-[10px] text-slate-400">
-                Tarif dasar ongkir per kg (default: Rp 20.000)
-              </p>
             </div>
           </div>
 
@@ -882,8 +960,8 @@ export default function EditProductPage() {
                     </div>
                   </div>
 
-                  {/* Inputs Grid: Nama, RAM, Storage, Warna, Harga, Stok */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                  {/* Inputs Grid: Nama, RAM, Storage, Warna, Harga, Modal, Stok */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-8">
                     <div className="lg:col-span-2">
                       <CreatableCombobox
                         label="Nama Varian"
@@ -960,7 +1038,7 @@ export default function EditProductPage() {
 
                     <div>
                       <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                        Harga Varian (Rp)
+                        Harga Jual (Rp)
                       </label>
                       <input
                         type="text"
@@ -974,6 +1052,26 @@ export default function EditProductPage() {
                           formatRupiahInput(form.price) || '18.999.000'
                         }
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        HPP Modal (Rp)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatRupiahInput(v.costPrice)}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, '')
+                          updateVariant(i, 'costPrice', raw)
+                        }}
+                        placeholder={
+                          formatRupiahInput(form.costPrice) || 'Otomatis'
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        title="Modal / HPP varian (opsional jika sama dengan produk utama)"
                       />
                     </div>
 

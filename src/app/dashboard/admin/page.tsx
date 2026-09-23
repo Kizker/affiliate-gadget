@@ -59,8 +59,19 @@ interface StoreAdminStats {
 interface SuperAdminStats {
   totalOrders: number
   totalRevenue: number
+  totalPlatformCommission: number
   totalStores: number
   totalUsers: number
+  activeComplaints: number
+  storesList: {
+    id: string
+    name: string
+    companyName: string
+    city: string
+    phone: string
+    rating: number
+    totalSales: number
+  }[]
 }
 
 // ============================================================
@@ -194,9 +205,12 @@ export default function AdminDashboardPage() {
           const data = await dashRes.json()
           setSuperStats({
             totalOrders: data.stats?.totalOrders ?? 0,
-            totalRevenue: 0, // calculate below from orders
-            totalStores: 5,
+            totalRevenue: data.stats?.totalRevenue ?? 0,
+            totalPlatformCommission: data.stats?.totalPlatformCommission ?? 0,
+            totalStores: data.stats?.totalStores ?? 0,
             totalUsers: data.stats?.totalUsers ?? 0,
+            activeComplaints: data.stats?.activeComplaints ?? 0,
+            storesList: data.stats?.storesList ?? [],
           })
         }
       }
@@ -393,9 +407,7 @@ export default function AdminDashboardPage() {
                   <span className="mr-1 text-xs font-semibold text-orange-500">
                     Rp
                   </span>
-                  {recentOrders
-                    .reduce((s, o) => s + o.total, 0)
-                    .toLocaleString('id-ID')}
+                  {(superStats?.totalRevenue ?? 0).toLocaleString('id-ID')}
                 </p>
               )}
               <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
@@ -420,17 +432,21 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="mt-2.5">
-              <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
-                <span className="mr-1 text-xs font-semibold text-orange-500">
-                  Rp
-                </span>
-                {Math.round(
-                  recentOrders.reduce((s, o) => s + o.total * 0.025, 0)
-                ).toLocaleString('id-ID')}
-              </p>
+              {loadingData ? (
+                <div className="h-5 w-28 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+              ) : (
+                <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
+                  <span className="mr-1 text-xs font-semibold text-orange-500">
+                    Rp
+                  </span>
+                  {(superStats?.totalPlatformCommission ?? 0).toLocaleString(
+                    'id-ID'
+                  )}
+                </p>
+              )}
               <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
                 <span className="font-semibold text-orange-600 dark:text-orange-400">
-                  2.5% Rate
+                  2.0% - 2.5% Rate
                 </span>
                 <span className="text-slate-400 dark:text-slate-500">
                   · Bagi hasil
@@ -449,16 +465,20 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="mt-2.5">
-              <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
-                5 Toko Aktif
-              </p>
+              {loadingData ? (
+                <div className="h-5 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+              ) : (
+                <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
+                  {superStats?.totalStores ?? 0} Toko Aktif
+                </p>
+              )}
               <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
                 <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   100% Beroperasi
                 </span>
                 <span className="text-slate-400 dark:text-slate-500">
-                  · 5 Kota
+                  · Seluruh Jaringan PT
                 </span>
               </div>
             </div>
@@ -475,14 +495,16 @@ export default function AdminDashboardPage() {
             </div>
             <div className="mt-2.5">
               <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
-                100% Aman
+                {(superStats?.activeComplaints ?? 0) > 0
+                  ? `${superStats?.activeComplaints} Kasus Aktif`
+                  : '100% Aman'}
               </p>
               <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                   Garansi 30 Hari
                 </span>
                 <span className="text-slate-400 dark:text-slate-500">
-                  · 0 antrean
+                  · {superStats?.activeComplaints ?? 0} antrean komplain
                 </span>
               </div>
             </div>
@@ -531,16 +553,20 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="mt-2.5">
-              <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
-                5 Cabang
-              </p>
+              {loadingData ? (
+                <div className="h-5 w-20 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+              ) : (
+                <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
+                  {superStats?.totalStores ?? 0} Cabang
+                </p>
+              )}
               <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
                 <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Terverifikasi
                 </span>
                 <span className="text-slate-400 dark:text-slate-500">
-                  · 5 Kota
+                  · Multi-PT
                 </span>
               </div>
             </div>
@@ -984,47 +1010,24 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="divide-y divide-slate-100 pt-2 dark:divide-slate-800/60">
-              {[
-                {
-                  name: 'PT Gadget Jaya Sentosa',
-                  branch: 'Roxy Mas Pusat',
-                  city: 'Jakarta Pusat',
-                },
-                {
-                  name: 'PT Sinar Gadget Nusantara',
-                  branch: 'WTC Surabaya',
-                  city: 'Surabaya',
-                },
-                {
-                  name: 'PT Digital Niaga Prima',
-                  branch: 'BEC Bandung',
-                  city: 'Bandung',
-                },
-                {
-                  name: 'PT Surya Makmur Gadget',
-                  branch: 'Plaza Medan Fair',
-                  city: 'Medan',
-                },
-                {
-                  name: 'PT Mega Ponsel Nusantara',
-                  branch: 'Jogjatronik Mall',
-                  city: 'Yogyakarta',
-                },
-              ].map((store, i) => (
+              {(superStats?.storesList && superStats.storesList.length > 0
+                ? superStats.storesList
+                : []
+              ).map((store) => (
                 <div
-                  key={i}
+                  key={store.id}
                   className="group flex items-center justify-between gap-3 py-3.5 transition-colors first:pt-2 last:pb-0"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="shadow-2xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-orange-200/60 bg-orange-100/80 text-xs font-bold text-orange-700 dark:border-orange-800/40 dark:bg-orange-950/60 dark:text-orange-300">
-                      {store.branch.charAt(0)}
+                      {store.name.charAt(0)}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-xs font-bold text-slate-900 transition-colors group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:text-sm">
-                        {store.branch}
+                        {store.name}
                       </p>
                       <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
-                        {store.name} · {store.city}
+                        {store.companyName} · {store.city}
                       </p>
                     </div>
                   </div>

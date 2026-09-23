@@ -68,14 +68,22 @@ export async function GET() {
       totalMitras,
       totalProducts,
       totalOrders,
+      totalStores,
+      activeComplaints,
       pendingMitras,
       recentUsers,
+      revenueAgg,
+      storesList,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.technician.count(),
       prisma.user.count({ where: { role: 'MITRA' } }),
       prisma.product.count({ where: { isActive: true } }),
       prisma.order.count(),
+      prisma.store.count({ where: { isActive: true } }),
+      prisma.complaint.count({
+        where: { status: { in: ['OPEN', 'IN_PROGRESS'] } },
+      }),
       prisma.user.count({ where: { role: 'MITRA', mitraStatus: 'PENDING' } }),
       prisma.user.findMany({
         take: 5,
@@ -91,7 +99,34 @@ export async function GET() {
           },
         },
       }),
+      prisma.order.aggregate({
+        where: {
+          status: {
+            in: ['PAID', 'IN_PROGRESS', 'SHIPPED', 'COMPLETED', 'COMPLAINED'],
+          },
+        },
+        _sum: {
+          total: true,
+          commissionAmount: true,
+        },
+      }),
+      prisma.store.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          companyName: true,
+          city: true,
+          phone: true,
+          rating: true,
+          totalSales: true,
+        },
+        orderBy: [{ totalSales: 'desc' }, { createdAt: 'asc' }],
+      }),
     ])
+
+    const totalRevenue = revenueAgg._sum.total || 0
+    const totalPlatformCommission = revenueAgg._sum.commissionAmount || 0
 
     // Get role distribution
     const roleStats = await prisma.user.groupBy({
@@ -208,6 +243,11 @@ export async function GET() {
         totalMitras,
         totalProducts,
         totalOrders,
+        totalStores,
+        totalRevenue,
+        totalPlatformCommission,
+        activeComplaints,
+        storesList,
         pendingMitras,
         byRole: roleStats.reduce((acc: Record<string, number>, stat) => {
           acc[stat.role] = stat._count
