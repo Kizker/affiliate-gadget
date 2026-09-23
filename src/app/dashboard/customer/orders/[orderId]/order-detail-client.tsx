@@ -467,12 +467,34 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     chatParams.set('productImage', firstProduct.images[0])
   if (firstItem?.price) chatParams.set('productPrice', String(firstItem.price))
 
+  const handleNavigateBack = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+    }
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname
+      window.history.back()
+
+      setTimeout(() => {
+        if (
+          typeof window !== 'undefined' &&
+          window.location.pathname === currentPath
+        ) {
+          router.push('/dashboard/customer/orders')
+        }
+      }, 250)
+      return
+    }
+    router.push('/dashboard/customer/orders')
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* 1. Top Navigation: Mobile Top Nav & Desktop Navbar */}
       <div className="block md:hidden">
         <MobileTopNav
           showBack={true}
+          onBack={handleNavigateBack}
           backHref="/dashboard/customer/orders"
           title={`Pesanan #${order.orderNumber}`}
         />
@@ -487,16 +509,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
           <div className="mb-6 hidden flex-wrap items-center justify-between gap-3 md:flex">
             <button
               type="button"
-              onClick={() => {
-                if (
-                  typeof window !== 'undefined' &&
-                  window.history.length > 1
-                ) {
-                  router.back()
-                } else {
-                  router.push('/dashboard/customer/orders')
-                }
-              }}
+              onClick={handleNavigateBack}
               className="inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-500 transition-colors hover:text-slate-950 dark:hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />

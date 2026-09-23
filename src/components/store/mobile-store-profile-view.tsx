@@ -49,11 +49,21 @@ export function MobileStoreProfileView({
       : '/login?callbackUrl=/dashboard/customer/settings'
 
   const handleBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
-    } else {
-      router.push('/toko')
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname
+      window.history.back()
+
+      setTimeout(() => {
+        if (
+          typeof window !== 'undefined' &&
+          window.location.pathname === currentPath
+        ) {
+          router.push('/toko')
+        }
+      }, 250)
+      return
     }
+    router.push('/toko')
   }
 
   const storeBanner =

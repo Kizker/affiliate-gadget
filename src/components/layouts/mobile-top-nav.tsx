@@ -52,12 +52,30 @@ export function MobileTopNav({
       onBack()
       return
     }
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
-    } else if (backHref) {
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname
+      window.history.back()
+
+      // Fallback jika tidak ada riwayat navigasi sebelumnya di browser tab
+      setTimeout(() => {
+        if (
+          typeof window !== 'undefined' &&
+          window.location.pathname === currentPath
+        ) {
+          if (backHref) {
+            router.push(backHref)
+          } else {
+            router.push('/')
+          }
+        }
+      }, 250)
+      return
+    }
+
+    if (backHref) {
       router.push(backHref)
     } else {
-      router.back()
+      router.push('/')
     }
   }
 

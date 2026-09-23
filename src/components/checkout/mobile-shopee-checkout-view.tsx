@@ -167,12 +167,28 @@ export function MobileShopeeCheckoutView({
   const router = useRouter()
 
   const handleBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
-    } else if (backHref) {
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname
+      window.history.back()
+
+      setTimeout(() => {
+        if (
+          typeof window !== 'undefined' &&
+          window.location.pathname === currentPath
+        ) {
+          if (backHref) {
+            router.push(backHref)
+          } else {
+            router.push('/cart')
+          }
+        }
+      }, 250)
+      return
+    }
+    if (backHref) {
       router.push(backHref)
     } else {
-      router.back()
+      router.push('/cart')
     }
   }
 
