@@ -838,16 +838,8 @@ export default function AdminOrdersPage() {
                     </div>
 
                     {/* Status Pill in Header */}
-                    <div
-                      className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold ${
-                        statusConfig[selectedOrder.status]?.badgeClass || ''
-                      }`}
-                    >
-                      <span
-                        className={`h-2 w-2 rounded-full ${
-                          statusConfig[selectedOrder.status]?.dotClass || ''
-                        }`}
-                      />
+                    <div className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 bg-white px-3.5 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      <span className="h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-400" />
                       <span>
                         {statusConfig[selectedOrder.status]?.label ||
                           selectedOrder.status}
@@ -894,7 +886,7 @@ export default function AdminOrdersPage() {
                                 />
                                 <div className="min-w-0">
                                   {item.product?.brand && (
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                       {item.product.brand}
                                     </span>
                                   )}
@@ -912,7 +904,7 @@ export default function AdminOrdersPage() {
                                     </p>
                                   )}
                                   <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                                    {item.quantity} Unit Ã— Rp{' '}
+                                    {item.quantity} Unit × Rp{' '}
                                     {item.price.toLocaleString('id-ID')}
                                   </p>
                                 </div>
@@ -929,14 +921,14 @@ export default function AdminOrdersPage() {
                       </div>
 
                       {/* Bonus 3-in-1 Callout */}
-                      <div className="rounded-xl border border-orange-200/80 bg-orange-50/90 p-3 text-xs text-orange-950 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300">
-                        <div className="flex items-center gap-1.5 font-bold text-orange-800 dark:text-orange-200">
-                          <Gift className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                      <div className="dark:bg-slate-850 rounded-xl border border-slate-200 bg-white p-3 text-xs dark:border-slate-700">
+                        <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                          <Gift className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                           <span>
                             Paket Bonus 3-in-1 (Termasuk Gratis Rp 0):
                           </span>
                         </div>
-                        <p className="mt-1 pl-5 text-[11px] font-medium leading-relaxed text-orange-700 dark:text-orange-400">
+                        <p className="mt-1 pl-5 text-[11px] font-normal leading-relaxed text-slate-500 dark:text-slate-400">
                           Adaptor Fast Charger + Tempered Glass 9H + Softcase
                           Presisi
                         </p>
@@ -967,7 +959,7 @@ export default function AdminOrdersPage() {
                           Asuransi Pengiriman (
                           {selectedOrder.insuranceRate ?? 0.2}%):
                         </span>
-                        <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                        <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
                           {selectedOrder.insuranceFee
                             ? `Rp ${selectedOrder.insuranceFee.toLocaleString('id-ID')}`
                             : 'Termasuk (Rp 0)'}
@@ -976,7 +968,7 @@ export default function AdminOrdersPage() {
 
                       {selectedOrder.discountAmount !== undefined &&
                         selectedOrder.discountAmount > 0 && (
-                          <div className="flex justify-between text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                          <div className="flex justify-between text-xs font-medium text-slate-700 dark:text-slate-300">
                             <span>
                               Diskon Voucher{' '}
                               {selectedOrder.voucherCode
@@ -984,7 +976,7 @@ export default function AdminOrdersPage() {
                                 : ''}
                               :
                             </span>
-                            <span className="font-bold tabular-nums">
+                            <span className="font-semibold tabular-nums">
                               - Rp{' '}
                               {selectedOrder.discountAmount.toLocaleString(
                                 'id-ID'
@@ -994,11 +986,11 @@ export default function AdminOrdersPage() {
                         )}
 
                       {/* Total Highlight */}
-                      <div className="shadow-xs mt-3 flex items-center justify-between rounded-xl bg-slate-950 p-3.5 text-white dark:bg-white dark:text-slate-950">
-                        <span className="text-xs font-bold">
+                      <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5 text-slate-900 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white">
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
                           Total Tagihan:
                         </span>
-                        <span className="text-base font-black tabular-nums">
+                        <span className="text-base font-black tabular-nums text-slate-900 dark:text-white">
                           Rp {selectedOrder.total.toLocaleString('id-ID')}
                         </span>
                       </div>
@@ -1014,7 +1006,7 @@ export default function AdminOrdersPage() {
                       </span>
 
                       <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-sm font-bold text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                           {(selectedOrder.user?.name || 'C')
                             .charAt(0)
                             .toUpperCase()}
@@ -1035,9 +1027,9 @@ export default function AdminOrdersPage() {
                             href={`https://wa.me/${selectedOrder.user.phone.replace(/[^0-9]/g, '')}?text=Halo%20${encodeURIComponent(selectedOrder.user.name || '')},%20kami%20dari%20${encodeURIComponent(selectedOrder.store?.name || 'Affiliate Gadget')}%20ingin%20mengonfirmasi%20pesanan%20%23${selectedOrder.orderNumber}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="shadow-2xs flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/80 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100 active:scale-95 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            className="shadow-2xs flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                           >
-                            <Phone className="h-3.5 w-3.5 text-emerald-600" />
+                            <Phone className="h-3.5 w-3.5 text-slate-500" />
                             <span>
                               Hubungi via WhatsApp ({selectedOrder.user.phone})
                             </span>
@@ -1075,7 +1067,7 @@ export default function AdminOrdersPage() {
                       </span>
 
                       <div className="flex items-center gap-2.5 font-bold text-slate-900 dark:text-white">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-900 dark:bg-blue-950/50">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                           <Truck className="h-4 w-4" />
                         </div>
                         <div>
@@ -1090,8 +1082,8 @@ export default function AdminOrdersPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 p-2.5 text-xs font-semibold text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
-                        <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+                      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        <ShieldCheck className="h-4 w-4 shrink-0 text-slate-500" />
                         <span className="text-[11px]">
                           Asuransi 100% Proteksi Kerusakan & Kehilangan Fisik
                         </span>
@@ -1158,7 +1150,7 @@ export default function AdminOrdersPage() {
                         handleUpdateStatus(selectedOrder.id, 'PAID')
                       }
                       disabled={updatingId === selectedOrder.id}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-amber-600/20 transition hover:bg-amber-700 active:scale-95 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                     >
                       {updatingId === selectedOrder.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -1175,7 +1167,7 @@ export default function AdminOrdersPage() {
                         type="button"
                         onClick={() => handleRequestPickup(selectedOrder)}
                         disabled={requestingPickupId === selectedOrder.id}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                       >
                         {requestingPickupId === selectedOrder.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1194,9 +1186,9 @@ export default function AdminOrdersPage() {
                       <button
                         type="button"
                         onClick={() => handleOpenAWBModal(selectedOrder)}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100 active:scale-95 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       >
-                        <FileEdit className="h-3.5 w-3.5" />
+                        <FileEdit className="h-3.5 w-3.5 text-slate-500" />
                         <span>Input Resi Manual</span>
                       </button>
 
@@ -1206,7 +1198,7 @@ export default function AdminOrdersPage() {
                           handleUpdateStatus(selectedOrder.id, 'IN_PROGRESS')
                         }
                         disabled={updatingId === selectedOrder.id}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                       >
                         <span>Proses Manual</span>
                       </button>
@@ -1218,28 +1210,22 @@ export default function AdminOrdersPage() {
                       <button
                         type="button"
                         onClick={() => handleOpenThermalLabel(selectedOrder)}
-                        className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       >
-                        <Printer className="h-3.5 w-3.5 text-orange-500" />
+                        <Printer className="h-3.5 w-3.5 text-slate-500" />
                         <span>Cetak Label Thermal</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setShowLiveTracker(!showLiveTracker)}
-                        className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-xs font-bold transition active:scale-95 ${
+                        className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-xs font-semibold transition active:scale-95 ${
                           showLiveTracker
-                            ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                            ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
                             : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
                         }`}
                       >
-                        <Navigation
-                          className={`h-3.5 w-3.5 ${
-                            showLiveTracker
-                              ? 'text-blue-600 dark:text-blue-400'
-                              : 'text-blue-500'
-                          }`}
-                        />
+                        <Navigation className="h-3.5 w-3.5" />
                         <span>
                           {showLiveTracker ? 'Tutup Lacak' : 'Lacak Kurir Live'}
                         </span>
@@ -1249,12 +1235,12 @@ export default function AdminOrdersPage() {
                         type="button"
                         onClick={() => handleSyncStatus(selectedOrder.id)}
                         disabled={syncingStatusId === selectedOrder.id}
-                        className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       >
                         {syncingStatusId === selectedOrder.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                          <RefreshCw className="h-3.5 w-3.5" />
+                          <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
                         )}
                         <span>Refresh Status</span>
                       </button>
@@ -1265,7 +1251,7 @@ export default function AdminOrdersPage() {
                           handleUpdateStatus(selectedOrder.id, 'SHIPPED')
                         }
                         disabled={updatingId === selectedOrder.id}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-600/20 transition hover:bg-orange-700 active:scale-95 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                       >
                         {updatingId === selectedOrder.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1281,14 +1267,14 @@ export default function AdminOrdersPage() {
                           handleUpdateStatus(selectedOrder.id, 'COMPLETED')
                         }
                         disabled={updatingId === selectedOrder.id}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       >
                         {updatingId === selectedOrder.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircle2 className="h-4 w-4 text-slate-600" />
                         )}
-                        <span>Tandai Selesai & Diterima</span>
+                        <span>Tandai Selesai</span>
                       </button>
                     </>
                   )}
@@ -1298,28 +1284,22 @@ export default function AdminOrdersPage() {
                       <button
                         type="button"
                         onClick={() => handleOpenThermalLabel(selectedOrder)}
-                        className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       >
-                        <Printer className="h-3.5 w-3.5 text-orange-500" />
+                        <Printer className="h-3.5 w-3.5 text-slate-500" />
                         <span>Cetak Label Thermal</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setShowLiveTracker(!showLiveTracker)}
-                        className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-xs font-bold transition active:scale-95 ${
+                        className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-xs font-semibold transition active:scale-95 ${
                           showLiveTracker
-                            ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                            ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
                             : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
                         }`}
                       >
-                        <Navigation
-                          className={`h-3.5 w-3.5 ${
-                            showLiveTracker
-                              ? 'text-blue-600 dark:text-blue-400'
-                              : 'text-blue-500'
-                          }`}
-                        />
+                        <Navigation className="h-3.5 w-3.5" />
                         <span>
                           {showLiveTracker ? 'Tutup Lacak' : 'Lacak Kurir Live'}
                         </span>
@@ -1331,7 +1311,7 @@ export default function AdminOrdersPage() {
                           handleUpdateStatus(selectedOrder.id, 'COMPLETED')
                         }
                         disabled={updatingId === selectedOrder.id}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                       >
                         {updatingId === selectedOrder.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1362,7 +1342,7 @@ export default function AdminOrdersPage() {
         <DialogContent className="max-w-md rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
           <DialogHeader className="px-6 pb-4 pt-6">
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
-              <FileEdit className="h-5 w-5 text-blue-600" />
+              <FileEdit className="h-5 w-5 text-slate-700 dark:text-slate-300" />
               Input Nomor Resi Manual
             </DialogTitle>
             <DialogDescription className="mt-1 text-xs text-slate-500">
@@ -1376,7 +1356,7 @@ export default function AdminOrdersPage() {
           <div className="space-y-4 px-6 pb-2">
             {/* Courier badge */}
             <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/60">
-              <Truck className="h-4 w-4 shrink-0 text-orange-500" />
+              <Truck className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-400" />
               <div className="min-w-0">
                 <p className="text-[11px] font-medium text-slate-500">
                   Kurir Pesanan
@@ -1468,7 +1448,7 @@ export default function AdminOrdersPage() {
               type="button"
               onClick={handleSubmitManualAWB}
               disabled={!awbValidation?.valid || submittingAWB}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 active:scale-95 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
             >
               {submittingAWB ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
