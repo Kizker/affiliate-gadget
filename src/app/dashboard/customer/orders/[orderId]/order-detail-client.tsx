@@ -440,8 +440,35 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
 
   const canCancel =
     order.status === 'PENDING_PAYMENT' || order.status === 'PAID'
-  const canConfirmReceived = order.status === 'IN_PROGRESS'
-  const isCompleted = order.status === 'COMPLETED'
+  const canConfirmReceived =
+    (order.status === 'IN_PROGRESS' || order.status === 'SHIPPED') &&
+    !order.customerConfirmedAt
+  const isCompleted =
+    order.status === 'COMPLETED' || !!order.customerConfirmedAt
+  const canRequestReturnOrComplaint =
+    order.status === 'SHIPPED' || order.status === 'COMPLETED'
+
+  // Construct chat parameters for all chat entry points
+  const firstItem = order.items?.[0]
+  const firstProduct = firstItem?.product
+  const chatParams = new URLSearchParams()
+  chatParams.set('orderId', order.id)
+  if (order.store?.id) chatParams.set('storeId', order.store.id)
+  if (order.orderNumber) chatParams.set('orderNumber', order.orderNumber)
+  if (latestReturnRequest) {
+    chatParams.set('returnId', latestReturnRequest.id)
+    chatParams.set(
+      'returnReason',
+      latestReturnRequest.reasonLabel || latestReturnRequest.reason || ''
+    )
+    chatParams.set('returnStatus', latestReturnRequest.status)
+    if (latestReturnRequest.type)
+      chatParams.set('returnType', latestReturnRequest.type)
+  }
+  if (firstProduct?.name) chatParams.set('productName', firstProduct.name)
+  if (firstProduct?.images?.[0])
+    chatParams.set('productImage', firstProduct.images[0])
+  if (firstItem?.price) chatParams.set('productPrice', String(firstItem.price))
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -557,43 +584,13 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5 dark:border-slate-800/80">
               {/* Left Actions: Contact Store Channels */}
               <div className="flex flex-wrap items-center gap-2">
-                {(() => {
-                  const firstItem = order.items?.[0]
-                  const firstProduct = firstItem?.product
-                  const chatParams = new URLSearchParams()
-                  chatParams.set('orderId', order.id)
-                  if (order.store?.id) chatParams.set('storeId', order.store.id)
-                  if (order.orderNumber)
-                    chatParams.set('orderNumber', order.orderNumber)
-                  if (latestReturnRequest) {
-                    chatParams.set('returnId', latestReturnRequest.id)
-                    chatParams.set(
-                      'returnReason',
-                      latestReturnRequest.reasonLabel ||
-                        latestReturnRequest.reason ||
-                        ''
-                    )
-                    chatParams.set('returnStatus', latestReturnRequest.status)
-                    if (latestReturnRequest.type)
-                      chatParams.set('returnType', latestReturnRequest.type)
-                  }
-                  if (firstProduct?.name)
-                    chatParams.set('productName', firstProduct.name)
-                  if (firstProduct?.images?.[0])
-                    chatParams.set('productImage', firstProduct.images[0])
-                  if (firstItem?.price)
-                    chatParams.set('productPrice', String(firstItem.price))
-
-                  return (
-                    <Link
-                      href={`/dashboard/customer/chat?${chatParams.toString()}`}
-                      className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                    >
-                      <MessageCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                      <span>Chat Toko</span>
-                    </Link>
-                  )
-                })()}
+                <Link
+                  href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <MessageCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Chat Toko</span>
+                </Link>
               </div>
 
               {/* Right Actions: Workflow CTA Buttons */}
@@ -638,28 +635,33 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 )}
 
                 {/* Ajukan Pengembalian */}
-                {isCompleted &&
+                {(isCompleted || canRequestReturnOrComplaint) &&
                   (!latestReturnRequest ||
                     latestReturnRequest.status === 'REJECTED') && (
                     <button
                       onClick={() => setReturnModalOpen(true)}
-                      className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
+                      className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full border border-orange-200 bg-orange-50/70 px-4 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      <RotateCcw className="h-4 w-4 text-orange-600" />
                       <span>Ajukan Pengembalian</span>
                     </button>
                   )}
 
-                {/* Klaim Garansi 30 Hari */}
-                {isCompleted && !latestReturnRequest && (
-                  <button
-                    onClick={() => setComplaintModalOpen(true)}
-                    className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950"
-                  >
-                    <ShieldCheck className="h-4 w-4 text-emerald-400 dark:text-emerald-600" />
-                    <span>Klaim Garansi 30 Hari</span>
-                  </button>
-                )}
+                {/* Klaim Garansi 30 Hari / Laporkan Kendala */}
+                {(isCompleted || canRequestReturnOrComplaint) &&
+                  !latestReturnRequest && (
+                    <button
+                      onClick={() => setComplaintModalOpen(true)}
+                      className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                      <span>
+                        {isCompleted
+                          ? 'Klaim Garansi 30 Hari'
+                          : 'Laporkan Kendala / Komplain'}
+                      </span>
+                    </button>
+                  )}
 
                 {/* Rating & Review Button */}
                 {isCompleted && !latestReturnRequest && (
@@ -1305,6 +1307,43 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 </div>
 
                 <LiveCourierTracker orderId={order.id} />
+
+                {/* Contextual Action Banner for Courier Tracking */}
+                {canConfirmReceived && (
+                  <div className="mt-4 flex flex-col items-start justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30 sm:flex-row sm:items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+                        <CheckCircle2 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100">
+                          Paket sudah diterima dan unit fisik sesuai?
+                        </p>
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                          Konfirmasi penerimaan sekarang untuk mengaktifkan
+                          Garansi 30 Hari Ganti Unit Baru.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                      <button
+                        onClick={handleConfirmReceived}
+                        disabled={isConfirming}
+                        className="shadow-xs flex-1 rounded-xl bg-emerald-600 px-4 py-2 text-center text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50 sm:flex-initial"
+                      >
+                        {isConfirming
+                          ? 'Mengonfirmasi...'
+                          : 'Konfirmasi Selesai'}
+                      </button>
+                      <button
+                        onClick={() => setComplaintModalOpen(true)}
+                        className="shadow-2xs rounded-xl border border-emerald-300/80 bg-white px-3 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-50 active:scale-95 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
+                      >
+                        Ada Kendala?
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1407,6 +1446,79 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                       kendala fungsional non-kelalaian.
                     </p>
                   </div>
+                </div>
+
+                {/* Persistent Action Panel on Right Rail */}
+                <div className="mt-6 space-y-2.5 border-t border-slate-100 pt-5 dark:border-slate-800">
+                  <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Aksi Pesanan
+                  </span>
+
+                  {canConfirmReceived && (
+                    <button
+                      onClick={handleConfirmReceived}
+                      disabled={isConfirming}
+                      className="shadow-xs flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span>
+                        {isConfirming
+                          ? 'Mengonfirmasi...'
+                          : 'Konfirmasi Pesanan Diterima'}
+                      </span>
+                    </button>
+                  )}
+
+                  {canRequestReturnOrComplaint &&
+                    (!latestReturnRequest ||
+                      latestReturnRequest.status === 'REJECTED') && (
+                      <button
+                        onClick={() => setReturnModalOpen(true)}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50/70 py-2.5 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                      >
+                        <RotateCcw className="h-4 w-4 text-orange-600" />
+                        <span>Ajukan Pengembalian (Retur)</span>
+                      </button>
+                    )}
+
+                  {canRequestReturnOrComplaint && !latestReturnRequest && (
+                    <button
+                      onClick={() => setComplaintModalOpen(true)}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                      <span>
+                        {isCompleted
+                          ? 'Klaim Garansi 30 Hari'
+                          : 'Laporkan Kendala / Komplain'}
+                      </span>
+                    </button>
+                  )}
+
+                  {isCompleted && !latestReturnRequest && (
+                    <button
+                      onClick={handleOpenRating}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      <Star
+                        className={`h-4 w-4 ${currentReview ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`}
+                      />
+                      <span>
+                        {currentReview
+                          ? 'Ubah Ulasan Produk'
+                          : 'Beri Ulasan Produk'}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Chat Toko Direct Action */}
+                  <Link
+                    href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200"
+                  >
+                    <MessageCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span>Chat Toko Cabang</span>
+                  </Link>
                 </div>
               </div>
             </div>
