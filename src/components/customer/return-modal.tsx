@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   X,
   Upload,
@@ -13,6 +13,7 @@ import {
   Play,
   Trash2,
   Check,
+  ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -64,15 +65,65 @@ const COMMON_REASONS = [
 ]
 
 const POPULAR_BANKS = [
-  'BCA',
-  'Bank Mandiri',
-  'BRI',
-  'BNI',
-  'BSI (Bank Syariah Indonesia)',
-  'CIMB Niaga',
-  'Permata Bank',
-  'Bank Jago',
-  'SeaBank',
+  {
+    id: 'BCA',
+    name: 'BCA (Bank Central Asia)',
+    code: 'BCA',
+    badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+  },
+  {
+    id: 'Bank Mandiri',
+    name: 'Bank Mandiri',
+    code: 'MDR',
+    badgeColor: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
+  },
+  {
+    id: 'BRI',
+    name: 'BRI (Bank Rakyat Indonesia)',
+    code: 'BRI',
+    badgeColor:
+      'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300',
+  },
+  {
+    id: 'BNI',
+    name: 'BNI (Bank Negara Indonesia)',
+    code: 'BNI',
+    badgeColor:
+      'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+  },
+  {
+    id: 'BSI (Bank Syariah Indonesia)',
+    name: 'BSI (Bank Syariah)',
+    code: 'BSI',
+    badgeColor: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
+  },
+  {
+    id: 'CIMB Niaga',
+    name: 'CIMB Niaga',
+    code: 'CIMB',
+    badgeColor: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+  },
+  {
+    id: 'Permata Bank',
+    name: 'Permata Bank',
+    code: 'PRM',
+    badgeColor:
+      'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
+  },
+  {
+    id: 'Bank Jago',
+    name: 'Bank Jago',
+    code: 'JAGO',
+    badgeColor:
+      'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  },
+  {
+    id: 'SeaBank',
+    name: 'SeaBank',
+    code: 'SEA',
+    badgeColor:
+      'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+  },
 ]
 
 export function ReturnModal({
@@ -94,6 +145,25 @@ export function ReturnModal({
   const [bankName, setBankName] = useState('BCA')
   const [bankAccountNumber, setBankAccountNumber] = useState('')
   const [bankAccountName, setBankAccountName] = useState('')
+  const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false)
+  const bankDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        bankDropdownRef.current &&
+        !bankDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsBankDropdownOpen(false)
+      }
+    }
+    if (isBankDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isBankDropdownOpen])
 
   // Media uploads
   const [images, setImages] = useState<string[]>([])
@@ -410,21 +480,79 @@ export function ReturnModal({
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {/* Bank Name */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-slate-500">
+                  <div className="relative space-y-1" ref={bankDropdownRef}>
+                    <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                       Nama Bank
                     </label>
-                    <select
-                      value={bankName}
-                      onChange={(e) => setBankName(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-medium outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    <button
+                      type="button"
+                      onClick={() => setIsBankDropdownOpen((prev) => !prev)}
+                      className={`flex w-full cursor-pointer items-center justify-between rounded-xl border bg-white px-3 py-2 text-xs font-semibold transition-all duration-150 dark:bg-slate-800 ${
+                        isBankDropdownOpen
+                          ? 'shadow-xs border-orange-500 ring-2 ring-orange-500/20'
+                          : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:text-slate-200'
+                      }`}
+                      aria-haspopup="listbox"
+                      aria-expanded={isBankDropdownOpen}
                     >
-                      {POPULAR_BANKS.map((b) => (
-                        <option key={b} value={b}>
-                          {b}
-                        </option>
-                      ))}
-                    </select>
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="rounded-md bg-orange-100 px-1.5 py-0.5 text-[10px] font-black text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                          {POPULAR_BANKS.find((b) => b.id === bankName)?.code ||
+                            'BANK'}
+                        </span>
+                        <span className="truncate text-slate-900 dark:text-white">
+                          {POPULAR_BANKS.find((b) => b.id === bankName)?.name ||
+                            bankName}
+                        </span>
+                      </div>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${
+                          isBankDropdownOpen ? 'rotate-180 text-orange-500' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {/* Custom Dropdown Menu Popover */}
+                    {isBankDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-52 overflow-y-auto rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-2xl backdrop-blur-md duration-150 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="space-y-0.5">
+                          {POPULAR_BANKS.map((b) => {
+                            const isSelected = bankName === b.id
+                            return (
+                              <button
+                                key={b.id}
+                                type="button"
+                                onClick={() => {
+                                  setBankName(b.id)
+                                  setIsBankDropdownOpen(false)
+                                }}
+                                className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs transition-colors ${
+                                  isSelected
+                                    ? 'shadow-xs bg-orange-500 font-bold text-white'
+                                    : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <span
+                                    className={`rounded px-1.5 py-0.5 text-[9px] font-black tracking-tight ${
+                                      isSelected
+                                        ? 'bg-white/20 text-white'
+                                        : b.badgeColor
+                                    }`}
+                                  >
+                                    {b.code}
+                                  </span>
+                                  <span className="truncate">{b.name}</span>
+                                </div>
+                                {isSelected && (
+                                  <Check className="h-3.5 w-3.5 shrink-0 stroke-[3] text-white" />
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Account Number */}
