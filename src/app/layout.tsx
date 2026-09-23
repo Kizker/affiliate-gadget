@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import '@/styles/globals.css'
 import { Toaster } from '@/components/ui/toaster'
+import { Toaster as SonnerToaster } from 'sonner'
 import { SessionProvider } from '@/components/providers/session-provider'
 
 export const metadata: Metadata = {
@@ -58,6 +59,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <SessionProvider>{children}</SessionProvider>
         <Toaster />
+        <SonnerToaster position="top-center" richColors />
       </body>
     </html>
   )
