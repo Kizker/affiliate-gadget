@@ -3,8 +3,10 @@ import prisma from '@/lib/db'
 import {
   getShippingBooking,
   getDynamicTrackingTimeline,
+  getTrackingByAWB,
   ShippingBookingRecord,
 } from '@/lib/shipping/biteship-client'
+import { detectShippingException } from '@/lib/shipping/exception-detector'
 
 export async function GET(
   request: NextRequest,
@@ -12,12 +14,28 @@ export async function GET(
 ) {
   try {
     const { orderId } = await params
+    const { searchParams } = new URL(request.url)
+    const awbParam = searchParams.get('awb')
 
     if (!orderId) {
       return NextResponse.json(
         { error: 'orderId is required' },
         { status: 400 }
       )
+    }
+
+    // 0. Try AWB-based lookup first (query ?awb=JNExxxxxxxx)
+    if (awbParam) {
+      const awbRecord = getTrackingByAWB(awbParam)
+      if (awbRecord) {
+        const liveRecord = getDynamicTrackingTimeline(awbRecord)
+        const exception = detectShippingException(liveRecord.checkpoints)
+        return NextResponse.json({
+          success: true,
+          data: liveRecord,
+          exception: exception.type !== 'NONE' ? exception : null,
+        })
+      }
     }
 
     // 1. Check if booking exists in shipping store
@@ -110,10 +128,12 @@ export async function GET(
 
     // 3. Apply dynamic timeline progression
     const liveRecord = getDynamicTrackingTimeline(record)
+    const exception = detectShippingException(liveRecord.checkpoints)
 
     return NextResponse.json({
       success: true,
       data: liveRecord,
+      exception: exception.type !== 'NONE' ? exception : null,
     })
   } catch (error) {
     console.error('Error fetching shipping tracking:', error)

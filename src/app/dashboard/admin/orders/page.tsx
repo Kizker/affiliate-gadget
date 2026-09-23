@@ -23,6 +23,8 @@ import {
   Printer,
   Zap,
   Navigation,
+  FileEdit,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -34,6 +36,10 @@ import {
 } from '@/components/ui/dialog'
 import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
 import { LiveCourierTracker } from '@/components/shipping/live-courier-tracker'
+import {
+  validateAWB,
+  type AWBValidationResult,
+} from '@/lib/shipping/awb-validator'
 
 interface OrderItem {
   id: string
@@ -218,6 +224,14 @@ export default function AdminOrdersPage() {
   const [activeThermalLabel, setActiveThermalLabel] = useState<any | null>(null)
   const [showLiveTracker, setShowLiveTracker] = useState(false)
 
+  // AWB Manual Input Modal
+  const [showAWBModal, setShowAWBModal] = useState(false)
+  const [awbInput, setAwbInput] = useState('')
+  const [awbValidation, setAwbValidation] =
+    useState<AWBValidationResult | null>(null)
+  const [submittingAWB, setSubmittingAWB] = useState(false)
+  const [syncingStatusId, setSyncingStatusId] = useState<string | null>(null)
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -361,6 +375,109 @@ export default function AdminOrdersPage() {
     setCopiedId(true)
     toast.success('Nomor order berhasil disalin!')
     setTimeout(() => setCopiedId(false), 2000)
+  }
+
+  // Handle AWB input modal open
+  const handleOpenAWBModal = (order: Order) => {
+    setSelectedOrder(order)
+    setAwbInput(order.trackingNumber || '')
+    setAwbValidation(
+      order.trackingNumber ? validateAWB(order.trackingNumber) : null
+    )
+    setShowAWBModal(true)
+  }
+
+  // Handle AWB input change with live validation
+  const handleAWBChange = (value: string) => {
+    setAwbInput(value)
+    if (value.trim()) {
+      setAwbValidation(
+        validateAWB(
+          value,
+          selectedOrder?.courierCode === 'GOJEK' ? 'GOJEK' : 'JNE'
+        )
+      )
+    } else {
+      setAwbValidation(null)
+    }
+  }
+
+  // Submit manual AWB to order
+  const handleSubmitManualAWB = async () => {
+    if (!selectedOrder || !awbValidation?.valid) return
+    try {
+      setSubmittingAWB(true)
+      const res = await fetch(`/api/orders/${selectedOrder.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'IN_PROGRESS',
+          trackingNumber: awbValidation.formatted,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan nomor resi')
+
+      toast.success(
+        `Resi ${awbValidation.formatted} berhasil disimpan & pesanan diproses!`
+      )
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === selectedOrder.id
+            ? {
+                ...o,
+                status: 'IN_PROGRESS',
+                trackingNumber: awbValidation.formatted,
+              }
+            : o
+        )
+      )
+      setSelectedOrder((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'IN_PROGRESS',
+              trackingNumber: awbValidation.formatted,
+            }
+          : null
+      )
+      setShowAWBModal(false)
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menyimpan nomor resi')
+    } finally {
+      setSubmittingAWB(false)
+    }
+  }
+
+  // Manual status sync
+  const handleSyncStatus = async (orderId: string) => {
+    try {
+      setSyncingStatusId(orderId)
+      const res = await fetch('/api/shipping/status-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal sinkronisasi status')
+      toast.success(data.message || 'Status berhasil disinkronisasi')
+      if (data.data?.orderStatus) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId ? { ...o, status: data.data.orderStatus } : o
+          )
+        )
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder((prev) =>
+            prev ? { ...prev, status: data.data.orderStatus } : null
+          )
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal sinkronisasi status')
+    } finally {
+      setSyncingStatusId(null)
+    }
   }
 
   return (
@@ -529,7 +646,7 @@ export default function AdminOrdersPage() {
                                   ? `${order.orderNumber.slice(0, 16)}...`
                                   : order.orderNumber}
                               </span>
-                              <span>•</span>
+                              <span>â€¢</span>
                               <span
                                 suppressHydrationWarning
                                 className="font-medium text-slate-500"
@@ -795,7 +912,7 @@ export default function AdminOrdersPage() {
                                     </p>
                                   )}
                                   <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                                    {item.quantity} Unit × Rp{' '}
+                                    {item.quantity} Unit Ã— Rp{' '}
                                     {item.price.toLocaleString('id-ID')}
                                   </p>
                                 </div>
@@ -1076,6 +1193,15 @@ export default function AdminOrdersPage() {
 
                       <button
                         type="button"
+                        onClick={() => handleOpenAWBModal(selectedOrder)}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100 active:scale-95 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                      >
+                        <FileEdit className="h-3.5 w-3.5" />
+                        <span>Input Resi Manual</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() =>
                           handleUpdateStatus(selectedOrder.id, 'IN_PROGRESS')
                         }
@@ -1117,6 +1243,20 @@ export default function AdminOrdersPage() {
                         <span>
                           {showLiveTracker ? 'Tutup Lacak' : 'Lacak Kurir Live'}
                         </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSyncStatus(selectedOrder.id)}
+                        disabled={syncingStatusId === selectedOrder.id}
+                        className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      >
+                        {syncingStatusId === selectedOrder.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
+                        <span>Refresh Status</span>
                       </button>
 
                       <button
@@ -1216,6 +1356,130 @@ export default function AdminOrdersPage() {
           onClose={() => setActiveThermalLabel(null)}
         />
       )}
+
+      {/* AWB Manual Input Modal */}
+      <Dialog open={showAWBModal} onOpenChange={setShowAWBModal}>
+        <DialogContent className="max-w-md rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+          <DialogHeader className="px-6 pb-4 pt-6">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
+              <FileEdit className="h-5 w-5 text-blue-600" />
+              Input Nomor Resi Manual
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-xs text-slate-500">
+              Masukkan nomor resi dari ekspedisi untuk pesanan{' '}
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                {selectedOrder?.orderNumber}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 px-6 pb-2">
+            {/* Courier badge */}
+            <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/60">
+              <Truck className="h-4 w-4 shrink-0 text-orange-500" />
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-slate-500">
+                  Kurir Pesanan
+                </p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
+                  {selectedOrder?.courierCode === 'GOJEK'
+                    ? 'Gojek Instant'
+                    : 'JNE Express'}
+                  {selectedOrder?.courierService
+                    ? ` (${selectedOrder.courierService})`
+                    : ''}
+                </p>
+              </div>
+            </div>
+
+            {/* AWB Input */}
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Nomor Resi / AWB
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={awbInput}
+                  onChange={(e) =>
+                    handleAWBChange(e.target.value.toUpperCase())
+                  }
+                  placeholder={
+                    selectedOrder?.courierCode === 'GOJEK'
+                      ? 'GK-260923XXXXXX'
+                      : 'JNE260923XXXXXX'
+                  }
+                  className={`w-full rounded-2xl border py-2.5 pl-4 pr-10 font-mono text-sm font-semibold outline-none transition ${
+                    awbValidation?.valid
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-900 focus:border-emerald-500 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200'
+                      : awbValidation && !awbValidation.valid
+                        ? 'border-red-400 bg-red-50 text-red-900 focus:border-red-500 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200'
+                        : 'border-slate-200 bg-white focus:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
+                  }`}
+                />
+                {awbInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAwbInput('')
+                      setAwbValidation(null)
+                    }}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Validation feedback */}
+              {awbValidation && (
+                <p
+                  className={`mt-1.5 flex items-center gap-1.5 text-[11px] font-medium ${
+                    awbValidation.valid ? 'text-emerald-600' : 'text-red-500'
+                  }`}
+                >
+                  {awbValidation.valid ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" /> Format resi valid (
+                      {awbValidation.courierCode})
+                    </>
+                  ) : (
+                    <>{awbValidation.error}</>
+                  )}
+                </p>
+              )}
+
+              <p className="mt-2 text-[11px] text-slate-400">
+                Format: {selectedOrder?.courierCode === 'GOJEK' ? 'GK-' : 'JNE'}{' '}
+                diikuti 12 digit angka
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowAWBModal(false)}
+              className="rounded-xl border border-slate-200 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmitManualAWB}
+              disabled={!awbValidation?.valid || submittingAWB}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 active:scale-95 disabled:opacity-40"
+            >
+              {submittingAWB ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+              Simpan & Proses Pesanan
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

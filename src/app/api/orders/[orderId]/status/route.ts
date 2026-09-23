@@ -14,7 +14,7 @@ export async function PATCH(
 
     const { orderId } = await params
     const body = await request.json()
-    const { status, finalPrice } = body
+    const { status, finalPrice, trackingNumber } = body
 
     // Get user with role
     const user = await prisma.user.findUnique({
@@ -37,7 +37,10 @@ export async function PATCH(
 
     // Check authorization
     const isSuperOrAdmin = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN'
-    const isStoreAdminOfOrder = user.role === 'STORE_ADMIN' && user.storeId && order.storeId === user.storeId
+    const isStoreAdminOfOrder =
+      user.role === 'STORE_ADMIN' &&
+      user.storeId &&
+      order.storeId === user.storeId
 
     if (!isSuperOrAdmin && !isStoreAdminOfOrder) {
       const technician = await prisma.technician.findUnique({
@@ -139,7 +142,10 @@ export async function PATCH(
 
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
-        data: { status },
+        data: {
+          status,
+          ...(trackingNumber ? { trackingNumber } : {}),
+        },
       })
 
       return NextResponse.json({ order: updatedOrder })

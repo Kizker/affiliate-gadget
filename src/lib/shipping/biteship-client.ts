@@ -484,8 +484,87 @@ export function getDynamicTrackingTimeline(
         timestamp: new Date(bookedTime + 3 * 60 * 1000).toISOString(),
       })
     }
+
+    // JNE: menit 10+ → delivered
+    if (
+      elapsedMinutes >= 10 &&
+      !checkpoints.some((c) => c.status === 'DELIVERED')
+    ) {
+      checkpoints.push({
+        id: 'cp-4',
+        status: 'DELIVERED',
+        description: `Paket telah berhasil diterima oleh ${record.destinationCustomer.name} di ${record.destinationCustomer.address}.`,
+        location: record.destinationCustomer.city,
+        timestamp: new Date(bookedTime + 10 * 60 * 1000).toISOString(),
+      })
+      record.status = 'DELIVERED'
+      record.statusLabel = 'Paket Telah Diterima'
+    }
+  }
+
+  // Gojek: menit 8+ → delivered
+  if (
+    isGojek &&
+    elapsedMinutes >= 8 &&
+    !checkpoints.some((c) => c.status === 'DELIVERED')
+  ) {
+    checkpoints.push({
+      id: 'cp-4',
+      status: 'DELIVERED',
+      description: `Paket berhasil diterima oleh ${record.destinationCustomer.name}. Pengiriman selesai.`,
+      location: record.destinationCustomer.city,
+      timestamp: new Date(bookedTime + 8 * 60 * 1000).toISOString(),
+    })
+    record.status = 'DELIVERED'
+    record.statusLabel = 'Paket Telah Diterima'
   }
 
   record.checkpoints = checkpoints
   return record
+}
+
+/**
+ * Ambil data pelacakan berdasarkan nomor resi (AWB)
+ */
+export function getTrackingByAWB(
+  trackingNumber: string
+): ShippingBookingRecord | null {
+  const store = loadShippingStore()
+  const normalized = (trackingNumber || '').trim().toUpperCase()
+  const found = Object.values(store).find(
+    (record) => record.trackingNumber.toUpperCase() === normalized
+  )
+  return found || null
+}
+
+/**
+ * Update status booking di shipping store (manual sync / webhook)
+ */
+export function updateShippingStatus(
+  orderId: string,
+  newStatus: ShippingBookingRecord['status'],
+  statusLabel: string,
+  checkpointDescription?: string,
+  checkpointLocation?: string
+): boolean {
+  const store = loadShippingStore()
+  const record = store[orderId]
+  if (!record) return false
+
+  record.status = newStatus
+  record.statusLabel = statusLabel
+
+  if (checkpointDescription) {
+    record.checkpoints.push({
+      id: `cp-sync-${Date.now()}`,
+      status: newStatus,
+      description: checkpointDescription,
+      location: checkpointLocation || record.destinationCustomer.city,
+      timestamp: new Date().toISOString(),
+    })
+  }
+
+  store[orderId] = record
+  saveShippingStore(store)
+  return true
 }
