@@ -155,9 +155,9 @@ export function RatingModal({
   }
 
   return (
-    <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+    <div className="backdrop-blur-xs fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/50 p-3 sm:p-4">
       {/* Modal Surface */}
-      <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl duration-200 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+      <div className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-slate-200/80 bg-white p-5 shadow-2xl duration-200 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
           <div>

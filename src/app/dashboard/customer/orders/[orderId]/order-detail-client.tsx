@@ -1627,7 +1627,11 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
 
       {/* 3. Bottom Navigation: Mobile Bottom Nav & Desktop Footer */}
       <div className="block md:hidden">
-        <MobileBottomNav activeTab="akun" />
+        {!returnModalOpen &&
+          !complaintModalOpen &&
+          !paymentModalOpen &&
+          !ratingModal.isOpen &&
+          !activeThermalLabel && <MobileBottomNav activeTab="akun" />}
       </div>
       <div className="hidden md:block">
         <Footer variant="light" />
