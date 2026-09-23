@@ -202,6 +202,12 @@ export function ThermalShippingLabel({
                   JANGAN DIBANTING / HINDARKAN AIR
                 </span>
               </div>
+
+              {/* Thermal Label Footer / Gateway Notice */}
+              <div className="mt-2 flex items-center justify-between border-t border-slate-300 pt-1 text-[8px] font-bold uppercase tracking-wider text-slate-500">
+                <span>E-Commerce Airwaybill</span>
+                <span>Powered by Biteship Logistics</span>
+              </div>
             </div>
           </div>
         </div>

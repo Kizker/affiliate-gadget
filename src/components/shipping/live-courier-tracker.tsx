@@ -14,8 +14,13 @@ import {
   Navigation,
   RefreshCw,
   User,
+  AlertTriangle,
+  Shield,
 } from 'lucide-react'
+import Link from 'next/link'
 import { ShippingBookingRecord } from '@/lib/shipping/biteship-client'
+import { ShippingException } from '@/lib/shipping/exception-detector'
+import { BiteshipLogo } from '@/components/shipping/biteship-logo'
 
 interface LiveCourierTrackerProps {
   orderId: string
@@ -31,6 +36,7 @@ export function LiveCourierTracker({
   )
   const [loading, setLoading] = useState(!initialData)
   const [copiedResi, setCopiedResi] = useState(false)
+  const [exception, setException] = useState<ShippingException | null>(null)
 
   const fetchTracking = async () => {
     try {
@@ -40,6 +46,9 @@ export function LiveCourierTracker({
         const json = await res.json()
         if (json.data) {
           setData(json.data)
+        }
+        if (json.exception) {
+          setException(json.exception)
         }
       }
     } catch (err) {
@@ -126,6 +135,51 @@ export function LiveCourierTracker({
       </div>
 
       <div className="p-5 sm:p-6">
+        {/* Exception Alert Banner */}
+        {exception && (
+          <div
+            className={`mb-5 rounded-2xl border p-4 ${
+              exception.severity === 'CRITICAL' || exception.severity === 'HIGH'
+                ? 'border-red-200 bg-red-50 dark:border-red-900/60 dark:bg-red-950/40'
+                : 'border-orange-200 bg-orange-50 dark:border-orange-900/60 dark:bg-orange-950/40'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <AlertTriangle
+                className={`mt-0.5 h-5 w-5 shrink-0 ${
+                  exception.severity === 'CRITICAL'
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-orange-600 dark:text-orange-400'
+                }`}
+              />
+              <div className="flex-1 space-y-1">
+                <p className="text-xs font-black text-slate-900 dark:text-white">
+                  {exception.label}
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  {exception.description}
+                </p>
+                {exception.customerAction && (
+                  <p className="mt-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                    💡 {exception.customerAction}
+                  </p>
+                )}
+                {exception.showClaimButton && (
+                  <div className="mt-3">
+                    <Link
+                      href="/garansi"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-red-700 active:scale-95"
+                    >
+                      <Shield className="h-3.5 w-3.5" />
+                      <span>Ajukan Klaim Asuransi</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Gojek Specific: Driver Card */}
         {isGojek && data.driver && (
           <div className="mb-5 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
@@ -250,6 +304,15 @@ export function LiveCourierTracker({
             Paket ini diproteksi 100% asuransi kehilangan & kerusakan fisik
             selama pengiriman.
           </span>
+        </div>
+
+        {/* Biteship Gateway Integration Badge */}
+        <div className="mt-3 flex items-center justify-between px-1 text-[11px] text-slate-400 dark:text-slate-500">
+          <div className="flex items-center gap-1.5">
+            <BiteshipLogo iconOnly width={14} height={14} />
+            <span>Terhubung via Biteship Logistics Gateway</span>
+          </div>
+          <span className="font-mono text-[10px]">Real-Time Sync</span>
         </div>
       </div>
     </div>

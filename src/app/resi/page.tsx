@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import {
@@ -13,6 +13,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import Link from 'next/link'
+import { BiteshipLogo } from '@/components/shipping/biteship-logo'
 
 interface CheckpointItem {
   id: string
@@ -117,34 +118,42 @@ export default function CekResiPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
       {/* Header */}
-      <div className="border-b border-slate-200/80 bg-white shadow-sm">
-        <div className="mx-auto flex max-w-2xl items-center gap-3 px-5 py-4">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-lg font-bold text-[#1E3A8A]"
-          >
-            <Package className="h-5 w-5 text-[#F97316]" />
-            <span>Affiliate Gadget</span>
-          </Link>
-          <span className="text-slate-300">|</span>
-          <span className="text-sm font-semibold text-slate-500">
-            Lacak Paket
-          </span>
+      <div className="shadow-xs border-b border-slate-200/80 bg-white">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-lg font-bold text-[#1E3A8A]"
+            >
+              <Package className="h-5 w-5 text-[#F97316]" />
+              <span>Affiliate Gadget</span>
+            </Link>
+            <span className="text-slate-300">|</span>
+            <span className="text-sm font-semibold text-slate-500">
+              Lacak Paket
+            </span>
+          </div>
+          <div className="hidden items-center gap-1.5 sm:flex">
+            <span className="text-[11px] font-medium text-slate-400">
+              Powered by
+            </span>
+            <BiteshipLogo height={16} width={68} className="opacity-90" />
+          </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-6 px-5 py-10">
         {/* Title */}
         <div className="space-y-2 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-1.5 text-xs font-bold text-orange-700">
-            <Truck className="h-3.5 w-3.5" />
-            via Fastrac Network
+          <div className="shadow-xs inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50/80 px-4 py-1.5 text-xs font-bold text-violet-900">
+            <BiteshipLogo iconOnly width={16} height={16} />
+            <span>Integrasi Resmi Biteship Gateway</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900">
             Lacak Status Pengiriman
           </h1>
           <p className="text-sm text-slate-500">
-            Masukkan nomor resi untuk melacak posisi paket Anda
+            Masukkan nomor resi untuk melacak posisi paket Anda secara real-time
           </p>
         </div>
 
@@ -381,11 +390,16 @@ export default function CekResiPage() {
         )}
 
         {/* Info footer */}
-        <p className="text-center text-[11px] text-slate-400">
-          Pelacakan paket via{' '}
-          <span className="font-semibold text-[#2563EB]">Fastrac Network</span>{' '}
-          · Asuransi pengiriman 100% terlindungi
-        </p>
+        <div className="flex flex-col items-center justify-center gap-1.5 text-center text-[11px] text-slate-400">
+          <div className="flex items-center gap-2">
+            <span>Pelacakan paket resmi via</span>
+            <BiteshipLogo height={15} width={64} className="opacity-75" />
+          </div>
+          <p>
+            Terintegrasi langsung armada JNE & Gojek · Asuransi pengiriman 100%
+            terlindungi
+          </p>
+        </div>
       </div>
     </div>
   )

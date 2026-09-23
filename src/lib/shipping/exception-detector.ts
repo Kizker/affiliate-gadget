@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Shipping Exception Detector
  * Mendeteksi kendala pengiriman dari checkpoint timeline
  * dan menyediakan label + rekomendasi aksi untuk customer & admin
@@ -28,18 +28,6 @@ export interface ShippingException {
 
 /** Keyword mapping status checkpoint ke exception type */
 const EXCEPTION_KEYWORDS: Record<ShippingExceptionType, string[]> = {
-  DELAYED: [
-    'delayed',
-    'tertunda',
-    'delay',
-    'terlambat',
-    'pending',
-    'hold',
-    'ditahan',
-    'gagal antar',
-    'attempted delivery',
-    'failed attempt',
-  ],
   ADDRESS_NOT_FOUND: [
     'address not found',
     'alamat tidak ditemukan',
@@ -49,7 +37,14 @@ const EXCEPTION_KEYWORDS: Record<ShippingExceptionType, string[]> = {
     'rumah kosong',
     'bad address',
     'undeliverable',
-    'tidak terkirim',
+  ],
+  LOST: [
+    'lost',
+    'hilang',
+    'missing',
+    'paket hilang',
+    'barang hilang',
+    'paket tidak ditemukan',
   ],
   DAMAGED: [
     'damaged',
@@ -69,8 +64,19 @@ const EXCEPTION_KEYWORDS: Record<ShippingExceptionType, string[]> = {
     'undelivered returned',
     'paket dikembalikan',
   ],
-  LOST: ['lost', 'hilang', 'missing', 'not found', 'tidak ditemukan'],
   CUSTOMS_HOLD: ['customs', 'bea cukai', 'held', 'clearance', 'custom hold'],
+  DELAYED: [
+    'delayed',
+    'tertunda',
+    'delay',
+    'terlambat',
+    'pending',
+    'hold',
+    'ditahan',
+    'gagal antar',
+    'attempted delivery',
+    'failed attempt',
+  ],
   NONE: [],
 }
 
@@ -228,4 +234,26 @@ export function getExceptionSeverityClass(
     default:
       return 'text-gray-600 bg-gray-50 border-gray-200'
   }
+}
+
+/**
+ * Format string pesan kendala untuk customer
+ */
+export function formatExceptionForCustomer(
+  exception: ShippingException
+): string {
+  if (exception.type === 'NONE') return ''
+  return `[${exception.label}] ${exception.description}${
+    exception.customerAction ? ` Rekomendasi: ${exception.customerAction}` : ''
+  }`
+}
+
+/**
+ * Format string pesan kendala untuk admin operasional
+ */
+export function formatExceptionForAdmin(exception: ShippingException): string {
+  if (exception.type === 'NONE') return ''
+  return `[${exception.severity}] ${exception.label}: ${exception.description}${
+    exception.adminAction ? ` Aksi Admin: ${exception.adminAction}` : ''
+  }`
 }
