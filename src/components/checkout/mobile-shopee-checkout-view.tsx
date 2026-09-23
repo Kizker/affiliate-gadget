@@ -16,11 +16,13 @@ import {
   Plus,
   Home,
   Building2,
+  Truck,
+  Clock,
+  AlertTriangle,
 } from 'lucide-react'
 import { UserAddressItem } from '@/components/customer/address-modal'
 import { ShippingOption } from '@/lib/shipping/shipping-engine'
 import { toast } from 'sonner'
-import { Truck, Clock, AlertTriangle } from 'lucide-react'
 
 interface MobileShopeeCheckoutViewProps {
   selectedItems: any[]

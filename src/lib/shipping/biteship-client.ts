@@ -187,12 +187,8 @@ export async function bookShippingPickup(params: {
   let liveBiteshipSuccess = false
   let biteshipResult: any = null
 
-  // 1. Coba hubungi Live Biteship API jika API key tersedia dan bukan dummy
-  if (
-    apiKey &&
-    !apiKey.startsWith('biteship_test') &&
-    !apiKey.includes('Testing')
-  ) {
+  // 1. Coba hubungi Biteship API (Sandbox / Production) jika API key tersedia
+  if (apiKey && apiKey.length > 20 && !apiKey.includes('your_api_key')) {
     try {
       const payload = {
         shipper_contact_name:
