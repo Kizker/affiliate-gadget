@@ -579,104 +579,6 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 )}
               </div>
             </div>
-
-            {/* Harmonious Action Hub (Contextual & Clean Hierarchy) */}
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5 dark:border-slate-800/80">
-              {/* Left Actions: Contact Store Channels */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/dashboard/customer/chat?${chatParams.toString()}`}
-                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  <MessageCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                  <span>Chat Toko</span>
-                </Link>
-              </div>
-
-              {/* Right Actions: Workflow CTA Buttons */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                {/* Batalkan Pesanan */}
-                {canCancel && (
-                  <button
-                    onClick={() => setCancelModalOpen(true)}
-                    className="inline-flex cursor-pointer items-center gap-1.5 px-2 py-1 text-xs font-bold text-rose-600 transition hover:text-rose-700 dark:text-rose-400"
-                  >
-                    <Ban className="h-3.5 w-3.5" />
-                    <span>Batalkan Pesanan</span>
-                  </button>
-                )}
-
-                {/* Bayar Sekarang via Custom Payment Modal */}
-                {order.status === 'PENDING_PAYMENT' && (
-                  <button
-                    type="button"
-                    onClick={() => setPaymentModalOpen(true)}
-                    className="shadow-xs inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    <span>Bayar Sekarang</span>
-                  </button>
-                )}
-
-                {/* Konfirmasi Pesanan Diterima */}
-                {canConfirmReceived && (
-                  <button
-                    onClick={handleConfirmReceived}
-                    disabled={isConfirming}
-                    className="shadow-xs inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span>
-                      {isConfirming
-                        ? 'Mengonfirmasi...'
-                        : 'Konfirmasi Pesanan Diterima'}
-                    </span>
-                  </button>
-                )}
-
-                {/* Ajukan Pengembalian */}
-                {(isCompleted || canRequestReturnOrComplaint) &&
-                  (!latestReturnRequest ||
-                    latestReturnRequest.status === 'REJECTED') && (
-                    <button
-                      onClick={() => setReturnModalOpen(true)}
-                      className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full border border-orange-200 bg-orange-50/70 px-4 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
-                    >
-                      <RotateCcw className="h-4 w-4 text-orange-600" />
-                      <span>Ajukan Pengembalian</span>
-                    </button>
-                  )}
-
-                {/* Klaim Garansi 30 Hari / Laporkan Kendala */}
-                {(isCompleted || canRequestReturnOrComplaint) &&
-                  !latestReturnRequest && (
-                    <button
-                      onClick={() => setComplaintModalOpen(true)}
-                      className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    >
-                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                      <span>
-                        {isCompleted
-                          ? 'Klaim Garansi 30 Hari'
-                          : 'Laporkan Kendala / Komplain'}
-                      </span>
-                    </button>
-                  )}
-
-                {/* Rating & Review Button */}
-                {isCompleted && !latestReturnRequest && (
-                  <button
-                    onClick={handleOpenRating}
-                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    <Star
-                      className={`h-3.5 w-3.5 ${currentReview ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`}
-                    />
-                    <span>{currentReview ? 'Ubah Ulasan' : 'Beri Ulasan'}</span>
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
           {/* Return & Refund Live Card (Modern, Simple & Aesthetic Bento) */}
           {latestReturnRequest && (
@@ -1307,43 +1209,6 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 </div>
 
                 <LiveCourierTracker orderId={order.id} />
-
-                {/* Contextual Action Banner for Courier Tracking */}
-                {canConfirmReceived && (
-                  <div className="mt-4 flex flex-col items-start justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-3">
-                      <div className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
-                        <CheckCircle2 className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100">
-                          Paket sudah diterima dan unit fisik sesuai?
-                        </p>
-                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                          Konfirmasi penerimaan sekarang untuk mengaktifkan
-                          Garansi 30 Hari Ganti Unit Baru.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                      <button
-                        onClick={handleConfirmReceived}
-                        disabled={isConfirming}
-                        className="shadow-xs flex-1 rounded-xl bg-emerald-600 px-4 py-2 text-center text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50 sm:flex-initial"
-                      >
-                        {isConfirming
-                          ? 'Mengonfirmasi...'
-                          : 'Konfirmasi Selesai'}
-                      </button>
-                      <button
-                        onClick={() => setComplaintModalOpen(true)}
-                        className="shadow-2xs rounded-xl border border-emerald-300/80 bg-white px-3 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-50 active:scale-95 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
-                      >
-                        Ada Kendala?
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -1454,6 +1319,18 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                     Aksi Pesanan
                   </span>
 
+                  {/* Bayar Sekarang (if pending payment) */}
+                  {order.status === 'PENDING_PAYMENT' && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentModalOpen(true)}
+                      className="shadow-xs flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      <span>Bayar Sekarang</span>
+                    </button>
+                  )}
+
                   {canConfirmReceived && (
                     <button
                       onClick={handleConfirmReceived}
@@ -1519,6 +1396,17 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                     <MessageCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <span>Chat Toko Cabang</span>
                   </Link>
+
+                  {/* Batalkan Pesanan (if canCancel) */}
+                  {canCancel && (
+                    <button
+                      onClick={() => setCancelModalOpen(true)}
+                      className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 pt-1 text-xs font-bold text-rose-600 transition hover:text-rose-700 dark:text-rose-400"
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                      <span>Batalkan Pesanan</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
