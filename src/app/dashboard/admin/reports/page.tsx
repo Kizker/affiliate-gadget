@@ -11,6 +11,9 @@ import {
   DollarSign,
   TrendingUp,
   Sparkles,
+  Receipt,
+  Percent,
+  FileText,
 } from 'lucide-react'
 
 function formatRupiah(amount: number): string {
@@ -37,6 +40,8 @@ interface ReportData {
     }
     netProfit: number
     netMarginPct: number
+    totalPph23Withheld?: number
+    totalVatOutput?: number
   }
   revenue: {
     total: number
@@ -566,6 +571,61 @@ export default function ReportsPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Row Kartu Perpajakan (PPN & PPh) */}
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+        {/* Card PPN Keluaran */}
+        <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              PPN Keluaran Terkumpul
+            </span>
+            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+              <FileText className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
+              {formatRupiah(data.financials?.totalVatOutput ?? 0)}
+            </p>
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+              <span className="font-semibold text-blue-600 dark:text-blue-400">
+                SPT Masa PPN
+              </span>
+              <span className="text-slate-400 dark:text-slate-500">
+                · PPN Terutang Konsolidasi
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card PPh 23 Wajib Setor */}
+        {(data.financials?.totalPph23Withheld ?? 0) > 0 && (
+          <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-amber-200/80 bg-amber-50/20 p-4 transition-all duration-200 hover:border-amber-300 dark:border-amber-900/50 dark:bg-amber-950/10 sm:p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                PPh 23 Wajib Setor
+              </span>
+              <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                <Receipt className="h-3.5 w-3.5" />
+              </div>
+            </div>
+            <div className="mt-2.5">
+              <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-amber-900 dark:text-amber-100 sm:text-xl">
+                {formatRupiah(data.financials?.totalPph23Withheld ?? 0)}
+              </p>
+              <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+                <span className="font-semibold text-amber-700 dark:text-amber-400">
+                  e-Billing DJP
+                </span>
+                <span className="text-amber-600/80 dark:text-amber-500">
+                  · 2% komisi platform · Batas Tgl 10
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

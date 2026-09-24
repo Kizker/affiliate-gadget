@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import ExcelJS from 'exceljs'
-import { getColumnFormatAndAlignment } from '@/lib/reports-export-format'
+import {
+  getColumnFormatAndAlignment,
+  CURRENCY_FORMAT,
+} from '@/lib/reports-export-format'
 
 interface FinancialOrderRecord {
   id: string
@@ -13,6 +16,11 @@ interface FinancialOrderRecord {
   discountAmount: number | null
   shippingCost: number | null
   insuranceFee: number | null
+  tax?: number | null
+  dppAmount?: number | null
+  vatRate?: number | null
+  taxTypeApplied?: string | null
+  pph23Amount?: number | null
   store: {
     name: string | null
     companyName: string | null
@@ -31,6 +39,31 @@ interface FinancialOrderRecord {
       name: string
       costPrice?: number | null
     } | null
+  }>
+}
+
+interface OrdersExportRecord {
+  id: string
+  orderNumber: string
+  status: any
+  createdAt: Date
+  subtotal: number
+  total: number
+  tax?: number | null
+  dppAmount?: number | null
+  vatRate?: number | null
+  taxTypeApplied?: string | null
+  pph23Amount?: number | null
+  user: {
+    name: string | null
+    email: string | null
+    phone: string | null
+  }
+  items: Array<{
+    quantity: number
+    product?: { name: string } | null
+    service?: { name: string } | null
+    rentalItem?: { name: string } | null
   }>
 }
 
@@ -60,9 +93,13 @@ export async function GET(request: NextRequest) {
       }
     } = {}
     if (startDate && endDate) {
-      dateFilter.createdAt = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
+      const s = new Date(startDate)
+      const e = new Date(endDate)
+      if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+        dateFilter.createdAt = {
+          gte: s,
+          lte: e,
+        }
       }
     }
 
@@ -116,6 +153,10 @@ export async function GET(request: NextRequest) {
     // Get data based on type
     let headers: string[] = []
     let rows: (string | number)[][] = []
+    let taxSummaryData: {
+      sumPpn: number
+      sumPph23: number
+    } | null = null
 
     switch (type) {
       case 'financials':
@@ -153,6 +194,10 @@ export async function GET(request: NextRequest) {
           'Produk',
           'Qty',
           'Omzet Kotor (Rp)',
+          'DPP (Rp)',
+          'PPN 11% (Rp)',
+          'Skema PPN',
+          'PPh 23 Komisi (Rp)',
           'HPP Modal (Rp)',
           'Laba Kotor (Rp)',
           'Margin Kotor (%)',
@@ -166,6 +211,9 @@ export async function GET(request: NextRequest) {
         ]
 
         let sumGross = 0
+        let sumDpp = 0
+        let sumPpn = 0
+        let sumPph23 = 0
         let sumCOGS = 0
         let sumGrossProfit = 0
         let sumCommission = 0
@@ -194,6 +242,19 @@ export async function GET(request: NextRequest) {
                 ? Number(((grossProfit / grossRevenue) * 100).toFixed(2))
                 : 0
 
+            const ppn = order.tax ?? 0
+            const dpp =
+              order.dppAmount && order.dppAmount > 0
+                ? order.dppAmount
+                : ppn > 0
+                  ? Math.max(0, grossRevenue - ppn)
+                  : grossRevenue
+            const taxScheme =
+              order.taxTypeApplied === 'INCLUSIVE' || ppn > 0
+                ? 'Inklusif'
+                : 'Non-PKP'
+            const pph23 = order.pph23Amount ?? 0
+
             const commission = order.commissionAmount ?? 0
             const packing = order.store?.defaultPackingFee ?? 5000
             const discount = order.discountAmount ?? 0
@@ -213,6 +274,9 @@ export async function GET(request: NextRequest) {
             )
 
             sumGross += grossRevenue
+            sumDpp += dpp
+            sumPpn += ppn
+            sumPph23 += pph23
             sumCOGS += cogs
             sumGrossProfit += grossProfit
             sumCommission += commission
@@ -236,6 +300,10 @@ export async function GET(request: NextRequest) {
               productNames,
               totalQty,
               grossRevenue,
+              dpp,
+              ppn,
+              taxScheme,
+              pph23,
               cogs,
               grossProfit,
               grossMargin,
@@ -270,6 +338,10 @@ export async function GET(request: NextRequest) {
             '-',
             sumQty,
             sumGross,
+            sumDpp,
+            sumPpn,
+            '-',
+            sumPph23,
             sumCOGS,
             sumGrossProfit,
             totalGrossMargin,
@@ -282,11 +354,16 @@ export async function GET(request: NextRequest) {
             totalNetMargin,
           ])
         }
+
+        taxSummaryData = {
+          sumPpn,
+          sumPph23,
+        }
         break
       }
 
       case 'orders': {
-        const orders = await prisma.order.findMany({
+        const rawOrders = await prisma.order.findMany({
           where: {
             ...dateFilter,
             ...storeScope,
@@ -306,6 +383,8 @@ export async function GET(request: NextRequest) {
           orderBy: { createdAt: 'desc' },
         })
 
+        const orders = rawOrders as unknown as OrdersExportRecord[]
+
         sheetName = 'PESANAN'
         headers = [
           'No',
@@ -316,41 +395,68 @@ export async function GET(request: NextRequest) {
           'Items',
           'Qty',
           'Status',
+          'DPP (Rp)',
+          'PPN 11% (Rp)',
+          'Skema PPN',
+          'PPh 23 (Rp)',
           'Total (Rp)',
           'Created At',
         ]
-        rows = orders.map((order, index) => [
-          index + 1,
-          order.orderNumber,
-          order.user.name || '-',
-          order.user.email,
-          order.user.phone || '-',
-          order.items
-            .map(
-              (item) =>
-                item.product?.name ||
-                item.service?.name ||
-                item.rentalItem?.name
-            )
-            .filter(Boolean)
-            .join(', '),
-          order.items.reduce((sum, item) => sum + item.quantity, 0),
-          formatStatus(order.status),
-          order.total,
-          formatDate(order.createdAt),
-        ])
+
+        let totalDpp = 0
+        let totalPpn = 0
+        let totalPph23 = 0
+        let totalQty = 0
+        let totalAmount = 0
+
+        rows = orders.map((order, index) => {
+          const ppn = order.tax ?? 0
+          const dpp =
+            order.dppAmount && order.dppAmount > 0
+              ? order.dppAmount
+              : ppn > 0
+                ? Math.max(0, order.subtotal - ppn)
+                : order.subtotal
+          const taxScheme =
+            order.taxTypeApplied === 'INCLUSIVE' || ppn > 0
+              ? 'Inklusif'
+              : 'Non-PKP'
+          const pph23 = order.pph23Amount ?? 0
+          const qty = order.items.reduce((sum, item) => sum + item.quantity, 0)
+
+          totalDpp += dpp
+          totalPpn += ppn
+          totalPph23 += pph23
+          totalQty += qty
+          totalAmount += order.total
+
+          return [
+            index + 1,
+            order.orderNumber,
+            order.user.name || '-',
+            order.user.email || '-',
+            order.user.phone || '-',
+            order.items
+              .map(
+                (item) =>
+                  item.product?.name ||
+                  item.service?.name ||
+                  item.rentalItem?.name
+              )
+              .filter(Boolean)
+              .join(', '),
+            qty,
+            formatStatus(order.status),
+            dpp,
+            ppn,
+            taxScheme,
+            pph23,
+            order.total,
+            formatDate(order.createdAt),
+          ]
+        })
 
         if (orders.length > 0) {
-          const totalQty = orders.reduce(
-            (sum, order) =>
-              sum + order.items.reduce((iSum, item) => iSum + item.quantity, 0),
-            0
-          )
-          const totalAmount = orders.reduce(
-            (sum, order) => sum + order.total,
-            0
-          )
-
           rows.push([
             'TOTAL',
             '-',
@@ -360,6 +466,10 @@ export async function GET(request: NextRequest) {
             '-',
             totalQty,
             '-',
+            totalDpp,
+            totalPpn,
+            '-',
+            totalPph23,
             totalAmount,
             '-',
           ])
@@ -491,6 +601,112 @@ export async function GET(request: NextRequest) {
       const minWidth = columnConfigs[colIdx].type === 'currency' ? 20 : 12
       column.width = Math.min(Math.max(maxLength + 4, minWidth), 55)
     })
+
+    // Buat Sheet ke-2: RINGKASAN_PAJAK (hanya jika export financials dalam format xlsx)
+    if (taxSummaryData && format === 'xlsx') {
+      const taxSheet = workbook.addWorksheet('RINGKASAN_PAJAK')
+      const taxHeaders = [
+        'No',
+        'Komponen Pajak',
+        'Keterangan Regulasi & Penyetoran',
+        'Total Periode (Rp)',
+      ]
+      taxSheet.addRow(taxHeaders)
+
+      const taxHeaderRow = taxSheet.getRow(1)
+      taxHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+      taxHeaderRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E3A8A' },
+      }
+      taxHeaderRow.alignment = { horizontal: 'center', vertical: 'middle' }
+      taxHeaderRow.height = 28
+
+      const taxRows = [
+        [
+          1,
+          'PPN Keluaran (11%)',
+          'SPT Masa PPN per bulan (Faktur Pajak Elektronik)',
+          taxSummaryData.sumPpn,
+        ],
+        [
+          2,
+          'PPh 23 atas Komisi Platform (2%)',
+          'e-Billing DJP (Kode Akun 411124), Batas Setor Tgl 10 Bulan Berikutnya',
+          taxSummaryData.sumPph23,
+        ],
+      ]
+
+      taxRows.forEach((r) => taxSheet.addRow(r))
+
+      // Baris TOTAL
+      const totalTax = taxSummaryData.sumPpn + taxSummaryData.sumPph23
+
+      taxSheet.addRow(['TOTAL', 'Total Seluruh Pajak', '-', totalTax])
+
+      // Format dan border tiap baris
+      for (let rIdx = 2; rIdx <= taxRows.length + 2; rIdx++) {
+        const row = taxSheet.getRow(rIdx)
+        const isTot = row.getCell(1).value === 'TOTAL'
+        row.height = isTot ? 26 : 22
+
+        if (isTot) {
+          row.font = { bold: true, size: 10, color: { argb: 'FF0F172A' } }
+          row.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF1F5F9' },
+          }
+        } else if (rIdx % 2 === 0) {
+          row.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF8FAFC' },
+          }
+        }
+
+        const c1 = row.getCell(1)
+        c1.alignment = { horizontal: 'center', vertical: 'middle' }
+
+        const c2 = row.getCell(2)
+        c2.alignment = { horizontal: 'left', vertical: 'middle' }
+
+        const c3 = row.getCell(3)
+        c3.alignment = isTot
+          ? { horizontal: 'center', vertical: 'middle' }
+          : { horizontal: 'left', vertical: 'middle' }
+
+        const c4 = row.getCell(4)
+        c4.numFmt = CURRENCY_FORMAT
+        c4.alignment = { horizontal: 'right', vertical: 'middle' }
+
+        for (let c = 1; c <= 4; c++) {
+          const cell = row.getCell(c)
+          if (isTot) {
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FF94A3B8' } },
+              bottom: { style: 'double', color: { argb: 'FF0F172A' } },
+              left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            }
+          } else {
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            }
+          }
+        }
+      }
+
+      // Column widths
+      taxSheet.getColumn(1).width = 10
+      taxSheet.getColumn(2).width = 35
+      taxSheet.getColumn(3).width = 72
+      taxSheet.getColumn(4).width = 25
+    }
 
     // Generate buffer
     let buffer: Buffer

@@ -10,6 +10,9 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
     'Produk',
     'Qty',
     'Omzet Kotor (Rp)',
+    'DPP (Rp)',
+    'PPN 11% (Rp)',
+    'Skema PPN',
     'HPP Modal (Rp)',
     'Laba Kotor (Rp)',
     'Margin Kotor (%)',
@@ -41,11 +44,16 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
     discountAmount: number
     shippingCost: number
     insuranceFee: number
+    tax?: number
+    dppAmount?: number
+    taxTypeApplied?: string
     items: MockExportOrderItem[]
   }
 
   function generateFinancialExportRows(orders: MockExportOrder[]) {
     let sumGross = 0
+    let sumDpp = 0
+    let sumPpn = 0
     let sumCOGS = 0
     let sumGrossProfit = 0
     let sumCommission = 0
@@ -71,6 +79,16 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
           ? Number(((grossProfit / grossRevenue) * 100).toFixed(2))
           : 0
 
+      const ppn = order.tax ?? 0
+      const dpp =
+        order.dppAmount && order.dppAmount > 0
+          ? order.dppAmount
+          : ppn > 0
+            ? Math.max(0, grossRevenue - ppn)
+            : grossRevenue
+      const taxScheme =
+        order.taxTypeApplied === 'INCLUSIVE' || ppn > 0 ? 'Inklusif' : 'Non-PKP'
+
       const commission = order.commissionAmount ?? 0
       const packing = order.packingFee ?? 5000
       const discount = order.discountAmount ?? 0
@@ -90,6 +108,8 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
       )
 
       sumGross += grossRevenue
+      sumDpp += dpp
+      sumPpn += ppn
       sumCOGS += cogs
       sumGrossProfit += grossProfit
       sumCommission += commission
@@ -111,6 +131,9 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
         productNames,
         totalQty,
         grossRevenue,
+        dpp,
+        ppn,
+        taxScheme,
         cogs,
         grossProfit,
         grossMargin,
@@ -141,6 +164,9 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
         '-',
         sumQty,
         sumGross,
+        sumDpp,
+        sumPpn,
+        '-',
         sumCOGS,
         sumGrossProfit,
         totalGrossMargin,
@@ -160,6 +186,8 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
       summary: {
         sumQty,
         sumGross,
+        sumDpp,
+        sumPpn,
         sumCOGS,
         sumGrossProfit,
         sumCommission,
@@ -172,9 +200,12 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
     }
   }
 
-  it('should define exactly 18 comprehensive financial columns in export sheet', () => {
-    expect(EXPECTED_FINANCIAL_HEADERS).toHaveLength(18)
+  it('should define exactly 21 comprehensive financial columns in export sheet', () => {
+    expect(EXPECTED_FINANCIAL_HEADERS).toHaveLength(21)
     expect(EXPECTED_FINANCIAL_HEADERS).toContain('Omzet Kotor (Rp)')
+    expect(EXPECTED_FINANCIAL_HEADERS).toContain('DPP (Rp)')
+    expect(EXPECTED_FINANCIAL_HEADERS).toContain('PPN 11% (Rp)')
+    expect(EXPECTED_FINANCIAL_HEADERS).toContain('Skema PPN')
     expect(EXPECTED_FINANCIAL_HEADERS).toContain('HPP Modal (Rp)')
     expect(EXPECTED_FINANCIAL_HEADERS).toContain('Laba Kotor (Rp)')
     expect(EXPECTED_FINANCIAL_HEADERS).toContain('Margin Kotor (%)')
@@ -220,19 +251,22 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
     expect(firstRow[2]).toBe('PT Gadget Jaya Sentosa - Roxy Mas Pusat')
     expect(firstRow[6]).toBe(1) // Qty
     expect(firstRow[7]).toBe(19999000) // Gross
-    expect(firstRow[8]).toBe(17500000) // COGS
-    expect(firstRow[9]).toBe(2499000) // Gross Profit = 19.999.000 - 17.500.000
-    expect(firstRow[10]).toBe(12.5) // Margin Kotor % = (2499000 / 19999000) * 100 = 12.50%
-    expect(firstRow[11]).toBe(399980) // Komisi 2%
-    expect(firstRow[12]).toBe(5000) // Packing flat
-    expect(firstRow[13]).toBe(50000) // Voucher
-    expect(firstRow[14]).toBe(35000) // Shipping pass-through
-    expect(firstRow[15]).toBe(40000) // Insurance pass-through
+    expect(firstRow[8]).toBe(19999000) // DPP
+    expect(firstRow[9]).toBe(0) // PPN
+    expect(firstRow[10]).toBe('Non-PKP') // Skema PPN
+    expect(firstRow[11]).toBe(17500000) // COGS
+    expect(firstRow[12]).toBe(2499000) // Gross Profit = 19.999.000 - 17.500.000
+    expect(firstRow[13]).toBe(12.5) // Margin Kotor % = (2499000 / 19999000) * 100 = 12.50%
+    expect(firstRow[14]).toBe(399980) // Komisi 2%
+    expect(firstRow[15]).toBe(5000) // Packing flat
+    expect(firstRow[16]).toBe(50000) // Voucher
+    expect(firstRow[17]).toBe(35000) // Shipping pass-through
+    expect(firstRow[18]).toBe(40000) // Insurance pass-through
 
     // Total expense = 399.980 + 5.000 + 50.000 = 454.980
     // Net profit = 2.499.000 - 454.980 = 2.044.020 (Shipping & insurance NOT deducted)
-    expect(firstRow[16]).toBe(2044020)
-    expect(firstRow[17]).toBe(10.22) // Net Margin % = (2044020 / 19999000) * 100
+    expect(firstRow[19]).toBe(2044020)
+    expect(firstRow[20]).toBe(10.22) // Net Margin % = (2044020 / 19999000) * 100
   })
 
   it('should generate accurate summary TOTAL row at the bottom for multi-order datasets', () => {
@@ -288,20 +322,23 @@ describe('Financial Reports Export Engine (Phase 8 - XLSX & CSV)', () => {
     expect(totalRow[0]).toBe('TOTAL')
     expect(totalRow[6]).toBe(3) // Total Qty (1 + 2)
     expect(totalRow[7]).toBe(30000000) // Total Gross = 10jt + 20jt
-    expect(totalRow[8]).toBe(25500000) // Total COGS = 8.5jt + 17jt
-    expect(totalRow[9]).toBe(4500000) // Total Gross Profit = 30jt - 25.5jt
-    expect(totalRow[10]).toBe(15) // Weighted Gross Margin % = (4.5jt / 30jt) * 100 = 15%
-    expect(totalRow[11]).toBe(600000) // Total Commission
-    expect(totalRow[12]).toBe(10000) // Total Packing (5rb * 2)
-    expect(totalRow[13]).toBe(100000) // Total Voucher
-    expect(totalRow[14]).toBe(75000) // Total Shipping pass-through
-    expect(totalRow[15]).toBe(60000) // Total Insurance pass-through
+    expect(totalRow[8]).toBe(30000000) // Total DPP
+    expect(totalRow[9]).toBe(0) // Total PPN
+    expect(totalRow[10]).toBe('-') // Skema PPN
+    expect(totalRow[11]).toBe(25500000) // Total COGS = 8.5jt + 17jt
+    expect(totalRow[12]).toBe(4500000) // Total Gross Profit = 30jt - 25.5jt
+    expect(totalRow[13]).toBe(15) // Weighted Gross Margin % = (4.5jt / 30jt) * 100 = 15%
+    expect(totalRow[14]).toBe(600000) // Total Commission
+    expect(totalRow[15]).toBe(10000) // Total Packing (5rb * 2)
+    expect(totalRow[16]).toBe(100000) // Total Voucher
+    expect(totalRow[17]).toBe(75000) // Total Shipping pass-through
+    expect(totalRow[18]).toBe(60000) // Total Insurance pass-through
 
     // Total expenses = 600.000 + 10.000 + 100.000 = 710.000
     // Total Net Profit = 4.500.000 - 710.000 = 3.790.000
-    expect(totalRow[16]).toBe(3790000)
+    expect(totalRow[19]).toBe(3790000)
     // Weighted Net Margin % = (3.790.000 / 30.000.000) * 100 = 12.63%
-    expect(totalRow[17]).toBe(12.63)
+    expect(totalRow[20]).toBe(12.63)
   })
 
   it('should filter orders by storeId when exported by STORE_ADMIN role', () => {

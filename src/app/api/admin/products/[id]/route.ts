@@ -29,6 +29,9 @@ export async function GET(
             id: true,
             name: true,
             city: true,
+            isPkp: true,
+            vatRate: true,
+            taxType: true,
           },
         },
       },
@@ -142,6 +145,9 @@ export async function PATCH(
         ...(body.stock !== undefined && { stock: parseInt(body.stock) }),
         ...(body.images && { images: body.images }),
         ...(body.isActive !== undefined && { isActive: body.isActive }),
+        ...(body.isTaxable !== undefined && {
+          isTaxable: Boolean(body.isTaxable),
+        }),
       },
       include: {
         variants: {

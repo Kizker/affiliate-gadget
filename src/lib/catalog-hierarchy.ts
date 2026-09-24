@@ -23,6 +23,9 @@ export interface ColorVariantItem {
   images?: string[]
   condition?: string
   warrantyDays?: number
+  isTaxable?: boolean
+  storeIsPkp?: boolean
+  storeVatRate?: number
 }
 
 export interface CapacityGroup {
@@ -53,6 +56,9 @@ export interface SeriesGroup {
   condition?: string
   warrantyDays?: number
   isActive?: boolean
+  isTaxable?: boolean
+  storeIsPkp?: boolean
+  storeVatRate?: number
 }
 
 export interface BrandGroup {
@@ -331,6 +337,9 @@ export function buildCatalogHierarchy(products: any[]): BrandGroup[] {
         images: product.images || [],
         condition: product.condition || 'BARU',
         warrantyDays: product.warrantyDays || 30,
+        isTaxable: product.isTaxable !== false,
+        storeIsPkp: Boolean(product.store?.isPkp),
+        storeVatRate: product.store?.vatRate ?? 11,
       })
     }
   }
@@ -406,6 +415,9 @@ export function buildCatalogHierarchy(products: any[]): BrandGroup[] {
         condition: pMeta.condition,
         warrantyDays: pMeta.warrantyDays,
         isActive: pMeta.isActive,
+        isTaxable: pMeta.isTaxable !== false,
+        storeIsPkp: Boolean(pMeta.store?.isPkp),
+        storeVatRate: pMeta.store?.vatRate ?? 11,
       })
 
       brandTotalVariants += seriesTotalVariants

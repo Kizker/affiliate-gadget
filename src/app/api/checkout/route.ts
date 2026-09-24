@@ -23,7 +23,7 @@ import {
 } from '@/lib/constants/shipping'
 import { verifyServerShippingCost } from '@/lib/shipping/shipping-engine'
 import { calculateVoucherDiscountAmount } from '@/lib/constants/voucher'
-import { createMidtransSnapTransaction } from '@/lib/midtrans'
+import { calculateOrderVat, calculatePph23 } from '@/lib/tax/tax-engine'
 
 interface CartItem {
   type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
@@ -294,6 +294,9 @@ export async function POST(request: NextRequest) {
                 itemSubtotal: number
                 storeId: string | null
                 commissionRate: number
+                isPkp?: boolean
+                vatRate?: number
+                isTaxable?: boolean
                 technicianId: string | null
                 weightGram?: number
                 pricePerKg?: number
@@ -397,6 +400,9 @@ export async function POST(request: NextRequest) {
                     itemSubtotal,
                     storeId: product.storeId,
                     commissionRate: product.store?.commissionRate ?? 2.0,
+                    isPkp: product.store?.isPkp ?? true,
+                    vatRate: product.store?.vatRate ?? 11.0,
+                    isTaxable: product.isTaxable ?? true,
                     technicianId: null,
                     weightGram: product.weightGram ?? DEFAULT_WEIGHT_GRAM,
                     pricePerKg: product.pricePerKg ?? DEFAULT_PRICE_PER_KG,
@@ -717,12 +723,27 @@ export async function POST(request: NextRequest) {
                 subtotal + shippingCost + insuranceFee - appliedDiscountAmount
               )
 
-              // Store & Commission
-              const detectedStoreId =
-                verifiedItems.find((vi) => vi.storeId)?.storeId || null
-              const commissionRate =
-                verifiedItems.find((vi) => vi.storeId)?.commissionRate ?? 2.0
+              // Store & Commission & Tax
+              const detectedStoreItem = verifiedItems.find((vi) => vi.storeId)
+              const detectedStoreId = detectedStoreItem?.storeId || null
+              const commissionRate = detectedStoreItem?.commissionRate ?? 2.0
+              const isPkp = detectedStoreItem?.isPkp ?? false
+              const vatRate = detectedStoreItem?.vatRate ?? 11.0
               const commissionAmount = (subtotal * commissionRate) / 100
+
+              // Silent Inclusive VAT Extraction
+              const subtotalAfterDiscount = Math.max(
+                0,
+                subtotal - appliedDiscountAmount
+              )
+              const vatResult = calculateOrderVat(subtotalAfterDiscount, {
+                isPkp: orderType === 'PRODUCT' ? isPkp : false,
+                vatRate,
+              })
+
+              // PPh 23 Komisi Platform & Cadangan PPh 22 Final UMKM
+              // PPh 23 Komisi Platform (2% otomatis permanen)
+              const pph23Result = calculatePph23(commissionAmount)
 
               // Dynamic 3-in-1 bonus based on product schema flags (BONUS-01)
               const bonusChargerIncluded =
@@ -752,7 +773,12 @@ export async function POST(request: NextRequest) {
                       : null,
                   status: 'PENDING_PAYMENT',
                   subtotal,
-                  tax: 0,
+                  tax: vatResult.vatAmount,
+                  dppAmount: vatResult.dppAmount,
+                  vatRate: vatResult.vatRate,
+                  taxTypeApplied: 'INCLUSIVE',
+                  pph23Amount: pph23Result.pph23Amount,
+                  pph23Rate: pph23Result.pph23Rate,
                   shippingCost,
                   totalWeightGram,
                   voucherId: appliedVoucherId,

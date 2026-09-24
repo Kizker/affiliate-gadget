@@ -102,6 +102,8 @@ export async function GET(request: NextRequest) {
     let totalVoucherDiscount = 0
     let totalShippingCost = 0
     let totalInsuranceFee = 0
+    let totalPph23Withheld = 0
+    let totalVatOutput = 0
 
     const revenueByCategory = {
       JASA: 0,
@@ -115,6 +117,8 @@ export async function GET(request: NextRequest) {
       totalVoucherDiscount += order.discountAmount ?? 0
       totalShippingCost += order.shippingCost ?? 0
       totalInsuranceFee += order.insuranceFee ?? 0
+      totalPph23Withheld += (order as { pph23Amount?: number }).pph23Amount ?? 0
+      totalVatOutput += order.tax ?? 0
 
       // Biaya packing default toko (konfirmasi parameter: Rp 5.000 flat)
       const packingFee = order.store?.defaultPackingFee ?? 5000
@@ -447,6 +451,8 @@ export async function GET(request: NextRequest) {
             },
             netProfit: totalNetProfit,
             netMarginPct,
+            totalPph23Withheld,
+            totalVatOutput,
           },
           revenue: {
             total: totalRevenue,

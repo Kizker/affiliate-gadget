@@ -20,6 +20,8 @@ export function getColumnFormatAndAlignment(
   // 1. Currency Columns (Rp, Harga, Omzet, Modal, HPP, Laba, Komisi, Biaya, Diskon, Ongkir, Asuransi, Total)
   if (
     h.includes('(rp)') ||
+    h.includes('dpp') ||
+    (h.includes('ppn') && !h.includes('skema')) ||
     h.includes('omzet') ||
     h.includes('hpp') ||
     h.includes('modal') ||

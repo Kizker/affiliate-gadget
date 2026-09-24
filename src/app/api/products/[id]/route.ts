@@ -48,7 +48,7 @@ export async function GET(
 
     return NextResponse.json(product, {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
       },
     })
   } catch (error) {
@@ -128,6 +128,7 @@ export async function PATCH(
       includesCharger,
       includesScreenProtector,
       includesCase,
+      isTaxable,
       variants,
       isActive,
     } = body
@@ -210,6 +211,7 @@ export async function PATCH(
           ...(includesCase !== undefined && {
             includesCase: Boolean(includesCase),
           }),
+          ...(isTaxable !== undefined && { isTaxable: Boolean(isTaxable) }),
           ...(isActive !== undefined && { isActive: Boolean(isActive) }),
         },
         include: {

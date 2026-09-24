@@ -85,6 +85,9 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               city: true,
+              isPkp: true,
+              vatRate: true,
+              taxType: true,
             },
           },
         },
@@ -205,6 +208,8 @@ export async function POST(request: NextRequest) {
         stock: parseInt(stock),
         images: images || [],
         isActive: isActive !== undefined ? isActive : true,
+        isTaxable:
+          body.isTaxable !== undefined ? Boolean(body.isTaxable) : true,
         ...(storeIdToAssign ? { storeId: storeIdToAssign } : {}),
         ...(Array.isArray(variants) && variants.length > 0
           ? {

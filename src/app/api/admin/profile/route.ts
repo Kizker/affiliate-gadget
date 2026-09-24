@@ -25,7 +25,22 @@ export async function GET() {
         role: true,
         storeId: true,
         store: {
-          include: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            companyName: true,
+            logo: true,
+            taxId: true,
+            isPkp: true,
+            vatRate: true,
+            kppName: true,
+            address: true,
+            city: true,
+            province: true,
+            postalCode: true,
+            phone: true,
+            whatsapp: true,
             bankAccounts: true,
           },
         },
@@ -179,6 +194,9 @@ export async function PATCH(request: NextRequest) {
           bankName,
           accountNumber,
           accountName,
+          isPkp,
+          vatRate,
+          kppName,
         } = storeData
 
         updatedStore = await tx.store.update({
@@ -194,8 +212,34 @@ export async function PATCH(request: NextRequest) {
             ...(postalCode !== undefined && { postalCode }),
             ...(storePhone && { phone: storePhone }),
             ...(whatsapp && { whatsapp }),
+            ...(isPkp !== undefined && { isPkp: Boolean(isPkp) }),
+            ...(vatRate !== undefined && {
+              vatRate: Math.max(
+                0,
+                Math.min(20, parseFloat(String(vatRate)) || 11.0)
+              ),
+            }),
+            ...(kppName !== undefined && {
+              kppName: kppName ? String(kppName).trim() : null,
+            }),
+            taxType: 'INCLUSIVE',
           },
-          include: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            companyName: true,
+            logo: true,
+            taxId: true,
+            isPkp: true,
+            vatRate: true,
+            kppName: true,
+            address: true,
+            city: true,
+            province: true,
+            postalCode: true,
+            phone: true,
+            whatsapp: true,
             bankAccounts: true,
           },
         })

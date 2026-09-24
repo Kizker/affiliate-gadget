@@ -257,6 +257,7 @@ export async function POST(request: NextRequest) {
       includesCharger = true,
       includesScreenProtector = true,
       includesCase = true,
+      isTaxable = true,
       variants = [],
     } = body
 
@@ -328,6 +329,7 @@ export async function POST(request: NextRequest) {
         includesCharger: Boolean(includesCharger),
         includesScreenProtector: Boolean(includesScreenProtector),
         includesCase: Boolean(includesCase),
+        isTaxable: isTaxable !== undefined ? Boolean(isTaxable) : true,
         variants: {
           create: (variants || []).map((v: any) => ({
             name: v.name,

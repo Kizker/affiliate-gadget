@@ -124,6 +124,10 @@ model Store {
   email          String?
   isOwnerStore   Boolean            @default(false) // Unlimited Ads & Internal owner store
   commissionRate    Float              @default(2.0)   // 1% - 3% platform commission
+  isPkp             Boolean            @default(true)  // Status Pengusaha Kena Pajak (CV/PT wajib PKP)
+  vatRate           Float              @default(11.0)  // Tarif PPN dinamis (default 11%)
+  taxType           String             @default("INCLUSIVE") // Skema pajak (default: INCLUSIVE)
+  kppName           String?                            // Nama KPP Pratama terdaftar
   defaultPackingFee Float              @default(5000)  // Biaya packing per pesanan (Rp 5.000)
   rating            Float              @default(5.0)
   totalReview    Int                @default(0)
@@ -204,6 +208,7 @@ model Product {
   rating                  Float            @default(5.0)
   totalReview             Int              @default(0)
   isActive                Boolean          @default(true)
+  isTaxable               Boolean          @default(true) // Apakah produk kena PPN (true) atau bebas PPN (false)
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
   store                   Store?           @relation(fields: [storeId], references: [id])
@@ -494,7 +499,12 @@ model Order {
   technicianPaymentRequestedAt    DateTime?
   status                          OrderStatus    @default(PENDING_PAYMENT)
   subtotal                        Float
-  tax                             Float          @default(0)
+  tax                             Float          @default(0)    // Nilai PPN (vatAmount)
+  dppAmount                       Float          @default(0)    // Dasar Pengenaan Pajak
+  vatRate                         Float          @default(0)    // Snapshot tarif PPN saat transaksi (%)
+  taxTypeApplied                  String         @default("INCLUSIVE") // Snapshot skema PPN ("INCLUSIVE")
+  pph23Amount                     Float          @default(0)    // Snapshot nilai PPh 23 komisi platform
+  pph23Rate                       Float          @default(0)    // Snapshot tarif PPh 23 saat transaksi (%)
   shippingCost                    Float          @default(0)
   totalWeightGram                 Int?           // Total berat pesanan dalam gram
   voucherId                       String?

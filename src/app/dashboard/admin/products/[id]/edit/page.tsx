@@ -105,6 +105,7 @@ export default function EditProductPage() {
     includesCharger: true,
     includesScreenProtector: true,
     includesCase: true,
+    isTaxable: true,
     specs: {
       Chipset: '',
       Layar: '',
@@ -123,7 +124,7 @@ export default function EditProductPage() {
       try {
         const [storesRes, productRes] = await Promise.all([
           fetch('/api/stores?scoped=true'),
-          fetch(`/api/products/${id}`),
+          fetch(`/api/products/${id}`, { cache: 'no-store' }),
         ])
 
         const storesData = await storesRes.json()
@@ -191,6 +192,7 @@ export default function EditProductPage() {
           includesCharger: Boolean(p.includesCharger ?? true),
           includesScreenProtector: Boolean(p.includesScreenProtector ?? true),
           includesCase: Boolean(p.includesCase ?? true),
+          isTaxable: p.isTaxable !== false,
           specs: existingSpecs,
         })
 
@@ -479,6 +481,11 @@ export default function EditProductPage() {
     )
   }
 
+  const selectedStore =
+    stores.find(
+      (s) => s.id === (isStoreAdmin && userStoreId ? userStoreId : form.storeId)
+    ) || stores[0]
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-2 sm:px-6 sm:py-4">
       {/* 1. Header Hero Section */}
@@ -650,6 +657,58 @@ export default function EditProductPage() {
                 className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
                 title="Harga pokok modal unit untuk kalkulasi laba toko"
               />
+            </div>
+
+            {/* Status PPN Produk (Bebas PPN vs Dikenakan PPN) */}
+            <div
+              className={`p-4.5 rounded-2xl border transition-all duration-200 sm:col-span-2 ${
+                form.isTaxable
+                  ? 'border-blue-300 bg-blue-50/70 dark:border-blue-800 dark:bg-blue-950/30'
+                  : 'border-amber-300 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/30'
+              }`}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                      Status Pajak Produk (PPN Inklusif)
+                    </span>
+                    {form.isTaxable ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-100/90 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 dark:border-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                        <Check className="h-3 w-3" /> Dikenakan PPN (Inklusif{' '}
+                        {selectedStore?.vatRate ?? 11}%)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100/90 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 dark:border-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                        Bebas PPN (Non-Pajak)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                    {form.isTaxable
+                      ? selectedStore?.isPkp
+                        ? `Harga jual di atas sudah termasuk PPN ${selectedStore?.vatRate ?? 11}% (Inklusif). DPP dan PPN Keluaran akan otomatis dipisahkan pada pelaporan akuntansi internal ${selectedStore?.companyName || selectedStore?.name || 'Toko'}.`
+                        : `Dikenakan PPN aktif, namun cabang toko (${selectedStore?.name || 'Toko'}) saat ini berstatus Non-PKP sehingga pemotongan PPN bernilai Rp 0.`
+                      : 'Produk ini ditandai BEBAS PPN (Tax-Exempt). Penjualan produk tidak memotong PPN, nilai DPP dicatat 100% penuh harga produk, dan PPN tercatat Rp 0 pada faktur pembukuan.'}
+                  </p>
+                </div>
+
+                <label className="shadow-xs flex shrink-0 cursor-pointer select-none items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={form.isTaxable}
+                    onChange={(e) =>
+                      setForm({ ...form, isTaxable: e.target.checked })
+                    }
+                    className="h-5 w-5 cursor-pointer rounded border-slate-300 text-blue-600 accent-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {form.isTaxable
+                      ? 'Dikenakan PPN (mengikuti PKP toko)'
+                      : 'Bebas PPN (PPN Rp 0)'}
+                  </span>
+                </label>
+              </div>
             </div>
 
             {/* Baris 4: Harga Coret Pembanding & Total Stok Unit */}

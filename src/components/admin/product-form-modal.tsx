@@ -17,6 +17,7 @@ interface ProductFormModalProps {
     model?: string | null
     images?: string[]
     isActive?: boolean
+    isTaxable?: boolean
   } | null
   onClose: () => void
   onSuccess: () => void
@@ -39,6 +40,7 @@ export default function ProductFormModal({
     stock: '',
     images: [] as string[],
     isActive: true,
+    isTaxable: true,
   })
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export default function ProductFormModal({
         stock: product.stock?.toString() || '',
         images: product.images || [],
         isActive: product.isActive !== undefined ? product.isActive : true,
+        isTaxable: product.isTaxable !== false,
       })
     } else {
       setFormData({
@@ -65,6 +68,7 @@ export default function ProductFormModal({
         stock: '',
         images: [],
         isActive: true,
+        isTaxable: true,
       })
     }
   }, [product, isOpen])
@@ -128,6 +132,7 @@ export default function ProductFormModal({
           ...formData,
           price: parseFloat(formData.price),
           stock: parseInt(formData.stock),
+          isTaxable: formData.isTaxable,
         }),
       })
 
@@ -352,6 +357,32 @@ export default function ProductFormModal({
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Tax / PPN Status Checkbox */}
+            <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 sm:col-span-2">
+              <label className="flex cursor-pointer items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-gray-800">
+                    {formData.isTaxable
+                      ? 'Dikenakan PPN (Inklusif)'
+                      : 'Bebas PPN (Non-Pajak)'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formData.isTaxable
+                      ? 'Produk dipungut PPN sesuai status PKP toko pada pembukuan akuntansi.'
+                      : 'Produk dibebaskan dari pemungutan PPN (DPP penuh 100%, PPN Rp 0).'}
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={formData.isTaxable}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isTaxable: e.target.checked })
+                  }
+                  className="h-5 w-5 cursor-pointer rounded border-gray-300 text-orange-600 accent-orange-600 focus:ring-orange-500"
+                />
+              </label>
             </div>
 
             <div className="flex flex-shrink-0 gap-3 pt-4">

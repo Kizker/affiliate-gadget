@@ -27,18 +27,30 @@ import {
   ShieldAlert,
   Camera,
   Trash2,
+  Receipt,
+  Percent,
 } from 'lucide-react'
 
 export default function AdminSettingsPage() {
-  const { update: updateSession } = useSession()
+  const { data: session, update: updateSession } = useSession()
+  const sessionRole = (session?.user as { role?: string })?.role || ''
+  const [userRole, setUserRole] = useState(sessionRole)
   const [activeTab, setActiveTab] = useState<'STORE' | 'ADMIN' | 'SECURITY'>(
-    'ADMIN'
+    sessionRole === 'STORE_ADMIN' ? 'STORE' : 'ADMIN'
   )
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingUserImage, setUploadingUserImage] = useState(false)
-  const [userRole, setUserRole] = useState('')
+
+  useEffect(() => {
+    if (sessionRole && !userRole) {
+      setUserRole(sessionRole)
+      if (sessionRole === 'STORE_ADMIN') {
+        setActiveTab('STORE')
+      }
+    }
+  }, [sessionRole, userRole])
 
   // User Profile Form State
   const [userForm, setUserForm] = useState({
@@ -57,6 +69,9 @@ export default function AdminSettingsPage() {
     companyName: '',
     logo: '',
     taxId: '',
+    isPkp: true,
+    vatRate: 11.0,
+    kppName: '',
     address: '',
     city: 'Jakarta Pusat',
     province: 'DKI Jakarta',
@@ -68,9 +83,11 @@ export default function AdminSettingsPage() {
     accountName: '',
   })
 
-  const isStoreAdmin = userRole === 'STORE_ADMIN'
-  const isSuperAdmin = userRole === 'SUPER_ADMIN'
-  const isAdminPlatform = userRole === 'ADMIN'
+  const isStoreAdmin =
+    userRole === 'STORE_ADMIN' || sessionRole === 'STORE_ADMIN'
+  const isSuperAdmin =
+    userRole === 'SUPER_ADMIN' || sessionRole === 'SUPER_ADMIN'
+  const isAdminPlatform = userRole === 'ADMIN' || sessionRole === 'ADMIN'
 
   useEffect(() => {
     fetchProfile()
@@ -116,6 +133,9 @@ export default function AdminSettingsPage() {
             companyName: store.companyName || '',
             logo: store.logo || '',
             taxId: store.taxId || '',
+            isPkp: true,
+            vatRate: store.vatRate ?? 11.0,
+            kppName: store.kppName || '',
             address: store.address || '',
             city: store.city || 'Jakarta Pusat',
             province: store.province || 'DKI Jakarta',
@@ -597,6 +617,224 @@ export default function AdminSettingsPage() {
                         className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         required
                       />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 1b. Konfigurasi Perpajakan Toko (PPN Inklusif) */}
+                <div className="shadow-2xs space-y-5 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                  <div className="flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50">
+                      <Receipt className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-950 dark:text-white">
+                        Konfigurasi Perpajakan Toko (PPN Inklusif)
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Pengaturan status Pengusaha Kena Pajak (PKP) dan tarif
+                        PPN untuk pembukuan internal toko.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Toggle PKP */}
+                    {/* Status Kepatuhan Pajak Otomatis (Entitas CV / Multi-PT) */}
+                    <div className="rounded-2xl border border-blue-200/80 bg-blue-50/50 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
+                      <div className="flex items-start gap-3">
+                        <div className="shadow-xs mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                          <Receipt className="h-4 w-4" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="text-xs font-bold text-blue-950 dark:text-blue-200">
+                              Kepatuhan Pajak Otomatis (Entitas CV / Multi-PT)
+                            </h4>
+                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-900/80 dark:text-blue-300">
+                              Wajib PKP & PPh 23 Aktif
+                            </span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed text-blue-800/80 dark:text-blue-300/80">
+                            Seluruh cabang toko berbadan hukum CV di platform
+                            terdaftar sebagai Pengusaha Kena Pajak (PKP). Sistem
+                            secara otomatis mengalokasikan PPN 11% inklusif pada
+                            setiap penjualan dan mencatat pemotongan PPh 23 (2%)
+                            atas jasa komisi platform untuk disetorkan via
+                            e-Billing DJP.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tarif PPN & Skema */}
+                    <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-slate-700 dark:text-slate-300">
+                          Tarif PPN (%)
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="20"
+                            value={storeForm.vatRate}
+                            onChange={(e) =>
+                              setStoreForm({
+                                ...storeForm,
+                                vatRate: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          />
+                          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-bold text-slate-400">
+                            %
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          Standar Indonesia: 11.0% (UU HPP). Siap dinaikkan
+                          fleksibel jika regulasi berubah.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-slate-700 dark:text-slate-300">
+                          Skema Pajak Ritel
+                        </label>
+                        <div className="rounded-xl border border-slate-200/80 bg-slate-100/70 px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300">
+                          Inklusif Otomatis (Termasuk Pajak)
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          Silent accounting: mencatat DPP & PPN di pembukuan
+                          tanpa menampilkan istilah pajak ke customer.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* KPP Pratama Terdaftar */}
+                    <div className="space-y-1.5 border-t border-slate-100 pt-1 text-xs dark:border-slate-800">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        Nama KPP Pratama Terdaftar
+                      </label>
+                      <input
+                        type="text"
+                        value={storeForm.kppName}
+                        onChange={(e) =>
+                          setStoreForm({
+                            ...storeForm,
+                            kppName: e.target.value,
+                          })
+                        }
+                        placeholder="misal: KPP Pratama Jakarta Gambir Dua"
+                        className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                      {storeForm.kppName.trim() && (
+                        <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                          ℹ️ Laporan pajak akan menyertakan header KPP:{' '}
+                          {storeForm.kppName.trim()}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-slate-400">
+                        Dicantumkan pada header laporan pajak dan arsip faktur
+                        elektronik cabang.
+                      </p>
+                    </div>
+
+                    {/* Simulasi Dedicated PPh 23 & Beban Platform */}
+                    <div className="rounded-2xl border border-dashed border-amber-300/80 bg-amber-50/30 p-4 text-xs dark:border-amber-800/80 dark:bg-amber-950/20">
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
+                          <Receipt className="h-4 w-4 text-amber-600" />
+                          Simulasi PPh 23 & Beban Jasa Toko (Asumsi Penjualan Rp
+                          22.000.000)
+                        </span>
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                          PPh 23 2% Permanen
+                        </span>
+                      </div>
+                      <div className="divide-y divide-amber-200/50 rounded-xl border border-amber-200/60 bg-white/80 dark:divide-amber-800/50 dark:border-amber-800/60 dark:bg-slate-900/80">
+                        <div className="flex items-center justify-between px-3 py-2">
+                          <span className="text-slate-600 dark:text-slate-400">
+                            Komisi Platform Bruto (2%)
+                          </span>
+                          <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                            Rp 440.000
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2">
+                          <span className="text-slate-600 dark:text-slate-400">
+                            PPN Jasa Platform (11%)
+                          </span>
+                          <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                            Rp 48.400
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between bg-amber-50/50 px-3 py-2 dark:bg-amber-950/30">
+                          <span className="font-semibold text-amber-800 dark:text-amber-300">
+                            Potongan PPh 23 (2% Wajib Setor e-Billing)
+                          </span>
+                          <span className="font-mono font-bold text-amber-700 dark:text-amber-400">
+                            - Rp 8.800
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between bg-slate-50 px-3 py-2 font-bold dark:bg-slate-800/60">
+                          <span className="text-slate-900 dark:text-white">
+                            Beban Bersih Komisi Toko
+                          </span>
+                          <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                            Rp 479.600
+                          </span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
+                        * Beban Bersih = Komisi (Rp 440.000) + PPN Jasa (Rp
+                        48.400) - PPh 23 Disetor Toko (Rp 8.800).
+                      </p>
+                    </div>
+
+                    {/* Live Preview Box Pembukuan Internal */}
+                    <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/50 p-3.5 text-xs text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300">
+                      <div className="mb-1 flex items-center gap-1.5 font-semibold text-emerald-900 dark:text-emerald-200">
+                        <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                        Simulasi Pembukuan Unit Gadget (Contoh Unit Rp
+                        10.000.000)
+                      </div>
+                      <div className="space-y-2 border-t border-emerald-200/60 pt-1 font-mono text-[11px] dark:border-emerald-800/60">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            DPP (Omzet Dasar Toko):{' '}
+                            <span className="font-bold">
+                              Rp{' '}
+                              {Math.round(
+                                10_000_000 /
+                                  (1 + (storeForm.vatRate || 11) / 100)
+                              ).toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                          <div>
+                            PPN Keluaran ({storeForm.vatRate}%):{' '}
+                            <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                              Rp{' '}
+                              {(
+                                10_000_000 -
+                                Math.round(
+                                  10_000_000 /
+                                    (1 + (storeForm.vatRate || 11) / 100)
+                                )
+                              ).toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="border-t border-emerald-200/40 pt-1 dark:border-emerald-800/40">
+                          <div>
+                            PPh 23 Komisi Platform (2%):{' '}
+                            <span className="font-bold text-amber-600 dark:text-amber-400">
+                              Rp 4.000
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

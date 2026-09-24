@@ -86,12 +86,35 @@ export async function GET(request: NextRequest) {
         }
       : {}
 
+    // Filter tanggal (Periode: hari ini, minggu ini, bulan ini, tahun ini, per bulan)
+    const startDateParam = searchParams.get('startDate')
+    const endDateParam = searchParams.get('endDate')
+
+    const dateFilter: {
+      createdAt?: {
+        gte: Date
+        lte: Date
+      }
+    } = {}
+
+    if (startDateParam && endDateParam) {
+      const s = new Date(startDateParam)
+      const e = new Date(endDateParam)
+      if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+        dateFilter.createdAt = {
+          gte: s,
+          lte: e,
+        }
+      }
+    }
+
     // Ambil semua order terkait yang relevan secara paralel
-    const [orders, allStores] = await Promise.all([
+    const [orders, allStores, allTimeCompletedAgg] = await Promise.all([
       prisma.order.findMany({
         where: {
           status: { in: [...ACTIVE_ORDER_STATUSES] },
           ...storeWhereClause,
+          ...dateFilter,
         },
         include: {
           user: {
@@ -132,6 +155,18 @@ export async function GET(request: NextRequest) {
             where: { isActive: true },
           })
         : Promise.resolve([]),
+      // All-time completed orders for calculating true live withdrawable balance
+      prisma.order.aggregate({
+        where: {
+          status: 'COMPLETED',
+          ...storeWhereClause,
+        },
+        _sum: {
+          subtotal: true,
+          discountAmount: true,
+          commissionAmount: true,
+        },
+      }),
     ])
 
     // Hitung Metrik Finansial
@@ -140,6 +175,9 @@ export async function GET(request: NextRequest) {
     let completedNetRevenue = 0
     let escrowBalance = 0
     let totalUnitsSold = 0
+    let totalVatOutput = 0
+    let totalPph23Withheld = 0
+    let totalVatOnCommission = 0
 
     // Rincian status kurir & pengiriman untuk Escrow
     const courierBreakdown = {
@@ -157,7 +195,7 @@ export async function GET(request: NextRequest) {
       title: string
       subtitle: string
       type: 'INCOME' | 'EXPENSE' | 'ESCROW' | 'PAYOUT'
-      category: 'SALE' | 'COMMISSION' | 'WITHDRAWAL' | 'ESCROW'
+      category: 'SALE' | 'COMMISSION' | 'WITHDRAWAL' | 'ESCROW' | 'PPH23'
       categoryLabel: string
       amount: number
       date: string
@@ -179,6 +217,9 @@ export async function GET(request: NextRequest) {
 
       grossRevenue += orderTotal
       platformCommission += commission
+      totalVatOutput += order.tax || 0
+      totalPph23Withheld += (order as { pph23Amount?: number }).pph23Amount || 0
+      totalVatOnCommission += Math.round(commission * 0.11)
 
       // Hak bersih toko = subtotal - diskon - komisi platform
       const netStoreAmount = Math.max(0, orderSubtotal - discount - commission)
@@ -297,12 +338,54 @@ export async function GET(request: NextRequest) {
           orderStatus: order.status,
         })
       }
+
+      // Mutasi PPh 23 atas Jasa Platform (Kewajiban Setor Toko ke DJP)
+      const orderPph23 = (order as { pph23Amount?: number; pph23Rate?: number })
+        .pph23Amount
+      const orderPph23Rate = (
+        order as { pph23Amount?: number; pph23Rate?: number }
+      ).pph23Rate
+      if (orderPph23 && orderPph23 > 0) {
+        mutations.push({
+          id: `pph23-${order.id}`,
+          refNumber: `PPH23-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+          title: `PPh 23 Komisi Platform (${orderPph23Rate || 2}%)`,
+          subtitle: `Kewajiban setor ke kas negara via e-Billing DJP (#${order.orderNumber})`,
+          type: 'EXPENSE',
+          category: 'PPH23',
+          categoryLabel: 'PPh 23 Komisi',
+          amount: orderPph23,
+          date: formattedDate,
+          rawDate: order.createdAt,
+          status: 'SETTLED',
+          statusLabel: 'Wajib Setor',
+          orderStatus: order.status,
+        })
+      }
     })
 
     // Hitung riwayat penarikan saldo (Withdrawals)
-    const withdrawals = getStoreWithdrawals(targetStoreId)
-    const totalWithdrawn = getTotalWithdrawn(targetStoreId)
-    const availableBalance = Math.max(0, completedNetRevenue - totalWithdrawn)
+    const allTimeWithdrawn = getTotalWithdrawn(targetStoreId)
+    const allTimeNetRevenue = Math.max(
+      0,
+      (allTimeCompletedAgg._sum.subtotal || 0) -
+        (allTimeCompletedAgg._sum.discountAmount || 0) -
+        (allTimeCompletedAgg._sum.commissionAmount || 0)
+    )
+    const availableBalance = Math.max(0, allTimeNetRevenue - allTimeWithdrawn)
+
+    let withdrawals = getStoreWithdrawals(targetStoreId)
+    if (dateFilter.createdAt) {
+      const sTime = dateFilter.createdAt.gte.getTime()
+      const eTime = dateFilter.createdAt.lte.getTime()
+      withdrawals = withdrawals.filter((w) => {
+        const t = new Date(w.createdAt).getTime()
+        return t >= sTime && t <= eTime
+      })
+    }
+    const totalWithdrawn = withdrawals
+      .filter((w) => w.status === 'SUCCESS')
+      .reduce((sum, w) => sum + w.amount, 0)
 
     withdrawals.forEach((wd) => {
       const formattedWdDate = new Intl.DateTimeFormat('id-ID', {
@@ -366,6 +449,9 @@ export async function GET(request: NextRequest) {
         totalUnitsSold,
         totalWithdrawn,
         completedNetRevenue,
+        totalVatOutput,
+        totalPph23Withheld,
+        totalVatOnCommission,
         courierBreakdown,
       },
       transactions: mutations,

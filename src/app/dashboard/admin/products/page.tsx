@@ -78,6 +78,7 @@ interface ProductItem {
   includesScreenProtector: boolean
   includesCase: boolean
   isActive: boolean
+  isTaxable?: boolean
   createdAt?: string | Date
   storeId?: string | null
   store?: {
@@ -85,6 +86,8 @@ interface ProductItem {
     name: string
     city: string
     companyName?: string
+    isPkp?: boolean
+    vatRate?: number
   } | null
   variants?: ProductVariant[]
 }
@@ -514,6 +517,45 @@ export default function ProductsPage() {
     }
   }
 
+  // Toggle product taxable status directly from catalog table/hierarchy
+  const [updatingTaxId, setUpdatingTaxId] = useState<string | null>(null)
+
+  const handleToggleProductTaxable = async (
+    productId: string,
+    currentIsTaxable: boolean,
+    productName?: string
+  ) => {
+    setUpdatingTaxId(productId)
+    try {
+      const nextIsTaxable = !currentIsTaxable
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isTaxable: nextIsTaxable }),
+      })
+      const data = await res.json()
+      if (!res.ok || (data.success === false && data.error)) {
+        throw new Error(data.error || 'Gagal memperbarui status PPN')
+      }
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId ? { ...p, isTaxable: nextIsTaxable } : p
+        )
+      )
+
+      toast.success(
+        nextIsTaxable
+          ? `${productName || 'Gadget'} sekarang DIKENAKAN PPN (Inklusif)`
+          : `${productName || 'Gadget'} sekarang BEBAS PPN (PPN Rp 0)`
+      )
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengubah status PPN produk')
+    } finally {
+      setUpdatingTaxId(null)
+    }
+  }
+
   if (!mounted || status === 'loading') {
     return (
       <div className="mx-auto max-w-7xl animate-pulse space-y-5 pb-16">
@@ -838,6 +880,47 @@ export default function ProductsPage() {
                             <div className="flex items-center gap-2">
                               {series.productId && (
                                 <>
+                                  {/* Direct PPN Checkbox Toggle */}
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      updatingTaxId === series.productId
+                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleToggleProductTaxable(
+                                        series.productId!,
+                                        series.isTaxable !== false,
+                                        series.seriesName
+                                      )
+                                    }}
+                                    className={`shadow-2xs inline-flex select-none items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition ${
+                                      series.isTaxable !== false
+                                        ? 'border-blue-200 bg-blue-50/90 text-blue-700 hover:bg-blue-100 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300'
+                                        : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400'
+                                    } ${updatingTaxId === series.productId ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}
+                                    title={
+                                      series.isTaxable !== false
+                                        ? `Dikenakan PPN (Inklusif ${series.storeVatRate ?? 11}% jika PKP). Klik untuk ubah jadi Bebas PPN.`
+                                        : 'Bebas PPN (PPN Rp 0). Klik untuk ubah jadi Dikenakan PPN.'
+                                    }
+                                  >
+                                    {updatingTaxId === series.productId ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : series.isTaxable !== false ? (
+                                      <CheckSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                    ) : (
+                                      <Square className="h-3.5 w-3.5 text-slate-400" />
+                                    )}
+                                    <span>
+                                      {series.isTaxable !== false
+                                        ? series.storeIsPkp
+                                          ? `PPN ${series.storeVatRate ?? 11}%`
+                                          : 'PPN Aktif'
+                                        : 'Bebas PPN'}
+                                    </span>
+                                  </button>
+
                                   <Link
                                     href={`/dashboard/admin/products/${series.productId}/edit`}
                                     className="shadow-2xs inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
@@ -1140,24 +1223,39 @@ export default function ProductsPage() {
                                                     </span>
                                                   </td>
                                                   <td className="px-3 py-2">
-                                                    <span
-                                                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                                        v.productActive
-                                                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                                      }`}
-                                                    >
+                                                    <div className="flex flex-col gap-1">
                                                       <span
-                                                        className={`h-1.5 w-1.5 rounded-full ${
+                                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
                                                           v.productActive
-                                                            ? 'bg-emerald-500'
-                                                            : 'bg-slate-400'
+                                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                                         }`}
-                                                      />
-                                                      {v.productActive
-                                                        ? 'Aktif'
-                                                        : 'Nonaktif'}
-                                                    </span>
+                                                      >
+                                                        <span
+                                                          className={`h-1.5 w-1.5 rounded-full ${
+                                                            v.productActive
+                                                              ? 'bg-emerald-500'
+                                                              : 'bg-slate-400'
+                                                          }`}
+                                                        />
+                                                        {v.productActive
+                                                          ? 'Aktif'
+                                                          : 'Nonaktif'}
+                                                      </span>
+                                                      <span
+                                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                                                          v.isTaxable !==
+                                                            false &&
+                                                          v.storeIsPkp
+                                                            ? 'border border-blue-200/80 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300'
+                                                            : 'border border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400'
+                                                        }`}
+                                                      >
+                                                        {v.isTaxable !== false
+                                                          ? `PPN ${v.storeVatRate ?? 11}%`
+                                                          : 'Bebas PPN'}
+                                                      </span>
+                                                    </div>
                                                   </td>
                                                   <td className="px-3 py-2 text-right">
                                                     <Link
@@ -1317,6 +1415,41 @@ export default function ProductsPage() {
                           <Gift className="h-3 w-3 text-orange-500" /> Free
                           Bonus 3-in-1
                         </span>
+                        {/* PPN Badge & Interactive Toggle (Internal Admin View) */}
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={updatingTaxId === item.id}
+                            onClick={() =>
+                              handleToggleProductTaxable(
+                                item.id,
+                                item.isTaxable !== false,
+                                item.name
+                              )
+                            }
+                            className={`inline-flex select-none items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10px] font-bold transition ${
+                              item.isTaxable !== false
+                                ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400'
+                                : 'border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400'
+                            } ${updatingTaxId === item.id ? 'cursor-wait opacity-50' : 'cursor-pointer'}`}
+                            title="Klik untuk mengubah status PPN produk ini"
+                          >
+                            {updatingTaxId === item.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : item.isTaxable !== false ? (
+                              <CheckSquare className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                            ) : (
+                              <Square className="h-3 w-3 text-slate-400" />
+                            )}
+                            <span>
+                              {item.isTaxable !== false
+                                ? item.store?.isPkp
+                                  ? `PPN: Inklusif ${item.store?.vatRate ?? 11}%`
+                                  : 'PPN Aktif'
+                                : 'Bebas PPN (Rp 0)'}
+                            </span>
+                          </button>
+                        </div>
                       </div>
                     </td>
                     <td className="px-3 py-4 text-right">
