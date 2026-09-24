@@ -22,6 +22,7 @@ import {
   ArrowLeftRight,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
+import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { toast } from 'sonner'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 
@@ -231,8 +232,7 @@ export function MobileHomeView() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const isLoadingMoreRef = useRef(false)
-  isLoadingMoreRef.current = isLoadingMore
-  const [wishlist, setWishlist] = useState<Record<string, boolean>>({})
+  const { isInWishlist, toggleItem } = useWishlistSafe()
   const { items } = useCartStore()
 
   // Hero Slideshow Carousel State
@@ -273,18 +273,27 @@ export function MobileHomeView() {
       ? items.reduce((sum, item) => sum + item.quantity, 0)
       : 0
 
-  const toggleWishlist = (id: string, name: string, e: React.MouseEvent) => {
+  const toggleWishlist = (item: any, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setWishlist((prev) => {
-      const next = !prev[id]
-      if (next) {
-        toast.success(`Ditambahkan ke Wishlist: ${name}`)
-      } else {
-        toast.info(`Dihapus dari Wishlist: ${name}`)
-      }
-      return { ...prev, [id]: next }
+    const wasAdded = toggleItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      image: item.image,
+      href: item.href,
+      conditionBadge: item.conditionBadge,
+      conditionBadgeColor: item.conditionBadgeColor,
+      rating: item.rating,
+      reviewCount: item.reviewCount,
+      originCity: item.originCity,
     })
+    if (wasAdded) {
+      toast.success(`Ditambahkan ke Wishlist: ${item.name}`)
+    } else {
+      toast.info(`Dihapus dari Wishlist: ${item.name}`)
+    }
   }
 
   // Dynamically synchronize product links with live database
@@ -484,7 +493,7 @@ export function MobileHomeView() {
               .slice(0, visibleCount)
               .filter((_, idx) => idx % 2 === 0)
               .map((item) => {
-                const isWishlisted = wishlist[item.id] || false
+                const isWishlisted = isInWishlist(item.id)
 
                 return (
                   <div
@@ -516,7 +525,7 @@ export function MobileHomeView() {
                         {/* Wishlist Button (Top Right) */}
                         <button
                           type="button"
-                          onClick={(e) => toggleWishlist(item.id, item.name, e)}
+                          onClick={(e) => toggleWishlist(item, e)}
                           className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
                           aria-label="Wishlist"
                         >
@@ -600,7 +609,7 @@ export function MobileHomeView() {
               .slice(0, visibleCount)
               .filter((_, idx) => idx % 2 === 1)
               .map((item) => {
-                const isWishlisted = wishlist[item.id] || false
+                const isWishlisted = isInWishlist(item.id)
 
                 return (
                   <div
@@ -632,7 +641,7 @@ export function MobileHomeView() {
                         {/* Wishlist Button (Top Right) */}
                         <button
                           type="button"
-                          onClick={(e) => toggleWishlist(item.id, item.name, e)}
+                          onClick={(e) => toggleWishlist(item, e)}
                           className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
                           aria-label="Wishlist"
                         >

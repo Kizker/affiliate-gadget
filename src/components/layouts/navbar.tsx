@@ -18,6 +18,7 @@ import {
   ArrowRight,
   MessageSquare,
   HelpCircle,
+  Heart,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
 
@@ -326,6 +327,13 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                           >
                             <ShoppingBag className="h-3.5 w-3.5 text-slate-400" />{' '}
                             Pesanan Saya
+                          </Link>
+                          <Link
+                            href="/dashboard/customer/wishlist"
+                            className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <Heart className="h-3.5 w-3.5 text-rose-500" />{' '}
+                            Wishlist Saya
                           </Link>
                           <Link
                             href="/dashboard/customer/settings"

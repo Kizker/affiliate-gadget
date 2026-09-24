@@ -16,6 +16,7 @@ import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import { motion } from 'framer-motion'
 import { useToast } from '@/hooks/use-toast'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 interface Mitra {
   id: string
@@ -291,34 +292,30 @@ export default function RekomendasiClientPage({
           <div className="-mx-4 mb-6 overflow-x-auto px-4 pb-2 pt-2 sm:mx-0 sm:overflow-visible sm:p-0">
             <div className="flex min-w-max items-center gap-2 sm:flex-wrap">
               {/* Sort Dropdown */}
-              <div className="relative">
-                <select
+              <div className="shrink-0">
+                <CustomSelect
                   value={sortBy}
-                  onChange={(e) => handleSortChange(e.target.value)}
-                  className="appearance-none rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-9 text-sm font-medium text-gray-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                >
-                  <option value="rating">⭐ Rating Tertinggi</option>
-                  <option value="review">💬 Review Terbanyak</option>
-                  <option value="distance">📍 Jarak Terdekat</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                  onChange={(val) => handleSortChange(val)}
+                  size="sm"
+                  options={[
+                    { value: 'rating', label: '⭐ Rating Tertinggi' },
+                    { value: 'review', label: '💬 Review Terbanyak' },
+                    { value: 'distance', label: '📍 Jarak Terdekat' },
+                  ]}
+                />
               </div>
 
               {/* City Dropdown */}
-              <div className="relative">
-                <select
+              <div className="shrink-0">
+                <CustomSelect
                   value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="appearance-none rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-9 text-sm font-medium text-gray-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                >
-                  <option value="all">🏙️ Semua Kota</option>
-                  {CITIES.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                  onChange={(val) => setSelectedCity(val)}
+                  size="sm"
+                  options={[
+                    { value: 'all', label: '🏙️ Semua Kota' },
+                    ...CITIES.map((city) => ({ value: city, label: city })),
+                  ]}
+                />
               </div>
 
               {/* Reset Button */}

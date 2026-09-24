@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
+import {
+  calculatePaymentGatewayFee,
+  calculateMaintenanceFee,
+} from '@/lib/tax/tax-engine'
 
 // Canonical revenue statuses — excludes CANCELLED, RETURNED, PENDING_PAYMENT
 const REVENUE_STATUSES = [
@@ -78,6 +82,11 @@ export async function GET(request: NextRequest) {
               defaultPackingFee: true,
             },
           },
+          payment: {
+            select: {
+              method: true,
+            },
+          },
           items: {
             include: {
               service: true,
@@ -104,6 +113,8 @@ export async function GET(request: NextRequest) {
     let totalInsuranceFee = 0
     let totalPph23Withheld = 0
     let totalVatOutput = 0
+    let totalGatewayFee = 0
+    let totalMaintenanceFee = 0
 
     const revenueByCategory = {
       JASA: 0,
@@ -111,10 +122,22 @@ export async function GET(request: NextRequest) {
       SEWA: 0,
     }
 
+    const trendMap = new Map<
+      string,
+      {
+        label: string
+        grossRevenue: number
+        netProfit: number
+        ordersCount: number
+      }
+    >()
+
     orders.forEach((order) => {
       totalRevenue += order.total
-      totalPlatformCommission += order.commissionAmount ?? 0
-      totalVoucherDiscount += order.discountAmount ?? 0
+      const orderCommission = order.commissionAmount ?? 0
+      const orderDiscount = order.discountAmount ?? 0
+      totalPlatformCommission += orderCommission
+      totalVoucherDiscount += orderDiscount
       totalShippingCost += order.shippingCost ?? 0
       totalInsuranceFee += order.insuranceFee ?? 0
       totalPph23Withheld += (order as { pph23Amount?: number }).pph23Amount ?? 0
@@ -124,11 +147,25 @@ export async function GET(request: NextRequest) {
       const packingFee = order.store?.defaultPackingFee ?? 5000
       totalPackingCost += packingFee
 
+      // Kalkulasi Biaya Gateway Dinamis & Pemeliharaan Sistem
+      const gatewayFeeRes = calculatePaymentGatewayFee(
+        order.payment?.method || 'MIDTRANS',
+        order.total
+      )
+      const maintenanceFeeRes = calculateMaintenanceFee(order.subtotal, 1000)
+      totalGatewayFee += gatewayFeeRes.feeAmount
+      totalMaintenanceFee += maintenanceFeeRes.feeAmount
+
+      let orderItemGross = 0
+      let orderItemCost = 0
+
       order.items.forEach((item) => {
         const itemQuantity = item.quantity || 1
         const itemGross = item.price * itemQuantity
         const itemCost = (item.costPrice ?? 0) * itemQuantity
 
+        orderItemGross += itemGross
+        orderItemCost += itemCost
         totalGrossRevenue += itemGross
         totalCOGS += itemCost
 
@@ -142,7 +179,41 @@ export async function GET(request: NextRequest) {
           revenueByCategory.SEWA += rentalGross
         }
       })
+
+      // Hitung Laba Bersih Order ini untuk Tren
+      const orderGrossProfit = orderItemGross - orderItemCost
+      const orderNetProfit =
+        orderGrossProfit - (orderCommission + packingFee + orderDiscount)
+
+      // Kumpulkan ke Sales Trend Map (Timeline Analysis)
+      const orderDate = new Date(order.createdAt)
+      const dateKey = orderDate.toISOString().slice(0, 10)
+      const dateLabel = new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'short',
+      }).format(orderDate)
+
+      const existingTrend = trendMap.get(dateKey) || {
+        label: dateLabel,
+        grossRevenue: 0,
+        netProfit: 0,
+        ordersCount: 0,
+      }
+      existingTrend.grossRevenue += orderItemGross
+      existingTrend.netProfit += orderNetProfit
+      existingTrend.ordersCount += 1
+      trendMap.set(dateKey, existingTrend)
     })
+
+    const salesTrend = Array.from(trendMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, val]) => ({
+        date,
+        label: val.label,
+        grossRevenue: val.grossRevenue,
+        netProfit: val.netProfit,
+        ordersCount: val.ordersCount,
+      }))
 
     const totalGrossProfit = totalGrossRevenue - totalCOGS
     const grossMarginPct =
@@ -150,8 +221,7 @@ export async function GET(request: NextRequest) {
         ? Number(((totalGrossProfit / totalGrossRevenue) * 100).toFixed(2))
         : 0
 
-    // Beban e-commerce: Komisi Platform (2%) + Packing (Rp 5.000) + Diskon Voucher
-    // Catatan: Ongkir & Asuransi pass-through kurir, tidak mengurangi laba toko
+    // Beban e-commerce: Komisi Platform + Packing + Diskon Voucher + Gateway + Maintenance
     const totalEcommerceExpenses =
       totalPlatformCommission + totalPackingCost + totalVoucherDiscount
     const totalNetProfit = totalGrossProfit - totalEcommerceExpenses
@@ -443,6 +513,8 @@ export async function GET(request: NextRequest) {
             grossMarginPct,
             operationalExpenses: {
               platformCommission: totalPlatformCommission,
+              gatewayFee: totalGatewayFee,
+              maintenanceFee: totalMaintenanceFee,
               packingCost: totalPackingCost,
               voucherDiscount: totalVoucherDiscount,
               shipping: totalShippingCost,
@@ -454,6 +526,7 @@ export async function GET(request: NextRequest) {
             totalPph23Withheld,
             totalVatOutput,
           },
+          salesTrend,
           revenue: {
             total: totalRevenue,
             grossRevenue: totalGrossRevenue,

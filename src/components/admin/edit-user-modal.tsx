@@ -15,6 +15,7 @@ import {
   Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 interface UserData {
   id: string
@@ -199,23 +200,17 @@ export default function EditUserModal({
                 <label className="mb-1.5 block font-semibold text-slate-700 dark:text-slate-300">
                   Peran & Hak Akses (Role) <span className="text-orange-500">*</span>
                 </label>
-                <div className="relative">
-                  <Shield className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                  <select
-                    value={formData.role}
-                    onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value })
-                    }
-                    className="w-full appearance-none rounded-xl border border-slate-200/80 bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 py-2.5 pl-9 pr-9 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-orange-500 focus:bg-white dark:focus:border-orange-400 cursor-pointer shadow-2xs"
-                  >
-                    {roleOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                </div>
+                <CustomSelect
+                  value={formData.role}
+                  onChange={(val) =>
+                    setFormData({ ...formData, role: val })
+                  }
+                  options={roleOptions.map((opt) => ({
+                    value: opt.value,
+                    label: opt.label,
+                  }))}
+                  icon={<Shield className="h-4 w-4 text-slate-400" />}
+                />
                 <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
                   {roleOptions.find((r) => r.value === formData.role)?.description ||
                     'Pilih hak akses akun pengguna'}
@@ -228,21 +223,18 @@ export default function EditUserModal({
                   <label className="mb-1.5 block font-semibold text-slate-700 dark:text-slate-300">
                     Status Verifikasi Toko
                   </label>
-                  <div className="relative">
-                    <select
-                      value={formData.mitraStatus}
-                      onChange={(e) =>
-                        setFormData({ ...formData, mitraStatus: e.target.value })
-                      }
-                      className="w-full appearance-none rounded-xl border border-slate-200/80 bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 py-2.5 px-3.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none transition focus:border-orange-500 focus:bg-white dark:focus:border-orange-400 cursor-pointer shadow-2xs"
-                    >
-                      <option value="">Pilih Status Verifikasi</option>
-                      <option value="PENDING">Pending (Menunggu Review)</option>
-                      <option value="APPROVED">Approved (Terverifikasi & Aktif)</option>
-                      <option value="REJECTED">Rejected (Ditolak)</option>
-                    </select>
-                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                  </div>
+                  <CustomSelect
+                    value={formData.mitraStatus || ''}
+                    onChange={(val) =>
+                      setFormData({ ...formData, mitraStatus: val })
+                    }
+                    placeholder="Pilih Status Verifikasi"
+                    options={[
+                      { value: 'PENDING', label: 'Pending (Menunggu Review)' },
+                      { value: 'APPROVED', label: 'Approved (Terverifikasi & Aktif)' },
+                      { value: 'REJECTED', label: 'Rejected (Ditolak)' },
+                    ]}
+                  />
                 </div>
               )}
 

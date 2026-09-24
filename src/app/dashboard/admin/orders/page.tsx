@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/dialog'
 import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
 import { LiveCourierTracker } from '@/components/shipping/live-courier-tracker'
+import TaxInvoiceModal from '@/components/modals/tax-invoice-modal'
 import {
   validateAWB,
   type AWBValidationResult,
@@ -223,6 +224,7 @@ export default function AdminOrdersPage() {
   )
   const [activeThermalLabel, setActiveThermalLabel] = useState<any | null>(null)
   const [showLiveTracker, setShowLiveTracker] = useState(false)
+  const [taxInvoiceOrder, setTaxInvoiceOrder] = useState<Order | null>(null)
 
   // AWB Manual Input Modal
   const [showAWBModal, setShowAWBModal] = useState(false)
@@ -777,6 +779,7 @@ export default function AdminOrdersPage() {
       {/* 4. REDESIGNED SENIOR UI/UX ORDER DETAILS BENTO MODAL                      */}
       {/* ========================================================================= */}
       <Dialog
+        modal={!taxInvoiceOrder}
         open={!!selectedOrder}
         onOpenChange={(open) => {
           if (!open) {
@@ -785,7 +788,19 @@ export default function AdminOrdersPage() {
           }
         }}
       >
-        <DialogContent className="flex max-h-[90vh] max-w-3xl flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+        <DialogContent
+          onPointerDownOutside={(e) => {
+            if (taxInvoiceOrder) {
+              e.preventDefault()
+            }
+          }}
+          onInteractOutside={(e) => {
+            if (taxInvoiceOrder) {
+              e.preventDefault()
+            }
+          }}
+          className="flex max-h-[90vh] max-w-3xl flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        >
           {selectedOrder && (
             <div className="flex max-h-[90vh] flex-1 flex-col overflow-hidden">
               {/* 1. Header Dialog: Pinned / Sticky Top Bar */}
@@ -1131,16 +1146,28 @@ export default function AdminOrdersPage() {
 
               {/* 3. Dialog Footer Actions: Pinned / Sticky Bottom Action Bar */}
               <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-800/40 sm:px-7">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedOrder(null)
-                    setShowLiveTracker(false)
-                  }}
-                  className="shadow-2xs rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                >
-                  Tutup
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedOrder(null)
+                      setShowLiveTracker(false)
+                    }}
+                    className="shadow-2xs rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    Tutup
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTaxInvoiceOrder(selectedOrder)}
+                    className="shadow-2xs inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 px-4 py-2.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 hover:text-emerald-950 active:scale-95 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    title="Cetak Faktur Pajak Elektronik Standar DJP"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    <span>Faktur Pajak</span>
+                  </button>
+                </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   {selectedOrder.status === 'PENDING_PAYMENT' && (
@@ -1460,6 +1487,13 @@ export default function AdminOrdersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Cetak Faktur Pajak Elektronik Standar DJP */}
+      <TaxInvoiceModal
+        isOpen={Boolean(taxInvoiceOrder)}
+        onClose={() => setTaxInvoiceOrder(null)}
+        order={taxInvoiceOrder as any}
+      />
     </div>
   )
 }

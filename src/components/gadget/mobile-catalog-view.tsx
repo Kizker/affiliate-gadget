@@ -19,8 +19,10 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
+import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { toast } from 'sonner'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 interface MobileCatalogViewProps {
   gadgets: any[]
@@ -47,7 +49,7 @@ export function MobileCatalogView({
   session,
   status,
 }: MobileCatalogViewProps) {
-  const [wishlist, setWishlist] = useState<Record<string, boolean>>({})
+  const { isInWishlist, toggleItem } = useWishlistSafe()
   const { items } = useCartStore()
 
   const cartCount =
@@ -66,18 +68,29 @@ export function MobileCatalogView({
 
   const brands = ['ALL', 'Apple', 'Samsung', 'Xiaomi', 'ASUS', 'Vivo', 'Oppo']
 
-  const toggleWishlist = (id: string, name: string, e: React.MouseEvent) => {
+  const toggleWishlist = (item: any, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setWishlist((prev) => {
-      const next = !prev[id]
-      if (next) {
-        toast.success(`Ditambahkan ke Wishlist: ${name}`)
-      } else {
-        toast.info(`Dihapus dari Wishlist: ${name}`)
-      }
-      return { ...prev, [id]: next }
+    const badge = getConditionBadge(item)
+    const wasAdded = toggleItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      image: item.images?.[0],
+      href: `/gadget/${item.id}`,
+      conditionBadge: badge.label,
+      conditionBadgeColor: badge.color,
+      rating: item.rating,
+      reviewCount: item.totalReview,
+      originCity: item.store?.city,
+      storeName: item.store?.name,
     })
+    if (wasAdded) {
+      toast.success(`Ditambahkan ke Wishlist: ${item.name}`)
+    } else {
+      toast.info(`Dihapus dari Wishlist: ${item.name}`)
+    }
   }
 
   // Format Condition Badge
@@ -204,20 +217,19 @@ export function MobileCatalogView({
         </div>
 
         {/* Sort Pill Dropdown */}
-        <div className="relative inline-flex items-center">
-          <div className="shadow-2xs flex items-center gap-1 rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-            <ArrowUpDown className="h-3 w-3 text-slate-400" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="cursor-pointer bg-transparent pr-1 text-xs font-semibold text-slate-800 outline-none dark:text-slate-200"
-            >
-              <option value="DEFAULT">Terlaris</option>
-              <option value="PRICE_LOW">Harga Terendah</option>
-              <option value="PRICE_HIGH">Harga Tertinggi</option>
-              <option value="RATING">Rating Tertinggi</option>
-            </select>
-          </div>
+        <div className="shrink-0">
+          <CustomSelect
+            value={sortBy}
+            onChange={(val) => setSortBy(val)}
+            size="sm"
+            icon={<ArrowUpDown className="h-3 w-3 text-slate-400" />}
+            options={[
+              { value: 'DEFAULT', label: 'Terlaris' },
+              { value: 'PRICE_LOW', label: 'Harga Terendah' },
+              { value: 'PRICE_HIGH', label: 'Harga Tertinggi' },
+              { value: 'RATING', label: 'Rating Tertinggi' },
+            ]}
+          />
         </div>
       </section>
 
@@ -246,7 +258,7 @@ export function MobileCatalogView({
                 .filter((_, idx) => idx % 2 === 0)
                 .map((item) => {
                   const badge = getConditionBadge(item)
-                  const isWishlisted = wishlist[item.id] || false
+                  const isWishlisted = isInWishlist(item.id)
                   const strikePrice =
                     item.originalPrice && item.originalPrice > item.price
                       ? item.originalPrice
@@ -292,7 +304,7 @@ export function MobileCatalogView({
                           <button
                             type="button"
                             onClick={(e) =>
-                              toggleWishlist(item.id, item.name, e)
+                              toggleWishlist(item, e)
                             }
                             className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
                             aria-label="Wishlist"
@@ -363,7 +375,7 @@ export function MobileCatalogView({
                 .filter((_, idx) => idx % 2 === 1)
                 .map((item) => {
                   const badge = getConditionBadge(item)
-                  const isWishlisted = wishlist[item.id] || false
+                  const isWishlisted = isInWishlist(item.id)
                   const strikePrice =
                     item.originalPrice && item.originalPrice > item.price
                       ? item.originalPrice
@@ -409,7 +421,7 @@ export function MobileCatalogView({
                           <button
                             type="button"
                             onClick={(e) =>
-                              toggleWishlist(item.id, item.name, e)
+                              toggleWishlist(item, e)
                             }
                             className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
                             aria-label="Wishlist"

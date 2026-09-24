@@ -65,6 +65,14 @@ export async function POST(
       },
     })
 
+    // Kirim bukti pembatalan transaksi ke email pengguna
+    try {
+      const { sendOrderCancelledEmail } = await import('@/lib/email')
+      await sendOrderCancelledEmail({ orderId, reason })
+    } catch (emailErr) {
+      console.error('Failed to send order cancelled email:', emailErr)
+    }
+
     return NextResponse.json({
       success: true,
       order: updatedOrder,

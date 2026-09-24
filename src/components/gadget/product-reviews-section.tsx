@@ -24,6 +24,7 @@ import {
 import { toast } from 'sonner'
 import { MediaLightboxModal, MediaItem } from './media-lightbox-modal'
 import { ProductReviewModal } from './product-review-modal'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 interface ProductReviewsSectionProps {
   productId: string
@@ -510,19 +511,17 @@ export function ProductReviewsSection({
 
         {/* Sort Dropdown Pill */}
         <div className="flex shrink-0 items-center gap-2 self-start md:self-auto">
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="shadow-2xs cursor-pointer appearance-none rounded-full border border-slate-200/90 bg-white py-2 pl-4 pr-9 text-xs font-bold text-slate-700 outline-none transition hover:border-slate-300 focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-            >
-              <option value="newest">Paling Baru</option>
-              <option value="highest">Rating Tertinggi</option>
-              <option value="lowest">Rating Terendah</option>
-              <option value="helpful">Paling Membantu</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          </div>
+          <CustomSelect
+            value={sortBy}
+            onChange={(val) => setSortBy(val)}
+            size="sm"
+            options={[
+              { value: 'newest', label: 'Paling Baru' },
+              { value: 'highest', label: 'Rating Tertinggi' },
+              { value: 'lowest', label: 'Rating Terendah' },
+              { value: 'helpful', label: 'Paling Membantu' },
+            ]}
+          />
         </div>
       </div>
 

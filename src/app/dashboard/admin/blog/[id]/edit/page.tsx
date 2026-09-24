@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
 import TemplateSelector from '@/components/blog/template-selector'
 import type { BlogTemplate } from '@/lib/blog-templates'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 const TinyMCEEditor = dynamic(
   () => import('@/components/blog/tinymce-editor'),
@@ -286,20 +287,20 @@ export default function EditBlogPage({
               <label className="mb-2 block text-sm font-medium text-gray-700">
                 Category
               </label>
-              <select
+              <CustomSelect
                 value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
+                onChange={(val) =>
+                  setFormData({ ...formData, category: val })
                 }
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
-              >
-                <option value="">Select category</option>
-                <option value="Tech">Tech</option>
-                <option value="Tutorial">Tutorial</option>
-                <option value="Review">Review</option>
-                <option value="News">News</option>
-                <option value="Tips">Tips</option>
-              </select>
+                placeholder="Select category"
+                options={[
+                  { value: 'Tech', label: 'Tech' },
+                  { value: 'Tutorial', label: 'Tutorial' },
+                  { value: 'Review', label: 'Review' },
+                  { value: 'News', label: 'News' },
+                  { value: 'Tips', label: 'Tips' },
+                ]}
+              />
             </div>
           </div>
 

@@ -22,7 +22,9 @@ import {
   Check,
   Loader2,
   Plus,
+  Heart,
 } from 'lucide-react'
+import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { MobileBottomNav } from '@/components/layouts/mobile-bottom-nav'
 
@@ -43,9 +45,9 @@ export interface MobileCustomerAccountViewProps {
     total: number
   }
   addressesCount: number
-  activeSubView: 'overview' | 'profile' | 'address' | 'security'
+  activeSubView: 'overview' | 'profile' | 'address' | 'security' | 'wishlist'
   setActiveSubView: (
-    view: 'overview' | 'profile' | 'address' | 'security'
+    view: 'overview' | 'profile' | 'address' | 'security' | 'wishlist'
   ) => void
   onAvatarClick: () => void
   onSignOut: () => void
@@ -70,6 +72,7 @@ export function MobileCustomerAccountView({
   saving = false,
   children,
 }: MobileCustomerAccountViewProps) {
+  const { totalCount: wishlistCount } = useWishlistSafe()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -105,6 +108,7 @@ export function MobileCustomerAccountView({
       profile: 'Profil & Biodata Diri',
       address: 'Daftar Alamat Pengiriman',
       security: 'Kata Sandi & Keamanan',
+      wishlist: 'Wishlist Saya',
     }
 
     return (
@@ -449,6 +453,35 @@ export function MobileCustomerAccountView({
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-slate-400" />
+            </button>
+
+            {/* Menu: Wishlist Saya */}
+            <button
+              type="button"
+              onClick={() => setActiveSubView('wishlist')}
+              className="flex w-full items-center justify-between p-3.5 text-left transition active:bg-slate-50 dark:active:bg-slate-800/60"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-500 dark:bg-rose-950/40 dark:text-rose-400">
+                  <Heart className="h-4 w-4 fill-rose-500" />
+                </div>
+                <div>
+                  <span className="block text-xs font-bold text-slate-950 dark:text-white">
+                    Wishlist Saya
+                  </span>
+                  <span className="block text-[10px] text-slate-400">
+                    Koleksi produk dan gadget impian Anda
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {wishlistCount > 0 && (
+                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                    {wishlistCount}
+                  </span>
+                )}
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </div>
             </button>
 
             <Link

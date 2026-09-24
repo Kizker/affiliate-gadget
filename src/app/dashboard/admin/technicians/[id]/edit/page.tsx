@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, Plus, Edit2, Trash2, Save, X } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 interface Service {
   id: string
@@ -416,21 +417,23 @@ export default function EditTechnicianPage({
                   <label className="block text-sm font-medium text-gray-700">
                     Kategori <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={serviceForm.category}
-                    onChange={(e) =>
-                      setServiceForm({
-                        ...serviceForm,
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        category: e.target.value as any,
-                      })
-                    }
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
-                  >
-                    <option value="KONSULTASI">Konsultasi</option>
-                    <option value="CEK_BONGKAR">Cek & Bongkar</option>
-                    <option value="SERVIS_LENGKAP">Servis Lengkap</option>
-                  </select>
+                  <div className="mt-1">
+                    <CustomSelect
+                      value={serviceForm.category}
+                      onChange={(val) =>
+                        setServiceForm({
+                          ...serviceForm,
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          category: val as any,
+                        })
+                      }
+                      options={[
+                        { value: 'KONSULTASI', label: 'Konsultasi' },
+                        { value: 'CEK_BONGKAR', label: 'Cek & Bongkar' },
+                        { value: 'SERVIS_LENGKAP', label: 'Servis Lengkap' },
+                      ]}
+                    />
+                  </div>
                 </div>
 
                 <div>

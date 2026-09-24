@@ -43,6 +43,7 @@ import { RatingModal } from '@/components/modals/rating-modal'
 import { CustomPaymentModal } from '@/components/payment/custom-payment-modal'
 import { ComplaintModal } from '@/components/customer/complaint-modal'
 import { ReturnModal } from '@/components/customer/return-modal'
+import { CustomSelect } from '@/components/ui/custom-select'
 import { toast } from 'sonner'
 import { LiveCourierTracker } from '@/components/shipping/live-courier-tracker'
 import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
@@ -1398,6 +1399,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                     </button>
                   )}
 
+
                   {/* Chat Toko Direct Action */}
                   <Link
                     href={`/dashboard/customer/chat?${chatParams.toString()}`}
@@ -1458,24 +1460,28 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
               <label className="mb-2 block text-xs font-bold text-slate-700 dark:text-slate-300">
                 Alasan Pembatalan:
               </label>
-              <select
+              <CustomSelect
                 value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-medium text-slate-900 outline-none focus:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="Ingin mengubah alamat pengiriman / varian">
-                  Ingin mengubah alamat pengiriman / varian
-                </option>
-                <option value="Ingin mengganti metode pembayaran">
-                  Ingin mengganti metode pembayaran
-                </option>
-                <option value="Menemukan harga lebih hemat di toko lain">
-                  Menemukan promo di toko lain
-                </option>
-                <option value="Lainnya / berubah pikiran">
-                  Lainnya / berubah pikiran
-                </option>
-              </select>
+                onChange={(val) => setCancelReason(val)}
+                options={[
+                  {
+                    value: 'Ingin mengubah alamat pengiriman / varian',
+                    label: 'Ingin mengubah alamat pengiriman / varian',
+                  },
+                  {
+                    value: 'Ingin mengganti metode pembayaran',
+                    label: 'Ingin mengganti metode pembayaran',
+                  },
+                  {
+                    value: 'Menemukan harga lebih hemat di toko lain',
+                    label: 'Menemukan promo di toko lain',
+                  },
+                  {
+                    value: 'Lainnya / berubah pikiran',
+                    label: 'Lainnya / berubah pikiran',
+                  },
+                ]}
+              />
             </div>
 
             <div className="flex items-center justify-end gap-2.5">

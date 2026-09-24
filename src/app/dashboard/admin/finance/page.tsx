@@ -21,6 +21,8 @@ import {
   Calendar,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { PeriodSelect } from '@/components/dashboard/period-select'
+import { StoreSelect } from '@/components/dashboard/store-select'
 
 interface TransactionMutation {
   id: string
@@ -83,7 +85,14 @@ interface StoreOption {
 
 export default function StoreAdminFinancePage() {
   const [activeTab, setActiveTab] = useState<
-    'ALL' | 'SALE' | 'COMMISSION' | 'WITHDRAWAL' | 'ESCROW' | 'PPH23'
+    | 'ALL'
+    | 'SALE'
+    | 'COMMISSION'
+    | 'WITHDRAWAL'
+    | 'ESCROW'
+    | 'PPH23'
+    | 'GATEWAY'
+    | 'MAINTENANCE'
   >('ALL')
   const [isDeadlineBannerDismissed, setIsDeadlineBannerDismissed] =
     useState(false)
@@ -571,6 +580,8 @@ export default function StoreAdminFinancePage() {
             { key: 'ALL', label: 'Semua Arus' },
             { key: 'SALE', label: 'Penjualan' },
             { key: 'COMMISSION', label: 'Bagi Hasil' },
+            { key: 'GATEWAY', label: 'Biaya Gateway' },
+            { key: 'MAINTENANCE', label: 'Pemeliharaan' },
             { key: 'WITHDRAWAL', label: 'Pencairan' },
             { key: 'ESCROW', label: 'Dana Tertahan' },
             { key: 'PPH23', label: 'PPh 23' },
@@ -607,51 +618,18 @@ export default function StoreAdminFinancePage() {
         <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
           {/* Multi-Store Selector (if Superadmin) */}
           {allStores.length > 0 && (
-            <div className="relative">
-              <select
-                value={selectedStoreId || 'ALL'}
-                onChange={(e) => setSelectedStoreId(e.target.value)}
-                className="appearance-none rounded-2xl border border-slate-200/80 bg-slate-50/80 py-2 pl-3 pr-8 text-xs font-semibold text-slate-800 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-800 dark:bg-slate-800/60 dark:text-white"
-              >
-                <option value="ALL">Semua Cabang (Konsolidasi Multi-PT)</option>
-                {allStores.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.companyName} ({st.city})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            </div>
+            <StoreSelect
+              value={selectedStoreId || 'ALL'}
+              onChange={(val) => setSelectedStoreId(val === 'ALL' ? '' : val)}
+              stores={allStores}
+            />
           )}
 
           {/* Periode Filter (Hari ini, Minggu ini, Bulan ini, Tahun ini, Per Bulan) */}
-          <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-800/60">
-            <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="cursor-pointer bg-transparent text-xs font-bold text-slate-800 outline-none dark:text-slate-200"
-            >
-              <option value="today">Hari Ini</option>
-              <option value="thisWeek">Minggu Ini</option>
-              <option value="thisMonth">Bulan Ini</option>
-              <option value="thisYear">Tahun Ini</option>
-              <optgroup label="Per Bulan">
-                <option value="january">Januari</option>
-                <option value="february">Februari</option>
-                <option value="march">Maret</option>
-                <option value="april">April</option>
-                <option value="may">Mei</option>
-                <option value="june">Juni</option>
-                <option value="july">Juli</option>
-                <option value="august">Agustus</option>
-                <option value="september">September</option>
-                <option value="october">Oktober</option>
-                <option value="november">November</option>
-                <option value="december">Desember</option>
-              </optgroup>
-            </select>
-          </div>
+          <PeriodSelect
+            value={dateRange}
+            onChange={(val) => setDateRange(val)}
+          />
 
           {/* Export Laporan Keuangan Button */}
           <button

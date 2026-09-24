@@ -95,6 +95,13 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-24 (Universal Modern Radix UI Dropdown / CustomSelect Suite Overhaul):**
+  - **1. Core Radix UI Select Modernization ([`select.tsx`](file:///src/components/ui/select.tsx)):** Desain ulang total komponen Radix UI Select trigger (`rounded-2xl`, smooth border, focus ring lembut, transisi rotasi ikon Chevron 180°), popover content (`rounded-2xl`, `backdrop-blur-xl`, frosted glass, bayangan elevasi `shadow-2xl`, `z-[99999]`), dan item (`rounded-xl`, hover state pill, blue checkmark indicator).
+  - **2. Dedicated PeriodSelect & StoreSelect ([`period-select.tsx`](file:///src/components/dashboard/period-select.tsx), [`store-select.tsx`](file:///src/components/dashboard/store-select.tsx)):** Dropdown khusus periode keuangan Multi-PT berlabel ikon Kalender/Sparkles dengan grouping interaktif ("Rentang Cepat" dan "Per Bulan (2026)") serta dropdown multi-toko cabang PT berlabel ikon Building/Store.
+  - **3. Reusable CustomSelect Component ([`custom-select.tsx`](file:///src/components/ui/custom-select.tsx)):** Komponen universal berbasis Radix Select yang mendukung `size="sm" | "md"`, leading icons, badges, dan option grouping.
+  - **4. Total Project Elimination of Native `<select>`:** 100% elemen `<select>` standar bawaan browser di seluruh antarmuka admin, teknisi, customer, dan landing page digantikan oleh `CustomSelect` / `PeriodSelect` / `StoreSelect` (termasuk halaman Keuangan, Laporan, Retur, Produk, Ulasan Gadget, Pencarian, Katalog Mobile & Desktop, Kalkulator Servis LCD, Hubungi Kami, Rekomendasi, hingga Manajemen Akun Pengguna).
+  - **5. Verification & Health:** TypeScript 0 error (`pnpm tsc --noEmit`), 47 unit test files dengan 393 unit tests lulus 100% (`pnpm test:unit`).
+
 - **2026-09-24 (Komponen 3: PPh 23 & PPN Dashboard Integration E2E - Standar Badan Usaha CV):**
   - **1. Reports API Tax Aggregation ([`api/admin/reports/route.ts`](file:///src/app/api/admin/reports/route.ts)):** Mengakumulasikan `totalPph23Withheld` dan `totalVatOutput` dari database secara real-time dan menyertakannya pada respons `data.financials` (tanpa PPh Final UMKM).
   - **2. Superadmin Reports Tax Cards ([`reports/page.tsx`](file:///src/app/dashboard/admin/reports/page.tsx)):** Menampilkan kartu metrik PPN Keluaran Terkumpul dan PPh 23 Wajib Setor di tab Keuangan (bebas dari PPh Final UMKM).

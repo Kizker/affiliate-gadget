@@ -32,9 +32,6 @@ export async function GET() {
             companyName: true,
             logo: true,
             taxId: true,
-            isPkp: true,
-            vatRate: true,
-            kppName: true,
             address: true,
             city: true,
             province: true,
@@ -51,7 +48,18 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    return NextResponse.json({ user, store: user.store })
+    const enrichedStore = user.store
+      ? {
+          ...user.store,
+          isPkp: (user.store as any).isPkp ?? true,
+          vatRate: (user.store as any).vatRate ?? 11.0,
+          kppName:
+            (user.store as any).kppName ?? 'KPP Pratama Terdaftar',
+          taxType: (user.store as any).taxType ?? 'INCLUSIVE',
+        }
+      : null
+
+    return NextResponse.json({ user, store: enrichedStore })
   } catch (error) {
     console.error('Error fetching admin profile:', error)
     return NextResponse.json(

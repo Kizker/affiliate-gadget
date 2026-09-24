@@ -65,6 +65,14 @@ export async function POST(
       },
     })
 
+    // Kirim tanda bukti transaksi selesai & resi ke email pengguna
+    try {
+      const { sendOrderCompletedEmail } = await import('@/lib/email')
+      await sendOrderCompletedEmail({ orderId })
+    } catch (emailErr) {
+      console.error('Failed to send order completed email:', emailErr)
+    }
+
     return NextResponse.json({
       success: true,
       order: updatedOrder,

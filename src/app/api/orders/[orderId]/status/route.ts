@@ -148,6 +148,31 @@ export async function PATCH(
         },
       })
 
+      // Kirim email tanda bukti sesuai perubahan status
+      try {
+        const {
+          sendOrderCompletedEmail,
+          sendOrderCancelledEmail,
+          sendOrderRefundedEmail,
+        } = await import('@/lib/email')
+
+        if (status === 'COMPLETED') {
+          await sendOrderCompletedEmail({ orderId })
+        } else if (status === 'CANCELLED') {
+          await sendOrderCancelledEmail({
+            orderId,
+            reason: 'Pesanan dibatalkan oleh pihak toko / administrator',
+          })
+        } else if (status === 'RETURNED') {
+          await sendOrderRefundedEmail({
+            orderId,
+            reason: 'Pengembalian dana diproses oleh toko',
+          })
+        }
+      } catch (emailErr) {
+        console.error('Failed to trigger order status notification email:', emailErr)
+      }
+
       return NextResponse.json({ order: updatedOrder })
     }
 

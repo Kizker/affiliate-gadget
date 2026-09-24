@@ -97,15 +97,24 @@ export async function GET(request: Request) {
             companyName: true,
             city: true,
             rating: true,
-            isPkp: true,
-            vatRate: true,
-            taxType: true,
           },
         },
         variants: true,
       },
       orderBy,
     })
+
+    const enrichedProducts = products.map((p) => ({
+      ...p,
+      store: p.store
+        ? {
+            ...p.store,
+            isPkp: (p.store as any).isPkp ?? true,
+            vatRate: (p.store as any).vatRate ?? 11.0,
+            taxType: (p.store as any).taxType ?? 'INCLUSIVE',
+          }
+        : null,
+    }))
 
     const cacheHeaders = scoped
       ? { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
@@ -114,7 +123,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         success: true,
-        data: products,
+        data: enrichedProducts,
       },
       {
         headers: cacheHeaders,

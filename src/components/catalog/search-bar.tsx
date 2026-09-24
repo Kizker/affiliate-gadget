@@ -2,6 +2,7 @@
 
 import { Search, SlidersHorizontal } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 interface SearchBarProps {
   placeholder?: string
@@ -99,19 +100,14 @@ export function SearchBar({
         </div>
 
         {/* Sort Dropdown - Hidden on mobile */}
-        <div className="hidden items-center gap-2 md:flex">
-          <SlidersHorizontal className="h-5 w-5 text-gray-600" />
-          <select
+        <div className="hidden items-center md:flex">
+          <CustomSelect
             value={sort}
-            onChange={(e) => handleSortChange(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => handleSortChange(val)}
+            options={sortOptions}
+            icon={<SlidersHorizontal className="h-4 w-4 text-slate-500" />}
+            size="md"
+          />
         </div>
       </div>
     </div>

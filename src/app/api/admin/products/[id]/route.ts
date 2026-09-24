@@ -29,9 +29,6 @@ export async function GET(
             id: true,
             name: true,
             city: true,
-            isPkp: true,
-            vatRate: true,
-            taxType: true,
           },
         },
       },
@@ -41,7 +38,19 @@ export async function GET(
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ product })
+    const enrichedProduct = {
+      ...product,
+      store: product.store
+        ? {
+            ...product.store,
+            isPkp: (product.store as any).isPkp ?? true,
+            vatRate: (product.store as any).vatRate ?? 11.0,
+            taxType: (product.store as any).taxType ?? 'INCLUSIVE',
+          }
+        : null,
+    }
+
+    return NextResponse.json({ product: enrichedProduct })
   } catch (error) {
     console.error('Error fetching product:', error)
     return NextResponse.json(

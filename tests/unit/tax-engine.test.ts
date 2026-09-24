@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   calculateOrderVat,
   verifyVatIntegrity,
+  calculatePph22,
+  calculatePaymentGatewayFee,
+  calculateMaintenanceFee,
+  generateTaxInvoiceNumber,
   type TaxConfig,
 } from '@/lib/tax/tax-engine'
 
@@ -122,3 +126,58 @@ describe('Tax Engine — calculateOrderVat (Inclusive Only)', () => {
     expect(result.isPkp).toBe(true)
   })
 })
+
+describe('Tax Engine — PPN Skema Eksklusif (EXCLUSIVE)', () => {
+  it('16. Menghitung PPN eksklusif 11%: DPP = subtotal, PPN = 11% x DPP, total = DPP + PPN', () => {
+    const result = calculateOrderVat(10_000_000, {
+      isPkp: true,
+      vatRate: 11.0,
+      taxType: 'EXCLUSIVE',
+    })
+    expect(result.dppAmount).toBe(10_000_000)
+    expect(result.vatAmount).toBe(1_100_000)
+    expect(result.totalWithVat).toBe(11_100_000)
+    expect(result.taxTypeApplied).toBe('EXCLUSIVE')
+  })
+})
+
+describe('Tax Engine — PPh Pasal 22, Gateway Fees & Maintenance', () => {
+  it('17. Kalkulasi PPh Pasal 22 (0.5% standar barang e-commerce)', () => {
+    const res = calculatePph22(20_000_000, 0.5)
+    expect(res.pph22Amount).toBe(100_000)
+    expect(res.pph22Rate).toBe(0.5)
+    expect(res.grossAmount).toBe(20_000_000)
+  })
+
+  it('18. Kalkulasi Payment Gateway dinamis QRIS (0.7%)', () => {
+    const res = calculatePaymentGatewayFee('QRIS', 10_000_000)
+    expect(res.method).toBe('QRIS')
+    expect(res.feeAmount).toBe(70_000)
+    expect(res.isPercentage).toBe(true)
+  })
+
+  it('19. Kalkulasi Payment Gateway dinamis Virtual Account (Flat Rp 4.000)', () => {
+    const res = calculatePaymentGatewayFee('BCA_VA', 10_000_000)
+    expect(res.method).toBe('VIRTUAL_ACCOUNT')
+    expect(res.feeAmount).toBe(4_000)
+    expect(res.isPercentage).toBe(false)
+  })
+
+  it('20. Kalkulasi Payment Gateway dinamis Kartu Kredit (2.9% + Rp 2.000)', () => {
+    const res = calculatePaymentGatewayFee('CREDIT_CARD', 1_000_000)
+    expect(res.method).toBe('CREDIT_CARD')
+    expect(res.feeAmount).toBe(29_000 + 2000)
+  })
+
+  it('21. Kalkulasi Maintenance Fee (Rp 1.000 per pesanan)', () => {
+    const res = calculateMaintenanceFee(5_000_000)
+    expect(res.feeAmount).toBe(1_000)
+  })
+
+  it('22. Generator Nomor Seri Faktur Pajak resmi (format DJP: 010.026-26.XXXXXXXX)', () => {
+    const nsfp = generateTaxInvoiceNumber('ORD-20260924-00123456')
+    expect(nsfp).toMatch(/^010\.0\d{2}-\d{2}\.\d{8}$/)
+    expect(nsfp).toContain('00123456')
+  })
+})
+

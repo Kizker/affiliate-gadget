@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 interface ReturnRequest {
   id: string
@@ -415,32 +416,28 @@ export default function AdminReturnsPage() {
         <div className="flex items-center gap-2 w-full xl:w-auto flex-wrap sm:flex-nowrap">
           
           {/* Solution Selector Dropdown */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3 py-2 shrink-0">
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as any)}
-              className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
-            >
-              <option value="ALL">Semua Solusi</option>
-              <option value="REFUND">Refund Dana</option>
-              <option value="REPLACEMENT">Tukar Unit</option>
-            </select>
-          </div>
+          <CustomSelect
+            value={typeFilter}
+            onChange={(val) => setTypeFilter(val as any)}
+            size="sm"
+            options={[
+              { value: 'ALL', label: 'Semua Solusi' },
+              { value: 'REFUND', label: 'Refund Dana' },
+              { value: 'REPLACEMENT', label: 'Tukar Unit' },
+            ]}
+          />
 
           {/* Store Filter (for Superadmin & Admin Platform) */}
           {(isSuperAdmin || isAdminPlatform) && storeOptions.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3 py-2 shrink-0">
-              <select
-                value={selectedStore}
-                onChange={(e) => setSelectedStore(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer max-w-[140px] truncate"
-              >
-                <option value="ALL">Semua Toko</option>
-                {storeOptions.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
+            <CustomSelect
+              value={selectedStore}
+              onChange={(val) => setSelectedStore(val)}
+              size="sm"
+              options={[
+                { value: 'ALL', label: 'Semua Toko' },
+                ...storeOptions.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
           )}
 
           {/* Search Bar */}

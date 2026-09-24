@@ -85,9 +85,6 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               city: true,
-              isPkp: true,
-              vatRate: true,
-              taxType: true,
             },
           },
         },
@@ -97,6 +94,18 @@ export async function GET(request: NextRequest) {
       }),
       prisma.product.count({ where }),
     ])
+
+    const enrichedProducts = products.map((p) => ({
+      ...p,
+      store: p.store
+        ? {
+            ...p.store,
+            isPkp: (p.store as any).isPkp ?? true,
+            vatRate: (p.store as any).vatRate ?? 11.0,
+            taxType: (p.store as any).taxType ?? 'INCLUSIVE',
+          }
+        : null,
+    }))
 
     // Get stats
     const [totalProducts, lowStockCount, outOfStockCount, categoryStats] =
@@ -111,7 +120,7 @@ export async function GET(request: NextRequest) {
       ])
 
     return NextResponse.json({
-      products,
+      products: enrichedProducts,
       pagination: {
         page,
         limit,

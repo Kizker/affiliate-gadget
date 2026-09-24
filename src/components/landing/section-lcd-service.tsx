@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Wrench, Clock, ShieldCheck, ArrowRight, CheckCircle2, PhoneCall, Sparkles } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 export function SectionLcdService() {
   const [selectedBrand, setSelectedBrand] = useState('Apple')
@@ -89,48 +90,36 @@ export function SectionLcdService() {
                   <label className="mb-1 block text-[11px] font-bold uppercase text-slate-400">
                     Merek
                   </label>
-                  <select
+                  <CustomSelect
                     value={selectedBrand}
-                    onChange={(e) => {
-                      setSelectedBrand(e.target.value)
-                      setSelectedModel(Object.keys(estimates[e.target.value] || {})[0] || '')
+                    onChange={(val) => {
+                      setSelectedBrand(val)
+                      setSelectedModel(Object.keys(estimates[val] || {})[0] || '')
                     }}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800"
-                  >
-                    {Object.keys(estimates).map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
+                    options={Object.keys(estimates).map((b) => ({ value: b, label: b }))}
+                  />
                 </div>
 
                 <div>
                   <label className="mb-1 block text-[11px] font-bold uppercase text-slate-400">
                     Model
                   </label>
-                  <select
+                  <CustomSelect
                     value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800"
-                  >
-                    {models.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setSelectedModel(val)}
+                    options={models.map((m) => ({ value: m, label: m }))}
+                  />
                 </div>
 
                 <div>
                   <label className="mb-1 block text-[11px] font-bold uppercase text-slate-400">
                     Kualitas Panel
                   </label>
-                  <select
+                  <CustomSelect
                     value={selectedQuality}
-                    onChange={(e) => setSelectedQuality(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800"
-                  >
-                    {qualities.map((q) => (
-                      <option key={q} value={q}>{q}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setSelectedQuality(val)}
+                    options={qualities.map((q) => ({ value: q, label: q }))}
+                  />
                 </div>
               </div>
 

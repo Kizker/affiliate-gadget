@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Sparkles,
 } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 export default function HubungiKamiPage() {
   const [form, setForm] = useState({
@@ -263,32 +264,34 @@ export default function HubungiKamiPage() {
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Topik Kategori *
                       </label>
-                      <select
+                      <CustomSelect
                         value={form.category}
-                        onChange={(e) => setForm({ ...form, category: e.target.value })}
-                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 text-xs text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white cursor-pointer"
-                      >
-                        <option value="garansi">Klaim Garansi 30 Hari</option>
-                        <option value="produk">Pertanyaan Stok Produk & Varian</option>
-                        <option value="pengiriman">Status Pengiriman & Asuransi</option>
-                        <option value="kemitraan">Kemitraan Toko & B2B</option>
-                        <option value="lainnya">Lainnya</option>
-                      </select>
+                        onChange={(val) => setForm({ ...form, category: val })}
+                        size="sm"
+                        options={[
+                          { value: 'garansi', label: 'Klaim Garansi 30 Hari' },
+                          { value: 'produk', label: 'Pertanyaan Stok Produk & Varian' },
+                          { value: 'pengiriman', label: 'Status Pengiriman & Asuransi' },
+                          { value: 'kemitraan', label: 'Kemitraan Toko & B2B' },
+                          { value: 'lainnya', label: 'Lainnya' },
+                        ]}
+                      />
                     </div>
 
                     <div>
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Tujuan Cabang Toko *
                       </label>
-                      <select
+                      <CustomSelect
                         value={form.storeBranch}
-                        onChange={(e) => setForm({ ...form, storeBranch: e.target.value })}
-                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 text-xs text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white cursor-pointer"
-                      >
-                        <option value="roxy">Roxy Mas (Jakarta Pusat)</option>
-                        <option value="surabaya">WTC Surabaya</option>
-                        <option value="bandung">BEC Bandung</option>
-                      </select>
+                        onChange={(val) => setForm({ ...form, storeBranch: val })}
+                        size="sm"
+                        options={[
+                          { value: 'roxy', label: 'Roxy Mas (Jakarta Pusat)' },
+                          { value: 'surabaya', label: 'WTC Surabaya' },
+                          { value: 'bandung', label: 'BEC Bandung' },
+                        ]}
+                      />
                     </div>
                   </div>
 

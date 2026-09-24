@@ -1,50 +1,80 @@
 import fs from 'fs'
 import path from 'path'
 
+export type OtpPurpose = 'LOGIN' | 'CHANGE_PASSWORD' | 'CHANGE_EMAIL'
+
 interface StoredLoginOtp {
   code: string
   phone: string
   expiresAt: number
   attempts: number
+  purpose?: OtpPurpose
 }
 
 interface TwoFactorData {
   enabledUsers: Record<string, boolean> // userId or email -> boolean
-  otps: Record<string, StoredLoginOtp> // email -> StoredLoginOtp
+  otps: Record<string, StoredLoginOtp> // key -> StoredLoginOtp
 }
 
 // Ensure .data folder exists for persistence
 const DATA_DIR = path.join(process.cwd(), '.data')
-const DATA_FILE = path.join(DATA_DIR, 'two-factor-store.json')
 
-function loadData(): TwoFactorData {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    if (fs.existsSync(DATA_FILE)) {
-      const content = fs.readFileSync(DATA_FILE, 'utf-8')
-      return JSON.parse(content)
-    }
-  } catch (e) {
-    console.error('Error loading two-factor-store:', e)
+function getStorageFile(): string {
+  const workerId = process.env.VITEST_POOL_ID || process.env.VITEST_WORKER_ID
+  if (workerId !== undefined) {
+    return path.join(DATA_DIR, `two-factor-store-test-${workerId}.json`)
   }
-  return { enabledUsers: {}, otps: {} }
-}
-
-function saveData(data: TwoFactorData) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8')
-  } catch (e) {
-    console.error('Error saving two-factor-store:', e)
-  }
+  return path.join(DATA_DIR, 'two-factor-store.json')
 }
 
 // In-memory cache synced with disk
-let cachedData: TwoFactorData = loadData()
+let cachedData: TwoFactorData = { enabledUsers: {}, otps: {} }
+
+function loadData(): TwoFactorData {
+  const dataFile = getStorageFile()
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true })
+      }
+      if (fs.existsSync(dataFile)) {
+        const content = fs.readFileSync(dataFile, 'utf-8')
+        if (content.trim()) {
+          const parsed = JSON.parse(content)
+          cachedData = parsed
+          return parsed
+        }
+      }
+      return { enabledUsers: {}, otps: {} }
+    } catch {
+      if (attempt === 2) {
+        return cachedData || { enabledUsers: {}, otps: {} }
+      }
+    }
+  }
+  return cachedData || { enabledUsers: {}, otps: {} }
+}
+
+function saveData(data: TwoFactorData) {
+  cachedData = data
+  const dataFile = getStorageFile()
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true })
+    }
+    const tempFile = `${dataFile}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`
+    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8')
+    fs.renameSync(tempFile, dataFile)
+  } catch {
+    try {
+      fs.writeFileSync(dataFile, JSON.stringify(data, null, 2), 'utf-8')
+    } catch (writeErr) {
+      console.error('Error saving two-factor-store:', writeErr)
+    }
+  }
+}
+
+cachedData = loadData()
 
 /**
  * Checks if 2FA is enabled for a given user ID or email.
@@ -85,8 +115,67 @@ export function normalizePhoneForWhatsApp(rawPhone: string): string {
   return cleaned
 }
 
+function getOtpMessage(code: string, purpose: OtpPurpose): string {
+  switch (purpose) {
+    case 'CHANGE_PASSWORD':
+      return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi WhatsApp untuk *Ganti Kata Sandi* Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
+    case 'CHANGE_EMAIL':
+      return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi WhatsApp untuk *Ganti Alamat Email* Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
+    case 'LOGIN':
+    default:
+      return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi Login (OTP WhatsApp) Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
+  }
+}
+
 /**
- * Generates a fresh 6-digit login OTP for an email.
+ * Generates a fresh 6-digit WhatsApp OTP for a specific purpose (LOGIN, CHANGE_PASSWORD, CHANGE_EMAIL).
+ */
+export function createWhatsAppOtp(
+  identifier: string,
+  phone: string,
+  purpose: OtpPurpose = 'LOGIN'
+): {
+  code: string
+  whatsappUrl: string
+  expiresInSeconds: number
+  message: string
+} {
+  const code = Math.floor(100000 + Math.random() * 900000).toString()
+  const data = loadData()
+  const cleanId = identifier.toLowerCase()
+  const scopedKey = `${cleanId}:${purpose}`
+
+  const otpRecord: StoredLoginOtp = {
+    code,
+    phone,
+    expiresAt: Date.now() + 5 * 60 * 1000, // 5 mins
+    attempts: 0,
+    purpose,
+  }
+
+  data.otps[scopedKey] = otpRecord
+  // Maintain backward-compatibility for login
+  if (purpose === 'LOGIN') {
+    data.otps[cleanId] = otpRecord
+  }
+
+  saveData(data)
+  cachedData = data
+
+  const normalizedPhone = normalizePhoneForWhatsApp(phone)
+  const message = getOtpMessage(code, purpose)
+  const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`
+
+  return {
+    code,
+    whatsappUrl,
+    expiresInSeconds: 300,
+    message,
+  }
+}
+
+/**
+ * Backward compatible alias for login OTP creation.
  */
 export function createLoginOtp(
   email: string,
@@ -96,41 +185,26 @@ export function createLoginOtp(
   whatsappUrl: string
   expiresInSeconds: number
 } {
-  const code = Math.floor(100000 + Math.random() * 900000).toString()
-  const data = loadData()
-  const key = email.toLowerCase()
-
-  data.otps[key] = {
-    code,
-    phone,
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 mins
-    attempts: 0,
-  }
-
-  saveData(data)
-  cachedData = data
-
-  const normalizedPhone = normalizePhoneForWhatsApp(phone)
-  const message = `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi Login (OTP WhatsApp) Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
-  const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`
-
+  const result = createWhatsAppOtp(email, phone, 'LOGIN')
   return {
-    code,
-    whatsappUrl,
-    expiresInSeconds: 300,
+    code: result.code,
+    whatsappUrl: result.whatsappUrl,
+    expiresInSeconds: result.expiresInSeconds,
   }
 }
 
 /**
- * Verifies a login OTP code.
+ * Verifies a WhatsApp OTP code for a specific purpose.
  */
-export function verifyLoginOtp(
-  email: string,
-  inputOtp: string
+export function verifyWhatsAppOtp(
+  identifier: string,
+  inputOtp: string,
+  purpose: OtpPurpose = 'LOGIN'
 ): { success: boolean; error?: string } {
   const data = loadData()
-  const key = email.toLowerCase()
-  const stored = data.otps[key]
+  const cleanId = identifier.toLowerCase()
+  const scopedKey = `${cleanId}:${purpose}`
+  const stored = data.otps[scopedKey] || (purpose === 'LOGIN' ? data.otps[cleanId] : undefined)
 
   if (!stored) {
     return {
@@ -141,7 +215,8 @@ export function verifyLoginOtp(
   }
 
   if (Date.now() > stored.expiresAt) {
-    delete data.otps[key]
+    delete data.otps[scopedKey]
+    if (purpose === 'LOGIN') delete data.otps[cleanId]
     saveData(data)
     return {
       success: false,
@@ -150,7 +225,8 @@ export function verifyLoginOtp(
   }
 
   if (stored.attempts >= 3) {
-    delete data.otps[key]
+    delete data.otps[scopedKey]
+    if (purpose === 'LOGIN') delete data.otps[cleanId]
     saveData(data)
     return {
       success: false,
@@ -169,9 +245,40 @@ export function verifyLoginOtp(
   }
 
   // Verification successful: consume OTP
-  delete data.otps[key]
+  delete data.otps[scopedKey]
+  if (purpose === 'LOGIN') delete data.otps[cleanId]
   saveData(data)
   cachedData = data
 
   return { success: true }
 }
+
+/**
+ * Clears OTPs for a given identifier, optionally scoped by purpose.
+ */
+export function clearOtp(identifier: string, purpose?: OtpPurpose) {
+  const data = loadData()
+  const cleanId = identifier.toLowerCase()
+  if (purpose) {
+    delete data.otps[`${cleanId}:${purpose}`]
+    if (purpose === 'LOGIN') delete data.otps[cleanId]
+  } else {
+    delete data.otps[cleanId]
+    delete data.otps[`${cleanId}:LOGIN`]
+    delete data.otps[`${cleanId}:CHANGE_PASSWORD`]
+    delete data.otps[`${cleanId}:CHANGE_EMAIL`]
+  }
+  saveData(data)
+  cachedData = data
+}
+
+/**
+ * Backward compatible alias for login OTP verification.
+ */
+export function verifyLoginOtp(
+  email: string,
+  inputOtp: string
+): { success: boolean; error?: string } {
+  return verifyWhatsAppOtp(email, inputOtp, 'LOGIN')
+}
+

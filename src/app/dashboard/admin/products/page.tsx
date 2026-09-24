@@ -37,6 +37,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { BulkPriceUpdateModal } from '@/components/admin/bulk-price-update-modal'
+import { CustomSelect } from '@/components/ui/custom-select'
 import {
   buildCatalogHierarchy,
   BrandGroup,
@@ -669,23 +670,21 @@ export default function ProductsPage() {
 
           {/* Sort Dropdown (for flat view) */}
           {viewMode === 'flat' && (
-            <div className="relative shrink-0">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="h-9 cursor-pointer appearance-none rounded-2xl border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-7 text-xs font-bold text-slate-700 outline-none transition hover:bg-white focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                title="Urutan Tampilan Katalog"
-              >
-                <option value="latest">Terbaru (Default)</option>
-                <option value="oldest">Terlama</option>
-                <option value="price_desc">Harga: Tertinggi</option>
-                <option value="price_asc">Harga: Terendah</option>
-                <option value="stock_desc">Stok: Terbanyak</option>
-                <option value="stock_asc">Stok: Tersedikit</option>
-                <option value="name_asc">Nama (A - Z)</option>
-              </select>
-              <ArrowUpDown className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-            </div>
+            <CustomSelect
+              value={sortBy}
+              onChange={(val) => setSortBy(val as any)}
+              size="sm"
+              icon={<ArrowUpDown className="h-3.5 w-3.5" />}
+              options={[
+                { value: 'latest', label: 'Terbaru (Default)' },
+                { value: 'oldest', label: 'Terlama' },
+                { value: 'price_desc', label: 'Harga: Tertinggi' },
+                { value: 'price_asc', label: 'Harga: Terendah' },
+                { value: 'stock_desc', label: 'Stok: Terbanyak' },
+                { value: 'stock_asc', label: 'Stok: Tersedikit' },
+                { value: 'name_asc', label: 'Nama (A - Z)' },
+              ]}
+            />
           )}
 
           {/* Superadmin Bulk Excel Actions */}
@@ -1505,16 +1504,17 @@ export default function ProductsPage() {
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                 <span className="hidden sm:inline">Per halaman:</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                <CustomSelect
+                  value={String(itemsPerPage)}
+                  onChange={(val) => setItemsPerPage(Number(val))}
+                  size="sm"
+                  options={[
+                    { value: '10', label: '10' },
+                    { value: '20', label: '20' },
+                    { value: '50', label: '50' },
+                    { value: '100', label: '100' },
+                  ]}
+                />
               </div>
 
               <div className="flex items-center gap-1">

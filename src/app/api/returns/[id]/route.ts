@@ -121,12 +121,23 @@ export async function PUT(
       data: updateData,
     })
 
-    // If return is completed, update the parent order status to RETURNED
+    // If return is completed, update the parent order status to RETURNED & send refund proof email
     if (status === 'COMPLETED' && existing.orderId) {
       await prisma.order.update({
         where: { id: existing.orderId },
         data: { status: 'RETURNED' },
       })
+
+      try {
+        const { sendOrderRefundedEmail } = await import('@/lib/email')
+        await sendOrderRefundedEmail({
+          orderId: existing.orderId,
+          refundAmount: existing.refundAmount || undefined,
+          reason: existing.reason,
+        })
+      } catch (emailErr) {
+        console.error('Failed to send refund email:', emailErr)
+      }
     }
 
     return NextResponse.json({

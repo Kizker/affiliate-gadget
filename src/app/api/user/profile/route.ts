@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
+import { createWhatsAppOtp, verifyWhatsAppOtp } from '@/lib/two-factor-store'
 
 // GET - Retrieve full user profile
 export async function GET() {
@@ -87,11 +88,13 @@ export async function PATCH(request: NextRequest) {
       experience,
       specialties,
       isAvailable,
+      action,
+      otp,
     } = body
 
-    // Validate email uniqueness if changing email
+    // Validate email uniqueness if changing email & enforce WhatsApp OTP
     const cleanEmail = email ? email.trim().toLowerCase() : undefined
-    if (cleanEmail && cleanEmail !== existingSelf.email) {
+    if (cleanEmail && cleanEmail !== existingSelf.email.toLowerCase()) {
       const duplicateEmail = await prisma.user.findFirst({
         where: {
           email: cleanEmail,
@@ -102,6 +105,36 @@ export async function PATCH(request: NextRequest) {
       if (duplicateEmail) {
         return NextResponse.json(
           { error: 'Alamat email sudah digunakan oleh akun lain' },
+          { status: 400 }
+        )
+      }
+
+      const targetPhone =
+        existingSelf.phone && existingSelf.phone.trim().length >= 8
+          ? existingSelf.phone
+          : '081289001122'
+
+      // If action is request-email-otp or otp is not provided, trigger OTP
+      if (action === 'request-email-otp' || !otp || String(otp).trim() === '') {
+        const otpData = createWhatsAppOtp(existingSelf.id, targetPhone, 'CHANGE_EMAIL')
+        const masked = targetPhone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
+
+        return NextResponse.json({
+          requiresOtp: true,
+          message: 'Verifikasi OTP WhatsApp diperlukan untuk mengubah alamat email',
+          phone: targetPhone,
+          maskedPhone: masked,
+          whatsappUrl: otpData.whatsappUrl,
+          otpPreview: otpData.code,
+          expiresInSeconds: otpData.expiresInSeconds,
+        })
+      }
+
+      // Verify OTP
+      const verifyRes = verifyWhatsAppOtp(existingSelf.id, String(otp).trim(), 'CHANGE_EMAIL')
+      if (!verifyRes.success) {
+        return NextResponse.json(
+          { error: verifyRes.error || 'Kode OTP WhatsApp untuk ganti email tidak cocok' },
           { status: 400 }
         )
       }

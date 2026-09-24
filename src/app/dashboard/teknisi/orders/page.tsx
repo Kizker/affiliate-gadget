@@ -16,6 +16,7 @@ import {
   User,
   Phone,
 } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 interface Order {
   id: string
@@ -284,24 +285,21 @@ export default function TechnicianOrdersPage() {
                             </div>
                           ) : (
                             <>
-                              <select
+                              <CustomSelect
                                 value={order.status}
-                                onChange={(e) =>
-                                  handleStatusUpdate(order.id, e.target.value)
+                                onChange={(val) =>
+                                  handleStatusUpdate(order.id, val)
                                 }
-                                disabled={updatingStatus === order.id}
-                                className={`rounded-lg border-2 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${statusInfo.color} border-transparent`}
-                              >
-                                {/* Teknisi tidak bisa ubah ke PAID atau PENDING_PAYMENT */}
-                                {order.status === 'PAID' && (
-                                  <option value="PAID">Dibayar</option>
-                                )}
-                                <option value="IN_PROGRESS">
-                                  Sedang Dikerjakan
-                                </option>
-                                <option value="COMPLETED">Selesai</option>
-                                <option value="CANCELLED">Dibatalkan</option>
-                              </select>
+                                size="sm"
+                                options={[
+                                  ...(order.status === 'PAID'
+                                    ? [{ value: 'PAID', label: 'Dibayar' }]
+                                    : []),
+                                  { value: 'IN_PROGRESS', label: 'Sedang Dikerjakan' },
+                                  { value: 'COMPLETED', label: 'Selesai' },
+                                  { value: 'CANCELLED', label: 'Dibatalkan' },
+                                ]}
+                              />
                               {updatingStatus === order.id && (
                                 <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                               )}

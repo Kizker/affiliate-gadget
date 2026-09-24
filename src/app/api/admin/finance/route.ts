@@ -6,6 +6,10 @@ import {
   getStoreWithdrawals,
   getTotalWithdrawn,
 } from '@/lib/store-withdrawal-store'
+import {
+  calculatePaymentGatewayFee,
+  calculateMaintenanceFee,
+} from '@/lib/tax/tax-engine'
 
 // Status canonical transaksi aktif/berbayar
 const ACTIVE_ORDER_STATUSES = [
@@ -130,6 +134,12 @@ export async function GET(request: NextRequest) {
               companyName: true,
             },
           },
+          payment: {
+            select: {
+              method: true,
+              status: true,
+            },
+          },
           items: {
             select: {
               quantity: true,
@@ -178,6 +188,8 @@ export async function GET(request: NextRequest) {
     let totalVatOutput = 0
     let totalPph23Withheld = 0
     let totalVatOnCommission = 0
+    let totalGatewayFees = 0
+    let totalMaintenanceFees = 0
 
     // Rincian status kurir & pengiriman untuk Escrow
     const courierBreakdown = {
@@ -195,7 +207,14 @@ export async function GET(request: NextRequest) {
       title: string
       subtitle: string
       type: 'INCOME' | 'EXPENSE' | 'ESCROW' | 'PAYOUT'
-      category: 'SALE' | 'COMMISSION' | 'WITHDRAWAL' | 'ESCROW' | 'PPH23'
+      category:
+        | 'SALE'
+        | 'COMMISSION'
+        | 'WITHDRAWAL'
+        | 'ESCROW'
+        | 'PPH23'
+        | 'GATEWAY'
+        | 'MAINTENANCE'
       categoryLabel: string
       amount: number
       date: string
@@ -362,6 +381,51 @@ export async function GET(request: NextRequest) {
           orderStatus: order.status,
         })
       }
+
+      // Potongan Biaya Payment Gateway Dinamis
+      const gatewayFeeResult = calculatePaymentGatewayFee(
+        order.payment?.method || 'MIDTRANS',
+        orderTotal
+      )
+      if (gatewayFeeResult.feeAmount > 0) {
+        totalGatewayFees += gatewayFeeResult.feeAmount
+        mutations.push({
+          id: `gw-${order.id}`,
+          refNumber: `GW-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+          title: `Biaya Gateway: ${gatewayFeeResult.methodLabel}`,
+          subtitle: `${gatewayFeeResult.feeFormula} (#${order.orderNumber})`,
+          type: 'EXPENSE',
+          category: 'GATEWAY',
+          categoryLabel: 'Biaya Transaksi',
+          amount: gatewayFeeResult.feeAmount,
+          date: formattedDate,
+          rawDate: order.createdAt,
+          status: 'SETTLED',
+          statusLabel: 'Terpotong',
+          orderStatus: order.status,
+        })
+      }
+
+      // Potongan Biaya Pemeliharaan Sistem (Maintenance Fee)
+      const maintenanceFeeResult = calculateMaintenanceFee(orderSubtotal, 1000)
+      if (maintenanceFeeResult.feeAmount > 0) {
+        totalMaintenanceFees += maintenanceFeeResult.feeAmount
+        mutations.push({
+          id: `maint-${order.id}`,
+          refNumber: `MNT-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+          title: `Biaya Pemeliharaan Sistem E-Commerce`,
+          subtitle: `Operasional Server & Escrow Terproteksi (#${order.orderNumber})`,
+          type: 'EXPENSE',
+          category: 'MAINTENANCE',
+          categoryLabel: 'Pemeliharaan Sistem',
+          amount: maintenanceFeeResult.feeAmount,
+          date: formattedDate,
+          rawDate: order.createdAt,
+          status: 'SETTLED',
+          statusLabel: 'Terpotong',
+          orderStatus: order.status,
+        })
+      }
     })
 
     // Hitung riwayat penarikan saldo (Withdrawals)
@@ -452,6 +516,8 @@ export async function GET(request: NextRequest) {
         totalVatOutput,
         totalPph23Withheld,
         totalVatOnCommission,
+        totalGatewayFees,
+        totalMaintenanceFees,
         courierBreakdown,
       },
       transactions: mutations,

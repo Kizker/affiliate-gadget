@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCartStore } from '@/lib/store/cart-store'
+import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { ProductReviewsSection } from './product-reviews-section'
 import { ProductShareModal } from './product-share-modal'
 
@@ -195,7 +196,8 @@ export function ShopeeMobileProductDetail({
 
   const [isScrolled, setIsScrolled] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
-  const [isWishlisted, setIsWishlisted] = useState(false)
+  const { isInWishlist, toggleItem } = useWishlistSafe()
+  const isWishlisted = isInWishlist(product?.id || '')
   const [isDescExpanded, setIsDescExpanded] = useState(false)
   const [isSpecsExpanded, setIsSpecsExpanded] = useState(false)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
@@ -609,15 +611,27 @@ export function ShopeeMobileProductDetail({
           <button
             type="button"
             onClick={() => {
-              setIsWishlisted(!isWishlisted)
-              toast.success(
-                isWishlisted
-                  ? 'Dihapus dari Favorit'
-                  : 'Ditambahkan ke Favorit!'
-              )
+              if (!product?.id) return
+              const wasAdded = toggleItem({
+                id: product.id,
+                name: product.name,
+                price: selectedVariant ? selectedVariant.price : product.price,
+                originalPrice: selectedVariant ? (selectedVariant.originalPrice || undefined) : product.originalPrice,
+                image: product.images?.[0],
+                href: `/gadget/${product.id}`,
+                rating: product.rating,
+                reviewCount: product.totalReview,
+                originCity: product.store?.city,
+                storeName: product.store?.name,
+              })
+              if (wasAdded) {
+                toast.success(`Ditambahkan ke Wishlist: ${product.name}`)
+              } else {
+                toast.info(`Dihapus dari Wishlist: ${product.name}`)
+              }
             }}
             className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200/80 bg-slate-50 text-slate-500 transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-400"
-            aria-label="Simpan ke Favorit"
+            aria-label="Simpan ke Wishlist"
           >
             <Heart
               className={`h-3.5 w-3.5 ${

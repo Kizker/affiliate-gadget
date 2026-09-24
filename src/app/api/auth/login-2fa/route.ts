@@ -70,29 +70,22 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // Check if user has 2FA enabled
-      const enabled = is2FaEnabled(user.id) || is2FaEnabled(user.email)
+      // Enforce WhatsApp OTP on login
+      const targetPhone =
+        user.phone && user.phone.trim().length >= 8
+          ? user.phone
+          : '081289001122'
+      const otpData = createLoginOtp(user.email, targetPhone)
+      const masked = targetPhone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
 
-      // If user has 2FA enabled AND has registered phone number:
-      if (enabled && user.phone && user.phone.trim().length >= 8) {
-        const otpData = createLoginOtp(user.email, user.phone)
-        const masked = user.phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
-
-        return NextResponse.json({
-          requires2FA: true,
-          email: user.email,
-          phone: user.phone,
-          maskedPhone: masked,
-          whatsappUrl: otpData.whatsappUrl,
-          otpPreview: otpData.code,
-          expiresInSeconds: otpData.expiresInSeconds,
-        })
-      }
-
-      // If 2FA is not enabled, user can log in directly with credentials
       return NextResponse.json({
-        requires2FA: false,
+        requires2FA: true,
         email: user.email,
+        phone: targetPhone,
+        maskedPhone: masked,
+        whatsappUrl: otpData.whatsappUrl,
+        otpPreview: otpData.code,
+        expiresInSeconds: otpData.expiresInSeconds,
       })
     }
 

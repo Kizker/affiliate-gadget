@@ -28,6 +28,7 @@ import {
   Wallet,
   RotateCcw,
   Tag,
+  Heart,
 } from 'lucide-react'
 import { useSidebarSafe } from '@/context/sidebar-context'
 
@@ -202,6 +203,11 @@ const customerNavSections: NavSection[] = [
         icon: ShoppingCart,
         label: 'Pesanan Saya',
         href: '/dashboard/customer/orders',
+      },
+      {
+        icon: Heart,
+        label: 'Wishlist Saya',
+        href: '/dashboard/customer/wishlist',
       },
       { icon: ShieldCheck, label: 'Klaim Garansi', href: '/garansi' },
       {

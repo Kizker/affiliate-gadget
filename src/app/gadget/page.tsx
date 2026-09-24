@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Loader2,
 } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 function GadgetKatalogContent() {
   const searchParams = useSearchParams()
@@ -150,17 +151,17 @@ function GadgetKatalogContent() {
                 </div>
 
                 {/* Sort Dropdown */}
-                <div className="relative shrink-0">
-                  <select
+                <div className="shrink-0">
+                  <CustomSelect
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="cursor-pointer appearance-none rounded-xl border border-slate-200/70 bg-slate-50/80 py-1.5 pl-2.5 pr-7 text-[11px] font-semibold text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:rounded-2xl sm:py-2 sm:pl-3.5 sm:pr-8 sm:text-xs"
-                  >
-                    <option value="DEFAULT">Urutan Terbaru</option>
-                    <option value="PRICE_LOW">Harga Terendah</option>
-                    <option value="PRICE_HIGH">Harga Tertinggi</option>
-                  </select>
-                  <SlidersHorizontal className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+                    onChange={(val) => setSortBy(val)}
+                    size="sm"
+                    options={[
+                      { value: 'DEFAULT', label: 'Urutan Terbaru' },
+                      { value: 'PRICE_LOW', label: 'Harga Terendah' },
+                      { value: 'PRICE_HIGH', label: 'Harga Tertinggi' },
+                    ]}
+                  />
                 </div>
               </div>
             </div>

@@ -51,11 +51,14 @@ import {
   X,
   MessageSquare,
   ExternalLink,
+  Heart,
 } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useWishlistSafe } from '@/lib/store/wishlist-store'
+import { CustomerWishlistView } from '@/components/customer/customer-wishlist-view'
 
-type Tab = 'profile' | 'address' | 'security'
+type Tab = 'profile' | 'address' | 'security' | 'wishlist'
 
 export default function CustomerSettingsPage() {
   const { data: session, status, update } = useSession()
@@ -65,8 +68,9 @@ export default function CustomerSettingsPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [activeSubView, setActiveSubView] = useState<
-    'overview' | 'profile' | 'address' | 'security'
+    'overview' | 'profile' | 'address' | 'security' | 'wishlist'
   >('overview')
+  const { totalCount: wishlistCount } = useWishlistSafe()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -83,6 +87,7 @@ export default function CustomerSettingsPage() {
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
+  const [initialEmail, setInitialEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [gender, setGender] = useState<'Laki-laki' | 'Perempuan' | ''>('')
   const [birthDate, setBirthDate] = useState('')
@@ -134,6 +139,9 @@ export default function CustomerSettingsPage() {
 
   // OTP WhatsApp Verification states
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false)
+  const [otpPurpose, setOtpPurpose] = useState<
+    '2FA' | 'CHANGE_PASSWORD' | 'CHANGE_EMAIL'
+  >('2FA')
   const [otpCode, setOtpCode] = useState('')
   const [otpWhatsappUrl, setOtpWhatsappUrl] = useState('')
   const [otpExpiresIn, setOtpExpiresIn] = useState(0)
@@ -150,6 +158,7 @@ export default function CustomerSettingsPage() {
         setName(data.user.name || '')
         setUsername(data.user.username || '')
         setEmail(data.user.email || '')
+        setInitialEmail(data.user.email || '')
         setPhone(data.user.phone || '')
         setGender(data.user.gender || '')
         if (data.user.birthDate) {
@@ -270,7 +279,7 @@ export default function CustomerSettingsPage() {
   ])
 
   const handleSelectSubView = (
-    view: 'overview' | 'profile' | 'address' | 'security'
+    view: 'overview' | 'profile' | 'address' | 'security' | 'wishlist'
   ) => {
     setActiveSubView(view)
     if (view !== 'overview') {
@@ -343,7 +352,12 @@ export default function CustomerSettingsPage() {
     }
   }
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = async (
+    otpToVerify?: string | React.MouseEvent
+  ) => {
+    const otpCodeStr =
+      typeof otpToVerify === 'string' ? otpToVerify : undefined
+
     if (!name.trim()) {
       toast({
         title: 'Nama lengkap wajib diisi',
@@ -372,12 +386,35 @@ export default function CustomerSettingsPage() {
           gender: gender || null,
           birthDate: birthDate || null,
           bio: bio.trim(),
+          otp:
+            otpCodeStr ||
+            (otpPurpose === 'CHANGE_EMAIL' && otpCode.trim()
+              ? otpCode.trim()
+              : undefined),
         }),
       })
 
       const data = await res.json()
 
       if (res.ok) {
+        if (data.requiresOtp) {
+          setOtpPurpose('CHANGE_EMAIL')
+          setOtpWhatsappUrl(data.whatsappUrl || '')
+          setOtpPreview(data.otpPreview || '')
+          setOtpExpiresIn(data.expiresInSeconds || 300)
+          setOtpCode('')
+          setIsOtpModalOpen(true)
+          toast({
+            title: 'Verifikasi Diperlukan',
+            description:
+              'Masukkan kode OTP WhatsApp untuk konfirmasi perubahan email akun.',
+          })
+          return
+        }
+
+        setInitialEmail(email.trim())
+        setIsOtpModalOpen(false)
+        setOtpCode('')
         await update()
         toast({
           title: 'Biodata berhasil disimpan',
@@ -469,7 +506,12 @@ export default function CustomerSettingsPage() {
     }
   }
 
-  const handleChangePassword = async () => {
+  const handleChangePassword = async (
+    otpToVerify?: string | React.MouseEvent
+  ) => {
+    const otpCodeStr =
+      typeof otpToVerify === 'string' ? otpToVerify : undefined
+
     if (newPassword !== confirmPassword) {
       toast({
         title: 'Konfirmasi password tidak cocok',
@@ -494,20 +536,43 @@ export default function CustomerSettingsPage() {
         body: JSON.stringify({
           currentPassword,
           newPassword,
+          otp:
+            otpCodeStr ||
+            (otpPurpose === 'CHANGE_PASSWORD' && otpCode.trim()
+              ? otpCode.trim()
+              : undefined),
         }),
       })
 
+      const data = await res.json()
+
       if (res.ok) {
+        if (data.requiresOtp) {
+          setOtpPurpose('CHANGE_PASSWORD')
+          setOtpWhatsappUrl(data.whatsappUrl || '')
+          setOtpPreview(data.otpPreview || '')
+          setOtpExpiresIn(data.expiresInSeconds || 300)
+          setOtpCode('')
+          setIsOtpModalOpen(true)
+          toast({
+            title: 'Verifikasi Diperlukan',
+            description:
+              'Masukkan kode OTP WhatsApp untuk konfirmasi penggantian kata sandi.',
+          })
+          return
+        }
+
         setCurrentPassword('')
         setNewPassword('')
         setConfirmPassword('')
+        setIsOtpModalOpen(false)
+        setOtpCode('')
         toast({
           title: 'Kata sandi berhasil diubah',
         })
       } else {
-        const error = await res.json()
         toast({
-          title: error.error || 'Password lama tidak sesuai',
+          title: data.error || 'Password lama tidak sesuai',
           variant: 'destructive',
         })
       }
@@ -526,6 +591,7 @@ export default function CustomerSettingsPage() {
   // Security Handlers: 2FA WhatsApp & Sessions
   // ─────────────────────────────────────────────────────────────────────────
   const handleToggle2Fa = async () => {
+    setOtpPurpose('2FA')
     if (twoFactorEnabled) {
       setSecurityLoading(true)
       try {
@@ -596,6 +662,16 @@ export default function CustomerSettingsPage() {
       return
     }
 
+    if (otpPurpose === 'CHANGE_PASSWORD') {
+      await handleChangePassword(otpCode.trim())
+      return
+    }
+
+    if (otpPurpose === 'CHANGE_EMAIL') {
+      await handleSaveProfile(otpCode.trim())
+      return
+    }
+
     setVerifyingOtp(true)
     try {
       const res = await fetch('/api/user/security', {
@@ -629,22 +705,63 @@ export default function CustomerSettingsPage() {
     if (otpExpiresIn > 240) return
     setRequestingOtp(true)
     try {
-      const res = await fetch('/api/user/security', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'request_otp' }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setOtpWhatsappUrl(data.whatsappUrl || '')
-        setOtpPreview(data.otpPreview || '')
-        setOtpExpiresIn(data.expiresInSeconds || 300)
-        toast({ title: 'Kode OTP baru dikirim ke WhatsApp' })
-      } else {
-        toast({
-          title: data.error || 'Gagal mengirim ulang OTP',
-          variant: 'destructive',
+      if (otpPurpose === 'CHANGE_PASSWORD') {
+        const res = await fetch('/api/user/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'request-otp' }),
         })
+        const data = await res.json()
+        if (res.ok) {
+          setOtpWhatsappUrl(data.whatsappUrl || '')
+          setOtpPreview(data.otpPreview || '')
+          setOtpExpiresIn(data.expiresInSeconds || 300)
+          toast({ title: 'Kode OTP baru dikirim ke WhatsApp' })
+        } else {
+          toast({
+            title: data.error || 'Gagal mengirim ulang OTP',
+            variant: 'destructive',
+          })
+        }
+      } else if (otpPurpose === 'CHANGE_EMAIL') {
+        const res = await fetch('/api/user/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'request-email-otp',
+            email: email.trim(),
+          }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setOtpWhatsappUrl(data.whatsappUrl || '')
+          setOtpPreview(data.otpPreview || '')
+          setOtpExpiresIn(data.expiresInSeconds || 300)
+          toast({ title: 'Kode OTP baru dikirim ke WhatsApp' })
+        } else {
+          toast({
+            title: data.error || 'Gagal mengirim ulang OTP',
+            variant: 'destructive',
+          })
+        }
+      } else {
+        const res = await fetch('/api/user/security', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'request_otp' }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setOtpWhatsappUrl(data.whatsappUrl || '')
+          setOtpPreview(data.otpPreview || '')
+          setOtpExpiresIn(data.expiresInSeconds || 300)
+          toast({ title: 'Kode OTP baru dikirim ke WhatsApp' })
+        } else {
+          toast({
+            title: data.error || 'Gagal mengirim ulang OTP',
+            variant: 'destructive',
+          })
+        }
       }
     } catch (err) {
       toast({ title: 'Gagal mengirim ulang OTP', variant: 'destructive' })
@@ -714,6 +831,12 @@ export default function CustomerSettingsPage() {
       label: 'Kata Sandi & Keamanan',
       shortLabel: 'Keamanan',
       icon: Lock,
+    },
+    {
+      id: 'wishlist' as Tab,
+      label: `Wishlist Saya (${wishlistCount})`,
+      shortLabel: `Wishlist (${wishlistCount})`,
+      icon: Heart,
     },
   ]
 
@@ -833,10 +956,18 @@ export default function CustomerSettingsPage() {
                   <label className="block text-xs font-bold text-slate-700">
                     Alamat Email <span className="text-red-500">*</span>
                   </label>
-                  <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                    Terverifikasi
-                  </span>
+                  {initialEmail &&
+                  email.trim().toLowerCase() !== initialEmail.toLowerCase() ? (
+                    <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-[10px] font-bold text-orange-700">
+                      <ShieldCheck className="h-3 w-3 text-orange-600" />
+                      Perlu OTP WhatsApp
+                    </span>
+                  ) : (
+                    <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                      Terverifikasi
+                    </span>
+                  )}
                 </div>
                 <div className="relative flex items-center">
                   <Mail className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
@@ -849,6 +980,16 @@ export default function CustomerSettingsPage() {
                     className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                   />
                 </div>
+                {initialEmail &&
+                  email.trim().toLowerCase() !== initialEmail.toLowerCase() && (
+                    <p className="mt-1 text-[11px] font-medium text-orange-600">
+                      Perubahan email memerlukan verifikasi OTP WhatsApp ke{' '}
+                      {phone
+                        ? phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
+                        : 'nomor WA terdaftar'}
+                      .
+                    </p>
+                  )}
               </div>
 
               <div>
@@ -1284,12 +1425,11 @@ export default function CustomerSettingsPage() {
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-[11px] text-slate-400">
-                Minimal 6 karakter, kombinasikan huruf dan angka untuk keamanan
-                maksimal.
+                Minimal 6 karakter. Pergantian kata sandi memerlukan verifikasi kode OTP WhatsApp.
               </div>
               <button
                 type="button"
-                onClick={handleChangePassword}
+                onClick={() => handleChangePassword()}
                 disabled={
                   saving || !currentPassword || !newPassword || !confirmPassword
                 }
@@ -1457,6 +1597,24 @@ export default function CustomerSettingsPage() {
               )}
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: WISHLIST SAYA                                                      */}
+      {/* ========================================================================= */}
+      {(activeTab === 'wishlist' || activeSubView === 'wishlist') && (
+        <motion.div
+          key="wishlist"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.15 }}
+          className="space-y-6"
+        >
+          <CustomerWishlistView
+            onBackToOverview={() => setActiveSubView('overview')}
+          />
         </motion.div>
       )}
     </AnimatePresence>
@@ -1673,10 +1831,18 @@ export default function CustomerSettingsPage() {
                   <ShieldCheck className="h-6 w-6" />
                 </div>
                 <h3 className="text-base font-bold text-slate-950">
-                  Verifikasi OTP WhatsApp
+                  {otpPurpose === 'CHANGE_PASSWORD'
+                    ? 'Verifikasi Ganti Kata Sandi'
+                    : otpPurpose === 'CHANGE_EMAIL'
+                    ? 'Verifikasi Ganti Email Akun'
+                    : 'Verifikasi OTP WhatsApp'}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Masukkan 6 digit kode yang dikirimkan ke nomor WhatsApp:{' '}
+                  {otpPurpose === 'CHANGE_PASSWORD'
+                    ? 'Demi keamanan akun, masukkan 6 digit kode OTP WhatsApp:'
+                    : otpPurpose === 'CHANGE_EMAIL'
+                    ? 'Untuk konfirmasi pergantian email, masukkan 6 digit kode OTP:'
+                    : 'Masukkan 6 digit kode yang dikirimkan ke nomor WhatsApp:'}{' '}
                   <span className="font-bold text-slate-900">
                     {phone
                       ? phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
@@ -1766,7 +1932,13 @@ export default function CustomerSettingsPage() {
                   ) : (
                     <Check className="h-3.5 w-3.5" />
                   )}
-                  <span>Verifikasi</span>
+                  <span>
+                    {otpPurpose === 'CHANGE_PASSWORD'
+                      ? 'Ubah Sandi'
+                      : otpPurpose === 'CHANGE_EMAIL'
+                      ? 'Simpan Email'
+                      : 'Verifikasi'}
+                  </span>
                 </button>
               </div>
             </div>

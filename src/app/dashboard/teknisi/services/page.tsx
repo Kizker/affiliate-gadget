@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 // --- Types ---
 
@@ -454,24 +455,19 @@ export default function ServicesPage() {
                       <label className="mb-2 block text-sm font-semibold text-gray-700">
                         Kategori
                       </label>
-                      <div className="relative">
-                        <select
-                          className="w-full appearance-none rounded-xl border-gray-200 bg-gray-50 p-3 text-sm font-medium outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20"
-                          value={formData.category}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              category: e.target.value,
-                            })
-                          }
-                        >
-                          {SERVICE_CATEGORIES.map((c) => (
-                            <option key={c.value} value={c.value}>
-                              {c.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <CustomSelect
+                        value={formData.category}
+                        onChange={(val) =>
+                          setFormData({
+                            ...formData,
+                            category: val,
+                          })
+                        }
+                        options={SERVICE_CATEGORIES.map((c) => ({
+                          value: c.value,
+                          label: c.label,
+                        }))}
+                      />
                     </div>
                     <div>
                       <label className="mb-2 block text-sm font-semibold text-gray-700">

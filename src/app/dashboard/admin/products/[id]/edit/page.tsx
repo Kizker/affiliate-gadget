@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner'
 import { formatRupiahInput, parseRupiahInput } from '@/lib/utils'
 import { CreatableCombobox } from '@/components/ui/creatable-combobox'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 const BRAND_OPTIONS = [
   'Apple',
@@ -596,19 +597,17 @@ export default function EditProductPage() {
                   </div>
                 )
               ) : (
-                <select
+                <CustomSelect
                   value={form.storeId}
-                  onChange={(e) =>
-                    setForm({ ...form, storeId: e.target.value })
+                  onChange={(val) =>
+                    setForm({ ...form, storeId: val })
                   }
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                >
-                  {stores.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.city || 'Indonesia'})
-                    </option>
-                  ))}
-                </select>
+                  options={stores.map((s) => ({
+                    value: s.id,
+                    label: `${s.name} (${s.city || 'Indonesia'})`,
+                  }))}
+                  icon={<Building2 className="h-4 w-4 text-slate-400" />}
+                />
               )}
             </div>
 
