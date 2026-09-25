@@ -20,9 +20,12 @@ export async function POST(
       where: { id: orderId },
       select: {
         id: true,
+        orderNumber: true,
         userId: true,
         status: true,
         customerConfirmedAt: true,
+        user: true,
+        store: { select: { name: true } },
       },
     })
 
@@ -65,18 +68,31 @@ export async function POST(
       },
     })
 
-    // Kirim tanda bukti transaksi selesai & resi ke email pengguna
+    // Kirim tanda bukti transaksi selesai via email (Resend) & notifikasi WhatsApp
     try {
-      const { sendOrderCompletedEmail } = await import('@/lib/email')
-      await sendOrderCompletedEmail({ orderId })
-    } catch (emailErr) {
-      console.error('Failed to send order completed email:', emailErr)
+      const { dispatchTransactional } = await import('@/lib/notifications')
+      await dispatchTransactional({
+        event: 'ORDER_COMPLETED',
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        userId: order.userId,
+        customerName: order.user?.name || session.user.name || 'Pelanggan',
+        customerPhone:
+          order.user?.phone ||
+          (session.user as { phone?: string })?.phone ||
+          undefined,
+        customerEmail: order.user?.email || session.user.email || undefined,
+        storeName: order.store?.name,
+      })
+    } catch (notifErr) {
+      console.error('Failed to send order completed notification:', notifErr)
     }
 
     return NextResponse.json({
       success: true,
       order: updatedOrder,
-      message: 'Pesanan berhasil dikonfirmasi diterima. Garansi 30 hari tukar unit kini aktif!',
+      message:
+        'Pesanan berhasil dikonfirmasi diterima. Garansi 30 hari tukar unit kini aktif!',
     })
   } catch (error) {
     console.error('Error confirming order:', error)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -17,18 +17,39 @@ import {
   Check,
   Phone,
   CheckCircle2,
+  MessageSquare,
+  RefreshCw,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import StoreDataForm from '@/components/mitra/store-data-form'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState<1 | 2>(1)
+  const [currentStep, setCurrentStep] = useState<1 | 'otp' | 2>(1)
   const [registeredUserId, setRegisteredUserId] = useState<string>('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [isPasswordFocused, setIsPasswordFocused] = useState(false)
+
+  // OTP Verification States (Email-First with WA/SMS fallback)
+  const [otp, setOtp] = useState('')
+  const [otpCountdown, setOtpCountdown] = useState(300)
+  const [resendCooldown, setResendCooldown] = useState(60)
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
+  const [isResendingOtp, setIsResendingOtp] = useState(false)
+  const [activeOtpChannel, setActiveOtpChannel] = useState<
+    'EMAIL' | 'WHATSAPP' | 'SMS'
+  >('EMAIL')
+  const [activeIdentifier, setActiveIdentifier] = useState('')
+  const [maskedEmail, setMaskedEmail] = useState('')
+  const [hasPhone, setHasPhone] = useState(false)
+  const [showAltOptions, setShowAltOptions] = useState(false)
+  const [otpError, setOtpError] = useState('')
+  const [otpSuccess, setOtpSuccess] = useState('')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -39,6 +60,29 @@ export default function RegisterPage() {
     role: 'CUSTOMER' as 'CUSTOMER' | 'MITRA',
     honeypotField: '',
   })
+
+  // Timer countdown for OTP expiry and resend cooldown
+  useEffect(() => {
+    if (currentStep !== 'otp') return
+    const interval = setInterval(() => {
+      setOtpCountdown((prev) => (prev > 0 ? prev - 1 : 0))
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [currentStep])
+
+  const formatMaskedPhone = (phoneStr: string) => {
+    if (!phoneStr) return ''
+    const clean = phoneStr.trim()
+    if (clean.length <= 6) return clean
+    return clean.slice(0, 4) + '****' + clean.slice(-4)
+  }
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
 
   // Password Strength Criteria Evaluation
   const passwordCriteria = {
@@ -103,8 +147,66 @@ export default function RegisterPage() {
 
       const createdUserId = data.userId || ''
       setRegisteredUserId(createdUserId)
+      setMaskedEmail(data.maskedEmail || formData.email.trim().toLowerCase())
+      setHasPhone(!!data.hasPhone)
+      setActiveIdentifier(formData.email.trim().toLowerCase())
+      setActiveOtpChannel('EMAIL')
+      setShowAltOptions(false)
 
-      // Auto login after registration
+      // Selalu lanjut ke langkah OTP verifikasi email
+      setCurrentStep('otp')
+      setOtpCountdown(300)
+      setResendCooldown(60)
+      setOtp('')
+      setOtpError('')
+      setOtpSuccess(
+        `Kode OTP 6-digit telah dikirimkan ke email Anda (${data.maskedEmail || formData.email}). Silakan periksa kotak masuk atau spam.`
+      )
+      return
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : 'Terjadi kendala saat pendaftaran.'
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleVerifyOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (otp.trim().length < 6) {
+      setOtpError('Masukkan 6 digit kode OTP verifikasi.')
+      return
+    }
+    setIsVerifyingOtp(true)
+    setOtpError('')
+    setOtpSuccess('')
+
+    const targetIdentifier =
+      activeIdentifier || formData.email.trim().toLowerCase()
+
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: targetIdentifier,
+          code: otp.trim(),
+          purpose: 'REGISTER',
+        }),
+      })
+      const verifyData = await res.json()
+      if (!res.ok) {
+        setOtpError(
+          verifyData.error || 'Kode OTP tidak cocok atau sudah kadaluarsa.'
+        )
+        setIsVerifyingOtp(false)
+        return
+      }
+
+      setOtpSuccess('Verifikasi berhasil! Mengalihkan ke akun Anda...')
+
+      // Auto login after OTP is confirmed
       const result = await signIn('credentials', {
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
@@ -112,23 +214,97 @@ export default function RegisterPage() {
       })
 
       if (formData.role === 'MITRA') {
-        // Transition to Step 2: Store Data Onboarding
         setCurrentStep(2)
       } else {
         if (result?.error) {
-          setError('Akun berhasil dibuat. Silakan masuk.')
-          setTimeout(() => router.push('/login'), 1500)
+          router.push('/login?registered=true')
         } else {
           router.push('/')
           router.refresh()
         }
       }
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : 'Terjadi kendala saat pendaftaran.'
+      setOtpError(
+        err instanceof Error
+          ? err.message
+          : 'Terjadi kendala saat verifikasi OTP.'
       )
     } finally {
-      setIsLoading(false)
+      setIsVerifyingOtp(false)
+    }
+  }
+
+  const handleResendEmailOtp = async () => {
+    if (resendCooldown > 0) return
+    setIsResendingOtp(true)
+    setOtpError('')
+    setOtpSuccess('')
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: formData.email.trim().toLowerCase(),
+          channel: 'EMAIL',
+          purpose: 'REGISTER',
+          userId: registeredUserId,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setActiveOtpChannel('EMAIL')
+        setActiveIdentifier(formData.email.trim().toLowerCase())
+        setOtpSuccess('Kode OTP baru berhasil dikirim ke email Anda!')
+        setOtpCountdown(data.expiresIn || 300)
+        setResendCooldown(data.cooldown || 60)
+      } else {
+        setOtpError(data.error || 'Gagal mengirim ulang kode OTP ke email.')
+      }
+    } catch {
+      setOtpError('Terjadi kendala saat mengirim ulang kode OTP.')
+    } finally {
+      setIsResendingOtp(false)
+    }
+  }
+
+  const handleAltChannelOtp = async (channel: 'WHATSAPP' | 'SMS') => {
+    if (!formData.phone || formData.phone.trim().length === 0) {
+      setOtpError('Nomor telepon tidak tersedia untuk opsi alternatif ini.')
+      return
+    }
+    setIsResendingOtp(true)
+    setOtpError('')
+    setOtpSuccess('')
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: formData.phone.trim(),
+          channel,
+          purpose: 'REGISTER',
+          userId: registeredUserId,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setActiveOtpChannel(channel)
+        setActiveIdentifier(formData.phone.trim())
+        setShowAltOptions(false)
+        setOtpSuccess(
+          channel === 'SMS'
+            ? `Kode OTP dialihkan ke SMS (${formatMaskedPhone(formData.phone)})!`
+            : `Kode OTP dialihkan ke WhatsApp (${formatMaskedPhone(formData.phone)})!`
+        )
+        setOtpCountdown(data.expiresIn || 300)
+        setResendCooldown(data.cooldown || 60)
+      } else {
+        setOtpError(data.error || `Gagal mengirim kode via ${channel}.`)
+      }
+    } catch {
+      setOtpError(`Terjadi kendala saat mengirim kode via ${channel}.`)
+    } finally {
+      setIsResendingOtp(false)
     }
   }
 
@@ -197,26 +373,40 @@ export default function RegisterPage() {
               <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">
                 {currentStep === 1
                   ? 'Daftar Akun Baru'
-                  : 'Lengkapi Informasi Toko'}
+                  : currentStep === 'otp'
+                    ? 'Verifikasi Kode OTP'
+                    : 'Lengkapi Informasi Toko'}
               </h1>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {currentStep === 1
                   ? 'Buat akun baru untuk mulai bertransaksi dengan garansi resmi'
-                  : 'Langkah 2 dari 2: Isi rincian cabang toko fisik & badan usaha Anda untuk review'}
+                  : currentStep === 'otp'
+                    ? 'Masukkan 6 digit kode OTP yang kami kirimkan untuk memverifikasi akun Anda'
+                    : 'Langkah 2 dari 2: Isi rincian cabang toko fisik & badan usaha Anda untuk review'}
               </p>
             </div>
 
-            {/* Stepper Indicator for Mitra */}
-            {(formData.role === 'MITRA' || currentStep === 2) && (
+            {/* Stepper Indicator */}
+            {(formData.role === 'MITRA' ||
+              currentStep === 'otp' ||
+              currentStep === 2) && (
               <div className="mb-6 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
                 <div className="flex items-center justify-between text-xs font-semibold">
                   <div
-                    className={`flex items-center gap-2 ${currentStep === 1 ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400'}`}
+                    className={`flex items-center gap-2 ${
+                      currentStep === 1
+                        ? 'text-orange-600 dark:text-orange-400'
+                        : 'text-emerald-600 dark:text-emerald-400'
+                    }`}
                   >
                     <div
-                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${currentStep === 1 ? 'bg-orange-500 text-white' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}`}
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                        currentStep === 1
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                      }`}
                     >
-                      {currentStep > 1 ? (
+                      {currentStep !== 1 ? (
                         <Check className="h-3.5 w-3.5" />
                       ) : (
                         '1'
@@ -225,18 +415,59 @@ export default function RegisterPage() {
                     <span>Data Akun</span>
                   </div>
 
-                  <div className="mx-3 h-0.5 flex-1 bg-slate-200 dark:bg-slate-700" />
+                  <div className="mx-2.5 h-0.5 flex-1 bg-slate-200 dark:bg-slate-700" />
 
                   <div
-                    className={`flex items-center gap-2 ${currentStep === 2 ? 'text-orange-600 dark:text-orange-400' : 'text-slate-400'}`}
+                    className={`flex items-center gap-2 ${
+                      currentStep === 'otp'
+                        ? 'text-orange-600 dark:text-orange-400'
+                        : currentStep === 2
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-slate-400'
+                    }`}
                   >
                     <div
-                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${currentStep === 2 ? 'bg-orange-500 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                        currentStep === 'otp'
+                          ? 'bg-orange-500 text-white'
+                          : currentStep === 2
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+                      }`}
                     >
-                      2
+                      {currentStep === 2 ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        '2'
+                      )}
                     </div>
-                    <span>Data Toko</span>
+                    <span>Verifikasi OTP</span>
                   </div>
+
+                  {formData.role === 'MITRA' && (
+                    <>
+                      <div className="mx-2.5 h-0.5 flex-1 bg-slate-200 dark:bg-slate-700" />
+
+                      <div
+                        className={`flex items-center gap-2 ${
+                          currentStep === 2
+                            ? 'text-orange-600 dark:text-orange-400'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        <div
+                          className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                            currentStep === 2
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+                          }`}
+                        >
+                          3
+                        </div>
+                        <span>Data Toko</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -738,6 +969,208 @@ export default function RegisterPage() {
                   </Link>
                 </p>
               </>
+            )}
+
+            {/* STEP OTP: Verifikasi Email (Default) / WhatsApp / SMS */}
+            {currentStep === 'otp' && (
+              <div className="space-y-5">
+                {/* Header Badge */}
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div
+                    className={`mb-3 flex h-14 w-14 items-center justify-center rounded-2xl ${
+                      activeOtpChannel === 'EMAIL'
+                        ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
+                        : activeOtpChannel === 'WHATSAPP'
+                          ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                          : 'bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
+                    }`}
+                  >
+                    {activeOtpChannel === 'EMAIL' ? (
+                      <Mail className="h-7 w-7" />
+                    ) : activeOtpChannel === 'WHATSAPP' ? (
+                      <MessageSquare className="h-7 w-7" />
+                    ) : (
+                      <Phone className="h-7 w-7" />
+                    )}
+                  </div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    {activeOtpChannel === 'EMAIL'
+                      ? 'Cek Kotak Masuk Email'
+                      : activeOtpChannel === 'WHATSAPP'
+                        ? 'Verifikasi via WhatsApp'
+                        : 'Verifikasi via SMS'}
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {activeOtpChannel === 'EMAIL'
+                      ? 'Masukkan 6 digit kode OTP yang kami kirimkan ke email:'
+                      : 'Masukkan 6 digit kode OTP yang kami kirimkan ke nomor:'}
+                  </p>
+                  <p className="mt-0.5 text-xs font-bold text-slate-900 dark:text-white">
+                    {activeOtpChannel === 'EMAIL'
+                      ? maskedEmail || formData.email
+                      : formatMaskedPhone(formData.phone)}
+                  </p>
+                </div>
+
+                {/* Error Banner */}
+                {otpError && (
+                  <div className="flex items-center gap-2 rounded-2xl border border-red-200/80 bg-red-50/80 p-3 text-xs text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{otpError}</span>
+                  </div>
+                )}
+
+                {/* Success Banner */}
+                {otpSuccess && (
+                  <div className="flex items-center gap-2 rounded-2xl border border-emerald-200/80 bg-emerald-50/80 p-3 text-xs text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>{otpSuccess}</span>
+                  </div>
+                )}
+
+                {/* OTP Input Form */}
+                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="register-otp"
+                      className="block text-center text-xs font-bold text-slate-700 dark:text-slate-300"
+                    >
+                      Kode OTP (6 Digit)
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="register-otp"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        autoFocus
+                        value={otp}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '')
+                          setOtp(val)
+                        }}
+                        placeholder="••••••"
+                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-3 text-center font-mono text-2xl font-bold tracking-[0.5em] text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Countdown Timer */}
+                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <span>Masa berlaku kode:</span>
+                    <span
+                      className={`font-mono font-bold ${
+                        otpCountdown <= 60
+                          ? 'text-red-500'
+                          : 'text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {formatTimer(otpCountdown)}
+                    </span>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isVerifyingOtp || otp.length < 6}
+                    className="active:scale-98 inline-flex w-full items-center justify-center gap-2 rounded-full bg-orange-500 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isVerifyingOtp ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Memverifikasi...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Verifikasi & Lanjutkan</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* Resend & Alternative Channel Options */}
+                <div className="space-y-3 pt-2 text-center text-xs">
+                  <div>
+                    <button
+                      type="button"
+                      disabled={resendCooldown > 0 || isResendingOtp}
+                      onClick={handleResendEmailOtp}
+                      className="inline-flex items-center gap-1.5 font-semibold text-slate-600 transition-colors hover:text-orange-600 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-slate-400 dark:hover:text-orange-400"
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 ${isResendingOtp ? 'animate-spin' : ''}`}
+                      />
+                      <span>
+                        {resendCooldown > 0
+                          ? `Kirim ulang email (${resendCooldown}s)`
+                          : 'Kirim ulang kode ke email'}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Cara Lainnya: WhatsApp / SMS (jika user mengisi nomor HP) */}
+                  {hasPhone && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowAltOptions(!showAltOptions)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 transition-colors hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-400"
+                      >
+                        <span>Pilihan pengiriman lain</span>
+                        {showAltOptions ? (
+                          <ChevronUp className="h-3 w-3" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
+                        )}
+                      </button>
+
+                      {showAltOptions && (
+                        <div className="mt-2.5 flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 text-left duration-200 animate-in fade-in dark:border-slate-800 dark:bg-slate-800/40">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Kirim ke nomor {formatMaskedPhone(formData.phone)}:
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              disabled={isResendingOtp}
+                              onClick={() => handleAltChannelOtp('WHATSAPP')}
+                              className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50 active:scale-95 disabled:opacity-50 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-300"
+                            >
+                              <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>WhatsApp</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isResendingOtp}
+                              onClick={() => handleAltChannelOtp('SMS')}
+                              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                            >
+                              <Phone className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                              <span>SMS</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentStep(1)
+                        setOtpError('')
+                        setOtpSuccess('')
+                      }}
+                      className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      ← Ubah email atau data akun
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* STEP 2: Informasi Toko untuk Calon Mitra */}

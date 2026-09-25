@@ -43,7 +43,10 @@ export async function GET() {
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'User tidak ditemukan' },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json({ user })
@@ -69,11 +72,16 @@ export async function PATCH(request: NextRequest) {
 
     // Find current user from DB
     const existingSelf = await prisma.user.findFirst({
-      where: currentUserId ? { id: currentUserId } : { email: currentUserEmail! },
+      where: currentUserId
+        ? { id: currentUserId }
+        : { email: currentUserEmail! },
     })
 
     if (!existingSelf) {
-      return NextResponse.json({ error: 'User tidak ditemukan di database' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'User tidak ditemukan di database' },
+        { status: 404 }
+      )
     }
 
     const body = await request.json()
@@ -116,12 +124,17 @@ export async function PATCH(request: NextRequest) {
 
       // If action is request-email-otp or otp is not provided, trigger OTP
       if (action === 'request-email-otp' || !otp || String(otp).trim() === '') {
-        const otpData = createWhatsAppOtp(existingSelf.id, targetPhone, 'CHANGE_EMAIL')
+        const otpData = createWhatsAppOtp(
+          existingSelf.id,
+          targetPhone,
+          'CHANGE_EMAIL'
+        )
         const masked = targetPhone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
 
         return NextResponse.json({
           requiresOtp: true,
-          message: 'Verifikasi OTP WhatsApp diperlukan untuk mengubah alamat email',
+          message:
+            'Verifikasi OTP WhatsApp diperlukan untuk mengubah alamat email',
           phone: targetPhone,
           maskedPhone: masked,
           whatsappUrl: otpData.whatsappUrl,
@@ -131,10 +144,18 @@ export async function PATCH(request: NextRequest) {
       }
 
       // Verify OTP
-      const verifyRes = verifyWhatsAppOtp(existingSelf.id, String(otp).trim(), 'CHANGE_EMAIL')
+      const verifyRes = verifyWhatsAppOtp(
+        existingSelf.id,
+        String(otp).trim(),
+        'CHANGE_EMAIL'
+      )
       if (!verifyRes.success) {
         return NextResponse.json(
-          { error: verifyRes.error || 'Kode OTP WhatsApp untuk ganti email tidak cocok' },
+          {
+            error:
+              verifyRes.error ||
+              'Kode OTP WhatsApp untuk ganti email tidak cocok',
+          },
           { status: 400 }
         )
       }
@@ -143,7 +164,10 @@ export async function PATCH(request: NextRequest) {
     // Validate username uniqueness if provided
     let cleanUsername: string | null = null
     if (username !== undefined) {
-      const raw = typeof username === 'string' ? username.trim().toLowerCase().replace(/^@+/, '') : ''
+      const raw =
+        typeof username === 'string'
+          ? username.trim().toLowerCase().replace(/^@+/, '')
+          : ''
       cleanUsername = raw || null
 
       if (cleanUsername) {
@@ -156,7 +180,12 @@ export async function PATCH(request: NextRequest) {
 
         if (duplicateUsername) {
           return NextResponse.json(
-            { error: 'Username @' + cleanUsername + ' sudah digunakan, silakan pilih yang lain' },
+            {
+              error:
+                'Username @' +
+                cleanUsername +
+                ' sudah digunakan, silakan pilih yang lain',
+            },
             { status: 400 }
           )
         }
@@ -166,7 +195,11 @@ export async function PATCH(request: NextRequest) {
     // Parse birthDate defensively
     let parsedBirthDate: Date | null | undefined = undefined
     if (birthDate !== undefined) {
-      if (!birthDate || typeof birthDate !== 'string' || birthDate.trim() === '') {
+      if (
+        !birthDate ||
+        typeof birthDate !== 'string' ||
+        birthDate.trim() === ''
+      ) {
         parsedBirthDate = null
       } else {
         const d = new Date(birthDate)
@@ -175,16 +208,84 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Clean phone
-    const cleanPhone = phone !== undefined ? (typeof phone === 'string' ? phone.trim() : null) || null : undefined
+    const cleanPhone =
+      phone !== undefined
+        ? (typeof phone === 'string' ? phone.trim() : null) || null
+        : undefined
+
+    // Validate phone uniqueness & enforce WhatsApp OTP if changing phone
+    if (cleanPhone && cleanPhone !== existingSelf.phone) {
+      const duplicatePhone = await prisma.user.findFirst({
+        where: {
+          phone: cleanPhone,
+          id: { not: existingSelf.id },
+        },
+      })
+
+      if (duplicatePhone) {
+        return NextResponse.json(
+          { error: 'Nomor telepon sudah digunakan oleh akun lain' },
+          { status: 400 }
+        )
+      }
+
+      // If action is request-phone-otp or otp is not provided, trigger OTP
+      if (action === 'request-phone-otp' || !otp || String(otp).trim() === '') {
+        const otpData = createWhatsAppOtp(
+          existingSelf.id,
+          cleanPhone,
+          'CHANGE_PHONE'
+        )
+        const masked = cleanPhone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
+
+        return NextResponse.json({
+          requiresOtp: true,
+          otpPurpose: 'CHANGE_PHONE',
+          message:
+            'Verifikasi OTP WhatsApp diperlukan untuk mengubah nomor telepon',
+          phone: cleanPhone,
+          maskedPhone: masked,
+          whatsappUrl: otpData.whatsappUrl,
+          otpPreview: otpData.code,
+          expiresInSeconds: otpData.expiresInSeconds,
+        })
+      }
+
+      // Verify OTP
+      const verifyRes = verifyWhatsAppOtp(
+        existingSelf.id,
+        String(otp).trim(),
+        'CHANGE_PHONE'
+      )
+      if (!verifyRes.success) {
+        return NextResponse.json(
+          {
+            error:
+              verifyRes.error ||
+              'Kode OTP WhatsApp untuk ganti nomor telepon tidak cocok',
+          },
+          { status: 400 }
+        )
+      }
+    }
 
     // Clean gender
-    const cleanGender = gender !== undefined ? (typeof gender === 'string' ? gender.trim() : null) || null : undefined
+    const cleanGender =
+      gender !== undefined
+        ? (typeof gender === 'string' ? gender.trim() : null) || null
+        : undefined
 
     // Clean bio
-    const cleanBio = bio !== undefined ? (typeof bio === 'string' ? bio.trim() : null) || null : undefined
+    const cleanBio =
+      bio !== undefined
+        ? (typeof bio === 'string' ? bio.trim() : null) || null
+        : undefined
 
     // Clean name
-    const cleanName = name !== undefined ? (typeof name === 'string' ? name.trim() : null) || null : undefined
+    const cleanName =
+      name !== undefined
+        ? (typeof name === 'string' ? name.trim() : null) || null
+        : undefined
 
     // Update user in DB
     const updatedUser = await prisma.user.update({
@@ -193,7 +294,12 @@ export async function PATCH(request: NextRequest) {
         ...(cleanName !== undefined && { name: cleanName }),
         ...(cleanUsername !== undefined && { username: cleanUsername }),
         ...(cleanEmail && { email: cleanEmail }),
-        ...(cleanPhone !== undefined && { phone: cleanPhone }),
+        ...(cleanPhone !== undefined && {
+          phone: cleanPhone,
+          ...(cleanPhone && cleanPhone !== existingSelf.phone
+            ? { phoneVerified: new Date() }
+            : {}),
+        }),
         ...(cleanGender !== undefined && { gender: cleanGender }),
         ...(parsedBirthDate !== undefined && { birthDate: parsedBirthDate }),
         ...(cleanBio !== undefined && { bio: cleanBio }),
@@ -210,9 +316,13 @@ export async function PATCH(request: NextRequest) {
         where: { userId: existingSelf.id },
         data: {
           ...(bio !== undefined && { bio: cleanBio || undefined }),
-          ...(experience !== undefined && { experience: parseInt(experience) || 0 }),
+          ...(experience !== undefined && {
+            experience: parseInt(experience) || 0,
+          }),
           ...(specialties !== undefined && { specialties }),
-          ...(isAvailable !== undefined && { isAvailable: Boolean(isAvailable) }),
+          ...(isAvailable !== undefined && {
+            isAvailable: Boolean(isAvailable),
+          }),
         },
       })
     }
@@ -225,7 +335,12 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     console.error('Error updating profile in PATCH /api/user/profile:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Gagal memperbarui profil pengguna' },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Gagal memperbarui profil pengguna',
+      },
       { status: 500 }
     )
   }

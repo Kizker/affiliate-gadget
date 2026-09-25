@@ -84,6 +84,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             mitraStatus: true,
             isActive: true,
             emailVerified: true,
+            phone: true,
+            twoFactorEnabled: true,
             mitra: { select: { businessName: true } },
             technician: { select: { id: true } },
           },
@@ -115,6 +117,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         // 9. Login Successful: Reset fail counter
         await resetLoginFailCounter(email)
+
+        // 10. Device Detection & Fingerprint Security Tracking
+        try {
+          const { handleDeviceLogin } = await import('@/lib/device-fingerprint')
+          const reqHeaders =
+            req?.headers instanceof Headers
+              ? req.headers
+              : new Headers((req?.headers as Record<string, string>) || {})
+
+          await handleDeviceLogin({
+            userId: user.id,
+            headers: reqHeaders,
+            userRole: user.role,
+            name: user.name || 'Pengguna',
+            email: user.email,
+            phone: user.phone || undefined,
+          })
+        } catch (deviceErr) {
+          console.error('[Device Login Check Error]:', deviceErr)
+        }
 
         // Return user data including cached fields to store in JWT
         const safeImage =

@@ -137,6 +137,23 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Dispatch non-blocking ORDER_SHIPPED notification
+    import('@/lib/notifications').then(({ dispatchTransactional }) => {
+      dispatchTransactional({
+        event: 'ORDER_SHIPPED',
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        userId: order.userId,
+        customerName: destinationCustomer.name,
+        customerPhone: destinationCustomer.phone,
+        customerEmail: order.user?.email || undefined,
+        courierName: `${courierCode} ${courierService}`,
+        awbNumber: booking.trackingNumber,
+      }).catch((err) =>
+        console.error('[SHIPPING PICKUP NOTIFICATION ERROR]:', err)
+      )
+    })
+
     return NextResponse.json({
       success: true,
       data: booking,

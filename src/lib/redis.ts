@@ -8,17 +8,22 @@ declare const globalThis: {
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379'
 
+const isTest =
+  process.env.NODE_ENV === 'test' || process.env.VITEST !== undefined
+
 function createRedisClient(): RedisClientType {
   const client = createClient({
     url: redisUrl,
     socket: {
-      connectTimeout: 5000,
-      reconnectStrategy: (retries) => {
-        if (retries > 5) {
-          return new Error('Redis max reconnection retries reached')
-        }
-        return Math.min(retries * 100, 2000)
-      },
+      connectTimeout: isTest ? 300 : 5000,
+      reconnectStrategy: isTest
+        ? false
+        : (retries) => {
+            if (retries > 5) {
+              return new Error('Redis max reconnection retries reached')
+            }
+            return Math.min(retries * 100, 2000)
+          },
     },
   })
 

@@ -28,6 +28,9 @@ export async function POST(request: NextRequest) {
           { trackingNumber: courier?.waybill_id || courier?.tracking_id },
         ],
       },
+      include: {
+        user: true,
+      },
     })
 
     if (order) {
@@ -37,6 +40,21 @@ export async function POST(request: NextRequest) {
       if (status === 'delivered') {
         nextStatus = 'COMPLETED'
         statusLabel = 'Paket telah diterima oleh customer'
+
+        // Dispatch ORDER_DELIVERED notification
+        import('@/lib/notifications').then(({ dispatchTransactional }) => {
+          dispatchTransactional({
+            event: 'ORDER_DELIVERED',
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            userId: order.userId,
+            customerName: order.user?.name || 'Pelanggan',
+            customerPhone: order.user?.phone || undefined,
+            customerEmail: order.user?.email || undefined,
+          }).catch((err) =>
+            console.error('[ORDER_DELIVERED NOTIFICATION ERROR]:', err)
+          )
+        })
       } else if (status === 'returned' || status === 'return_to_sender') {
         nextStatus = 'RETURNED'
         statusLabel = 'Paket dikembalikan ke toko asal'

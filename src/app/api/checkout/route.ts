@@ -973,6 +973,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 8. Dispatch non-blocking ORDER_CREATED notification
+    for (const item of createdOrders) {
+      import('@/lib/notifications').then(({ dispatchTransactional }) => {
+        dispatchTransactional({
+          event: 'ORDER_CREATED',
+          orderId: item.order.id,
+          orderNumber: item.order.orderNumber,
+          userId: session.user.id,
+          customerName: recipientName || item.order.user.name || 'Pelanggan',
+          customerPhone:
+            recipientPhone ||
+            (session.user as { phone?: string })?.phone ||
+            undefined,
+          customerEmail:
+            item.order.user.email || session.user.email || undefined,
+          totalAmount: item.order.total,
+          paymentDeadline: '24 jam',
+        }).catch((err) => console.error('[CHECKOUT NOTIFICATION ERROR]:', err))
+      })
+    }
+
     return NextResponse.json(responsePayload)
   } catch (error: unknown) {
     // Release idempotency processing lock on failure

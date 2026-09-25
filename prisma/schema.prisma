@@ -57,6 +57,12 @@ model User {
   tickets                Ticket[]
   hostedLiveStreams      LiveStream[]       @relation("HostLiveStreams")
   auditLogs              AuditLog[]
+  phoneVerified          DateTime?
+  twoFactorEnabled       Boolean            @default(false)
+  twoFactorMethod        TwoFactorMethod    @default(WHATSAPP)
+  devices                UserDevice[]
+  otpTokens              OtpToken[]
+  notificationLogs       NotificationLog[]
   emailVerificationTokens EmailVerificationToken[]
   voucherUsages          VoucherUsage[]
 
@@ -1043,6 +1049,10 @@ enum NotificationType {
   ORDER_CREATED
   PAYMENT_VERIFIED
   ORDER_STATUS_CHANGED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  SECURITY_ALERT
+  OTP_VERIFICATION
   NEW_MESSAGE
   NEW_REVIEW
   MITRA_APPROVED
@@ -1190,3 +1200,103 @@ model VoucherUsage {
   @@index([userId])
   @@map("voucher_usages")
 }
+
+// ================================================================
+// Multi-Channel Notification & 2FA Verification Models
+// ================================================================
+
+enum TwoFactorMethod {
+  WHATSAPP
+  SMS
+  EMAIL
+}
+
+enum OtpPurpose {
+  LOGIN
+  REGISTER
+  CHANGE_PHONE
+  CHANGE_EMAIL
+  CHANGE_PASSWORD
+  TRANSACTION_CONFIRMATION
+}
+
+enum OtpChannel {
+  WHATSAPP
+  SMS
+  EMAIL
+}
+
+enum NotificationChannel {
+  WHATSAPP
+  SMS
+  EMAIL
+  IN_APP
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model OtpToken {
+  id         String     @id @default(cuid())
+  userId     String?
+  identifier String     // Nomor HP (format 628xxx) atau Email tujuan
+  codeHash   String     // Hash Bcrypt dari kode 6-digit
+  purpose    OtpPurpose
+  channel    OtpChannel
+  attempts   Int        @default(0)
+  expiresAt  DateTime
+  isConsumed Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+
+  user       User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([identifier, purpose])
+  @@index([expiresAt])
+  @@map("otp_tokens")
+}
+
+model UserDevice {
+  id          String   @id @default(cuid())
+  userId      String
+  deviceToken String   @unique // Hash identifier perangkat unik
+  deviceType  String   // desktop, mobile, tablet
+  deviceLabel String   // e.g. "PC / Desktop (Windows 11)"
+  browser     String   // e.g. "Google Chrome"
+  os          String   // e.g. "Windows 11"
+  ipAddress   String
+  location    String?  // e.g. "Jakarta, Indonesia"
+  isTrusted   Boolean  @default(false)
+  lastLoginAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([deviceToken])
+  @@map("user_devices")
+}
+
+model NotificationLog {
+  id           String              @id @default(cuid())
+  userId       String?
+  channel      NotificationChannel
+  provider     String              // "ZENZIVA", "RESEND", "IN_APP", "MOCK"
+  recipient    String              // Target phone atau email
+  subject      String?
+  payload      String?             @db.Text
+  status       DeliveryStatus      @default(PENDING)
+  errorMessage String?
+  cost         Float?              @default(0) // Biaya per SMS/WA (jika ada)
+  createdAt    DateTime            @default(now())
+
+  user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([recipient])
+  @@index([status])
+  @@index([channel])
+  @@map("notification_logs")
+}

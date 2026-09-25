@@ -180,6 +180,16 @@ export async function POST(req: NextRequest) {
       const message = `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi (OTP) 2 Langkah Anda adalah: *${generatedOtp}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
       const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`
 
+      // Dispatch automated WhatsApp message via Zenziva
+      import('@/lib/notifications').then(({ dispatchOtp }) => {
+        dispatchOtp({
+          identifier: normalizedPhone,
+          purpose: 'LOGIN',
+          channel: 'WHATSAPP',
+          userId: user.id,
+        }).catch((err) => console.error('[SECURITY OTP DISPATCH ERROR]:', err))
+      })
+
       return NextResponse.json({
         success: true,
         message: 'Kode OTP WhatsApp berhasil dikirim',
@@ -235,6 +245,12 @@ export async function POST(req: NextRequest) {
       otpStore.delete(user.id)
       set2FaEnabled(user.id, user.email, true)
 
+      // Sync ke database
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { twoFactorEnabled: true },
+      })
+
       return NextResponse.json({
         success: true,
         message: 'Verifikasi 2 Langkah (OTP WhatsApp) berhasil diaktifkan',
@@ -246,6 +262,12 @@ export async function POST(req: NextRequest) {
     if (action === 'disable_2fa') {
       set2FaEnabled(user.id, user.email, false)
       otpStore.delete(user.id)
+
+      // Sync ke database
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { twoFactorEnabled: false },
+      })
 
       return NextResponse.json({
         success: true,

@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
       include: {
         items: true,
         payment: true,
+        user: true,
+        store: true,
       },
     })
 
@@ -60,6 +62,8 @@ export async function POST(req: NextRequest) {
           include: {
             items: true,
             payment: true,
+            user: true,
+            store: true,
           },
         })
       }
@@ -76,6 +80,8 @@ export async function POST(req: NextRequest) {
         include: {
           items: true,
           payment: true,
+          user: true,
+          store: true,
         },
       })
     }
@@ -165,6 +171,25 @@ export async function POST(req: NextRequest) {
         }
       }
     })
+
+    // 5. Fire non-blocking PAYMENT_VERIFIED notification if paid
+    if (paymentStatus === 'PAID') {
+      import('@/lib/notifications').then(({ dispatchTransactional }) => {
+        dispatchTransactional({
+          event: 'PAYMENT_VERIFIED',
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          userId: order.userId,
+          customerName: order.user?.name || 'Pelanggan',
+          customerPhone: order.user?.phone || undefined,
+          customerEmail: order.user?.email || undefined,
+          totalAmount: order.total,
+          storeName: order.store?.name || 'Cabang Toko Resmi',
+        }).catch((err) =>
+          console.error('[PAYMENT_VERIFIED NOTIFICATION ERROR]:', err)
+        )
+      })
+    }
 
     console.log(
       `[Midtrans Webhook] Successfully processed ${order_id}: ${transaction_status} -> Payment: ${paymentStatus}, Order: ${orderStatus}`

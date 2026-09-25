@@ -140,7 +140,7 @@ export default function CustomerSettingsPage() {
   // OTP WhatsApp Verification states
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false)
   const [otpPurpose, setOtpPurpose] = useState<
-    '2FA' | 'CHANGE_PASSWORD' | 'CHANGE_EMAIL'
+    '2FA' | 'CHANGE_PASSWORD' | 'CHANGE_EMAIL' | 'CHANGE_PHONE'
   >('2FA')
   const [otpCode, setOtpCode] = useState('')
   const [otpWhatsappUrl, setOtpWhatsappUrl] = useState('')
@@ -352,11 +352,8 @@ export default function CustomerSettingsPage() {
     }
   }
 
-  const handleSaveProfile = async (
-    otpToVerify?: string | React.MouseEvent
-  ) => {
-    const otpCodeStr =
-      typeof otpToVerify === 'string' ? otpToVerify : undefined
+  const handleSaveProfile = async (otpToVerify?: string | React.MouseEvent) => {
+    const otpCodeStr = typeof otpToVerify === 'string' ? otpToVerify : undefined
 
     if (!name.trim()) {
       toast({
@@ -398,7 +395,7 @@ export default function CustomerSettingsPage() {
 
       if (res.ok) {
         if (data.requiresOtp) {
-          setOtpPurpose('CHANGE_EMAIL')
+          setOtpPurpose(data.otpPurpose || 'CHANGE_EMAIL')
           setOtpWhatsappUrl(data.whatsappUrl || '')
           setOtpPreview(data.otpPreview || '')
           setOtpExpiresIn(data.expiresInSeconds || 300)
@@ -407,7 +404,8 @@ export default function CustomerSettingsPage() {
           toast({
             title: 'Verifikasi Diperlukan',
             description:
-              'Masukkan kode OTP WhatsApp untuk konfirmasi perubahan email akun.',
+              data.message ||
+              'Masukkan kode OTP WhatsApp untuk konfirmasi perubahan data profil Anda.',
           })
           return
         }
@@ -509,8 +507,7 @@ export default function CustomerSettingsPage() {
   const handleChangePassword = async (
     otpToVerify?: string | React.MouseEvent
   ) => {
-    const otpCodeStr =
-      typeof otpToVerify === 'string' ? otpToVerify : undefined
+    const otpCodeStr = typeof otpToVerify === 'string' ? otpToVerify : undefined
 
     if (newPassword !== confirmPassword) {
       toast({
@@ -667,7 +664,7 @@ export default function CustomerSettingsPage() {
       return
     }
 
-    if (otpPurpose === 'CHANGE_EMAIL') {
+    if (otpPurpose === 'CHANGE_EMAIL' || otpPurpose === 'CHANGE_PHONE') {
       await handleSaveProfile(otpCode.trim())
       return
     }
@@ -723,13 +720,20 @@ export default function CustomerSettingsPage() {
             variant: 'destructive',
           })
         }
-      } else if (otpPurpose === 'CHANGE_EMAIL') {
+      } else if (
+        otpPurpose === 'CHANGE_EMAIL' ||
+        otpPurpose === 'CHANGE_PHONE'
+      ) {
         const res = await fetch('/api/user/profile', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            action: 'request-email-otp',
+            action:
+              otpPurpose === 'CHANGE_PHONE'
+                ? 'request-phone-otp'
+                : 'request-email-otp',
             email: email.trim(),
+            phone: phone.trim(),
           }),
         })
         const data = await res.json()
@@ -1425,7 +1429,8 @@ export default function CustomerSettingsPage() {
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-[11px] text-slate-400">
-                Minimal 6 karakter. Pergantian kata sandi memerlukan verifikasi kode OTP WhatsApp.
+                Minimal 6 karakter. Pergantian kata sandi memerlukan verifikasi
+                kode OTP WhatsApp.
               </div>
               <button
                 type="button"
@@ -1834,15 +1839,19 @@ export default function CustomerSettingsPage() {
                   {otpPurpose === 'CHANGE_PASSWORD'
                     ? 'Verifikasi Ganti Kata Sandi'
                     : otpPurpose === 'CHANGE_EMAIL'
-                    ? 'Verifikasi Ganti Email Akun'
-                    : 'Verifikasi OTP WhatsApp'}
+                      ? 'Verifikasi Ganti Email Akun'
+                      : otpPurpose === 'CHANGE_PHONE'
+                        ? 'Verifikasi Ganti Nomor Telepon'
+                        : 'Verifikasi OTP WhatsApp'}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
                   {otpPurpose === 'CHANGE_PASSWORD'
                     ? 'Demi keamanan akun, masukkan 6 digit kode OTP WhatsApp:'
                     : otpPurpose === 'CHANGE_EMAIL'
-                    ? 'Untuk konfirmasi pergantian email, masukkan 6 digit kode OTP:'
-                    : 'Masukkan 6 digit kode yang dikirimkan ke nomor WhatsApp:'}{' '}
+                      ? 'Untuk konfirmasi pergantian email, masukkan 6 digit kode OTP:'
+                      : otpPurpose === 'CHANGE_PHONE'
+                        ? 'Untuk konfirmasi nomor telepon baru, masukkan 6 digit kode OTP:'
+                        : 'Masukkan 6 digit kode yang dikirimkan ke nomor WhatsApp:'}{' '}
                   <span className="font-bold text-slate-900">
                     {phone
                       ? phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
@@ -1936,8 +1945,8 @@ export default function CustomerSettingsPage() {
                     {otpPurpose === 'CHANGE_PASSWORD'
                       ? 'Ubah Sandi'
                       : otpPurpose === 'CHANGE_EMAIL'
-                      ? 'Simpan Email'
-                      : 'Verifikasi'}
+                        ? 'Simpan Email'
+                        : 'Verifikasi'}
                   </span>
                 </button>
               </div>

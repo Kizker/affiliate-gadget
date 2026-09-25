@@ -27,3 +27,14 @@ export function parseRupiahInput(
   const clean = String(value).replace(/\D/g, '')
   return clean ? parseInt(clean, 10) : 0
 }
+
+/**
+ * Menyembunyikan bagian nama email untuk privasi tampilan UI.
+ * Contoh: "bambangsetiawan@gmail.com" -> "bam***@gmail.com"
+ */
+export function maskEmail(email: string): string {
+  if (!email || !email.includes('@')) return email || ''
+  const [name, domain] = email.split('@')
+  const visibleChars = Math.min(3, Math.max(1, Math.floor(name.length / 2)))
+  return `${name.slice(0, visibleChars)}***@${domain}`
+}

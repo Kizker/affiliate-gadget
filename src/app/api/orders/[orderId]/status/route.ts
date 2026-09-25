@@ -25,10 +25,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Get order with items
+    // Get order with items and user
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { items: true },
+      include: { items: true, user: true, store: true },
     })
 
     if (!order) {
@@ -148,16 +148,38 @@ export async function PATCH(
         },
       })
 
-      // Kirim email tanda bukti sesuai perubahan status
+      // Kirim email & notifikasi multi-channel sesuai perubahan status
       try {
         const {
           sendOrderCompletedEmail,
           sendOrderCancelledEmail,
           sendOrderRefundedEmail,
         } = await import('@/lib/email')
+        const { dispatchTransactional } = await import('@/lib/notifications')
 
         if (status === 'COMPLETED') {
-          await sendOrderCompletedEmail({ orderId })
+          await dispatchTransactional({
+            event: 'ORDER_COMPLETED',
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            userId: order.userId,
+            customerName: order.user?.name || 'Pelanggan',
+            customerPhone: order.user?.phone || undefined,
+            customerEmail: order.user?.email || undefined,
+            storeName: order.store?.name,
+          })
+        } else if (status === 'SHIPPED') {
+          await dispatchTransactional({
+            event: 'ORDER_SHIPPED',
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            userId: order.userId,
+            customerName: order.user?.name || 'Pelanggan',
+            customerPhone: order.user?.phone || undefined,
+            customerEmail: order.user?.email || undefined,
+            courierName: order.courierCode || 'Kurir Logistik',
+            awbNumber: trackingNumber || order.trackingNumber || '-',
+          })
         } else if (status === 'CANCELLED') {
           await sendOrderCancelledEmail({
             orderId,
@@ -169,8 +191,8 @@ export async function PATCH(
             reason: 'Pengembalian dana diproses oleh toko',
           })
         }
-      } catch (emailErr) {
-        console.error('Failed to trigger order status notification email:', emailErr)
+      } catch (notifErr) {
+        console.error('Failed to trigger order status notification:', notifErr)
       }
 
       return NextResponse.json({ order: updatedOrder })

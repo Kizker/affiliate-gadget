@@ -1,7 +1,11 @@
 import fs from 'fs'
 import path from 'path'
 
-export type OtpPurpose = 'LOGIN' | 'CHANGE_PASSWORD' | 'CHANGE_EMAIL'
+export type OtpPurpose =
+  | 'LOGIN'
+  | 'CHANGE_PASSWORD'
+  | 'CHANGE_EMAIL'
+  | 'CHANGE_PHONE'
 
 interface StoredLoginOtp {
   code: string
@@ -121,6 +125,8 @@ function getOtpMessage(code: string, purpose: OtpPurpose): string {
       return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi WhatsApp untuk *Ganti Kata Sandi* Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
     case 'CHANGE_EMAIL':
       return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi WhatsApp untuk *Ganti Alamat Email* Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
+    case 'CHANGE_PHONE':
+      return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi WhatsApp untuk *Ganti Nomor Telepon* Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
     case 'LOGIN':
     default:
       return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi Login (OTP WhatsApp) Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
@@ -128,7 +134,7 @@ function getOtpMessage(code: string, purpose: OtpPurpose): string {
 }
 
 /**
- * Generates a fresh 6-digit WhatsApp OTP for a specific purpose (LOGIN, CHANGE_PASSWORD, CHANGE_EMAIL).
+ * Generates a fresh 6-digit WhatsApp OTP for a specific purpose (LOGIN, CHANGE_PASSWORD, CHANGE_EMAIL, CHANGE_PHONE).
  */
 export function createWhatsAppOtp(
   identifier: string,
@@ -165,6 +171,21 @@ export function createWhatsAppOtp(
   const normalizedPhone = normalizePhoneForWhatsApp(phone)
   const message = getOtpMessage(code, purpose)
   const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`
+
+  // Dispatch via notifications engine if phone is provided
+  if (phone) {
+    import('@/lib/notifications')
+      .then(({ dispatchOtp }) => {
+        dispatchOtp({
+          identifier: phone,
+          purpose: purpose as any,
+          channel: 'WHATSAPP',
+        }).catch((err) =>
+          console.error('[TWO-FACTOR-STORE DISPATCH ERROR]:', err)
+        )
+      })
+      .catch(() => {})
+  }
 
   return {
     code,
@@ -204,7 +225,9 @@ export function verifyWhatsAppOtp(
   const data = loadData()
   const cleanId = identifier.toLowerCase()
   const scopedKey = `${cleanId}:${purpose}`
-  const stored = data.otps[scopedKey] || (purpose === 'LOGIN' ? data.otps[cleanId] : undefined)
+  const stored =
+    data.otps[scopedKey] ||
+    (purpose === 'LOGIN' ? data.otps[cleanId] : undefined)
 
   if (!stored) {
     return {
@@ -281,4 +304,3 @@ export function verifyLoginOtp(
 ): { success: boolean; error?: string } {
   return verifyWhatsAppOtp(email, inputOtp, 'LOGIN')
 }
-

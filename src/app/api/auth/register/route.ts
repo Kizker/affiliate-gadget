@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { registerSchema } from '@/lib/validations/auth'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { sendVerificationEmail } from '@/lib/email'
+import { maskEmail } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
   try {
@@ -152,43 +153,31 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    /* ─── [DEV-MODE] Email verification dispatch temporarily disabled ───
-    // 12. Generate Secure Random Verification Token (64 hex characters)
-    const plainVerificationToken = crypto.randomBytes(32).toString('hex')
-    const tokenHash = crypto.createHash('sha256').update(plainVerificationToken).digest('hex')
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-
-    // Invalidate any previous verification tokens for this user if any exist
-    await prisma.emailVerificationToken.deleteMany({
-      where: { userId: newUser.id },
-    })
-
-    // Store token hash in database
-    await prisma.emailVerificationToken.create({
-      data: {
-        userId: newUser.id,
-        tokenHash,
-        expiresAt,
-      },
-    })
-
-    // 13. Dispatch Email Verification
-    await sendVerificationEmail({
-      to: normalizedEmail,
-      name: sanitizedName,
-      token: plainVerificationToken,
-    })
-    ───────────────────────────────────────────────────────────────────── */
+    // 12. Dispatch Email OTP for Registration (Default Channel)
+    const { dispatchOtp } = await import('@/lib/notifications')
+    await dispatchOtp({
+      identifier: newUser.email,
+      purpose: 'REGISTER',
+      channel: 'EMAIL',
+      userId: newUser.id,
+    }).catch((err) =>
+      console.error('[REGISTER OTP EMAIL DISPATCH FAILED]:', err)
+    )
 
     return NextResponse.json(
       {
         message:
           role === 'MITRA'
             ? 'Akun dasar mitra berhasil dibuat. Silakan lengkapi data toko Anda.'
-            : 'Registrasi berhasil! Akun Anda telah siap digunakan.',
+            : 'Registrasi berhasil! Silakan periksa email Anda untuk verifikasi kode OTP.',
         userId: newUser.id,
+        email: newUser.email,
+        maskedEmail: maskEmail(newUser.email),
+        phone: formattedPhone,
+        hasPhone: !!formattedPhone,
         role: newUser.role,
         needsStoreData: role === 'MITRA',
+        requiresOtp: true,
       },
       { status: 201 }
     )
