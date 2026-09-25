@@ -618,7 +618,10 @@ async function main() {
       .padStart(2, '0')}-${randomInt(10000, 99999)}-${i + 1}`
 
     const trackingNumber =
-      status === OrderStatus.SHIPPED || status === OrderStatus.COMPLETED
+      status === OrderStatus.SHIPPED ||
+      status === OrderStatus.COMPLETED ||
+      status === OrderStatus.COMPLAINED ||
+      status === OrderStatus.IN_PROGRESS
         ? `${courier.code}-${orderDate.getTime().toString().slice(-8)}`
         : null
 

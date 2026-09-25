@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import {
   Wallet,
@@ -19,6 +19,9 @@ import {
   ChevronDown,
   Receipt,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Search,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PeriodSelect } from '@/components/dashboard/period-select'
@@ -103,6 +106,15 @@ export default function StoreAdminFinancePage() {
   const [isExportingExcel, setIsExportingExcel] = useState(false)
   const [isExportingOrders, setIsExportingOrders] = useState(false)
   const [dateRange, setDateRange] = useState('thisMonth')
+
+  // Pagination & Mobile Lazy Loading State
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [mobileVisibleCount, setMobileVisibleCount] = useState(10)
+  const [isLoadingMoreMobile, setIsLoadingMoreMobile] = useState(false)
+  const mobileSentinelRef = useRef<HTMLDivElement | null>(null)
+
+
 
   // Date Range Helper (Identik dengan Superadmin Reports, safe non-mutating)
   const getDateRange = (range: string) => {
@@ -221,6 +233,12 @@ export default function StoreAdminFinancePage() {
   const [store, setStore] = useState<StoreInfo | null>(null)
   const [allStores, setAllStores] = useState<StoreOption[]>([])
   const [selectedStoreId, setSelectedStoreId] = useState<string>('')
+
+  // Reset pagination when filter criteria change
+  useEffect(() => {
+    setCurrentPage(1)
+    setMobileVisibleCount(itemsPerPage)
+  }, [activeTab, searchQuery, dateRange, selectedStoreId, itemsPerPage])
   const [transactions, setTransactions] = useState<TransactionMutation[]>([])
   const [stats, setStats] = useState<FinanceStats>({
     availableBalance: 0,
@@ -312,6 +330,191 @@ export default function StoreAdminFinancePage() {
         tx.trackingNumber.toLowerCase().includes(searchQuery.toLowerCase()))
     return matchesTab && matchesSearch
   })
+
+  // Desktop pagination calculations
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTransactions.length / itemsPerPage)
+  )
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage
+  const endIndex = Math.min(
+    startIndex + itemsPerPage,
+    filteredTransactions.length
+  )
+  const paginatedDesktopTransactions = filteredTransactions.slice(
+    startIndex,
+    endIndex
+  )
+
+  // Mobile lazy loading calculations
+  const mobileHasMore = mobileVisibleCount < filteredTransactions.length
+  const displayedMobileTransactions = filteredTransactions.slice(
+    0,
+    mobileVisibleCount
+  )
+
+  const loadMoreMobile = useCallback(() => {
+    if (isLoadingMoreMobile || !mobileHasMore) return
+    setIsLoadingMoreMobile(true)
+    setTimeout(() => {
+      setMobileVisibleCount((prev) =>
+        Math.min(prev + 8, filteredTransactions.length)
+      )
+      setIsLoadingMoreMobile(false)
+    }, 250)
+  }, [isLoadingMoreMobile, mobileHasMore, filteredTransactions.length])
+
+  useEffect(() => {
+    if (!mobileHasMore || isLoading) return
+    const el = mobileSentinelRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMoreMobile()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [mobileHasMore, isLoading, loadMoreMobile])
+
+  const handlePageChange = (p: number) => {
+    if (p < 1 || p > totalPages) return
+    setCurrentPage(p)
+  }
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = []
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else {
+      if (safeCurrentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalPages)
+      } else if (safeCurrentPage >= totalPages - 2) {
+        pages.push(
+          1,
+          '...',
+          totalPages - 3,
+          totalPages - 2,
+          totalPages - 1,
+          totalPages
+        )
+      } else {
+        pages.push(
+          1,
+          '...',
+          safeCurrentPage - 1,
+          safeCurrentPage,
+          safeCurrentPage + 1,
+          '...',
+          totalPages
+        )
+      }
+    }
+    return pages
+  }
+
+  const renderTransactionItem = (tx: TransactionMutation) => (
+    <div
+      key={tx.id}
+      className="group flex items-center justify-between gap-3 py-3.5 transition-colors"
+    >
+      <div className="flex min-w-0 items-center gap-3.5">
+        {/* Icon based on mutation type */}
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+            tx.type === 'INCOME'
+              ? 'border-emerald-100/60 bg-emerald-50 text-emerald-600 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-400'
+              : tx.type === 'EXPENSE'
+                ? 'border-orange-100/60 bg-orange-50 text-orange-600 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-400'
+                : tx.type === 'PAYOUT'
+                  ? 'border-blue-100/60 bg-blue-50 text-blue-600 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-400'
+                  : 'border-amber-100/60 bg-amber-50 text-amber-600 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-400'
+          }`}
+        >
+          {tx.type === 'INCOME' && (
+            <ArrowDownLeft className="h-5 w-5 stroke-[2.5]" />
+          )}
+          {tx.type === 'EXPENSE' && (
+            <Percent className="h-5 w-5 stroke-[2.5]" />
+          )}
+          {tx.type === 'PAYOUT' && (
+            <ArrowUpRight className="h-5 w-5 stroke-[2.5]" />
+          )}
+          {tx.type === 'ESCROW' && (
+            <Clock className="h-5 w-5 stroke-[2.5]" />
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+              {tx.refNumber}
+            </span>
+            <span
+              className={`py-0.2 rounded-full border px-2 text-[9px] font-bold ${
+                tx.category === 'SALE'
+                  ? 'border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                  : tx.category === 'COMMISSION'
+                    ? 'border-orange-200/60 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400'
+                    : tx.category === 'PPH23'
+                      ? 'border-rose-200/60 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                      : tx.category === 'WITHDRAWAL'
+                        ? 'border-blue-200/60 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
+                        : 'border-amber-200/60 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+              }`}
+            >
+              {tx.categoryLabel}
+            </span>
+            {tx.trackingNumber && (
+              <span className="py-0.2 rounded-full bg-slate-100 px-2 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                Resi: {tx.trackingNumber}
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
+            {tx.title}
+          </p>
+          <p className="mt-0.5 text-[10px] text-slate-400">
+            {tx.date} ·{' '}
+            <span className="text-slate-500 dark:text-slate-400">
+              {tx.subtitle}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <div className="shrink-0 text-right">
+        <p
+          className={`text-xs font-bold tabular-nums ${
+            tx.type === 'INCOME'
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : tx.type === 'EXPENSE' || tx.type === 'PAYOUT'
+                ? 'text-slate-900 dark:text-white'
+                : 'text-amber-600 dark:text-amber-400'
+          }`}
+        >
+          {tx.type === 'INCOME' && '+'}
+          {tx.type === 'EXPENSE' || tx.type === 'PAYOUT' ? '-' : ''}
+          Rp {tx.amount.toLocaleString('id-ID')}
+        </p>
+        <span
+          className={`mt-1 inline-flex items-center text-[10px] font-semibold ${
+            tx.type === 'ESCROW'
+              ? 'font-bold text-amber-600 dark:text-amber-400'
+              : 'text-slate-400'
+          }`}
+        >
+          {tx.statusLabel}
+        </span>
+      </div>
+    </div>
+  )
 
   // Handle Withdrawal Submission to API
   const handleWithdrawSubmit = async (e: React.FormEvent) => {
@@ -527,6 +730,22 @@ export default function StoreAdminFinancePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 pb-16">
+      {/* Header Halaman */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">
+              Keuangan & Penarikan Dana
+            </h1>
+            <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-extrabold text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
+              {store?.name || store?.companyName || 'Multi-PT Holding'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Kelola saldo siap cair, mutasi kas per cabang PT, bagi hasil platform, pajak PPh 23, dan penarikan dana (withdraw) ke rekening resmi.
+          </p>
+        </div>
+      </div>
       {/* Peringatan Deadline e-Billing DJP PPh 23 (Tgl 7-10) */}
       {!isDeadlineBannerDismissed &&
         (stats.totalPph23Withheld || 0) > 0 &&
@@ -821,6 +1040,29 @@ export default function StoreAdminFinancePage() {
               </div>
             </div>
 
+            {/* Search Bar for Mutations */}
+            <div className="mt-3 flex items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari no. pesanan, resi, atau judul mutasi..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-1.5 pl-8 pr-3 text-xs font-medium text-slate-800 placeholder-slate-400 transition focus:border-slate-400 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200"
+                />
+              </div>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                >
+                  Reset ({filteredTransactions.length} hasil)
+                </button>
+              )}
+            </div>
+
             {filteredTransactions.length === 0 ? (
               <div className="py-16 text-center">
                 <FileText className="mx-auto mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
@@ -832,106 +1074,149 @@ export default function StoreAdminFinancePage() {
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 pt-2 dark:divide-slate-800/60">
-                {filteredTransactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="group flex items-center justify-between gap-3 py-3.5 transition-colors"
-                  >
-                    <div className="flex min-w-0 items-center gap-3.5">
-                      {/* Icon based on mutation type */}
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
-                          tx.type === 'INCOME'
-                            ? 'border-emerald-100/60 bg-emerald-50 text-emerald-600 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-400'
-                            : tx.type === 'EXPENSE'
-                              ? 'border-orange-100/60 bg-orange-50 text-orange-600 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-400'
-                              : tx.type === 'PAYOUT'
-                                ? 'border-blue-100/60 bg-blue-50 text-blue-600 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-400'
-                                : 'border-amber-100/60 bg-amber-50 text-amber-600 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-400'
-                        }`}
-                      >
-                        {tx.type === 'INCOME' && (
-                          <ArrowDownLeft className="h-5 w-5 stroke-[2.5]" />
-                        )}
-                        {tx.type === 'EXPENSE' && (
-                          <Percent className="h-5 w-5 stroke-[2.5]" />
-                        )}
-                        {tx.type === 'PAYOUT' && (
-                          <ArrowUpRight className="h-5 w-5 stroke-[2.5]" />
-                        )}
-                        {tx.type === 'ESCROW' && (
-                          <Clock className="h-5 w-5 stroke-[2.5]" />
-                        )}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
-                            {tx.refNumber}
-                          </span>
-                          <span
-                            className={`py-0.2 rounded-full border px-2 text-[9px] font-bold ${
-                              tx.category === 'SALE'
-                                ? 'border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                : tx.category === 'COMMISSION'
-                                  ? 'border-orange-200/60 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400'
-                                  : tx.category === 'PPH23'
-                                    ? 'border-rose-200/60 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                                    : tx.category === 'WITHDRAWAL'
-                                      ? 'border-blue-200/60 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
-                                      : 'border-amber-200/60 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                            }`}
-                          >
-                            {tx.categoryLabel}
-                          </span>
-                          {tx.trackingNumber && (
-                            <span className="py-0.2 rounded-full bg-slate-100 px-2 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              Resi: {tx.trackingNumber}
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
-                          {tx.title}
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-slate-400">
-                          {tx.date} ·{' '}
-                          <span className="text-slate-500 dark:text-slate-400">
-                            {tx.subtitle}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 text-right">
-                      <p
-                        className={`text-xs font-bold tabular-nums ${
-                          tx.type === 'INCOME'
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : tx.type === 'EXPENSE' || tx.type === 'PAYOUT'
-                              ? 'text-slate-900 dark:text-white'
-                              : 'text-amber-600 dark:text-amber-400'
-                        }`}
-                      >
-                        {tx.type === 'INCOME' && '+'}
-                        {tx.type === 'EXPENSE' || tx.type === 'PAYOUT'
-                          ? '-'
-                          : ''}
-                        Rp {tx.amount.toLocaleString('id-ID')}
-                      </p>
-                      <span
-                        className={`mt-1 inline-flex items-center text-[10px] font-semibold ${
-                          tx.type === 'ESCROW'
-                            ? 'font-bold text-amber-600 dark:text-amber-400'
-                            : 'text-slate-400'
-                        }`}
-                      >
-                        {tx.statusLabel}
-                      </span>
-                    </div>
+              <>
+                {/* 1. Desktop View (Paginated Table) */}
+                <div className="hidden md:block">
+                  <div className="divide-y divide-slate-100 pt-2 dark:divide-slate-800/60">
+                    {paginatedDesktopTransactions.map(renderTransactionItem)}
                   </div>
-                ))}
-              </div>
+
+                  {/* Desktop Pagination Bar */}
+                  {filteredTransactions.length > 0 && (
+                    <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                          Menampilkan{' '}
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {startIndex + 1}
+                          </span>{' '}
+                          -{' '}
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {endIndex}
+                          </span>{' '}
+                          dari{' '}
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {filteredTransactions.length}
+                          </span>{' '}
+                          mutasi
+                        </p>
+
+                        {/* Per-page selector pills */}
+                        <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                          <span className="hidden sm:inline">Per hal:</span>
+                          {[10, 25, 50].map((num) => (
+                            <button
+                              key={num}
+                              type="button"
+                              onClick={() => {
+                                setItemsPerPage(num)
+                                setCurrentPage(1)
+                              }}
+                              className={`rounded-lg px-2 py-0.5 text-[11px] font-bold transition ${
+                                itemsPerPage === num
+                                  ? 'bg-slate-900 text-white shadow-2xs dark:bg-white dark:text-slate-900'
+                                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400'
+                              }`}
+                            >
+                              {num}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handlePageChange(safeCurrentPage - 1)}
+                          disabled={safeCurrentPage <= 1}
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                          <span>Sebelumnya</span>
+                        </button>
+
+                        {getPageNumbers().map((p, idx) =>
+                          p === '...' ? (
+                            <span
+                              key={`ellipsis-${idx}`}
+                              className="px-2 text-xs font-bold text-slate-400"
+                            >
+                              ...
+                            </span>
+                          ) : (
+                            <button
+                              key={`page-${p}`}
+                              type="button"
+                              onClick={() => handlePageChange(Number(p))}
+                              className={`min-w-[32px] cursor-pointer rounded-xl px-2.5 py-1.5 text-xs font-bold transition active:scale-95 ${
+                                safeCurrentPage === p
+                                  ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
+                                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          )
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handlePageChange(safeCurrentPage + 1)}
+                          disabled={safeCurrentPage >= totalPages}
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        >
+                          <span>Selanjutnya</span>
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Mobile View (Lazy Loaded) */}
+                <div className="block md:hidden">
+                  <div className="divide-y divide-slate-100 pt-2 dark:divide-slate-800/60">
+                    {displayedMobileTransactions.map(renderTransactionItem)}
+                  </div>
+
+                  {mobileHasMore ? (
+                    <div
+                      ref={mobileSentinelRef}
+                      className="flex flex-col items-center justify-center py-5 text-center"
+                    >
+                      {isLoadingMoreMobile ? (
+                        <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 px-4 py-1.5 text-xs font-semibold text-orange-600 shadow-2xs dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-500" />
+                          <span>Memuat mutasi berikutnya...</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={loadMoreMobile}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                        >
+                          <span>Muat Lebih Banyak</span>
+                          <span className="text-[10px] text-slate-400">
+                            ({mobileVisibleCount} / {filteredTransactions.length})
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    filteredTransactions.length > itemsPerPage && (
+                      <div className="py-5 text-center">
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50 px-3.5 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                          <span>
+                            Semua {filteredTransactions.length} mutasi telah
+                            ditampilkan
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>

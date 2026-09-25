@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
-import { Toaster } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
 export default function MitraLayout({
@@ -66,19 +65,6 @@ export default function MitraLayout({
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
       <Footer variant="light" />
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: {
-            padding: '12px 16px',
-            fontSize: '14px',
-          },
-          classNames: {
-            success: 'bg-green-500 text-white border-green-500',
-            error: 'bg-red-500 text-white border-red-500',
-          },
-        }}
-      />
     </div>
   )
 }

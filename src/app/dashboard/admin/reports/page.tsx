@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -14,6 +15,9 @@ import {
   Receipt,
   Percent,
   FileText,
+  Wallet,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { PeriodSelect } from '@/components/dashboard/period-select'
 
@@ -244,6 +248,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState('thisMonth')
   const [exporting, setExporting] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
 
   useEffect(() => {
     setMounted(true)
@@ -251,6 +257,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     fetchReportData()
+    setCurrentPage(1)
   }, [dateRange])
 
   const getDateRange = () => {
@@ -424,11 +431,68 @@ export default function ReportsPage() {
 
   if (!data) return null
 
+  const recentOrders = data.recentActivity || []
+  const totalOrderPages = Math.max(
+    1,
+    Math.ceil(recentOrders.length / ITEMS_PER_PAGE)
+  )
+  const orderStartIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const orderEndIndex = Math.min(
+    orderStartIndex + ITEMS_PER_PAGE,
+    recentOrders.length
+  )
+  const paginatedOrders = recentOrders.slice(orderStartIndex, orderEndIndex)
+
+  const handleOrderPageChange = (p: number) => {
+    if (p < 1 || p > totalOrderPages) return
+    setCurrentPage(p)
+  }
+
+  const getOrderPageNumbers = () => {
+    const pages: (number | string)[] = []
+    if (totalOrderPages <= 5) {
+      for (let i = 1; i <= totalOrderPages; i++) pages.push(i)
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalOrderPages)
+      } else if (currentPage >= totalOrderPages - 2) {
+        pages.push(
+          1,
+          '...',
+          totalOrderPages - 3,
+          totalOrderPages - 2,
+          totalOrderPages - 1,
+          totalOrderPages
+        )
+      } else {
+        pages.push(
+          1,
+          '...',
+          currentPage - 1,
+          currentPage,
+          currentPage + 1,
+          '...',
+          totalOrderPages
+        )
+      }
+    }
+    return pages
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-16 pt-1">
       {/* Top Filter Bar (Zero title noise, compact period filter & quick export) */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/admin/finance"
+            className="shadow-xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            title="Buka halaman Keuangan & Tarik Saldo (Withdraw)"
+          >
+            <Wallet className="h-3.5 w-3.5 text-orange-500" />
+            <span>Keuangan & Tarik Saldo (Withdraw)</span>
+          </Link>
+
           <button
             onClick={() => handleExport('financials', 'xlsx')}
             disabled={exporting === 'financials_xlsx'}
@@ -1195,7 +1259,7 @@ export default function ReportsPage() {
                   </td>
                 </tr>
               ) : (
-                data.recentActivity.map((order) => {
+                paginatedOrders.map((order) => {
                   const fin = order.financials
                   const grossRevenue = fin?.grossRevenue ?? order.total
                   const cogs = fin?.cogs ?? 0
@@ -1283,6 +1347,73 @@ export default function ReportsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls for Recent Orders */}
+        {totalOrderPages > 1 && (
+          <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800 sm:flex-row">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Menampilkan{' '}
+              <span className="font-bold text-slate-900 dark:text-white">
+                {orderStartIndex + 1}
+              </span>{' '}
+              -{' '}
+              <span className="font-bold text-slate-900 dark:text-white">
+                {orderEndIndex}
+              </span>{' '}
+              dari{' '}
+              <span className="font-bold text-slate-900 dark:text-white">
+                {recentOrders.length}
+              </span>{' '}
+              transaksi
+            </p>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleOrderPageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span>Sebelumnya</span>
+              </button>
+
+              {getOrderPageNumbers().map((p, idx) =>
+                p === '...' ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="px-2 text-xs font-bold text-slate-400"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={`page-${p}`}
+                    type="button"
+                    onClick={() => handleOrderPageChange(Number(p))}
+                    className={`min-w-[32px] cursor-pointer rounded-xl px-2.5 py-1.5 text-xs font-bold transition active:scale-95 ${
+                      currentPage === p
+                        ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
+                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleOrderPageChange(currentPage + 1)}
+                disabled={currentPage === totalOrderPages}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <span>Selanjutnya</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

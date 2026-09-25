@@ -384,7 +384,7 @@ export default function AdminComplaintsPage() {
       {/* 1. 4 Metric Cards (Bento Grid) */}
       <div className="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
         {/* Card 1: Total Klaim */}
-        <div className="p-4.5 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="p-4 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Total Klaim
@@ -404,7 +404,7 @@ export default function AdminComplaintsPage() {
         </div>
 
         {/* Card 2: Perlu Ditangani */}
-        <div className="p-4.5 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="p-4 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Perlu Tindakan
@@ -436,7 +436,7 @@ export default function AdminComplaintsPage() {
         </div>
 
         {/* Card 3: Sedang Diproses */}
-        <div className="p-4.5 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="p-4 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Dalam Proses
@@ -468,7 +468,7 @@ export default function AdminComplaintsPage() {
         </div>
 
         {/* Card 4: Selesai / Tingkat Resolusi */}
-        <div className="p-4.5 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="p-4 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Garansi Sukses
@@ -782,15 +782,15 @@ export default function AdminComplaintsPage() {
                             disabled={
                               actionLoading && activeActionId === complaint.id
                             }
-                            className="shadow-xs inline-flex items-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-950"
+                            className="shadow-xs inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-950"
                           >
                             {actionLoading &&
                             activeActionId === complaint.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                             ) : (
-                              <ShieldCheck className="h-4 w-4 text-orange-400" />
+                              <ShieldCheck className="h-4 w-4 shrink-0 text-orange-400" />
                             )}
-                            <span>Mulai Tangani Klaim</span>
+                            <span className="whitespace-nowrap">Mulai Tangani Klaim</span>
                           </button>
                         </div>
                       )}
@@ -869,14 +869,14 @@ export default function AdminComplaintsPage() {
                               </div>
 
                               {/* Action Buttons */}
-                              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                                <span className="text-[11px] font-medium text-slate-400">
+                              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                                <span className="min-w-0 flex-1 text-[11px] font-medium text-slate-400">
                                   {resolution.trim().length > 0
                                     ? `${resolution.trim().length} karakter ditulis`
                                     : 'Wajib diisi sebelum menyelesaikan klaim'}
                                 </span>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex shrink-0 items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={() => handleResolve(complaint.id)}
@@ -884,15 +884,15 @@ export default function AdminComplaintsPage() {
                                       actionLoading &&
                                       activeActionId === complaint.id
                                     }
-                                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-emerald-600/25 transition-all hover:bg-emerald-700 hover:shadow-emerald-600/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-emerald-600/25 transition-all hover:bg-emerald-700 hover:shadow-emerald-600/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                                   >
                                     {actionLoading &&
                                     activeActionId === complaint.id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                                     ) : (
-                                      <CheckCircle2 className="h-4 w-4" />
+                                      <CheckCircle2 className="h-4 w-4 shrink-0" />
                                     )}
-                                    <span>Selesaikan Klaim</span>
+                                    <span className="whitespace-nowrap">Setujui & Selesaikan Klaim</span>
                                   </button>
                                 </div>
                               </div>
@@ -968,18 +968,18 @@ export default function AdminComplaintsPage() {
                               </div>
 
                               {/* Reject Action Buttons */}
-                              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                                <span className="text-[11px] font-medium text-slate-400">
+                              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                                <span className="min-w-0 flex-1 text-[11px] font-medium text-slate-400">
                                   {rejectionNote.trim().length > 0
                                     ? `${rejectionNote.trim().length} karakter ditulis`
                                     : 'Alasan penolakan wajib diisi'}
                                 </span>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex shrink-0 items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={() => setShowRejectForm(false)}
-                                    className="cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                    className="cursor-pointer shrink-0 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                   >
                                     Batal
                                   </button>
@@ -990,15 +990,15 @@ export default function AdminComplaintsPage() {
                                       actionLoading &&
                                       activeActionId === complaint.id
                                     }
-                                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-rose-600/25 transition-all hover:bg-rose-700 hover:shadow-rose-600/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-rose-600/25 transition-all hover:bg-rose-700 hover:shadow-rose-600/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                                   >
                                     {actionLoading &&
                                     activeActionId === complaint.id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                                     ) : (
-                                      <XCircle className="h-4 w-4" />
+                                      <XCircle className="h-4 w-4 shrink-0" />
                                     )}
-                                    <span>Konfirmasi Tolak Klaim</span>
+                                    <span className="whitespace-nowrap">Konfirmasi Tolak Klaim</span>
                                   </button>
                                 </div>
                               </div>

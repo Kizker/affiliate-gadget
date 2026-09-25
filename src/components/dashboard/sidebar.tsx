@@ -70,6 +70,17 @@ const superAdminNavSections: NavSection[] = [
     title: 'Operasional',
     items: [
       {
+        icon: Wallet,
+        label: 'Keuangan & Penarikan',
+        href: '/dashboard/admin/finance',
+      },
+      {
+        icon: BarChart3,
+        label: 'Laporan Finansial',
+        href: '/dashboard/admin/reports',
+      },
+      { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
+      {
         icon: ShieldCheck,
         label: 'Klaim Garansi',
         href: '/dashboard/admin/complaints',
@@ -78,11 +89,6 @@ const superAdminNavSections: NavSection[] = [
         icon: RotateCcw,
         label: 'Pengembalian',
         href: '/dashboard/admin/returns',
-      },
-      {
-        icon: BarChart3,
-        label: 'Laporan Finansial',
-        href: '/dashboard/admin/reports',
       },
     ],
   },

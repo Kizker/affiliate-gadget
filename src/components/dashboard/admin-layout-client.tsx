@@ -3,7 +3,6 @@
 import React from 'react'
 import { SidebarProvider, useSidebar } from '@/context/sidebar-context'
 import { Sidebar } from '@/components/dashboard/sidebar'
-import { Toaster } from 'sonner'
 import { PanelLeft, ExternalLink, Store } from 'lucide-react'
 
 import Link from 'next/link'
@@ -86,20 +85,6 @@ function AdminLayoutInner({
         >
           <p>© 2026 Affiliate Gadget • Platform Toko Resmi Indonesia</p>
         </footer>
-
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              padding: '12px 16px',
-              fontSize: '14px',
-            },
-            classNames: {
-              success: 'bg-green-500 text-white border-green-500',
-              error: 'bg-red-500 text-white border-red-500',
-            },
-          }}
-        />
       </div>
     </div>
   )

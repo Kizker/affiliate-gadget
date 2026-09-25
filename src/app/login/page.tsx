@@ -26,6 +26,7 @@ function LoginForm() {
     searchParams.get('redirect') || searchParams.get('callbackUrl')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState('')
 
   // 2FA Verification States (Email-First Flow with WA/SMS fallback)
@@ -62,6 +63,24 @@ function LoginForm() {
     }, 1000)
     return () => clearInterval(timer)
   }, [otpCountdown])
+
+  // Check for NextAuth error query params (e.g. from Google OAuth callback)
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam) {
+      if (errorParam === 'OAuthSignin' || errorParam === 'OAuthCallback') {
+        setError('Gagal masuk dengan Google. Pastikan akun Google Anda aktif dan coba lagi.')
+      } else if (errorParam === 'OAuthAccountNotLinked') {
+        setError('Email ini sudah terdaftar. Akun berhasil ditautkan, silakan coba masuk kembali.')
+      } else if (errorParam === 'AccessDenied') {
+        setError('Akses ditolak. Akun Anda dinonaktifkan atau izin tidak diberikan.')
+      } else if (errorParam === 'Configuration') {
+        setError('Konfigurasi Google OAuth belum disetel di .env (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).')
+      } else {
+        setError('Terjadi kendala saat login dengan Google.')
+      }
+    }
+  }, [searchParams])
 
   const executeSignIn = async () => {
     setIsLoading(true)
@@ -175,8 +194,13 @@ function LoginForm() {
           whatsappUrl: checkData.whatsappUrl,
           otpPreview: checkData.otpPreview,
         })
-        setActiveChannel('EMAIL')
-        setActiveIdentifier(formData.email.trim().toLowerCase())
+        const preferredChannel = (checkData.channel as 'WHATSAPP' | 'EMAIL' | 'SMS') || 'WHATSAPP'
+        setActiveChannel(preferredChannel)
+        setActiveIdentifier(
+          preferredChannel === 'EMAIL'
+            ? formData.email.trim().toLowerCase()
+            : checkData.phone || formData.email.trim().toLowerCase()
+        )
         setShowAltOptions(false)
         setOtpCountdown(checkData.expiresInSeconds || 300)
         setOtp('')
@@ -234,26 +258,38 @@ function LoginForm() {
     }
   }
 
-  const handleResendEmailOtp = async () => {
+  const handleResendOtp = async () => {
     if (otpCountdown > 240) return
     setIsResendingOtp(true)
     setError('')
     try {
+      const action =
+        activeChannel === 'WHATSAPP'
+          ? 'resend-wa'
+          : activeChannel === 'SMS'
+            ? 'resend-sms'
+            : 'resend-email'
+
       const res = await fetch('/api/auth/login-2fa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'resend-email',
+          action,
           email: formData.email,
         }),
       })
       const data = await res.json()
       if (res.ok) {
-        setActiveChannel('EMAIL')
-        setActiveIdentifier(formData.email.trim().toLowerCase())
+        setOtpData((prev) => ({
+          ...prev,
+          maskedPhone: data.maskedPhone || prev?.maskedPhone,
+          maskedEmail: data.maskedEmail || prev?.maskedEmail,
+          whatsappUrl: data.whatsappUrl,
+          otpPreview: data.otpPreview,
+        }))
         setOtpCountdown(data.expiresInSeconds || 300)
       } else {
-        setError(data.error || 'Gagal mengirim ulang kode OTP ke email.')
+        setError(data.error || 'Gagal mengirim ulang kode OTP.')
       }
     } catch {
       setError('Gagal mengirim ulang kode OTP')
@@ -262,49 +298,68 @@ function LoginForm() {
     }
   }
 
-  const handleAltChannel = async (channel: 'WHATSAPP' | 'SMS') => {
-    if (!otpData?.hasPhone || !otpData?.phone) {
+  const handleSwitchChannel = async (targetChannel: 'EMAIL' | 'WHATSAPP' | 'SMS') => {
+    if (targetChannel !== 'EMAIL' && (!otpData?.hasPhone || !otpData?.phone)) {
       setError('Nomor telepon tidak tersedia pada akun ini.')
       return
     }
     setIsResendingOtp(true)
     setError('')
     try {
+      const action =
+        targetChannel === 'WHATSAPP'
+          ? 'resend-wa'
+          : targetChannel === 'SMS'
+            ? 'resend-sms'
+            : 'resend-email'
+
       const res = await fetch('/api/auth/login-2fa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: channel === 'WHATSAPP' ? 'resend-wa' : 'resend-sms',
+          action,
           email: formData.email,
         }),
       })
       const data = await res.json()
       if (res.ok) {
-        setActiveChannel(channel)
-        setActiveIdentifier(otpData.phone)
+        setActiveChannel(targetChannel)
+        setActiveIdentifier(
+          targetChannel === 'EMAIL'
+            ? formData.email.trim().toLowerCase()
+            : otpData?.phone || ''
+        )
         setShowAltOptions(false)
         setOtpData((prev) => ({
           ...prev,
           maskedPhone: data.maskedPhone || prev?.maskedPhone,
+          maskedEmail: data.maskedEmail || prev?.maskedEmail,
           whatsappUrl: data.whatsappUrl,
           otpPreview: data.otpPreview,
         }))
         setOtpCountdown(data.expiresInSeconds || 300)
       } else {
-        setError(data.error || `Gagal mengirim kode OTP via ${channel}`)
+        setError(data.error || `Gagal mengirim kode OTP via ${targetChannel}`)
       }
     } catch {
-      setError(`Gagal mengirim kode OTP via ${channel}`)
+      setError(`Gagal mengirim kode OTP via ${targetChannel}`)
     } finally {
       setIsResendingOtp(false)
     }
   }
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true)
-    await signIn('google', {
-      callbackUrl: redirectParam || '/api/auth/redirect',
-    })
+    setIsGoogleLoading(true)
+    setError('')
+    try {
+      await signIn('google', {
+        callbackUrl: redirectParam || '/api/auth/redirect',
+      })
+    } catch (err) {
+      console.error('Google Sign-In Error:', err)
+      setError('Gagal menghubungkan ke layanan Google. Silakan coba lagi.')
+      setIsGoogleLoading(false)
+    }
   }
 
   return (
@@ -482,28 +537,37 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
-                  disabled={isLoading}
-                  className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-full border border-slate-200/80 bg-white py-2.5 text-xs font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                  disabled={isLoading || isGoogleLoading}
+                  className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-full border border-slate-200/80 bg-white py-2.5 text-xs font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
                 >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span>Lanjutkan dengan Google</span>
+                  {isGoogleLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                      <span>Menghubungkan ke Google...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                        />
+                      </svg>
+                      <span>Lanjutkan dengan Google</span>
+                    </>
+                  )}
                 </button>
 
                 {/* Sign Up Redirect */}
@@ -627,60 +691,78 @@ function LoginForm() {
                     </span>
                     <button
                       type="button"
-                      onClick={handleResendEmailOtp}
+                      onClick={handleResendOtp}
                       disabled={isResendingOtp || otpCountdown > 240}
                       className="cursor-pointer font-bold text-orange-600 hover:underline disabled:opacity-40 disabled:hover:no-underline"
                     >
-                      {isResendingOtp ? 'Mengirim...' : 'Kirim Ulang Email'}
+                      {isResendingOtp
+                        ? 'Mengirim...'
+                        : activeChannel === 'WHATSAPP'
+                          ? 'Kirim Ulang WhatsApp'
+                          : activeChannel === 'EMAIL'
+                            ? 'Kirim Ulang Email'
+                            : 'Kirim Ulang SMS'}
                     </button>
                   </div>
 
-                  {/* Fallback to WA / SMS ("Cara Lainnya" jika akun memiliki nomor telepon) */}
-                  {otpData?.hasPhone && (
-                    <div className="pt-1 text-center">
-                      <button
-                        type="button"
-                        onClick={() => setShowAltOptions(!showAltOptions)}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 transition-colors hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-400"
-                      >
-                        <span>Pilihan pengiriman lain</span>
-                        {showAltOptions ? (
-                          <ChevronUp className="h-3 w-3" />
-                        ) : (
-                          <ChevronDown className="h-3 w-3" />
-                        )}
-                      </button>
+                  {/* Fallback to other channels ("Pilihan pengiriman lain") */}
+                  <div className="pt-1 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowAltOptions(!showAltOptions)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 transition-colors hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-400"
+                    >
+                      <span>Pilihan pengiriman lain</span>
+                      {showAltOptions ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </button>
 
-                      {showAltOptions && (
-                        <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 text-left duration-200 animate-in fade-in dark:border-slate-800 dark:bg-slate-800/40">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                            Kirim ke nomor{' '}
-                            {otpData?.maskedPhone || otpData?.phone}:
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
+                    {showAltOptions && (
+                      <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 text-left duration-200 animate-in fade-in dark:border-slate-800 dark:bg-slate-800/40">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Kirim kode OTP via channel lain:
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {activeChannel !== 'WHATSAPP' && otpData?.hasPhone && (
                             <button
                               type="button"
                               disabled={isResendingOtp}
-                              onClick={() => handleAltChannel('WHATSAPP')}
+                              onClick={() => handleSwitchChannel('WHATSAPP')}
                               className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50 active:scale-95 disabled:opacity-50 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-300"
                             >
                               <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
                               <span>WhatsApp</span>
                             </button>
+                          )}
+                          {activeChannel !== 'EMAIL' && (
                             <button
                               type="button"
                               disabled={isResendingOtp}
-                              onClick={() => handleAltChannel('SMS')}
+                              onClick={() => handleSwitchChannel('EMAIL')}
+                              className="flex items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-50 active:scale-95 disabled:opacity-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300"
+                            >
+                              <Mail className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                              <span>Email</span>
+                            </button>
+                          )}
+                          {activeChannel !== 'SMS' && otpData?.hasPhone && (
+                            <button
+                              type="button"
+                              disabled={isResendingOtp}
+                              onClick={() => handleSwitchChannel('SMS')}
                               className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                             >
                               <Phone className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                               <span>SMS</span>
                             </button>
-                          </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Submit Verification */}
                   <div className="space-y-2 pt-2">

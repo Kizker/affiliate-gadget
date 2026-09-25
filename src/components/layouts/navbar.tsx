@@ -21,6 +21,7 @@ import {
   Heart,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
+import { useWishlistStore } from '@/lib/store/wishlist-store'
 
 interface NavbarProps {
   variant?: 'light' | 'dark'
@@ -37,6 +38,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
   const { items, setUserId: cartSetUserId } = useCartStore()
+  const wishlistSetUserId = useWishlistStore((state) => state.setUserId)
   // Guard with mounted & authenticated to prevent hydration mismatch and hide badge when unauthenticated
   const itemCount =
     mounted && status === 'authenticated'
@@ -46,15 +48,17 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
     session?.user?.image || null
   )
 
-  // Reaktif: sinkronisasi keranjang belanja dengan status sesi NextAuth
+  // Reaktif: sinkronisasi keranjang belanja & wishlist dengan status sesi NextAuth
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.id) {
       cartSetUserId(session.user.id)
+      wishlistSetUserId(session.user.id)
     } else if (status === 'unauthenticated') {
-      // Bersihkan seketika keranjang lokal jika belum login / sudah logout
+      // Bersihkan seketika keranjang lokal & wishlist jika belum login / sudah logout
       cartSetUserId(null)
+      wishlistSetUserId(null)
     }
-  }, [status, session?.user?.id, cartSetUserId])
+  }, [status, session?.user?.id, cartSetUserId, wishlistSetUserId])
 
   useEffect(() => {
     setMounted(true)

@@ -568,14 +568,14 @@ export default function NewGadgetProductPage() {
 
             {/* Status PPN Produk (Bebas PPN vs Dikenakan PPN) */}
             <div
-              className={`p-4.5 rounded-2xl border transition-all duration-200 sm:col-span-2 ${
+              className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 sm:col-span-2 ${
                 form.isTaxable
                   ? 'border-blue-300 bg-blue-50/70 dark:border-blue-800 dark:bg-blue-950/30'
                   : 'border-amber-300 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/30'
               }`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
+                <div className="space-y-1.5 flex-1 pr-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
                       Status Pajak Produk (PPN Inklusif)

@@ -134,6 +134,12 @@ export async function PUT(
           orderId: existing.orderId,
           refundAmount: existing.refundAmount || undefined,
           reason: existing.reason,
+          returnCourier: existing.returnCourier || returnCourier,
+          returnTrackingNumber:
+            existing.returnTrackingNumber || returnTrackingNumber,
+          bankName: existing.bankName || undefined,
+          bankAccountNumber: existing.bankAccountNumber || undefined,
+          bankAccountHolder: existing.bankAccountName || undefined,
         })
       } catch (emailErr) {
         console.error('Failed to send refund email:', emailErr)

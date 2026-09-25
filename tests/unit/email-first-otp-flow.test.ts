@@ -83,18 +83,18 @@ describe('Email-First OTP Verification Suite (E2E Unit)', () => {
       expect(data.hasPhone).toBe(true)
       expect(data.phone).toBe('081234567890')
 
-      // Verifikasi bahwa dispatchOtp default ke EMAIL (bukan WA/SMS)
+      // Verifikasi bahwa dispatchOtp default ke WHATSAPP
       expect(dispatchOtp).toHaveBeenCalledWith(
         expect.objectContaining({
-          identifier: 'bambang@tokoguru.com',
+          identifier: '081234567890',
           purpose: 'LOGIN',
-          channel: 'EMAIL',
+          channel: 'WHATSAPP',
           userId: 'user-2fa-01',
         })
       )
     })
 
-    it('should bypass 2FA (requires2FA = false) for store admin and dummy accounts', async () => {
+    it('should require 2FA (requires2FA = true) for all accounts including store admin', async () => {
       vi.spyOn(prisma.user, 'findUnique').mockResolvedValue({
         id: 'store-admin-01',
         email: 'admin.roxy@affiliategadget.com',
@@ -102,7 +102,7 @@ describe('Email-First OTP Verification Suite (E2E Unit)', () => {
         phone: '081234567890',
         role: 'STORE_ADMIN',
         isActive: true,
-        twoFactorEnabled: false,
+        twoFactorEnabled: true,
       } as any)
 
       const req = new NextRequest('http://localhost:3002/api/auth/login-2fa', {
@@ -119,7 +119,8 @@ describe('Email-First OTP Verification Suite (E2E Unit)', () => {
       const data = await res.json()
 
       expect(res.status).toBe(200)
-      expect(data.requires2FA).toBe(false)
+      expect(data.requires2FA).toBe(true)
+      expect(data.channel).toBe('WHATSAPP')
       expect(data.email).toBe('admin.roxy@affiliategadget.com')
     })
 

@@ -20,6 +20,8 @@ import {
   Star,
   MessageSquare,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/ui/custom-select'
 
@@ -81,6 +83,58 @@ function GadgetKatalogContent() {
       return (Number(b.rating) || 0) - (Number(a.rating) || 0)
     return 0
   })
+
+  // Desktop Pagination
+  const ITEMS_PER_PAGE = 12
+  const [currentPage, setCurrentPage] = useState(1)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [brand, search, sortBy])
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE))
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const paginatedDesktopItems = sorted.slice(startIndex, endIndex)
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage)
+    const el = document.getElementById('desktop-catalog-grid')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      window.scrollTo({ top: 180, behavior: 'smooth' })
+    }
+  }
+
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, '...', totalPages]
+    }
+    if (currentPage >= totalPages - 3) {
+      return [
+        1,
+        '...',
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ]
+    }
+    return [
+      1,
+      '...',
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      '...',
+      totalPages,
+    ]
+  }
 
   return (
     <>
@@ -185,8 +239,12 @@ function GadgetKatalogContent() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
-                {filtered.map((item) => {
+              <>
+                <div
+                  id="desktop-catalog-grid"
+                  className="grid grid-cols-2 gap-2 scroll-mt-28 sm:gap-4 lg:grid-cols-4"
+                >
+                  {paginatedDesktopItems.map((item) => {
                   const totalStock =
                     item.variants && item.variants.length > 0
                       ? item.variants.reduce(
@@ -321,7 +379,75 @@ function GadgetKatalogContent() {
                   )
                 })}
               </div>
-            )}
+
+              {/* Desktop Pagination Bar */}
+              {totalPages > 1 && (
+                <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:px-6">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Menampilkan{' '}
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {startIndex + 1}
+                    </span>{' '}
+                    -{' '}
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {Math.min(endIndex, sorted.length)}
+                    </span>{' '}
+                    dari{' '}
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {sorted.length}
+                    </span>{' '}
+                    gadget
+                  </p>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Sebelumnya</span>
+                    </button>
+
+                    {getPageNumbers().map((p, idx) =>
+                      p === '...' ? (
+                        <span
+                          key={`ellipsis-${idx}`}
+                          className="px-2 text-xs font-bold text-slate-400"
+                        >
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={`page-${p}`}
+                          type="button"
+                          onClick={() => handlePageChange(Number(p))}
+                          className={`min-w-[36px] cursor-pointer rounded-xl px-3 py-2 text-xs font-bold transition active:scale-95 ${
+                            currentPage === p
+                              ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
+                              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      <span className="hidden sm:inline">Selanjutnya</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
           </div>
         </main>
 

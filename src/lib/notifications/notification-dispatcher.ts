@@ -27,6 +27,9 @@ import {
   orderShippedEmailTemplate,
   orderDeliveredEmailTemplate,
   orderCompletedEmailTemplate,
+  orderRefundedEmailTemplate,
+  orderComplainedEmailTemplate,
+  orderCancelledEmailTemplate,
   newDeviceSecurityEmailTemplate,
 } from './templates/email-templates'
 import {
@@ -248,11 +251,71 @@ export async function dispatchTransactional(
           })
           break
         case 'ORDER_COMPLETED':
-          emailSubject = `Pesanan #${payload.orderNumber} Selesai - Garansi 30 Hari Aktif`
+          emailSubject = `Tanda Bukti Transaksi Selesai & Garansi Aktif — #${payload.orderNumber}`
           emailHtml = orderCompletedEmailTemplate({
             customerName: payload.customerName,
             orderNumber: payload.orderNumber,
             storeName: payload.storeName,
+            courierName: payload.courierName,
+            courierService: payload.courierService,
+            awbNumber: payload.awbNumber,
+            trackingUrl: trackUrl,
+            totalAmount: payload.totalAmount,
+            subtotal: payload.subtotal,
+            shippingCost: payload.shippingCost,
+            insuranceFee: payload.insuranceFee,
+            discountAmount: payload.discountAmount,
+            items: payload.items,
+            warrantyExpiryDate: payload.warrantyExpiryDate,
+            viewOrderUrl,
+          })
+          break
+        case 'ORDER_RETURNED':
+          emailSubject = `Bukti Pengembalian Dana (Refund) — #${payload.orderNumber}`
+          emailHtml = orderRefundedEmailTemplate({
+            customerName: payload.customerName,
+            orderNumber: payload.orderNumber,
+            storeName: payload.storeName,
+            courierName: payload.courierName,
+            awbNumber: payload.awbNumber,
+            returnCourier: payload.returnCourier,
+            returnTrackingNumber: payload.returnTrackingNumber,
+            trackingUrl: trackUrl,
+            refundAmount: payload.refundAmount ?? payload.totalAmount,
+            refundReason: payload.refundReason,
+            refundBank: payload.refundBank,
+            refundAccount: payload.refundAccount,
+            refundAccountName: payload.refundAccountName,
+            items: payload.items,
+            viewOrderUrl,
+          })
+          break
+        case 'ORDER_COMPLAINED':
+          emailSubject = `Tiket Komplain & Klaim Garansi Diterima — #${payload.orderNumber}`
+          emailHtml = orderComplainedEmailTemplate({
+            customerName: payload.customerName,
+            orderNumber: payload.orderNumber,
+            storeName: payload.storeName,
+            courierName: payload.courierName,
+            awbNumber: payload.awbNumber,
+            trackingUrl: trackUrl,
+            complaintSubject: payload.complaintSubject,
+            complaintDescription: payload.complaintDescription,
+            complaintStatus: payload.complaintStatus,
+            items: payload.items,
+            viewOrderUrl,
+          })
+          break
+        case 'ORDER_CANCELLED':
+          emailSubject = `Pemberitahuan Pembatalan Pesanan — #${payload.orderNumber}`
+          emailHtml = orderCancelledEmailTemplate({
+            customerName: payload.customerName,
+            orderNumber: payload.orderNumber,
+            storeName: payload.storeName,
+            courierName: payload.courierName,
+            awbNumber: payload.awbNumber,
+            cancellationReason: payload.cancellationReason,
+            totalAmount: payload.totalAmount,
             viewOrderUrl,
           })
           break
@@ -310,7 +373,19 @@ export async function dispatchTransactional(
       } else if (payload.event === 'ORDER_COMPLETED') {
         notifType = NotificationType.ORDER_STATUS_CHANGED
         title = `Pesanan Selesai #${payload.orderNumber}`
-        message = `Pesanan #${payload.orderNumber} telah selesai dikonfirmasi. Garansi 30 hari tukar unit baru Anda telah resmi aktif.`
+        message = `Pesanan #${payload.orderNumber} telah selesai dikonfirmasi. Garansi 30 hari tukar unit baru Anda telah resmi aktif. No Resi: ${payload.awbNumber || '-'}`
+      } else if (payload.event === 'ORDER_RETURNED') {
+        notifType = NotificationType.ORDER_STATUS_CHANGED
+        title = `Retur & Pengembalian Dana Disetujui #${payload.orderNumber}`
+        message = `Pengembalian dana untuk pesanan #${payload.orderNumber} telah diproses oleh cabang toko.`
+      } else if (payload.event === 'ORDER_COMPLAINED') {
+        notifType = NotificationType.NEW_COMPLAINT
+        title = `Komplain Diproses #${payload.orderNumber}`
+        message = `Tiket komplain pesanan #${payload.orderNumber} sedang ditangani oleh tim teknisi toko.`
+      } else if (payload.event === 'ORDER_CANCELLED') {
+        notifType = NotificationType.ORDER_STATUS_CHANGED
+        title = `Pesanan Dibatalkan #${payload.orderNumber}`
+        message = `Pesanan #${payload.orderNumber} telah resmi dibatalkan.`
       }
 
       tasks.push(

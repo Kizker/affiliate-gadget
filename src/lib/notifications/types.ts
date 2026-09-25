@@ -35,6 +35,8 @@ export type TransactionalEvent =
   | 'ORDER_DELIVERED'
   | 'ORDER_COMPLETED'
   | 'ORDER_CANCELLED'
+  | 'ORDER_RETURNED'
+  | 'ORDER_COMPLAINED'
 
 export interface TransactionalPayload {
   event: TransactionalEvent
@@ -45,11 +47,35 @@ export interface TransactionalPayload {
   customerPhone?: string
   customerEmail?: string
   totalAmount?: number
+  subtotal?: number
+  shippingCost?: number
+  insuranceFee?: number
+  discountAmount?: number
   paymentDeadline?: string
   storeName?: string
   courierName?: string
+  courierService?: string
   awbNumber?: string
   trackingUrl?: string
+  viewOrderUrl?: string
+  items?: Array<{
+    name: string
+    variant?: string
+    quantity: number
+    price: number
+  }>
+  warrantyExpiryDate?: string
+  refundAmount?: number
+  refundReason?: string
+  refundBank?: string
+  refundAccount?: string
+  refundAccountName?: string
+  returnTrackingNumber?: string
+  returnCourier?: string
+  complaintSubject?: string
+  complaintDescription?: string
+  complaintStatus?: string
+  cancellationReason?: string
 }
 
 export interface SecurityAlertPayload {

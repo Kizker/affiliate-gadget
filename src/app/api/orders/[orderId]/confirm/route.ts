@@ -24,8 +24,27 @@ export async function POST(
         userId: true,
         status: true,
         customerConfirmedAt: true,
+        total: true,
+        subtotal: true,
+        shippingCost: true,
+        insuranceFee: true,
+        discountAmount: true,
+        courierCode: true,
+        courierService: true,
+        trackingNumber: true,
         user: true,
-        store: { select: { name: true } },
+        store: { select: { name: true, companyName: true } },
+        items: {
+          select: {
+            id: true,
+            price: true,
+            quantity: true,
+            variantName: true,
+            product: { select: { name: true } },
+            service: { select: { name: true } },
+            rentalItem: { select: { name: true } },
+          },
+        },
       },
     })
 
@@ -71,6 +90,23 @@ export async function POST(
     // Kirim tanda bukti transaksi selesai via email (Resend) & notifikasi WhatsApp
     try {
       const { dispatchTransactional } = await import('@/lib/notifications')
+      const itemsList = order.items.map((it) => ({
+        name:
+          it.product?.name ||
+          it.service?.name ||
+          it.rentalItem?.name ||
+          'Gadget Smartphone',
+        variant: it.variantName || undefined,
+        quantity: it.quantity || 1,
+        price: it.price,
+      }))
+
+      const formattedWarranty = new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(warrantyExpiry)
+
       await dispatchTransactional({
         event: 'ORDER_COMPLETED',
         orderId: order.id,
@@ -82,7 +118,17 @@ export async function POST(
           (session.user as { phone?: string })?.phone ||
           undefined,
         customerEmail: order.user?.email || session.user.email || undefined,
-        storeName: order.store?.name,
+        storeName: order.store?.companyName || order.store?.name,
+        courierName: order.courierCode || 'Kurir Logistik',
+        courierService: order.courierService || undefined,
+        awbNumber: order.trackingNumber || undefined,
+        totalAmount: order.total,
+        subtotal: order.subtotal,
+        shippingCost: order.shippingCost,
+        insuranceFee: order.insuranceFee,
+        discountAmount: order.discountAmount,
+        items: itemsList,
+        warrantyExpiryDate: formattedWarranty,
       })
     } catch (notifErr) {
       console.error('Failed to send order completed notification:', notifErr)

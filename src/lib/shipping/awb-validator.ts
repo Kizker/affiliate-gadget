@@ -25,20 +25,20 @@ export const AWB_PATTERNS: Record<
   { pattern: RegExp; example: string; label: string }
 > = {
   JNE: {
-    pattern: /^JNE\d{10,18}$/i,
-    example: 'JNE260923123456',
+    pattern: /^(JNE-?|AGY)\d{6,18}(ID)?$|^[0-9]{10,20}$/i,
+    example: 'JNE260923123456 atau AGY154879552ID',
     label: 'JNE Express',
   },
   GOJEK: {
-    pattern: /^GK-\d{12}$/i,
-    example: 'GK-260923123456',
+    pattern: /^(GK-|GOJEK-|AGY)\d{6,16}(ID)?$|^GK-\d{12}$/i,
+    example: 'GK-260923123456 atau GOJEK-81980576',
     label: 'Gojek Instant',
   },
 }
 
 /**
  * Validasi format nomor resi atau nomor order
- * Jika courierCode tidak diisi, auto-detect dari prefix (mendukung JNE, Gojek, Biteship WYB, dan Nomor Pesanan SPR/ORD)
+ * Jika courierCode tidak diisi, auto-detect dari prefix (mendukung JNE, Gojek, Biteship WYB, AGY, dan Nomor Pesanan SPR/ORD)
  */
 export function validateAWB(
   trackingNumber: string,
@@ -55,11 +55,11 @@ export function validateAWB(
     }
   }
 
-  if (cleaned.length < 8) {
+  if (cleaned.length < 6) {
     return {
       valid: false,
       formatted: cleaned,
-      error: 'Nomor resi terlalu pendek (minimal 8 karakter)',
+      error: 'Nomor resi terlalu pendek (minimal 6 karakter)',
     }
   }
 
@@ -87,20 +87,32 @@ export function validateAWB(
     }
   }
 
+  // 3. Dukungan resi internal Affiliate Gadget (AGY...ID)
+  if (/^AGY\d{6,16}(ID)?$/i.test(cleaned)) {
+    return {
+      valid: true,
+      courierCode: courierCode || 'JNE',
+      courierService: courierCode === 'GOJEK' ? 'INSTANT' : 'REG',
+      formatted: cleaned,
+    }
+  }
+
   const detectedCourier: CourierCode | undefined =
     courierCode ||
     (cleaned.startsWith('JNE')
       ? 'JNE'
-      : cleaned.startsWith('GK-')
+      : cleaned.startsWith('GK-') || cleaned.startsWith('GOJEK-')
         ? 'GOJEK'
-        : undefined)
+        : cleaned.startsWith('AGY')
+          ? 'JNE'
+          : undefined)
 
   if (!detectedCourier) {
     return {
       valid: false,
       formatted: cleaned,
       error:
-        'Format tidak dikenal. Masukkan nomor resi (JNE, GK-, WYB-) atau nomor pesanan (SPR-...)',
+        'Format tidak dikenal. Masukkan nomor resi (JNE, GK-, GOJEK-, AGY, WYB-) atau nomor pesanan (SPR-...)',
     }
   }
 

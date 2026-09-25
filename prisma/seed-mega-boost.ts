@@ -305,9 +305,13 @@ async function main() {
     const orderDate = randomDate(150)
 
     const orderNumber = `AG-${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, '0')}-${randomInt(100000, 999999)}`
-    const trackingNumber = status === OrderStatus.COMPLETED || status === OrderStatus.SHIPPED
-      ? `${courierCode}-${orderDate.getTime().toString().slice(-8)}`
-      : null
+    const trackingNumber =
+      status === OrderStatus.COMPLETED ||
+      status === OrderStatus.SHIPPED ||
+      status === OrderStatus.COMPLAINED ||
+      status === OrderStatus.IN_PROGRESS
+        ? `${courierCode}-${orderDate.getTime().toString().slice(-8)}`
+        : null
 
     const newOrder = await prisma.order.create({
       data: {

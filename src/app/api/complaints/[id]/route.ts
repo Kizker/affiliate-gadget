@@ -190,6 +190,18 @@ export async function PATCH(
           link: `/dashboard/customer/orders`,
         },
       })
+
+      if (status === 'RESOLVED') {
+        try {
+          const { sendOrderCompletedEmail } = await import('@/lib/email')
+          await sendOrderCompletedEmail({ orderId: complaint.orderId })
+        } catch (emailErr) {
+          console.error(
+            'Failed to send order completed email on complaint resolution:',
+            emailErr
+          )
+        }
+      }
     }
 
     return NextResponse.json({ complaint: updatedComplaint })

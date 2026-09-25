@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -17,12 +17,16 @@ import {
   ArrowUpDown,
   Smartphone,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { toast } from 'sonner'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { CustomSelect } from '@/components/ui/custom-select'
+
+const INITIAL_COUNT = 8
+const BATCH_SIZE = 6
 
 interface MobileCatalogViewProps {
   gadgets: any[]
@@ -51,6 +55,47 @@ export function MobileCatalogView({
 }: MobileCatalogViewProps) {
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const { items } = useCartStore()
+
+  // Mobile Lazy Loading State
+  const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  // Reset lazy load pagination when filters change
+  useEffect(() => {
+    setVisibleCount(INITIAL_COUNT)
+  }, [brand, search, sortBy])
+
+  const hasMore = visibleCount < gadgets.length
+  const displayedGadgets = gadgets.slice(0, visibleCount)
+
+  const loadMore = useCallback(() => {
+    if (isLoadingMore || visibleCount >= gadgets.length) return
+    setIsLoadingMore(true)
+    setTimeout(() => {
+      setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, gadgets.length))
+      setIsLoadingMore(false)
+    }, 300)
+  }, [isLoadingMore, visibleCount, gadgets.length])
+
+  // IntersectionObserver for auto lazy loading on scroll
+  useEffect(() => {
+    if (!hasMore || loading) return
+    const el = sentinelRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore()
+        }
+      },
+      { rootMargin: '250px' }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadMore])
 
   const cartCount =
     status === 'authenticated'
@@ -251,12 +296,13 @@ export function MobileCatalogView({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 items-start gap-2.5">
-            {/* Kolom Kiri */}
-            <div className="flex min-w-0 flex-col gap-2.5">
-              {gadgets
-                .filter((_, idx) => idx % 2 === 0)
-                .map((item) => {
+          <>
+            <div className="grid grid-cols-2 items-start gap-2.5">
+              {/* Kolom Kiri */}
+              <div className="flex min-w-0 flex-col gap-2.5">
+                {displayedGadgets
+                  .filter((_, idx) => idx % 2 === 0)
+                  .map((item) => {
                   const badge = getConditionBadge(item)
                   const isWishlisted = isInWishlist(item.id)
                   const strikePrice =
@@ -369,10 +415,10 @@ export function MobileCatalogView({
                 })}
             </div>
 
-            {/* Kolom Kanan */}
-            <div className="flex min-w-0 flex-col gap-2.5">
-              {gadgets
-                .filter((_, idx) => idx % 2 === 1)
+              {/* Kolom Kanan */}
+              <div className="flex min-w-0 flex-col gap-2.5">
+                {displayedGadgets
+                  .filter((_, idx) => idx % 2 === 1)
                 .map((item) => {
                   const badge = getConditionBadge(item)
                   const isWishlisted = isInWishlist(item.id)
@@ -486,7 +532,43 @@ export function MobileCatalogView({
                 })}
             </div>
           </div>
-        )}
+
+          {/* Mobile Lazy Loading Sentinel & Load More Indicator */}
+          {hasMore ? (
+            <div
+              ref={sentinelRef}
+              className="flex flex-col items-center justify-center py-6 text-center"
+            >
+              {isLoadingMore ? (
+                <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 px-4 py-2 text-xs font-semibold text-orange-600 shadow-2xs dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400">
+                  <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                  <span>Memuat gadget berikutnya...</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-5 py-2 text-xs font-bold text-slate-700 shadow-2xs transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  <span>Muat Lebih Banyak</span>
+                  <span className="text-[10px] text-slate-400">
+                    ({visibleCount} / {gadgets.length})
+                  </span>
+                </button>
+              )}
+            </div>
+          ) : (
+            gadgets.length > INITIAL_COUNT && (
+              <div className="py-6 text-center">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50 px-4 py-1.5 text-[11px] font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Semua {gadgets.length} gadget telah ditampilkan</span>
+                </div>
+              </div>
+            )
+          )}
+        </>
+      )}
       </section>
     </div>
   )

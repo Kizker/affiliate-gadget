@@ -154,20 +154,23 @@ export async function PATCH(
           sendOrderCompletedEmail,
           sendOrderCancelledEmail,
           sendOrderRefundedEmail,
+          sendOrderComplainedEmail,
         } = await import('@/lib/email')
         const { dispatchTransactional } = await import('@/lib/notifications')
 
         if (status === 'COMPLETED') {
-          await dispatchTransactional({
-            event: 'ORDER_COMPLETED',
-            orderId: order.id,
-            orderNumber: order.orderNumber,
-            userId: order.userId,
-            customerName: order.user?.name || 'Pelanggan',
-            customerPhone: order.user?.phone || undefined,
-            customerEmail: order.user?.email || undefined,
-            storeName: order.store?.name,
-          })
+          await sendOrderCompletedEmail({ orderId: order.id })
+          if (order.user?.phone) {
+            await dispatchTransactional({
+              event: 'ORDER_COMPLETED',
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              userId: order.userId,
+              customerName: order.user?.name || 'Pelanggan',
+              customerPhone: order.user?.phone,
+              storeName: order.store?.name,
+            })
+          }
         } else if (status === 'SHIPPED') {
           await dispatchTransactional({
             event: 'ORDER_SHIPPED',
@@ -190,12 +193,32 @@ export async function PATCH(
             orderId,
             reason: 'Pengembalian dana diproses oleh toko',
           })
+        } else if (status === 'COMPLAINED') {
+          await sendOrderComplainedEmail({
+            orderId,
+            subject: 'Pesanan Ditandai Komplain',
+            description: 'Status pesanan diubah ke tahap komplain untuk penanganan garansi/unit.',
+          })
         }
       } catch (notifErr) {
         console.error('Failed to trigger order status notification:', notifErr)
       }
 
       return NextResponse.json({ order: updatedOrder })
+    }
+
+    // Handle trackingNumber update only
+    if (trackingNumber !== undefined) {
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          trackingNumber: trackingNumber || null,
+        },
+      })
+      return NextResponse.json({
+        order: updatedOrder,
+        message: 'Nomor resi berhasil diperbarui',
+      })
     }
 
     return NextResponse.json({ error: 'No update provided' }, { status: 400 })

@@ -97,4 +97,45 @@ describe('Customer Wishlist Store (Zustand + LocalStorage)', () => {
     expect(updated.items).toEqual([])
     expect(updated.getTotalItems()).toBe(0)
   })
+
+  it('should isolate wishlist items between different user accounts', () => {
+    const store = useWishlistStore.getState()
+
+    // User A logs in and adds dummyGadget1
+    store.setUserId('user-a-123')
+    store.addItem(dummyGadget1)
+    expect(useWishlistStore.getState().items.length).toBe(1)
+    expect(useWishlistStore.getState().isInWishlist(dummyGadget1.id)).toBe(true)
+
+    // User B (brand new account) logs in
+    store.setUserId('user-b-456')
+    expect(useWishlistStore.getState().items.length).toBe(0)
+    expect(useWishlistStore.getState().isInWishlist(dummyGadget1.id)).toBe(false)
+
+    // User B adds dummyGadget2
+    store.addItem(dummyGadget2)
+    expect(useWishlistStore.getState().items.length).toBe(1)
+    expect(useWishlistStore.getState().isInWishlist(dummyGadget2.id)).toBe(true)
+
+    // Switch back to User A -> should restore User A's items
+    store.setUserId('user-a-123')
+    expect(useWishlistStore.getState().items.length).toBe(1)
+    expect(useWishlistStore.getState().isInWishlist(dummyGadget1.id)).toBe(true)
+    expect(useWishlistStore.getState().isInWishlist(dummyGadget2.id)).toBe(false)
+  })
+
+  it('should ensure newly authenticated user starts with empty wishlist', () => {
+    const store = useWishlistStore.getState()
+
+    // Guest adds items before logging in
+    store.setUserId(null)
+    store.addItem(dummyGadget1)
+    expect(useWishlistStore.getState().items.length).toBe(1)
+
+    // New Google account logs in with new userId
+    store.setUserId('google-user-new-789')
+    expect(useWishlistStore.getState().items.length).toBe(0)
+    expect(useWishlistStore.getState().items).toEqual([])
+    expect(useWishlistStore.getState().getTotalItems()).toBe(0)
+  })
 })

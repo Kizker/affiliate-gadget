@@ -242,6 +242,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Kirim email tanda terima komplain & klaim garansi ke customer (dengan nomor AWB)
+    try {
+      const { sendOrderComplainedEmail } = await import('@/lib/email')
+      await sendOrderComplainedEmail({
+        orderId,
+        complaintId: complaint.id,
+        subject,
+        description,
+      })
+    } catch (emailErr) {
+      console.error('Failed to send complaint acknowledgment email:', emailErr)
+    }
+
     return NextResponse.json({ complaint }, { status: 201 })
   } catch (error) {
     console.error('Error creating complaint:', error)

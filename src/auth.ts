@@ -31,6 +31,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      allowDangerousEmailAccountLinking: true,
     }) as any,
 
     Credentials({
@@ -161,6 +162,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     // Only include authorized callback from authConfig
     authorized: authConfig.callbacks?.authorized,
+    async signIn({ user, account }) {
+      if (account?.provider === 'google' && user?.email) {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: { isActive: true },
+          })
+          if (existingUser && !existingUser.isActive) {
+            return false // Account deactivated by admin
+          }
+        } catch (e) {
+          console.error('[Google SignIn Check Error]:', e)
+        }
+      }
+      return true
+    },
     async jwt({ token, user, trigger, session }: any) {
       // Handle client-side session update (e.g. after status change, role upgrade, or profile edit)
       if (trigger === 'update') {
@@ -179,7 +196,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             })
             if (dbUser) {
               token.name = dbUser.name
-              token.role = dbUser.role
+              token.role = dbUser.role || 'CUSTOMER'
               token.storeId = dbUser.storeId
               token.mitraStatus = dbUser.mitraStatus
               token.isTechnician = !!dbUser.technician
@@ -214,7 +231,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Store essential user data in token
       if (user) {
         token.id = user.id
-        token.role = user.role
+        token.role = user.role || 'CUSTOMER'
         token.name = user.name
         token.email = user.email
 
@@ -231,16 +248,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.mitraStatus = (user as any).mitraStatus || null
       }
 
-      // If token is missing storeId, check if database now has storeId linked
-      if (token.id && !token.storeId) {
+      // If token is missing role or storeId, check if database now has it linked
+      if (token.id && (!token.role || !token.storeId)) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
             select: { storeId: true, role: true },
           })
-          if (dbUser?.storeId) {
-            token.storeId = dbUser.storeId
-            token.role = dbUser.role
+          if (dbUser) {
+            token.role = dbUser.role || 'CUSTOMER'
+            if (dbUser.storeId) {
+              token.storeId = dbUser.storeId
+            }
           }
         } catch {
           // ignore error to avoid blocking jwt
@@ -256,7 +275,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Include essential user data in session
       if (session.user && token) {
         session.user.id = token.id as string
-        session.user.role = token.role as UserRole
+        session.user.role = (token.role as UserRole) || 'CUSTOMER'
         session.user.name = token.name as string
         session.user.email = token.email as string
         session.user.image = (token.image as string) || null
@@ -284,6 +303,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (dbUser) {
             // Update the user object with cached data for JWT
             user.name = dbUser.mitra?.businessName || dbUser.name
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(user as any).role = dbUser.role || 'CUSTOMER'
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(user as any).storeId = dbUser.storeId || null
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ;(user as any).mitraStatus = dbUser.mitraStatus
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

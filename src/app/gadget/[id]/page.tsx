@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ArrowRight,
   MessageSquare,
   PhoneCall,
@@ -45,6 +47,7 @@ export default function GadgetDetailPage() {
   const [selectedImage, setSelectedImage] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
   const [isAddedToCart, setIsAddedToCart] = useState(false)
+  const [isDesktopDescExpanded, setIsDesktopDescExpanded] = useState(false)
 
   const { addItem, setBuyNowItem } = useCartStore()
 
@@ -856,10 +859,49 @@ export default function GadgetDetailPage() {
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                       Deskripsi & Jaminan Unit
                     </h3>
-                    <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                      {product.description ||
-                        'Unit smartphone second original bergaransi toko fisik 30 hari tukar unit. Seluruh unit telah melalui uji fungsi komprehensif teknisi (layar, kamera, baterai, sinyal & IMEI bebas blokir), dan dilengkapi bonus aksesoris 3-in-1.'}
-                    </p>
+                    <div className="relative mt-2">
+                      <div
+                        className={`text-xs leading-relaxed text-slate-600 dark:text-slate-400 transition-all duration-300 ${
+                          !isDesktopDescExpanded
+                            ? 'line-clamp-4 overflow-hidden'
+                            : ''
+                        }`}
+                      >
+                        <p className="whitespace-pre-line">
+                          {product.description ||
+                            'Unit smartphone second original bergaransi toko fisik 30 hari tukar unit. Seluruh unit telah melalui uji fungsi komprehensif teknisi (layar, kamera, baterai, sinyal & IMEI bebas blokir), dan dilengkapi bonus aksesoris 3-in-1.'}
+                        </p>
+                      </div>
+
+                      {/* Subtle fade overlay when collapsed */}
+                      {!isDesktopDescExpanded &&
+                        ((product.description || '').length > 200 ||
+                          (product.description || '').includes('\n')) && (
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-slate-900 dark:via-slate-900/80" />
+                        )}
+                    </div>
+
+                    {((product.description || '').length > 200 ||
+                      (product.description || '').includes('\n')) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIsDesktopDescExpanded(!isDesktopDescExpanded)
+                        }
+                        className="mt-2.5 inline-flex cursor-pointer items-center gap-1.5 text-xs font-bold text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        <span>
+                          {isDesktopDescExpanded
+                            ? 'Tampilkan Lebih Sedikit'
+                            : 'Lihat Selengkapnya'}
+                        </span>
+                        {isDesktopDescExpanded ? (
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {/* Spesifikasi Varian Dinamis */}

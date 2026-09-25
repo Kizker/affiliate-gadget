@@ -41,7 +41,7 @@ export const authConfig = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        token.role = user.role
+        token.role = user.role || 'CUSTOMER'
         token.name = user.name
         token.email = user.email
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -50,6 +50,9 @@ export const authConfig = {
         token.isTechnician = (user as any).isTechnician || false
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.mitraStatus = (user as any).mitraStatus || null
+      }
+      if (!token.role) {
+        token.role = 'CUSTOMER'
       }
       // Remove raw huge pictures to prevent bloat
       delete token.picture
@@ -60,7 +63,7 @@ export const authConfig = {
       if (session.user && token) {
         session.user.id = token.id as string
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        session.user.role = token.role as any
+        session.user.role = (token.role as any) || 'CUSTOMER'
         session.user.name = token.name as string
         session.user.email = token.email as string
         session.user.image = (token.image as string) || null

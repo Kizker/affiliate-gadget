@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 import {
   Search,
   Package,
@@ -25,6 +26,7 @@ import {
   Navigation,
   FileEdit,
   RefreshCw,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -208,6 +210,10 @@ function formatDate(dateStr: string, isFull = false) {
 }
 
 export default function AdminOrdersPage() {
+  const { data: session } = useSession()
+  const isPlatformAdmin =
+    session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
+
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -219,6 +225,7 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState(false)
+  const [copiedAWB, setCopiedAWB] = useState(false)
   const [requestingPickupId, setRequestingPickupId] = useState<string | null>(
     null
   )
@@ -379,6 +386,13 @@ export default function AdminOrdersPage() {
     setTimeout(() => setCopiedId(false), 2000)
   }
 
+  const handleCopyAWB = (awb: string) => {
+    navigator.clipboard.writeText(awb)
+    setCopiedAWB(true)
+    toast.success('Nomor resi / AWB berhasil disalin!')
+    setTimeout(() => setCopiedAWB(false), 2000)
+  }
+
   // Handle AWB input modal open
   const handleOpenAWBModal = (order: Order) => {
     setSelectedOrder(order)
@@ -409,11 +423,13 @@ export default function AdminOrdersPage() {
     if (!selectedOrder || !awbValidation?.valid) return
     try {
       setSubmittingAWB(true)
+      const targetStatus =
+        selectedOrder.status === 'PAID' ? 'IN_PROGRESS' : selectedOrder.status
       const res = await fetch(`/api/orders/${selectedOrder.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'IN_PROGRESS',
+          status: targetStatus,
           trackingNumber: awbValidation.formatted,
         }),
       })
@@ -421,14 +437,14 @@ export default function AdminOrdersPage() {
       if (!res.ok) throw new Error(data.error || 'Gagal menyimpan nomor resi')
 
       toast.success(
-        `Resi ${awbValidation.formatted} berhasil disimpan & pesanan diproses!`
+        `Resi ${awbValidation.formatted} berhasil disimpan!`
       )
       setOrders((prev) =>
         prev.map((o) =>
           o.id === selectedOrder.id
             ? {
                 ...o,
-                status: 'IN_PROGRESS',
+                status: targetStatus,
                 trackingNumber: awbValidation.formatted,
               }
             : o
@@ -438,7 +454,7 @@ export default function AdminOrdersPage() {
         prev
           ? {
               ...prev,
-              status: 'IN_PROGRESS',
+              status: targetStatus,
               trackingNumber: awbValidation.formatted,
             }
           : null
@@ -721,6 +737,37 @@ export default function AdminOrdersPage() {
                             <Truck className="h-3.5 w-3.5 text-blue-600" />{' '}
                             {courierDisplay}
                           </span>
+                          {order.trackingNumber ? (
+                            <div className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                              <span className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">
+                                {order.trackingNumber}
+                              </span>
+                              <button
+                                type="button"
+                                title="Cetak Label Thermal"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenThermalLabel(order)
+                                }}
+                                className="rounded p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
+                              >
+                                <Printer className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            order.status !== 'PENDING_PAYMENT' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenAWBModal(order)
+                                }}
+                                className="inline-flex w-fit items-center gap-1 text-[10px] font-semibold text-blue-600 hover:underline"
+                              >
+                                <FileEdit className="h-2.5 w-2.5" /> + Resi
+                              </button>
+                            )
+                          )}
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-orange-600">
                             <Gift className="h-3 w-3 text-orange-500" /> Free
                             Bonus 3-in-1
@@ -731,7 +778,10 @@ export default function AdminOrdersPage() {
                       {/* Kolom 6: Aksi (Hanya Rincian) */}
                       <td className="px-3 py-4 text-right align-middle">
                         <button
-                          onClick={() => setSelectedOrder(order)}
+                          onClick={() => {
+                            setSelectedOrder(order)
+                            setShowLiveTracker(Boolean(order.status === 'SHIPPED' && order.trackingNumber))
+                          }}
                           className="shadow-2xs inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                         >
                           <Eye className="h-3.5 w-3.5 text-slate-400" />
@@ -804,7 +854,7 @@ export default function AdminOrdersPage() {
           {selectedOrder && (
             <div className="flex max-h-[90vh] flex-1 flex-col overflow-hidden">
               {/* 1. Header Dialog: Pinned / Sticky Top Bar */}
-              <div className="py-4.5 shrink-0 border-b border-slate-100 bg-slate-50/80 px-6 dark:border-slate-800 dark:bg-slate-800/50 sm:px-7 sm:py-5">
+              <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/50 sm:px-7 sm:py-5">
                 <DialogHeader className="space-y-0 text-left">
                   <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
                     <div className="space-y-1.5">
@@ -1104,14 +1154,74 @@ export default function AdminOrdersPage() {
                         </span>
                       </div>
 
-                      {selectedOrder.trackingNumber && (
-                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
-                          <span className="text-xs font-bold text-slate-500">
-                            Resi / AWB:
-                          </span>
-                          <span className="font-mono text-xs font-black text-slate-900 dark:text-white">
-                            {selectedOrder.trackingNumber}
-                          </span>
+                      {selectedOrder.trackingNumber ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
+                            <span className="text-xs font-bold text-slate-500">
+                              Resi / AWB:
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-black text-slate-900 dark:text-white">
+                                {selectedOrder.trackingNumber}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCopyAWB(selectedOrder.trackingNumber!)
+                                }
+                                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-white"
+                                title="Salin Resi"
+                              >
+                                {copiedAWB ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleOpenThermalLabel(selectedOrder)
+                              }
+                              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                            >
+                              <Printer className="h-3.5 w-3.5 text-slate-500" />
+                              <span>Cetak Label Thermal</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowLiveTracker(!showLiveTracker)
+                              }
+                              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/90 bg-blue-50/80 py-2 text-xs font-bold text-blue-700 shadow-2xs transition hover:bg-blue-100 active:scale-[0.98] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
+                            >
+                              <Navigation className="h-3.5 w-3.5" />
+                              <span>
+                                {showLiveTracker
+                                  ? 'Tutup Pelacakan'
+                                  : 'Lacak Kurir Live'}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between rounded-xl border border-dashed border-slate-300 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                            <span>Belum ada nomor resi AWB</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAWBModal(selectedOrder)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-blue-700 active:scale-95"
+                          >
+                            <FileEdit className="h-3 w-3" />
+                            <span>+ Input Resi</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -1158,15 +1268,17 @@ export default function AdminOrdersPage() {
                     Tutup
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setTaxInvoiceOrder(selectedOrder)}
-                    className="shadow-2xs inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 px-4 py-2.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 hover:text-emerald-950 active:scale-95 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300"
-                    title="Cetak Faktur Pajak Elektronik Standar DJP"
-                  >
-                    <Printer className="h-3.5 w-3.5" />
-                    <span>Faktur Pajak</span>
-                  </button>
+                  {isPlatformAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setTaxInvoiceOrder(selectedOrder)}
+                      className="shadow-2xs inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 px-4 py-2.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 hover:text-emerald-950 active:scale-95 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      title="Cetak Faktur Pajak Elektronik Standar DJP"
+                    >
+                      <Printer className="h-3.5 w-3.5" />
+                      <span>Faktur Pajak</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -1236,30 +1348,6 @@ export default function AdminOrdersPage() {
                     <>
                       <button
                         type="button"
-                        onClick={() => handleOpenThermalLabel(selectedOrder)}
-                        className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      >
-                        <Printer className="h-3.5 w-3.5 text-slate-500" />
-                        <span>Cetak Label Thermal</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowLiveTracker(!showLiveTracker)}
-                        className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-xs font-semibold transition active:scale-95 ${
-                          showLiveTracker
-                            ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
-                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                        }`}
-                      >
-                        <Navigation className="h-3.5 w-3.5" />
-                        <span>
-                          {showLiveTracker ? 'Tutup Lacak' : 'Lacak Kurir Live'}
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
                         onClick={() => handleSyncStatus(selectedOrder.id)}
                         disabled={syncingStatusId === selectedOrder.id}
                         className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -1307,47 +1395,42 @@ export default function AdminOrdersPage() {
                   )}
 
                   {selectedOrder.status === 'SHIPPED' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenThermalLabel(selectedOrder)}
-                        className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      >
-                        <Printer className="h-3.5 w-3.5 text-slate-500" />
-                        <span>Cetak Label Thermal</span>
-                      </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleUpdateStatus(selectedOrder.id, 'COMPLETED')
+                      }
+                      disabled={updatingId === selectedOrder.id}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    >
+                      {updatingId === selectedOrder.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      <span>Tandai Selesai & Diterima</span>
+                    </button>
+                  )}
 
-                      <button
-                        type="button"
-                        onClick={() => setShowLiveTracker(!showLiveTracker)}
-                        className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-xs font-semibold transition active:scale-95 ${
-                          showLiveTracker
-                            ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
-                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                        }`}
-                      >
-                        <Navigation className="h-3.5 w-3.5" />
-                        <span>
-                          {showLiveTracker ? 'Tutup Lacak' : 'Lacak Kurir Live'}
-                        </span>
-                      </button>
+                  {selectedOrder.status === 'COMPLETED' && (
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>Pesanan Telah Selesai</span>
+                    </div>
+                  )}
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdateStatus(selectedOrder.id, 'COMPLETED')
-                        }
-                        disabled={updatingId === selectedOrder.id}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                      >
-                        {updatingId === selectedOrder.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="h-4 w-4" />
-                        )}
-                        <span>Tandai Selesai & Diterima</span>
-                      </button>
-                    </>
+                  {selectedOrder.status === 'COMPLAINED' && (
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <span>Dalam Status Komplain / Retur</span>
+                    </div>
+                  )}
+
+                  {selectedOrder.status === 'CANCELLED' && (
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
+                      <X className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                      <span>Pesanan Dibatalkan</span>
+                    </div>
                   )}
                 </div>
               </div>
