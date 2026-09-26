@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import {
   Wallet,
   TrendingUp,
@@ -22,10 +23,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  ShieldCheck,
+  ShieldAlert,
+  KeyRound,
+  RefreshCw,
+  ArrowLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PeriodSelect } from '@/components/dashboard/period-select'
 import { StoreSelect } from '@/components/dashboard/store-select'
+import { cn, maskEmail } from '@/lib/utils'
 
 interface TransactionMutation {
   id: string
@@ -77,6 +84,14 @@ interface StoreInfo {
     accountNumber: string
     accountName: string
   }
+  bankAccountUpdatedAt?: string | null
+  cooldownStatus?: {
+    isLocked: boolean
+    remainingHours: number
+    remainingMinutes: number
+    remainingSeconds: number
+    lockedUntil: string | null
+  }
 }
 
 interface StoreOption {
@@ -87,6 +102,8 @@ interface StoreOption {
 }
 
 export default function StoreAdminFinancePage() {
+  const { data: session } = useSession()
+
   const [activeTab, setActiveTab] = useState<
     | 'ALL'
     | 'SALE'
@@ -100,12 +117,47 @@ export default function StoreAdminFinancePage() {
   const [isDeadlineBannerDismissed, setIsDeadlineBannerDismissed] =
     useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // 2-Step Withdrawal Modal & Security Gate States
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
+  const [withdrawStep, setWithdrawStep] = useState<
+    'STEP_1_INPUT' | 'STEP_2_OTP' | 'SUCCESS'
+  >('STEP_1_INPUT')
   const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [withdrawOtpCode, setWithdrawOtpCode] = useState('')
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
   const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false)
+  const [otpExpirySeconds, setOtpExpirySeconds] = useState(300)
+  const [otpCooldownSeconds, setOtpCooldownSeconds] = useState(0)
+  const [withdrawalSuccessData, setWithdrawalSuccessData] = useState<{
+    refNumber: string
+    amount: number
+    bankName: string
+    accountNumber: string
+    accountName: string
+    requestedBy: string
+    date: string
+  } | null>(null)
+  const [withdrawalError, setWithdrawalError] = useState<{
+    code?: string
+    message: string
+  } | null>(null)
+
   const [isExportingExcel, setIsExportingExcel] = useState(false)
   const [isExportingOrders, setIsExportingOrders] = useState(false)
   const [dateRange, setDateRange] = useState('thisMonth')
+
+  // Timer countdown untuk kedaluwarsa OTP & cooldown kirim ulang
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (isWithdrawModalOpen && withdrawStep === 'STEP_2_OTP') {
+      timer = setInterval(() => {
+        setOtpExpirySeconds((prev) => Math.max(0, prev - 1))
+        setOtpCooldownSeconds((prev) => Math.max(0, prev - 1))
+      }, 1000)
+    }
+    return () => clearInterval(timer)
+  }, [isWithdrawModalOpen, withdrawStep])
 
   // Pagination & Mobile Lazy Loading State
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -113,8 +165,6 @@ export default function StoreAdminFinancePage() {
   const [mobileVisibleCount, setMobileVisibleCount] = useState(10)
   const [isLoadingMoreMobile, setIsLoadingMoreMobile] = useState(false)
   const mobileSentinelRef = useRef<HTMLDivElement | null>(null)
-
-
 
   // Date Range Helper (Identik dengan Superadmin Reports, safe non-mutating)
   const getDateRange = (range: string) => {
@@ -446,9 +496,7 @@ export default function StoreAdminFinancePage() {
           {tx.type === 'PAYOUT' && (
             <ArrowUpRight className="h-5 w-5 stroke-[2.5]" />
           )}
-          {tx.type === 'ESCROW' && (
-            <Clock className="h-5 w-5 stroke-[2.5]" />
-          )}
+          {tx.type === 'ESCROW' && <Clock className="h-5 w-5 stroke-[2.5]" />}
         </div>
 
         <div className="min-w-0">
@@ -516,12 +564,11 @@ export default function StoreAdminFinancePage() {
     </div>
   )
 
-  // Handle Withdrawal Submission to API
-  const handleWithdrawSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Handle Request OTP (Step 1 -> Step 2)
+  const handleRequestOtp = async () => {
     const numericAmount = parseInt(withdrawAmount.replace(/[^0-9]/g, ''), 10)
-    if (!numericAmount || numericAmount <= 0) {
-      toast.error('Masukkan nominal penarikan yang valid')
+    if (!numericAmount || numericAmount < 100000) {
+      toast.error('Nominal penarikan minimal Rp 100.000')
       return
     }
     if (numericAmount > stats.availableBalance) {
@@ -529,37 +576,126 @@ export default function StoreAdminFinancePage() {
       return
     }
 
+    const recipientIdentifier = session?.user?.email
+    if (!recipientIdentifier) {
+      toast.error('Email pengguna tidak ditemukan untuk pengiriman OTP')
+      return
+    }
+
+    try {
+      setIsSendingOtp(true)
+      setWithdrawalError(null)
+
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: recipientIdentifier,
+          purpose: 'WITHDRAWAL',
+          channel: 'EMAIL',
+          userId: session?.user?.id,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal mengirim kode OTP')
+      }
+
+      toast.success('Kode OTP 6 digit telah dikirim ke email resmi Anda')
+      setOtpExpirySeconds(data.expiresIn || 300)
+      setOtpCooldownSeconds(data.cooldown || 60)
+      setWithdrawOtpCode('')
+      setWithdrawStep('STEP_2_OTP')
+    } catch (err: any) {
+      console.error('Error sending OTP:', err)
+      toast.error(err.message || 'Gagal mengirim kode OTP verifikasi')
+    } finally {
+      setIsSendingOtp(false)
+    }
+  }
+
+  // Handle Resend OTP
+  const handleResendOtp = async () => {
+    if (otpCooldownSeconds > 0 || isSendingOtp) return
+    await handleRequestOtp()
+  }
+
+  // Handle Withdrawal Submission to API (Step 2 Submit)
+  const handleWithdrawSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const numericAmount = parseInt(withdrawAmount.replace(/[^0-9]/g, ''), 10)
+    if (!numericAmount || numericAmount < 100000) {
+      toast.error('Nominal penarikan minimal Rp 100.000')
+      return
+    }
+    if (numericAmount > stats.availableBalance) {
+      toast.error('Nominal melebihi saldo siap cair yang tersedia')
+      return
+    }
+    if (!withdrawOtpCode || withdrawOtpCode.trim().length !== 6) {
+      toast.error('Masukkan 6 digit kode OTP verifikasi')
+      return
+    }
+
     try {
       setIsSubmittingWithdraw(true)
+      setWithdrawalError(null)
+
       const res = await fetch('/api/admin/finance/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: numericAmount,
           storeId: store?.id,
+          otpCode: withdrawOtpCode.trim(),
         }),
       })
 
       const data = await res.json()
       if (!res.ok) {
+        setWithdrawalError({
+          code: data.code,
+          message: data.error || 'Gagal memproses penarikan saldo',
+        })
+
+        if (data.code === 'COOLING_DOWN') {
+          await fetchFinanceData(false)
+        }
         throw new Error(data.error || 'Gagal memproses penarikan saldo')
       }
 
       toast.success(
-        data.message ||
-          'Pengajuan penarikan dana berhasil diproses ke Bank Mandiri PT!'
+        data.message || 'Pencairan saldo PT berhasil diverifikasi dan diproses!'
       )
-      setIsWithdrawModalOpen(false)
-      setWithdrawAmount('')
+      setWithdrawalSuccessData({
+        refNumber: data.data.refNumber,
+        amount: data.data.amount,
+        bankName: data.data.bankName,
+        accountNumber: data.data.accountNumber,
+        accountName: data.data.accountName,
+        requestedBy: data.data.requestedBy,
+        date: new Date().toLocaleString('id-ID'),
+      })
+      setWithdrawStep('SUCCESS')
 
       // Refresh saldo langsung
       await fetchFinanceData(false)
     } catch (err: any) {
       console.error('Error withdrawing:', err)
-      toast.error(err.message || 'Gagal mengajukan penarikan dana')
+      toast.error(err.message || 'Gagal memproses penarikan dana')
     } finally {
       setIsSubmittingWithdraw(false)
     }
+  }
+
+  const handleCloseWithdrawModal = () => {
+    setIsWithdrawModalOpen(false)
+    setWithdrawStep('STEP_1_INPUT')
+    setWithdrawAmount('')
+    setWithdrawOtpCode('')
+    setWithdrawalError(null)
+    setWithdrawalSuccessData(null)
   }
 
   // Handle Export Laporan Keuangan (Excel)
@@ -742,7 +878,9 @@ export default function StoreAdminFinancePage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Kelola saldo siap cair, mutasi kas per cabang PT, bagi hasil platform, pajak PPh 23, dan penarikan dana (withdraw) ke rekening resmi.
+            Kelola saldo siap cair, mutasi kas per cabang PT, bagi hasil
+            platform, pajak PPh 23, dan penarikan dana (withdraw) ke rekening
+            resmi.
           </p>
         </div>
       </div>
@@ -1042,7 +1180,7 @@ export default function StoreAdminFinancePage() {
 
             {/* Search Bar for Mutations */}
             <div className="mt-3 flex items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
-              <div className="relative flex-1 max-w-sm">
+              <div className="relative max-w-sm flex-1">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
@@ -1114,7 +1252,7 @@ export default function StoreAdminFinancePage() {
                               }}
                               className={`rounded-lg px-2 py-0.5 text-[11px] font-bold transition ${
                                 itemsPerPage === num
-                                  ? 'bg-slate-900 text-white shadow-2xs dark:bg-white dark:text-slate-900'
+                                  ? 'shadow-2xs bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                                   : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400'
                               }`}
                             >
@@ -1185,7 +1323,7 @@ export default function StoreAdminFinancePage() {
                       className="flex flex-col items-center justify-center py-5 text-center"
                     >
                       {isLoadingMoreMobile ? (
-                        <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 px-4 py-1.5 text-xs font-semibold text-orange-600 shadow-2xs dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400">
+                        <div className="shadow-2xs flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 px-4 py-1.5 text-xs font-semibold text-orange-600 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400">
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-500" />
                           <span>Memuat mutasi berikutnya...</span>
                         </div>
@@ -1193,11 +1331,12 @@ export default function StoreAdminFinancePage() {
                         <button
                           type="button"
                           onClick={loadMoreMobile}
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                          className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
                         >
                           <span>Muat Lebih Banyak</span>
                           <span className="text-[10px] text-slate-400">
-                            ({mobileVisibleCount} / {filteredTransactions.length})
+                            ({mobileVisibleCount} /{' '}
+                            {filteredTransactions.length})
                           </span>
                         </button>
                       )}
@@ -1269,13 +1408,63 @@ export default function StoreAdminFinancePage() {
               </div>
             </div>
 
+            {/* Cooling-down Alert Banner (Task 5.2) */}
+            {store?.cooldownStatus?.isLocked && (
+              <div className="mt-3 rounded-2xl border border-amber-500/40 bg-amber-500/15 p-3 text-amber-200">
+                <div className="flex items-start gap-2.5">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <div className="space-y-0.5">
+                    <p className="text-[11px] font-bold text-amber-300">
+                      Penarikan Terkunci (Cooling-down 24 Jam)
+                    </p>
+                    <p className="text-[10px] leading-relaxed text-amber-200/90">
+                      Perubahan rekening bank terdeteksi. Demi keamanan dana PT,
+                      penarikan saldo dikunci sementara hingga{' '}
+                      <strong>
+                        {store.cooldownStatus.remainingHours} jam{' '}
+                        {store.cooldownStatus.remainingMinutes} menit
+                      </strong>{' '}
+                      lagi.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
-              onClick={() => setIsWithdrawModalOpen(true)}
-              className="shadow-xs mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-2.5 text-xs font-bold text-white transition-all hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+              disabled={store?.cooldownStatus?.isLocked}
+              onClick={() => {
+                if (store?.cooldownStatus?.isLocked) {
+                  toast.error(
+                    `Penarikan saldo dikunci sementara (Cooling-down). Sisa waktu: ${store.cooldownStatus.remainingHours} jam ${store.cooldownStatus.remainingMinutes} menit.`
+                  )
+                  return
+                }
+                setWithdrawStep('STEP_1_INPUT')
+                setIsWithdrawModalOpen(true)
+              }}
+              className={cn(
+                'shadow-xs mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-bold transition-all',
+                store?.cooldownStatus?.isLocked
+                  ? 'cursor-not-allowed border border-amber-500/30 bg-amber-500/10 text-amber-400'
+                  : 'bg-slate-950 text-white hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100'
+              )}
             >
-              <Wallet className="h-3.5 w-3.5" />
-              <span>Tarik Saldo ke Rekening PT</span>
+              {store?.cooldownStatus?.isLocked ? (
+                <>
+                  <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
+                  <span>
+                    Terkunci ({store.cooldownStatus.remainingHours}j{' '}
+                    {store.cooldownStatus.remainingMinutes}m)
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Wallet className="h-3.5 w-3.5" />
+                  <span>Tarik Saldo ke Rekening PT</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -1386,7 +1575,7 @@ export default function StoreAdminFinancePage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. MODAL DIALOG: PENARIKAN DANA (WITHDRAWAL)                               */}
+      {/* 4. MODAL DIALOG: PENARIKAN DANA (2-STEP SECURITY GATE)                     */}
       {/* ========================================================================= */}
       {isWithdrawModalOpen && (
         <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
@@ -1394,132 +1583,370 @@ export default function StoreAdminFinancePage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white dark:bg-white dark:text-slate-950">
-                  <Wallet className="h-5 w-5" />
+                <div
+                  className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-2xl text-white transition-colors',
+                    withdrawStep === 'SUCCESS'
+                      ? 'bg-emerald-600 dark:bg-emerald-500'
+                      : withdrawStep === 'STEP_2_OTP'
+                        ? 'bg-amber-600 dark:bg-amber-500'
+                        : 'bg-slate-950 dark:bg-white dark:text-slate-950'
+                  )}
+                >
+                  {withdrawStep === 'SUCCESS' ? (
+                    <ShieldCheck className="h-5 w-5" />
+                  ) : withdrawStep === 'STEP_2_OTP' ? (
+                    <KeyRound className="h-5 w-5" />
+                  ) : (
+                    <Wallet className="h-5 w-5" />
+                  )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-950 dark:text-white">
-                    Tarik Saldo ke Rekening PT
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-950 dark:text-white">
+                      {withdrawStep === 'SUCCESS'
+                        ? 'Pencairan Berhasil Diproses'
+                        : withdrawStep === 'STEP_2_OTP'
+                          ? 'Verifikasi Keamanan OTP (2FA)'
+                          : 'Tarik Saldo ke Rekening PT'}
+                    </h3>
+                    {withdrawStep !== 'SUCCESS' && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        {withdrawStep === 'STEP_1_INPUT'
+                          ? 'Tahap 1/2'
+                          : 'Tahap 2/2'}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-slate-400">
-                    Pencairan langsung ke rekening resmi cabang
+                    {withdrawStep === 'SUCCESS'
+                      ? 'Bukti pencairan resmi telah diterbitkan'
+                      : withdrawStep === 'STEP_2_OTP'
+                        ? 'Otorisasi pencairan dana via email resmi'
+                        : 'Pencairan langsung ke rekening resmi cabang'}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setIsWithdrawModalOpen(false)}
+                onClick={handleCloseWithdrawModal}
                 className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleWithdrawSubmit} className="mt-5 space-y-4">
-              <div>
-                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Rekening Tujuan Pencairan
-                </label>
-                <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-800/60">
+            {/* Error Feedback Banner (Task 5.5) */}
+            {withdrawalError && (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
                   <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      {store?.bankAccount?.bankName || 'Bank Mandiri'} ·{' '}
-                      {store?.bankAccount?.accountName ||
-                        store?.companyName ||
-                        'PT Gadget Jaya Sentosa'}
+                    <p className="font-bold">
+                      {withdrawalError.code === 'COOLING_DOWN'
+                        ? 'Penarikan Terkunci (Cooling-down)'
+                        : withdrawalError.code === 'ACCOUNT_NAME_MISMATCH'
+                          ? 'Kesesuaian Nama Rekening Ditolak'
+                          : withdrawalError.code === 'OTP_BLOCKED'
+                            ? 'Kode OTP Diblokir'
+                            : 'Gagal Memproses Permintaan'}
                     </p>
-                    <p className="mt-0.5 font-mono text-xs text-slate-500 dark:text-slate-400">
-                      {store?.bankAccount?.accountNumber || '1180 0192 8374 1'}
+                    <p className="mt-0.5 text-[11px] leading-relaxed">
+                      {withdrawalError.message}
                     </p>
                   </div>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 </div>
               </div>
+            )}
 
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Nominal Penarikan
+            {/* STEP 1: Form Nominal & Rekening (Task 5.3) */}
+            {withdrawStep === 'STEP_1_INPUT' && (
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Rekening Tujuan Pencairan
                   </label>
-                  <span className="text-[11px] text-slate-400">
-                    Maks:{' '}
-                    <strong className="text-slate-900 dark:text-white">
-                      Rp {stats.availableBalance.toLocaleString('id-ID')}
-                    </strong>
-                  </span>
-                </div>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    Rp
-                  </span>
-                  <input
-                    type="number"
-                    required
-                    max={stats.availableBalance}
-                    min={100000}
-                    placeholder="misal: 50000000"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200/80 bg-white py-2.5 pl-10 pr-4 text-xs font-bold text-slate-900 outline-none transition focus:border-slate-950 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-                  />
-                </div>
-                {stats.availableBalance > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {[10000000, 50000000, stats.availableBalance]
-                      .filter((val) => val <= stats.availableBalance)
-                      .map((preset, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setWithdrawAmount(preset.toString())}
-                          className="rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300"
-                        >
-                          {preset === stats.availableBalance
-                            ? 'Tarik Semua'
-                            : `${preset / 1000000} Jt`}
-                        </button>
-                      ))}
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-800/60">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        {store?.bankAccount?.bankName || 'Bank Mandiri'} ·{' '}
+                        {store?.bankAccount?.accountName ||
+                          store?.companyName ||
+                          'PT Gadget Jaya Sentosa'}
+                      </p>
+                      <p className="mt-0.5 font-mono text-xs text-slate-500 dark:text-slate-400">
+                        {store?.bankAccount?.accountNumber ||
+                          '1180 0192 8374 1'}
+                      </p>
+                    </div>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="flex items-start gap-2 rounded-2xl border border-amber-200/60 bg-amber-50/80 p-3 text-[11px] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                <span>
-                  Dana penarikan akan langsung diproses ke rekening{' '}
-                  {store?.bankAccount?.bankName || 'Bank Mandiri'} PT cabang
-                  dalam estimasi 1–5 menit tanpa biaya administrasi.
-                </span>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsWithdrawModalOpen(false)}
-                  className="rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={
-                    isSubmittingWithdraw ||
-                    !withdrawAmount ||
-                    Number(withdrawAmount) > stats.availableBalance
-                  }
-                  className="shadow-xs inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
-                >
-                  {isSubmittingWithdraw ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Wallet className="h-3.5 w-3.5" />
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Nominal Penarikan
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      Maks:{' '}
+                      <strong className="text-slate-900 dark:text-white">
+                        Rp {stats.availableBalance.toLocaleString('id-ID')}
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      Rp
+                    </span>
+                    <input
+                      type="number"
+                      required
+                      max={stats.availableBalance}
+                      min={100000}
+                      placeholder="misal: 50000000"
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      className="w-full rounded-2xl border border-slate-200/80 bg-white py-2.5 pl-10 pr-4 text-xs font-bold text-slate-900 outline-none transition focus:border-slate-950 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                  {stats.availableBalance > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[10000000, 50000000, stats.availableBalance]
+                        .filter((val) => val <= stats.availableBalance)
+                        .map((preset, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setWithdrawAmount(preset.toString())}
+                            className="rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                          >
+                            {preset === stats.availableBalance
+                              ? 'Tarik Semua'
+                              : `${preset / 1000000} Jt`}
+                          </button>
+                        ))}
+                    </div>
                   )}
-                  <span>Konfirmasi Penarikan</span>
-                </button>
+                </div>
+
+                <div className="flex items-start gap-2 rounded-2xl border border-amber-200/60 bg-amber-50/80 p-3 text-[11px] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    Sistem akan memverifikasi kesesuaian nama badan hukum dan
+                    mengirimkan 6 digit kode OTP ke email resmi Anda sebelum
+                    pencairan diproses.
+                  </span>
+                </div>
+
+                {/* Action Buttons Step 1 */}
+                <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={handleCloseWithdrawModal}
+                    className="rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRequestOtp}
+                    disabled={
+                      isSendingOtp ||
+                      !withdrawAmount ||
+                      Number(withdrawAmount) < 100000 ||
+                      Number(withdrawAmount) > stats.availableBalance
+                    }
+                    className="shadow-xs inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+                  >
+                    {isSendingOtp ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <KeyRound className="h-3.5 w-3.5" />
+                    )}
+                    <span>Lanjutkan ke Verifikasi OTP</span>
+                  </button>
+                </div>
               </div>
-            </form>
+            )}
+
+            {/* STEP 2: Input OTP & Verification (Task 5.4) */}
+            {withdrawStep === 'STEP_2_OTP' && (
+              <form onSubmit={handleWithdrawSubmit} className="mt-5 space-y-4">
+                <div className="rounded-2xl border border-blue-200/80 bg-blue-50/70 p-3.5 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200">
+                  <div className="flex items-start gap-2.5">
+                    <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <div className="space-y-1">
+                      <p className="font-bold">Kode OTP 6 Digit Terkirim</p>
+                      <p className="text-[11px] leading-relaxed text-blue-800 dark:text-blue-300">
+                        Kode otorisasi penarikan telah dikirimkan ke email resmi{' '}
+                        <strong>
+                          {maskEmail(session?.user?.email || 'admin@toko.com')}
+                        </strong>
+                        . Berlaku selama 5 menit.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Masukkan 6 Digit Kode OTP
+                    </label>
+                    <span className="font-mono text-xs font-bold text-amber-600 dark:text-amber-400">
+                      {Math.floor(otpExpirySeconds / 60)}:
+                      {(otpExpirySeconds % 60).toString().padStart(2, '0')}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    autoFocus
+                    placeholder="• • • • • •"
+                    value={withdrawOtpCode}
+                    onChange={(e) =>
+                      setWithdrawOtpCode(
+                        e.target.value.replace(/[^0-9]/g, '').slice(0, 6)
+                      )
+                    }
+                    className="w-full rounded-2xl border border-slate-200/80 bg-white py-3 text-center font-mono text-lg font-extrabold tracking-[0.5em] text-slate-950 outline-none transition focus:border-slate-950 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                  />
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400">
+                      Tidak menerima kode?
+                    </span>
+                    <button
+                      type="button"
+                      disabled={otpCooldownSeconds > 0 || isSendingOtp}
+                      onClick={handleResendOtp}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline disabled:opacity-50 dark:text-blue-400"
+                    >
+                      <RefreshCw
+                        className={cn(
+                          'h-3 w-3',
+                          isSendingOtp && 'animate-spin'
+                        )}
+                      />
+                      <span>
+                        {otpCooldownSeconds > 0
+                          ? `Kirim Ulang (${otpCooldownSeconds}s)`
+                          : 'Kirim Ulang OTP'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3 text-xs dark:border-slate-800 dark:bg-slate-800/60">
+                  <div className="flex justify-between py-1 text-slate-500">
+                    <span>Jumlah yang Dicairkan:</span>
+                    <strong className="text-slate-900 dark:text-white">
+                      Rp {Number(withdrawAmount).toLocaleString('id-ID')}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between py-1 text-slate-500">
+                    <span>Rekening Tujuan:</span>
+                    <strong className="text-slate-900 dark:text-white">
+                      {store?.bankAccount?.bankName} -{' '}
+                      {store?.bankAccount?.accountNumber}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Action Buttons Step 2 */}
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWithdrawStep('STEP_1_INPUT')
+                      setWithdrawalError(null)
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    <span>Ubah Nominal</span>
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={
+                      isSubmittingWithdraw ||
+                      withdrawOtpCode.length !== 6 ||
+                      otpExpirySeconds <= 0
+                    }
+                    className="shadow-xs inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                  >
+                    {isSubmittingWithdraw ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    )}
+                    <span>Konfirmasi & Cairkan Dana</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 3: Konfirmasi Sukses (Task 5.1 Success) */}
+            {withdrawStep === 'SUCCESS' && withdrawalSuccessData && (
+              <div className="mt-5 space-y-4">
+                <div className="py-2 text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                    <CheckCircle2 className="h-8 w-8" />
+                  </div>
+                  <h4 className="mt-3 text-base font-extrabold text-slate-900 dark:text-white">
+                    Pencairan Dana Berhasil!
+                  </h4>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Dana penarikan telah diproses ke rekening bank resmi cabang
+                    toko.
+                  </p>
+                </div>
+
+                <div className="space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 text-xs dark:border-slate-800 dark:bg-slate-800/60">
+                  <div className="flex justify-between border-b border-slate-200/60 pb-2 dark:border-slate-700/60">
+                    <span className="text-slate-500">Nomor Referensi</span>
+                    <strong className="font-mono text-slate-900 dark:text-white">
+                      {withdrawalSuccessData.refNumber}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-200/60 pb-2 dark:border-slate-700/60">
+                    <span className="text-slate-500">Nominal Pencairan</span>
+                    <strong className="text-sm text-emerald-600 dark:text-emerald-400">
+                      Rp {withdrawalSuccessData.amount.toLocaleString('id-ID')}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-200/60 pb-2 dark:border-slate-700/60">
+                    <span className="text-slate-500">Bank Tujuan</span>
+                    <strong className="text-slate-900 dark:text-white">
+                      {withdrawalSuccessData.bankName}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-200/60 pb-2 dark:border-slate-700/60">
+                    <span className="text-slate-500">Nomor Rekening</span>
+                    <strong className="font-mono text-slate-900 dark:text-white">
+                      {withdrawalSuccessData.accountNumber}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Nama Penerima</span>
+                    <strong className="text-slate-900 dark:text-white">
+                      {withdrawalSuccessData.accountName}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseWithdrawModal}
+                    className="shadow-xs w-full rounded-2xl bg-slate-950 py-3 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+                  >
+                    Tutup & Kembali ke Keuangan
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

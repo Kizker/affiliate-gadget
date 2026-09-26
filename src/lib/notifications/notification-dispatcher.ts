@@ -40,7 +40,7 @@ import {
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
 
-function getPurposeLabel(purpose: OtpPurpose): string {
+function getPurposeLabel(purpose: OtpPurpose | string): string {
   switch (purpose) {
     case 'LOGIN':
       return 'Login / Masuk'
@@ -54,6 +54,8 @@ function getPurposeLabel(purpose: OtpPurpose): string {
       return 'Ganti Kata Sandi'
     case 'TRANSACTION_CONFIRMATION':
       return 'Konfirmasi Transaksi'
+    case 'WITHDRAWAL':
+      return 'Penarikan Saldo Toko'
     default:
       return 'Keamanan Akun'
   }
@@ -74,6 +76,18 @@ export async function dispatchOtp(params: {
     const expireMinutes = Math.floor(
       parseInt(process.env.OTP_EXPIRE_SECONDS || '300', 10) / 60
     )
+
+    // Log OTP ke terminal lokal di environment development untuk testing praktis akun dummy
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`
+==================== [DEV OTP CODE] ====================
+🎯 Tujuan   : ${params.identifier} (${params.channel})
+📋 Keperluan: ${purposeLabel}
+🔑 KODE OTP : ${code}
+⏱️ Berlaku  : ${expireMinutes} menit
+========================================================
+`)
+    }
 
     let sendResult: NotificationResult
 

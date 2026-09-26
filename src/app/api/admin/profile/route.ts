@@ -53,8 +53,7 @@ export async function GET() {
           ...user.store,
           isPkp: (user.store as any).isPkp ?? true,
           vatRate: (user.store as any).vatRate ?? 11.0,
-          kppName:
-            (user.store as any).kppName ?? 'KPP Pratama Terdaftar',
+          kppName: (user.store as any).kppName ?? 'KPP Pratama Terdaftar',
           taxType: (user.store as any).taxType ?? 'INCLUSIVE',
         }
       : null
@@ -266,6 +265,12 @@ export async function PATCH(request: NextRequest) {
             where: { storeId: user.storeId },
           })
 
+          const isBankChanged =
+            !existingBank ||
+            existingBank.bankName !== bankName ||
+            existingBank.accountNumber !== accountNumber ||
+            existingBank.accountName !== accountName
+
           if (existingBank) {
             await tx.storeBankAccount.update({
               where: { id: existingBank.id },
@@ -284,6 +289,13 @@ export async function PATCH(request: NextRequest) {
                 accountName,
                 isPrimary: true,
               },
+            })
+          }
+
+          if (isBankChanged) {
+            await tx.store.update({
+              where: { id: user.storeId },
+              data: { bankAccountUpdatedAt: new Date() } as any,
             })
           }
         }

@@ -288,6 +288,9 @@ export async function PUT(
       commissionRate,
       isApproved,
       isActive,
+      bankName,
+      accountNumber,
+      accountName,
     } = body
 
     // 0. Check if it is a pending applicant
@@ -428,6 +431,42 @@ export async function PUT(
         storeUpdateData.commissionRate = parseFloat(commissionRate)
       if (isActive !== undefined) storeUpdateData.isActive = isActive
       if (isApproved !== undefined) storeUpdateData.isActive = isApproved
+
+      if (bankName && accountNumber) {
+        const existingBank = await db.storeBankAccount.findFirst({
+          where: { storeId: id },
+        })
+        const isBankChanged =
+          !existingBank ||
+          existingBank.bankName !== bankName ||
+          existingBank.accountNumber !== accountNumber ||
+          (accountName && existingBank.accountName !== accountName)
+
+        if (existingBank) {
+          await db.storeBankAccount.update({
+            where: { id: existingBank.id },
+            data: {
+              bankName,
+              accountNumber,
+              accountName: accountName || existingBank.accountName,
+            },
+          })
+        } else {
+          await db.storeBankAccount.create({
+            data: {
+              storeId: id,
+              bankName,
+              accountNumber,
+              accountName: accountName || existingStore.companyName,
+              isPrimary: true,
+            },
+          })
+        }
+
+        if (isBankChanged) {
+          storeUpdateData.bankAccountUpdatedAt = new Date()
+        }
+      }
 
       const updatedStore = await db.store.update({
         where: { id },

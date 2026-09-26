@@ -205,7 +205,12 @@ function formatRupiah(amount?: number): string {
 }
 
 function renderItemsTable(
-  items?: Array<{ name: string; variant?: string; quantity: number; price: number }>
+  items?: Array<{
+    name: string
+    variant?: string
+    quantity: number
+    price: number
+  }>
 ): string {
   if (!items || items.length === 0) return ''
   const rows = items
@@ -360,7 +365,12 @@ export function orderCompletedEmailTemplate(params: {
   shippingCost?: number
   insuranceFee?: number
   discountAmount?: number
-  items?: Array<{ name: string; variant?: string; quantity: number; price: number }>
+  items?: Array<{
+    name: string
+    variant?: string
+    quantity: number
+    price: number
+  }>
   warrantyExpiryDate?: string
   viewOrderUrl: string
 }): string {
@@ -433,7 +443,12 @@ export function orderRefundedEmailTemplate(params: {
   refundBank?: string
   refundAccount?: string
   refundAccountName?: string
-  items?: Array<{ name: string; variant?: string; quantity: number; price: number }>
+  items?: Array<{
+    name: string
+    variant?: string
+    quantity: number
+    price: number
+  }>
   viewOrderUrl: string
 }): string {
   const content = `
@@ -523,7 +538,12 @@ export function orderComplainedEmailTemplate(params: {
   complaintSubject?: string
   complaintDescription?: string
   complaintStatus?: string
-  items?: Array<{ name: string; variant?: string; quantity: number; price: number }>
+  items?: Array<{
+    name: string
+    variant?: string
+    quantity: number
+    price: number
+  }>
   viewOrderUrl: string
 }): string {
   const content = `
@@ -671,4 +691,85 @@ export function newDeviceSecurityEmailTemplate(params: {
     }
   `
   return baseEmailLayout('Peringatan Login Perangkat Baru', content)
+}
+
+export function withdrawalConfirmationEmailTemplate(params: {
+  storeName: string
+  companyName: string
+  amount: number
+  bankName: string
+  accountNumber: string
+  accountName: string
+  refNumber: string
+  date: string
+}): string {
+  const content = `
+    <h2 style="font-size: 20px; color: #0f172a; margin-top: 0;">Konfirmasi Penarikan Saldo Berhasil</h2>
+    <p style="color: #475569; font-size: 15px; line-height: 1.6;">
+      Permintaan pencairan dana toko <strong>${params.storeName} (${params.companyName})</strong> telah berhasil diverifikasi dan diproses oleh sistem.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Nomor Referensi</td>
+          <td style="font-weight: 700; color: #0f172a; text-align: right;">${params.refNumber}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Jumlah Pencairan</td>
+          <td style="font-weight: 700; color: #16a34a; text-align: right; font-size: 16px;">Rp ${params.amount.toLocaleString('id-ID')}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Bank Tujuan</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">${params.bankName}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Nomor Rekening</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">${params.accountNumber}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Nama Pemilik Rekening</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: right;">${params.accountName}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Waktu Transaksi</td>
+          <td style="color: #475569; text-align: right;">${params.date}</td>
+        </tr>
+      </table>
+    </div>
+    <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin-top: 16px;">
+      Dana akan diteruskan ke rekening resmi PT Anda sesuai jadwal kliring bank. Simpan nomor referensi ini sebagai bukti pencairan resmi.
+    </p>
+  `
+  return baseEmailLayout(
+    `Bukti Penarikan Saldo — Ref #${params.refNumber}`,
+    content
+  )
+}
+
+export function withdrawalSecurityAlertEmailTemplate(params: {
+  storeName: string
+  userName: string
+  reason: string
+  attempts?: number
+  time: string
+}): string {
+  const content = `
+    <h2 style="font-size: 20px; color: #dc2626; margin-top: 0;">⚠️ Peringatan Keamanan: Percobaan Penarikan Mencurigakan</h2>
+    <p style="color: #475569; font-size: 15px; line-height: 1.6;">
+      Terdeteksi aktivitas mencurigakan pada permintaan penarikan saldo toko <strong>${params.storeName}</strong>:
+    </p>
+    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 18px; margin: 20px 0;">
+      <p style="margin: 0 0 6px 0; color: #991b1b; font-size: 14px; font-weight: 600;">Detail Peringatan:</p>
+      <p style="margin: 0 0 8px 0; color: #7f1d1d; font-size: 14px;">${params.reason}</p>
+      ${params.attempts ? `<p style="margin: 0 0 8px 0; color: #7f1d1d; font-size: 14px;">Jumlah percobaan salah berturut-turut: <strong>${params.attempts} kali</strong></p>` : ''}
+      <p style="margin: 0; color: #7f1d1d; font-size: 13px;">Waktu: ${params.time}</p>
+    </div>
+    <p style="color: #475569; font-size: 14px; line-height: 1.6;">
+      Permintaan penarikan telah diblokir secara otomatis oleh sistem keamanan internal platform. Jika Anda tidak mengenali aktivitas ini, segera periksa kredensial akses toko Anda.
+    </p>
+  `
+  return baseEmailLayout(
+    `Peringatan Keamanan Penarikan Saldo — ${params.storeName}`,
+    content
+  )
 }

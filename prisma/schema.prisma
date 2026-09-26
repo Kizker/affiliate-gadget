@@ -139,6 +139,7 @@ model Store {
   totalReview    Int                @default(0)
   totalSales     Int                @default(0)
   isActive       Boolean            @default(true)
+  bankAccountUpdatedAt DateTime?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   bankAccounts   StoreBankAccount[]
@@ -1218,6 +1219,7 @@ enum OtpPurpose {
   CHANGE_EMAIL
   CHANGE_PASSWORD
   TRANSACTION_CONFIRMATION
+  WITHDRAWAL
 }
 
 enum OtpChannel {

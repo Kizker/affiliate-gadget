@@ -6,6 +6,7 @@ import {
   getStoreWithdrawals,
   getTotalWithdrawn,
 } from '@/lib/store-withdrawal-store'
+import { checkBankAccountCooldown } from '@/lib/withdrawal-security'
 import {
   calculatePaymentGatewayFee,
   calculateMaintenanceFee,
@@ -493,6 +494,10 @@ export async function GET(request: NextRequest) {
           targetStore?.companyName || 'PT Affiliate Gadget Nusantara',
       }
 
+    const bankAccountCooldownStatus = checkBankAccountCooldown(
+      targetStore?.bankAccountUpdatedAt
+    )
+
     return NextResponse.json({
       success: true,
       store: targetStore
@@ -503,8 +508,11 @@ export async function GET(request: NextRequest) {
             taxId: targetStore.taxId || '01.428.910.4-015.000',
             city: targetStore.city,
             bankAccount: primaryBankAccount,
+            bankAccountUpdatedAt: targetStore.bankAccountUpdatedAt || null,
+            cooldownStatus: bankAccountCooldownStatus,
           }
         : null,
+      bankAccountCooldownStatus,
       stats: {
         availableBalance,
         grossRevenue,

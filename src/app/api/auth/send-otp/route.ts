@@ -62,21 +62,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Rate Limiting: Maksimal 5x per nomor per 24 jam
-    const maxPerDay = parseInt(process.env.OTP_MAX_ATTEMPTS || '5', 10)
+    // 2. Rate Limiting: Maksimal 5x per nomor per 24 jam (3x untuk penarikan dana)
+    const isWithdrawal = purpose === 'WITHDRAWAL'
+    const maxPerDay = isWithdrawal
+      ? 3
+      : parseInt(process.env.OTP_MAX_ATTEMPTS || '5', 10)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const attemptsCount = await db.otpToken.count({
       where: {
         identifier: normalizedTarget,
         createdAt: { gte: oneDayAgo },
+        ...(isWithdrawal ? { purpose: 'WITHDRAWAL' as any } : {}),
       },
     })
 
     if (attemptsCount >= maxPerDay) {
       return NextResponse.json(
         {
-          error:
-            'Batas permintaan OTP harian telah tercapai (maksimal 5 kali). Coba lagi besok.',
+          error: isWithdrawal
+            ? 'Batas permintaan OTP penarikan harian telah tercapai (maksimal 3 kali). Coba lagi besok.'
+            : 'Batas permintaan OTP harian telah tercapai (maksimal 5 kali). Coba lagi besok.',
         },
         { status: 429 }
       )

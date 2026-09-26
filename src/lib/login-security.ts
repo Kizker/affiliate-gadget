@@ -85,6 +85,18 @@ export async function checkLoginRateLimit(
   reason: 'ip' | 'email' | null
   retryAfterSeconds: number
 }> {
+  // Exempt localhost in dev/test environment
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost')
+  ) {
+    return {
+      blocked: false,
+      reason: null,
+      retryAfterSeconds: 0,
+    }
+  }
+
   // 1. IP rate limit check
   const ipResult = await checkRateLimit(
     `login:ip:${ip}`,
@@ -100,19 +112,26 @@ export async function checkLoginRateLimit(
     }
   }
 
-  // 2. Email rate limit check
+  // 2. Email rate limit check (exempt test domains in dev/test)
   const normalizedEmail = email.trim().toLowerCase()
-  const emailResult = await checkRateLimit(
-    `login:email:${normalizedEmail}`,
-    LOGIN_SECURITY_CONFIG.RATE_LIMIT_EMAIL_MAX,
-    LOGIN_SECURITY_CONFIG.RATE_LIMIT_EMAIL_WINDOW
-  )
+  const isDevTestAccount =
+    process.env.NODE_ENV !== 'production' &&
+    (normalizedEmail.endsWith('@affiliategadget.com') ||
+      normalizedEmail.endsWith('@test.com'))
 
-  if (!emailResult.success) {
-    return {
-      blocked: true,
-      reason: 'email',
-      retryAfterSeconds: emailResult.resetInSeconds,
+  if (!isDevTestAccount) {
+    const emailResult = await checkRateLimit(
+      `login:email:${normalizedEmail}`,
+      LOGIN_SECURITY_CONFIG.RATE_LIMIT_EMAIL_MAX,
+      LOGIN_SECURITY_CONFIG.RATE_LIMIT_EMAIL_WINDOW
+    )
+
+    if (!emailResult.success) {
+      return {
+        blocked: true,
+        reason: 'email',
+        retryAfterSeconds: emailResult.resetInSeconds,
+      }
     }
   }
 
@@ -203,6 +222,15 @@ export async function checkAccountLockout(
   email: string
 ): Promise<{ locked: boolean; remainingSeconds: number }> {
   const normalizedEmail = email.trim().toLowerCase()
+  const isDevTestAccount =
+    process.env.NODE_ENV !== 'production' &&
+    (normalizedEmail.endsWith('@affiliategadget.com') ||
+      normalizedEmail.endsWith('@test.com'))
+
+  if (isDevTestAccount) {
+    return { locked: false, remainingSeconds: 0 }
+  }
+
   const key = `login:fail:${normalizedEmail}`
   const threshold = LOGIN_SECURITY_CONFIG.LOCKOUT_THRESHOLD
   const duration = LOGIN_SECURITY_CONFIG.LOCKOUT_DURATION_SECONDS
