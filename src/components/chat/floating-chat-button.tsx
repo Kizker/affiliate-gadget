@@ -26,6 +26,7 @@ import { toast } from 'sonner'
 import OrderReferenceCard from './order-reference-card'
 import { DateSeparator } from './date-separator'
 import { isSameDay } from '@/utils/chat-helpers'
+import { isStoreOperational, getChatTickStatus } from '@/lib/chat-status'
 
 interface TechnicianChatRoom {
   id: string
@@ -83,6 +84,13 @@ interface AdminChatRoom {
     id?: string
     name?: string
     logo?: string | null
+    isActive?: boolean
+    schedules?: Array<{
+      dayOfWeek: number
+      openTime: string
+      closeTime: string
+      isClosed: boolean
+    }>
   } | null
   order?: {
     id: string
@@ -94,6 +102,13 @@ interface AdminChatRoom {
       id?: string
       name?: string
       logo?: string | null
+      isActive?: boolean
+      schedules?: Array<{
+        dayOfWeek: number
+        openTime: string
+        closeTime: string
+        isClosed: boolean
+      }>
     } | null
     claimedBy?: {
       id: string
@@ -1736,12 +1751,28 @@ export default function FloatingChatButton() {
                                   </span>
                                   {isMe && (
                                     <>
-                                      {msg.isRead ? (
-                                        <CheckCheck className="h-3.5 w-3.5" />
-                                      ) : msg.id ? (
-                                        <Check className="h-3.5 w-3.5" />
+                                      {!msg.id ? (
+                                        <Clock className="h-3.5 w-3.5 text-white/50" />
+                                      ) : msg.isRead ? (
+                                        <span title="Sudah dibaca">
+                                          <CheckCheck className="h-3.5 w-3.5 text-blue-400" />
+                                        </span>
+                                      ) : isStoreOperational(
+                                          activeRoom?.type === 'admin'
+                                            ? activeRoom.store ||
+                                                (activeRoom as any).order?.store
+                                            : null,
+                                          activeRoom?.type === 'technician'
+                                            ? (activeRoom as any).technician
+                                            : null
+                                        ) ? (
+                                        <span title="Diterima server (Toko online)">
+                                          <CheckCheck className="h-3.5 w-3.5 text-white/60" />
+                                        </span>
                                       ) : (
-                                        <Clock className="h-3.5 w-3.5" />
+                                        <span title="Terkirim (Toko offline)">
+                                          <Check className="h-3.5 w-3.5 text-white/60" />
+                                        </span>
                                       )}
                                     </>
                                   )}

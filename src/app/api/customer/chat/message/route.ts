@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         content: true,
         messageType: true,
         mediaUrl: true,
+        isRead: true,
         createdAt: true,
         sender: {
           select: {
@@ -58,10 +59,28 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Update room's lastMessageAt
+    // Update room's lastMessageAt and optionally orderId if order_reference sent
+    let orderIdToLink: string | null = null
+    if (messageType === 'order_reference' && !room.orderId) {
+      try {
+        const parsed = JSON.parse(content?.trim() || '{}')
+        if (parsed.orderId) {
+          const existingClaim = await prisma.adminChatRoom.findFirst({
+            where: { orderId: parsed.orderId },
+          })
+          if (!existingClaim) {
+            orderIdToLink = parsed.orderId
+          }
+        }
+      } catch {}
+    }
+
     await prisma.adminChatRoom.update({
       where: { id: room.id },
-      data: { lastMessageAt: new Date() },
+      data: {
+        lastMessageAt: new Date(),
+        ...(orderIdToLink ? { orderId: orderIdToLink } : {}),
+      },
     })
 
     return NextResponse.json({ message })

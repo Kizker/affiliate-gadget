@@ -95,6 +95,18 @@ Sistem difokuskan pada **4 Role Utama** sesuai hierarki operasional platform:
 - `/cart` & `/checkout` — Checkout Logistik Terproteksi (pilihan JNE/Gojek, wajib asuransi 0.25%, rincian bonus 3-in-1 Rp 0).
 - `/dashboard/admin` — Multi-PT CMS Panel (filter cabang PT, omzet real-time, saldo komisi platform 1–3%, master data, shield security).
 
+- **2026-09-27 (Komprehensif E2E Error Tracking, Production Build Hardening & Test Suite 100% Pass):**
+  - **1. Audit & Perbaikan Root Layout / Hydration ([`src/app/layout.tsx`](file:///src/app/layout.tsx)):** Menghapus manual duplicate `<head>` metadata, migrasi font Poppins via `next/font/google` dengan variabel font terintegrasi, mencegah peringatan SSR duplicate meta keys di semua rute Next.js 15.
+  - **2. Penanganan Global Not-Found & Error Boundary ([`src/app/not-found.tsx`](file:///src/app/not-found.tsx), [`src/app/error.tsx`](file:///src/app/error.tsx)):** Menyediakan fallback dinamis 404 (`force-dynamic`) untuk menyelesaikan crash build NextAuth `SessionProvider` prerender `/_not-found` (`useState on null`), serta error boundary global ramah pengguna dengan tombol refresh dan recovery state.
+  - **3. Build Standalone Guard Windows ([`next.config.js`](file:///next.config.js)):** Menyesuaikan konfigurasi `output: 'standalone'` agar hanya aktif pada environment Linux/Docker atau via `BUILD_STANDALONE=true`, mengatasi kegagalan izin Windows NTFS symlink (`EPERM -4048`).
+  - **4. Playwright E2E Multi-Viewport & Strict Mode Hardening ([`tests/e2e/public-pages.spec.ts`](file:///tests/e2e/public-pages.spec.ts), [`tests/e2e/ads-management.spec.ts`](file:///tests/e2e/ads-management.spec.ts)):** Mengisolasi selector desktop vs mobile menggunakan `:visible`, menyesuaikan timeout kompilasi rute dinamis (15000ms), menambahkan E2E flow pengujian Iklan Toko (Level 1 durasi harian, Level 2 slot count + hari, modal upload/ganti banner).
+  - **5. Health & Quality Gate Verification:**
+    - TypeScript: 0 error (`pnpm tsc --noEmit` pass).
+    - Linter: 0 error (`pnpm lint` pass).
+    - Unit Tests: 63 test files, 519 unit tests lulus 100% (`pnpm test:unit`).
+    - Next.js Production Build: 170/170 static & dynamic routes lulus 100% (`pnpm build`).
+    - Playwright E2E Suite: 6 spec files, 49 passed, 1 skipped, 0 failed lulus 100% (`pnpm test:e2e`).
+
 - **2026-09-25 (Modul Keamanan Penarikan Saldo — 3 Gerbang Keamanan, Cooling-down 24 Jam, Validasi Nama PT, 2-Step OTP, & Rate Limiting):**
   - **1. Database Schema & Prisma Sync ([`prisma/schema.prisma`](file:///prisma/schema.prisma)):** Menambahkan kolom `bankAccountUpdatedAt DateTime?` pada model `Store` dan nilai `WITHDRAWAL` pada enum `OtpPurpose`. Menyinkronkan database PostgreSQL dan Prisma client secara aman.
   - **2. Cooling-down Period 24 Jam ([`withdrawal-security.ts`](file:///src/lib/withdrawal-security.ts), [`profile/route.ts`](file:///src/app/api/admin/profile/route.ts), [`mitras/[id]/route.ts`](file:///src/app/api/admin/mitras/[id]/route.ts)):** Pencatatan otomatis `bankAccountUpdatedAt` saat rekening bank toko diubah atau ditambahkan. Pemblokiran HTTP 403 otomatis di API penarikan jika rekening diubah dalam kurun 24 jam terakhir beserta payload sisa jam dan menit penguncian.

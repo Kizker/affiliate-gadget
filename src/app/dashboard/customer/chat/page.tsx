@@ -28,6 +28,7 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { isStoreOperational, getChatTickStatus } from '@/lib/chat-status'
 
 interface ChatRoom {
   id: string
@@ -56,6 +57,13 @@ interface ChatRoom {
       phone?: string | null
       city?: string
       logo?: string | null
+      isActive?: boolean
+      schedules?: Array<{
+        day: string
+        openTime: string
+        closeTime: string
+        isClosed?: boolean
+      }>
     } | null
     claimedBy?: {
       id: string
@@ -84,8 +92,17 @@ interface ChatRoom {
     phone?: string | null
     city?: string
     logo?: string | null
+    isActive?: boolean
+    schedules?: Array<{
+      day: string
+      openTime: string
+      closeTime: string
+      isClosed?: boolean
+    }>
   } | null
   technician?: {
+    id?: string
+    isAvailable?: boolean
     user: {
       name: string | null
       image: string | null
@@ -98,11 +115,15 @@ interface ChatRoom {
     email: string
     image: string | null
   }
+  hasOrder?: boolean
+  totalUnread?: number
   messages?: {
+    id?: string
     content: string
     messageType?: string
     mediaUrl?: string | null
     mediaType?: string | null
+    isRead?: boolean
     createdAt?: string
     senderId?: string
   }[]
@@ -168,6 +189,67 @@ const isImageMedia = (
     return true
   }
   return false
+}
+
+const renderWhatsAppTick = (
+  isRead?: boolean,
+  isOnline: boolean = true,
+  size: 'normal' | 'small' = 'normal',
+  variant: 'default' | 'on-blue' = 'default'
+) => {
+  const tickStatus = getChatTickStatus({ isRead, isRecipientOnline: isOnline })
+  const iconClass = size === 'small' ? 'inline h-2.5 w-2.5' : 'inline h-3 w-3'
+
+  if (variant === 'on-blue') {
+    if (tickStatus === 'READ') {
+      return (
+        <span title="Sudah dibaca">
+          <CheckCheck className={`${iconClass} text-sky-300`} />
+        </span>
+      )
+    }
+    if (tickStatus === 'DELIVERED') {
+      return (
+        <span title="Diterima server (Toko online)">
+          <CheckCheck className={`${iconClass} text-blue-200/80`} />
+        </span>
+      )
+    }
+    return (
+      <span title="Terkirim ke server (Toko offline)">
+        <Check className={`${iconClass} text-blue-200/80`} />
+      </span>
+    )
+  }
+
+  if (tickStatus === 'READ') {
+    // Ceklis 2 Biru: Sudah dibaca oleh salah satu pihak
+    return (
+      <span title="Sudah dibaca">
+        <CheckCheck
+          className={`${iconClass} text-blue-500 dark:text-blue-400`}
+        />
+      </span>
+    )
+  }
+
+  if (tickStatus === 'DELIVERED') {
+    // Ceklis 2 Abu-abu: Diterima server & pihak toko online (belum dibaca)
+    return (
+      <span title="Diterima server (Toko online)">
+        <CheckCheck
+          className={`${iconClass} text-slate-400 dark:text-slate-400`}
+        />
+      </span>
+    )
+  }
+
+  // Ceklis 1 Abu-abu: Diterima server, tetapi toko sedang offline / di luar jam operasional
+  return (
+    <span title="Terkirim ke server (Toko offline)">
+      <Check className={`${iconClass} text-slate-400 dark:text-slate-400`} />
+    </span>
+  )
 }
 
 function CustomerChatContent() {
@@ -1041,6 +1123,24 @@ function CustomerChatContent() {
     }
   }
 
+  // Helper to determine if a room has unread messages
+  const checkIsRoomUnread = (room: ChatRoom) => {
+    const incomingUnread = (room._count?.messages || 0) > 0
+    const latestMsgUnread =
+      room.messages?.[0] && room.messages[0].isRead === false
+    const roomTotalUnread = (room.totalUnread || 0) > 0
+    return incomingUnread || latestMsgUnread || roomTotalUnread
+  }
+
+  // Helper to determine if a room is an order chat ("khusus chat yang sudah ada bagian memesannya saja")
+  // Chats that are only asking questions (e.g. tanya produk / konsultasi umum) will return false
+  const checkIsRoomOrder = (room: ChatRoom) => {
+    return !!room.order || !!room.hasOrder || !!room.orderId
+  }
+
+  const unreadRoomsCount = rooms.filter(checkIsRoomUnread).length
+  const orderRoomsCount = rooms.filter(checkIsRoomOrder).length
+
   const filteredRooms = rooms.filter((room) => {
     const orderNumber = room.order?.orderNumber || ''
     const storeName = room.order?.store?.name || room.store?.name || ''
@@ -1059,10 +1159,10 @@ function CustomerChatContent() {
     if (!matchQuery) return false
 
     if (roomFilter === 'UNREAD') {
-      return (room._count?.messages || 0) > 0
+      return checkIsRoomUnread(room)
     }
     if (roomFilter === 'ORDER') {
-      return !!room.order
+      return checkIsRoomOrder(room)
     }
     return true
   })
@@ -1164,6 +1264,10 @@ function CustomerChatContent() {
 
   // Active Store / CS Phone for WhatsApp direct action
   const activeStore = selectedRoom?.order?.store || selectedRoom?.store
+  const isStoreOnline = isStoreOperational(
+    activeStore,
+    selectedRoom?.technician
+  )
   const activeStorePhone = (
     activeStore?.phone ||
     selectedRoom?.technician?.user?.phone ||
@@ -1311,20 +1415,35 @@ function CustomerChatContent() {
                 {/* Segmented Filter Pills */}
                 <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
                   {[
-                    { id: 'ALL', label: 'Semua' },
-                    { id: 'UNREAD', label: 'Belum Dibaca' },
-                    { id: 'ORDER', label: 'Pesanan' },
+                    { id: 'ALL', label: 'Semua', count: rooms.length },
+                    {
+                      id: 'UNREAD',
+                      label: 'Belum Dibaca',
+                      count: unreadRoomsCount,
+                    },
+                    { id: 'ORDER', label: 'Pesanan', count: orderRoomsCount },
                   ].map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setRoomFilter(tab.id as any)}
-                      className={`flex-1 rounded-lg py-1 text-center text-[11px] font-bold transition-all ${
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-center text-[11px] font-bold transition-all ${
                         roomFilter === tab.id
                           ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
                           : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
                       }`}
                     >
-                      {tab.label}
+                      <span>{tab.label}</span>
+                      {tab.count > 0 && (
+                        <span
+                          className={`py-0.2 rounded-full px-1.5 text-[9.5px] font-bold ${
+                            roomFilter === tab.id
+                              ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-200'
+                              : 'bg-slate-200/70 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          {tab.count}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -1338,16 +1457,28 @@ function CustomerChatContent() {
                       <MessageSquare className="h-6 w-6" />
                     </div>
                     <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Belum Ada Percakapan
+                      {roomFilter === 'UNREAD'
+                        ? 'Tidak Ada Pesan Belum Dibaca'
+                        : roomFilter === 'ORDER'
+                          ? 'Belum Ada Chat Pesanan'
+                          : 'Belum Ada Percakapan'}
                     </p>
-                    <p className="mt-0.5 max-w-[180px] text-[11px] text-slate-400">
-                      Mulai chat melalui rincian pesanan Anda.
+                    <p className="mt-0.5 max-w-[200px] text-[11px] text-slate-400">
+                      {roomFilter === 'UNREAD'
+                        ? 'Semua pesan sudah dibaca.'
+                        : roomFilter === 'ORDER'
+                          ? 'Chat khusus barang yang sudah dipesan akan tampil di sini. Tanya-tanya umum tidak masuk tab ini.'
+                          : 'Mulai chat melalui rincian pesanan Anda.'}
                     </p>
                   </div>
                 ) : (
                   filteredRooms.map((room) => {
                     const isSelected = selectedRoom?.id === room.id
                     const storeObj = room.order?.store || room.store
+                    const roomIsOnline = isStoreOperational(
+                      storeObj,
+                      room.technician
+                    )
                     const storeLogo =
                       room.claimedBy?.image ||
                       storeObj?.logo ||
@@ -1390,6 +1521,17 @@ function CustomerChatContent() {
                               {title.charAt(0).toUpperCase()}
                             </div>
                           )}
+                          {/* Store Online / Offline Status Dot */}
+                          <span
+                            className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-900 ${
+                              roomIsOnline
+                                ? 'bg-emerald-500'
+                                : 'bg-slate-300 dark:bg-slate-600'
+                            }`}
+                            title={
+                              roomIsOnline ? 'Toko Online' : 'Toko Offline'
+                            }
+                          />
                           {(room._count?.messages || 0) > 0 && (
                             <span className="shadow-2xs absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
                               {room._count?.messages}
@@ -1485,10 +1627,17 @@ function CustomerChatContent() {
                           <h3 className="truncate text-xs font-bold text-slate-900 dark:text-white sm:text-sm">
                             {activeStoreTitle}
                           </h3>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9.5px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                            Online
-                          </span>
+                          {isStoreOnline ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9.5px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                              Online
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9.5px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                              Offline
+                            </span>
+                          )}
                         </div>
                         <p className="truncate text-[11px] text-slate-400">
                           {selectedRoom.order ? (
@@ -1737,9 +1886,11 @@ function CustomerChatContent() {
                                 {/* Floating Glassmorphic Timestamp Pill */}
                                 <div className="shadow-xs pointer-events-none absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-medium text-white/95 backdrop-blur-md">
                                   <span>{formattedTime}</span>
-                                  {isMe && (
-                                    <CheckCheck className="inline h-3 w-3 text-blue-400" />
-                                  )}
+                                  {isMe &&
+                                    renderWhatsAppTick(
+                                      msg.isRead,
+                                      isStoreOnline
+                                    )}
                                 </div>
                               </div>
                             ) : isStructuredInquiry ? (
@@ -1850,9 +2001,12 @@ function CustomerChatContent() {
                                         </span>
                                         <div className="flex items-center gap-1 text-[9px] text-slate-400">
                                           <span>{formattedTime}</span>
-                                          {isMe && (
-                                            <CheckCheck className="inline h-2.5 w-2.5 text-blue-500" />
-                                          )}
+                                          {isMe &&
+                                            renderWhatsAppTick(
+                                              msg.isRead,
+                                              isStoreOnline,
+                                              'small'
+                                            )}
                                         </div>
                                       </div>
 
@@ -2004,9 +2158,12 @@ function CustomerChatContent() {
                                         </span>
                                         <div className="flex items-center gap-1 text-[9px] text-slate-400">
                                           <span>{formattedTime}</span>
-                                          {isMe && (
-                                            <CheckCheck className="inline h-2.5 w-2.5 text-blue-500" />
-                                          )}
+                                          {isMe &&
+                                            renderWhatsAppTick(
+                                              msg.isRead,
+                                              isStoreOnline,
+                                              'small'
+                                            )}
                                         </div>
                                       </div>
 
@@ -2098,7 +2255,7 @@ function CustomerChatContent() {
                               <div
                                 className={`shadow-2xs max-w-[80%] rounded-2xl px-4 py-2.5 text-xs sm:max-w-[70%] ${
                                   isMe
-                                    ? 'rounded-tr-xs bg-slate-950 text-white dark:bg-blue-600'
+                                    ? 'rounded-tr-xs bg-blue-600 text-white shadow-blue-500/10'
                                     : 'rounded-tl-xs border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100'
                                 }`}
                               >
@@ -2116,14 +2273,18 @@ function CustomerChatContent() {
                                 <div
                                   className={`mt-1.5 flex items-center justify-end gap-1 text-[9.5px] font-medium ${
                                     isMe
-                                      ? 'text-slate-400 dark:text-blue-200'
+                                      ? 'text-blue-100 dark:text-blue-200'
                                       : 'text-slate-400'
                                   }`}
                                 >
                                   <span>{formattedTime}</span>
-                                  {isMe && (
-                                    <CheckCheck className="inline h-3 w-3 text-blue-400" />
-                                  )}
+                                  {isMe &&
+                                    renderWhatsAppTick(
+                                      msg.isRead,
+                                      isStoreOnline,
+                                      'normal',
+                                      'on-blue'
+                                    )}
                                 </div>
                               </div>
                             )}

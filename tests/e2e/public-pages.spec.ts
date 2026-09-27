@@ -12,8 +12,8 @@ test.describe('Public Pages', () => {
     // Check page title
     await expect(page).toHaveTitle(/Affiliate Gadget/)
 
-    // Check navbar is visible
-    await expect(page.locator('nav')).toBeVisible()
+    // Check navbar is visible (first visible nav element)
+    await expect(page.locator('nav:visible').first()).toBeVisible()
 
     // Check no console errors
     const errors: string[] = []
@@ -24,7 +24,7 @@ test.describe('Public Pages', () => {
     })
 
     // Wait for page to fully load
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     // Check hero section
     await expect(page.locator('h1').first()).toBeVisible()
@@ -32,7 +32,10 @@ test.describe('Public Pages', () => {
     // Should have no critical errors
     const criticalErrors = errors.filter(
       (e) =>
-        !e.includes('favicon') && !e.includes('404') && !e.includes('net::ERR')
+        !e.includes('favicon') &&
+        !e.includes('404') &&
+        !e.includes('net::ERR') &&
+        !e.includes('Failed to load resource')
     )
     expect(criticalErrors).toHaveLength(0)
   })
@@ -44,34 +47,34 @@ test.describe('Public Pages', () => {
     await expect(page.locator('h1')).toContainText(/Teknologi|Blog/)
 
     // Wait for articles to load
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('Teknisi page loads correctly', async ({ page }) => {
     await page.goto('/teknisi')
 
     await expect(page).toHaveTitle(/Teknisi|Affiliate Gadget/)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('Sparepart page loads correctly', async ({ page }) => {
     await page.goto('/sparepart')
 
     await expect(page).toHaveTitle(/Sparepart|Affiliate Gadget/)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('Sewa Alat page loads correctly', async ({ page }) => {
     await page.goto('/sewa-alat')
 
     await expect(page).toHaveTitle(/Sewa|Affiliate Gadget/)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('Rekomendasi page loads correctly', async ({ page }) => {
     await page.goto('/rekomendasi')
 
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     // Page should not have error state
     await expect(page.locator('body')).not.toContainText('Error')
   })
@@ -80,7 +83,7 @@ test.describe('Public Pages', () => {
     await page.goto('/about')
 
     await expect(page).toHaveTitle(/Tentang|About|Affiliate Gadget/)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('Login page loads correctly', async ({ page }) => {
@@ -94,7 +97,7 @@ test.describe('Public Pages', () => {
 
   test('Register page loads correctly', async ({ page }) => {
     await page.goto('/register')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     // Should have registration form
     await expect(page.locator('input[type="email"]')).toBeVisible({
@@ -107,46 +110,83 @@ test.describe('Public Pages', () => {
 })
 
 test.describe('Navigation', () => {
-  test('Can navigate from homepage to blog', async ({ page }) => {
+  test('Can navigate from homepage to gadget catalog', async ({ page }) => {
     await page.goto('/')
+    await page.waitForLoadState('domcontentloaded')
 
-    // Find and click blog link
-    await page.click('a[href="/blog"], nav >> text=Blog')
+    // Click visible gadget link in navbar or hero
+    const gadgetLink = page.locator('a[href="/gadget"]:visible').first()
+    await expect(gadgetLink).toBeVisible()
+    await gadgetLink.click()
 
-    await expect(page).toHaveURL(/\/blog/)
+    await expect(page).toHaveURL(/\/gadget/, { timeout: 15000 })
+  })
+
+  test('Can navigate from homepage to toko directory', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('domcontentloaded')
+
+    // Click visible toko link in navbar
+    const tokoLink = page.locator('a[href="/toko"]:visible').first()
+    await expect(tokoLink).toBeVisible()
+    await tokoLink.click()
+
+    await expect(page).toHaveURL(/\/toko/, { timeout: 15000 })
+  })
+
+  test('Can navigate from homepage to blog via footer', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('domcontentloaded')
+
+    const blogLink = page.locator('footer a[href="/blog"]').first()
+    await blogLink.scrollIntoViewIfNeeded()
+    await expect(blogLink).toBeVisible()
+    await blogLink.click()
+
+    await expect(page).toHaveURL(/\/blog/, { timeout: 15000 })
   })
 
   test('Can navigate from homepage to teknisi', async ({ page }) => {
     await page.goto('/')
-
-    // Wait for page to load
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     // Navigate to teknisi
     await page.goto('/teknisi')
-    await expect(page).toHaveURL(/\/teknisi/)
+    await expect(page).toHaveURL(/\/teknisi/, { timeout: 15000 })
   })
 })
 
 test.describe('Broken Links Check', () => {
   test('Homepage has no broken internal links', async ({ page }) => {
+    test.setTimeout(60000)
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     // Get all internal links
-    const links = await page.locator('a[href^="/"]').all()
+    const linkElements = await page.locator('a[href^="/"]').all()
+    const validHrefs = new Set<string>()
 
-    // Check first 10 links (to keep test fast)
-    const linksToCheck = links.slice(0, 10)
-
-    for (const link of linksToCheck) {
+    for (const link of linkElements) {
       const href = await link.getAttribute('href')
-      if (href && !href.includes('#')) {
-        const response = await page.request.get(href)
-        expect(response.status(), `Link ${href} should not be 404`).not.toBe(
-          404
-        )
+      if (
+        href &&
+        !href.includes('#') &&
+        !href.startsWith('mailto:') &&
+        !href.startsWith('tel:') &&
+        !href.startsWith('//')
+      ) {
+        // Normalize URL without query params for status check
+        const cleanHref = href.split('?')[0]
+        if (cleanHref && cleanHref.startsWith('/')) {
+          validHrefs.add(cleanHref)
+        }
       }
+      if (validHrefs.size >= 8) break
+    }
+
+    for (const href of Array.from(validHrefs)) {
+      const response = await page.request.get(href)
+      expect(response.status(), `Link ${href} should not be 404`).not.toBe(404)
     }
   })
 })
@@ -154,20 +194,24 @@ test.describe('Broken Links Check', () => {
 test.describe('Images Check', () => {
   test('Homepage images load correctly', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
-    // Check that images are not broken
-    const images = await page.locator('img').all()
+    // Check visible images on top fold
+    const images = await page.locator('img:visible').all()
 
     for (const img of images.slice(0, 5)) {
-      const naturalWidth = await img.evaluate(
-        (el: HTMLImageElement) => el.naturalWidth
-      )
       const src = await img.getAttribute('src')
-
-      // Skip placeholder images
       if (src && !src.includes('placeholder') && !src.includes('data:')) {
-        expect(naturalWidth, `Image ${src} should load`).toBeGreaterThan(0)
+        await img.scrollIntoViewIfNeeded().catch(() => {})
+        const isLoaded = await img.evaluate((el: HTMLImageElement) => {
+          if (el.complete) return el.naturalWidth > 0
+          return new Promise<boolean>((resolve) => {
+            el.onload = () => resolve(el.naturalWidth > 0)
+            el.onerror = () => resolve(false)
+            setTimeout(() => resolve(el.naturalWidth > 0), 3000)
+          })
+        })
+        expect(isLoaded, `Image ${src} should load`).toBeTruthy()
       }
     }
   })

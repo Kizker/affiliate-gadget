@@ -41,6 +41,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
   const [uploadingUserImage, setUploadingUserImage] = useState(false)
 
   useEffect(() => {
@@ -68,6 +69,7 @@ export default function AdminSettingsPage() {
     storeName: '',
     companyName: '',
     logo: '',
+    banner: '',
     taxId: '',
     isPkp: true,
     vatRate: 11.0,
@@ -132,6 +134,7 @@ export default function AdminSettingsPage() {
             storeName: store.name || '',
             companyName: store.companyName || '',
             logo: store.logo || '',
+            banner: store.banner || '',
             taxId: store.taxId || '',
             isPkp: true,
             vatRate: store.vatRate ?? 11.0,
@@ -295,6 +298,56 @@ export default function AdminSettingsPage() {
       toast.error('Terjadi kesalahan saat upload foto toko')
     } finally {
       setUploadingLogo(false)
+    }
+  }
+
+  // Upload Foto Banner Toko / Kampanye Promosi (Store Banner)
+  const handleStoreBannerUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Hanya file foto (JPG, PNG, WebP) yang diperbolehkan')
+      return
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Ukuran banner maksimal 15MB')
+      return
+    }
+
+    setUploadingBanner(true)
+    const toastId = toast.loading('Mengunggah banner promosi toko...')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'banners')
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setStoreForm((prev) => ({ ...prev, banner: data.url }))
+        toast.success(
+          'Banner toko berhasil diunggah! Klik "Simpan Perubahan" untuk menerapkan.',
+          { id: toastId }
+        )
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        toast.error(errData.error || 'Gagal mengunggah banner toko', {
+          id: toastId,
+        })
+      }
+    } catch (error) {
+      console.error('Error uploading store banner:', error)
+      toast.error('Terjadi kesalahan saat upload banner toko', { id: toastId })
+    } finally {
+      setUploadingBanner(false)
     }
   }
 
@@ -522,6 +575,99 @@ export default function AdminSettingsPage() {
                     <span>Hotline WA: {storeForm.whatsapp}</span>
                   </a>
                 )}
+              </div>
+            </div>
+
+            {/* Banner Kampanye & Profil Toko (Gaya Samsung) */}
+            <div className="shadow-2xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+              <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/50">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-950 dark:text-white">
+                      Banner Promosi & Kampanye Toko (Gaya Samsung)
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Banner besar editorial yang muncul saat calon pembeli
+                      melakukan scroll di halaman detail toko.
+                    </p>
+                  </div>
+                </div>
+                <label
+                  htmlFor="store-banner-upload"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                >
+                  {uploadingBanner ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" />
+                  )}
+                  <span>
+                    {storeForm.banner ? 'Ganti Banner' : 'Upload Banner Baru'}
+                  </span>
+                  <input
+                    id="store-banner-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingBanner}
+                    onChange={handleStoreBannerUpload}
+                  />
+                </label>
+              </div>
+
+              {/* Banner Preview or Input */}
+              {storeForm.banner ? (
+                <div className="relative aspect-[21/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
+                  <img
+                    src={storeForm.banner}
+                    alt="Banner Toko"
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/60 via-transparent to-transparent p-4">
+                    <span className="text-xs font-semibold text-white/90">
+                      Banner Aktif Halaman Detail Toko
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setStoreForm((prev) => ({ ...prev, banner: '' }))
+                      }
+                      className="backdrop-blur-xs inline-flex items-center gap-1 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-red-600"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      <span>Hapus</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-8 text-center dark:border-slate-800 dark:bg-slate-950/40">
+                  <Sparkles className="mb-2 h-7 w-7 text-slate-300" />
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                    Belum ada banner promosi khusus yang diunggah
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    Halaman toko akan menampilkan banner editorial standar
+                    Samsung secara otomatis.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  Atau masukkan URL Banner langsung (opsional):
+                </label>
+                <input
+                  type="url"
+                  value={storeForm.banner}
+                  onChange={(e) =>
+                    setStoreForm({ ...storeForm, banner: e.target.value })
+                  }
+                  placeholder="https://images.unsplash.com/... atau URL banner promosi"
+                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2 text-xs font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
               </div>
             </div>
 

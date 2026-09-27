@@ -29,6 +29,7 @@ import {
   RotateCcw,
   Tag,
   Heart,
+  Sparkles,
 } from 'lucide-react'
 import { useSidebarSafe } from '@/context/sidebar-context'
 
@@ -64,6 +65,7 @@ const superAdminNavSections: NavSection[] = [
       { icon: ShoppingCart, label: 'Pesanan', href: '/dashboard/admin/orders' },
       { icon: Store, label: 'Daftar Toko', href: '/dashboard/admin/mitras' },
       { icon: Tag, label: 'Voucher Promo', href: '/dashboard/admin/vouchers' },
+      { icon: Sparkles, label: 'Iklan Toko', href: '/dashboard/admin/ads' },
     ],
   },
   {
@@ -184,6 +186,11 @@ const storeAdminNavSections: NavSection[] = [
         icon: RotateCcw,
         label: 'Pengembalian',
         href: '/dashboard/admin/returns',
+      },
+      {
+        icon: Sparkles,
+        label: 'Pengajuan Iklan',
+        href: '/dashboard/admin/ads',
       },
     ],
   },

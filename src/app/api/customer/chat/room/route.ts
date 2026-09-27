@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
         messageType: true,
         mediaUrl: true,
         mediaType: true,
+        isRead: true,
         createdAt: true,
         sender: {
           select: {

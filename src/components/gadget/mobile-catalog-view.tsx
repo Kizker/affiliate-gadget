@@ -24,6 +24,11 @@ import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { toast } from 'sonner'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { CustomSelect } from '@/components/ui/custom-select'
+import {
+  InFeedStoreAdCard,
+  InFeedAdData,
+} from '@/components/ads/in-feed-store-ad-card'
+import { MobileTopHeroBanner } from '@/components/ads/mobile-top-hero-banner'
 
 const INITIAL_COUNT = 8
 const BATCH_SIZE = 6
@@ -39,6 +44,7 @@ interface MobileCatalogViewProps {
   setSortBy: (s: string) => void
   session: any
   status: string
+  promotedAd?: InFeedAdData | null
 }
 
 export function MobileCatalogView({
@@ -52,6 +58,7 @@ export function MobileCatalogView({
   setSortBy,
   session,
   status,
+  promotedAd,
 }: MobileCatalogViewProps) {
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const { items } = useCartStore()
@@ -174,13 +181,126 @@ export function MobileCatalogView({
     }
   }
 
+  const renderProductCard = (item: any) => {
+    const badge = getConditionBadge(item)
+    const isWishlisted = isInWishlist(item.id)
+    const strikePrice =
+      item.originalPrice && item.originalPrice > item.price
+        ? item.originalPrice
+        : Math.round(item.price * 1.25)
+    const storeCleanName = (item.store?.name || 'ITC Roxy Mas Jakarta')
+      .replace('Affiliate Gadget - ', '')
+      .replace('AffiliateGadget Store - ', '')
+
+    const imgSrc =
+      (item.images && item.images[0]) ||
+      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+
+    return (
+      <div
+        key={item.id}
+        className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
+      >
+        <Link href={`/gadget/${item.id}`} className="block">
+          {/* Dynamic Resolution Image Box (No Cropping, Natural Height) */}
+          <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
+            <img
+              src={imgSrc}
+              alt={item.name}
+              loading="lazy"
+              onError={(e) => {
+                ;(e.currentTarget as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+              }}
+              className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
+            />
+
+            {/* Condition Badge (Top Left) */}
+            <span
+              className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
+            >
+              <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
+              <span>{badge.label}</span>
+            </span>
+
+            {/* Wishlist Button (Top Right) */}
+            <button
+              type="button"
+              onClick={(e) => toggleWishlist(item, e)}
+              className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
+              aria-label="Wishlist"
+            >
+              <Heart
+                className={`h-3.5 w-3.5 transition-colors ${
+                  isWishlisted
+                    ? 'fill-rose-500 text-rose-500'
+                    : 'text-slate-400'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Meta Section */}
+          <div className="mt-2 space-y-1">
+            {/* Rating & Review Count */}
+            <div className="flex items-center gap-1">
+              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+              <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
+                {(item.rating || 4.9).toFixed(1)}
+              </span>
+              <span className="text-[10px] font-medium text-slate-400">
+                ({item.totalReview || 38})
+              </span>
+            </div>
+
+            {/* Product Name */}
+            <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
+              {item.name}
+            </h3>
+
+            {/* Feature Perks Pills */}
+            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+              <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                Garansi 30 Hari
+              </span>
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                Bonus 3-in-1
+              </span>
+            </div>
+
+            {/* Price Row */}
+            <div className="pt-1">
+              <span className="block text-sm font-black leading-tight text-orange-500">
+                Rp {item.price.toLocaleString('id-ID')}
+              </span>
+              <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
+                Rp {strikePrice.toLocaleString('id-ID')}
+              </span>
+            </div>
+
+            {/* Store Location */}
+            <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+              <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+              <span className="truncate">{storeCleanName}</span>
+            </div>
+          </div>
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto min-h-screen w-full max-w-md select-none bg-white pb-24 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* 1. TOP HEADER (Komponen Terpisah Reusable) */}
       <MobileTopNav />
 
-      {/* 2. SEARCH BAR & FILTER ICON ROW */}
-      <section className="px-4 pt-3">
+      {/* 2. TOP ADVERTISING STORE BANNER (Level 1: Pilihan Tertinggi Iklan Toko) */}
+      <section className="px-3.5 pb-1 pt-3">
+        <MobileTopHeroBanner />
+      </section>
+
+      {/* 3. SEARCH BAR & FILTER ICON ROW */}
+      <section className="px-4 pt-2">
         <div className="flex items-center gap-2">
           {/* Search Box Input */}
           <div className="relative flex-1">
@@ -302,273 +422,59 @@ export function MobileCatalogView({
               <div className="flex min-w-0 flex-col gap-2.5">
                 {displayedGadgets
                   .filter((_, idx) => idx % 2 === 0)
-                  .map((item) => {
-                  const badge = getConditionBadge(item)
-                  const isWishlisted = isInWishlist(item.id)
-                  const strikePrice =
-                    item.originalPrice && item.originalPrice > item.price
-                      ? item.originalPrice
-                      : Math.round(item.price * 1.25)
-                  const storeCleanName = (
-                    item.store?.name || 'ITC Roxy Mas Jakarta'
-                  )
-                    .replace('Affiliate Gadget - ', '')
-                    .replace('AffiliateGadget Store - ', '')
-
-                  const imgSrc =
-                    (item.images && item.images[0]) ||
-                    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
-                    >
-                      <Link href={`/gadget/${item.id}`} className="block">
-                        {/* Dynamic Resolution Image Box (No Cropping, Natural Height) */}
-                        <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
-                          <img
-                            src={imgSrc}
-                            alt={item.name}
-                            loading="lazy"
-                            onError={(e) => {
-                              ;(e.currentTarget as HTMLImageElement).src =
-                                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
-                            }}
-                            className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
-                          />
-
-                          {/* Condition Badge (Top Left) */}
-                          <span
-                            className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
-                          >
-                            <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
-                            <span>{badge.label}</span>
-                          </span>
-
-                          {/* Wishlist Button (Top Right) */}
-                          <button
-                            type="button"
-                            onClick={(e) =>
-                              toggleWishlist(item, e)
-                            }
-                            className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
-                            aria-label="Wishlist"
-                          >
-                            <Heart
-                              className={`h-3.5 w-3.5 transition-colors ${
-                                isWishlisted
-                                  ? 'fill-rose-500 text-rose-500'
-                                  : 'text-slate-400'
-                              }`}
-                            />
-                          </button>
-                        </div>
-
-                        {/* Meta Section */}
-                        <div className="mt-2 space-y-1">
-                          {/* Rating & Review Count */}
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                            <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
-                              {(item.rating || 4.9).toFixed(1)}
-                            </span>
-                            <span className="text-[10px] font-medium text-slate-400">
-                              ({item.totalReview || 38})
-                            </span>
-                          </div>
-
-                          {/* Product Name */}
-                          <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
-                            {item.name}
-                          </h3>
-
-                          {/* Feature Perks Pills */}
-                          <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                              Garansi 30 Hari
-                            </span>
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              Bonus 3-in-1
-                            </span>
-                          </div>
-
-                          {/* Price Row */}
-                          <div className="pt-1">
-                            <span className="block text-sm font-black leading-tight text-orange-500">
-                              Rp {item.price.toLocaleString('id-ID')}
-                            </span>
-                            <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
-                              Rp {strikePrice.toLocaleString('id-ID')}
-                            </span>
-                          </div>
-
-                          {/* Store Location */}
-                          <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                            <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
-                            <span className="truncate">{storeCleanName}</span>
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
-                  )
-                })}
-            </div>
+                  .map((item) => renderProductCard(item))}
+              </div>
 
               {/* Kolom Kanan */}
               <div className="flex min-w-0 flex-col gap-2.5">
                 {displayedGadgets
                   .filter((_, idx) => idx % 2 === 1)
-                .map((item) => {
-                  const badge = getConditionBadge(item)
-                  const isWishlisted = isInWishlist(item.id)
-                  const strikePrice =
-                    item.originalPrice && item.originalPrice > item.price
-                      ? item.originalPrice
-                      : Math.round(item.price * 1.25)
-                  const storeCleanName = (
-                    item.store?.name || 'ITC Roxy Mas Jakarta'
-                  )
-                    .replace('Affiliate Gadget - ', '')
-                    .replace('AffiliateGadget Store - ', '')
-
-                  const imgSrc =
-                    (item.images && item.images[0]) ||
-                    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
-                    >
-                      <Link href={`/gadget/${item.id}`} className="block">
-                        {/* Dynamic Resolution Image Box (No Cropping, Natural Height) */}
-                        <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
-                          <img
-                            src={imgSrc}
-                            alt={item.name}
-                            loading="lazy"
-                            onError={(e) => {
-                              ;(e.currentTarget as HTMLImageElement).src =
-                                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
-                            }}
-                            className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
-                          />
-
-                          {/* Condition Badge (Top Left) */}
-                          <span
-                            className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
-                          >
-                            <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
-                            <span>{badge.label}</span>
-                          </span>
-
-                          {/* Wishlist Button (Top Right) */}
-                          <button
-                            type="button"
-                            onClick={(e) =>
-                              toggleWishlist(item, e)
-                            }
-                            className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
-                            aria-label="Wishlist"
-                          >
-                            <Heart
-                              className={`h-3.5 w-3.5 transition-colors ${
-                                isWishlisted
-                                  ? 'fill-rose-500 text-rose-500'
-                                  : 'text-slate-400'
-                              }`}
-                            />
-                          </button>
-                        </div>
-
-                        {/* Meta Section */}
-                        <div className="mt-2 space-y-1">
-                          {/* Rating & Review Count */}
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                            <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
-                              {(item.rating || 4.9).toFixed(1)}
-                            </span>
-                            <span className="text-[10px] font-medium text-slate-400">
-                              ({item.totalReview || 38})
-                            </span>
-                          </div>
-
-                          {/* Product Name */}
-                          <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
-                            {item.name}
-                          </h3>
-
-                          {/* Feature Perks Pills */}
-                          <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                              Garansi 30 Hari
-                            </span>
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              Bonus 3-in-1
-                            </span>
-                          </div>
-
-                          {/* Price Row */}
-                          <div className="pt-1">
-                            <span className="block text-sm font-black leading-tight text-orange-500">
-                              Rp {item.price.toLocaleString('id-ID')}
-                            </span>
-                            <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
-                              Rp {strikePrice.toLocaleString('id-ID')}
-                            </span>
-                          </div>
-
-                          {/* Store Location */}
-                          <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                            <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
-                            <span className="truncate">{storeCleanName}</span>
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
-                  )
-                })}
-            </div>
-          </div>
-
-          {/* Mobile Lazy Loading Sentinel & Load More Indicator */}
-          {hasMore ? (
-            <div
-              ref={sentinelRef}
-              className="flex flex-col items-center justify-center py-6 text-center"
-            >
-              {isLoadingMore ? (
-                <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 px-4 py-2 text-xs font-semibold text-orange-600 shadow-2xs dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400">
-                  <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
-                  <span>Memuat gadget berikutnya...</span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={loadMore}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-5 py-2 text-xs font-bold text-slate-700 shadow-2xs transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
-                >
-                  <span>Muat Lebih Banyak</span>
-                  <span className="text-[10px] text-slate-400">
-                    ({visibleCount} / {gadgets.length})
-                  </span>
-                </button>
-              )}
-            </div>
-          ) : (
-            gadgets.length > INITIAL_COUNT && (
-              <div className="py-6 text-center">
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50 px-4 py-1.5 text-[11px] font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  <span>Semua {gadgets.length} gadget telah ditampilkan</span>
-                </div>
+                  .slice(0, 1)
+                  .map((item) => renderProductCard(item))}
+                {promotedAd && <InFeedStoreAdCard ad={promotedAd} />}
+                {displayedGadgets
+                  .filter((_, idx) => idx % 2 === 1)
+                  .slice(1)
+                  .map((item) => renderProductCard(item))}
               </div>
-            )
-          )}
-        </>
-      )}
+            </div>
+
+            {/* Mobile Lazy Loading Sentinel & Load More Indicator */}
+            {hasMore ? (
+              <div
+                ref={sentinelRef}
+                className="flex flex-col items-center justify-center py-6 text-center"
+              >
+                {isLoadingMore ? (
+                  <div className="shadow-2xs flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 px-4 py-2 text-xs font-semibold text-orange-600 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400">
+                    <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                    <span>Memuat gadget berikutnya...</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={loadMore}
+                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                  >
+                    <span>Muat Lebih Banyak</span>
+                    <span className="text-[10px] text-slate-400">
+                      ({visibleCount} / {gadgets.length})
+                    </span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              gadgets.length > INITIAL_COUNT && (
+                <div className="py-6 text-center">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50 px-4 py-1.5 text-[11px] font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>Semua {gadgets.length} gadget telah ditampilkan</span>
+                  </div>
+                </div>
+              )
+            )}
+          </>
+        )}
       </section>
     </div>
   )

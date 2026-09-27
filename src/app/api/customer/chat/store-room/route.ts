@@ -92,6 +92,14 @@ export async function POST(req: NextRequest) {
           city: true,
           logo: true,
           isActive: true,
+          schedules: {
+            select: {
+              day: true,
+              openTime: true,
+              closeTime: true,
+              isClosed: true,
+            },
+          },
         },
       }))
 
@@ -256,6 +264,7 @@ export async function POST(req: NextRequest) {
         messageType: true,
         mediaUrl: true,
         mediaType: true,
+        isRead: true,
         createdAt: true,
         sender: {
           select: {

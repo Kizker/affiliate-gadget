@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -13,12 +13,34 @@ import {
   Package,
   Star,
   MessageSquare,
+  Loader2,
+  ChevronDown,
 } from 'lucide-react'
+import {
+  InFeedStoreAdCard,
+  InFeedAdData,
+} from '@/components/ads/in-feed-store-ad-card'
+
+const INITIAL_COUNT = 8
+const BATCH_SIZE = 8
+
+const FALLBACK_GADGET_IMAGES = [
+  'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&q=80',
+  'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&q=80',
+  'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&q=80',
+  'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80',
+]
 
 export function SectionFeaturedGadgets() {
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [products, setProducts] = useState<any[]>([])
+  const [promotedAd, setPromotedAd] = useState<InFeedAdData | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Lazy Loading State
+  const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
   const categories = [
     { id: 'ALL', label: 'Semua' },
@@ -37,10 +59,21 @@ export function SectionFeaturedGadgets() {
   const fetchFeaturedProducts = async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/gadgets')
-      const data = await res.json()
-      if (data.success && Array.isArray(data.data)) {
-        setProducts(data.data)
+      const [prodRes, adRes] = await Promise.all([
+        fetch('/api/gadgets'),
+        fetch('/api/ads?placement=PROMOTED_LIST&limit=1'),
+      ])
+      const prodData = await prodRes.json()
+      if (prodData.success && Array.isArray(prodData.data)) {
+        setProducts(prodData.data)
+      }
+      const adData = await adRes.json()
+      if (
+        adData.success &&
+        Array.isArray(adData.data) &&
+        adData.data.length > 0
+      ) {
+        setPromotedAd(adData.data[0])
       }
     } catch (error) {
       console.error('Error loading featured gadgets:', error)
@@ -49,6 +82,7 @@ export function SectionFeaturedGadgets() {
     }
   }
 
+  // Filter products by selected category
   const filtered =
     selectedCategory === 'ALL'
       ? products
@@ -60,16 +94,55 @@ export function SectionFeaturedGadgets() {
           return brandMatch || catMatch
         })
 
+  // Reset pagination when category changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_COUNT)
+  }, [selectedCategory])
+
+  const hasMore = visibleCount < filtered.length
+
+  const loadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return
+    setIsLoadingMore(true)
+    setTimeout(() => {
+      setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, filtered.length))
+      setIsLoadingMore(false)
+    }, 250)
+  }, [isLoadingMore, hasMore, filtered.length])
+
+  // IntersectionObserver for seamless auto lazy loading
+  useEffect(() => {
+    if (!hasMore || loading) return
+    const el = sentinelRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMore()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadMore])
+
   return (
-    <section className="flex h-screen flex-col overflow-hidden bg-white pt-16 dark:bg-slate-950">
-      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-2.5 py-6 sm:px-6 sm:py-10 lg:px-8">
+    <section className="relative w-full bg-white py-12 dark:bg-slate-950 sm:py-16">
+      <div className="mx-auto w-full max-w-7xl px-2.5 sm:px-6 lg:px-8">
         {/* Streamlined Section Header & Action Toolbar */}
-        <div className="mb-4 space-y-3 sm:mb-10 sm:space-y-4">
+        <div className="mb-6 space-y-3 sm:mb-10 sm:space-y-4">
           {/* Row 1: Crisp Section Title */}
           <div>
             <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
               Smartphone Second Pilihan
             </h2>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+              Unit fisik second grade tertinggi, lolos uji QC 32 titik, &
+              bergaransi toko 30 hari
+            </p>
           </div>
 
           {/* Row 2: Unified Balanced Filter & Action Bar */}
@@ -99,17 +172,17 @@ export function SectionFeaturedGadgets() {
               href="/gadget"
               className="group inline-flex w-fit shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-orange-500 px-3.5 py-1 text-[11px] font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 active:scale-95 sm:px-4 sm:py-1.5 sm:text-xs"
             >
-              <span>Lihat Semua Katalog</span>
+              <span>Lihat Semua ({products.length} Unit)</span>
               <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
             </Link>
           </div>
         </div>
 
-        {/* Product Grid — inner scrollable area */}
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-color:#e2e8f0_transparent] [scrollbar-width:thin]">
+        {/* Product Grid — Natural Flow without h-screen or inner scrollbars */}
+        <div>
           {loading ? (
             <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <div
                   key={i}
                   className="animate-pulse rounded-2xl border border-slate-200/60 p-2 dark:border-slate-800 sm:p-4"
@@ -121,17 +194,36 @@ export function SectionFeaturedGadgets() {
                 </div>
               ))}
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-200 p-12 text-center dark:border-slate-800">
+              <Smartphone className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" />
+              <p className="mt-2 text-sm font-bold text-slate-700 dark:text-slate-300">
+                Tidak ada produk untuk kategori ini
+              </p>
+            </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
-              {filtered.slice(0, 8).map((product) => {
+            <div className="grid grid-cols-2 items-stretch gap-2 sm:gap-4 lg:grid-cols-4">
+              {filtered.slice(0, visibleCount).map((product, idx) => {
+                const rawImg =
+                  Array.isArray(product.images) && product.images.length > 0
+                    ? product.images[0]
+                    : typeof product.images === 'string' &&
+                        product.images.startsWith('http')
+                      ? product.images
+                      : product.image
+
                 const displayImg =
-                  product.images?.[0] ||
-                  product.image ||
-                  'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80'
+                  rawImg ||
+                  FALLBACK_GADGET_IMAGES[
+                    Math.abs(product.id?.charCodeAt(0) || 0) %
+                      FALLBACK_GADGET_IMAGES.length
+                  ]
+
                 const storeName =
                   typeof product.store === 'object'
                     ? product.store?.name || product.store?.companyName
                     : product.store
+
                 const specsText =
                   typeof product.specs === 'object' && product.specs !== null
                     ? Object.entries(product.specs)
@@ -150,79 +242,85 @@ export function SectionFeaturedGadgets() {
                     : Number(product.stock) || 0
 
                 return (
-                  <div
-                    key={product.id}
-                    className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4"
-                  >
-                    <Link
-                      href={`/gadget/${product.id}`}
-                      className="block cursor-pointer focus:outline-none"
-                    >
-                      {/* 1. Media Header (Square Cropped Hero Photo) */}
-                      <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60 sm:mb-3.5 sm:rounded-2xl">
-                        <Image
-                          src={displayImg}
-                          alt={product.name}
-                          fill
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                          unoptimized
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                          loading="lazy"
-                        />
+                  <div key={product.id} className="contents">
+                    {/* Insert Level 2 Sponsored Store Ad after 2nd product card */}
+                    {idx === 2 && promotedAd && (
+                      <InFeedStoreAdCard ad={promotedAd} />
+                    )}
 
-                        {/* Top-Right: Solid Clean Rating Capsule */}
-                        <div className="absolute right-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:right-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
-                          <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400 sm:h-3 sm:w-3" />
-                          <span className="font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white">
-                            {(product.rating || 5.0).toFixed(1)}
-                          </span>
-                          <span className="hidden text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500 sm:inline">
-                            ({product.totalReview || 0})
-                          </span>
-                        </div>
-                      </div>
+                    <div className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4">
+                      <Link
+                        href={`/gadget/${product.id}`}
+                        className="block cursor-pointer focus:outline-none"
+                      >
+                        {/* 1. Media Header (Square Cropped Hero Photo) */}
+                        <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60 sm:mb-3.5 sm:rounded-2xl">
+                          <Image
+                            src={displayImg}
+                            alt={product.name}
+                            fill
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                            unoptimized
+                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                            loading="lazy"
+                          />
 
-                      {/* 2. Info, Store & Stock */}
-                      <div className="space-y-1.5 px-0.5 sm:space-y-2">
-                        <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px]">
-                          <div className="flex min-w-0 items-center gap-1 truncate font-medium text-slate-400">
-                            <Store className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
-                            <span className="truncate text-[10px] sm:text-[11px]">
-                              {storeName || 'Toko Resmi'}
+                          {/* Top-Right: Solid Clean Rating Capsule */}
+                          <div className="absolute right-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:right-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
+                            <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400 sm:h-3 sm:w-3" />
+                            <span className="font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white">
+                              {(product.rating || 5.0).toFixed(1)}
+                            </span>
+                            <span className="hidden text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500 sm:inline">
+                              ({product.totalReview || 0})
                             </span>
                           </div>
-
-                          {/* Stock Pill */}
-                          <div className="shrink-0">
-                            {totalStock > 5 ? (
-                              <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:gap-1 sm:text-[10px]">
-                                <Package className="hidden h-2.5 w-2.5 text-slate-500 sm:inline" />
-                                <span>{totalStock} Unit</span>
-                              </span>
-                            ) : totalStock > 0 ? (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:text-[10px]">
-                                <span>Sisa {totalStock}!</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200/60 bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 sm:text-[10px]">
-                                <span>Habis</span>
-                              </span>
-                            )}
-                          </div>
                         </div>
 
-                        <h3 className="line-clamp-2 min-h-[2rem] text-xs font-bold leading-tight text-slate-950 transition-colors group-hover:text-orange-600 dark:text-white sm:min-h-[2.5rem] sm:text-sm sm:leading-snug">
-                          {product.name}
-                        </h3>
+                        {/* 2. Info, Store & Stock */}
+                        <div className="space-y-1.5 px-0.5 sm:space-y-2">
+                          <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px]">
+                            <div className="flex min-w-0 items-center gap-1 truncate font-medium text-slate-400">
+                              <Store className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
+                              <span className="truncate text-[10px] sm:text-[11px]">
+                                {storeName || 'Toko Resmi'}
+                              </span>
+                            </div>
 
-                        <div className="flex items-baseline justify-between gap-1 pt-0.5">
-                          <div className="flex flex-wrap items-baseline gap-1">
-                            <span className="whitespace-nowrap text-xs font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-base sm:text-lg">
+                            {/* Stock Pill */}
+                            <div className="shrink-0">
+                              {totalStock > 5 ? (
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:gap-1 sm:text-[10px]">
+                                  <Package className="hidden h-2.5 w-2.5 text-slate-500 sm:inline" />
+                                  <span>{totalStock} Unit</span>
+                                </span>
+                              ) : totalStock > 0 ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:text-[10px]">
+                                  <span>Sisa {totalStock}!</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-rose-200/60 bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 sm:text-[10px]">
+                                  <span>Habis</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <h3 className="line-clamp-2 min-h-[32px] text-xs font-bold leading-tight text-slate-900 group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:min-h-[40px] sm:text-sm">
+                            {product.name}
+                          </h3>
+
+                          <p className="line-clamp-1 text-[10px] font-medium text-slate-400 sm:text-xs">
+                            {specsText}
+                          </p>
+
+                          <div className="flex items-baseline gap-1.5 pt-1">
+                            <span className="text-xs font-black tracking-tight text-slate-950 dark:text-white sm:text-base">
                               Rp {(product.price || 0).toLocaleString('id-ID')}
                             </span>
                             {product.originalPrice &&
                               product.originalPrice > product.price && (
-                                <span className="hidden whitespace-nowrap text-xs font-normal tabular-nums text-slate-400 line-through sm:inline">
+                                <span className="text-[10px] text-slate-400 line-through">
                                   Rp{' '}
                                   {product.originalPrice.toLocaleString(
                                     'id-ID'
@@ -231,32 +329,60 @@ export function SectionFeaturedGadgets() {
                               )}
                           </div>
                         </div>
-                      </div>
-                    </Link>
-
-                    {/* 3. Action Buttons (Action Orange) */}
-                    <div className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 dark:border-slate-800/80 sm:mt-3.5 sm:gap-2 sm:pt-3">
-                      <Link
-                        href={`/gadget/${product.id}`}
-                        className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-orange-500 py-1.5 text-[11px] font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 active:scale-[0.98] sm:rounded-2xl sm:py-2.5 sm:text-xs"
-                      >
-                        <span>Beli Sekarang</span>
-                        <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-3.5 sm:w-3.5" />
                       </Link>
 
-                      {product.store?.id && (
+                      {/* 3. Action Buttons */}
+                      <div className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 dark:border-slate-800/80 sm:mt-3.5 sm:gap-2 sm:pt-3">
                         <Link
-                          href={`/dashboard/customer/chat?storeId=${product.store.id}&productId=${product.id}&productName=${encodeURIComponent(product.name || '')}&productPrice=${product.price || 0}&productImage=${encodeURIComponent(product.images?.[0] || '')}`}
-                          className="shadow-2xs flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-orange-800 dark:hover:bg-orange-950/40 dark:hover:text-orange-300 sm:h-9 sm:w-9 sm:rounded-2xl"
-                          title="Chat Toko tentang produk ini"
+                          href={`/gadget/${product.id}`}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-orange-500 py-1.5 text-[11px] font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 active:scale-[0.98] sm:rounded-2xl sm:py-2.5 sm:text-xs"
                         >
-                          <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span>Beli Sekarang</span>
+                          <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-3.5 sm:w-3.5" />
                         </Link>
-                      )}
+
+                        {product.store?.id && (
+                          <Link
+                            href={`/dashboard/customer/chat?storeId=${product.store.id}&productId=${product.id}&productName=${encodeURIComponent(product.name || '')}&productPrice=${product.price || 0}&productImage=${encodeURIComponent(product.images?.[0] || '')}`}
+                            className="shadow-2xs flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-orange-800 dark:hover:bg-orange-950/40 dark:hover:text-orange-300 sm:h-9 sm:w-9 sm:rounded-2xl"
+                            title="Chat Toko tentang produk ini"
+                          >
+                            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
               })}
+            </div>
+          )}
+
+          {/* Lazy Loading Sentinel & Interactive Controls */}
+          {filtered.length > 0 && (
+            <div ref={sentinelRef} className="mt-8 text-center sm:mt-12">
+              {isLoadingMore ? (
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                  <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                  <span>Memuat lebih banyak smartphone...</span>
+                </div>
+              ) : hasMore ? (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  className="shadow-xs inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-6 py-2.5 text-xs font-bold text-slate-800 transition hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  <span>
+                    Tampilkan Lebih Banyak ({filtered.length - visibleCount}{' '}
+                    unit tersisa)
+                  </span>
+                </button>
+              ) : (
+                <p className="text-xs font-medium text-slate-400">
+                  Menampilkan seluruh {filtered.length} unit smartphone pilihan
+                </p>
+              )}
             </div>
           )}
         </div>

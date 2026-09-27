@@ -308,6 +308,8 @@ model InternalAd {
   startDate          DateTime    @default(now())
   endDate            DateTime?
   isActive           Boolean     @default(true)
+  status             AdStatus    @default(PENDING)
+  rejectionReason    String?
   priority           Int         @default(0)
   clicks             Int         @default(0)
   impressions        Int         @default(0)
@@ -317,6 +319,7 @@ model InternalAd {
 
   @@index([storeId])
   @@index([placement])
+  @@index([status])
   @@index([isActive])
   @@map("internal_ads")
 }
@@ -963,6 +966,12 @@ enum AdPlacement {
   HOMEPAGE_HERO
   PROMOTED_LIST
   BANNER_SPONSOR
+}
+
+enum AdStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum CourierType {

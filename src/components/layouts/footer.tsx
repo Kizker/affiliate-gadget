@@ -76,6 +76,14 @@ export function Footer({ variant = 'light', className = '' }: FooterProps) {
                 </li>
                 <li>
                   <Link
+                    href="/blog"
+                    className="transition-colors hover:text-orange-500"
+                  >
+                    Blog & Edukasi
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/hubungi-kami"
                     className="transition-colors hover:text-orange-500"
                   >

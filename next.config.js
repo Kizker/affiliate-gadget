@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  output:
+    process.platform === 'win32' && !process.env.BUILD_STANDALONE
+      ? undefined
+      : 'standalone',
   compress: true,
   poweredByHeader: false,
   reactStrictMode: false,

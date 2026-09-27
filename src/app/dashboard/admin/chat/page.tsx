@@ -32,6 +32,45 @@ import {
 import { toast } from 'sonner'
 import { DateSeparator } from '@/components/chat/date-separator'
 import { isSameDay } from '@/utils/chat-helpers'
+import { getChatTickStatus } from '@/lib/chat-status'
+
+const renderAdminWhatsAppTick = (
+  isRead?: boolean,
+  isOnline: boolean = true,
+  theme: 'dark' | 'light' | 'on-blue' = 'light'
+) => {
+  const tickStatus = getChatTickStatus({ isRead, isRecipientOnline: isOnline })
+  const textColor =
+    theme === 'on-blue'
+      ? 'text-blue-200/80'
+      : theme === 'dark'
+        ? 'text-slate-300'
+        : 'text-slate-400'
+
+  if (tickStatus === 'READ') {
+    return (
+      <span title="Dibaca oleh pelanggan">
+        <CheckCheck
+          className={`inline h-3 w-3 ${theme === 'on-blue' ? 'text-sky-300' : 'text-blue-400'}`}
+        />
+      </span>
+    )
+  }
+
+  if (tickStatus === 'DELIVERED') {
+    return (
+      <span title="Diterima pelanggan">
+        <CheckCheck className={`inline h-3 w-3 ${textColor}`} />
+      </span>
+    )
+  }
+
+  return (
+    <span title="Terkirim (Pelanggan offline)">
+      <Check className={`inline h-3 w-3 ${textColor}`} />
+    </span>
+  )
+}
 
 interface ChatRoom {
   id: string
@@ -73,10 +112,13 @@ interface ChatRoom {
       price?: number
     }>
   } | null
+  hasOrder?: boolean
+  totalUnread?: number
   messages: Array<{
     content: string
     createdAt: string
     senderId: string
+    isRead?: boolean
     messageType?: string
     mediaUrl?: string | null
     mediaType?: string | null
@@ -1044,10 +1086,14 @@ export default function AdminChatPage() {
     if (!matchSearch) return false
 
     if (roomFilter === 'UNREAD') {
-      return (room._count?.messages || 0) > 0
+      const incomingUnread = (room._count?.messages || 0) > 0
+      const latestMsgUnread =
+        room.messages?.[0] && room.messages[0].isRead === false
+      const roomTotalUnread = ((room as any).totalUnread || 0) > 0
+      return incomingUnread || latestMsgUnread || roomTotalUnread
     }
     if (roomFilter === 'ORDER') {
-      return !!room.order
+      return !!room.order || !!(room as any).hasOrder
     }
     return true
   })
@@ -1376,6 +1422,11 @@ export default function AdminChatPage() {
                   </div>
                 ) : (
                   messages.map((message, index) => {
+                    const isCustomerOnline = selectedRoom?.lastMessageAt
+                      ? Date.now() -
+                          new Date(selectedRoom.lastMessageAt).getTime() <
+                        15 * 60 * 1000
+                      : false
                     const currentDate = new Date(message.createdAt)
                     const previousDate =
                       index > 0 ? new Date(messages[index - 1].createdAt) : null
@@ -1469,15 +1520,12 @@ export default function AdminChatPage() {
                               {/* Floating Glassmorphic Timestamp Pill */}
                               <div className="shadow-xs pointer-events-none absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-md">
                                 <span>{formattedTime}</span>
-                                {isAdmin && (
-                                  <span>
-                                    {message.isRead ? (
-                                      <CheckCheck className="inline h-3 w-3 text-blue-400" />
-                                    ) : (
-                                      <Check className="inline h-3 w-3 text-slate-300" />
-                                    )}
-                                  </span>
-                                )}
+                                {isAdmin &&
+                                  renderAdminWhatsAppTick(
+                                    message.isRead,
+                                    isCustomerOnline,
+                                    'dark'
+                                  )}
                               </div>
                             </div>
                           ) : (
@@ -1485,7 +1533,7 @@ export default function AdminChatPage() {
                             <div
                               className={`shadow-2xs max-w-[80%] rounded-2xl px-4 py-2.5 text-xs sm:max-w-[70%] ${
                                 isAdmin
-                                  ? 'rounded-tr-xs bg-slate-950 text-white dark:bg-blue-600'
+                                  ? 'rounded-tr-xs bg-blue-600 text-white shadow-blue-500/10'
                                   : 'rounded-tl-xs border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100'
                               }`}
                             >
@@ -1501,20 +1549,17 @@ export default function AdminChatPage() {
                               <div
                                 className={`mt-1.5 flex items-center justify-end gap-1 text-[9.5px] font-medium ${
                                   isAdmin
-                                    ? 'text-slate-400 dark:text-blue-200'
+                                    ? 'text-blue-100 dark:text-blue-200'
                                     : 'text-slate-400'
                                 }`}
                               >
                                 <span>{formattedTime}</span>
-                                {isAdmin && (
-                                  <span>
-                                    {message.isRead ? (
-                                      <CheckCheck className="inline h-3 w-3 text-blue-400" />
-                                    ) : (
-                                      <Check className="inline h-3 w-3 text-slate-400" />
-                                    )}
-                                  </span>
-                                )}
+                                {isAdmin &&
+                                  renderAdminWhatsAppTick(
+                                    message.isRead,
+                                    isCustomerOnline,
+                                    'on-blue'
+                                  )}
                               </div>
                             </div>
                           )}

@@ -20,11 +20,16 @@ import {
   Zap,
   Loader2,
   ArrowLeftRight,
+  Sparkles,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { toast } from 'sonner'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
+import {
+  InFeedStoreAdCard,
+  InFeedAdData,
+} from '@/components/ads/in-feed-store-ad-card'
 
 interface ProductCardData {
   id: string
@@ -125,6 +130,10 @@ interface HeroSlide {
   badgeIcon: 'shield' | 'check' | 'store'
   title: string
   subtitle: string
+  storeSlug?: string
+  targetUrl?: string
+  storeName?: string
+  adId?: string
 }
 
 const HERO_SLIDES: HeroSlide[] = [
@@ -236,15 +245,76 @@ export function MobileHomeView() {
   const { items } = useCartStore()
 
   // Hero Slideshow Carousel State
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(HERO_SLIDES)
+  const [promotedInFeedAd, setPromotedInFeedAd] = useState<InFeedAdData | null>(
+    null
+  )
   const [currentSlide, setCurrentSlide] = useState(0)
   const [touchStart, setTouchStart] = useState<number | null>(null)
 
+  // Fetch Level 1 (Hero Carousel) & Level 2 (In-Feed) Store Ads
+  useEffect(() => {
+    let isSubscribed = true
+    async function loadStoreAds() {
+      try {
+        const [heroRes, feedRes] = await Promise.all([
+          fetch('/api/ads?placement=HOMEPAGE_HERO&limit=3'),
+          fetch('/api/ads?placement=PROMOTED_LIST&limit=1'),
+        ])
+        const heroJson = await heroRes.json()
+        if (
+          heroJson.success &&
+          Array.isArray(heroJson.data) &&
+          heroJson.data.length > 0
+        ) {
+          const mapped: HeroSlide[] = heroJson.data.map(
+            (ad: any, index: number) => ({
+              id: ad.id || `ad-slide-${index}`,
+              adId: ad.id,
+              image: ad.imageUrl,
+              badgeText: ad.store?.city
+                ? `Cabang ${ad.store.city}`
+                : 'Toko Resmi PT',
+              badgeIcon: 'store' as const,
+              title: ad.title,
+              subtitle: ad.store?.name || 'Garansi Toko 30 Hari',
+              storeSlug: ad.store?.slug,
+              targetUrl:
+                ad.targetUrl ||
+                (ad.store?.slug ? `/toko/${ad.store.slug}` : '/gadget'),
+              storeName: ad.store?.name,
+            })
+          )
+          if (isSubscribed) {
+            setHeroSlides(mapped)
+          }
+        }
+        const feedJson = await feedRes.json()
+        if (
+          feedJson.success &&
+          Array.isArray(feedJson.data) &&
+          feedJson.data.length > 0
+        ) {
+          if (isSubscribed) {
+            setPromotedInFeedAd(feedJson.data[0])
+          }
+        }
+      } catch {
+        // Fallback safely to default HERO_SLIDES
+      }
+    }
+    loadStoreAds()
+    return () => {
+      isSubscribed = false
+    }
+  }, [])
+
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length)
     }, 4500)
     return () => clearInterval(timer)
-  }, [])
+  }, [heroSlides.length])
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.touches[0].clientX)
@@ -255,13 +325,27 @@ export function MobileHomeView() {
     const touchEnd = e.changedTouches[0].clientX
     const diff = touchStart - touchEnd
     if (diff > 40) {
-      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length)
     } else if (diff < -40) {
       setCurrentSlide(
-        (prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length
+        (prev) => (prev - 1 + heroSlides.length) % heroSlides.length
       )
     }
     setTouchStart(null)
+  }
+
+  const handleSlideClick = (slide: HeroSlide) => {
+    if (slide.adId) {
+      fetch('/api/ads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adId: slide.adId, action: 'click' }),
+      }).catch(() => {})
+    }
+    const dest =
+      slide.targetUrl ||
+      (slide.storeSlug ? `/toko/${slide.storeSlug}` : '/gadget')
+    router.push(dest)
   }
 
   useEffect(() => {
@@ -362,23 +446,111 @@ export function MobileHomeView() {
         : '/dashboard/customer'
       : '/login?callbackUrl=/dashboard/customer'
 
+  const renderMobileProductCard = (item: ProductCardData) => {
+    const isWishlisted = isInWishlist(item.id)
+    return (
+      <div
+        key={item.id}
+        className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
+      >
+        <Link href={item.href} className="block">
+          <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
+            <img
+              src={item.image}
+              alt={item.name}
+              loading="lazy"
+              onError={(e) => {
+                ;(e.currentTarget as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&q=80'
+              }}
+              className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
+            />
+            <span
+              className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${item.conditionBadgeColor}`}
+            >
+              <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
+              <span>{item.conditionBadge}</span>
+            </span>
+            <button
+              type="button"
+              onClick={(e) => toggleWishlist(item, e)}
+              className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
+              aria-label="Wishlist"
+            >
+              <Heart
+                className={`h-3.5 w-3.5 transition-colors ${
+                  isWishlisted
+                    ? 'fill-rose-500 text-rose-500'
+                    : 'text-slate-400'
+                }`}
+              />
+            </button>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center gap-1">
+              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+              <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
+                {item.rating.toFixed(1)}
+              </span>
+              <span className="text-[10px] font-medium text-slate-400">
+                ({item.reviewCount})
+              </span>
+            </div>
+            <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
+              {item.name}
+            </h3>
+            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+              <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                Garansi 30 Hari
+              </span>
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                Bonus 3-in-1
+              </span>
+            </div>
+            <div className="pt-1">
+              <span className="block text-sm font-black leading-tight text-orange-500">
+                {item.price}
+              </span>
+              <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
+                {item.originalPrice}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+              <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+              <span className="truncate">
+                {item.locationTag.replace('Affiliate Gadget - ', '')}
+              </span>
+            </div>
+          </div>
+        </Link>
+        <Link
+          href={item.href}
+          className="shadow-2xs mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-1.5 text-xs font-bold text-white transition-all hover:bg-orange-600 active:scale-95"
+        >
+          <ShoppingCart className="h-3 w-3" />
+          <span>Beli</span>
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto min-h-screen w-full max-w-md select-none bg-white pb-24 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* 1. TOP HEADER (Komponen Terpisah Reusable) */}
       <MobileTopNav />
 
-      {/* 2. HERO SECTION (Figma Node 5:484) */}
-      <section className="space-y-3 px-3.5 pb-1 pt-3">
-        {/* Promo Banner Slideshow Carousel (5:520) */}
+      {/* 2. TOP ADVERTISING STORE BANNER (Level 1: Akun Toko yang Mengiklankan) */}
+      <section className="px-3.5 pb-1 pt-3">
         <div
           className="relative aspect-[16/9] w-full select-none overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-950 shadow-sm dark:border-slate-800"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {HERO_SLIDES.map((slide, idx) => (
+          {heroSlides.map((slide, idx) => (
             <div
               key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+              onClick={() => handleSlideClick(slide)}
+              className={`absolute inset-0 cursor-pointer transition-opacity duration-700 ease-in-out ${
                 idx === currentSlide
                   ? 'z-10 opacity-100'
                   : 'pointer-events-none z-0 opacity-0'
@@ -390,77 +562,48 @@ export function MobileHomeView() {
                 fill
                 className="object-cover"
                 priority={idx === 0}
+                unoptimized
               />
-              {/* Subtle Dark Vignette for Text Readability */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+              {/* Soft Vignette for Minimalist Poster Look */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-              {/* Slide Caption */}
-              <div className="pointer-events-none absolute bottom-3 left-3 right-20 z-20">
-                <p className="text-[13px] font-extrabold leading-tight tracking-tight text-white drop-shadow-md">
-                  {slide.title}
-                </p>
-                <p className="drop-shadow-xs mt-0.5 text-[10px] font-medium leading-none text-white/85">
-                  {slide.subtitle}
-                </p>
+              {/* Minimal Store & Ad Header Badge */}
+              <div className="pointer-events-none absolute left-2.5 right-2.5 top-2.5 z-20 flex items-center justify-between">
+                <div className="flex items-center gap-1 rounded-full border border-white/20 bg-black/40 px-2 py-0.5 text-[9px] font-semibold text-white/90 shadow-sm backdrop-blur-md">
+                  <Sparkles className="h-2.5 w-2.5 shrink-0 text-orange-400" />
+                  <span>Iklan Toko Resmi</span>
+                </div>
+                {slide.badgeText && (
+                  <div className="flex items-center gap-1 rounded-full border border-white/20 bg-black/40 px-2 py-0.5 text-[9px] font-semibold text-white/90 backdrop-blur-md">
+                    <Store className="h-2.5 w-2.5 text-white/70" />
+                    <span>{slide.badgeText}</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
 
-          {/* Frosted Dynamic Badge Top-Left (5:524) */}
-          <div className="absolute left-2.5 top-2.5 z-20 flex items-center gap-1.5 rounded-full border border-white/70 bg-white/95 px-2.5 py-1 shadow-sm backdrop-blur-md transition-all duration-300 dark:border-slate-700/60 dark:bg-slate-900/90">
-            {HERO_SLIDES[currentSlide].badgeIcon === 'shield' && (
-              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            )}
-            {HERO_SLIDES[currentSlide].badgeIcon === 'check' && (
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
-            )}
-            {HERO_SLIDES[currentSlide].badgeIcon === 'store' && (
-              <Store className="h-3.5 w-3.5 shrink-0 text-orange-500" />
-            )}
-            <span className="text-[10px] font-bold leading-none text-slate-900 dark:text-white">
-              {HERO_SLIDES[currentSlide].badgeText}
-            </span>
-          </div>
-
-          {/* Interactive Indicator Dots Bottom-Right (5:529) */}
-          <div className="backdrop-blur-xs absolute bottom-3 right-3 z-20 flex items-center gap-1.5 rounded-full bg-black/30 px-2 py-1">
-            {HERO_SLIDES.map((_, dotIdx) => (
-              <button
-                key={dotIdx}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setCurrentSlide(dotIdx)
-                }}
-                className={`rounded-full transition-all duration-300 ${
-                  dotIdx === currentSlide
-                    ? 'h-1.5 w-4 bg-orange-500 shadow-sm'
-                    : 'h-1.5 w-1.5 bg-white/70 hover:bg-white'
-                }`}
-                aria-label={`Slide ${dotIdx + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Flash Sale Ticker Bar (5:507) */}
-        <div className="shadow-2xs flex items-center justify-between rounded-xl border border-slate-200/80 bg-gradient-to-r from-orange-50/90 via-white to-orange-50/40 px-3 py-2.5 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-orange-950/30">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Zap className="h-4 w-4 shrink-0 fill-orange-500 text-orange-500" />
-            <span className="truncate text-[11px] font-extrabold tracking-tight text-slate-950 dark:text-white">
-              Flash Sale Gadget Second
-            </span>
-            <span className="shrink-0 rounded bg-[#020617] px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none text-white">
-              03:24:18
-            </span>
-          </div>
-          <Link
-            href="/gadget"
-            className="ml-2 flex shrink-0 items-center gap-0.5 text-[11px] font-bold text-orange-500 transition-colors hover:text-orange-600"
-          >
-            <span>Lihat Semua</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          {/* Indicator dots if multiple ads */}
+          {heroSlides.length > 1 && (
+            <div className="backdrop-blur-xs absolute bottom-2.5 right-2.5 z-20 flex items-center gap-1.5 rounded-full bg-black/40 px-2 py-1">
+              {heroSlides.map((_, dotIdx) => (
+                <button
+                  key={dotIdx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setCurrentSlide(dotIdx)
+                  }}
+                  className={`rounded-full transition-all duration-300 ${
+                    dotIdx === currentSlide
+                      ? 'h-1.5 w-3.5 bg-orange-500 shadow-sm'
+                      : 'h-1.5 w-1.5 bg-white/70 hover:bg-white'
+                  }`}
+                  aria-label={`Slide ${dotIdx + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -485,122 +628,14 @@ export function MobileHomeView() {
           </Link>
         </div>
 
-        {/* 2-Column Asymmetric Masonry Grid */}
+        {/* 2-Column Masonry Feed */}
         <div className="grid grid-cols-2 items-start gap-2.5">
           {/* Kolom Kiri */}
           <div className="flex min-w-0 flex-col gap-2.5">
             {allProducts
               .slice(0, visibleCount)
               .filter((_, idx) => idx % 2 === 0)
-              .map((item) => {
-                const isWishlisted = isInWishlist(item.id)
-
-                return (
-                  <div
-                    key={item.id}
-                    className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
-                  >
-                    <Link href={item.href} className="block">
-                      {/* Dynamic Resolution Image Box (No Cropping, Natural Height) */}
-                      <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          loading="lazy"
-                          onError={(e) => {
-                            ;(e.currentTarget as HTMLImageElement).src =
-                              'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&q=80'
-                          }}
-                          className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
-                        />
-
-                        {/* Condition Badge (Top Left) */}
-                        <span
-                          className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${item.conditionBadgeColor}`}
-                        >
-                          <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
-                          <span>{item.conditionBadge}</span>
-                        </span>
-
-                        {/* Wishlist Button (Top Right) */}
-                        <button
-                          type="button"
-                          onClick={(e) => toggleWishlist(item, e)}
-                          className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
-                          aria-label="Wishlist"
-                        >
-                          <Heart
-                            className={`h-3.5 w-3.5 transition-colors ${
-                              isWishlisted
-                                ? 'fill-rose-500 text-rose-500'
-                                : 'text-slate-400'
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {/* Meta Section */}
-                      <div className="mt-2 space-y-1">
-                        {/* Rating & Review Count */}
-                        <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                          <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
-                            {item.rating.toFixed(1)}
-                          </span>
-                          <span className="text-[10px] font-medium text-slate-400">
-                            ({item.reviewCount})
-                          </span>
-                        </div>
-
-                        {/* Product Name */}
-                        <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
-                          {item.name}
-                        </h3>
-
-                        {/* Feature Perks Pills */}
-                        <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                          <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                            Garansi 30 Hari
-                          </span>
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            Bonus 3-in-1
-                          </span>
-                        </div>
-
-                        {/* Price Row */}
-                        <div className="pt-1">
-                          <span className="block text-sm font-black leading-tight text-orange-500">
-                            {item.price}
-                          </span>
-                          <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
-                            {item.originalPrice}
-                          </span>
-                        </div>
-
-                        {/* Store Location */}
-                        <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                          <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
-                          <span className="truncate">
-                            {item.locationTag.replace(
-                              'Affiliate Gadget - ',
-                              ''
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-
-                    {/* Buy Button CTA */}
-                    <Link
-                      href={item.href}
-                      className="shadow-2xs mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-1.5 text-xs font-bold text-white transition-all hover:bg-orange-600 active:scale-95"
-                    >
-                      <ShoppingCart className="h-3 w-3" />
-                      <span>Beli</span>
-                    </Link>
-                  </div>
-                )
-              })}
+              .map((item) => renderMobileProductCard(item))}
           </div>
 
           {/* Kolom Kanan */}
@@ -608,115 +643,14 @@ export function MobileHomeView() {
             {allProducts
               .slice(0, visibleCount)
               .filter((_, idx) => idx % 2 === 1)
-              .map((item) => {
-                const isWishlisted = isInWishlist(item.id)
-
-                return (
-                  <div
-                    key={item.id}
-                    className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
-                  >
-                    <Link href={item.href} className="block">
-                      {/* Dynamic Resolution Image Box (No Cropping, Natural Height) */}
-                      <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          loading="lazy"
-                          onError={(e) => {
-                            ;(e.currentTarget as HTMLImageElement).src =
-                              'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&q=80'
-                          }}
-                          className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
-                        />
-
-                        {/* Condition Badge (Top Left) */}
-                        <span
-                          className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${item.conditionBadgeColor}`}
-                        >
-                          <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
-                          <span>{item.conditionBadge}</span>
-                        </span>
-
-                        {/* Wishlist Button (Top Right) */}
-                        <button
-                          type="button"
-                          onClick={(e) => toggleWishlist(item, e)}
-                          className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
-                          aria-label="Wishlist"
-                        >
-                          <Heart
-                            className={`h-3.5 w-3.5 transition-colors ${
-                              isWishlisted
-                                ? 'fill-rose-500 text-rose-500'
-                                : 'text-slate-400'
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {/* Meta Section */}
-                      <div className="mt-2 space-y-1">
-                        {/* Rating & Review Count */}
-                        <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                          <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
-                            {item.rating.toFixed(1)}
-                          </span>
-                          <span className="text-[10px] font-medium text-slate-400">
-                            ({item.reviewCount})
-                          </span>
-                        </div>
-
-                        {/* Product Name */}
-                        <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
-                          {item.name}
-                        </h3>
-
-                        {/* Feature Perks Pills */}
-                        <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                          <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                            Garansi 30 Hari
-                          </span>
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            Bonus 3-in-1
-                          </span>
-                        </div>
-
-                        {/* Price Row */}
-                        <div className="pt-1">
-                          <span className="block text-sm font-black leading-tight text-orange-500">
-                            {item.price}
-                          </span>
-                          <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
-                            {item.originalPrice}
-                          </span>
-                        </div>
-
-                        {/* Store Location */}
-                        <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                          <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
-                          <span className="truncate">
-                            {item.locationTag.replace(
-                              'Affiliate Gadget - ',
-                              ''
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-
-                    {/* Buy Button CTA */}
-                    <Link
-                      href={item.href}
-                      className="shadow-2xs mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-1.5 text-xs font-bold text-white transition-all hover:bg-orange-600 active:scale-95"
-                    >
-                      <ShoppingCart className="h-3 w-3" />
-                      <span>Beli</span>
-                    </Link>
-                  </div>
-                )
-              })}
+              .slice(0, 1)
+              .map((item) => renderMobileProductCard(item))}
+            {promotedInFeedAd && <InFeedStoreAdCard ad={promotedInFeedAd} />}
+            {allProducts
+              .slice(0, visibleCount)
+              .filter((_, idx) => idx % 2 === 1)
+              .slice(1)
+              .map((item) => renderMobileProductCard(item))}
           </div>
         </div>
 
