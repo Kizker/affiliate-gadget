@@ -35,13 +35,84 @@ export async function GET(req: NextRequest) {
       take: limit,
     })
 
+    // Pre-fetch related product details for product-targeted ads
+    const productIds = Array.from(
+      new Set(
+        ads
+          .map((a) => {
+            if (a.productId) return a.productId
+            if (
+              a.targetUrl?.startsWith('/gadget/') &&
+              a.targetUrl !== '/gadget'
+            ) {
+              return a.targetUrl.replace('/gadget/', '').split('?')[0]
+            }
+            return null
+          })
+          .filter((id): id is string => Boolean(id))
+      )
+    )
+
+    const productsMap = new Map<string, any>()
+    if (productIds.length > 0) {
+      const [prods, salesGroup] = await Promise.all([
+        prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            originalPrice: true,
+            brand: true,
+            images: true,
+            stock: true,
+            rating: true,
+            totalReview: true,
+          },
+        }),
+        prisma.orderItem.groupBy({
+          by: ['productId'],
+          where: {
+            productId: { in: productIds },
+            order: { status: { not: 'CANCELLED' } },
+          },
+          _sum: { quantity: true },
+        }),
+      ])
+
+      const salesMap = new Map<string, number>()
+      salesGroup.forEach((s) => {
+        if (s.productId) {
+          salesMap.set(s.productId, s._sum.quantity || 0)
+        }
+      })
+
+      prods.forEach((p) =>
+        productsMap.set(p.id, {
+          ...p,
+          soldCount: salesMap.get(p.id) || 0,
+        })
+      )
+    }
+
     const formattedAds = ads.map((a) => {
+      const resolvedProductId =
+        a.productId ||
+        (a.targetUrl?.startsWith('/gadget/') && a.targetUrl !== '/gadget'
+          ? a.targetUrl.replace('/gadget/', '').split('?')[0]
+          : null)
+
+      const relatedProduct = resolvedProductId
+        ? productsMap.get(resolvedProductId) || null
+        : null
+
       // Aturan: Jika admin store menginput custom image, pakai apa yang diinput admin store.
-      // Jika tidak ada / kosong, ambil dari poster toko (store.banner) atau platform poster.
+      // Jika tidak ada / kosong, ambil dari poster toko (store.banner), foto produk, atau platform poster.
       const fallbackPoster =
-        a.placement === 'HOMEPAGE_HERO'
+        relatedProduct?.images?.[0] ||
+        (a.placement === 'HOMEPAGE_HERO'
           ? a.store?.banner || '/images/banners/samsung-campaign-banner.jpg'
-          : a.store?.banner || '/images/banners/samsung-mobile-hero.jpg'
+          : a.store?.banner || '/images/banners/samsung-mobile-hero.jpg')
 
       const finalImageUrl =
         a.bannerUrl && a.bannerUrl.trim() !== '' ? a.bannerUrl : fallbackPoster
@@ -49,6 +120,7 @@ export async function GET(req: NextRequest) {
       return {
         ...a,
         imageUrl: finalImageUrl,
+        product: relatedProduct,
       }
     })
 

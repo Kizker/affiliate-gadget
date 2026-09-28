@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
-import { AdPlacement, AdStatus } from '@prisma/client'
+import { AdPlacement, AdStatus } from '@/types/ads'
 
 export async function GET(req: NextRequest) {
   try {
@@ -83,18 +83,18 @@ export async function GET(req: NextRequest) {
     })
 
     // Compute stats for current context
-    const baseWhere = effectiveStoreId ? { storeId: effectiveStoreId } : {}
+    const baseWhere: any = effectiveStoreId ? { storeId: effectiveStoreId } : {}
     const [totalCount, pendingCount, approvedCount, rejectedCount] =
       await Promise.all([
         prisma.internalAd.count({ where: baseWhere }),
         prisma.internalAd.count({
-          where: { ...baseWhere, status: 'PENDING' },
+          where: { ...baseWhere, status: 'PENDING' } as any,
         }),
         prisma.internalAd.count({
-          where: { ...baseWhere, status: 'APPROVED' },
+          where: { ...baseWhere, status: 'APPROVED' } as any,
         }),
         prisma.internalAd.count({
-          where: { ...baseWhere, status: 'REJECTED' },
+          where: { ...baseWhere, status: 'REJECTED' } as any,
         }),
       ])
 
@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
       imageUrl,
       bannerUrl,
       targetUrl,
+      productId,
       startDate,
       endDate,
       priority,
@@ -185,25 +186,34 @@ export async function POST(req: NextRequest) {
       finalStoreId = reqStoreId || null
     }
 
-    // Auto-resolve store slug for target URL if not provided
+    // Auto-resolve target URL if not provided
     let finalTargetUrl = targetUrl?.trim()
-    if (!finalTargetUrl && finalStoreId) {
-      const storeObj = await prisma.store.findUnique({
-        where: { id: finalStoreId },
-        select: { slug: true },
-      })
-      if (storeObj?.slug) {
-        finalTargetUrl = `/toko/${storeObj.slug}`
+    if (!finalTargetUrl) {
+      if (productId?.trim()) {
+        finalTargetUrl = `/gadget/${productId.trim()}`
+      } else if (finalStoreId) {
+        const storeObj = await prisma.store.findUnique({
+          where: { id: finalStoreId },
+          select: { slug: true },
+        })
+        if (storeObj?.slug) {
+          finalTargetUrl = `/toko/${storeObj.slug}`
+        }
       }
     }
     if (!finalTargetUrl) {
       finalTargetUrl = '/gadget'
     }
 
-    const initialStatus: AdStatus =
-      role === 'SUPER_ADMIN'
-        ? (body.status as AdStatus) || 'APPROVED'
-        : 'PENDING'
+    const isSuperAdmin = role === 'SUPER_ADMIN'
+    const initialStatus: AdStatus = isSuperAdmin
+      ? (body.status as AdStatus) || 'APPROVED'
+      : 'PENDING'
+    const initialIsActive = isSuperAdmin
+      ? body.isActive !== undefined
+        ? Boolean(body.isActive)
+        : true
+      : false
 
     const resolvedStartDate = startDate ? new Date(startDate) : new Date()
     let resolvedEndDate: Date | null = endDate ? new Date(endDate) : null
@@ -215,17 +225,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    let resolvedSubtitle = body.subtitle?.trim() || null
-    if (!resolvedSubtitle) {
-      if (placement === 'HOMEPAGE_HERO') {
-        const days = body.durationDays || 7
-        resolvedSubtitle = `Durasi Tayang: ${days} Hari`
-      } else if (placement === 'PROMOTED_LIST') {
-        const count = body.targetImpressions || 1000
-        const days = body.durationDays || 7
-        resolvedSubtitle = `Target: ${Number(count).toLocaleString('id-ID')}x Muncul • ${days} Hari`
-      }
-    }
+    const resolvedSubtitle = body.subtitle?.trim() || null
 
     const calculatedPriority =
       typeof priority === 'number'
@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
               10,
               Math.max(1, Math.round(Number(body.targetImpressions) / 1000))
             )
-          : 0
+          : 5
 
     const newAd = await prisma.internalAd.create({
       data: {
@@ -244,13 +244,14 @@ export async function POST(req: NextRequest) {
         placement: placement as AdPlacement,
         bannerUrl: finalBannerUrl,
         targetUrl: finalTargetUrl,
+        productId: productId?.trim() || null,
         storeId: finalStoreId,
         status: initialStatus,
         priority: calculatedPriority,
         startDate: resolvedStartDate,
         endDate: resolvedEndDate,
-        isActive: true,
-      },
+        isActive: initialIsActive,
+      } as any,
       include: {
         store: {
           select: {

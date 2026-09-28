@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic'
 import TemplateSelector from '@/components/blog/template-selector'
 import type { BlogTemplate } from '@/lib/blog-templates'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { usePageGuard } from '@/hooks/use-page-guard'
 
 const TinyMCEEditor = dynamic(
   () => import('@/components/blog/tinymce-editor'),
@@ -26,6 +27,9 @@ export default function EditBlogPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/blog'
+  )
   const router = useRouter()
   const [id, setId] = useState<string>('')
   const [loading, setLoading] = useState(true)
@@ -289,9 +293,7 @@ export default function EditBlogPage({
               </label>
               <CustomSelect
                 value={formData.category}
-                onChange={(val) =>
-                  setFormData({ ...formData, category: val })
-                }
+                onChange={(val) => setFormData({ ...formData, category: val })}
                 placeholder="Select category"
                 options={[
                   { value: 'Tech', label: 'Tech' },

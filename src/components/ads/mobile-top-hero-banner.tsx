@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Store, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 
 export interface HeroSlideData {
   id: string
@@ -22,7 +22,7 @@ const DEFAULT_BANNER_SLIDES: HeroSlideData[] = [
   {
     id: 'default-hero-1',
     image: '/images/banners/samsung-campaign-banner.jpg',
-    badgeText: 'Toko Resmi PT Terverifikasi',
+    badgeText: '',
     title: 'Flash Sale Gadget Second Resmi',
     subtitle: 'Garansi 30 Hari Tukar Unit Baru di Seluruh Indonesia',
     targetUrl: '/gadget',
@@ -71,10 +71,8 @@ export function MobileTopHeroBanner({
                 id: ad.id || `hero-ad-${index}`,
                 adId: ad.id,
                 image: finalImage,
-                badgeText: ad.store?.city
-                  ? `Cabang ${ad.store.city}`
-                  : 'Toko Resmi PT',
-                title: ad.title || 'Iklan Promosi Toko',
+                badgeText: ad.store?.city ? `Cabang ${ad.store.city}` : '',
+                title: ad.title || 'Promo Gadget Pilihan',
                 subtitle:
                   ad.subtitle || ad.store?.name || 'Garansi Toko 30 Hari',
                 storeSlug: ad.store?.slug,
@@ -167,21 +165,6 @@ export function MobileTopHeroBanner({
 
           {/* Vignette gradients for editorial readability */}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-black/30" />
-
-          {/* Top Badges */}
-          <div className="pointer-events-none absolute left-2.5 right-2.5 top-2.5 z-20 flex items-center justify-between">
-            <div className="flex items-center gap-1 rounded-full border border-orange-400/40 bg-orange-950/80 px-2 py-0.5 text-[9px] font-bold text-orange-300 shadow-sm backdrop-blur-md">
-              <Sparkles className="h-2.5 w-2.5 shrink-0 text-orange-400" />
-              <span>Iklan Toko Resmi</span>
-            </div>
-
-            {slide.badgeText && (
-              <div className="flex items-center gap-1 rounded-full border border-white/20 bg-black/50 px-2 py-0.5 text-[9px] font-semibold text-white/90 backdrop-blur-md">
-                <Store className="h-2.5 w-2.5 text-white/70" />
-                <span>{slide.badgeText}</span>
-              </div>
-            )}
-          </div>
 
           {/* Bottom Title & Subtitle */}
           <div className="pointer-events-none absolute bottom-2.5 left-2.5 right-14 z-20 space-y-0.5">

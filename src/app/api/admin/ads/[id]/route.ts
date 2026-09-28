@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
-import { AdPlacement, AdStatus } from '@prisma/client'
+import { AdPlacement, AdStatus } from '@/types/ads'
 
 export async function GET(
   req: NextRequest,
@@ -72,7 +72,7 @@ export async function PATCH(
     }
 
     const { id } = await params
-    const existing = await prisma.internalAd.findUnique({
+    const existing: any = await prisma.internalAd.findUnique({
       where: { id },
       include: { store: true },
     })
@@ -86,6 +86,30 @@ export async function PATCH(
 
     const body = await req.json()
     const updateData: any = {}
+
+    // Security Gate: Hanya SUPER_ADMIN yang berhak mengaktifkan/menonaktifkan atau menyetujui iklan
+    if (role !== 'SUPER_ADMIN') {
+      if (body.isActive !== undefined) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              'Hanya Super Admin yang berhak mengaktifkan atau menonaktifkan iklan',
+          },
+          { status: 403 }
+        )
+      }
+      if (body.status === 'APPROVED') {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              'Hanya Super Admin yang berhak menyetujui dan mengaktifkan iklan',
+          },
+          { status: 403 }
+        )
+      }
+    }
 
     if (role === 'STORE_ADMIN') {
       let storeId = (session.user as any).storeId
@@ -107,29 +131,58 @@ export async function PATCH(
         )
       }
 
-      // Store Admin can toggle isActive
-      if (body.isActive !== undefined) {
-        updateData.isActive = Boolean(body.isActive)
-      }
+      // Pembatalan pengajuan oleh Admin Toko
+      if (body.action === 'cancel' || body.status === 'REJECTED') {
+        if (existing.status !== 'PENDING') {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                'Hanya pengajuan berstatus menunggu persetujuan yang dapat dibatalkan',
+            },
+            { status: 400 }
+          )
+        }
+        updateData.status = 'REJECTED'
+        updateData.isActive = false
+        updateData.rejectionReason = 'Dibatalkan oleh Admin Toko'
+      } else {
+        // Toko hanya boleh mengedit detail iklan jika masih berstatus PENDING
+        if (existing.status !== 'PENDING') {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                'Iklan yang telah disetujui hanya dapat dikelola oleh Super Admin',
+            },
+            { status: 403 }
+          )
+        }
 
-      // Store Admin can always replace banner image, title, or targetUrl
-      if (body.imageUrl || body.bannerUrl) {
-        updateData.bannerUrl = (body.imageUrl || body.bannerUrl).trim()
-      }
-      if (body.title) updateData.title = body.title.trim()
-      if (body.targetUrl) updateData.targetUrl = body.targetUrl.trim()
-      if (body.subtitle) updateData.subtitle = body.subtitle.trim()
-
-      if (existing.status === 'PENDING') {
+        if (body.imageUrl || body.bannerUrl) {
+          updateData.bannerUrl = (body.imageUrl || body.bannerUrl).trim()
+        }
+        if (body.title) updateData.title = body.title.trim()
+        if (body.targetUrl) updateData.targetUrl = body.targetUrl.trim()
+        if (body.subtitle !== undefined)
+          updateData.subtitle = body.subtitle ? body.subtitle.trim() : null
+        if (body.productId !== undefined)
+          updateData.productId = body.productId ? body.productId.trim() : null
         if (body.placement) updateData.placement = body.placement as AdPlacement
       }
     } else {
-      // Super Admin or Platform Admin permissions
+      // Super Admin permissions
       if (body.status !== undefined) {
         updateData.status = body.status as AdStatus
         if (body.status === 'APPROVED') {
           updateData.rejectionReason = null
+          updateData.isActive = true
+          // Boost priority for approved ad if priority was 0 and not explicitly provided
+          if (existing.priority === 0 && body.priority === undefined) {
+            updateData.priority = 5
+          }
         } else if (body.status === 'REJECTED') {
+          updateData.isActive = false
           updateData.rejectionReason =
             body.rejectionReason?.trim() || 'Ditolak oleh admin platform'
         }
@@ -151,6 +204,10 @@ export async function PATCH(
       if (body.imageUrl || body.bannerUrl)
         updateData.bannerUrl = (body.imageUrl || body.bannerUrl).trim()
       if (body.targetUrl) updateData.targetUrl = body.targetUrl.trim()
+      if (body.productId !== undefined)
+        updateData.productId = body.productId ? body.productId.trim() : null
+      if (body.subtitle !== undefined)
+        updateData.subtitle = body.subtitle ? body.subtitle.trim() : null
       if (body.placement) updateData.placement = body.placement as AdPlacement
       if (body.startDate) updateData.startDate = new Date(body.startDate)
       if (body.endDate) updateData.endDate = new Date(body.endDate)
@@ -158,7 +215,7 @@ export async function PATCH(
 
     const updated = await prisma.internalAd.update({
       where: { id },
-      data: updateData,
+      data: updateData as any,
       include: {
         store: {
           select: {
@@ -238,15 +295,32 @@ export async function DELETE(
           { status: 403 }
         )
       }
+
+      // Admin toko hanya dapat membatalkan pengajuan (PENDING) atau membersihkan yang ditolak (REJECTED)
+      if (existing.status === 'APPROVED') {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              'Iklan yang telah disetujui hanya dapat dinonaktifkan atau dihapus oleh Super Admin',
+          },
+          { status: 403 }
+        )
+      }
     }
 
     await prisma.internalAd.delete({
       where: { id },
     })
 
+    const successMessage =
+      existing.status === 'PENDING'
+        ? 'Pengajuan iklan berhasil dibatalkan'
+        : 'Iklan berhasil dihapus'
+
     return NextResponse.json({
       success: true,
-      message: 'Iklan berhasil dihapus',
+      message: successMessage,
     })
   } catch (error: any) {
     console.error('Error deleting internal ad:', error)

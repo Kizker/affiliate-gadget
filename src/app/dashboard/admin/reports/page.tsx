@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
+import { usePageGuard } from '@/hooks/use-page-guard'
 import {
   Package,
   Download,
@@ -241,6 +242,9 @@ interface ReportData {
 }
 
 export default function ReportsPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/reports'
+  )
   const router = useRouter()
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
@@ -508,10 +512,7 @@ export default function ReportsPage() {
           </button>
         </div>
 
-        <PeriodSelect
-          value={dateRange}
-          onChange={(val) => setDateRange(val)}
-        />
+        <PeriodSelect value={dateRange} onChange={(val) => setDateRange(val)} />
       </div>
 
       {/* ========================================================================= */}
@@ -912,9 +913,7 @@ export default function ReportsPage() {
                 ]
 
           const maxVal = Math.max(
-            ...rawTrends.map((t) =>
-              Math.max(t.grossRevenue, t.netProfit, 1)
-            )
+            ...rawTrends.map((t) => Math.max(t.grossRevenue, t.netProfit, 1))
           )
 
           const chartMaxHeightPx = 150
@@ -922,7 +921,7 @@ export default function ReportsPage() {
           return (
             <div className="pt-6">
               {/* Chart Container with Y-Axis Guidelines & Baseline */}
-              <div className="relative border-b border-slate-100 dark:border-slate-800 pb-2">
+              <div className="relative border-b border-slate-100 pb-2 dark:border-slate-800">
                 {/* Background Guidelines */}
                 <div className="pointer-events-none absolute inset-x-0 top-0 flex h-[150px] flex-col justify-between">
                   <div className="border-b border-dashed border-slate-100 dark:border-slate-800/60" />
@@ -931,11 +930,13 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Bars Row */}
-                <div className="relative flex h-[190px] items-end gap-3 sm:gap-6 overflow-x-auto px-2">
+                <div className="relative flex h-[190px] items-end gap-3 overflow-x-auto px-2 sm:gap-6">
                   {rawTrends.map((point, idx) => {
                     const grossHeightPx = Math.max(
                       12,
-                      Math.round((point.grossRevenue / maxVal) * chartMaxHeightPx)
+                      Math.round(
+                        (point.grossRevenue / maxVal) * chartMaxHeightPx
+                      )
                     )
                     const safeNetProfit = Math.max(0, point.netProfit)
                     const netHeightPx = Math.max(
@@ -944,16 +945,19 @@ export default function ReportsPage() {
                     )
                     const marginPct =
                       point.grossRevenue > 0
-                        ? ((point.netProfit / point.grossRevenue) * 100).toFixed(1)
+                        ? (
+                            (point.netProfit / point.grossRevenue) *
+                            100
+                          ).toFixed(1)
                         : '0.0'
 
                     return (
                       <div
                         key={idx}
-                        className="group relative flex h-full min-w-[56px] sm:min-w-[72px] flex-1 flex-col items-center justify-end"
+                        className="group relative flex h-full min-w-[56px] flex-1 flex-col items-center justify-end sm:min-w-[72px]"
                       >
                         {/* Hover Tooltip Popup */}
-                        <div className="pointer-events-none absolute top-2 z-30 hidden -translate-x-1/2 flex-col items-center rounded-xl border border-slate-700 bg-slate-950/95 px-3 py-2 text-[10px] text-white shadow-2xl backdrop-blur-xs group-hover:flex">
+                        <div className="backdrop-blur-xs pointer-events-none absolute top-2 z-30 hidden -translate-x-1/2 flex-col items-center rounded-xl border border-slate-700 bg-slate-950/95 px-3 py-2 text-[10px] text-white shadow-2xl group-hover:flex">
                           <span className="font-bold text-slate-300">
                             {point.label} ({point.ordersCount || 1} Order)
                           </span>
@@ -970,20 +974,20 @@ export default function ReportsPage() {
                           {/* Omzet Bar */}
                           <div
                             style={{ height: `${grossHeightPx}px` }}
-                            className="w-3.5 sm:w-5 rounded-t-md bg-gradient-to-t from-blue-600 to-blue-400 shadow-xs transition-all duration-300 group-hover:from-blue-500 group-hover:to-blue-300"
+                            className="shadow-xs w-3.5 rounded-t-md bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-300 group-hover:from-blue-500 group-hover:to-blue-300 sm:w-5"
                             title={`Omzet: ${formatRupiah(point.grossRevenue)}`}
                           />
                           {/* Laba Bersih Bar */}
                           <div
                             style={{ height: `${netHeightPx}px` }}
-                            className="w-3.5 sm:w-5 rounded-t-md bg-gradient-to-t from-purple-600 to-purple-400 shadow-xs transition-all duration-300 group-hover:from-purple-500 group-hover:to-purple-300"
+                            className="shadow-xs w-3.5 rounded-t-md bg-gradient-to-t from-purple-600 to-purple-400 transition-all duration-300 group-hover:from-purple-500 group-hover:to-purple-300 sm:w-5"
                             title={`Laba: ${formatRupiah(point.netProfit)}`}
                           />
                         </div>
 
                         {/* X-axis Date Label */}
                         <div className="mt-2 text-center">
-                          <span className="block truncate text-[10px] sm:text-[11px] font-semibold text-slate-500 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400 transition-colors">
+                          <span className="block truncate text-[10px] font-semibold text-slate-500 transition-colors group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400 sm:text-[11px]">
                             {point.label}
                           </span>
                         </div>
@@ -1071,7 +1075,9 @@ export default function ReportsPage() {
                   data.financials?.grossRevenue ?? data.revenue.total ?? 1
                 const sharePct = Math.min(
                   100,
-                  Math.round(((product.revenue || 0) / Math.max(1, totalRev)) * 100)
+                  Math.round(
+                    ((product.revenue || 0) / Math.max(1, totalRev)) * 100
+                  )
                 )
 
                 return (

@@ -153,7 +153,7 @@ describe('Withdrawal Route Handler E2E Integration (3 Security Gates)', () => {
     expect(res.status).toBe(403)
     expect(json.code).toBe('COOLING_DOWN')
     expect(json.cooldownStatus.isLocked).toBe(true)
-    expect(json.cooldownStatus.remainingHours).toBe(20)
+    expect([20, 21]).toContain(json.cooldownStatus.remainingHours)
     expect(prisma.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

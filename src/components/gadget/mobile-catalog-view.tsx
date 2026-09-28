@@ -45,6 +45,7 @@ interface MobileCatalogViewProps {
   session: any
   status: string
   promotedAd?: InFeedAdData | null
+  promotedAds?: InFeedAdData[]
 }
 
 export function MobileCatalogView({
@@ -59,7 +60,10 @@ export function MobileCatalogView({
   session,
   status,
   promotedAd,
+  promotedAds,
 }: MobileCatalogViewProps) {
+  const activeAd1 = (promotedAds && promotedAds[0]) || promotedAd || null
+  const activeAd2 = (promotedAds && promotedAds[1]) || null
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const { items } = useCartStore()
 
@@ -199,7 +203,7 @@ export function MobileCatalogView({
     return (
       <div
         key={item.id}
-        className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
+        className="shadow-xs relative flex flex-col justify-between rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
       >
         <Link href={`/gadget/${item.id}`} className="block">
           {/* Dynamic Resolution Image Box (No Cropping, Natural Height) */}
@@ -246,10 +250,10 @@ export function MobileCatalogView({
             <div className="flex items-center gap-1">
               <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
               <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
-                {(item.rating || 4.9).toFixed(1)}
+                {(item.rating || 5.0).toFixed(1)}
               </span>
               <span className="text-[10px] font-medium text-slate-400">
-                ({item.totalReview || 38})
+                ({item.totalReview ?? 0})
               </span>
             </div>
 
@@ -268,14 +272,19 @@ export function MobileCatalogView({
               </span>
             </div>
 
-            {/* Price Row */}
+            {/* Price Row & Sold Count */}
             <div className="pt-1">
               <span className="block text-sm font-black leading-tight text-orange-500">
                 Rp {item.price.toLocaleString('id-ID')}
               </span>
-              <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
-                Rp {strikePrice.toLocaleString('id-ID')}
-              </span>
+              <div className="mt-0.5 flex items-center justify-between text-[10px]">
+                <span className="leading-none text-slate-400 line-through">
+                  Rp {strikePrice.toLocaleString('id-ID')}
+                </span>
+                <span className="font-medium text-slate-500 dark:text-slate-400">
+                  Terjual {item.soldCount ?? 0}
+                </span>
+              </div>
             </div>
 
             {/* Store Location */}
@@ -422,6 +431,12 @@ export function MobileCatalogView({
               <div className="flex min-w-0 flex-col gap-2.5">
                 {displayedGadgets
                   .filter((_, idx) => idx % 2 === 0)
+                  .slice(0, 3)
+                  .map((item) => renderProductCard(item))}
+                {activeAd2 && <InFeedStoreAdCard ad={activeAd2} />}
+                {displayedGadgets
+                  .filter((_, idx) => idx % 2 === 0)
+                  .slice(3)
                   .map((item) => renderProductCard(item))}
               </div>
 
@@ -431,7 +446,7 @@ export function MobileCatalogView({
                   .filter((_, idx) => idx % 2 === 1)
                   .slice(0, 1)
                   .map((item) => renderProductCard(item))}
-                {promotedAd && <InFeedStoreAdCard ad={promotedAd} />}
+                {activeAd1 && <InFeedStoreAdCard ad={activeAd1} />}
                 {displayedGadgets
                   .filter((_, idx) => idx % 2 === 1)
                   .slice(1)

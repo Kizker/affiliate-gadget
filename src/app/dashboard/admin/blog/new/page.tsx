@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { usePageGuard } from '@/hooks/use-page-guard'
 import { ArrowLeft, Save, Eye, Loader2, Sparkles, X } from 'lucide-react'
 import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
@@ -23,6 +24,9 @@ const TinyMCEEditor = dynamic(
 )
 
 export default function NewBlogPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/blog'
+  )
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showTemplateSelector, setShowTemplateSelector] = useState(true)
@@ -255,9 +259,7 @@ export default function NewBlogPage() {
               </label>
               <CustomSelect
                 value={formData.category}
-                onChange={(val) =>
-                  setFormData({ ...formData, category: val })
-                }
+                onChange={(val) => setFormData({ ...formData, category: val })}
                 placeholder="Select category"
                 options={[
                   { value: 'Tech', label: 'Tech' },

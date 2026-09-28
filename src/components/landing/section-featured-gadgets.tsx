@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -12,7 +12,6 @@ import {
   Smartphone,
   Package,
   Star,
-  MessageSquare,
   Loader2,
   ChevronDown,
 } from 'lucide-react'
@@ -20,6 +19,10 @@ import {
   InFeedStoreAdCard,
   InFeedAdData,
 } from '@/components/ads/in-feed-store-ad-card'
+import {
+  assembleCatalogGridItems,
+  CatalogGridItem,
+} from '@/lib/catalog-grid-layout'
 
 const INITIAL_COUNT = 8
 const BATCH_SIZE = 8
@@ -34,7 +37,7 @@ const FALLBACK_GADGET_IMAGES = [
 export function SectionFeaturedGadgets() {
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [products, setProducts] = useState<any[]>([])
-  const [promotedAd, setPromotedAd] = useState<InFeedAdData | null>(null)
+  const [promotedAds, setPromotedAds] = useState<InFeedAdData[]>([])
   const [loading, setLoading] = useState(true)
 
   // Lazy Loading State
@@ -61,7 +64,7 @@ export function SectionFeaturedGadgets() {
       setLoading(true)
       const [prodRes, adRes] = await Promise.all([
         fetch('/api/gadgets'),
-        fetch('/api/ads?placement=PROMOTED_LIST&limit=1'),
+        fetch('/api/ads?placement=PROMOTED_LIST&limit=4'),
       ])
       const prodData = await prodRes.json()
       if (prodData.success && Array.isArray(prodData.data)) {
@@ -73,7 +76,7 @@ export function SectionFeaturedGadgets() {
         Array.isArray(adData.data) &&
         adData.data.length > 0
       ) {
-        setPromotedAd(adData.data[0])
+        setPromotedAds(adData.data)
       }
     } catch (error) {
       console.error('Error loading featured gadgets:', error)
@@ -98,6 +101,13 @@ export function SectionFeaturedGadgets() {
   useEffect(() => {
     setVisibleCount(INITIAL_COUNT)
   }, [selectedCategory])
+
+  const featuredGridItems = useMemo(() => {
+    return assembleCatalogGridItems(
+      filtered.slice(0, visibleCount),
+      promotedAds
+    )
+  }, [filtered, visibleCount, promotedAds])
 
   const hasMore = visibleCount < filtered.length
 
@@ -203,7 +213,17 @@ export function SectionFeaturedGadgets() {
             </div>
           ) : (
             <div className="grid grid-cols-2 items-stretch gap-2 sm:gap-4 lg:grid-cols-4">
-              {filtered.slice(0, visibleCount).map((product, idx) => {
+              {featuredGridItems.map((gridItem, idx) => {
+                if (gridItem.type === 'ad') {
+                  return (
+                    <InFeedStoreAdCard
+                      key={`ad-${gridItem.data.id}-${idx}`}
+                      ad={gridItem.data}
+                    />
+                  )
+                }
+
+                const product = gridItem.data
                 const rawImg =
                   Array.isArray(product.images) && product.images.length > 0
                     ? product.images[0]
@@ -242,116 +262,96 @@ export function SectionFeaturedGadgets() {
                     : Number(product.stock) || 0
 
                 return (
-                  <div key={product.id} className="contents">
-                    {/* Insert Level 2 Sponsored Store Ad after 2nd product card */}
-                    {idx === 2 && promotedAd && (
-                      <InFeedStoreAdCard ad={promotedAd} />
-                    )}
+                  <div
+                    key={product.id}
+                    className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border-2 border-slate-200 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4"
+                  >
+                    <Link
+                      href={`/gadget/${product.id}`}
+                      className="block cursor-pointer focus:outline-none"
+                    >
+                      {/* 1. Media Header (Square Cropped Hero Photo) */}
+                      <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60 sm:mb-3.5 sm:rounded-2xl">
+                        <Image
+                          src={displayImg}
+                          alt={product.name}
+                          fill
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                          unoptimized
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                        />
 
-                    <div className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4">
-                      <Link
-                        href={`/gadget/${product.id}`}
-                        className="block cursor-pointer focus:outline-none"
-                      >
-                        {/* 1. Media Header (Square Cropped Hero Photo) */}
-                        <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950/60 sm:mb-3.5 sm:rounded-2xl">
-                          <Image
-                            src={displayImg}
-                            alt={product.name}
-                            fill
-                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                            unoptimized
-                            className="object-cover transition-transform duration-500 group-hover:scale-105"
-                            loading="lazy"
-                          />
-
-                          {/* Top-Right: Solid Clean Rating Capsule */}
-                          <div className="absolute right-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:right-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
-                            <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400 sm:h-3 sm:w-3" />
-                            <span className="font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white">
-                              {(product.rating || 5.0).toFixed(1)}
-                            </span>
-                            <span className="hidden text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500 sm:inline">
-                              ({product.totalReview || 0})
-                            </span>
-                          </div>
+                        {/* Top-Right: Solid Clean Rating Capsule */}
+                        <div className="absolute right-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:right-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
+                          <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400 sm:h-3 sm:w-3" />
+                          <span className="font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white">
+                            {(product.rating || 5.0).toFixed(1)}
+                          </span>
+                          <span className="hidden text-[10px] font-normal tabular-nums text-slate-400 dark:text-slate-500 sm:inline">
+                            ({product.totalReview || 0})
+                          </span>
                         </div>
-
-                        {/* 2. Info, Store & Stock */}
-                        <div className="space-y-1.5 px-0.5 sm:space-y-2">
-                          <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px]">
-                            <div className="flex min-w-0 items-center gap-1 truncate font-medium text-slate-400">
-                              <Store className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
-                              <span className="truncate text-[10px] sm:text-[11px]">
-                                {storeName || 'Toko Resmi'}
-                              </span>
-                            </div>
-
-                            {/* Stock Pill */}
-                            <div className="shrink-0">
-                              {totalStock > 5 ? (
-                                <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:gap-1 sm:text-[10px]">
-                                  <Package className="hidden h-2.5 w-2.5 text-slate-500 sm:inline" />
-                                  <span>{totalStock} Unit</span>
-                                </span>
-                              ) : totalStock > 0 ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:text-[10px]">
-                                  <span>Sisa {totalStock}!</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-rose-200/60 bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 sm:text-[10px]">
-                                  <span>Habis</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <h3 className="line-clamp-2 min-h-[32px] text-xs font-bold leading-tight text-slate-900 group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:min-h-[40px] sm:text-sm">
-                            {product.name}
-                          </h3>
-
-                          <p className="line-clamp-1 text-[10px] font-medium text-slate-400 sm:text-xs">
-                            {specsText}
-                          </p>
-
-                          <div className="flex items-baseline gap-1.5 pt-1">
-                            <span className="text-xs font-black tracking-tight text-slate-950 dark:text-white sm:text-base">
-                              Rp {(product.price || 0).toLocaleString('id-ID')}
-                            </span>
-                            {product.originalPrice &&
-                              product.originalPrice > product.price && (
-                                <span className="text-[10px] text-slate-400 line-through">
-                                  Rp{' '}
-                                  {product.originalPrice.toLocaleString(
-                                    'id-ID'
-                                  )}
-                                </span>
-                              )}
-                          </div>
-                        </div>
-                      </Link>
-
-                      {/* 3. Action Buttons */}
-                      <div className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 dark:border-slate-800/80 sm:mt-3.5 sm:gap-2 sm:pt-3">
-                        <Link
-                          href={`/gadget/${product.id}`}
-                          className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-orange-500 py-1.5 text-[11px] font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 active:scale-[0.98] sm:rounded-2xl sm:py-2.5 sm:text-xs"
-                        >
-                          <span>Beli Sekarang</span>
-                          <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-3.5 sm:w-3.5" />
-                        </Link>
-
-                        {product.store?.id && (
-                          <Link
-                            href={`/dashboard/customer/chat?storeId=${product.store.id}&productId=${product.id}&productName=${encodeURIComponent(product.name || '')}&productPrice=${product.price || 0}&productImage=${encodeURIComponent(product.images?.[0] || '')}`}
-                            className="shadow-2xs flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-orange-800 dark:hover:bg-orange-950/40 dark:hover:text-orange-300 sm:h-9 sm:w-9 sm:rounded-2xl"
-                            title="Chat Toko tentang produk ini"
-                          >
-                            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
-                          </Link>
-                        )}
                       </div>
-                    </div>
+
+                      {/* 2. Info, Store & Stock */}
+                      <div className="space-y-1.5 px-0.5 sm:space-y-2">
+                        <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px]">
+                          <div className="flex min-w-0 items-center gap-1 truncate font-medium text-slate-400">
+                            <Store className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
+                            <span className="truncate text-[10px] sm:text-[11px]">
+                              {storeName || 'Toko Resmi'}
+                            </span>
+                          </div>
+
+                          {/* Stock Pill */}
+                          <div className="shrink-0">
+                            {totalStock > 5 ? (
+                              <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:gap-1 sm:text-[10px]">
+                                <Package className="hidden h-2.5 w-2.5 text-slate-500 sm:inline" />
+                                <span>{totalStock} Unit</span>
+                              </span>
+                            ) : totalStock > 0 ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:text-[10px]">
+                                <span>Sisa {totalStock}!</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200/60 bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 sm:text-[10px]">
+                                <span>Habis</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <h3 className="line-clamp-2 min-h-[32px] text-xs font-bold leading-tight text-slate-900 group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:min-h-[40px] sm:text-sm">
+                          {product.name}
+                        </h3>
+
+                        <p className="line-clamp-1 text-[10px] font-medium text-slate-400 sm:text-xs">
+                          {specsText}
+                        </p>
+
+                        <div className="flex items-baseline justify-between gap-1 pt-1">
+                          <span className="text-xs font-black tracking-tight text-slate-950 dark:text-white sm:text-base">
+                            Rp {(product.price || 0).toLocaleString('id-ID')}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-1 pt-0.5 text-[10px] sm:text-[11px]">
+                          {product.originalPrice &&
+                          product.originalPrice > product.price ? (
+                            <span className="text-slate-400 line-through">
+                              Rp {product.originalPrice.toLocaleString('id-ID')}
+                            </span>
+                          ) : (
+                            <span />
+                          )}
+                          <span className="font-medium text-slate-500 dark:text-slate-400">
+                            Terjual {product.soldCount ?? 0}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
                   </div>
                 )
               })}

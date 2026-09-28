@@ -104,8 +104,33 @@ export async function GET(request: Request) {
       orderBy,
     })
 
+    // Agregasi jumlah penjualan riil dari OrderItem (order valid / tidak dibatalkan)
+    const productIds = products.map((p) => p.id)
+    const salesMap = new Map<string, number>()
+    if (productIds.length > 0) {
+      const salesGroup = await prisma.orderItem.groupBy({
+        by: ['productId'],
+        where: {
+          productId: { in: productIds },
+          order: {
+            status: { not: 'CANCELLED' },
+          },
+        },
+        _sum: {
+          quantity: true,
+        },
+      })
+
+      salesGroup.forEach((s) => {
+        if (s.productId) {
+          salesMap.set(s.productId, s._sum.quantity || 0)
+        }
+      })
+    }
+
     const enrichedProducts = products.map((p) => ({
       ...p,
+      soldCount: salesMap.get(p.id) || 0,
       store: p.store
         ? {
             ...p.store,

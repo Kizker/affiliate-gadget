@@ -12,7 +12,6 @@ import {
   MapPin,
   Clock,
   ShieldCheck,
-  ArrowRight,
   MessageSquare,
   PhoneCall,
   ExternalLink,
@@ -597,16 +596,11 @@ export default function StoreDetailPage() {
                       <ProductCardImage src={imageUrl} alt={item.name} />
                     </div>
 
-                    {/* 3. Understated Price & Clean CTA Pill Button */}
-                    <div className="space-y-2 pt-1 text-center">
+                    {/* 3. Understated Price */}
+                    <div className="pt-1 text-center">
                       <p className="text-xs font-bold tabular-nums text-neutral-950 dark:text-white sm:text-base">
                         Rp {Number(item.price || 0).toLocaleString('id-ID')}
                       </p>
-
-                      <div className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1.5 text-[11px] font-semibold text-neutral-700 transition-all duration-200 group-hover:bg-black group-hover:text-white dark:bg-neutral-800 dark:text-neutral-300 dark:group-hover:bg-white dark:group-hover:text-black sm:px-3 sm:py-2 sm:text-xs">
-                        <span>Lihat Detail</span>
-                        <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" />
-                      </div>
                     </div>
                   </Link>
                 )

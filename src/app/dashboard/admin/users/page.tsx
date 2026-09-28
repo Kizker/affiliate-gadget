@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { usePageGuard } from '@/hooks/use-page-guard'
 import {
   Users,
   Search,
@@ -47,6 +48,9 @@ interface Stats {
 }
 
 export default function UsersPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/users'
+  )
   const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [stats, setStats] = useState<Stats>({
@@ -122,7 +126,11 @@ export default function UsersPage() {
   }
 
   // Delete user
-  const handleDelete = async (id: string, name: string | null, email: string) => {
+  const handleDelete = async (
+    id: string,
+    name: string | null,
+    email: string
+  ) => {
     const displayName = name || email
     if (
       !confirm(
@@ -187,34 +195,34 @@ export default function UsersPage() {
   const getRoleBadge = (user: User) => {
     if (user.technician) {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-orange-50 text-orange-700 border border-orange-200/60 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/40">
+        <span className="inline-flex items-center gap-1 rounded-full border border-orange-200/60 bg-orange-50 px-2.5 py-0.5 text-[10px] font-semibold text-orange-700 dark:border-orange-800/40 dark:bg-orange-950/40 dark:text-orange-300">
           Teknisi
         </span>
       )
     }
     if (user.role === 'SUPER_ADMIN') {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40">
+        <span className="inline-flex items-center gap-1 rounded-full border border-purple-200/60 bg-purple-50 px-2.5 py-0.5 text-[10px] font-semibold text-purple-700 dark:border-purple-800/40 dark:bg-purple-950/40 dark:text-purple-300">
           Super Admin
         </span>
       )
     }
     if (user.role === 'ADMIN') {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/60 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40">
+        <span className="inline-flex items-center gap-1 rounded-full border border-blue-200/60 bg-blue-50 px-2.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:border-blue-800/40 dark:bg-blue-950/40 dark:text-blue-300">
           Admin Platform
         </span>
       )
     }
     if (user.role === 'STORE_ADMIN' || user.role === 'MITRA') {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/60 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/40">
+        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200/60 bg-indigo-50 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-300">
           Admin Toko
         </span>
       )
     }
     return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/60 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700/60">
+      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/60 bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:border-slate-700/60 dark:bg-slate-800 dark:text-slate-300">
         Customer
       </span>
     )
@@ -238,23 +246,26 @@ export default function UsersPage() {
     (stats.byRole.ADMIN || 0) + (stats.byRole.SUPER_ADMIN || 0)
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12 pt-1" suppressHydrationWarning>
+    <div
+      className="mx-auto max-w-6xl space-y-6 pb-12 pt-1"
+      suppressHydrationWarning
+    >
       {/* ========================================================================= */}
       {/* 1. TOP KPI METRIC CARDS (Bento Metric Grid)                               */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
         {/* 1. Total Pengguna (Action Orange Highlight) */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-orange-200 hover:shadow-xs dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+        <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-orange-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Total Pengguna
             </span>
-            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
+            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
               <Users className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="mt-2.5">
-            <p className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">
+            <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
               {totalUsers} Pengguna
             </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
@@ -262,23 +273,25 @@ export default function UsersPage() {
                 <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
                 Semua Akun
               </span>
-              <span className="text-slate-400 dark:text-slate-500">· Terdaftar</span>
+              <span className="text-slate-400 dark:text-slate-500">
+                · Terdaftar
+              </span>
             </div>
           </div>
         </div>
 
         {/* 2. Customer Pembeli */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 hover:shadow-xs dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+        <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Customer Pembeli
             </span>
-            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
               <ShoppingBag className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="mt-2.5">
-            <p className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">
+            <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
               {stats.byRole.CUSTOMER || 0} Member
             </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
@@ -286,49 +299,59 @@ export default function UsersPage() {
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
                 Member Aktif
               </span>
-              <span className="text-slate-400 dark:text-slate-500">· Belanja</span>
+              <span className="text-slate-400 dark:text-slate-500">
+                · Belanja
+              </span>
             </div>
           </div>
         </div>
 
         {/* 3. Admin Toko */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 hover:shadow-xs dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+        <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Admin Toko
             </span>
-            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
               <Store className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="mt-2.5">
-            <p className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">
+            <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
               {stats.byRole.STORE_ADMIN || 0} Akun
             </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-              <span className="font-semibold text-indigo-600 dark:text-indigo-400">Pengelola Toko</span>
-              <span className="text-slate-400 dark:text-slate-500">· Cabang PT</span>
+              <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                Pengelola Toko
+              </span>
+              <span className="text-slate-400 dark:text-slate-500">
+                · Cabang PT
+              </span>
             </div>
           </div>
         </div>
 
         {/* 4. Superadmin & Admin */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:border-slate-300 hover:shadow-xs dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between">
+        <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Superadmin & Admin
             </span>
-            <div className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
+            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
               <ShieldCheck className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="mt-2.5">
-            <p className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">
+            <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
               {totalSuperAndAdmin} Akun
             </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-              <span className="font-medium text-slate-700 dark:text-slate-300">Pengelola Platform</span>
-              <span className="text-slate-400 dark:text-slate-500">· Akses Sistem</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">
+                Pengelola Platform
+              </span>
+              <span className="text-slate-400 dark:text-slate-500">
+                · Akses Sistem
+              </span>
             </div>
           </div>
         </div>
@@ -337,9 +360,9 @@ export default function UsersPage() {
       {/* ========================================================================= */}
       {/* 2. UNIFIED TOOLBAR (Role Tabs, Live Search, Export & Tambah Akun)         */}
       {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 rounded-2xl bg-white dark:bg-slate-900 p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+      <div className="shadow-2xs flex flex-col items-stretch justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:p-3 md:flex-row md:items-center">
         {/* Role Tabs Switcher */}
-        <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-xl overflow-x-auto no-scrollbar">
+        <div className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
           {[
             { id: 'ALL', label: 'Semua Role' },
             { id: 'SUPER_ADMIN', label: 'Superadmin' },
@@ -353,9 +376,9 @@ export default function UsersPage() {
                 setRoleFilter(tab.id)
                 setPage(1)
               }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                 roleFilter === tab.id
-                  ? 'bg-white dark:bg-slate-900 text-slate-950 dark:text-white shadow-2xs'
+                  ? 'shadow-2xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
             >
@@ -365,10 +388,10 @@ export default function UsersPage() {
         </div>
 
         {/* Search Box, Export & Primary CTA */}
-        <div className="flex items-center gap-2 flex-1 md:flex-initial justify-end flex-wrap sm:flex-nowrap">
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-2 sm:flex-nowrap md:flex-initial">
           {/* Live Search with orange focus ring */}
           <div className="relative w-full sm:w-56 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Cari nama atau email..."
@@ -377,7 +400,7 @@ export default function UsersPage() {
                 setSearchQuery(e.target.value)
                 setPage(1)
               }}
-              className="w-full rounded-xl border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 py-2 pl-8 pr-7 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none transition focus:border-orange-500 focus:bg-white dark:focus:border-orange-400 dark:focus:bg-slate-850"
+              className="dark:focus:bg-slate-850 w-full rounded-xl border border-slate-200/80 bg-slate-50 py-2 pl-8 pr-7 text-xs font-medium text-slate-900 placeholder-slate-400 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-orange-400"
             />
             {searchQuery && (
               <button
@@ -395,7 +418,7 @@ export default function UsersPage() {
           {/* Export Button */}
           <button
             onClick={handleExport}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition shrink-0"
+            className="dark:hover:bg-slate-750 inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             title="Export CSV data pengguna"
           >
             <Download className="h-3.5 w-3.5" />
@@ -405,7 +428,7 @@ export default function UsersPage() {
           {/* Primary Action Button (+ Tambah Akun with Action Orange) */}
           <button
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 active:scale-95 transition whitespace-nowrap shrink-0"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95"
           >
             <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
             <span>Tambah Akun</span>
@@ -416,31 +439,31 @@ export default function UsersPage() {
       {/* ========================================================================= */}
       {/* 3. USER DATA TABLE LIST (Modern, Scannable & High-Density)                */}
       {/* ========================================================================= */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-2xs overflow-hidden">
+      <div className="shadow-2xs overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">
         {!mounted || loading ? (
-          <div className="p-8 space-y-4">
+          <div className="space-y-4 p-8">
             {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
-                className="animate-pulse flex items-center justify-between gap-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0"
+                className="flex animate-pulse items-center justify-between gap-4 border-b border-slate-100 py-3 last:border-0 dark:border-slate-800"
               >
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-slate-200 dark:bg-slate-800" />
                   <div className="space-y-1.5">
-                    <div className="h-4 w-36 bg-slate-200 dark:bg-slate-800 rounded" />
-                    <div className="h-3 w-48 bg-slate-100 dark:bg-slate-800/60 rounded" />
+                    <div className="h-4 w-36 rounded bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-3 w-48 rounded bg-slate-100 dark:bg-slate-800/60" />
                   </div>
                 </div>
-                <div className="h-6 w-24 bg-slate-100 dark:bg-slate-800 rounded-full hidden sm:block" />
-                <div className="h-4 w-28 bg-slate-100 dark:bg-slate-800 rounded hidden md:block" />
-                <div className="h-6 w-20 bg-slate-100 dark:bg-slate-800 rounded-full" />
-                <div className="h-7 w-20 bg-slate-200 dark:bg-slate-800 rounded-full" />
+                <div className="hidden h-6 w-24 rounded-full bg-slate-100 dark:bg-slate-800 sm:block" />
+                <div className="hidden h-4 w-28 rounded bg-slate-100 dark:bg-slate-800 md:block" />
+                <div className="h-6 w-20 rounded-full bg-slate-100 dark:bg-slate-800" />
+                <div className="h-7 w-20 rounded-full bg-slate-200 dark:bg-slate-800" />
               </div>
             ))}
           </div>
         ) : users.length === 0 ? (
-          <div className="p-16 text-center space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 dark:bg-orange-950/40 text-orange-500">
+          <div className="space-y-3 p-16 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 dark:bg-orange-950/40">
               <Users className="h-6 w-6" />
             </div>
             <div>
@@ -460,7 +483,7 @@ export default function UsersPage() {
                   setRoleFilter('ALL')
                   setPage(1)
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-orange-200 dark:border-orange-800/60 bg-orange-50/50 dark:bg-orange-950/30 px-3.5 py-1.5 text-xs font-semibold text-orange-700 dark:text-orange-300 hover:bg-orange-100/60 transition"
+                className="inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50/50 px-3.5 py-1.5 text-xs font-semibold text-orange-700 transition hover:bg-orange-100/60 dark:border-orange-800/60 dark:bg-orange-950/30 dark:text-orange-300"
               >
                 Reset Filter
               </button>
@@ -468,18 +491,22 @@ export default function UsersPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/40 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  <th className="py-3.5 px-4 sm:px-5">Pengguna & Profil</th>
-                  <th className="py-3.5 px-4">Peran & Akses</th>
-                  <th className="py-3.5 px-4 hidden sm:table-cell">Kontak & Telepon</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 hidden md:table-cell">Terdaftar</th>
-                  <th className="py-3.5 px-4 sm:px-5 text-right">Aksi</th>
+                <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-500">
+                  <th className="px-4 py-3.5 sm:px-5">Pengguna & Profil</th>
+                  <th className="px-4 py-3.5">Peran & Akses</th>
+                  <th className="hidden px-4 py-3.5 sm:table-cell">
+                    Kontak & Telepon
+                  </th>
+                  <th className="px-4 py-3.5">Status</th>
+                  <th className="hidden px-4 py-3.5 md:table-cell">
+                    Terdaftar
+                  </th>
+                  <th className="px-4 py-3.5 text-right sm:px-5">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+              <tbody className="divide-y divide-slate-100 text-xs dark:divide-slate-800">
                 {users.map((user) => {
                   const initial = (user.name || user.email || 'U')
                     .charAt(0)
@@ -489,27 +516,27 @@ export default function UsersPage() {
                   return (
                     <tr
                       key={user.id}
-                      className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                      className="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
                     >
                       {/* 1. User Identity & Orange Squircle Avatar */}
-                      <td className="py-3.5 px-4 sm:px-5">
+                      <td className="px-4 py-3.5 sm:px-5">
                         <div className="flex items-center gap-3">
                           {user.image ? (
                             <img
                               src={user.image}
                               alt={user.name || 'User'}
-                              className="h-9 w-9 shrink-0 rounded-xl object-cover border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
+                              className="shadow-2xs h-9 w-9 shrink-0 rounded-xl border border-slate-200/60 object-cover dark:border-slate-700/60"
                             />
                           ) : (
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100/80 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 font-bold text-xs border border-orange-200/60 dark:border-orange-800/40 shadow-2xs">
+                            <div className="shadow-2xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-orange-200/60 bg-orange-100/80 text-xs font-bold text-orange-700 dark:border-orange-800/40 dark:bg-orange-950/60 dark:text-orange-300">
                               {initial}
                             </div>
                           )}
                           <div className="min-w-0">
-                            <p className="font-bold text-slate-950 dark:text-white text-xs sm:text-sm truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                            <p className="truncate text-xs font-bold text-slate-950 transition-colors group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:text-sm">
                               {user.name || 'Pengguna Tanpa Nama'}
                             </p>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-[200px] sm:max-w-xs mt-0.5 font-sans">
+                            <p className="mt-0.5 max-w-[200px] truncate font-sans text-[11px] text-slate-400 dark:text-slate-500 sm:max-w-xs">
                               {user.email}
                             </p>
                           </div>
@@ -517,29 +544,29 @@ export default function UsersPage() {
                       </td>
 
                       {/* 2. Role Badge */}
-                      <td className="py-3.5 px-4">
-                        {getRoleBadge(user)}
-                      </td>
+                      <td className="px-4 py-3.5">{getRoleBadge(user)}</td>
 
                       {/* 3. Phone / WA */}
-                      <td className="py-3.5 px-4 hidden sm:table-cell">
+                      <td className="hidden px-4 py-3.5 sm:table-cell">
                         {user.phone ? (
-                          <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-mono text-xs">
-                            <Phone className="h-3 w-3 text-slate-400 shrink-0 font-sans" />
+                          <div className="flex items-center gap-1.5 font-mono text-xs text-slate-700 dark:text-slate-300">
+                            <Phone className="h-3 w-3 shrink-0 font-sans text-slate-400" />
                             <span>{user.phone}</span>
                           </div>
                         ) : (
-                          <span className="text-slate-300 dark:text-slate-600">-</span>
+                          <span className="text-slate-300 dark:text-slate-600">
+                            -
+                          </span>
                         )}
                       </td>
 
                       {/* 4. Active Status */}
-                      <td className="py-3.5 px-4">
+                      <td className="px-4 py-3.5">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold border ${
+                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
                             user.isActive
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40'
-                              : 'bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/40'
+                              ? 'border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-400'
+                              : 'border-rose-200/60 bg-rose-50 text-rose-700 dark:border-rose-800/40 dark:bg-rose-950/40 dark:text-rose-400'
                           }`}
                         >
                           <span
@@ -552,14 +579,14 @@ export default function UsersPage() {
                       </td>
 
                       {/* 5. Registered Date */}
-                      <td className="py-3.5 px-4 hidden md:table-cell">
-                        <span className="text-slate-500 dark:text-slate-400 text-xs">
+                      <td className="hidden px-4 py-3.5 md:table-cell">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
                           {formatDate(user.createdAt)}
                         </span>
                       </td>
 
                       {/* 6. Quick Action Buttons */}
-                      <td className="py-3.5 px-4 sm:px-5 text-right">
+                      <td className="px-4 py-3.5 text-right sm:px-5">
                         <div className="flex items-center justify-end gap-1.5">
                           {/* Toggle Active/Inactive Button */}
                           {!isSuperAdmin && (
@@ -586,7 +613,7 @@ export default function UsersPage() {
                               setEditingUser(user)
                               setShowEditModal(true)
                             }}
-                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:border-orange-300 hover:text-orange-600 dark:hover:border-orange-800 dark:hover:text-orange-400 transition"
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-orange-300 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-orange-800 dark:hover:text-orange-400"
                             title="Ubah Role & Status"
                           >
                             <Edit className="h-3 w-3 text-slate-400 group-hover:text-orange-500" />
@@ -599,7 +626,7 @@ export default function UsersPage() {
                               onClick={() =>
                                 handleDelete(user.id, user.name, user.email)
                               }
-                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-400 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-rose-900 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-rose-900 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
                               title="Hapus Akun Pengguna"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -629,14 +656,14 @@ export default function UsersPage() {
             <button
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 transition shadow-2xs"
+              className="shadow-2xs rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Sebelumnya
             </button>
             <button
               onClick={() => setPage(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
-              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 transition shadow-2xs"
+              className="shadow-2xs rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Selanjutnya
             </button>

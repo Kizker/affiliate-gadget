@@ -43,6 +43,7 @@ import {
   validateAWB,
   type AWBValidationResult,
 } from '@/lib/shipping/awb-validator'
+import { usePageGuard } from '@/hooks/use-page-guard'
 
 interface OrderItem {
   id: string
@@ -210,6 +211,9 @@ function formatDate(dateStr: string, isFull = false) {
 }
 
 export default function AdminOrdersPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/orders'
+  )
   const { data: session } = useSession()
   const isPlatformAdmin =
     session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
@@ -436,9 +440,7 @@ export default function AdminOrdersPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal menyimpan nomor resi')
 
-      toast.success(
-        `Resi ${awbValidation.formatted} berhasil disimpan!`
-      )
+      toast.success(`Resi ${awbValidation.formatted} berhasil disimpan!`)
       setOrders((prev) =>
         prev.map((o) =>
           o.id === selectedOrder.id
@@ -780,7 +782,12 @@ export default function AdminOrdersPage() {
                         <button
                           onClick={() => {
                             setSelectedOrder(order)
-                            setShowLiveTracker(Boolean(order.status === 'SHIPPED' && order.trackingNumber))
+                            setShowLiveTracker(
+                              Boolean(
+                                order.status === 'SHIPPED' &&
+                                order.trackingNumber
+                              )
+                            )
                           }}
                           className="shadow-2xs inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                         >
@@ -1187,7 +1194,7 @@ export default function AdminOrdersPage() {
                               onClick={() =>
                                 handleOpenThermalLabel(selectedOrder)
                               }
-                              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                              className="shadow-2xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             >
                               <Printer className="h-3.5 w-3.5 text-slate-500" />
                               <span>Cetak Label Thermal</span>
@@ -1197,7 +1204,7 @@ export default function AdminOrdersPage() {
                               onClick={() =>
                                 setShowLiveTracker(!showLiveTracker)
                               }
-                              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/90 bg-blue-50/80 py-2 text-xs font-bold text-blue-700 shadow-2xs transition hover:bg-blue-100 active:scale-[0.98] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
+                              className="shadow-2xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/90 bg-blue-50/80 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100 active:scale-[0.98] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
                             >
                               <Navigation className="h-3.5 w-3.5" />
                               <span>

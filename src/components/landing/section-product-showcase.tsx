@@ -139,7 +139,7 @@ export function SectionProductShowcase() {
           {filtered.map((product) => (
             <div
               key={product.id}
-              className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4"
+              className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border-2 border-slate-200 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4"
             >
               <Link
                 href={`/gadget/${product.id}`}
@@ -199,17 +199,6 @@ export function SectionProductShowcase() {
                   </div>
                 </div>
               </Link>
-
-              {/* 3. Action Button (Action Orange) */}
-              <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-800/80 sm:mt-3.5 sm:pt-3">
-                <Link
-                  href={`/gadget/${product.id}`}
-                  className="flex w-full items-center justify-center gap-1 rounded-xl bg-orange-500 py-1.5 text-[11px] font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 active:scale-[0.98] sm:rounded-2xl sm:py-2.5 sm:text-xs"
-                >
-                  <span>Beli Sekarang</span>
-                  <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-3.5 sm:w-3.5" />
-                </Link>
-              </div>
             </div>
           ))}
         </div>

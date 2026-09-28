@@ -32,8 +32,10 @@ import {
   Plus,
   Minus,
   Package,
+  Heart,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useWishlistSafe } from '@/lib/store/wishlist-store'
 
 export default function GadgetDetailPage() {
   const params = useParams()
@@ -50,6 +52,30 @@ export default function GadgetDetailPage() {
   const [isDesktopDescExpanded, setIsDesktopDescExpanded] = useState(false)
 
   const { addItem, setBuyNowItem } = useCartStore()
+  const { isInWishlist, toggleItem } = useWishlistSafe()
+  const isWishlisted = isInWishlist(product?.id || '')
+
+  const handleToggleWishlist = () => {
+    if (!product?.id) return
+    const priceToUse = selectedVariant ? selectedVariant.price : product.price
+    const wasAdded = toggleItem({
+      id: product.id,
+      name: product.name,
+      price: priceToUse,
+      originalPrice: selectedVariant?.originalPrice || product.originalPrice,
+      image: selectedImage || (product.images && product.images[0]) || '',
+      href: `/gadget/${product.id}`,
+      rating: product.rating,
+      reviewCount: product.totalReview,
+      originCity: product.store?.city,
+      storeName: product.store?.name,
+    })
+    if (wasAdded) {
+      toast.success(`Ditambahkan ke Wishlist: ${product.name}`)
+    } else {
+      toast.info(`Dihapus dari Wishlist: ${product.name}`)
+    }
+  }
 
   // Aggregate all unique images from product and variants for thumbnails (must be before early returns)
   const allImages = useMemo(() => {
@@ -429,6 +455,27 @@ export default function GadgetDetailPage() {
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Garansi 30 Hari Ganti Baru</span>
                   </div>
+
+                  {/* Desktop Floating Wishlist Button */}
+                  <button
+                    type="button"
+                    onClick={handleToggleWishlist}
+                    className="absolute right-4 top-4 z-20 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-slate-200/80 bg-white/95 text-slate-600 shadow-sm backdrop-blur-sm transition hover:scale-105 hover:text-rose-500 active:scale-95 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300"
+                    title={
+                      isWishlisted
+                        ? 'Hapus dari Wishlist'
+                        : 'Tambah ke Wishlist'
+                    }
+                    aria-label="Wishlist"
+                  >
+                    <Heart
+                      className={`h-5 w-5 transition-colors ${
+                        isWishlisted
+                          ? 'fill-rose-500 text-rose-500'
+                          : 'text-slate-400 hover:text-rose-500'
+                      }`}
+                    />
+                  </button>
 
                   {/* Desktop Prev & Next Arrows (Direct Variant Referencing) */}
                   {allImages && allImages.length > 1 && (
@@ -861,7 +908,7 @@ export default function GadgetDetailPage() {
                     </h3>
                     <div className="relative mt-2">
                       <div
-                        className={`text-xs leading-relaxed text-slate-600 dark:text-slate-400 transition-all duration-300 ${
+                        className={`text-xs leading-relaxed text-slate-600 transition-all duration-300 dark:text-slate-400 ${
                           !isDesktopDescExpanded
                             ? 'line-clamp-4 overflow-hidden'
                             : ''

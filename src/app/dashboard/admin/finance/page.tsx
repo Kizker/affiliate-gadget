@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import { usePageGuard } from '@/hooks/use-page-guard'
 import {
   Wallet,
   TrendingUp,
@@ -102,6 +103,9 @@ interface StoreOption {
 }
 
 export default function StoreAdminFinancePage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/finance'
+  )
   const { data: session } = useSession()
 
   const [activeTab, setActiveTab] = useState<

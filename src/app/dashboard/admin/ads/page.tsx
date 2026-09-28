@@ -32,9 +32,31 @@ import {
   Upload,
   ImageIcon,
   Package,
+  ShoppingBag,
+  Globe,
+  ShieldCheck,
+  Link2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { usePageGuard } from '@/hooks/use-page-guard'
+
+export type AdTargetType =
+  | 'STORE'
+  | 'STORE_CATALOG'
+  | 'PRODUCT'
+  | 'ALL_CATALOG'
+  | 'SERVICE_LCD'
+  | 'WARRANTY'
+  | 'CUSTOM'
+
+export interface CurrentStoreInfo {
+  id: string
+  name: string
+  slug: string
+  city?: string
+  banner?: string | null
+}
 
 interface AdStore {
   id: string
@@ -118,11 +140,13 @@ function calculateDurationText(
 }
 
 export default function AdsManagementPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/ads'
+  )
   const router = useRouter()
   const { data: session, status: authStatus } = useSession()
 
-  const isSuperAdmin =
-    session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
+  const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
   const isStoreAdmin = session?.user?.role === 'STORE_ADMIN'
 
   const [ads, setAds] = useState<InternalAdItem[]>([])
@@ -148,18 +172,34 @@ export default function AdsManagementPage() {
     null
   )
   const [rejectionReasonInput, setRejectionReasonInput] = useState('')
+  const [approveModalAd, setApproveModalAd] = useState<InternalAdItem | null>(
+    null
+  )
+  const [deactivateModalAd, setDeactivateModalAd] =
+    useState<InternalAdItem | null>(null)
+  const [cancelModalAd, setCancelModalAd] = useState<InternalAdItem | null>(
+    null
+  )
+  const [deleteModalAd, setDeleteModalAd] = useState<InternalAdItem | null>(
+    null
+  )
 
   // Modal Ganti Gambar
   const [editingAdForImage, setEditingAdForImage] =
     useState<InternalAdItem | null>(null)
   const [newImageUrl, setNewImageUrl] = useState('')
   const [newImageLabel, setNewImageLabel] = useState('')
+  const [editTargetUrl, setEditTargetUrl] = useState('')
   const [changeImageTab, setChangeImageTab] = useState<
     'STORE_BANNER' | 'PRODUCTS' | 'PRESETS' | 'UPLOAD' | 'URL'
   >('PRESETS')
   const [savingImage, setSavingImage] = useState(false)
 
   // Store profile & catalog photos for banner selector
+  const [currentStore, setCurrentStore] = useState<CurrentStoreInfo | null>(
+    null
+  )
+  const [allStores, setAllStores] = useState<CurrentStoreInfo[]>([])
   const [storeBanner, setStoreBanner] = useState<string | null>(null)
   const [storeProducts, setStoreProducts] = useState<any[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
@@ -167,12 +207,46 @@ export default function AdsManagementPage() {
     'STORE_BANNER' | 'PRODUCTS' | 'PRESETS' | 'UPLOAD' | 'URL'
   >('PRESETS')
 
+  // Helper compute target URL
+  const computeTargetUrl = useCallback(
+    (
+      type: AdTargetType,
+      store?: CurrentStoreInfo | null,
+      productId?: string,
+      customUrl?: string
+    ): string => {
+      switch (type) {
+        case 'STORE':
+          return store?.slug ? `/toko/${store.slug}` : '/toko'
+        case 'STORE_CATALOG':
+          return store?.id ? `/gadget?store=${store.id}` : '/gadget'
+        case 'PRODUCT':
+          return productId ? `/gadget/${productId}` : '/gadget'
+        case 'ALL_CATALOG':
+          return '/gadget'
+        case 'SERVICE_LCD':
+          return '/servis-lcd'
+        case 'WARRANTY':
+          return '/garansi'
+        case 'CUSTOM':
+          return customUrl || ''
+        default:
+          return store?.slug ? `/toko/${store.slug}` : '/gadget'
+      }
+    },
+    []
+  )
+
   // Form State for New Ad
   const [formData, setFormData] = useState({
     title: '',
+    subtitle: '',
     placement: 'HOMEPAGE_HERO' as 'HOMEPAGE_HERO' | 'PROMOTED_LIST',
     imageUrl: '',
+    targetType: 'STORE' as AdTargetType,
     targetUrl: '',
+    productId: '',
+    storeId: '',
     priority: 0,
     startDate: new Date().toISOString().split('T')[0],
     durationDays: 7,
@@ -205,27 +279,75 @@ export default function AdsManagementPage() {
     }
   }, [activeTab, placementFilter, searchQuery])
 
+  // Load products helper
+  const loadProductsForStore = useCallback(async (targetStoreId?: string) => {
+    try {
+      setLoadingProducts(true)
+      const url = targetStoreId
+        ? `/api/admin/products?limit=24&storeId=${targetStoreId}`
+        : `/api/admin/products?limit=24`
+      const res = await fetch(url)
+      const data = await res.json()
+      if (data?.products) {
+        setStoreProducts(data.products)
+      }
+    } catch (err) {
+      console.error('Error fetching products:', err)
+    } finally {
+      setLoadingProducts(false)
+    }
+  }, [])
+
   // Load store profile & products for banner selection
   useEffect(() => {
     async function loadStoreAssets() {
       try {
         const profileRes = await fetch('/api/admin/profile')
         const profileData = await profileRes.json()
-        if (profileData?.store?.banner) {
-          setStoreBanner(profileData.store.banner)
-          setPhotoSourceTab('STORE_BANNER')
+        let storeObj: CurrentStoreInfo | null = null
+
+        if (profileData?.store) {
+          const s = profileData.store
+          storeObj = {
+            id: s.id,
+            name: s.name,
+            slug: s.slug,
+            city: s.city,
+            banner: s.banner,
+          }
+          setCurrentStore(storeObj)
+          if (s.banner) {
+            setStoreBanner(s.banner)
+            setPhotoSourceTab('STORE_BANNER')
+          }
         }
 
-        setLoadingProducts(true)
-        const productsRes = await fetch('/api/admin/products?limit=16')
-        const productsData = await productsRes.json()
-        if (productsData?.products) {
-          setStoreProducts(productsData.products)
+        if (isSuperAdmin) {
+          const storesRes = await fetch('/api/stores')
+          const storesData = await storesRes.json()
+          if (storesData?.success && Array.isArray(storesData.data)) {
+            const list: CurrentStoreInfo[] = storesData.data.map((st: any) => ({
+              id: st.id,
+              name: st.name,
+              slug: st.slug,
+              city: st.city,
+              banner: st.banner,
+            }))
+            setAllStores(list)
+            if (!storeObj && list.length > 0) {
+              const defaultStore = list[0]
+              setCurrentStore(defaultStore)
+              if (defaultStore.banner) setStoreBanner(defaultStore.banner)
+              loadProductsForStore(defaultStore.id)
+            } else {
+              loadProductsForStore(storeObj?.id)
+            }
+          }
+        } else {
+          loadProductsForStore(storeObj?.id)
         }
       } catch (err) {
         console.error('Error fetching assets:', err)
-      } finally {
-        setLoadingProducts(false)
       }
     }
 
@@ -233,7 +355,7 @@ export default function AdsManagementPage() {
       fetchAds()
       loadStoreAssets()
     }
-  }, [authStatus, fetchAds])
+  }, [authStatus, fetchAds, isSuperAdmin, loadProductsForStore])
 
   // Compute calculated end date for display
   const computedEndDateStr = useMemo(() => {
@@ -249,8 +371,12 @@ export default function AdsManagementPage() {
     })
   }, [formData.startDate, formData.durationDays])
 
-  // Handle Approve (Superadmin)
-  const handleApprove = async (adId: string) => {
+  // Handle Approve Modal & Execution (Superadmin)
+  const handleApprove = (ad: InternalAdItem) => {
+    setApproveModalAd(ad)
+  }
+
+  const executeApprove = async (adId: string) => {
     try {
       setActionLoading(adId)
       const res = await fetch(`/api/admin/ads/${adId}`, {
@@ -261,6 +387,7 @@ export default function AdsManagementPage() {
       const data = await res.json()
       if (data.success) {
         toast.success('Pengajuan iklan disetujui dan aktif!')
+        setApproveModalAd(null)
         fetchAds()
       } else {
         toast.error(data.message || 'Gagal menyetujui iklan')
@@ -303,23 +430,25 @@ export default function AdsManagementPage() {
     }
   }
 
-  // Handle Toggle Active/Inactive
+  // Handle Toggle Active/Inactive (Superadmin)
   const handleToggleActive = async (ad: InternalAdItem) => {
+    if (ad.isActive) {
+      setDeactivateModalAd(ad)
+      return
+    }
     try {
       setActionLoading(ad.id)
       const res = await fetch(`/api/admin/ads/${ad.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: !ad.isActive }),
+        body: JSON.stringify({ isActive: true }),
       })
       const data = await res.json()
       if (data.success) {
-        toast.success(
-          ad.isActive ? 'Iklan dinonaktifkan' : 'Iklan diaktifkan kembali'
-        )
+        toast.success('Iklan diaktifkan kembali')
         fetchAds()
       } else {
-        toast.error(data.message || 'Gagal mengubah status aktif iklan')
+        toast.error(data.message || 'Gagal mengaktifkan status iklan')
       }
     } catch {
       toast.error('Terjadi kesalahan koneksi')
@@ -328,9 +457,35 @@ export default function AdsManagementPage() {
     }
   }
 
-  // Handle Delete
-  const handleDelete = async (adId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus iklan ini?')) return
+  const executeDeactivate = async (adId: string) => {
+    try {
+      setActionLoading(adId)
+      const res = await fetch(`/api/admin/ads/${adId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: false }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Iklan dinonaktifkan')
+        setDeactivateModalAd(null)
+        fetchAds()
+      } else {
+        toast.error(data.message || 'Gagal menonaktifkan iklan')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan koneksi')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Handle Delete Modal & Execution
+  const handleDelete = (ad: InternalAdItem) => {
+    setDeleteModalAd(ad)
+  }
+
+  const executeDelete = async (adId: string) => {
     try {
       setActionLoading(adId)
       const res = await fetch(`/api/admin/ads/${adId}`, {
@@ -339,9 +494,36 @@ export default function AdsManagementPage() {
       const data = await res.json()
       if (data.success) {
         toast.success('Iklan berhasil dihapus')
+        setDeleteModalAd(null)
         fetchAds()
       } else {
         toast.error(data.message || 'Gagal menghapus iklan')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan koneksi')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Handle Cancel Submission Modal & Execution (Store Admin)
+  const handleCancelSubmission = (ad: InternalAdItem) => {
+    setCancelModalAd(ad)
+  }
+
+  const executeCancelSubmission = async (adId: string) => {
+    try {
+      setActionLoading(adId)
+      const res = await fetch(`/api/admin/ads/${adId}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(data.message || 'Pengajuan iklan berhasil dibatalkan')
+        setCancelModalAd(null)
+        fetchAds()
+      } else {
+        toast.error(data.message || 'Gagal membatalkan pengajuan iklan')
       }
     } catch {
       toast.error('Terjadi kesalahan koneksi')
@@ -355,6 +537,9 @@ export default function AdsManagementPage() {
     setEditingAdForImage(ad)
     setNewImageUrl(ad.imageUrl || ad.store?.banner || '')
     setNewImageLabel('Foto Saat Ini')
+    setEditTargetUrl(
+      ad.targetUrl || (ad.store?.slug ? `/toko/${ad.store.slug}` : '/gadget')
+    )
     if (storeBanner) {
       setChangeImageTab('STORE_BANNER')
     } else if (storeProducts.length > 0) {
@@ -364,7 +549,7 @@ export default function AdsManagementPage() {
     }
   }
 
-  // Save Changed Image
+  // Save Changed Image & Target URL
   const handleSaveNewImage = async () => {
     if (!editingAdForImage) return
     if (!newImageUrl.trim()) {
@@ -379,15 +564,20 @@ export default function AdsManagementPage() {
         body: JSON.stringify({
           imageUrl: newImageUrl.trim(),
           bannerUrl: newImageUrl.trim(),
+          targetUrl: editTargetUrl.trim() || undefined,
         }),
       })
       const data = await res.json()
       if (data.success) {
-        toast.success('Foto banner iklan berhasil diperbarui!')
+        toast.success('Foto banner & link iklan berhasil diperbarui!')
         setAds((prev) =>
           prev.map((item) =>
             item.id === editingAdForImage.id
-              ? { ...item, imageUrl: newImageUrl.trim() }
+              ? {
+                  ...item,
+                  imageUrl: newImageUrl.trim(),
+                  targetUrl: editTargetUrl.trim() || item.targetUrl,
+                }
               : item
           )
         )
@@ -401,6 +591,28 @@ export default function AdsManagementPage() {
     } finally {
       setSavingImage(false)
     }
+  }
+
+  // Open Create Modal cleanly with smart initial target link
+  const handleOpenCreateModal = () => {
+    const initType: AdTargetType = currentStore ? 'STORE' : 'ALL_CATALOG'
+    const initUrl = computeTargetUrl(initType, currentStore, '', '')
+    setFormData({
+      title: '',
+      subtitle: '',
+      placement: 'HOMEPAGE_HERO',
+      imageUrl: storeBanner || '',
+      targetType: initType,
+      targetUrl: initUrl,
+      productId: '',
+      storeId: currentStore?.id || '',
+      priority: 0,
+      startDate: new Date().toISOString().split('T')[0],
+      durationDays: 7,
+      targetImpressions: 1000,
+      selectedPhotoLabel: storeBanner ? 'Banner Profil Toko' : '',
+    })
+    setShowCreateModal(true)
   }
 
   // Submit New Ad
@@ -422,9 +634,12 @@ export default function AdsManagementPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: formData.title,
+          subtitle: formData.subtitle,
           placement: formData.placement,
           imageUrl: formData.imageUrl,
           targetUrl: formData.targetUrl,
+          productId: formData.productId || undefined,
+          storeId: formData.storeId || currentStore?.id || undefined,
           priority: formData.priority,
           startDate: formData.startDate,
           durationDays: formData.durationDays,
@@ -443,11 +658,16 @@ export default function AdsManagementPage() {
             : 'Pengajuan iklan berhasil dikirim ke Superadmin!'
         )
         setShowCreateModal(false)
+        const initType: AdTargetType = currentStore ? 'STORE' : 'ALL_CATALOG'
         setFormData({
           title: '',
+          subtitle: '',
           placement: 'HOMEPAGE_HERO',
           imageUrl: '',
-          targetUrl: '',
+          targetType: initType,
+          targetUrl: computeTargetUrl(initType, currentStore, '', ''),
+          productId: '',
+          storeId: currentStore?.id || '',
           priority: 0,
           startDate: new Date().toISOString().split('T')[0],
           durationDays: 7,
@@ -499,16 +719,7 @@ export default function AdsManagementPage() {
             <span>Refresh</span>
           </button>
           <button
-            onClick={() => {
-              if (storeBanner && !formData.imageUrl) {
-                setFormData((p) => ({
-                  ...p,
-                  imageUrl: storeBanner,
-                  selectedPhotoLabel: 'Banner Profil Toko',
-                }))
-              }
-              setShowCreateModal(true)
-            }}
+            onClick={handleOpenCreateModal}
             className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95"
           >
             <Plus className="h-4 w-4" />
@@ -573,6 +784,22 @@ export default function AdsManagementPage() {
           </p>
         </div>
       </div>
+
+      {/* Toko Callout Info Banner */}
+      {!isSuperAdmin && (
+        <div className="flex items-start gap-3 rounded-2xl border border-blue-200/80 bg-blue-50/70 p-3.5 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+          <div className="space-y-0.5">
+            <p className="font-bold">Ketentuan Pengajuan Iklan Cabang Toko</p>
+            <p className="text-[11px] leading-relaxed text-blue-800/90 dark:text-blue-300/90">
+              Admin toko dapat mengajukan banner promosi dan membatalkan
+              pengajuan selama status masih <strong>Menunggu</strong>.
+              Persetujuan dan pengaktifan iklan dilakukan secara eksklusif oleh{' '}
+              <strong>Super Admin</strong>.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 3. Filter & Search Controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -655,7 +882,7 @@ export default function AdsManagementPage() {
               : 'Ajukan banner promosi toko cabang Anda sekarang untuk meningkatkan eksposur penjualan.'}
           </p>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={handleOpenCreateModal}
             className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-600"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -739,8 +966,9 @@ export default function AdsManagementPage() {
                         {ad.title}
                       </p>
                       <p className="drop-shadow-xs text-[10px] font-medium text-white/80">
-                        {ad.store?.name || 'Platform Sponsor'} •{' '}
-                        {ad.store?.city || 'Indonesia'}
+                        {ad.subtitle
+                          ? ad.subtitle
+                          : `${ad.store?.name || 'Platform Sponsor'} • ${ad.store?.city || 'Indonesia'}`}
                       </p>
                     </div>
 
@@ -772,7 +1000,7 @@ export default function AdsManagementPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-slate-400">
                       <span className="truncate">
                         Target Link:{' '}
                         <code className="text-slate-600 dark:text-slate-300">
@@ -782,6 +1010,20 @@ export default function AdsManagementPage() {
                               : '/gadget')}
                         </code>
                       </span>
+                      <a
+                        href={
+                          ad.targetUrl ||
+                          (ad.store?.slug
+                            ? `/toko/${ad.store.slug}`
+                            : '/gadget')
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>Kunjungi</span>
+                      </a>
                     </div>
 
                     {/* Rejection Alert Box */}
@@ -832,15 +1074,17 @@ export default function AdsManagementPage() {
                       </span>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenChangeImage(ad)}
-                      className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50/60 hover:text-orange-600 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-orange-400"
-                      title="Ganti foto banner iklan ini"
-                    >
-                      <ImageIcon className="h-3.5 w-3.5 text-orange-500" />
-                      <span>Ganti Gambar</span>
-                    </button>
+                    {(isSuperAdmin || isPending) && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenChangeImage(ad)}
+                        className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50/60 hover:text-orange-600 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-orange-400"
+                        title="Ganti foto banner iklan ini"
+                      >
+                        <ImageIcon className="h-3.5 w-3.5 text-orange-500" />
+                        <span>Ganti Gambar</span>
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5">
@@ -848,9 +1092,10 @@ export default function AdsManagementPage() {
                     {isSuperAdmin && isPending && (
                       <>
                         <button
-                          onClick={() => handleApprove(ad.id)}
+                          type="button"
+                          onClick={() => handleApprove(ad)}
                           disabled={actionLoading === ad.id}
-                          className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
                         >
                           <Check className="h-3.5 w-3.5" />
                           <span>Setujui</span>
@@ -869,8 +1114,21 @@ export default function AdsManagementPage() {
                       </>
                     )}
 
-                    {/* Toggle Active for Approved */}
-                    {isApproved && (
+                    {/* Store Admin Cancel Submission Action */}
+                    {!isSuperAdmin && isPending && (
+                      <button
+                        type="button"
+                        onClick={() => handleCancelSubmission(ad)}
+                        disabled={actionLoading === ad.id}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 active:scale-95 disabled:opacity-50 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        <span>Batalkan Pengajuan</span>
+                      </button>
+                    )}
+
+                    {/* Toggle Active for Approved (Super Admin Only) */}
+                    {isSuperAdmin && isApproved && (
                       <button
                         onClick={() => handleToggleActive(ad)}
                         disabled={actionLoading === ad.id}
@@ -884,13 +1142,17 @@ export default function AdsManagementPage() {
                       </button>
                     )}
 
-                    {/* Delete action (Superadmin or Store Admin for pending/rejected) */}
-                    {(isSuperAdmin || isPending || isRejected) && (
+                    {/* Delete action (Superadmin always, or Store Admin for rejected history) */}
+                    {(isSuperAdmin || (!isSuperAdmin && isRejected)) && (
                       <button
-                        onClick={() => handleDelete(ad.id)}
+                        onClick={() => handleDelete(ad)}
                         disabled={actionLoading === ad.id}
                         className="rounded-xl border border-slate-200 p-1.5 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-800 dark:hover:border-rose-900 dark:hover:bg-rose-950/40"
-                        title="Hapus Iklan"
+                        title={
+                          isSuperAdmin
+                            ? 'Hapus Iklan'
+                            : 'Hapus Riwayat Pengajuan'
+                        }
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -927,6 +1189,54 @@ export default function AdsManagementPage() {
             </div>
 
             <form onSubmit={handleCreateSubmit} className="mt-4 space-y-5">
+              {/* KHUSUS SUPERADMIN: PILIH TOKO PEMILIK IKLAN */}
+              {isSuperAdmin && allStores.length > 0 && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-950/40">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <Store className="h-4 w-4 text-orange-500" />
+                      <span>Pilih Toko Cabang Pemilik Iklan:</span>
+                    </label>
+                    {currentStore?.city && (
+                      <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">
+                        Cabang {currentStore.city}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <CustomSelect
+                      value={currentStore?.id || ''}
+                      onChange={(val: string) => {
+                        const found = allStores.find((s) => s.id === val)
+                        if (found) {
+                          setCurrentStore(found)
+                          if (found.banner) setStoreBanner(found.banner)
+                          loadProductsForStore(found.id)
+                          setFormData((p) => {
+                            const newUrl = computeTargetUrl(
+                              p.targetType,
+                              found,
+                              p.productId,
+                              p.targetUrl
+                            )
+                            return {
+                              ...p,
+                              storeId: found.id,
+                              targetUrl: newUrl,
+                            }
+                          })
+                        }
+                      }}
+                      options={allStores.map((st) => ({
+                        value: st.id,
+                        label: `${st.name}${st.city ? ` (${st.city})` : ''}`,
+                      }))}
+                      placeholder="Pilih Toko Cabang..."
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* BAGIAN 1: PEMILIHAN TINGKAT PENEMPATAN */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -1291,13 +1601,21 @@ export default function AdsManagementPage() {
                         Pilih foto banner profil toko cabang Anda:
                       </p>
                       <div
-                        onClick={() =>
+                        onClick={() => {
+                          const nextType: AdTargetType = 'STORE'
                           setFormData((p) => ({
                             ...p,
                             imageUrl: storeBanner,
                             selectedPhotoLabel: 'Foto Banner Toko',
+                            targetType: nextType,
+                            targetUrl: computeTargetUrl(
+                              nextType,
+                              currentStore,
+                              p.productId,
+                              p.targetUrl
+                            ),
                           }))
-                        }
+                        }}
                         className={`group relative aspect-[21/9] w-full cursor-pointer overflow-hidden rounded-2xl border-2 transition ${
                           formData.imageUrl === storeBanner
                             ? 'border-orange-500 ring-4 ring-orange-500/20'
@@ -1347,15 +1665,25 @@ export default function AdsManagementPage() {
                             return (
                               <div
                                 key={prod.id}
-                                onClick={() =>
+                                onClick={() => {
+                                  const nextType: AdTargetType = 'PRODUCT'
                                   setFormData((p) => ({
                                     ...p,
                                     imageUrl: img,
                                     selectedPhotoLabel: `Produk: ${prod.name}`,
-                                    targetUrl:
-                                      p.targetUrl || `/gadget/${prod.id}`,
+                                    productId: prod.id,
+                                    targetType: nextType,
+                                    targetUrl: computeTargetUrl(
+                                      nextType,
+                                      currentStore,
+                                      prod.id,
+                                      p.targetUrl
+                                    ),
+                                    title: p.title.trim()
+                                      ? p.title
+                                      : `Promo Spesial ${prod.name}`,
                                   }))
-                                }
+                                }}
                                 className={`cursor-pointer overflow-hidden rounded-xl border p-1.5 transition ${
                                   isSelected
                                     ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-500/20 dark:bg-orange-950/30'
@@ -1392,13 +1720,31 @@ export default function AdsManagementPage() {
                           return (
                             <div
                               key={idx}
-                              onClick={() =>
+                              onClick={() => {
+                                let nextType: AdTargetType = 'ALL_CATALOG'
+                                let presetUrl = '/gadget'
+                                if (preset.label.includes('Garansi')) {
+                                  nextType = 'WARRANTY'
+                                  presetUrl = '/garansi'
+                                } else if (
+                                  preset.label.includes('QC') ||
+                                  preset.label.includes('LCD') ||
+                                  preset.label.includes('Teknisi')
+                                ) {
+                                  nextType = 'ALL_CATALOG'
+                                  presetUrl = '/gadget'
+                                } else if (preset.label.includes('Samsung')) {
+                                  nextType = 'ALL_CATALOG'
+                                  presetUrl = '/gadget?brand=Samsung'
+                                }
                                 setFormData((p) => ({
                                   ...p,
                                   imageUrl: preset.url,
                                   selectedPhotoLabel: preset.label,
+                                  targetType: nextType,
+                                  targetUrl: presetUrl,
                                 }))
-                              }
+                              }}
                               className={`cursor-pointer overflow-hidden rounded-xl border p-1.5 transition ${
                                 isSelected
                                   ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-500/20 dark:bg-orange-950/30'
@@ -1518,9 +1864,10 @@ export default function AdsManagementPage() {
                           {formData.title || 'Judul Promosi Iklan'}
                         </p>
                         <p className="text-[10px] text-white/80">
-                          {formData.placement === 'HOMEPAGE_HERO'
-                            ? `Level 1: Durasi ${formData.durationDays} Hari`
-                            : `Level 2: Target ${Number(formData.targetImpressions).toLocaleString('id-ID')}x Muncul • ${formData.durationDays} Hari`}
+                          {formData.subtitle ||
+                            (formData.placement === 'HOMEPAGE_HERO'
+                              ? `Durasi: ${formData.durationDays} Hari`
+                              : `Target: ${Number(formData.targetImpressions).toLocaleString('id-ID')}x Muncul`)}
                         </p>
                       </div>
                     </div>
@@ -1537,7 +1884,7 @@ export default function AdsManagementPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Flash Sale Spesial Toko Kami Diskon Hingga 30%"
+                  placeholder="Contoh: Flash Sale Spesial Diskon 30%"
                   value={formData.title}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, title: e.target.value }))
@@ -1546,20 +1893,274 @@ export default function AdsManagementPage() {
                 />
               </div>
 
-              {/* Target URL */}
+              {/* Subjudul Promo (Opsional) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Target Link Navigasi (Opsional)
+                  Subjudul / Keterangan Promo (Opsional)
                 </label>
                 <input
                   type="text"
-                  placeholder="Default otomatis ke halaman profil cabang toko (/toko/[slug])"
-                  value={formData.targetUrl}
+                  placeholder="Garansi 30 hari tukar unit"
+                  value={formData.subtitle}
                   onChange={(e) =>
-                    setFormData((p) => ({ ...p, targetUrl: e.target.value }))
+                    setFormData((p) => ({ ...p, subtitle: e.target.value }))
                   }
                   className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                 />
+              </div>
+
+              {/* Pilihan Tujuan Navigasi (Target Link) */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Pilihan Tujuan Navigasi (Target Link){' '}
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-medium text-slate-400">
+                    Pilih kemana pembeli diarahkan saat banner diklik
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {/* 1. Profil Toko */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextType: AdTargetType = 'STORE'
+                      setFormData((p) => ({
+                        ...p,
+                        targetType: nextType,
+                        targetUrl: computeTargetUrl(
+                          nextType,
+                          currentStore,
+                          p.productId,
+                          p.targetUrl
+                        ),
+                      }))
+                    }}
+                    className={`flex flex-col items-start rounded-2xl border p-2.5 text-left transition ${
+                      formData.targetType === 'STORE'
+                        ? 'border-orange-500 bg-orange-50/70 ring-2 ring-orange-500/20 dark:border-orange-500 dark:bg-orange-950/30'
+                        : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
+                    }`}
+                  >
+                    <div className="flex w-full items-center justify-between">
+                      <Store
+                        className={`h-4 w-4 ${
+                          formData.targetType === 'STORE'
+                            ? 'text-orange-600 dark:text-orange-400'
+                            : 'text-slate-500'
+                        }`}
+                      />
+                      {formData.targetType === 'STORE' && (
+                        <span className="h-2 w-2 rounded-full bg-orange-500" />
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs font-bold text-slate-900 dark:text-white">
+                      Profil Toko
+                    </p>
+                    <p className="line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400">
+                      /toko/{currentStore?.slug || '[slug]'}
+                    </p>
+                  </button>
+
+                  {/* 2. Katalog Toko */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextType: AdTargetType = 'STORE_CATALOG'
+                      setFormData((p) => ({
+                        ...p,
+                        targetType: nextType,
+                        targetUrl: computeTargetUrl(
+                          nextType,
+                          currentStore,
+                          p.productId,
+                          p.targetUrl
+                        ),
+                      }))
+                    }}
+                    className={`flex flex-col items-start rounded-2xl border p-2.5 text-left transition ${
+                      formData.targetType === 'STORE_CATALOG'
+                        ? 'border-orange-500 bg-orange-50/70 ring-2 ring-orange-500/20 dark:border-orange-500 dark:bg-orange-950/30'
+                        : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
+                    }`}
+                  >
+                    <div className="flex w-full items-center justify-between">
+                      <ShoppingBag
+                        className={`h-4 w-4 ${
+                          formData.targetType === 'STORE_CATALOG'
+                            ? 'text-orange-600 dark:text-orange-400'
+                            : 'text-slate-500'
+                        }`}
+                      />
+                      {formData.targetType === 'STORE_CATALOG' && (
+                        <span className="h-2 w-2 rounded-full bg-orange-500" />
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs font-bold text-slate-900 dark:text-white">
+                      Katalog Toko
+                    </p>
+                    <p className="line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400">
+                      /gadget?store=...
+                    </p>
+                  </button>
+
+                  {/* 3. Detail Produk */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextType: AdTargetType = 'PRODUCT'
+                      const pid =
+                        formData.productId || storeProducts[0]?.id || ''
+                      setFormData((p) => ({
+                        ...p,
+                        targetType: nextType,
+                        productId: pid,
+                        targetUrl: computeTargetUrl(
+                          nextType,
+                          currentStore,
+                          pid,
+                          p.targetUrl
+                        ),
+                      }))
+                    }}
+                    className={`flex flex-col items-start rounded-2xl border p-2.5 text-left transition ${
+                      formData.targetType === 'PRODUCT'
+                        ? 'border-orange-500 bg-orange-50/70 ring-2 ring-orange-500/20 dark:border-orange-500 dark:bg-orange-950/30'
+                        : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
+                    }`}
+                  >
+                    <div className="flex w-full items-center justify-between">
+                      <Package
+                        className={`h-4 w-4 ${
+                          formData.targetType === 'PRODUCT'
+                            ? 'text-orange-600 dark:text-orange-400'
+                            : 'text-slate-500'
+                        }`}
+                      />
+                      {formData.targetType === 'PRODUCT' && (
+                        <span className="h-2 w-2 rounded-full bg-orange-500" />
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs font-bold text-slate-900 dark:text-white">
+                      Detail Produk
+                    </p>
+                    <p className="line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400">
+                      /gadget/[id]
+                    </p>
+                  </button>
+
+                  {/* 4. Semua Katalog */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextType: AdTargetType = 'ALL_CATALOG'
+                      setFormData((p) => ({
+                        ...p,
+                        targetType: nextType,
+                        targetUrl: computeTargetUrl(
+                          nextType,
+                          currentStore,
+                          p.productId,
+                          p.targetUrl
+                        ),
+                      }))
+                    }}
+                    className={`flex flex-col items-start rounded-2xl border p-2.5 text-left transition ${
+                      formData.targetType === 'ALL_CATALOG'
+                        ? 'border-orange-500 bg-orange-50/70 ring-2 ring-orange-500/20 dark:border-orange-500 dark:bg-orange-950/30'
+                        : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
+                    }`}
+                  >
+                    <div className="flex w-full items-center justify-between">
+                      <Globe
+                        className={`h-4 w-4 ${
+                          formData.targetType === 'ALL_CATALOG'
+                            ? 'text-orange-600 dark:text-orange-400'
+                            : 'text-slate-500'
+                        }`}
+                      />
+                      {formData.targetType === 'ALL_CATALOG' && (
+                        <span className="h-2 w-2 rounded-full bg-orange-500" />
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs font-bold text-slate-900 dark:text-white">
+                      Semua Katalog
+                    </p>
+                    <p className="line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400">
+                      /gadget
+                    </p>
+                  </button>
+                </div>
+
+                {/* Sub-selector jika memilih Detail Produk */}
+                {formData.targetType === 'PRODUCT' &&
+                  storeProducts.length > 0 && (
+                    <div className="mt-2.5 rounded-2xl border border-orange-200/80 bg-orange-50/50 p-3 dark:border-orange-900/40 dark:bg-orange-950/20">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        Pilih Produk Toko yang Dituju:
+                      </label>
+                      <div className="mt-1.5">
+                        <CustomSelect
+                          value={
+                            formData.productId || storeProducts[0]?.id || ''
+                          }
+                          onChange={(val: string) => {
+                            const chosen = storeProducts.find(
+                              (p) => p.id === val
+                            )
+                            setFormData((prev) => ({
+                              ...prev,
+                              productId: val,
+                              targetUrl: `/gadget/${val}`,
+                              title: prev.title.trim()
+                                ? prev.title
+                                : chosen
+                                  ? `Flash Sale ${chosen.name}`
+                                  : prev.title,
+                              selectedPhotoLabel: chosen
+                                ? `Produk: ${chosen.name}`
+                                : prev.selectedPhotoLabel,
+                            }))
+                          }}
+                          options={storeProducts.map((p) => ({
+                            value: p.id,
+                            label: `${p.name} - Rp ${Number(p.price || 0).toLocaleString('id-ID')}`,
+                          }))}
+                          placeholder="Pilih Produk..."
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                {/* Live Card Pratinjau Link Terbentuk */}
+                <div className="mt-2.5 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-[11px] font-bold text-white">
+                      🔗
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Link Tujuan Navigasi Terbentuk:
+                      </p>
+                      <code className="block truncate text-xs font-black text-slate-900 dark:text-white">
+                        {formData.targetUrl || '/gadget'}
+                      </code>
+                    </div>
+                  </div>
+                  {formData.targetUrl && (
+                    <a
+                      href={formData.targetUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shadow-2xs inline-flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      <ExternalLink className="h-3 w-3 text-orange-500" />
+                      <span>Cek Link</span>
+                    </a>
+                  )}
+                </div>
               </div>
 
               {/* Priority (Superadmin only) */}
@@ -1618,37 +2219,56 @@ export default function AdsManagementPage() {
 
       {/* 6. MODAL: TOLAK PENGAJUAN IKLAN (SUPERADMIN) */}
       {showRejectModal && (
-        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-              <AlertTriangle className="h-5 w-5" />
-              <h3 className="text-sm font-extrabold text-slate-950 dark:text-white">
-                Tolak Pengajuan Iklan
-              </h3>
+        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 duration-200 animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+              <XCircle className="h-6 w-6" />
             </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-              Berikan alasan penolakan agar admin toko dapat memperbaiki materi
-              promosi mereka.
-            </p>
 
-            <div className="mt-4">
+            <div className="mt-4 text-center">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                Tolak Pengajuan Iklan?
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Materi iklan{' '}
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  &ldquo;{showRejectModal.title}&rdquo;
+                </span>
+                {showRejectModal.store?.name && (
+                  <>
+                    {' '}
+                    dari{' '}
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      {showRejectModal.store.name}
+                    </span>
+                  </>
+                )}{' '}
+                akan ditolak. Berikan catatan alasan penolakan untuk toko.
+              </p>
+            </div>
+
+            <div className="mt-4 text-left">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 Alasan Penolakan:
               </label>
               <textarea
                 rows={3}
-                placeholder="Contoh: Resolusi banner terlalu pecah atau teks promosi melanggar pedoman toko resmi."
+                placeholder="Contoh: Resolusi banner terlalu pecah atau materi promosi melanggar pedoman toko resmi."
                 value={rejectionReasonInput}
                 onChange={(e) => setRejectionReasonInput(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-900 focus:border-rose-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50/60 p-3 text-xs text-slate-900 focus:border-rose-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
               />
             </div>
 
-            <div className="mt-5 flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <div className="mt-6 flex items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={() => setShowRejectModal(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400"
+                onClick={() => {
+                  setShowRejectModal(null)
+                  setRejectionReasonInput('')
+                }}
+                disabled={actionLoading === showRejectModal.id}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 Batal
               </button>
@@ -1656,10 +2276,13 @@ export default function AdsManagementPage() {
                 type="button"
                 onClick={handleRejectSubmit}
                 disabled={actionLoading === showRejectModal.id}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95 disabled:opacity-50"
               >
                 {actionLoading === showRejectModal.id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Menolak...</span>
+                  </>
                 ) : (
                   <span>Tolak Pengajuan</span>
                 )}
@@ -1965,6 +2588,34 @@ export default function AdsManagementPage() {
                 </div>
               )}
 
+              {/* Target Link Editing */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-950/40">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <Link2 className="h-4 w-4 text-orange-500" />
+                    <span>Target Link Navigasi (URL Tujuan):</span>
+                  </label>
+                  {editTargetUrl && (
+                    <a
+                      href={editTargetUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:underline dark:text-orange-400"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      <span>Cek Link</span>
+                    </a>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  placeholder="/toko/... atau /gadget/... atau https://..."
+                  value={editTargetUrl}
+                  onChange={(e) => setEditTargetUrl(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+
               {/* Action Buttons */}
               <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
                 <button
@@ -1990,6 +2641,239 @@ export default function AdsManagementPage() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. MODAL: BATALKAN PENGAJUAN IKLAN (STORE ADMIN) */}
+      {cancelModalAd && (
+        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 duration-200 animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+
+            <div className="mt-4 text-center">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                Batalkan Pengajuan Iklan?
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Pengajuan iklan{' '}
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  &ldquo;{cancelModalAd.title}&rdquo;
+                </span>{' '}
+                akan ditarik dari antrean verifikasi dan dihapus. Anda dapat
+                mengajukan iklan baru kapan saja.
+              </p>
+            </div>
+
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelModalAd(null)}
+                disabled={actionLoading === cancelModalAd.id}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading === cancelModalAd.id}
+                onClick={() => executeCancelSubmission(cancelModalAd.id)}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95 disabled:opacity-50"
+              >
+                {actionLoading === cancelModalAd.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Membatalkan...</span>
+                  </>
+                ) : (
+                  <span>Ya, Batalkan</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. MODAL: HAPUS IKLAN / RIWAYAT */}
+      {deleteModalAd && (
+        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 duration-200 animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+              <Trash2 className="h-6 w-6" />
+            </div>
+
+            <div className="mt-4 text-center">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                {isSuperAdmin ? 'Hapus Iklan?' : 'Hapus Riwayat Pengajuan?'}
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Iklan{' '}
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  &ldquo;{deleteModalAd.title}&rdquo;
+                </span>{' '}
+                akan dihapus permanen dari sistem. Tindakan ini tidak dapat
+                dibatalkan.
+              </p>
+            </div>
+
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteModalAd(null)}
+                disabled={actionLoading === deleteModalAd.id}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading === deleteModalAd.id}
+                onClick={() => executeDelete(deleteModalAd.id)}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95 disabled:opacity-50"
+              >
+                {actionLoading === deleteModalAd.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Menghapus...</span>
+                  </>
+                ) : (
+                  <span>Ya, Hapus</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 10. MODAL: SETUJUI PENGAJUAN IKLAN (SUPERADMIN) */}
+      {approveModalAd && (
+        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 duration-200 animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+
+            <div className="mt-4 text-center">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                Setujui Pengajuan Iklan?
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Iklan{' '}
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  &ldquo;{approveModalAd.title}&rdquo;
+                </span>
+                {approveModalAd.store?.name && (
+                  <>
+                    {' '}
+                    dari{' '}
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      {approveModalAd.store.name}
+                    </span>
+                  </>
+                )}{' '}
+                akan disetujui dan langsung tayang aktif pada platform
+                marketplace.
+              </p>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 text-xs dark:border-slate-800 dark:bg-slate-950/40">
+              <div className="flex justify-between py-1 text-slate-600 dark:text-slate-400">
+                <span>Penempatan:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {approveModalAd.placement === 'HOMEPAGE_HERO'
+                    ? 'Homepage Hero Slider'
+                    : 'Katalog Produk Terpromosi'}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200/60 py-1 text-slate-600 dark:border-slate-800 dark:text-slate-400">
+                <span>Durasi Aktif:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {calculateDurationText(
+                    approveModalAd.startDate,
+                    approveModalAd.endDate
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setApproveModalAd(null)}
+                disabled={actionLoading === approveModalAd.id}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading === approveModalAd.id}
+                onClick={() => executeApprove(approveModalAd.id)}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+              >
+                {actionLoading === approveModalAd.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Menyetujui...</span>
+                  </>
+                ) : (
+                  <span>Ya, Setujui & Tayangkan</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 11. MODAL: NONAKTIFKAN IKLAN (SUPERADMIN) */}
+      {deactivateModalAd && (
+        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 duration-200 animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+
+            <div className="mt-4 text-center">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                Nonaktifkan Penayangan Iklan?
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Iklan{' '}
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  &ldquo;{deactivateModalAd.title}&rdquo;
+                </span>{' '}
+                akan disembunyikan sementara dari marketplace publik. Anda dapat
+                mengaktifkannya kembali sewaktu-waktu.
+              </p>
+            </div>
+
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setDeactivateModalAd(null)}
+                disabled={actionLoading === deactivateModalAd.id}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading === deactivateModalAd.id}
+                onClick={() => executeDeactivate(deactivateModalAd.id)}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-amber-700 active:scale-95 disabled:opacity-50"
+              >
+                {actionLoading === deactivateModalAd.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Menonaktifkan...</span>
+                  </>
+                ) : (
+                  <span>Ya, Nonaktifkan</span>
+                )}
+              </button>
             </div>
           </div>
         </div>

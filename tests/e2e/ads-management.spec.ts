@@ -13,7 +13,46 @@ import path from 'path'
 
 const authFile = path.join(process.cwd(), 'tests', '.auth', 'admin-auth.json')
 
+test.describe.configure({ mode: 'serial' })
+
 test.describe('Ads Management E2E Flow', () => {
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(60000)
+    const context = await browser.newContext()
+    const page = await context.newPage()
+
+    // Bypass login 2FA challenge for clean automated testing
+    await page.route('**/api/auth/login-2fa', async (route) => {
+      const body = route.request().postDataJSON()
+      if (body?.action === 'check') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ requires2FA: false }),
+        })
+      } else {
+        await route.continue()
+      }
+    })
+
+    // Perform login if needed
+    await page.goto('/login')
+    if (page.url().includes('/login')) {
+      const emailInput = page.locator('input[type="email"]')
+      if (await emailInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await page.fill('input[type="email"]', 'admin.roxy@affiliategadget.com')
+        await page.fill('input[type="password"]', 'admin123')
+        await page.click('button[type="submit"]')
+        await page.waitForURL((url) => !url.pathname.includes('/login'), {
+          timeout: 30000,
+        })
+      }
+    }
+
+    await context.storageState({ path: authFile })
+    await context.close()
+  })
+
   test.use({ storageState: authFile })
 
   test('Store Admin can access ads management dashboard', async ({ page }) => {

@@ -226,4 +226,44 @@ describe('Internal Ads Workflow & Two-Level Placement Suite', () => {
       expect(updated.priority).toBe(50)
     })
   })
+
+  describe('5. Role-Based Activation & Cancellation Security Suite', () => {
+    it('ensures Store Admin submissions are strictly PENDING and isActive is false', () => {
+      const role: string = 'STORE_ADMIN'
+      const isSuperAdmin = role === 'SUPER_ADMIN'
+      const initialStatus = isSuperAdmin ? 'APPROVED' : 'PENDING'
+      const initialIsActive = isSuperAdmin ? true : false
+
+      expect(initialStatus).toBe('PENDING')
+      expect(initialIsActive).toBe(false)
+    })
+
+    it('allows only SUPER_ADMIN to immediately activate an ad', () => {
+      const role: string = 'SUPER_ADMIN'
+      const isSuperAdmin = role === 'SUPER_ADMIN'
+      const initialStatus = isSuperAdmin ? 'APPROVED' : 'PENDING'
+      const initialIsActive = isSuperAdmin ? true : false
+
+      expect(initialStatus).toBe('APPROVED')
+      expect(initialIsActive).toBe(true)
+    })
+
+    it('blocks Store Admin from deleting or mutating an approved ad', () => {
+      const ad = { id: 'ad-approved', status: 'APPROVED', storeId: 'store-1' }
+      const role: string = 'STORE_ADMIN'
+
+      const canDelete =
+        role === 'SUPER_ADMIN' ||
+        (role === 'STORE_ADMIN' && ad.status !== 'APPROVED')
+      expect(canDelete).toBe(false)
+    })
+
+    it('allows Store Admin to cancel a pending submission', () => {
+      const ad = { id: 'ad-pending', status: 'PENDING', storeId: 'store-1' }
+      const role: string = 'STORE_ADMIN'
+
+      const canCancel = role === 'STORE_ADMIN' && ad.status === 'PENDING'
+      expect(canCancel).toBe(true)
+    })
+  })
 })

@@ -33,6 +33,7 @@ import { toast } from 'sonner'
 import { DateSeparator } from '@/components/chat/date-separator'
 import { isSameDay } from '@/utils/chat-helpers'
 import { getChatTickStatus } from '@/lib/chat-status'
+import { usePageGuard } from '@/hooks/use-page-guard'
 
 const renderAdminWhatsAppTick = (
   isRead?: boolean,
@@ -250,6 +251,9 @@ const isImageMedia = (
 }
 
 export default function AdminChatPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/chat'
+  )
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
   const [messages, setMessages] = useState<Message[]>([])

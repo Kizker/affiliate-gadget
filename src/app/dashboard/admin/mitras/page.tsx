@@ -34,6 +34,7 @@ import {
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { usePageGuard } from '@/hooks/use-page-guard'
 
 interface BankAccount {
   id?: string
@@ -106,6 +107,9 @@ interface Stats {
 }
 
 export default function MitrasPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/mitras'
+  )
   const router = useRouter()
   const [mitras, setMitras] = useState<Mitra[]>([])
   const [stats, setStats] = useState<Stats>({

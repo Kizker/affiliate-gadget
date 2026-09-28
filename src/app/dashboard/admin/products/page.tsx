@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import { usePageGuard } from '@/hooks/use-page-guard'
 import {
   Smartphone,
   Search,
@@ -94,6 +95,9 @@ interface ProductItem {
 }
 
 export default function ProductsPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/products'
+  )
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
   const [products, setProducts] = useState<ProductItem[]>([])

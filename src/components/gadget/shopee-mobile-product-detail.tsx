@@ -127,10 +127,10 @@ function ProductCatalogMiniCard({ item }: { item: any }) {
           <div className="flex items-center gap-1">
             <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
             <span className="text-[10.5px] font-extrabold text-slate-900 dark:text-white">
-              {(item.rating || 4.9).toFixed(1)}
+              {(item.rating || 5.0).toFixed(1)}
             </span>
             <span className="text-[9.5px] font-medium text-slate-400">
-              ({item.totalReview || item.reviewCount || 38})
+              ({item.totalReview ?? item.reviewCount ?? 0})
             </span>
           </div>
 
@@ -198,6 +198,35 @@ export function ShopeeMobileProductDetail({
   const [showBackToTop, setShowBackToTop] = useState(false)
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const isWishlisted = isInWishlist(product?.id || '')
+
+  const handleToggleWishlist = () => {
+    if (!product?.id) return
+    const priceToUse = selectedVariant ? selectedVariant.price : product.price
+    const wasAdded = toggleItem({
+      id: product.id,
+      name: product.name,
+      price: priceToUse,
+      originalPrice: selectedVariant
+        ? selectedVariant.originalPrice || undefined
+        : product.originalPrice,
+      image:
+        selectedImage ||
+        selectedVariant?.image ||
+        (product.images && product.images[0]) ||
+        '',
+      href: `/gadget/${product.id}`,
+      rating: product.rating,
+      reviewCount: product.totalReview,
+      originCity: product.store?.city,
+      storeName: product.store?.name,
+    })
+    if (wasAdded) {
+      toast.success(`Ditambahkan ke Wishlist: ${product.name}`)
+    } else {
+      toast.info(`Dihapus dari Wishlist: ${product.name}`)
+    }
+  }
+
   const [isDescExpanded, setIsDescExpanded] = useState(false)
   const [isSpecsExpanded, setIsSpecsExpanded] = useState(false)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
@@ -431,8 +460,30 @@ export function ShopeeMobileProductDetail({
             </h2>
           </div>
 
-          {/* Right Action Icons: Cart & Share */}
-          <div className="flex items-center gap-2">
+          {/* Right Action Icons: Wishlist, Cart & Share */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={handleToggleWishlist}
+              className={`flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-90 ${
+                isScrolled
+                  ? 'bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-white'
+                  : 'shadow-xs border border-white/20 bg-white/80 text-slate-900 backdrop-blur-md hover:bg-white dark:bg-slate-900/80 dark:text-white'
+              }`}
+              aria-label="Wishlist"
+              title={
+                isWishlisted ? 'Hapus dari Wishlist' : 'Tambah ke Wishlist'
+              }
+            >
+              <Heart
+                className={`h-4 w-4 transition-colors ${
+                  isWishlisted
+                    ? 'fill-rose-500 text-rose-500'
+                    : 'text-slate-700 dark:text-slate-300'
+                }`}
+              />
+            </button>
+
             <Link
               href="/cart"
               className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all ${
@@ -610,31 +661,17 @@ export function ShopeeMobileProductDetail({
           {/* Wishlist Button */}
           <button
             type="button"
-            onClick={() => {
-              if (!product?.id) return
-              const wasAdded = toggleItem({
-                id: product.id,
-                name: product.name,
-                price: selectedVariant ? selectedVariant.price : product.price,
-                originalPrice: selectedVariant ? (selectedVariant.originalPrice || undefined) : product.originalPrice,
-                image: product.images?.[0],
-                href: `/gadget/${product.id}`,
-                rating: product.rating,
-                reviewCount: product.totalReview,
-                originCity: product.store?.city,
-                storeName: product.store?.name,
-              })
-              if (wasAdded) {
-                toast.success(`Ditambahkan ke Wishlist: ${product.name}`)
-              } else {
-                toast.info(`Dihapus dari Wishlist: ${product.name}`)
-              }
-            }}
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200/80 bg-slate-50 text-slate-500 transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-400"
+            onClick={handleToggleWishlist}
+            className={`flex h-8 w-8 items-center justify-center rounded-full border transition active:scale-90 ${
+              isWishlisted
+                ? 'border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-400'
+                : 'border-slate-200/80 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-400'
+            }`}
+            title={isWishlisted ? 'Hapus dari Wishlist' : 'Simpan ke Wishlist'}
             aria-label="Simpan ke Wishlist"
           >
             <Heart
-              className={`h-3.5 w-3.5 ${
+              className={`h-4 w-4 transition-colors ${
                 isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
               }`}
             />
@@ -1042,10 +1079,34 @@ export function ShopeeMobileProductDetail({
           <button
             type="button"
             onClick={handleChatStore}
-            className="flex flex-col items-center justify-center px-3 text-slate-600 transition hover:text-slate-950 active:scale-95 dark:text-slate-400 dark:hover:text-white"
+            className="flex flex-col items-center justify-center px-2.5 text-slate-600 transition hover:text-slate-950 active:scale-95 dark:text-slate-400 dark:hover:text-white"
           >
             <MessageSquare className="h-5 w-5 text-slate-600 dark:text-slate-300" />
             <span className="mt-1 text-[10px] font-semibold">Chat Toko</span>
+          </button>
+
+          {/* Wishlist Button */}
+          <button
+            type="button"
+            onClick={handleToggleWishlist}
+            className={`flex flex-col items-center justify-center px-2.5 transition active:scale-95 ${
+              isWishlisted
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
+            }`}
+            aria-label="Wishlist"
+            title={isWishlisted ? 'Hapus dari Wishlist' : 'Tambah ke Wishlist'}
+          >
+            <Heart
+              className={`h-5 w-5 transition-colors ${
+                isWishlisted
+                  ? 'fill-rose-500 text-rose-500'
+                  : 'text-slate-600 dark:text-slate-300'
+              }`}
+            />
+            <span className="mt-1 text-[10px] font-semibold">
+              {isWishlisted ? 'Tersimpan' : 'Wishlist'}
+            </span>
           </button>
 
           {/* Add To Cart Button */}

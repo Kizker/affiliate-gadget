@@ -1277,6 +1277,29 @@ async function main() {
     },
   })
 
+  // Recalculate and synchronize product ratings & review counts from Review table
+  console.log(
+    '⭐ Synchronizing product ratings and review counts from Review table...'
+  )
+  const productReviews = await prisma.review.groupBy({
+    by: ['productId'],
+    _avg: { rating: true },
+    _count: { rating: true },
+    where: { productId: { not: null }, type: 'PRODUCT' },
+  })
+
+  for (const pr of productReviews) {
+    if (pr.productId) {
+      await prisma.product.update({
+        where: { id: pr.productId },
+        data: {
+          rating: Number((pr._avg.rating || 5.0).toFixed(1)),
+          totalReview: pr._count.rating || 0,
+        },
+      })
+    }
+  }
+
   console.log(
     '🎉 Seed completed successfully with realistic Multi-PT Stores, Products, and Accounts!'
   )

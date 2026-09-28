@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
+import { usePageGuard } from '@/hooks/use-page-guard'
 
 const isVideoUrl = (url?: string | null) => {
   if (!url) return false
@@ -139,6 +140,9 @@ function formatDate(dateStr: string) {
 }
 
 export default function AdminComplaintsPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/complaints'
+  )
   const { data: session } = useSession()
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [loading, setLoading] = useState(true)
@@ -384,7 +388,7 @@ export default function AdminComplaintsPage() {
       {/* 1. 4 Metric Cards (Bento Grid) */}
       <div className="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
         {/* Card 1: Total Klaim */}
-        <div className="p-4 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Total Klaim
@@ -404,7 +408,7 @@ export default function AdminComplaintsPage() {
         </div>
 
         {/* Card 2: Perlu Ditangani */}
-        <div className="p-4 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Perlu Tindakan
@@ -436,7 +440,7 @@ export default function AdminComplaintsPage() {
         </div>
 
         {/* Card 3: Sedang Diproses */}
-        <div className="p-4 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Dalam Proses
@@ -468,7 +472,7 @@ export default function AdminComplaintsPage() {
         </div>
 
         {/* Card 4: Selesai / Tingkat Resolusi */}
-        <div className="p-4 shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="shadow-2xs hover:shadow-xs flex flex-col justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300/80 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Garansi Sukses
@@ -790,7 +794,9 @@ export default function AdminComplaintsPage() {
                             ) : (
                               <ShieldCheck className="h-4 w-4 shrink-0 text-orange-400" />
                             )}
-                            <span className="whitespace-nowrap">Mulai Tangani Klaim</span>
+                            <span className="whitespace-nowrap">
+                              Mulai Tangani Klaim
+                            </span>
                           </button>
                         </div>
                       )}
@@ -892,7 +898,9 @@ export default function AdminComplaintsPage() {
                                     ) : (
                                       <CheckCircle2 className="h-4 w-4 shrink-0" />
                                     )}
-                                    <span className="whitespace-nowrap">Setujui & Selesaikan Klaim</span>
+                                    <span className="whitespace-nowrap">
+                                      Setujui & Selesaikan Klaim
+                                    </span>
                                   </button>
                                 </div>
                               </div>
@@ -979,7 +987,7 @@ export default function AdminComplaintsPage() {
                                   <button
                                     type="button"
                                     onClick={() => setShowRejectForm(false)}
-                                    className="cursor-pointer shrink-0 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                    className="shrink-0 cursor-pointer whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                   >
                                     Batal
                                   </button>
@@ -998,7 +1006,9 @@ export default function AdminComplaintsPage() {
                                     ) : (
                                       <XCircle className="h-4 w-4 shrink-0" />
                                     )}
-                                    <span className="whitespace-nowrap">Konfirmasi Tolak Klaim</span>
+                                    <span className="whitespace-nowrap">
+                                      Konfirmasi Tolak Klaim
+                                    </span>
                                   </button>
                                 </div>
                               </div>

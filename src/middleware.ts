@@ -13,6 +13,64 @@ const ADMIN_STAFF_ROLES = [
   'CONTENT_EDITOR',
 ]
 
+/**
+ * Sub-route access matrix for /dashboard/admin/* routes.
+ * Keys = path prefix, Values = roles allowed to access it.
+ * More specific paths first.
+ */
+const ADMIN_SUBROUTE_ACCESS: Record<string, string[]> = {
+  '/dashboard/admin/finance': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
+  '/dashboard/admin/reports': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
+  '/dashboard/admin/users': ['SUPER_ADMIN'],
+  '/dashboard/admin/technicians': ['SUPER_ADMIN'],
+  '/dashboard/admin/vouchers': ['SUPER_ADMIN'],
+  '/dashboard/admin/mitras': ['SUPER_ADMIN', 'ADMIN'],
+  '/dashboard/admin/ads': ['SUPER_ADMIN', 'STORE_ADMIN'],
+  '/dashboard/admin/blog': ['SUPER_ADMIN', 'CONTENT_EDITOR'],
+  '/dashboard/admin/orders': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
+  '/dashboard/admin/complaints': [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'STORE_ADMIN',
+    'STORE_SALES',
+  ],
+  '/dashboard/admin/returns': [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'STORE_ADMIN',
+    'STORE_SALES',
+  ],
+  '/dashboard/admin/chat': [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'STORE_ADMIN',
+    'STORE_SALES',
+  ],
+  '/dashboard/admin/products': [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'STORE_ADMIN',
+    'CONTENT_EDITOR',
+  ],
+  '/dashboard/admin/settings': ['SUPER_ADMIN', 'ADMIN', 'STORE_ADMIN'],
+}
+
+/**
+ * Check if a role is allowed to access a given admin sub-route path.
+ * Returns true if no restriction is defined for the path (allow all admin staff).
+ */
+function isSubRouteAllowed(pathname: string, role: string): boolean {
+  for (const [routePrefix, allowedRoles] of Object.entries(
+    ADMIN_SUBROUTE_ACCESS
+  )) {
+    if (pathname === routePrefix || pathname.startsWith(routePrefix + '/')) {
+      return allowedRoles.includes(role)
+    }
+  }
+  // No restriction found — allow all admin staff
+  return true
+}
+
 function getCmsDashboardUrl(
   role?: string | null,
   mitraStatus?: string | null
@@ -100,6 +158,14 @@ export default auth((req) => {
       // Proteksi rute Admin CMS (/dashboard/admin)
       if (isAdminRoute && !isAdminStaff) {
         return NextResponse.redirect(new URL(destinationCms, req.url))
+      }
+
+      // ✅ Sub-Route RBAC: Blokir akses ke sub-route yang tidak diizinkan untuk role ini
+      if (isAdminRoute && isAdminStaff && userRole) {
+        if (!isSubRouteAllowed(pathname, userRole)) {
+          // Redirect ke halaman utama dashboard (bukan login) karena user memang staff yang valid
+          return NextResponse.redirect(new URL('/dashboard/admin', req.url))
+        }
       }
 
       // Proteksi rute Teknisi (/dashboard/teknisi)

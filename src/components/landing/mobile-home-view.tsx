@@ -42,6 +42,7 @@ interface ProductCardData {
   conditionBadgeColor: string
   rating: number
   reviewCount: number
+  soldCount?: number
   image: string
   perkText: string
   perkIcon: 'gift' | 'shield' | 'zap'
@@ -216,11 +217,12 @@ function formatApiProduct(p: any): ProductCardData {
     conditionBadge: conditionLabel,
     conditionBadgeColor:
       'bg-emerald-50/95 text-emerald-800 border-emerald-200/80',
-    rating: typeof p.rating === 'number' && p.rating > 0 ? p.rating : 4.9,
+    rating: typeof p.rating === 'number' && p.rating > 0 ? p.rating : 5.0,
     reviewCount:
-      typeof p.totalReview === 'number' && p.totalReview > 0
+      typeof p.totalReview === 'number' && p.totalReview >= 0
         ? p.totalReview
-        : 24,
+        : 0,
+    soldCount: typeof p.soldCount === 'number' ? p.soldCount : 0,
     image,
     perkText: 'Bonus 3-in-1 Lengkap',
     perkIcon: 'gift',
@@ -246,9 +248,7 @@ export function MobileHomeView() {
 
   // Hero Slideshow Carousel State
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(HERO_SLIDES)
-  const [promotedInFeedAd, setPromotedInFeedAd] = useState<InFeedAdData | null>(
-    null
-  )
+  const [promotedInFeedAds, setPromotedInFeedAds] = useState<InFeedAdData[]>([])
   const [currentSlide, setCurrentSlide] = useState(0)
   const [touchStart, setTouchStart] = useState<number | null>(null)
 
@@ -259,7 +259,7 @@ export function MobileHomeView() {
       try {
         const [heroRes, feedRes] = await Promise.all([
           fetch('/api/ads?placement=HOMEPAGE_HERO&limit=3'),
-          fetch('/api/ads?placement=PROMOTED_LIST&limit=1'),
+          fetch('/api/ads?placement=PROMOTED_LIST&limit=4'),
         ])
         const heroJson = await heroRes.json()
         if (
@@ -277,7 +277,7 @@ export function MobileHomeView() {
                 : 'Toko Resmi PT',
               badgeIcon: 'store' as const,
               title: ad.title,
-              subtitle: ad.store?.name || 'Garansi Toko 30 Hari',
+              subtitle: ad.subtitle || ad.store?.name || 'Garansi Toko 30 Hari',
               storeSlug: ad.store?.slug,
               targetUrl:
                 ad.targetUrl ||
@@ -296,7 +296,7 @@ export function MobileHomeView() {
           feedJson.data.length > 0
         ) {
           if (isSubscribed) {
-            setPromotedInFeedAd(feedJson.data[0])
+            setPromotedInFeedAds(feedJson.data)
           }
         }
       } catch {
@@ -451,7 +451,7 @@ export function MobileHomeView() {
     return (
       <div
         key={item.id}
-        className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
+        className="shadow-xs relative flex flex-col justify-between rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
       >
         <Link href={item.href} className="block">
           <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
@@ -511,9 +511,14 @@ export function MobileHomeView() {
               <span className="block text-sm font-black leading-tight text-orange-500">
                 {item.price}
               </span>
-              <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
-                {item.originalPrice}
-              </span>
+              <div className="mt-0.5 flex items-center justify-between text-[10px]">
+                <span className="leading-none text-slate-400 line-through">
+                  {item.originalPrice}
+                </span>
+                <span className="font-medium text-slate-500 dark:text-slate-400">
+                  Terjual {item.soldCount ?? 0}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
               <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
@@ -522,13 +527,6 @@ export function MobileHomeView() {
               </span>
             </div>
           </div>
-        </Link>
-        <Link
-          href={item.href}
-          className="shadow-2xs mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-1.5 text-xs font-bold text-white transition-all hover:bg-orange-600 active:scale-95"
-        >
-          <ShoppingCart className="h-3 w-3" />
-          <span>Beli</span>
         </Link>
       </div>
     )
@@ -564,21 +562,22 @@ export function MobileHomeView() {
                 priority={idx === 0}
                 unoptimized
               />
-              {/* Soft Vignette for Minimalist Poster Look */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+              {/* Soft Vignette for Readability */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
 
-              {/* Minimal Store & Ad Header Badge */}
-              <div className="pointer-events-none absolute left-2.5 right-2.5 top-2.5 z-20 flex items-center justify-between">
-                <div className="flex items-center gap-1 rounded-full border border-white/20 bg-black/40 px-2 py-0.5 text-[9px] font-semibold text-white/90 shadow-sm backdrop-blur-md">
-                  <Sparkles className="h-2.5 w-2.5 shrink-0 text-orange-400" />
-                  <span>Iklan Toko Resmi</span>
-                </div>
-                {slide.badgeText && (
-                  <div className="flex items-center gap-1 rounded-full border border-white/20 bg-black/40 px-2 py-0.5 text-[9px] font-semibold text-white/90 backdrop-blur-md">
-                    <Store className="h-2.5 w-2.5 text-white/70" />
-                    <span>{slide.badgeText}</span>
+              {/* Bottom Title & Subtitle / Details */}
+              <div className="pointer-events-none absolute bottom-2.5 left-3 right-16 z-20 space-y-0.5 text-left">
+                {slide.storeName && (
+                  <div className="flex items-center gap-1 text-[9.5px] font-bold text-orange-400 drop-shadow-sm">
+                    <span>{slide.storeName}</span>
                   </div>
                 )}
+                <h3 className="line-clamp-1 text-xs font-black leading-tight text-white drop-shadow-md sm:text-sm">
+                  {slide.title}
+                </h3>
+                <p className="line-clamp-1 text-[10px] font-medium text-slate-200 drop-shadow-sm">
+                  {slide.subtitle}
+                </p>
               </div>
             </div>
           ))}
@@ -635,6 +634,15 @@ export function MobileHomeView() {
             {allProducts
               .slice(0, visibleCount)
               .filter((_, idx) => idx % 2 === 0)
+              .slice(0, 3)
+              .map((item) => renderMobileProductCard(item))}
+            {promotedInFeedAds[1] && (
+              <InFeedStoreAdCard ad={promotedInFeedAds[1]} />
+            )}
+            {allProducts
+              .slice(0, visibleCount)
+              .filter((_, idx) => idx % 2 === 0)
+              .slice(3)
               .map((item) => renderMobileProductCard(item))}
           </div>
 
@@ -645,7 +653,9 @@ export function MobileHomeView() {
               .filter((_, idx) => idx % 2 === 1)
               .slice(0, 1)
               .map((item) => renderMobileProductCard(item))}
-            {promotedInFeedAd && <InFeedStoreAdCard ad={promotedInFeedAd} />}
+            {promotedInFeedAds[0] && (
+              <InFeedStoreAdCard ad={promotedInFeedAds[0]} />
+            )}
             {allProducts
               .slice(0, visibleCount)
               .filter((_, idx) => idx % 2 === 1)

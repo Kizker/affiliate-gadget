@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useSession } from 'next-auth/react'
+import { usePageGuard } from '@/hooks/use-page-guard'
 import {
   User,
   Phone,
@@ -32,6 +33,9 @@ import {
 } from 'lucide-react'
 
 export default function AdminSettingsPage() {
+  const { isLoading: guardLoading, isAllowed } = usePageGuard(
+    '/dashboard/admin/settings'
+  )
   const { data: session, update: updateSession } = useSession()
   const sessionRole = (session?.user as { role?: string })?.role || ''
   const [userRole, setUserRole] = useState(sessionRole)

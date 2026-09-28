@@ -72,6 +72,11 @@ export async function GET(request: NextRequest) {
         })
       }
       where.storeId = session.user.storeId
+    } else {
+      const storeIdParam = searchParams.get('storeId')
+      if (storeIdParam && storeIdParam !== 'ALL') {
+        where.storeId = storeIdParam
+      }
     }
 
     // Get products with pagination
