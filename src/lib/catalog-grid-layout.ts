@@ -99,8 +99,8 @@ export function assembleCatalogGridItems(
 }
 
 /**
- * Builds paginated catalog items with exact column spans per page (e.g. 12 spans = 3 full 4-col rows),
- * ensuring ads on page 1 fit seamlessly without leaving any awkward 3-item rows.
+ * Builds paginated catalog items with exact column spans per page (e.g. 12 spans = 3 full 4-col rows).
+ * Aturan Desktop: Maksimal 1 pagination memuat 1 iklan saja sebelum berpindah ke halaman berikutnya.
  */
 export function buildPaginatedCatalogGrid(
   allProducts: any[],
@@ -109,52 +109,45 @@ export function buildPaginatedCatalogGrid(
   targetSpanPerPage: number = 12
 ): { items: CatalogGridItem[]; totalPages: number } {
   if (allProducts.length === 0) {
+    if (ads.length > 0 && ads[0]) {
+      const isProduct = isProductAdData(ads[0])
+      return {
+        items: [{ type: 'ad', data: ads[0], isProductAd: isProduct }],
+        totalPages: ads.length,
+      }
+    }
     return { items: [], totalPages: 1 }
   }
 
-  const page1Ads = ads.slice(0, 3)
-  const candidateItems = assembleCatalogGridItems(allProducts, page1Ads)
+  // Desktop Pagination: Maksimal 1 iklan per halaman katalog
+  const pages: CatalogGridItem[][] = []
+  let prodIndex = 0
+  let adIndex = 0
 
-  let currentSpan = 0
-  const page1Items: CatalogGridItem[] = []
-  const usedProductIds = new Set<string>()
+  while (prodIndex < allProducts.length) {
+    const pageAd = adIndex < ads.length ? ads[adIndex++] : null
+    const adSpan = pageAd ? (isProductAdData(pageAd) ? 1 : 2) : 0
+    const prodsNeeded = Math.max(1, targetSpanPerPage - adSpan)
 
-  for (const item of candidateItems) {
-    const itemSpan = item.type === 'ad' ? (item.isProductAd ? 1 : 2) : 1
-    if (currentSpan + itemSpan > targetSpanPerPage) {
-      break
-    }
-    page1Items.push(item)
-    currentSpan += itemSpan
-    if (item.type === 'product' && item.data?.id) {
-      usedProductIds.add(item.data.id)
-    }
+    const pageProducts = allProducts.slice(prodIndex, prodIndex + prodsNeeded)
+    prodIndex += prodsNeeded
+
+    // Rakit satu halaman dengan maksimal 1 iklan dan produk pengisi
+    const pageItems = assembleCatalogGridItems(
+      pageProducts,
+      pageAd ? [pageAd] : [],
+      { columnsPerRow: 4, maxRows: targetSpanPerPage / 4 }
+    )
+
+    pages.push(pageItems)
   }
 
-  const remainingProducts = allProducts.filter((p) => !usedProductIds.has(p.id))
-  const totalPages = Math.max(
-    1,
-    1 + Math.ceil(remainingProducts.length / targetSpanPerPage)
-  )
-
-  if (page <= 1) {
-    return {
-      items: page1Items,
-      totalPages,
-    }
-  }
-
-  const startIndex = (page - 2) * targetSpanPerPage
-  const endIndex = startIndex + targetSpanPerPage
-  const pageProducts = remainingProducts.slice(startIndex, endIndex)
-
-  const pageItems: CatalogGridItem[] = pageProducts.map((p) => ({
-    type: 'product',
-    data: p,
-  }))
+  const totalPages = Math.max(1, pages.length)
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const items = pages[safePage - 1] || []
 
   return {
-    items: pageItems,
+    items,
     totalPages,
   }
 }

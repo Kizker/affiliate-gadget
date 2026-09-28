@@ -38,6 +38,20 @@ export async function sendWhatsApp(
     'https://console.zenziva.net/wareguler/api/sendWA/'
 
   if (!userkey || !passkey) {
+    if (
+      process.env.NODE_ENV !== 'production' ||
+      process.env.NOTIFICATION_MOCK_MODE === 'true'
+    ) {
+      console.log(`\n================== [MOCK WHATSAPP OTP] ==================`)
+      console.log(`📱 Penerima : ${normalizedTo}`)
+      console.log(`💬 Pesan    :\n${message}`)
+      console.log(`=========================================================\n`)
+      return {
+        success: true,
+        provider: 'MOCK_WA',
+        messageId: `mock-wa-${Date.now()}`,
+      }
+    }
     console.error(
       '[ZENZIVA WA] Kredensial belum dikonfigurasi (ZENZIVA_USERKEY / ZENZIVA_PASSKEY)'
     )

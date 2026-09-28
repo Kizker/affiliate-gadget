@@ -95,7 +95,10 @@ export default auth((req) => {
   const isTechnicianRoute = pathname.startsWith('/dashboard/teknisi')
   const isDashboardGenericRoute =
     pathname === '/dashboard' || pathname === '/dashboard/customer'
-  const isAuthRoute = pathname === '/login' || pathname === '/register'
+  const isAuthRoute =
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/forgot-password'
   const isCartOrCheckout =
     pathname.startsWith('/cart') || pathname.startsWith('/checkout')
   const isRootPublicRoute = pathname === '/'

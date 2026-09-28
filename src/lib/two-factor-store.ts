@@ -261,9 +261,16 @@ export function verifyWhatsAppOtp(
   if (!inputOtp || String(inputOtp).trim() !== stored.code) {
     stored.attempts += 1
     saveData(data)
+    const isEmail =
+      cleanId.includes('@') || (stored.phone && stored.phone.includes('@'))
+    const channelLabel = isEmail
+      ? 'email'
+      : purpose === 'CHANGE_PASSWORD' || purpose === 'CHANGE_PHONE'
+        ? 'pesan WhatsApp'
+        : 'pesan masuk'
     return {
       success: false,
-      error: 'Kode OTP tidak cocok. Periksa kembali pesan WhatsApp Anda.',
+      error: `Kode OTP tidak cocok. Periksa kembali ${channelLabel} Anda.`,
     }
   }
 

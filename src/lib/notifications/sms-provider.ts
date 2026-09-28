@@ -39,6 +39,21 @@ export async function sendSms(
     'https://console.zenziva.net/reguler/api/sendsms/'
 
   if (!userkey || !passkey) {
+    if (
+      process.env.NODE_ENV !== 'production' ||
+      process.env.NOTIFICATION_MOCK_MODE === 'true'
+    ) {
+      console.log(`\n================== [MOCK SMS OTP] ==================`)
+      console.log(`📱 Penerima : ${normalizedTo}`)
+      console.log(`💬 Pesan    :\n${message}`)
+      console.log(`====================================================\n`)
+      return {
+        success: true,
+        provider: 'MOCK_SMS',
+        messageId: `mock-sms-${Date.now()}`,
+        cost: 350,
+      }
+    }
     console.error(
       '[ZENZIVA SMS] Kredensial belum dikonfigurasi (ZENZIVA_USERKEY / ZENZIVA_PASSKEY)'
     )

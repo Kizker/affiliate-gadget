@@ -26,10 +26,12 @@ import {
   Minus,
   Check,
   MapPin,
+  Play,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCartStore } from '@/lib/store/cart-store'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
+import { isVideoMedia } from '@/types/ads'
 import { ProductReviewsSection } from './product-reviews-section'
 import { ProductShareModal } from './product-share-modal'
 
@@ -538,35 +540,74 @@ export function ShopeeMobileProductDetail({
           className="scrollbar-none no-scrollbar flex h-full w-full touch-pan-x snap-x snap-mandatory overflow-x-auto"
         >
           {allImages.length > 0 ? (
-            allImages.map((imgUrl, idx) => (
-              <div
-                key={imgUrl + idx}
-                className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-2.5 sm:p-3"
-              >
-                <Image
-                  src={imgUrl}
-                  alt={`${product.name} - ${idx + 1}`}
-                  fill
-                  priority={idx === 0}
-                  unoptimized
-                  className="object-contain p-2 transition-all duration-300"
-                />
-              </div>
-            ))
+            allImages.map((imgUrl, idx) => {
+              const isVid = isVideoMedia(imgUrl)
+              return (
+                <div
+                  key={imgUrl + idx}
+                  className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-2.5 sm:p-3"
+                >
+                  {isVid ? (
+                    <div className="relative flex h-full w-full items-center justify-center bg-black/5 dark:bg-black/20">
+                      <video
+                        src={imgUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        controls
+                        className="max-h-full max-w-full object-contain"
+                      />
+                      <div className="backdrop-blur-xs shadow-xs absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-orange-600/90 px-1.5 py-0.5 text-[8.5px] font-black text-white">
+                        <Play className="h-2.5 w-2.5 fill-white text-white" />
+                        <span>VIDEO</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <Image
+                      src={imgUrl}
+                      alt={`${product.name} - ${idx + 1}`}
+                      fill
+                      priority={idx === 0}
+                      unoptimized
+                      className="object-contain p-2 transition-all duration-300"
+                    />
+                  )}
+                </div>
+              )
+            })
           ) : (
             <div className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-2.5 sm:p-3">
-              <Image
-                src={
-                  selectedImage ||
-                  product.images?.[0] ||
-                  'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=900&q=80'
-                }
-                alt={product.name}
-                fill
-                priority
-                unoptimized
-                className="object-contain p-2"
-              />
+              {isVideoMedia(selectedImage || product.images?.[0]) ? (
+                <div className="relative flex h-full w-full items-center justify-center bg-black/5 dark:bg-black/20">
+                  <video
+                    src={selectedImage || product.images?.[0]}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    controls
+                    className="max-h-full max-w-full object-contain"
+                  />
+                  <div className="backdrop-blur-xs shadow-xs absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-orange-600/90 px-1.5 py-0.5 text-[8.5px] font-black text-white">
+                    <Play className="h-2.5 w-2.5 fill-white text-white" />
+                    <span>VIDEO</span>
+                  </div>
+                </div>
+              ) : (
+                <Image
+                  src={
+                    selectedImage ||
+                    product.images?.[0] ||
+                    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=900&q=80'
+                  }
+                  alt={product.name}
+                  fill
+                  priority
+                  unoptimized
+                  className="object-contain p-2"
+                />
+              )}
             </div>
           )}
         </div>

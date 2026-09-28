@@ -214,7 +214,9 @@ test.describe('Withdrawal Security Gate & Modal Flow', () => {
     await expect(
       page.locator('text=Verifikasi Keamanan OTP (2FA)')
     ).toBeVisible()
-    await expect(page.locator('text=Kode OTP 6 Digit Terkirim')).toBeVisible()
+    await expect(
+      page.locator('text=Kode OTP WhatsApp Resmi Zenziva Terkirim')
+    ).toBeVisible()
 
     // Verify OTP input field
     const otpInput = page.locator('input[placeholder="• • • • • •"]')

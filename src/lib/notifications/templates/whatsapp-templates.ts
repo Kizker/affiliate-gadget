@@ -7,6 +7,14 @@ export function otpMessage(
   purposeText: string,
   expireMinutes = 5
 ): string {
+  const isWithdrawal =
+    purposeText.toLowerCase().includes('penarikan') ||
+    purposeText.toLowerCase().includes('withdraw')
+
+  if (isWithdrawal) {
+    return `🔒 *AFFILIATE GADGET — OTORISASI PENARIKAN DANA*\n\nKode OTP keamanan penarikan saldo ke rekening Anda:\n\n*${code}*\n\n⏱️ Berlaku selama ${expireMinutes} menit.\n\n⚠️ *PERINGATAN KEAMANAN TINGGI*:\nKode ini SANGAT RAHASIA untuk otorisasi pencairan dana dari superadmin ke rekening bank. JANGAN PERNAH memberikan kode ini kepada siapa pun termasuk staf atau pihak Affiliate Gadget. Segera hubungi tim keamanan jika Anda tidak mengajukan penarikan ini.`
+  }
+
   return `*AFFILIATE GADGET*\n\nKode verifikasi (${purposeText}) Anda adalah:\n\n*${code}*\n\nKode berlaku selama ${expireMinutes} menit. JANGAN bagikan kode ini kepada siapa pun termasuk pihak Affiliate Gadget.`
 }
 

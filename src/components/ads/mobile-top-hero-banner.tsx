@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronRight } from 'lucide-react'
+import { Play, Store } from 'lucide-react'
 
 export interface HeroSlideData {
   id: string
   adId?: string
   image: string
+  videoUrl?: string | null
+  isVideo?: boolean
   badgeText: string
   title: string
   subtitle: string
@@ -52,18 +53,29 @@ export function MobileTopHeroBanner({
 
     async function loadHeroAds() {
       try {
-        const res = await fetch('/api/ads?placement=HOMEPAGE_HERO&limit=5')
+        // Level 1 adalah eksklusif (hanya 1 banner toko aktif pada satu waktu)
+        const res = await fetch('/api/ads?placement=HOMEPAGE_HERO&limit=1')
         const json = await res.json()
         if (json.success && Array.isArray(json.data) && json.data.length > 0) {
           const mapped: HeroSlideData[] = json.data.map(
             (ad: any, index: number) => {
-              // Rule: Jika admin store menginput custom image, gunakan apa yang diinput admin store.
-              // Jika kosong/tidak ada, ambil dari poster toko atau platform poster.
               const fallbackPoster =
                 ad.store?.banner ||
                 '/images/banners/samsung-campaign-banner.jpg'
+              const isVideo = Boolean(
+                ad.videoUrl ||
+                (ad.bannerUrl &&
+                  (ad.bannerUrl.toLowerCase().endsWith('.mp4') ||
+                    ad.bannerUrl.toLowerCase().endsWith('.webm') ||
+                    ad.bannerUrl.toLowerCase().includes('/video/'))) ||
+                (ad.imageUrl &&
+                  (ad.imageUrl.toLowerCase().endsWith('.mp4') ||
+                    ad.imageUrl.toLowerCase().includes('/video/')))
+              )
+              const videoUrl =
+                ad.videoUrl || (isVideo ? ad.bannerUrl || ad.imageUrl : null)
               const finalImage =
-                ad.imageUrl && ad.imageUrl.trim() !== ''
+                !isVideo && ad.imageUrl && ad.imageUrl.trim() !== ''
                   ? ad.imageUrl
                   : fallbackPoster
 
@@ -71,6 +83,8 @@ export function MobileTopHeroBanner({
                 id: ad.id || `hero-ad-${index}`,
                 adId: ad.id,
                 image: finalImage,
+                videoUrl: videoUrl,
+                isVideo: isVideo,
                 badgeText: ad.store?.city ? `Cabang ${ad.store.city}` : '',
                 title: ad.title || 'Promo Gadget Pilihan',
                 subtitle:
@@ -79,7 +93,8 @@ export function MobileTopHeroBanner({
                 targetUrl:
                   ad.targetUrl ||
                   (ad.store?.slug ? `/toko/${ad.store.slug}` : '/gadget'),
-                storeName: ad.store?.name,
+                storeName:
+                  ad.store?.name || ad.store?.companyName || 'Affiliate Gadget',
               }
             }
           )
@@ -99,12 +114,12 @@ export function MobileTopHeroBanner({
     }
   }, [])
 
-  // Auto-play timer (advance every 4.5 seconds)
+  // Auto-play timer (advance every 5 seconds)
   useEffect(() => {
     if (slides.length <= 1) return
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length)
-    }, 4500)
+    }, 5000)
     return () => clearInterval(timer)
   }, [slides.length])
 
@@ -140,7 +155,7 @@ export function MobileTopHeroBanner({
 
   return (
     <div
-      className={`relative aspect-[21/9] w-full select-none overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-950 shadow-sm transition hover:shadow-md dark:border-slate-800 sm:aspect-[16/7] ${className}`}
+      className={`relative aspect-[21/9] w-full select-none overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-950 shadow-sm transition hover:shadow-md dark:border-slate-800 sm:aspect-[16/7] md:aspect-auto md:h-[300px] md:rounded-3xl ${className}`}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -154,33 +169,49 @@ export function MobileTopHeroBanner({
               : 'pointer-events-none z-0 opacity-0'
           }`}
         >
-          <Image
-            src={slide.image}
-            alt={slide.title}
-            fill
-            className="object-cover"
-            priority={idx === 0}
-            unoptimized
-          />
+          {slide.isVideo && slide.videoUrl ? (
+            <video
+              src={slide.videoUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <Image
+              src={slide.image}
+              alt={slide.title}
+              fill
+              className="object-cover"
+              priority={idx === 0}
+              unoptimized
+            />
+          )}
 
           {/* Vignette gradients for editorial readability */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-black/30" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/30" />
 
-          {/* Bottom Title & Subtitle */}
-          <div className="pointer-events-none absolute bottom-2.5 left-2.5 right-14 z-20 space-y-0.5">
-            <h3 className="line-clamp-1 text-xs font-black leading-tight text-white drop-shadow-md sm:text-sm">
-              {slide.title}
-            </h3>
-            <p className="line-clamp-1 text-[10px] font-medium text-slate-300 drop-shadow-sm">
-              {slide.subtitle}
-            </p>
+          {/* Top-Left: Advertisement Label (Tulisannya saja, tanpa efek background, agak ke kanan) */}
+          <div className="pointer-events-none absolute left-5 top-3.5 z-20 sm:left-7 sm:top-5 md:left-8 md:top-6">
+            <span className="text-[11px] font-medium tracking-wider text-white/80 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] sm:text-xs">
+              Advertisement
+            </span>
+          </div>
+
+          {/* Bottom-Left: Store Name (Tulisannya saja, tanpa efek background, agak ke kanan) */}
+          <div className="pointer-events-none absolute bottom-3.5 left-5 z-20 sm:bottom-5 sm:left-7 md:bottom-6 md:left-8">
+            <span className="text-xs font-semibold tracking-wide text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] sm:text-sm md:text-base">
+              {slide.storeName || 'Affiliate Gadget'}
+            </span>
           </div>
         </div>
       ))}
 
       {/* Indicator Dots */}
       {slides.length > 1 && (
-        <div className="backdrop-blur-xs absolute bottom-2.5 right-2.5 z-30 flex items-center gap-1.5 rounded-full bg-black/50 px-2 py-1">
+        <div className="backdrop-blur-xs absolute bottom-3 right-3 z-30 flex items-center gap-1.5 rounded-full bg-black/50 px-2 py-1 sm:bottom-4 sm:right-4">
           {slides.map((_, dotIdx) => (
             <button
               key={dotIdx}

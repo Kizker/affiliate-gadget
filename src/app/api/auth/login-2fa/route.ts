@@ -70,37 +70,31 @@ export async function POST(req: NextRequest) {
       }
 
       // ───────────────────────────────────────────────────────────────────────
-      // Wajib Verifikasi 2FA WhatsApp untuk Seluruh Akun Login
+      // Wajib Verifikasi 2FA via EMAIL untuk Seluruh Akun Login
+      // (WhatsApp dialokasikan khusus otorisasi penarikan dana / withdrawal)
       // ───────────────────────────────────────────────────────────────────────
-      const targetPhone =
-        user.phone && user.phone.trim().length >= 8
-          ? user.phone.trim()
-          : '081289001122'
-      const otpData = createLoginOtp(user.email, targetPhone)
-      const maskedPhone = targetPhone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
+      const otpData = createLoginOtp(user.email, user.email)
+      const maskedEmail = maskEmail(user.email)
 
-      // Dispatch via notification engine (WhatsApp)
+      // Dispatch via notification engine (Email)
       try {
         const { dispatchOtp } = await import('@/lib/notifications')
         await dispatchOtp({
-          identifier: targetPhone,
+          identifier: user.email,
           purpose: 'LOGIN',
-          channel: 'WHATSAPP',
+          channel: 'EMAIL',
           userId: user.id,
         })
       } catch (err) {
-        console.error('[LOGIN 2FA DISPATCH WA ERROR]:', err)
+        console.error('[LOGIN 2FA DISPATCH EMAIL ERROR]:', err)
       }
 
       return NextResponse.json({
         requires2FA: true,
-        channel: 'WHATSAPP',
+        channel: 'EMAIL',
         email: user.email,
-        phone: targetPhone,
-        maskedPhone: maskedPhone,
-        maskedEmail: maskEmail(user.email),
-        hasPhone: true,
-        whatsappUrl: otpData.whatsappUrl,
+        maskedEmail: maskedEmail,
+        hasPhone: !!user.phone,
         otpPreview: otpData.code,
         expiresInSeconds: otpData.expiresInSeconds || 300,
       })
@@ -152,12 +146,25 @@ export async function POST(req: NextRequest) {
         })
       }
 
-      const errMsg =
-        validation.error === 'EXPIRED'
-          ? 'Kode OTP telah kadaluarsa. Silakan minta kode baru.'
-          : validation.error === 'MAX_ATTEMPTS_EXCEEDED'
-            ? 'Terlalu banyak percobaan salah. Silakan kirim ulang kode OTP baru.'
-            : legacyResult.error || 'Kode OTP tidak cocok'
+      const isEmail = targetIdentifier.includes('@')
+      const channelLabel = isEmail ? 'email' : 'WhatsApp'
+      const defaultMismatch = `Kode OTP tidak cocok. Periksa kembali ${channelLabel} Anda.`
+
+      let errMsg = defaultMismatch
+      if (validation.error === 'EXPIRED') {
+        errMsg = 'Kode OTP telah kadaluarsa. Silakan minta kode baru.'
+      } else if (validation.error === 'MAX_ATTEMPTS_EXCEEDED') {
+        errMsg =
+          'Terlalu banyak percobaan salah. Silakan kirim ulang kode OTP baru.'
+      } else if (validation.error === 'INVALID_CODE') {
+        errMsg = defaultMismatch
+      } else if (legacyResult.error) {
+        errMsg = isEmail
+          ? legacyResult.error
+              .replace(/pesan WhatsApp/gi, 'email')
+              .replace(/WhatsApp/gi, 'email')
+          : legacyResult.error
+      }
 
       return NextResponse.json({ error: errMsg }, { status: 400 })
     }

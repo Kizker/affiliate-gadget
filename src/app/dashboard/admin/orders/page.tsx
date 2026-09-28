@@ -24,7 +24,6 @@ import {
   Printer,
   Zap,
   Navigation,
-  FileEdit,
   RefreshCw,
   AlertTriangle,
 } from 'lucide-react'
@@ -39,10 +38,6 @@ import {
 import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
 import { LiveCourierTracker } from '@/components/shipping/live-courier-tracker'
 import TaxInvoiceModal from '@/components/modals/tax-invoice-modal'
-import {
-  validateAWB,
-  type AWBValidationResult,
-} from '@/lib/shipping/awb-validator'
 import { usePageGuard } from '@/hooks/use-page-guard'
 
 interface OrderItem {
@@ -237,12 +232,6 @@ export default function AdminOrdersPage() {
   const [showLiveTracker, setShowLiveTracker] = useState(false)
   const [taxInvoiceOrder, setTaxInvoiceOrder] = useState<Order | null>(null)
 
-  // AWB Manual Input Modal
-  const [showAWBModal, setShowAWBModal] = useState(false)
-  const [awbInput, setAwbInput] = useState('')
-  const [awbValidation, setAwbValidation] =
-    useState<AWBValidationResult | null>(null)
-  const [submittingAWB, setSubmittingAWB] = useState(false)
   const [syncingStatusId, setSyncingStatusId] = useState<string | null>(null)
 
   // Debounce search input
@@ -395,78 +384,6 @@ export default function AdminOrdersPage() {
     setCopiedAWB(true)
     toast.success('Nomor resi / AWB berhasil disalin!')
     setTimeout(() => setCopiedAWB(false), 2000)
-  }
-
-  // Handle AWB input modal open
-  const handleOpenAWBModal = (order: Order) => {
-    setSelectedOrder(order)
-    setAwbInput(order.trackingNumber || '')
-    setAwbValidation(
-      order.trackingNumber ? validateAWB(order.trackingNumber) : null
-    )
-    setShowAWBModal(true)
-  }
-
-  // Handle AWB input change with live validation
-  const handleAWBChange = (value: string) => {
-    setAwbInput(value)
-    if (value.trim()) {
-      setAwbValidation(
-        validateAWB(
-          value,
-          selectedOrder?.courierCode === 'GOJEK' ? 'GOJEK' : 'JNE'
-        )
-      )
-    } else {
-      setAwbValidation(null)
-    }
-  }
-
-  // Submit manual AWB to order
-  const handleSubmitManualAWB = async () => {
-    if (!selectedOrder || !awbValidation?.valid) return
-    try {
-      setSubmittingAWB(true)
-      const targetStatus =
-        selectedOrder.status === 'PAID' ? 'IN_PROGRESS' : selectedOrder.status
-      const res = await fetch(`/api/orders/${selectedOrder.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: targetStatus,
-          trackingNumber: awbValidation.formatted,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan nomor resi')
-
-      toast.success(`Resi ${awbValidation.formatted} berhasil disimpan!`)
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === selectedOrder.id
-            ? {
-                ...o,
-                status: targetStatus,
-                trackingNumber: awbValidation.formatted,
-              }
-            : o
-        )
-      )
-      setSelectedOrder((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: targetStatus,
-              trackingNumber: awbValidation.formatted,
-            }
-          : null
-      )
-      setShowAWBModal(false)
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menyimpan nomor resi')
-    } finally {
-      setSubmittingAWB(false)
-    }
   }
 
   // Manual status sync
@@ -757,18 +674,11 @@ export default function AdminOrdersPage() {
                               </button>
                             </div>
                           ) : (
-                            order.status !== 'PENDING_PAYMENT' && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleOpenAWBModal(order)
-                                }}
-                                className="inline-flex w-fit items-center gap-1 text-[10px] font-semibold text-blue-600 hover:underline"
-                              >
-                                <FileEdit className="h-2.5 w-2.5" /> + Resi
-                              </button>
-                            )
+                            <span className="text-[10px] text-slate-400">
+                              {order.status === 'PENDING_PAYMENT'
+                                ? 'Belum Bayar'
+                                : 'Menunggu Pick Up'}
+                            </span>
                           )}
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-orange-600">
                             <Gift className="h-3 w-3 text-orange-500" /> Free
@@ -1216,19 +1126,13 @@ export default function AdminOrdersPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between rounded-xl border border-dashed border-slate-300 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/60">
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                            <span>Belum ada nomor resi AWB</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAWBModal(selectedOrder)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-blue-700 active:scale-95"
-                          >
-                            <FileEdit className="h-3 w-3" />
-                            <span>+ Input Resi</span>
-                          </button>
+                        <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+                          <Clock className="h-4 w-4 shrink-0 text-amber-500" />
+                          <span className="text-xs text-slate-600 dark:text-slate-300">
+                            Resi AWB resmi diterbitkan otomatis via Biteship
+                            saat Anda menekan tombol{' '}
+                            <strong>Request Pick Up</strong> di bawah.
+                          </span>
                         </div>
                       )}
                     </div>
@@ -1308,47 +1212,25 @@ export default function AdminOrdersPage() {
                   )}
 
                   {selectedOrder.status === 'PAID' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleRequestPickup(selectedOrder)}
-                        disabled={requestingPickupId === selectedOrder.id}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                      >
-                        {requestingPickupId === selectedOrder.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Zap className="h-4 w-4" />
-                        )}
-                        <span>
-                          Request Pick Up (
-                          {selectedOrder.courierCode === 'GOJEK'
-                            ? 'Gojek Instant'
-                            : 'JNE'}
-                          )
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleOpenAWBModal(selectedOrder)}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      >
-                        <FileEdit className="h-3.5 w-3.5 text-slate-500" />
-                        <span>Input Resi Manual</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdateStatus(selectedOrder.id, 'IN_PROGRESS')
-                        }
-                        disabled={updatingId === selectedOrder.id}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                      >
-                        <span>Proses Manual</span>
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => handleRequestPickup(selectedOrder)}
+                      disabled={requestingPickupId === selectedOrder.id}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    >
+                      {requestingPickupId === selectedOrder.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Zap className="h-4 w-4" />
+                      )}
+                      <span>
+                        Request Pick Up (
+                        {selectedOrder.courierCode === 'GOJEK'
+                          ? 'Gojek Instant'
+                          : 'JNE'}
+                        )
+                      </span>
+                    </button>
                   )}
 
                   {selectedOrder.status === 'IN_PROGRESS' && (
@@ -1453,130 +1335,6 @@ export default function AdminOrdersPage() {
           onClose={() => setActiveThermalLabel(null)}
         />
       )}
-
-      {/* AWB Manual Input Modal */}
-      <Dialog open={showAWBModal} onOpenChange={setShowAWBModal}>
-        <DialogContent className="max-w-md rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-          <DialogHeader className="px-6 pb-4 pt-6">
-            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
-              <FileEdit className="h-5 w-5 text-slate-700 dark:text-slate-300" />
-              Input Nomor Resi Manual
-            </DialogTitle>
-            <DialogDescription className="mt-1 text-xs text-slate-500">
-              Masukkan nomor resi dari ekspedisi untuk pesanan{' '}
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                {selectedOrder?.orderNumber}
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 px-6 pb-2">
-            {/* Courier badge */}
-            <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/60">
-              <Truck className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-400" />
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium text-slate-500">
-                  Kurir Pesanan
-                </p>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">
-                  {selectedOrder?.courierCode === 'GOJEK'
-                    ? 'Gojek Instant'
-                    : 'JNE Express'}
-                  {selectedOrder?.courierService
-                    ? ` (${selectedOrder.courierService})`
-                    : ''}
-                </p>
-              </div>
-            </div>
-
-            {/* AWB Input */}
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Nomor Resi / AWB
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={awbInput}
-                  onChange={(e) =>
-                    handleAWBChange(e.target.value.toUpperCase())
-                  }
-                  placeholder={
-                    selectedOrder?.courierCode === 'GOJEK'
-                      ? 'GK-260923XXXXXX'
-                      : 'JNE260923XXXXXX'
-                  }
-                  className={`w-full rounded-2xl border py-2.5 pl-4 pr-10 font-mono text-sm font-semibold outline-none transition ${
-                    awbValidation?.valid
-                      ? 'border-emerald-400 bg-emerald-50 text-emerald-900 focus:border-emerald-500 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200'
-                      : awbValidation && !awbValidation.valid
-                        ? 'border-red-400 bg-red-50 text-red-900 focus:border-red-500 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200'
-                        : 'border-slate-200 bg-white focus:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
-                  }`}
-                />
-                {awbInput && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAwbInput('')
-                      setAwbValidation(null)
-                    }}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* Validation feedback */}
-              {awbValidation && (
-                <p
-                  className={`mt-1.5 flex items-center gap-1.5 text-[11px] font-medium ${
-                    awbValidation.valid ? 'text-emerald-600' : 'text-red-500'
-                  }`}
-                >
-                  {awbValidation.valid ? (
-                    <>
-                      <Check className="h-3.5 w-3.5" /> Format resi valid (
-                      {awbValidation.courierCode})
-                    </>
-                  ) : (
-                    <>{awbValidation.error}</>
-                  )}
-                </p>
-              )}
-
-              <p className="mt-2 text-[11px] text-slate-400">
-                Format: {selectedOrder?.courierCode === 'GOJEK' ? 'GK-' : 'JNE'}{' '}
-                diikuti 12 digit angka
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setShowAWBModal(false)}
-              className="rounded-xl border border-slate-200 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmitManualAWB}
-              disabled={!awbValidation?.valid || submittingAWB}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-            >
-              {submittingAWB ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Check className="h-3.5 w-3.5" />
-              )}
-              Simpan & Proses Pesanan
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Modal Cetak Faktur Pajak Elektronik Standar DJP */}
       <TaxInvoiceModal

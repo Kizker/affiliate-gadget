@@ -69,7 +69,12 @@ export async function dispatchOtp(params: {
   purpose: OtpPurpose
   channel: OtpChannel
   userId?: string
-}): Promise<{ success: boolean; otpId?: string; errorMessage?: string }> {
+}): Promise<{
+  success: boolean
+  otpId?: string
+  code?: string
+  errorMessage?: string
+}> {
   try {
     const { code, otpToken } = await createOtpRecord(params)
     const purposeLabel = getPurposeLabel(params.purpose)
@@ -127,6 +132,7 @@ export async function dispatchOtp(params: {
     return {
       success: sendResult.success,
       otpId: otpToken.id,
+      code: process.env.NODE_ENV !== 'production' ? code : undefined,
       errorMessage: sendResult.errorMessage,
     }
   } catch (error: unknown) {

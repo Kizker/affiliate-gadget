@@ -69,13 +69,21 @@ function LoginForm() {
     const errorParam = searchParams.get('error')
     if (errorParam) {
       if (errorParam === 'OAuthSignin' || errorParam === 'OAuthCallback') {
-        setError('Gagal masuk dengan Google. Pastikan akun Google Anda aktif dan coba lagi.')
+        setError(
+          'Gagal masuk dengan Google. Pastikan akun Google Anda aktif dan coba lagi.'
+        )
       } else if (errorParam === 'OAuthAccountNotLinked') {
-        setError('Email ini sudah terdaftar. Akun berhasil ditautkan, silakan coba masuk kembali.')
+        setError(
+          'Email ini sudah terdaftar. Akun berhasil ditautkan, silakan coba masuk kembali.'
+        )
       } else if (errorParam === 'AccessDenied') {
-        setError('Akses ditolak. Akun Anda dinonaktifkan atau izin tidak diberikan.')
+        setError(
+          'Akses ditolak. Akun Anda dinonaktifkan atau izin tidak diberikan.'
+        )
       } else if (errorParam === 'Configuration') {
-        setError('Konfigurasi Google OAuth belum disetel di .env (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).')
+        setError(
+          'Konfigurasi Google OAuth belum disetel di .env (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).'
+        )
       } else {
         setError('Terjadi kendala saat login dengan Google.')
       }
@@ -194,13 +202,10 @@ function LoginForm() {
           whatsappUrl: checkData.whatsappUrl,
           otpPreview: checkData.otpPreview,
         })
-        const preferredChannel = (checkData.channel as 'WHATSAPP' | 'EMAIL' | 'SMS') || 'WHATSAPP'
+        const preferredChannel =
+          (checkData.channel as 'WHATSAPP' | 'EMAIL' | 'SMS') || 'EMAIL'
         setActiveChannel(preferredChannel)
-        setActiveIdentifier(
-          preferredChannel === 'EMAIL'
-            ? formData.email.trim().toLowerCase()
-            : checkData.phone || formData.email.trim().toLowerCase()
-        )
+        setActiveIdentifier(formData.email.trim().toLowerCase())
         setShowAltOptions(false)
         setOtpCountdown(checkData.expiresInSeconds || 300)
         setOtp('')
@@ -241,10 +246,17 @@ function LoginForm() {
 
       const verifyData = await verifyRes.json()
       if (!verifyRes.ok) {
-        setError(
+        let msg =
           verifyData.error ||
-            'Kode OTP tidak cocok. Periksa kembali pesan masuk Anda.'
-        )
+          (activeChannel === 'EMAIL'
+            ? 'Kode OTP tidak cocok. Periksa kembali email Anda.'
+            : 'Kode OTP tidak cocok. Periksa kembali pesan masuk Anda.')
+        if (activeChannel === 'EMAIL' && /whatsapp/i.test(msg)) {
+          msg = msg
+            .replace(/pesan WhatsApp/gi, 'email')
+            .replace(/WhatsApp/gi, 'email')
+        }
+        setError(msg)
         setIsVerifyingOtp(false)
         return
       }
@@ -298,7 +310,9 @@ function LoginForm() {
     }
   }
 
-  const handleSwitchChannel = async (targetChannel: 'EMAIL' | 'WHATSAPP' | 'SMS') => {
+  const handleSwitchChannel = async (
+    targetChannel: 'EMAIL' | 'WHATSAPP' | 'SMS'
+  ) => {
     if (targetChannel !== 'EMAIL' && (!otpData?.hasPhone || !otpData?.phone)) {
       setError('Nomor telepon tidak tersedia pada akun ini.')
       return
@@ -467,7 +481,11 @@ function LoginForm() {
                         Kata Sandi
                       </label>
                       <Link
-                        href="/hubungi-kami"
+                        href={
+                          formData.email
+                            ? `/forgot-password?email=${encodeURIComponent(formData.email)}`
+                            : '/forgot-password'
+                        }
                         className="text-[11px] font-semibold text-slate-500 transition-colors hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
                       >
                         Bantuan Sandi?
@@ -585,49 +603,17 @@ function LoginForm() {
               /* Step 2: 2FA Email (Default) / WhatsApp / SMS OTP Form */
               <div className="duration-200 animate-in fade-in">
                 <div className="mb-6 flex flex-col items-center text-center">
-                  <div
-                    className={`shadow-xs mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border ${
-                      activeChannel === 'EMAIL'
-                        ? 'border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400'
-                        : activeChannel === 'WHATSAPP'
-                          ? 'border-emerald-100 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400'
-                          : 'border-amber-100 bg-amber-50 text-amber-600 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400'
-                    }`}
-                  >
-                    {activeChannel === 'EMAIL' ? (
-                      <Mail className="h-6 w-6" />
-                    ) : activeChannel === 'WHATSAPP' ? (
-                      <MessageSquare className="h-6 w-6" />
-                    ) : (
-                      <Phone className="h-6 w-6" />
-                    )}
+                  <div className="shadow-xs mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400">
+                    <Mail className="h-6 w-6" />
                   </div>
                   <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">
-                    Verifikasi 2 Langkah
+                    Verifikasi 2 Langkah (Email)
                   </h1>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {activeChannel === 'EMAIL' ? (
-                      <>
-                        Masukkan 6 digit kode OTP yang dikirim ke email:{' '}
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {otpData?.maskedEmail || formData.email}
-                        </span>
-                      </>
-                    ) : activeChannel === 'WHATSAPP' ? (
-                      <>
-                        Masukkan 6 digit kode OTP yang dikirim ke WhatsApp:{' '}
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {otpData?.maskedPhone || otpData?.phone}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        Masukkan 6 digit kode OTP yang dikirim via SMS ke:{' '}
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {otpData?.maskedPhone || otpData?.phone}
-                        </span>
-                      </>
-                    )}
+                    Masukkan 6 digit kode OTP yang dikirim ke email resmi:{' '}
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {otpData?.maskedEmail || formData.email}
+                    </span>
                   </p>
                 </div>
 
@@ -636,20 +622,6 @@ function LoginForm() {
                   <div className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700 duration-150 animate-in fade-in dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300">
                     {error}
                   </div>
-                )}
-
-                {/* Direct WhatsApp Message CTA (if WhatsApp channel selected) */}
-                {activeChannel === 'WHATSAPP' && otpData?.whatsappUrl && (
-                  <a
-                    href={otpData.whatsappUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shadow-xs mb-5 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    <span>Buka Pesan OTP WhatsApp</span>
-                    <ExternalLink className="h-3.5 w-3.5 opacity-80" />
-                  </a>
                 )}
 
                 <form onSubmit={handleVerifyOtpSubmit} className="space-y-4">
@@ -668,12 +640,12 @@ function LoginForm() {
                       }
                       placeholder="123456"
                       autoFocus
-                      className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-3 text-center font-mono text-2xl font-black tracking-[0.35em] text-slate-900 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-3 text-center font-mono text-2xl font-black tracking-[0.35em] text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                     {otpData?.otpPreview && (
                       <p className="text-center text-[10px] text-slate-400">
                         Simulasi Kode:{' '}
-                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
                           {otpData.otpPreview}
                         </span>
                       </p>
@@ -693,75 +665,17 @@ function LoginForm() {
                       type="button"
                       onClick={handleResendOtp}
                       disabled={isResendingOtp || otpCountdown > 240}
-                      className="cursor-pointer font-bold text-orange-600 hover:underline disabled:opacity-40 disabled:hover:no-underline"
+                      className="cursor-pointer font-bold text-blue-600 hover:underline disabled:opacity-40 disabled:hover:no-underline dark:text-blue-400"
                     >
-                      {isResendingOtp
-                        ? 'Mengirim...'
-                        : activeChannel === 'WHATSAPP'
-                          ? 'Kirim Ulang WhatsApp'
-                          : activeChannel === 'EMAIL'
-                            ? 'Kirim Ulang Email'
-                            : 'Kirim Ulang SMS'}
+                      {isResendingOtp ? 'Mengirim...' : 'Kirim Ulang Email'}
                     </button>
                   </div>
 
-                  {/* Fallback to other channels ("Pilihan pengiriman lain") */}
                   <div className="pt-1 text-center">
-                    <button
-                      type="button"
-                      onClick={() => setShowAltOptions(!showAltOptions)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 transition-colors hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-400"
-                    >
-                      <span>Pilihan pengiriman lain</span>
-                      {showAltOptions ? (
-                        <ChevronUp className="h-3 w-3" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3" />
-                      )}
-                    </button>
-
-                    {showAltOptions && (
-                      <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 text-left duration-200 animate-in fade-in dark:border-slate-800 dark:bg-slate-800/40">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          Kirim kode OTP via channel lain:
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {activeChannel !== 'WHATSAPP' && otpData?.hasPhone && (
-                            <button
-                              type="button"
-                              disabled={isResendingOtp}
-                              onClick={() => handleSwitchChannel('WHATSAPP')}
-                              className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50 active:scale-95 disabled:opacity-50 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-300"
-                            >
-                              <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
-                              <span>WhatsApp</span>
-                            </button>
-                          )}
-                          {activeChannel !== 'EMAIL' && (
-                            <button
-                              type="button"
-                              disabled={isResendingOtp}
-                              onClick={() => handleSwitchChannel('EMAIL')}
-                              className="flex items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-50 active:scale-95 disabled:opacity-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300"
-                            >
-                              <Mail className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                              <span>Email</span>
-                            </button>
-                          )}
-                          {activeChannel !== 'SMS' && otpData?.hasPhone && (
-                            <button
-                              type="button"
-                              disabled={isResendingOtp}
-                              onClick={() => handleSwitchChannel('SMS')}
-                              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                            >
-                              <Phone className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
-                              <span>SMS</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                      Kode keamanan 2FA login dikirimkan ke Email demi
+                      perlindungan akun.
+                    </p>
                   </div>
 
                   {/* Submit Verification */}

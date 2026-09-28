@@ -38,7 +38,7 @@ export async function GET(
       }
     }
 
-    // 1. Check if booking exists in shipping store
+    // 1. Check if booking exists in shipping store (created when admin clicks "Request Pick Up")
     let record = getShippingBooking(orderId)
 
     // 2. If not found in store, fetch from database to construct dynamic record
@@ -58,9 +58,29 @@ export async function GET(
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
+      // If the order has NOT been processed with "Request Pick Up" yet (no trackingNumber or status is PENDING_PAYMENT / PAID):
+      // Biteship shipping has NOT started yet! Never fabricate fake AWB or driver.
+      if (
+        !order.trackingNumber ||
+        order.status === 'PENDING_PAYMENT' ||
+        order.status === 'PAID'
+      ) {
+        return NextResponse.json({
+          success: true,
+          data: null,
+          isPendingPickup: true,
+          orderStatus: order.status,
+          message:
+            order.status === 'PENDING_PAYMENT'
+              ? 'Menunggu pembayaran diselesaikan oleh pembeli.'
+              : 'Pesanan sedang dipersiapkan di cabang toko. Pengiriman kurir dan nomor resi AWB akan aktif setelah admin toko menekan Request Pick Up.',
+        })
+      }
+
+      // If order has an actual trackingNumber and is IN_PROGRESS / SHIPPED / COMPLETED:
+      // Reconstruct the record based on actual database data
       const isGojek = (order.courierCode || '').toUpperCase() === 'GOJEK'
-      const trackingNumber =
-        order.trackingNumber || (isGojek ? 'GK-2609210001' : 'JNE2609210001')
+      const trackingNumber = order.trackingNumber
 
       record = {
         orderId: order.id,
@@ -97,7 +117,7 @@ export async function GET(
             timestamp: order.updatedAt.toISOString(),
           },
         ],
-        bookedAt: order.createdAt.toISOString(),
+        bookedAt: order.updatedAt.toISOString(),
         estimatedDelivery: isGojek ? '1-2 Jam' : '2-3 Hari',
         originStore: {
           name: order.store?.name || 'Toko Cabang',

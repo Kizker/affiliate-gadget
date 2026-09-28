@@ -15,16 +15,9 @@ import {
   Loader2,
   ChevronDown,
 } from 'lucide-react'
-import {
-  InFeedStoreAdCard,
-  InFeedAdData,
-} from '@/components/ads/in-feed-store-ad-card'
-import {
-  assembleCatalogGridItems,
-  CatalogGridItem,
-} from '@/lib/catalog-grid-layout'
 
-const INITIAL_COUNT = 8
+const MAX_TOP_PHONES = 20
+const INITIAL_COUNT = 20
 const BATCH_SIZE = 8
 
 const FALLBACK_GADGET_IMAGES = [
@@ -37,10 +30,9 @@ const FALLBACK_GADGET_IMAGES = [
 export function SectionFeaturedGadgets() {
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [products, setProducts] = useState<any[]>([])
-  const [promotedAds, setPromotedAds] = useState<InFeedAdData[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Lazy Loading State
+  // Lazy Loading State (Default 20 items langsung tampil)
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
@@ -62,21 +54,10 @@ export function SectionFeaturedGadgets() {
   const fetchFeaturedProducts = async () => {
     try {
       setLoading(true)
-      const [prodRes, adRes] = await Promise.all([
-        fetch('/api/gadgets'),
-        fetch('/api/ads?placement=PROMOTED_LIST&limit=4'),
-      ])
-      const prodData = await prodRes.json()
+      const res = await fetch('/api/gadgets')
+      const prodData = await res.json()
       if (prodData.success && Array.isArray(prodData.data)) {
         setProducts(prodData.data)
-      }
-      const adData = await adRes.json()
-      if (
-        adData.success &&
-        Array.isArray(adData.data) &&
-        adData.data.length > 0
-      ) {
-        setPromotedAds(adData.data)
       }
     } catch (error) {
       console.error('Error loading featured gadgets:', error)
@@ -85,40 +66,56 @@ export function SectionFeaturedGadgets() {
     }
   }
 
-  // Filter products by selected category
-  const filtered =
-    selectedCategory === 'ALL'
-      ? products
-      : products.filter((p) => {
-          const brandMatch =
-            p.brand?.toLowerCase() === selectedCategory.toLowerCase()
-          const catMatch =
-            p.category?.toLowerCase() === selectedCategory.toLowerCase()
-          return brandMatch || catMatch
-        })
+  // Filter khusus smartphone (HP) saja & urutkan berdasarkan penjualan tertinggi (terlaris) maksimal 20
+  const topSmartphones = useMemo(() => {
+    // 1. Ambil produk bertipe Smartphone / HP saja (filter out laptop, tablet, audio, watch)
+    const phonesOnly = products.filter((p) => {
+      const cat = (p.category || '').toLowerCase()
+      return cat === 'smartphone' || cat === 'hp' || cat === 'handphone'
+    })
 
-  // Reset pagination when category changes
+    // 2. Filter merek jika brand dipilih
+    const brandFiltered =
+      selectedCategory === 'ALL'
+        ? phonesOnly
+        : phonesOnly.filter((p) => {
+            return p.brand?.toLowerCase() === selectedCategory.toLowerCase()
+          })
+
+    // 3. Urutkan berdasarkan terlaris (soldCount terbanyak, lalu rating tertinggi)
+    const sorted = [...brandFiltered].sort((a, b) => {
+      const soldDiff = (Number(b.soldCount) || 0) - (Number(a.soldCount) || 0)
+      if (soldDiff !== 0) return soldDiff
+      const ratingDiff = (Number(b.rating) || 0) - (Number(a.rating) || 0)
+      if (ratingDiff !== 0) return ratingDiff
+      return (Number(b.price) || 0) - (Number(a.price) || 0)
+    })
+
+    // 4. Batasi secara ketat hanya Top 20 HP Terlaris
+    return sorted.slice(0, MAX_TOP_PHONES)
+  }, [products, selectedCategory])
+
+  // Reset pagination saat brand diganti
   useEffect(() => {
     setVisibleCount(INITIAL_COUNT)
   }, [selectedCategory])
 
-  const featuredGridItems = useMemo(() => {
-    return assembleCatalogGridItems(
-      filtered.slice(0, visibleCount),
-      promotedAds
-    )
-  }, [filtered, visibleCount, promotedAds])
+  const displayedProducts = useMemo(() => {
+    return topSmartphones.slice(0, visibleCount)
+  }, [topSmartphones, visibleCount])
 
-  const hasMore = visibleCount < filtered.length
+  const hasMore = visibleCount < topSmartphones.length
 
   const loadMore = useCallback(() => {
     if (isLoadingMore || !hasMore) return
     setIsLoadingMore(true)
     setTimeout(() => {
-      setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, filtered.length))
+      setVisibleCount((prev) =>
+        Math.min(prev + BATCH_SIZE, topSmartphones.length)
+      )
       setIsLoadingMore(false)
     }, 250)
-  }, [isLoadingMore, hasMore, filtered.length])
+  }, [isLoadingMore, hasMore, topSmartphones.length])
 
   // IntersectionObserver for seamless auto lazy loading
   useEffect(() => {
@@ -150,8 +147,8 @@ export function SectionFeaturedGadgets() {
               Smartphone Second Pilihan
             </h2>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-              Unit fisik second grade tertinggi, lolos uji QC 32 titik, &
-              bergaransi toko 30 hari
+              Top 20 HP terlaris bergaransi toko 30 hari, lolos uji QC 32 titik
+              & siap kirim
             </p>
           </div>
 
@@ -204,26 +201,16 @@ export function SectionFeaturedGadgets() {
                 </div>
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : topSmartphones.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-200 p-12 text-center dark:border-slate-800">
               <Smartphone className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" />
               <p className="mt-2 text-sm font-bold text-slate-700 dark:text-slate-300">
-                Tidak ada produk untuk kategori ini
+                Tidak ada smartphone terlaris untuk merek ini
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 items-stretch gap-2 sm:gap-4 lg:grid-cols-4">
-              {featuredGridItems.map((gridItem, idx) => {
-                if (gridItem.type === 'ad') {
-                  return (
-                    <InFeedStoreAdCard
-                      key={`ad-${gridItem.data.id}-${idx}`}
-                      ad={gridItem.data}
-                    />
-                  )
-                }
-
-                const product = gridItem.data
+              {displayedProducts.map((product) => {
                 const rawImg =
                   Array.isArray(product.images) && product.images.length > 0
                     ? product.images[0]
@@ -358,9 +345,9 @@ export function SectionFeaturedGadgets() {
             </div>
           )}
 
-          {/* Lazy Loading Sentinel & Interactive Controls */}
-          {filtered.length > 0 && (
-            <div ref={sentinelRef} className="mt-8 text-center sm:mt-12">
+          {/* Section Footer: Ringkasan Top 20 & Navigasi ke Katalog Penuh */}
+          {topSmartphones.length > 0 && (
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center sm:mt-12">
               {isLoadingMore ? (
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                   <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
@@ -374,15 +361,28 @@ export function SectionFeaturedGadgets() {
                 >
                   <ChevronDown className="h-4 w-4" />
                   <span>
-                    Tampilkan Lebih Banyak ({filtered.length - visibleCount}{' '}
-                    unit tersisa)
+                    Tampilkan Lebih Banyak (
+                    {topSmartphones.length - visibleCount} unit tersisa)
                   </span>
                 </button>
               ) : (
-                <p className="text-xs font-medium text-slate-400">
-                  Menampilkan seluruh {filtered.length} unit smartphone pilihan
-                </p>
+                <div className="shadow-2xs inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-slate-50 px-4 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                  <Sparkles className="h-3.5 w-3.5 text-orange-500" />
+                  <span>
+                    Menampilkan Top {displayedProducts.length} HP Terlaris
+                  </span>
+                </div>
               )}
+
+              <p className="text-xs text-slate-400">
+                Ingin mencari tipe smartphone atau gadget lainnya?{' '}
+                <Link
+                  href="/gadget"
+                  className="font-bold text-orange-500 hover:text-orange-600 hover:underline"
+                >
+                  Lihat Seluruh Katalog ({products.length} Unit)
+                </Link>
+              </p>
             </div>
           )}
         </div>

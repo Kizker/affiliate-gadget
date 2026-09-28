@@ -507,6 +507,9 @@ export async function GET(request: NextRequest) {
             companyName: targetStore.companyName,
             taxId: targetStore.taxId || '01.428.910.4-015.000',
             city: targetStore.city,
+            phone: targetStore.whatsapp || targetStore.phone || '081289001122',
+            whatsapp:
+              targetStore.whatsapp || targetStore.phone || '6281289001122',
             bankAccount: primaryBankAccount,
             bankAccountUpdatedAt: targetStore.bankAccountUpdatedAt || null,
             cooldownStatus: bankAccountCooldownStatus,

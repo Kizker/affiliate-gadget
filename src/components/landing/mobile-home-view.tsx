@@ -26,6 +26,7 @@ import { useCartStore } from '@/lib/store/cart-store'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { toast } from 'sonner'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
+import { MobileTopHeroBanner } from '@/components/ads/mobile-top-hero-banner'
 import {
   InFeedStoreAdCard,
   InFeedAdData,
@@ -124,46 +125,6 @@ const DEFAULT_MOBILE_PRODUCTS: ProductCardData[] = [
   },
 ]
 
-interface HeroSlide {
-  id: string
-  image: string
-  badgeText: string
-  badgeIcon: 'shield' | 'check' | 'store'
-  title: string
-  subtitle: string
-  storeSlug?: string
-  targetUrl?: string
-  storeName?: string
-  adId?: string
-}
-
-const HERO_SLIDES: HeroSlide[] = [
-  {
-    id: 'slide-1',
-    image: '/images/hero-slide-1.jpg',
-    badgeText: 'Garansi Toko 30 Hari',
-    badgeIcon: 'shield',
-    title: 'Gadget Second Seperti Baru',
-    subtitle: 'Free Paket Bonus 3-in-1',
-  },
-  {
-    id: 'slide-2',
-    image: '/images/hero-slide-2.jpg',
-    badgeText: 'Lolos 32 Titik Uji QC',
-    badgeIcon: 'check',
-    title: '100% Fungsi Normal Teruji',
-    subtitle: 'Pemeriksaan Teknisi Ahli',
-  },
-  {
-    id: 'slide-3',
-    image: '/images/hero-slide-3.jpg',
-    badgeText: 'Jaringan Toko Fisik PT',
-    badgeIcon: 'store',
-    title: 'Bisa Cek Unit di Toko',
-    subtitle: '5 Kota Besar di Indonesia',
-  },
-]
-
 function formatApiProduct(p: any): ProductCardData {
   const brandUpper = (p.brand || 'GADGET').toUpperCase()
   const pName = p.name || p.model || 'Gadget Second'
@@ -246,49 +207,14 @@ export function MobileHomeView() {
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const { items } = useCartStore()
 
-  // Hero Slideshow Carousel State
-  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(HERO_SLIDES)
   const [promotedInFeedAds, setPromotedInFeedAds] = useState<InFeedAdData[]>([])
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const [touchStart, setTouchStart] = useState<number | null>(null)
 
-  // Fetch Level 1 (Hero Carousel) & Level 2 (In-Feed) Store Ads
+  // Fetch Level 2 (In-Feed) Store Ads
   useEffect(() => {
     let isSubscribed = true
     async function loadStoreAds() {
       try {
-        const [heroRes, feedRes] = await Promise.all([
-          fetch('/api/ads?placement=HOMEPAGE_HERO&limit=3'),
-          fetch('/api/ads?placement=PROMOTED_LIST&limit=4'),
-        ])
-        const heroJson = await heroRes.json()
-        if (
-          heroJson.success &&
-          Array.isArray(heroJson.data) &&
-          heroJson.data.length > 0
-        ) {
-          const mapped: HeroSlide[] = heroJson.data.map(
-            (ad: any, index: number) => ({
-              id: ad.id || `ad-slide-${index}`,
-              adId: ad.id,
-              image: ad.imageUrl,
-              badgeText: ad.store?.city
-                ? `Cabang ${ad.store.city}`
-                : 'Toko Resmi PT',
-              badgeIcon: 'store' as const,
-              title: ad.title,
-              subtitle: ad.subtitle || ad.store?.name || 'Garansi Toko 30 Hari',
-              storeSlug: ad.store?.slug,
-              targetUrl:
-                ad.targetUrl ||
-                (ad.store?.slug ? `/toko/${ad.store.slug}` : '/gadget'),
-              storeName: ad.store?.name,
-            })
-          )
-          if (isSubscribed) {
-            setHeroSlides(mapped)
-          }
-        }
+        const feedRes = await fetch('/api/ads?placement=PROMOTED_LIST&limit=4')
         const feedJson = await feedRes.json()
         if (
           feedJson.success &&
@@ -300,7 +226,7 @@ export function MobileHomeView() {
           }
         }
       } catch {
-        // Fallback safely to default HERO_SLIDES
+        // Fallback safely
       }
     }
     loadStoreAds()
@@ -308,45 +234,6 @@ export function MobileHomeView() {
       isSubscribed = false
     }
   }, [])
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length)
-    }, 4500)
-    return () => clearInterval(timer)
-  }, [heroSlides.length])
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.touches[0].clientX)
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStart === null) return
-    const touchEnd = e.changedTouches[0].clientX
-    const diff = touchStart - touchEnd
-    if (diff > 40) {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length)
-    } else if (diff < -40) {
-      setCurrentSlide(
-        (prev) => (prev - 1 + heroSlides.length) % heroSlides.length
-      )
-    }
-    setTouchStart(null)
-  }
-
-  const handleSlideClick = (slide: HeroSlide) => {
-    if (slide.adId) {
-      fetch('/api/ads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adId: slide.adId, action: 'click' }),
-      }).catch(() => {})
-    }
-    const dest =
-      slide.targetUrl ||
-      (slide.storeSlug ? `/toko/${slide.storeSlug}` : '/gadget')
-    router.push(dest)
-  }
 
   useEffect(() => {
     setMounted(true)
@@ -537,73 +424,9 @@ export function MobileHomeView() {
       {/* 1. TOP HEADER (Komponen Terpisah Reusable) */}
       <MobileTopNav />
 
-      {/* 2. TOP ADVERTISING STORE BANNER (Level 1: Akun Toko yang Mengiklankan) */}
+      {/* 2. TOP ADVERTISING STORE BANNER (Level 1: Pilihan Tertinggi Iklan Toko / Hero Carousel) */}
       <section className="px-3.5 pb-1 pt-3">
-        <div
-          className="relative aspect-[16/9] w-full select-none overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-950 shadow-sm dark:border-slate-800"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          {heroSlides.map((slide, idx) => (
-            <div
-              key={slide.id}
-              onClick={() => handleSlideClick(slide)}
-              className={`absolute inset-0 cursor-pointer transition-opacity duration-700 ease-in-out ${
-                idx === currentSlide
-                  ? 'z-10 opacity-100'
-                  : 'pointer-events-none z-0 opacity-0'
-              }`}
-            >
-              <Image
-                src={slide.image}
-                alt={slide.title}
-                fill
-                className="object-cover"
-                priority={idx === 0}
-                unoptimized
-              />
-              {/* Soft Vignette for Readability */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-
-              {/* Bottom Title & Subtitle / Details */}
-              <div className="pointer-events-none absolute bottom-2.5 left-3 right-16 z-20 space-y-0.5 text-left">
-                {slide.storeName && (
-                  <div className="flex items-center gap-1 text-[9.5px] font-bold text-orange-400 drop-shadow-sm">
-                    <span>{slide.storeName}</span>
-                  </div>
-                )}
-                <h3 className="line-clamp-1 text-xs font-black leading-tight text-white drop-shadow-md sm:text-sm">
-                  {slide.title}
-                </h3>
-                <p className="line-clamp-1 text-[10px] font-medium text-slate-200 drop-shadow-sm">
-                  {slide.subtitle}
-                </p>
-              </div>
-            </div>
-          ))}
-
-          {/* Indicator dots if multiple ads */}
-          {heroSlides.length > 1 && (
-            <div className="backdrop-blur-xs absolute bottom-2.5 right-2.5 z-20 flex items-center gap-1.5 rounded-full bg-black/40 px-2 py-1">
-              {heroSlides.map((_, dotIdx) => (
-                <button
-                  key={dotIdx}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setCurrentSlide(dotIdx)
-                  }}
-                  className={`rounded-full transition-all duration-300 ${
-                    dotIdx === currentSlide
-                      ? 'h-1.5 w-3.5 bg-orange-500 shadow-sm'
-                      : 'h-1.5 w-1.5 bg-white/70 hover:bg-white'
-                  }`}
-                  aria-label={`Slide ${dotIdx + 1}`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <MobileTopHeroBanner />
       </section>
 
       {/* 3. PRODUCT FEED CARDS (2-Column Grid Matching Catalog Page) */}

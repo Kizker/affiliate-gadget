@@ -3,11 +3,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Store, CheckCircle2, Star } from 'lucide-react'
+import { Store, CheckCircle2, Star, Play } from 'lucide-react'
 
-import { InFeedAdData, isProductAdData } from '@/types/ads'
+import { InFeedAdData, isProductAdData, isVideoAd } from '@/types/ads'
 export type { InFeedAdData }
-export { isProductAdData }
+export { isProductAdData, isVideoAd }
 
 interface InFeedStoreAdCardProps {
   ad: InFeedAdData
@@ -155,11 +155,14 @@ export function InFeedStoreAdCard({
   }
 
   // ============================================================
-  // 2. STORE BANNER AD (Clean Link Card without Distracting Buttons)
+  // 2. STORE BANNER AD (Clean Link Card with Video & Image Support)
   // ============================================================
+  const isVideo = isVideoAd(ad)
+  const videoSrc = ad.videoUrl || (isVideo ? ad.imageUrl || bannerImage : null)
+
   return (
     <div
-      className={`shadow-xs group relative col-span-1 flex flex-col justify-between overflow-hidden rounded-2xl border-2 border-orange-200/90 bg-white p-2.5 transition-all duration-300 hover:-translate-y-1 hover:border-orange-400 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:col-span-2 sm:h-full sm:min-h-[220px] sm:rounded-3xl sm:bg-slate-950 sm:p-0 ${className}`}
+      className={`shadow-xs group relative col-span-1 flex aspect-[4/5] min-h-[260px] flex-col justify-between overflow-hidden rounded-2xl border-2 border-orange-200/90 bg-slate-950 p-0 transition-all duration-300 hover:-translate-y-1 hover:border-orange-400 hover:shadow-xl dark:border-slate-800 sm:col-span-2 sm:aspect-auto sm:h-full sm:min-h-[220px] sm:rounded-3xl ${className}`}
       onClick={handleClick}
     >
       <Link
@@ -169,88 +172,45 @@ export function InFeedStoreAdCard({
         <span className="sr-only">Kunjungi {storeCleanName}</span>
       </Link>
 
-      {/* MOBILE: 1-COLUMN NATURAL RESOLUTION CARD (< sm) */}
-      <div className="flex flex-col justify-between sm:hidden">
-        <div className="relative w-full overflow-hidden rounded-xl border border-orange-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
-          <img
-            src={bannerImage}
-            alt={ad.title}
-            loading="lazy"
-            className="block h-auto w-full rounded-xl transition-transform duration-500 group-hover:scale-105"
-          />
-
-          {storeCity && (
-            <div className="backdrop-blur-xs absolute right-1.5 top-1.5 z-10 flex items-center gap-0.5 rounded-md border border-white/20 bg-black/60 px-1.5 py-0.5 text-[8.5px] font-semibold text-white/90 shadow-sm">
-              <Store className="h-2.5 w-2.5 text-white/70" />
-              <span>{storeCity}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-2 space-y-1">
-          {storeCleanName && (
-            <div className="flex items-center gap-1">
-              <h3 className="line-clamp-1 text-xs font-bold leading-tight text-slate-950 dark:text-white">
-                {storeCleanName}
-              </h3>
-              <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-orange-500" />
-            </div>
-          )}
-
-          <p className="line-clamp-1 text-[11px] font-bold text-slate-900 dark:text-slate-100">
-            {ad.title}
-          </p>
-
-          {ad.subtitle && (
-            <p className="line-clamp-1 text-[10px] font-medium text-orange-600 dark:text-orange-400">
-              {ad.subtitle}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* DESKTOP: 2-COLUMN LANDSCAPE CARD (>= sm) */}
-      <div className="hidden sm:flex sm:h-full sm:w-full sm:flex-col sm:justify-between">
+      {isVideo && videoSrc ? (
+        <video
+          src={videoSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+        />
+      ) : (
         <Image
-          src={ad.imageUrl}
+          src={bannerImage}
           alt={ad.title}
           fill
-          sizes="(max-width: 1024px) 50vw, 50vw"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 50vw"
           unoptimized
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           priority={false}
         />
+      )}
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/65 to-black/35" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/35" />
 
-        <div className="pointer-events-none relative z-20 flex min-h-[36px] items-center justify-end p-4">
-          {storeCity && (
-            <div className="flex items-center gap-1 rounded-full border border-white/20 bg-black/60 px-2.5 py-1 text-[10px] font-semibold text-white/90 backdrop-blur-md">
-              <Store className="h-3 w-3 text-white/70" />
-              <span>Cabang {storeCity}</span>
-            </div>
-          )}
-        </div>
+      {/* Top-Left: Advertisement Label (Tulisannya saja, tanpa efek background, agak ke kanan) */}
+      <div className="pointer-events-none absolute left-3.5 top-3 z-20 sm:left-6 sm:top-4">
+        <span className="text-[10px] font-medium tracking-wider text-white/80 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] sm:text-xs">
+          Advertisement
+        </span>
+      </div>
 
-        <div className="pointer-events-none relative z-20 mt-auto space-y-2 p-5">
-          <div className="space-y-1">
-            {(ad.store?.companyName || storeName) && (
-              <div className="flex items-center gap-1 text-[11px] font-semibold text-orange-400">
-                <span>{ad.store?.companyName || storeName}</span>
-                <CheckCircle2 className="h-3 w-3 text-orange-400" />
-              </div>
-            )}
-            <h3 className="line-clamp-2 text-lg font-black leading-tight text-white drop-shadow-md">
-              {ad.title}
-            </h3>
-          </div>
-
-          <div className="flex items-center justify-between pt-1">
-            <p className="line-clamp-1 text-xs font-medium text-slate-300">
-              {ad.subtitle || 'Unit second teruji • Garansi toko 30 hari'}
-            </p>
-          </div>
-        </div>
+      {/* Bottom-Left: Store Name (Tulisannya saja, tanpa efek background, agak ke kanan) */}
+      <div className="pointer-events-none absolute bottom-3.5 left-3.5 z-20 sm:bottom-4 sm:left-6">
+        <span className="text-xs font-semibold tracking-wide text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] sm:text-sm md:text-base">
+          {ad.store?.name ||
+            ad.store?.companyName ||
+            storeName ||
+            'Affiliate Gadget'}
+        </span>
       </div>
     </div>
   )

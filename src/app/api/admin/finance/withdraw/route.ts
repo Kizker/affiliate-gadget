@@ -18,6 +18,7 @@ import {
   sendEmail,
   withdrawalConfirmationEmailTemplate,
   withdrawalSecurityAlertEmailTemplate,
+  normalizePhone,
 } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { amount, storeId: requestStoreId, otpCode } = body
+    const { amount, storeId: requestStoreId, otpCode, identifier } = body
 
     const numericAmount = Number(amount)
     if (!numericAmount || isNaN(numericAmount) || numericAmount < 100000) {
@@ -221,25 +222,66 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const userIdentifier =
-      session.user.email || (session.user as { phone?: string }).phone
+    // Dapatkan target identifier yang digunakan untuk verifikasi OTP penarikan WhatsApp
+    const candidates: string[] = []
+    if (identifier && typeof identifier === 'string') {
+      const clean = identifier.trim()
+      candidates.push(
+        clean.includes('@') ? clean.toLowerCase() : normalizePhone(clean)
+      )
+      candidates.push(clean)
+    }
+    if (store.whatsapp) {
+      candidates.push(normalizePhone(store.whatsapp))
+      candidates.push(store.whatsapp)
+    }
+    if (store.phone) {
+      candidates.push(normalizePhone(store.phone))
+      candidates.push(store.phone)
+    }
+    const userPhone = (session.user as { phone?: string }).phone
+    if (userPhone) {
+      candidates.push(normalizePhone(userPhone))
+      candidates.push(userPhone)
+    }
+    if (session.user.email) {
+      candidates.push(session.user.email.toLowerCase())
+    }
 
-    if (!userIdentifier) {
+    const uniqueCandidates = Array.from(new Set(candidates))
+
+    if (uniqueCandidates.length === 0) {
       return NextResponse.json(
         {
           error:
-            'Kontak pengguna (email/nomor HP) tidak ditemukan untuk validasi OTP.',
+            'Kontak pengguna (nomor WhatsApp/telepon/email) tidak ditemukan untuk validasi OTP.',
           code: 'IDENTIFIER_NOT_FOUND',
         },
         { status: 400 }
       )
     }
 
-    const otpValidation = await validateOtpRecord({
-      identifier: userIdentifier,
-      code: otpCode.trim(),
-      purpose: 'WITHDRAWAL' as any,
-    })
+    // Cek validasi OTP di database untuk kandidat identifier
+    let otpValidation: Awaited<ReturnType<typeof validateOtpRecord>> = {
+      valid: false,
+      error: 'NOT_FOUND',
+      attemptsLeft: 0,
+      otpToken: undefined,
+    }
+
+    for (const cand of uniqueCandidates) {
+      const val = await validateOtpRecord({
+        identifier: cand,
+        code: otpCode.trim(),
+        purpose: 'WITHDRAWAL' as any,
+      })
+      if (val.valid) {
+        otpValidation = val
+        break
+      } else {
+        otpValidation = val
+      }
+    }
 
     if (!otpValidation.valid) {
       await prisma.auditLog.create({

@@ -33,9 +33,11 @@ import {
   Minus,
   Package,
   Heart,
+  Play,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
+import { isVideoMedia } from '@/types/ads'
 
 export default function GadgetDetailPage() {
   const params = useParams()
@@ -433,22 +435,35 @@ export default function GadgetDetailPage() {
               <div className="space-y-4 lg:col-span-5">
                 {/* Main Image Container — Desktop only */}
                 <div className="shadow-xs group relative hidden aspect-square select-none overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 lg:block">
-                  {/* Image clipped with padding effect via absolute inset */}
-                  <div className="absolute inset-5 overflow-hidden rounded-2xl">
-                    <Image
-                      key={selectedImage}
-                      src={
-                        selectedImage ||
-                        product.images?.[0] ||
-                        'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=900&q=80'
-                      }
-                      alt={product.name}
-                      fill
-                      sizes="500px"
-                      priority
-                      unoptimized
-                      className="object-contain transition-all duration-300"
-                    />
+                  {/* Image/Video clipped with padding effect via absolute inset */}
+                  <div className="absolute inset-5 flex items-center justify-center overflow-hidden rounded-2xl">
+                    {isVideoMedia(selectedImage || product.images?.[0]) ? (
+                      <video
+                        key={selectedImage}
+                        src={selectedImage || product.images?.[0]}
+                        autoPlay
+                        loop
+                        muted
+                        controls
+                        playsInline
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <Image
+                        key={selectedImage}
+                        src={
+                          selectedImage ||
+                          product.images?.[0] ||
+                          'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=900&q=80'
+                        }
+                        alt={product.name}
+                        fill
+                        sizes="500px"
+                        priority
+                        unoptimized
+                        className="object-contain transition-all duration-300"
+                      />
+                    )}
                   </div>
                   {/* Warranty Stamp */}
                   <div className="pointer-events-none absolute left-4 top-4 z-10 flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white/95 px-3 py-1 text-[10px] font-semibold text-slate-700 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
@@ -522,14 +537,28 @@ export default function GadgetDetailPage() {
                               : 'border-slate-200/80 opacity-70 hover:opacity-100 dark:border-slate-800'
                           }`}
                         >
-                          <Image
-                            src={img}
-                            alt="Thumbnail"
-                            fill
-                            sizes="64px"
-                            unoptimized
-                            className="object-cover"
-                          />
+                          {isVideoMedia(img) ? (
+                            <div className="relative h-full w-full bg-slate-950">
+                              <video
+                                src={img}
+                                className="h-full w-full object-cover"
+                                muted
+                                playsInline
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                <Play className="h-4 w-4 fill-white text-white drop-shadow" />
+                              </div>
+                            </div>
+                          ) : (
+                            <Image
+                              src={img}
+                              alt="Thumbnail"
+                              fill
+                              sizes="64px"
+                              unoptimized
+                              className="object-cover"
+                            />
+                          )}
                         </button>
                       )
                     })}

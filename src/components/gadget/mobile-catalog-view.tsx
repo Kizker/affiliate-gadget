@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -30,8 +30,8 @@ import {
 } from '@/components/ads/in-feed-store-ad-card'
 import { MobileTopHeroBanner } from '@/components/ads/mobile-top-hero-banner'
 
-const INITIAL_COUNT = 8
-const BATCH_SIZE = 6
+const INITIAL_COUNT = 16
+const BATCH_SIZE = 8
 
 interface MobileCatalogViewProps {
   gadgets: any[]
@@ -62,8 +62,6 @@ export function MobileCatalogView({
   promotedAd,
   promotedAds,
 }: MobileCatalogViewProps) {
-  const activeAd1 = (promotedAds && promotedAds[0]) || promotedAd || null
-  const activeAd2 = (promotedAds && promotedAds[1]) || null
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const { items } = useCartStore()
 
@@ -79,6 +77,70 @@ export function MobileCatalogView({
 
   const hasMore = visibleCount < gadgets.length
   const displayedGadgets = gadgets.slice(0, visibleCount)
+
+  // Distribute all active promoted ads dynamically & randomly across the 2-column masonry grid
+  const { leftColumnItems, rightColumnItems } = useMemo(() => {
+    const allAdsList = [...(promotedAds || [])]
+    if (promotedAd && !allAdsList.some((a) => a.id === promotedAd.id)) {
+      allAdsList.unshift(promotedAd)
+    }
+
+    const left: Array<
+      { type: 'product'; data: any } | { type: 'ad'; data: InFeedAdData }
+    > = []
+    const right: Array<
+      { type: 'product'; data: any } | { type: 'ad'; data: InFeedAdData }
+    > = []
+
+    const leftProds = displayedGadgets.filter((_, idx) => idx % 2 === 0)
+    const rightProds = displayedGadgets.filter((_, idx) => idx % 2 === 1)
+
+    // Partition ads between left and right columns
+    const leftAds: InFeedAdData[] = []
+    const rightAds: InFeedAdData[] = []
+
+    allAdsList.forEach((ad, i) => {
+      if (i % 2 === 0) {
+        leftAds.push(ad)
+      } else {
+        rightAds.push(ad)
+      }
+    })
+
+    // Interleave left column:
+    // Place ads at staggered even product intervals (after product 0, 2, 4, 6...)
+    // Each ad is separated by 2 products, ensuring no adjacent stacking
+    let lAdIdx = 0
+    leftProds.forEach((prod, pIdx) => {
+      left.push({ type: 'product', data: prod })
+      if (pIdx % 2 === 0 && lAdIdx < leftAds.length) {
+        left.push({ type: 'ad', data: leftAds[lAdIdx++] })
+      }
+    })
+    if (!hasMore) {
+      while (lAdIdx < leftAds.length) {
+        left.push({ type: 'ad', data: leftAds[lAdIdx++] })
+      }
+    }
+
+    // Interleave right column:
+    // Place ads at staggered odd product intervals (after product 1, 3, 5, 7...)
+    // Perfectly alternates with left column, ensuring ads are NEVER horizontally side-by-side
+    let rAdIdx = 0
+    rightProds.forEach((prod, pIdx) => {
+      right.push({ type: 'product', data: prod })
+      if (pIdx % 2 === 1 && rAdIdx < rightAds.length) {
+        right.push({ type: 'ad', data: rightAds[rAdIdx++] })
+      }
+    })
+    if (!hasMore) {
+      while (rAdIdx < rightAds.length) {
+        right.push({ type: 'ad', data: rightAds[rAdIdx++] })
+      }
+    }
+
+    return { leftColumnItems: left, rightColumnItems: right }
+  }, [displayedGadgets, promotedAds, promotedAd, hasMore])
 
   const loadMore = useCallback(() => {
     if (isLoadingMore || visibleCount >= gadgets.length) return
@@ -429,28 +491,34 @@ export function MobileCatalogView({
             <div className="grid grid-cols-2 items-start gap-2.5">
               {/* Kolom Kiri */}
               <div className="flex min-w-0 flex-col gap-2.5">
-                {displayedGadgets
-                  .filter((_, idx) => idx % 2 === 0)
-                  .slice(0, 3)
-                  .map((item) => renderProductCard(item))}
-                {activeAd2 && <InFeedStoreAdCard ad={activeAd2} />}
-                {displayedGadgets
-                  .filter((_, idx) => idx % 2 === 0)
-                  .slice(3)
-                  .map((item) => renderProductCard(item))}
+                {leftColumnItems.map((item, idx) =>
+                  item.type === 'product' ? (
+                    <div key={item.data.id || `left-p-${idx}`}>
+                      {renderProductCard(item.data)}
+                    </div>
+                  ) : (
+                    <InFeedStoreAdCard
+                      key={item.data.id || `left-ad-${idx}`}
+                      ad={item.data}
+                    />
+                  )
+                )}
               </div>
 
               {/* Kolom Kanan */}
               <div className="flex min-w-0 flex-col gap-2.5">
-                {displayedGadgets
-                  .filter((_, idx) => idx % 2 === 1)
-                  .slice(0, 1)
-                  .map((item) => renderProductCard(item))}
-                {activeAd1 && <InFeedStoreAdCard ad={activeAd1} />}
-                {displayedGadgets
-                  .filter((_, idx) => idx % 2 === 1)
-                  .slice(1)
-                  .map((item) => renderProductCard(item))}
+                {rightColumnItems.map((item, idx) =>
+                  item.type === 'product' ? (
+                    <div key={item.data.id || `right-p-${idx}`}>
+                      {renderProductCard(item.data)}
+                    </div>
+                  ) : (
+                    <InFeedStoreAdCard
+                      key={item.data.id || `right-ad-${idx}`}
+                      ad={item.data}
+                    />
+                  )
+                )}
               </div>
             </div>
 

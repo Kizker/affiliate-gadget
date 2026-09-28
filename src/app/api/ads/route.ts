@@ -7,14 +7,19 @@ export async function GET(req: NextRequest) {
     const placement = searchParams.get('placement')
     const limit = parseInt(searchParams.get('limit') || '10', 10)
 
+    const now = new Date()
     const whereClause: any = {
       isActive: true,
       status: 'APPROVED',
+      OR: [{ endDate: null }, { endDate: { gt: now } }],
     }
 
     if (placement) {
       whereClause.placement = placement
     }
+
+    // Level 1: Eksklusif, hanya 1 iklan yang boleh tayang pada satu waktu
+    const effectiveLimit = placement === 'HOMEPAGE_HERO' ? 1 : limit
 
     const ads = await prisma.internalAd.findMany({
       where: whereClause,
@@ -31,8 +36,12 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
-      take: limit,
+      orderBy: [
+        { priority: 'desc' },
+        { startDate: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      take: effectiveLimit,
     })
 
     // Pre-fetch related product details for product-targeted ads
@@ -114,12 +123,25 @@ export async function GET(req: NextRequest) {
           ? a.store?.banner || '/images/banners/samsung-campaign-banner.jpg'
           : a.store?.banner || '/images/banners/samsung-mobile-hero.jpg')
 
-      const finalImageUrl =
-        a.bannerUrl && a.bannerUrl.trim() !== '' ? a.bannerUrl : fallbackPoster
+      const isVideo =
+        Boolean(a.bannerUrl) &&
+        (a.bannerUrl.toLowerCase().endsWith('.mp4') ||
+          a.bannerUrl.toLowerCase().endsWith('.webm') ||
+          a.bannerUrl.toLowerCase().endsWith('.ogg') ||
+          a.bannerUrl.toLowerCase().includes('.mp4?') ||
+          a.bannerUrl.toLowerCase().includes('/video/') ||
+          a.bannerUrl.toLowerCase().includes('video/upload'))
+
+      const finalImageUrl = isVideo
+        ? fallbackPoster
+        : a.bannerUrl && a.bannerUrl.trim() !== ''
+          ? a.bannerUrl
+          : fallbackPoster
 
       return {
         ...a,
         imageUrl: finalImageUrl,
+        videoUrl: isVideo ? a.bannerUrl : null,
         product: relatedProduct,
       }
     })

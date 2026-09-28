@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { AdPlacement, AdStatus } from '@/types/ads'
+import { validateLevel1Exclusivity } from '@/lib/ads-exclusivity'
 
 export async function GET(
   req: NextRequest,
@@ -211,6 +212,32 @@ export async function PATCH(
       if (body.placement) updateData.placement = body.placement as AdPlacement
       if (body.startDate) updateData.startDate = new Date(body.startDate)
       if (body.endDate) updateData.endDate = new Date(body.endDate)
+    }
+
+    // Exclusivity rule: Level 1 (HOMEPAGE_HERO) is exclusive to 1 active ad at a time
+    const effectivePlacement = updateData.placement || existing.placement
+    const effectiveStatus = updateData.status || existing.status
+    const effectiveIsActive =
+      updateData.isActive !== undefined
+        ? updateData.isActive
+        : existing.isActive
+
+    if (
+      effectivePlacement === 'HOMEPAGE_HERO' &&
+      effectiveStatus === 'APPROVED' &&
+      effectiveIsActive
+    ) {
+      const exclusivityCheck = await validateLevel1Exclusivity(id)
+      if (!exclusivityCheck.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: exclusivityCheck.message,
+            currentActive: exclusivityCheck.currentActive,
+          },
+          { status: 409 }
+        )
+      }
     }
 
     const updated = await prisma.internalAd.update({

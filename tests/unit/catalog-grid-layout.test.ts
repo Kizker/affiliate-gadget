@@ -4,7 +4,7 @@ import {
   buildPaginatedCatalogGrid,
   CatalogGridItem,
 } from '@/lib/catalog-grid-layout'
-import { InFeedAdData } from '@/types/ads'
+import { InFeedAdData, isVideoAd } from '@/types/ads'
 
 describe('assembleCatalogGridItems Suite', () => {
   const mockProducts = Array.from({ length: 12 }, (_, i) => ({
@@ -120,5 +120,51 @@ describe('assembleCatalogGridItems Suite', () => {
     // Exactly 12 spans = 3 full rows of 4 columns!
     expect(totalSpan).toBe(12)
     expect(totalSpan % 4).toBe(0)
+  })
+
+  it('buildPaginatedCatalogGrid should strictly allow at most 1 ad per desktop page', () => {
+    const multipleAds: InFeedAdData[] = [
+      mockStoreBannerAd,
+      { ...mockStoreBannerAd, id: 'ad-banner-2', title: 'Ad 2' },
+      { ...mockStoreBannerAd, id: 'ad-banner-3', title: 'Ad 3' },
+    ]
+
+    const page1 = buildPaginatedCatalogGrid(mockProducts, multipleAds, 1, 12)
+    const adsOnPage1 = page1.items.filter((it) => it.type === 'ad')
+    expect(adsOnPage1).toHaveLength(1)
+    expect(adsOnPage1[0].data.id).toBe('ad-banner-1')
+
+    const page2 = buildPaginatedCatalogGrid(mockProducts, multipleAds, 2, 12)
+    const adsOnPage2 = page2.items.filter((it) => it.type === 'ad')
+    expect(adsOnPage2).toHaveLength(1)
+    expect(adsOnPage2[0].data.id).toBe('ad-banner-2')
+  })
+
+  it('isVideoAd should correctly detect video ads', () => {
+    expect(isVideoAd({ id: '1', title: 'Test', imageUrl: '/video.mp4' })).toBe(
+      true
+    )
+    expect(
+      isVideoAd({
+        id: '2',
+        title: 'Test',
+        imageUrl: 'https://cdn.example.com/gadget.webm',
+      })
+    ).toBe(true)
+    expect(
+      isVideoAd({
+        id: '3',
+        title: 'Test',
+        imageUrl: 'https://cdn.example.com/banner.jpg',
+        videoUrl: '/videos/test.mp4',
+      })
+    ).toBe(true)
+    expect(
+      isVideoAd({
+        id: '4',
+        title: 'Test',
+        imageUrl: 'https://example.com/banner.png',
+      })
+    ).toBe(false)
   })
 })

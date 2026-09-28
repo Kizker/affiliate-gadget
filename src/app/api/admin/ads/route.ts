@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { AdPlacement, AdStatus } from '@/types/ads'
+import {
+  getActiveLevel1Ad,
+  validateLevel1Exclusivity,
+} from '@/lib/ads-exclusivity'
 
 export async function GET(req: NextRequest) {
   try {
@@ -82,25 +86,36 @@ export async function GET(req: NextRequest) {
       orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
     })
 
-    // Compute stats for current context
+    // Compute stats for current context and check active Level 1 ad
     const baseWhere: any = effectiveStoreId ? { storeId: effectiveStoreId } : {}
-    const [totalCount, pendingCount, approvedCount, rejectedCount] =
-      await Promise.all([
-        prisma.internalAd.count({ where: baseWhere }),
-        prisma.internalAd.count({
-          where: { ...baseWhere, status: 'PENDING' } as any,
-        }),
-        prisma.internalAd.count({
-          where: { ...baseWhere, status: 'APPROVED' } as any,
-        }),
-        prisma.internalAd.count({
-          where: { ...baseWhere, status: 'REJECTED' } as any,
-        }),
-      ])
+    const [
+      totalCount,
+      pendingCount,
+      approvedCount,
+      rejectedCount,
+      activeLevel1,
+    ] = await Promise.all([
+      prisma.internalAd.count({ where: baseWhere }),
+      prisma.internalAd.count({
+        where: { ...baseWhere, status: 'PENDING' } as any,
+      }),
+      prisma.internalAd.count({
+        where: { ...baseWhere, status: 'APPROVED' } as any,
+      }),
+      prisma.internalAd.count({
+        where: { ...baseWhere, status: 'REJECTED' } as any,
+      }),
+      getActiveLevel1Ad(),
+    ])
 
     const formattedAds = ads.map((a) => ({
       ...a,
       imageUrl: a.bannerUrl,
+      isExclusiveLevel1Active:
+        a.placement === 'HOMEPAGE_HERO' &&
+        a.status === 'APPROVED' &&
+        a.isActive &&
+        activeLevel1?.id === a.id,
     }))
 
     return NextResponse.json({
@@ -112,6 +127,15 @@ export async function GET(req: NextRequest) {
         approved: approvedCount,
         rejected: rejectedCount,
       },
+      level1Slot: activeLevel1
+        ? {
+            isOccupied: true,
+            activeAd: activeLevel1,
+          }
+        : {
+            isOccupied: false,
+            activeAd: null,
+          },
     })
   } catch (error: any) {
     console.error('Error fetching admin ads:', error)
@@ -214,6 +238,25 @@ export async function POST(req: NextRequest) {
         ? Boolean(body.isActive)
         : true
       : false
+
+    // Exclusivity rule: Level 1 (HOMEPAGE_HERO) is exclusive to 1 active ad at a time
+    if (
+      placement === 'HOMEPAGE_HERO' &&
+      initialStatus === 'APPROVED' &&
+      initialIsActive
+    ) {
+      const exclusivityCheck = await validateLevel1Exclusivity()
+      if (!exclusivityCheck.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: exclusivityCheck.message,
+            currentActive: exclusivityCheck.currentActive,
+          },
+          { status: 409 }
+        )
+      }
+    }
 
     const resolvedStartDate = startDate ? new Date(startDate) : new Date()
     let resolvedEndDate: Date | null = endDate ? new Date(endDate) : null

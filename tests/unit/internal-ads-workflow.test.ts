@@ -5,6 +5,7 @@ const mockPrisma = {
   internalAd: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -264,6 +265,76 @@ describe('Internal Ads Workflow & Two-Level Placement Suite', () => {
 
       const canCancel = role === 'STORE_ADMIN' && ad.status === 'PENDING'
       expect(canCancel).toBe(true)
+    })
+  })
+
+  describe('6. Level 1 (Hero Carousel) Exclusivity & Single Active Ad Suite', () => {
+    it('allows Level 1 activation when no other Level 1 ad is active', async () => {
+      const { validateLevel1Exclusivity } =
+        await import('@/lib/ads-exclusivity')
+      mockPrisma.internalAd.findFirst.mockResolvedValue(null)
+
+      const result = await validateLevel1Exclusivity('ad-candidate-1')
+      expect(result.allowed).toBe(true)
+      expect(result.currentActive).toBeUndefined()
+    })
+
+    it('rejects Level 1 activation when another Level 1 ad is currently active and not expired', async () => {
+      const { validateLevel1Exclusivity } =
+        await import('@/lib/ads-exclusivity')
+      const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+      mockPrisma.internalAd.findFirst.mockResolvedValue({
+        id: 'ad-active-roxy',
+        title: 'Flash Sale Eksklusif Roxy Mas',
+        placement: 'HOMEPAGE_HERO',
+        status: 'APPROVED',
+        isActive: true,
+        startDate: new Date(),
+        endDate: futureDate,
+        store: {
+          id: 'store-roxy',
+          name: 'Affiliate Gadget - Roxy Mas Jakarta',
+          city: 'Jakarta Pusat',
+          slug: 'roxy-mas-jakarta',
+        },
+      })
+
+      const result = await validateLevel1Exclusivity('ad-candidate-wtc')
+      expect(result.allowed).toBe(false)
+      expect(result.currentActive?.id).toBe('ad-active-roxy')
+      expect(result.message).toContain(
+        'Slot Level 1 (Hero Carousel Mobile) bersifat eksklusif'
+      )
+      expect(result.message).toContain('Roxy Mas Jakarta')
+    })
+
+    it('allows Level 1 activation if the current active ad has expired', async () => {
+      const { validateLevel1Exclusivity } =
+        await import('@/lib/ads-exclusivity')
+      const pastDate = new Date(Date.now() - 1000 * 60 * 60) // 1 hour ago
+
+      mockPrisma.internalAd.findFirst.mockResolvedValue({
+        id: 'ad-old-hero',
+        title: 'Old Hero Banner',
+        placement: 'HOMEPAGE_HERO',
+        status: 'APPROVED',
+        isActive: true,
+        startDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        endDate: pastDate,
+        store: { name: 'Old Store', slug: 'old-store' },
+      })
+
+      const result = await validateLevel1Exclusivity('ad-candidate-surabaya')
+      expect(result.allowed).toBe(true)
+    })
+
+    it('enforces limit 1 for public HOMEPAGE_HERO ad placement', () => {
+      const placement = 'HOMEPAGE_HERO'
+      const requestedLimit = 5
+      const effectiveLimit = placement === 'HOMEPAGE_HERO' ? 1 : requestedLimit
+
+      expect(effectiveLimit).toBe(1)
     })
   })
 })

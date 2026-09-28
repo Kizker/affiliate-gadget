@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Navbar, Footer, MobileBottomNav } from '@/components/layouts'
 import { MobileCatalogView } from '@/components/gadget/mobile-catalog-view'
+import { MobileTopHeroBanner } from '@/components/ads/mobile-top-hero-banner'
 import {
   ShieldCheck,
   Gift,
@@ -57,7 +58,7 @@ function GadgetKatalogContent() {
     try {
       const [gRes, adRes] = await Promise.all([
         fetch('/api/gadgets'),
-        fetch('/api/ads?placement=PROMOTED_LIST&limit=6'),
+        fetch('/api/ads?placement=PROMOTED_LIST&limit=50'),
       ])
       const data = await gRes.json()
       if (data.success && data.data) {
@@ -242,7 +243,12 @@ function GadgetKatalogContent() {
               </div>
             </div>
 
-            {/* Products Grid: 2 Columns on Mobile, fits 2 rows in viewport */}
+            {/* Level 1 Hero Carousel Video Banner (Desktop & Tablet) */}
+            <div className="mb-6 md:mb-8">
+              <MobileTopHeroBanner />
+            </div>
+
+            {/* Products Grid: 4 Columns on Desktop */}
             {loading ? (
               <div className="py-24 text-center text-slate-400">
                 <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-orange-500" />

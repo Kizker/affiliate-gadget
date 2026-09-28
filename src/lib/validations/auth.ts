@@ -106,6 +106,33 @@ export const resendVerificationSchema = z.object({
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Forgot Password schemas
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const forgotPasswordRequestSchema = z.object({
+  email: sanitizedEmail,
+})
+
+export const forgotPasswordVerifySchema = z.object({
+  email: sanitizedEmail,
+  otp: z.string().trim().length(6, 'Kode OTP harus 6 digit angka'),
+})
+
+export const forgotPasswordResetSchema = z
+  .object({
+    email: sanitizedEmail,
+    otp: z.string().trim().length(6, 'Kode OTP harus 6 digit angka'),
+    newPassword: z.string().min(8, 'Kata sandi baru minimal 8 karakter'),
+    confirmPassword: z
+      .string()
+      .min(8, 'Konfirmasi kata sandi minimal 8 karakter'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Konfirmasi kata sandi baru tidak cocok',
+    path: ['confirmPassword'],
+  })
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Store Data Application schema
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -156,3 +183,10 @@ export type LoginInput = z.infer<typeof loginSchema>
 export type RegisterInput = z.infer<typeof registerSchema>
 export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>
 export type StoreDataInput = z.infer<typeof storeDataSchema>
+export type ForgotPasswordRequestInput = z.infer<
+  typeof forgotPasswordRequestSchema
+>
+export type ForgotPasswordVerifyInput = z.infer<
+  typeof forgotPasswordVerifySchema
+>
+export type ForgotPasswordResetInput = z.infer<typeof forgotPasswordResetSchema>

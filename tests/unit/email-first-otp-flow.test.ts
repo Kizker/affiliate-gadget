@@ -79,16 +79,16 @@ describe('Email-First OTP Verification Suite (E2E Unit)', () => {
 
       expect(res.status).toBe(200)
       expect(data.requires2FA).toBe(true)
+      expect(data.channel).toBe('EMAIL')
       expect(data.maskedEmail).toBe('bam***@tokoguru.com')
       expect(data.hasPhone).toBe(true)
-      expect(data.phone).toBe('081234567890')
 
-      // Verifikasi bahwa dispatchOtp default ke WHATSAPP
+      // Verifikasi bahwa dispatchOtp default ke EMAIL
       expect(dispatchOtp).toHaveBeenCalledWith(
         expect.objectContaining({
-          identifier: '081234567890',
+          identifier: 'bambang@tokoguru.com',
           purpose: 'LOGIN',
-          channel: 'WHATSAPP',
+          channel: 'EMAIL',
           userId: 'user-2fa-01',
         })
       )
@@ -120,7 +120,7 @@ describe('Email-First OTP Verification Suite (E2E Unit)', () => {
 
       expect(res.status).toBe(200)
       expect(data.requires2FA).toBe(true)
-      expect(data.channel).toBe('WHATSAPP')
+      expect(data.channel).toBe('EMAIL')
       expect(data.email).toBe('admin.roxy@affiliategadget.com')
     })
 
@@ -260,6 +260,32 @@ describe('Email-First OTP Verification Suite (E2E Unit)', () => {
         purpose: 'LOGIN',
       })
       expect(consumeOtpRecord).toHaveBeenCalledWith('token-xyz')
+    })
+
+    it('should return email-specific error message (not WhatsApp) when OTP fails for email identifier', async () => {
+      const { validateOtpRecord } = await import('@/lib/notifications')
+      vi.mocked(validateOtpRecord).mockResolvedValue({
+        valid: false,
+        error: 'INVALID_CODE',
+      })
+
+      const req = new NextRequest('http://localhost:3002/api/auth/login-2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify',
+          email: 'jhodywiraputra@gmail.com',
+          otp: '175527',
+          identifierUsed: 'jhodywiraputra@gmail.com',
+        }),
+      })
+
+      const res = await login2FaHandler(req)
+      const data = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(data.error).not.toMatch(/whatsapp/i)
+      expect(data.error).toMatch(/email/i)
     })
   })
 

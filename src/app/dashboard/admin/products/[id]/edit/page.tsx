@@ -18,11 +18,14 @@ import {
   ImageIcon,
   Loader2,
   Save,
+  Play,
+  Video,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatRupiahInput, parseRupiahInput } from '@/lib/utils'
 import { CreatableCombobox } from '@/components/ui/creatable-combobox'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { isVideoMedia } from '@/types/ads'
 
 const BRAND_OPTIONS = [
   'Apple',
@@ -332,12 +335,21 @@ export default function EditProductPage() {
       }
 
       for (const f of toUpload) {
-        if (!f.type.startsWith('image/')) {
-          toast.error(`"${f.name}" bukan format gambar yang valid`)
+        const isImg = f.type.startsWith('image/')
+        const isVid =
+          f.type.startsWith('video/') ||
+          f.name.endsWith('.mp4') ||
+          f.name.endsWith('.webm') ||
+          f.name.endsWith('.mov')
+        if (!isImg && !isVid) {
+          toast.error(`"${f.name}" bukan format foto atau video yang valid`)
           return
         }
-        if (f.size > 10 * 1024 * 1024) {
-          toast.error(`"${f.name}" terlalu besar (maks. 10MB)`)
+        const maxLimit = isVid ? 60 * 1024 * 1024 : 15 * 1024 * 1024
+        if (f.size > maxLimit) {
+          toast.error(
+            `"${f.name}" terlalu besar (maks. ${isVid ? '60MB untuk video' : '15MB untuk foto'})`
+          )
           return
         }
       }
@@ -599,9 +611,7 @@ export default function EditProductPage() {
               ) : (
                 <CustomSelect
                   value={form.storeId}
-                  onChange={(val) =>
-                    setForm({ ...form, storeId: val })
-                  }
+                  onChange={(val) => setForm({ ...form, storeId: val })}
                   options={stores.map((s) => ({
                     value: s.id,
                     label: `${s.name} (${s.city || 'Indonesia'})`,
@@ -660,14 +670,14 @@ export default function EditProductPage() {
 
             {/* Status PPN Produk (Bebas PPN vs Dikenakan PPN) */}
             <div
-              className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 sm:col-span-2 ${
+              className={`rounded-2xl border p-5 transition-all duration-200 sm:col-span-2 sm:p-6 ${
                 form.isTaxable
                   ? 'border-blue-300 bg-blue-50/70 dark:border-blue-800 dark:bg-blue-950/30'
                   : 'border-amber-300 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/30'
               }`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1.5 flex-1 pr-2">
+                <div className="flex-1 space-y-1.5 pr-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
                       Status Pajak Produk (PPN Inklusif)
@@ -798,18 +808,18 @@ export default function EditProductPage() {
             </div>
           </div>
 
-          {/* ─── Photo Upload Section ─────────────────────────────────────── */}
+          {/* ─── Photo & Video Upload Section ───────────────────────────── */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Foto Produk{' '}
+                Foto & Video Produk{' '}
                 <span className="font-normal text-slate-500">
-                  ({uploadedImages.length}/5 foto)
+                  ({uploadedImages.length}/5 media)
                 </span>
               </label>
               {uploadedImages.length > 0 && (
                 <span className="text-[10px] text-slate-400">
-                  Foto pertama tampil sebagai cover
+                  Media pertama tampil sebagai cover utama
                 </span>
               )}
             </div>
@@ -820,36 +830,56 @@ export default function EditProductPage() {
               onDragOver={(e) => e.preventDefault()}
               className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 transition hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-blue-700"
             >
-              {/* Image grid */}
+              {/* Media grid */}
               {uploadedImages.length > 0 && (
                 <div className="mb-4 grid grid-cols-3 gap-3 sm:grid-cols-5">
-                  {uploadedImages.map((url, i) => (
-                    <div
-                      key={i}
-                      className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
-                    >
-                      <img
-                        src={imagePreviews[i] || url}
-                        alt={`Foto produk ${i + 1}`}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                      {/* Cover badge */}
-                      {i === 0 && (
-                        <span className="absolute left-1 top-1 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">
-                          Cover
-                        </span>
-                      )}
-                      {/* Delete button */}
-                      <button
-                        type="button"
-                        onClick={() => removeImage(i)}
-                        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100"
-                        title="Hapus foto"
+                  {uploadedImages.map((url, i) => {
+                    const isVid = isVideoMedia(imagePreviews[i] || url)
+                    return (
+                      <div
+                        key={i}
+                        className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
                       >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        {isVid ? (
+                          <div className="relative h-full w-full bg-slate-950">
+                            <video
+                              src={imagePreviews[i] || url}
+                              className="h-full w-full object-cover"
+                              muted
+                              playsInline
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                              <Play className="h-5 w-5 fill-white text-white drop-shadow-md" />
+                            </div>
+                            <span className="backdrop-blur-xs absolute bottom-1 right-1 rounded-sm bg-orange-600/90 px-1 py-0.5 text-[8px] font-black text-white">
+                              VIDEO
+                            </span>
+                          </div>
+                        ) : (
+                          <img
+                            src={imagePreviews[i] || url}
+                            alt={`Media produk ${i + 1}`}
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        )}
+                        {/* Cover badge */}
+                        {i === 0 && (
+                          <span className="absolute left-1 top-1 z-10 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">
+                            Cover
+                          </span>
+                        )}
+                        {/* Delete button */}
+                        <button
+                          type="button"
+                          onClick={() => removeImage(i)}
+                          className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100"
+                          title="Hapus media"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
 
@@ -860,17 +890,17 @@ export default function EditProductPage() {
                     {uploadingImages ? (
                       <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                     ) : (
-                      <ImageIcon className="h-5 w-5 text-slate-400" />
+                      <Video className="h-5 w-5 text-slate-400" />
                     )}
                   </div>
                   <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                     {uploadingImages
-                      ? 'Mengupload foto ke VPS...'
-                      : 'Tarik & lepas foto di sini, atau klik tombol di bawah'}
+                      ? 'Mengupload media ke server...'
+                      : 'Tarik & lepas foto/video di sini, atau klik tombol di bawah'}
                   </p>
                   <p className="mt-0.5 text-[11px] text-slate-400">
-                    JPG, PNG, WebP • Maks. 10MB per foto • Sisa{' '}
-                    {5 - uploadedImages.length} slot foto
+                    Foto (JPG, PNG, WebP maks 15MB) • Video (MP4, WebM maks
+                    60MB) • Sisa {5 - uploadedImages.length} slot
                   </p>
                   <button
                     type="button"
@@ -879,12 +909,12 @@ export default function EditProductPage() {
                     className="shadow-xs mt-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
                   >
                     <Upload className="h-3.5 w-3.5" />
-                    <span>Pilih Foto dari Perangkat</span>
+                    <span>Pilih Foto / Video dari Perangkat</span>
                   </button>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime"
                     multiple
                     className="hidden"
                     onChange={handleFileSelect}
@@ -892,7 +922,7 @@ export default function EditProductPage() {
                 </div>
               ) : (
                 <p className="text-center text-xs text-slate-500">
-                  Maksimal 5 foto telah tercapai. Hapus foto untuk mengganti.
+                  Maksimal 5 media telah tercapai. Hapus media untuk mengganti.
                 </p>
               )}
             </div>

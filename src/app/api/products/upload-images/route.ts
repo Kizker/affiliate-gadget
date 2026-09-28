@@ -61,19 +61,32 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Validate each file
+  // Validate each file (supports images & videos)
   for (const file of files) {
-    if (!file.type.startsWith('image/')) {
+    const isImage = file.type.startsWith('image/')
+    const isVideo =
+      file.type.startsWith('video/') ||
+      file.name.endsWith('.mp4') ||
+      file.name.endsWith('.webm') ||
+      file.name.endsWith('.mov')
+
+    if (!isImage && !isVideo) {
       return NextResponse.json(
         {
-          error: `File "${file.name}" bukan format gambar yang valid (JPG, PNG, WebP)`,
+          error: `File "${file.name}" bukan format foto (JPG, PNG, WebP) atau video (MP4, WebM, MOV) yang valid`,
         },
         { status: 400 }
       )
     }
-    if (file.size > 10 * 1024 * 1024) {
+
+    const maxSize = isVideo ? 60 * 1024 * 1024 : 15 * 1024 * 1024
+    if (file.size > maxSize) {
       return NextResponse.json(
-        { error: `File "${file.name}" terlalu besar (Maksimal 10MB per foto)` },
+        {
+          error: isVideo
+            ? `Video "${file.name}" terlalu besar (Maksimal 60MB per video)`
+            : `Foto "${file.name}" terlalu besar (Maksimal 15MB per foto)`,
+        },
         { status: 400 }
       )
     }
@@ -100,12 +113,18 @@ export async function POST(request: NextRequest) {
     'image/webp': 'webp',
     'image/gif': 'gif',
     'image/avif': 'avif',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/ogg': 'ogg',
+    'video/quicktime': 'mov',
+    'video/x-matroska': 'mkv',
   }
 
   const urls: string[] = []
 
   for (const file of files) {
-    const ext = mimeToExt[file.type] ?? 'jpg'
+    const fileExt = file.name.split('.').pop()?.toLowerCase()
+    const ext = mimeToExt[file.type] || fileExt || 'jpg'
     const timestamp = Date.now()
     const random = Math.random().toString(36).substring(2, 8)
     const filename = `product-${timestamp}-${random}.${ext}`

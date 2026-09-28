@@ -43,6 +43,7 @@ export interface InFeedAdData {
     companyName?: string
     banner?: string | null
   } | null
+  videoUrl?: string | null
 }
 
 export function isProductAdData(ad: InFeedAdData): boolean {
@@ -54,5 +55,24 @@ export function isProductAdData(ad: InFeedAdData): boolean {
     ad.productId ||
     ad.product ||
     (destination.startsWith('/gadget/') && destination !== '/gadget')
+  )
+}
+
+export function isVideoAd(ad: InFeedAdData): boolean {
+  return isVideoMedia(ad.videoUrl || ad.imageUrl)
+}
+
+export function isVideoMedia(url?: string | null): boolean {
+  if (!url) return false
+  const clean = url.toLowerCase().split('?')[0]
+  return (
+    clean.endsWith('.mp4') ||
+    clean.endsWith('.webm') ||
+    clean.endsWith('.ogg') ||
+    clean.endsWith('.mov') ||
+    clean.endsWith('.mkv') ||
+    url.toLowerCase().includes('/videos/') ||
+    url.toLowerCase().includes('/video/') ||
+    url.toLowerCase().includes('video/upload')
   )
 }

@@ -36,10 +36,15 @@ import {
   Globe,
   ShieldCheck,
   Link2,
+  Play,
+  Video,
+  LayoutGrid,
+  Timer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { usePageGuard } from '@/hooks/use-page-guard'
+import { isVideoMedia } from '@/types/ads'
 
 export type AdTargetType =
   | 'STORE'
@@ -159,12 +164,92 @@ export default function AdsManagementPage() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  // Filters
+  // Real-time Level 1 Exclusive Slot Info
+  const [level1Slot, setLevel1Slot] = useState<{
+    isOccupied: boolean
+    activeAd: {
+      id: string
+      title: string
+      subtitle?: string | null
+      startDate: string
+      endDate: string | null
+      remainingText: string
+      remainingDays: number
+      store?: {
+        id: string
+        name: string
+        city?: string | null
+        slug: string
+      } | null
+    } | null
+  }>({ isOccupied: false, activeAd: null })
+
+  // 2 Tab Utama: Level 1 (Hero Carousel) & Level 2 (In-Feed Grid)
+  const [levelFilter, setLevelFilter] = useState<'LEVEL_1' | 'LEVEL_2'>(
+    'LEVEL_1'
+  )
+
+  // Filters Status (Di dalam Tab yang aktif)
   const [activeTab, setActiveTab] = useState<
     'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'
   >('ALL')
   const [placementFilter, setPlacementFilter] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Helper compute timing & remaining days/hours
+  const getAdTimingInfo = useCallback((ad: InternalAdItem) => {
+    const now = Date.now()
+    const isApproved = ad.status === 'APPROVED'
+    const isPending = ad.status === 'PENDING'
+    const isRejected = ad.status === 'REJECTED'
+
+    let isExpired = false
+    let remainingMs = 0
+    let days = 0
+    let hours = 0
+    let isUrgent = false // < 3 hari
+    let remainingText = ''
+
+    if (ad.endDate) {
+      const end = new Date(ad.endDate).getTime()
+      remainingMs = end - now
+      if (remainingMs <= 0) {
+        isExpired = true
+        remainingText = 'Masa Tayang Habis'
+      } else {
+        days = Math.floor(remainingMs / (1000 * 60 * 60 * 24))
+        hours = Math.floor(
+          (remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        )
+        isUrgent = days < 3
+        if (days > 0) {
+          remainingText = `${days} hari ${hours} jam lagi`
+        } else if (hours > 0) {
+          remainingText = `${hours} jam lagi`
+        } else {
+          const mins = Math.max(1, Math.floor(remainingMs / (1000 * 60)))
+          remainingText = `${mins} menit lagi`
+        }
+      }
+    } else {
+      remainingText = 'Aktif Tanpa Batas Waktu'
+    }
+
+    const isCurrentlyActive = isApproved && ad.isActive && !isExpired
+
+    return {
+      isApproved,
+      isPending,
+      isRejected,
+      isExpired,
+      isCurrentlyActive,
+      remainingMs,
+      days,
+      hours,
+      isUrgent,
+      remainingText,
+    }
+  }, [])
 
   // Modal State
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -194,6 +279,7 @@ export default function AdsManagementPage() {
     'STORE_BANNER' | 'PRODUCTS' | 'PRESETS' | 'UPLOAD' | 'URL'
   >('PRESETS')
   const [savingImage, setSavingImage] = useState(false)
+  const [uploadingMedia, setUploadingMedia] = useState(false)
 
   // Store profile & catalog photos for banner selector
   const [currentStore, setCurrentStore] = useState<CurrentStoreInfo | null>(
@@ -258,17 +344,13 @@ export default function AdsManagementPage() {
   const fetchAds = useCallback(async () => {
     try {
       setLoading(true)
-      const params = new URLSearchParams()
-      if (activeTab !== 'ALL') params.set('status', activeTab)
-      if (placementFilter !== 'ALL') params.set('placement', placementFilter)
-      if (searchQuery.trim()) params.set('search', searchQuery.trim())
-
-      const res = await fetch(`/api/admin/ads?${params.toString()}`)
+      const res = await fetch(`/api/admin/ads?placement=ALL`)
       const data = await res.json()
 
       if (data.success) {
         setAds(data.data || [])
         if (data.stats) setStats(data.stats)
+        if (data.level1Slot) setLevel1Slot(data.level1Slot)
       } else {
         toast.error(data.message || 'Gagal mengambil data iklan')
       }
@@ -277,7 +359,182 @@ export default function AdsManagementPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, placementFilter, searchQuery])
+  }, [])
+
+  // 1. Sorted Level 1 Ads (Hero Carousel Antrean: Sedang Tayang di Atas, selanjutnya antrean berikutnya)
+  const sortedLevel1Ads = useMemo(() => {
+    const rawLevel1 = ads.filter((a) => a.placement === 'HOMEPAGE_HERO')
+
+    const filtered = rawLevel1.filter((ad) => {
+      if (activeTab !== 'ALL' && ad.status !== activeTab) return false
+      if (!searchQuery.trim()) return true
+      const q = searchQuery.toLowerCase()
+      return (
+        ad.title.toLowerCase().includes(q) ||
+        (ad.store?.name && ad.store.name.toLowerCase().includes(q))
+      )
+    })
+
+    return [...filtered].sort((a, b) => {
+      const aTiming = getAdTimingInfo(a)
+      const bTiming = getAdTimingInfo(b)
+
+      const isAActiveSlot =
+        (a as any).isExclusiveLevel1Active ||
+        level1Slot.activeAd?.id === a.id ||
+        (a.status === 'APPROVED' && a.isActive && !aTiming.isExpired)
+
+      const isBActiveSlot =
+        (b as any).isExclusiveLevel1Active ||
+        level1Slot.activeAd?.id === b.id ||
+        (b.status === 'APPROVED' && b.isActive && !bTiming.isExpired)
+
+      // 1. Iklan video yang SEDANG TAYANG selalu paling atas (#1)
+      if (isAActiveSlot && !isBActiveSlot) return -1
+      if (!isAActiveSlot && isBActiveSlot) return 1
+
+      // 2. Iklan antrean berikutnya yang akan ditayangkan (Approved tapi menunggu slot)
+      const isAApprovedWaiting =
+        aTiming.isApproved && !aTiming.isExpired && !isAActiveSlot
+      const isBApprovedWaiting =
+        bTiming.isApproved && !bTiming.isExpired && !isBActiveSlot
+      if (isAApprovedWaiting && !isBApprovedWaiting) return -1
+      if (!isAApprovedWaiting && isBApprovedWaiting) return 1
+      if (isAApprovedWaiting && isBApprovedWaiting) {
+        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      }
+
+      // 3. Menunggu Review (PENDING) (antrean moderasi)
+      if (aTiming.isPending && !bTiming.isPending) return -1
+      if (!aTiming.isPending && bTiming.isPending) return 1
+      if (aTiming.isPending && bTiming.isPending) {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      }
+
+      // 4. Selesai / Expired / Non-Aktif / Ditolak
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }, [ads, activeTab, searchQuery, level1Slot.activeAd, getAdTimingInfo])
+
+  // 2. Sorted Level 2 Ads (In-Feed Grid: Mana yang sebentar lagi habis waktu penayangannya di paling atas)
+  const sortedLevel2Ads = useMemo(() => {
+    const rawLevel2 = ads.filter((a) => a.placement === 'PROMOTED_LIST')
+
+    const filtered = rawLevel2.filter((ad) => {
+      if (activeTab !== 'ALL' && ad.status !== activeTab) return false
+      if (!searchQuery.trim()) return true
+      const q = searchQuery.toLowerCase()
+      return (
+        ad.title.toLowerCase().includes(q) ||
+        (ad.store?.name && ad.store.name.toLowerCase().includes(q))
+      )
+    })
+
+    return [...filtered].sort((a, b) => {
+      const aTiming = getAdTimingInfo(a)
+      const bTiming = getAdTimingInfo(b)
+
+      // 1. Iklan Aktif: Diurutkan berdasarkan yang sebentar lagi habis (remainingMs terkecil paling atas)
+      if (aTiming.isCurrentlyActive && !bTiming.isCurrentlyActive) return -1
+      if (!aTiming.isCurrentlyActive && bTiming.isCurrentlyActive) return 1
+
+      if (aTiming.isCurrentlyActive && bTiming.isCurrentlyActive) {
+        const aRemaining = a.endDate
+          ? aTiming.remainingMs
+          : Number.MAX_SAFE_INTEGER
+        const bRemaining = b.endDate
+          ? bTiming.remainingMs
+          : Number.MAX_SAFE_INTEGER
+        return aRemaining - bRemaining // ASCENDING: soonest to expire first!
+      }
+
+      // 2. Menunggu Review (PENDING)
+      if (aTiming.isPending && !bTiming.isPending) return -1
+      if (!aTiming.isPending && bTiming.isPending) return 1
+      if (aTiming.isPending && bTiming.isPending) {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      }
+
+      // 3. Expired / Inactive / Ditolak
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }, [ads, activeTab, searchQuery, getAdTimingInfo])
+
+  // Pre-calculate Level 1 queue indexes for waiting ads
+  const waitingLevel1Ads = useMemo(() => {
+    return sortedLevel1Ads.filter((a) => {
+      const timing = getAdTimingInfo(a)
+      const isActiveSlot =
+        (a as any).isExclusiveLevel1Active ||
+        level1Slot.activeAd?.id === a.id ||
+        (a.status === 'APPROVED' && a.isActive && !timing.isExpired)
+      return (
+        !isActiveSlot &&
+        (a.status === 'APPROVED' || a.status === 'PENDING') &&
+        !timing.isExpired
+      )
+    })
+  }, [sortedLevel1Ads, level1Slot.activeAd, getAdTimingInfo])
+
+  // List iklan tab aktif
+  const currentTabAds =
+    levelFilter === 'LEVEL_1' ? sortedLevel1Ads : sortedLevel2Ads
+
+  // Counter data per tab
+  const allLevel1Count = useMemo(
+    () => ads.filter((a) => a.placement === 'HOMEPAGE_HERO').length,
+    [ads]
+  )
+  const allLevel2Count = useMemo(
+    () => ads.filter((a) => a.placement === 'PROMOTED_LIST').length,
+    [ads]
+  )
+  const pendingLevel1Count = useMemo(
+    () =>
+      ads.filter(
+        (a) => a.placement === 'HOMEPAGE_HERO' && a.status === 'PENDING'
+      ).length,
+    [ads]
+  )
+  const urgentLevel2Count = useMemo(() => {
+    const now = Date.now()
+    return ads.filter((a) => {
+      if (
+        a.placement !== 'PROMOTED_LIST' ||
+        a.status !== 'APPROVED' ||
+        !a.isActive
+      )
+        return false
+      if (!a.endDate) return false
+      const diff = new Date(a.endDate).getTime() - now
+      return diff > 0 && diff < 3 * 86400000 // < 3 hari
+    }).length
+  }, [ads])
+  const activeLevel2Count = useMemo(() => {
+    const now = Date.now()
+    return ads.filter((a) => {
+      if (
+        a.placement !== 'PROMOTED_LIST' ||
+        a.status !== 'APPROVED' ||
+        !a.isActive
+      )
+        return false
+      return !a.endDate || new Date(a.endDate).getTime() > now
+    }).length
+  }, [ads])
+
+  // Stats status filter khusus di dalam tab aktif
+  const currentLevelStats = useMemo(() => {
+    const targetPlacement =
+      levelFilter === 'LEVEL_1' ? 'HOMEPAGE_HERO' : 'PROMOTED_LIST'
+    const targetAds = ads.filter((a) => a.placement === targetPlacement)
+    return {
+      total: targetAds.length,
+      pending: targetAds.filter((a) => a.status === 'PENDING').length,
+      approved: targetAds.filter((a) => a.status === 'APPROVED').length,
+      rejected: targetAds.filter((a) => a.status === 'REJECTED').length,
+    }
+  }, [ads, levelFilter])
 
   // Load products helper
   const loadProductsForStore = useCallback(async (targetStoreId?: string) => {
@@ -600,7 +857,7 @@ export default function AdsManagementPage() {
     setFormData({
       title: '',
       subtitle: '',
-      placement: 'HOMEPAGE_HERO',
+      placement: levelFilter === 'LEVEL_1' ? 'HOMEPAGE_HERO' : 'PROMOTED_LIST',
       imageUrl: storeBanner || '',
       targetType: initType,
       targetUrl: initUrl,
@@ -730,61 +987,6 @@ export default function AdsManagementPage() {
         </div>
       </div>
 
-      {/* 2. KPI Metrics Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-medium">Total Iklan</span>
-            <Layers className="h-4 w-4 text-slate-400" />
-          </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
-            {stats.total}
-          </p>
-          <p className="mt-0.5 text-[11px] text-slate-400">
-            Semua riwayat pengajuan
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
-          <div className="flex items-center justify-between text-amber-700 dark:text-amber-400">
-            <span className="text-xs font-semibold">Menunggu Review</span>
-            <Clock className="h-4 w-4" />
-          </div>
-          <p className="mt-2 text-2xl font-black text-amber-700 dark:text-amber-300">
-            {stats.pending}
-          </p>
-          <p className="mt-0.5 text-[11px] text-amber-600/80 dark:text-amber-400/70">
-            Perlu moderasi Superadmin
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/20">
-          <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400">
-            <span className="text-xs font-semibold">Disetujui / Aktif</span>
-            <CheckCircle2 className="h-4 w-4" />
-          </div>
-          <p className="mt-2 text-2xl font-black text-emerald-700 dark:text-emerald-300">
-            {stats.approved}
-          </p>
-          <p className="mt-0.5 text-[11px] text-emerald-600/80 dark:text-emerald-400/70">
-            Tayang di platform publik
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-rose-200/80 bg-rose-50/50 p-4 shadow-sm dark:border-rose-900/40 dark:bg-rose-950/20">
-          <div className="flex items-center justify-between text-rose-700 dark:text-rose-400">
-            <span className="text-xs font-semibold">Ditolak</span>
-            <XCircle className="h-4 w-4" />
-          </div>
-          <p className="mt-2 text-2xl font-black text-rose-700 dark:text-rose-300">
-            {stats.rejected}
-          </p>
-          <p className="mt-0.5 text-[11px] text-rose-600/80 dark:text-rose-400/70">
-            Memerlukan perbaikan
-          </p>
-        </div>
-      </div>
-
       {/* Toko Callout Info Banner */}
       {!isSuperAdmin && (
         <div className="flex items-start gap-3 rounded-2xl border border-blue-200/80 bg-blue-50/70 p-3.5 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200">
@@ -801,15 +1003,271 @@ export default function AdsManagementPage() {
         </div>
       )}
 
+      {/* 2.2 TAB SWITCHER UTAMA: Level 1 (Hero Carousel) vs Level 2 (In-Feed Grid) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* Tab 1: Level 1 (Hero Carousel) */}
+        <button
+          type="button"
+          onClick={() => {
+            setLevelFilter('LEVEL_1')
+            setActiveTab('ALL')
+          }}
+          className={`flex cursor-pointer items-start gap-3.5 rounded-3xl border-2 p-4 text-left transition-all duration-200 ${
+            levelFilter === 'LEVEL_1'
+              ? 'border-blue-500 bg-blue-50/50 shadow-md shadow-blue-500/10 dark:border-blue-500 dark:bg-blue-950/20'
+              : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'
+          }`}
+        >
+          <div
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
+              levelFilter === 'LEVEL_1'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+            }`}
+          >
+            <Video className="h-6 w-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-black text-slate-950 dark:text-white sm:text-base">
+                Tab Level 1: Hero Carousel
+              </h3>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
+                  levelFilter === 'LEVEL_1'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                {allLevel1Count} Iklan
+              </span>
+            </div>
+            <p className="mt-1 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
+              Slot eksklusif teratas • Video aktif tayang di atas &amp; antrean
+              tayang berikutnya
+            </p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              {level1Slot.isOccupied ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600" />
+                  1 Video Sedang Tayang
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                  Slot Tersedia
+                </span>
+              )}
+              {pendingLevel1Count > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                  {pendingLevel1Count} Menunggu Antrean
+                </span>
+              )}
+            </div>
+          </div>
+        </button>
+
+        {/* Tab 2: Level 2 (In-Feed Grid) */}
+        <button
+          type="button"
+          onClick={() => {
+            setLevelFilter('LEVEL_2')
+            setActiveTab('ALL')
+          }}
+          className={`flex cursor-pointer items-start gap-3.5 rounded-3xl border-2 p-4 text-left transition-all duration-200 ${
+            levelFilter === 'LEVEL_2'
+              ? 'border-orange-500 bg-orange-50/50 shadow-md shadow-orange-500/10 dark:border-orange-500 dark:bg-orange-950/20'
+              : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'
+          }`}
+        >
+          <div
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
+              levelFilter === 'LEVEL_2'
+                ? 'bg-orange-500 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+            }`}
+          >
+            <LayoutGrid className="h-6 w-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-black text-slate-950 dark:text-white sm:text-base">
+                Tab Level 2: In-Feed Grid Produk
+              </h3>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
+                  levelFilter === 'LEVEL_2'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                {allLevel2Count} Iklan
+              </span>
+            </div>
+            <p className="mt-1 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
+              Diselipkan di antara katalog • Diurutkan mana yang sebentar lagi
+              habis waktu
+            </p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              {urgentLevel2Count > 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800 dark:bg-rose-950/50 dark:text-rose-300">
+                  <AlertTriangle className="h-3 w-3" />
+                  {urgentLevel2Count} Segera Berakhir (&lt; 3 Hari)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                  {activeLevel2Count} Iklan Aktif
+                </span>
+              )}
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* 2.5 Real-Time Exclusive Level 1 Slot Banner OR Level 2 Overview Banner */}
+      {levelFilter === 'LEVEL_1' ? (
+        level1Slot.isOccupied && level1Slot.activeAd ? (
+          <div className="shadow-2xs rounded-2xl border border-blue-200/90 bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-white p-4 dark:border-blue-900/60 dark:from-blue-950/40 dark:via-slate-900 dark:to-slate-900">
+            <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+              <div className="flex items-start gap-3">
+                <div className="shadow-xs flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-blue-800 dark:text-blue-300">
+                      Slot Eksklusif Level 1 (Hero Carousel)
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-extrabold text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-600" />
+                      Sedang Terisi (Maksimal 1 Toko)
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                    Iklan Aktif:{' '}
+                    <strong className="text-slate-900 dark:text-white">
+                      &ldquo;{level1Slot.activeAd.title}&rdquo;
+                    </strong>
+                    {level1Slot.activeAd.store?.name && (
+                      <span className="font-semibold text-slate-700 dark:text-slate-200">
+                        {' '}
+                        • {level1Slot.activeAd.store.name}
+                      </span>
+                    )}{' '}
+                    • Sisa Masa Tayang:{' '}
+                    <span className="font-bold text-blue-700 dark:text-blue-400">
+                      {level1Slot.activeAd.remainingText}
+                    </span>
+                    {level1Slot.activeAd.endDate && (
+                      <span>
+                        {' '}
+                        (Berakhir{' '}
+                        {new Date(
+                          level1Slot.activeAd.endDate
+                        ).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                        )
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 sm:max-w-xs sm:text-right">
+                <span className="shadow-2xs inline-block rounded-xl border border-blue-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-blue-700 dark:border-blue-900 dark:bg-slate-800 dark:text-blue-300">
+                  ⏳ Iklan toko lain masuk antrean &amp; tayang setelah slot ini
+                  expired
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="shadow-2xs rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/90 via-teal-50/40 to-white p-4 dark:border-emerald-900/60 dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="shadow-xs flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                      Slot Eksklusif Level 1 (Hero Carousel)
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                      Tersedia / Kosong
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
+                    Belum ada iklan Level 1 yang aktif. Pengajuan baru dapat
+                    langsung tayang eksklusif setelah disetujui.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      ) : (
+        <div className="shadow-2xs rounded-2xl border border-orange-200/90 bg-gradient-to-r from-orange-50/90 via-amber-50/40 to-white p-4 dark:border-orange-900/60 dark:from-orange-950/40 dark:via-slate-900 dark:to-slate-900">
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-3">
+              <div className="shadow-xs flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
+                <LayoutGrid className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-orange-900 dark:text-orange-300">
+                    Monitoring Masa Tayang Level 2 (In-Feed Grid Produk)
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-extrabold text-orange-700 dark:bg-orange-900/60 dark:text-orange-300">
+                    Diurutkan Sisa Masa Tayang Terdekat
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                  Iklan yang masa penayangannya sebentar lagi habis ditampilkan
+                  di posisi paling atas untuk memudahkan perpanjangan kuota
+                  promosi toko cabang.
+                </p>
+              </div>
+            </div>
+            {urgentLevel2Count > 0 && (
+              <div className="shrink-0 sm:text-right">
+                <span className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300">
+                  <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                  {urgentLevel2Count} Iklan Segera Berakhir (&lt; 3 Hari)
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 3. Filter & Search Controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           {(
             [
-              { key: 'ALL', label: 'Semua Iklan', count: stats.total },
-              { key: 'PENDING', label: 'Menunggu', count: stats.pending },
-              { key: 'APPROVED', label: 'Disetujui', count: stats.approved },
-              { key: 'REJECTED', label: 'Ditolak', count: stats.rejected },
+              {
+                key: 'ALL',
+                label: 'Semua Iklan',
+                count: currentLevelStats.total,
+              },
+              {
+                key: 'PENDING',
+                label: 'Menunggu',
+                count: currentLevelStats.pending,
+              },
+              {
+                key: 'APPROVED',
+                label: 'Disetujui',
+                count: currentLevelStats.approved,
+              },
+              {
+                key: 'REJECTED',
+                label: 'Ditolak',
+                count: currentLevelStats.rejected,
+              },
             ] as const
           ).map((t) => (
             <button
@@ -836,27 +1294,18 @@ export default function AdsManagementPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:w-64">
+          <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari judul atau nama toko..."
+              placeholder={
+                levelFilter === 'LEVEL_1'
+                  ? 'Cari iklan carousel / nama toko...'
+                  : 'Cari iklan in-feed / nama toko...'
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
-            />
-          </div>
-
-          <div className="w-44 shrink-0">
-            <CustomSelect
-              value={placementFilter}
-              onChange={(val: string) => setPlacementFilter(val)}
-              options={[
-                { value: 'ALL', label: 'Semua Penempatan' },
-                { value: 'HOMEPAGE_HERO', label: 'Level 1: Hero Carousel' },
-                { value: 'PROMOTED_LIST', label: 'Level 2: In-Feed Grid' },
-              ]}
-              size="sm"
             />
           </div>
         </div>
@@ -870,38 +1319,154 @@ export default function AdsManagementPage() {
             <span className="text-xs">Memuat daftar iklan...</span>
           </div>
         </div>
-      ) : ads.length === 0 ? (
+      ) : currentTabAds.length === 0 ? (
         <div className="flex h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/50 p-6 text-center dark:border-slate-800 dark:bg-slate-950/40">
           <Sparkles className="h-8 w-8 text-slate-300 dark:text-slate-700" />
           <h3 className="mt-3 text-sm font-bold text-slate-900 dark:text-white">
-            Belum Ada Iklan Ditampilkan
+            Belum Ada Iklan di{' '}
+            {levelFilter === 'LEVEL_1'
+              ? 'Level 1 (Carousel)'
+              : 'Level 2 (In-Feed Grid)'}
           </h3>
           <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
             {isSuperAdmin
-              ? 'Belum ada pengajuan banner promosi dari cabang toko fisik PT.'
-              : 'Ajukan banner promosi toko cabang Anda sekarang untuk meningkatkan eksposur penjualan.'}
+              ? `Belum ada iklan ${levelFilter === 'LEVEL_1' ? 'Hero Carousel' : 'In-Feed Grid'} pada filter status ini.`
+              : `Ajukan banner promosi ${levelFilter === 'LEVEL_1' ? 'Hero Carousel' : 'In-Feed Grid'} sekarang untuk cabang toko Anda.`}
           </p>
           <button
             onClick={handleOpenCreateModal}
             className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-600"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>Ajukan Iklan Pertama</span>
+            <span>
+              Ajukan Iklan {levelFilter === 'LEVEL_1' ? 'Level 1' : 'Level 2'}
+            </span>
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {ads.map((ad) => {
+          {currentTabAds.map((ad) => {
             const isPending = ad.status === 'PENDING'
             const isApproved = ad.status === 'APPROVED'
             const isRejected = ad.status === 'REJECTED'
+            const timing = getAdTimingInfo(ad)
+
+            const isStreamingNow =
+              ad.placement === 'HOMEPAGE_HERO' &&
+              ((ad as any).isExclusiveLevel1Active ||
+                level1Slot.activeAd?.id === ad.id ||
+                (isApproved && ad.isActive && !timing.isExpired))
+
+            const queueIndex =
+              ad.placement === 'HOMEPAGE_HERO' &&
+              !isStreamingNow &&
+              (isApproved || isPending) &&
+              !timing.isExpired
+                ? waitingLevel1Ads.findIndex((w) => w.id === ad.id) + 1
+                : 0
+
+            const isVideo = Boolean(
+              ad.imageUrl &&
+              (ad.imageUrl.toLowerCase().endsWith('.mp4') ||
+                ad.imageUrl.toLowerCase().endsWith('.webm') ||
+                ad.imageUrl.toLowerCase().includes('/video/'))
+            )
+
+            // Dynamic card border styling based on status / queue
+            const cardBorderClass = isStreamingNow
+              ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md'
+              : timing.isUrgent && timing.isCurrentlyActive
+                ? 'border-amber-400 dark:border-amber-600 ring-2 ring-amber-500/20 shadow-sm'
+                : 'border-slate-200/80 dark:border-slate-800'
 
             return (
               <div
                 key={ad.id}
-                className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                className={`group flex flex-col justify-between overflow-hidden rounded-3xl border bg-white p-4 shadow-sm transition hover:shadow-md dark:bg-slate-900 ${cardBorderClass}`}
               >
                 <div>
+                  {/* Antrean / Sisa Waktu Strip */}
+                  {levelFilter === 'LEVEL_1' ? (
+                    isStreamingNow ? (
+                      <div className="mb-3 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50/90 px-3 py-1.5 text-xs dark:border-blue-900/60 dark:bg-blue-950/40">
+                        <div className="flex items-center gap-1.5">
+                          <span className="flex h-2 w-2 animate-pulse rounded-full bg-blue-600" />
+                          <span className="text-[11px] font-black text-blue-900 dark:text-blue-300">
+                            #1 SEDANG DITAYANGKAN DI PALING ATAS
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400">
+                          Sisa: {timing.remainingText}
+                        </span>
+                      </div>
+                    ) : queueIndex > 0 ? (
+                      <div className="mb-3 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-1.5 text-xs dark:border-amber-900/60 dark:bg-amber-950/40">
+                        <div className="flex items-center gap-1.5">
+                          <Timer className="h-3.5 w-3.5 text-amber-600" />
+                          <span className="text-[11px] font-bold text-amber-900 dark:text-amber-300">
+                            ANTREAN KE-{queueIndex}: AKAN TAYANG BERIKUTNYA
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                          {isPending
+                            ? 'Menunggu Review'
+                            : 'Siap Tayang Setelah Slot Expired'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mb-3 flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-800/40">
+                        <span>
+                          {isRejected
+                            ? 'Pengajuan Ditolak'
+                            : 'Masa Tayang Selesai / Non-Aktif'}
+                        </span>
+                      </div>
+                    )
+                  ) : timing.isCurrentlyActive ? (
+                    timing.isUrgent ? (
+                      <div className="mb-3 flex items-center justify-between rounded-xl border border-rose-300 bg-rose-50/90 px-3 py-1.5 text-xs dark:border-rose-900/60 dark:bg-rose-950/40">
+                        <div className="flex items-center gap-1.5">
+                          <AlertTriangle className="h-3.5 w-3.5 animate-bounce text-rose-600" />
+                          <span className="text-[11px] font-black text-rose-900 dark:text-rose-200">
+                            SEBENTAR LAGI HABIS: Sisa {timing.remainingText}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-extrabold uppercase text-rose-700 dark:text-rose-400">
+                          Prioritas Perpanjangan
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mb-3 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-1.5 text-xs dark:border-emerald-900/60 dark:bg-emerald-950/40">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-300">
+                            Aktif Tayang: Sisa {timing.remainingText}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          {ad.endDate
+                            ? `Berakhir ${new Date(ad.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}`
+                            : ''}
+                        </span>
+                      </div>
+                    )
+                  ) : isPending ? (
+                    <div className="mb-3 flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs dark:border-amber-900/60 dark:bg-amber-950/40">
+                      <Clock className="h-3.5 w-3.5 text-amber-600" />
+                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                        Menunggu Review Moderasi Superadmin
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mb-3 flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-800/40">
+                      <span>
+                        {isRejected
+                          ? 'Pengajuan Ditolak'
+                          : 'Masa Tayang Habis / Non-Aktif'}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Top Placement & Status Badge */}
                   <div className="mb-3 flex items-center justify-between">
                     <span
@@ -913,7 +1478,7 @@ export default function AdsManagementPage() {
                     >
                       <Sparkles className="h-2.5 w-2.5" />
                       {ad.placement === 'HOMEPAGE_HERO'
-                        ? 'Level 1: Hero Carousel Mobile'
+                        ? 'Level 1: Hero Carousel Mobile & Desktop'
                         : 'Level 2: In-Feed Grid Produk'}
                     </span>
 
@@ -929,36 +1494,62 @@ export default function AdsManagementPage() {
                       }`}
                     >
                       {isApproved && ad.isActive
-                        ? 'Disetujui & Aktif'
+                        ? ad.placement === 'HOMEPAGE_HERO'
+                          ? 'Disetujui & Aktif (Eksklusif)'
+                          : 'Disetujui & Aktif'
                         : isApproved && !ad.isActive
                           ? 'Non-Aktif'
                           : isPending
-                            ? 'Menunggu Review'
+                            ? ad.placement === 'HOMEPAGE_HERO' &&
+                              level1Slot.isOccupied &&
+                              level1Slot.activeAd?.id !== ad.id
+                              ? 'Antrean Slot (Menunggu Expired)'
+                              : 'Menunggu Review'
                             : 'Ditolak'}
                     </span>
                   </div>
 
-                  {/* Banner Image Visual Preview (Clickable to Change Image) */}
+                  {/* Banner Image / Video Visual Preview */}
                   <div
                     onClick={() => handleOpenChangeImage(ad)}
                     className="group/banner relative mb-3 aspect-[21/9] w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-100 bg-slate-950 dark:border-slate-800"
-                    title="Klik untuk mengganti foto banner"
+                    title="Klik untuk mengganti foto atau video banner"
                   >
-                    <img
-                      src={
-                        ad.imageUrl ||
-                        ad.store?.banner ||
-                        '/images/banners/samsung-campaign-banner.jpg'
-                      }
-                      alt={ad.title}
-                      className="h-full w-full object-cover transition duration-300 group-hover/banner:scale-105"
-                    />
+                    {isVideo ? (
+                      <video
+                        src={ad.imageUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="h-full w-full object-cover transition duration-300 group-hover/banner:scale-105"
+                      />
+                    ) : (
+                      <img
+                        src={
+                          ad.imageUrl ||
+                          ad.store?.banner ||
+                          '/images/banners/samsung-campaign-banner.jpg'
+                        }
+                        alt={ad.title}
+                        className="h-full w-full object-cover transition duration-300 group-hover/banner:scale-105"
+                      />
+                    )}
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                    {/* Video Promo Badge */}
+                    {isVideo && (
+                      <div className="backdrop-blur-xs shadow-xs absolute left-2.5 top-2.5 z-10 flex items-center gap-1 rounded-md bg-orange-600/90 px-2 py-0.5 text-[9px] font-black text-white">
+                        <Play className="h-2.5 w-2.5 fill-white text-white" />
+                        <span>VIDEO PROMO</span>
+                      </div>
+                    )}
 
                     {/* Hover Overlay Button to Change Image */}
                     <div className="backdrop-blur-2xs absolute inset-0 flex items-center justify-center gap-1.5 bg-black/55 text-xs font-bold text-white opacity-0 transition duration-200 group-hover/banner:opacity-100">
                       <ImageIcon className="h-4 w-4 text-orange-400" />
-                      <span>Klik untuk Ganti Foto Banner</span>
+                      <span>Klik untuk Ganti Foto / Video Banner</span>
                     </div>
 
                     <div className="pointer-events-none absolute bottom-2.5 left-3 right-3 text-white">
@@ -1309,6 +1900,51 @@ export default function AdsManagementPage() {
                       Konfigurasi Level 1: Pilih Durasi Berdasarkan Hari
                     </span>
                   </div>
+
+                  {/* Keterangan Eksklusivitas Slot Level 1 */}
+                  {level1Slot.isOccupied && level1Slot.activeAd ? (
+                    <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/90 p-2.5 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+                      <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                      <div>
+                        <p className="text-[11px] font-bold">
+                          Slot Level 1 Sedang Digunakan (Eksklusif 1 Toko)
+                        </p>
+                        <p className="mt-0.5 text-[10px] leading-relaxed">
+                          Saat ini slot sedang digunakan oleh{' '}
+                          <strong>
+                            {level1Slot.activeAd.store?.name || 'Toko Lain'}
+                          </strong>{' '}
+                          hingga{' '}
+                          {level1Slot.activeAd.endDate
+                            ? new Date(
+                                level1Slot.activeAd.endDate
+                              ).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : 'selesai'}{' '}
+                          ({level1Slot.activeAd.remainingText}). Pengajuan Anda
+                          akan masuk ke antrean prioritas dan dijadwalkan tayang
+                          setelah slot aktif kedaluwarsa.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/90 p-2.5 text-xs text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                      <div>
+                        <p className="text-[11px] font-bold">
+                          Slot Level 1 Tersedia / Kosong
+                        </p>
+                        <p className="mt-0.5 text-[10px] leading-relaxed">
+                          Belum ada iklan Level 1 aktif. Iklan Anda siap
+                          langsung tayang eksklusif di carousel teratas beranda
+                          mobile setelah disetujui.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Pilihan Cepat Hari */}
                   <div className="mt-3">
@@ -1768,39 +2404,86 @@ export default function AdsManagementPage() {
                     </div>
                   )}
 
-                  {/* TAB 4: UPLOAD DARI KOMPUTER */}
+                  {/* TAB 4: UPLOAD DARI KOMPUTER (FOTO / VIDEO) */}
                   {photoSourceTab === 'UPLOAD' && (
                     <div className="space-y-2">
                       <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white p-6 text-center hover:border-orange-400 hover:bg-orange-50/20 dark:border-slate-800 dark:bg-slate-900">
-                        <Upload className="h-6 w-6 text-orange-500" />
+                        {uploadingMedia ? (
+                          <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                        ) : (
+                          <Upload className="h-6 w-6 text-orange-500" />
+                        )}
                         <span className="mt-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-                          Pilih Foto Banner dari Komputer
+                          {uploadingMedia
+                            ? 'Mengunggah Media ke Server...'
+                            : 'Pilih File Foto atau Video Banner dari Komputer'}
                         </span>
                         <span className="mt-0.5 text-[10px] text-slate-400">
-                          Format PNG, JPG, WebP (Maksimal 5MB)
+                          Format Foto (PNG, JPG, WebP - maks 15MB) atau Video
+                          (MP4, WebM, MOV - maks 60MB)
                         </span>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime"
+                          disabled={uploadingMedia}
                           className="hidden"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0]
                             if (file) {
-                              if (file.size > 5 * 1024 * 1024) {
-                                return toast.error('Ukuran file maksimal 5MB')
-                              }
-                              const reader = new FileReader()
-                              reader.onload = () => {
-                                setFormData((p) => ({
-                                  ...p,
-                                  imageUrl: reader.result as string,
-                                  selectedPhotoLabel: `Upload: ${file.name}`,
-                                }))
-                                toast.success(
-                                  `Foto ${file.name} berhasil dipilih`
+                              const isVid =
+                                file.type.startsWith('video/') ||
+                                file.name.endsWith('.mp4') ||
+                                file.name.endsWith('.webm')
+                              const maxLimit = isVid
+                                ? 60 * 1024 * 1024
+                                : 15 * 1024 * 1024
+                              if (file.size > maxLimit) {
+                                return toast.error(
+                                  isVid
+                                    ? 'Ukuran video maksimal 60MB'
+                                    : 'Ukuran foto maksimal 15MB'
                                 )
                               }
-                              reader.readAsDataURL(file)
+                              try {
+                                setUploadingMedia(true)
+                                const fd = new FormData()
+                                fd.append('file', file)
+                                fd.append('folder', 'ads')
+                                const res = await fetch('/api/upload', {
+                                  method: 'POST',
+                                  body: fd,
+                                })
+                                const data = await res.json()
+                                if (data.success && data.url) {
+                                  setFormData((p) => ({
+                                    ...p,
+                                    imageUrl: data.url,
+                                    selectedPhotoLabel: `${isVid ? 'Video' : 'Upload'}: ${file.name}`,
+                                  }))
+                                  toast.success(
+                                    `${isVid ? 'Video' : 'Foto'} ${file.name} berhasil diunggah`
+                                  )
+                                } else {
+                                  throw new Error(
+                                    data.error || 'Gagal upload media'
+                                  )
+                                }
+                              } catch (err: any) {
+                                const reader = new FileReader()
+                                reader.onload = () => {
+                                  setFormData((p) => ({
+                                    ...p,
+                                    imageUrl: reader.result as string,
+                                    selectedPhotoLabel: `Upload: ${file.name}`,
+                                  }))
+                                  toast.success(
+                                    `Media ${file.name} siap digunakan`
+                                  )
+                                }
+                                reader.readAsDataURL(file)
+                              } finally {
+                                setUploadingMedia(false)
+                              }
                             }
                           }}
                         />
@@ -1813,13 +2496,15 @@ export default function AdsManagementPage() {
                     <div>
                       <input
                         type="text"
-                        placeholder="https://... URL gambar banner"
+                        placeholder="https://... URL gambar atau video banner (.mp4, .webm, dsb)"
                         value={formData.imageUrl}
                         onChange={(e) =>
                           setFormData((p) => ({
                             ...p,
                             imageUrl: e.target.value,
-                            selectedPhotoLabel: 'URL Kustom',
+                            selectedPhotoLabel: isVideoMedia(e.target.value)
+                              ? 'URL Video Kustom'
+                              : 'URL Kustom',
                           }))
                         }
                         className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
@@ -1828,12 +2513,12 @@ export default function AdsManagementPage() {
                   )}
                 </div>
 
-                {/* PRATINJAU FOTO TERPILIH */}
+                {/* PRATINJAU MEDIA BANNER TERPILIH */}
                 {formData.imageUrl && (
                   <div className="mt-3.5 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-slate-800">
                       <span className="text-[10.5px] font-bold text-slate-700 dark:text-slate-300">
-                        Foto Banner Terpilih:{' '}
+                        Media Banner Terpilih:{' '}
                         <strong className="text-orange-600 dark:text-orange-400">
                           {formData.selectedPhotoLabel || 'Kustom'}
                         </strong>
@@ -1853,12 +2538,31 @@ export default function AdsManagementPage() {
                       </button>
                     </div>
                     <div className="relative mt-2 aspect-[21/9] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-800">
-                      <img
-                        src={formData.imageUrl}
-                        alt="Banner Preview"
-                        className="h-full w-full object-cover"
-                      />
+                      {isVideoMedia(formData.imageUrl) ? (
+                        <video
+                          src={formData.imageUrl}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <img
+                          src={formData.imageUrl}
+                          alt="Banner Preview"
+                          className="h-full w-full object-cover"
+                        />
+                      )}
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                      {isVideoMedia(formData.imageUrl) && (
+                        <div className="backdrop-blur-xs shadow-xs absolute left-2.5 top-2.5 z-10 flex items-center gap-1 rounded-md bg-orange-600/90 px-2 py-0.5 text-[9px] font-black text-white">
+                          <Play className="h-2.5 w-2.5 fill-white text-white" />
+                          <span>VIDEO PROMO</span>
+                        </div>
+                      )}
+
                       <div className="pointer-events-none absolute bottom-2 left-3 right-3 text-white">
                         <p className="text-xs font-bold leading-tight drop-shadow-md">
                           {formData.title || 'Judul Promosi Iklan'}
@@ -2303,7 +3007,7 @@ export default function AdsManagementPage() {
                 </span>
                 <div>
                   <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
-                    Ganti Foto Banner Iklan
+                    Ganti Media Banner / Video Iklan
                   </h3>
                   <p className="line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
                     {editingAdForImage.title}
@@ -2319,10 +3023,10 @@ export default function AdsManagementPage() {
             </div>
 
             <div className="mt-4 space-y-4">
-              {/* Tab Pilihan Sumber Foto Baru */}
+              {/* Tab Pilihan Sumber Foto/Video Baru */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Pilih Foto Pengganti Baru:
+                  Pilih Foto atau Video Pengganti Baru:
                 </label>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 border-b border-slate-200 pb-2.5 dark:border-slate-800">
                   {storeBanner && (
@@ -2376,7 +3080,7 @@ export default function AdsManagementPage() {
                     }`}
                   >
                     <Upload className="h-3 w-3" />
-                    <span>Upload File</span>
+                    <span>Upload File (Foto/Video)</span>
                   </button>
 
                   <button
@@ -2389,12 +3093,12 @@ export default function AdsManagementPage() {
                     }`}
                   >
                     <ImageIcon className="h-3 w-3" />
-                    <span>Input URL</span>
+                    <span>Input URL Media</span>
                   </button>
                 </div>
               </div>
 
-              {/* Konten Pilihan Foto Pengganti */}
+              {/* Konten Pilihan Media Pengganti */}
               <div>
                 {/* 1. Banner Toko */}
                 {changeImageTab === 'STORE_BANNER' && storeBanner && (
@@ -2508,33 +3212,77 @@ export default function AdsManagementPage() {
                   </div>
                 )}
 
-                {/* 4. Upload File Komputer */}
+                {/* 4. Upload File Komputer (Foto atau Video) */}
                 {changeImageTab === 'UPLOAD' && (
                   <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center hover:border-orange-400 hover:bg-orange-50/20 dark:border-slate-800 dark:bg-slate-950">
-                    <Upload className="h-6 w-6 text-orange-500" />
+                    {uploadingMedia ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                    ) : (
+                      <Upload className="h-6 w-6 text-orange-500" />
+                    )}
                     <span className="mt-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Pilih File Foto Baru dari Komputer
+                      {uploadingMedia
+                        ? 'Mengunggah Media ke Server...'
+                        : 'Pilih File Foto atau Video Baru dari Komputer'}
                     </span>
                     <span className="mt-0.5 text-[10px] text-slate-400">
-                      Format PNG, JPG, WebP (Maksimal 5MB)
+                      Format Foto (PNG, JPG, WebP - maks 15MB) atau Video (MP4,
+                      WebM, MOV - maks 60MB)
                     </span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime"
+                      disabled={uploadingMedia}
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0]
                         if (file) {
-                          if (file.size > 5 * 1024 * 1024) {
-                            return toast.error('Ukuran file maksimal 5MB')
+                          const isVid =
+                            file.type.startsWith('video/') ||
+                            file.name.endsWith('.mp4') ||
+                            file.name.endsWith('.webm')
+                          const maxLimit = isVid
+                            ? 60 * 1024 * 1024
+                            : 15 * 1024 * 1024
+                          if (file.size > maxLimit) {
+                            return toast.error(
+                              isVid
+                                ? 'Ukuran video maksimal 60MB'
+                                : 'Ukuran foto maksimal 15MB'
+                            )
                           }
-                          const reader = new FileReader()
-                          reader.onload = () => {
-                            setNewImageUrl(reader.result as string)
-                            setNewImageLabel(`Upload: ${file.name}`)
-                            toast.success(`Foto ${file.name} siap digunakan`)
+                          try {
+                            setUploadingMedia(true)
+                            const fd = new FormData()
+                            fd.append('file', file)
+                            fd.append('folder', 'ads')
+                            const res = await fetch('/api/upload', {
+                              method: 'POST',
+                              body: fd,
+                            })
+                            const data = await res.json()
+                            if (data.success && data.url) {
+                              setNewImageUrl(data.url)
+                              setNewImageLabel(
+                                `${isVid ? 'Video' : 'Upload'}: ${file.name}`
+                              )
+                              toast.success(
+                                `${isVid ? 'Video' : 'Foto'} ${file.name} berhasil diunggah`
+                              )
+                            } else {
+                              throw new Error(data.error || 'Gagal upload file')
+                            }
+                          } catch (err: any) {
+                            const reader = new FileReader()
+                            reader.onload = () => {
+                              setNewImageUrl(reader.result as string)
+                              setNewImageLabel(`Upload: ${file.name}`)
+                              toast.success(`Media ${file.name} siap digunakan`)
+                            }
+                            reader.readAsDataURL(file)
+                          } finally {
+                            setUploadingMedia(false)
                           }
-                          reader.readAsDataURL(file)
                         }
                       }}
                     />
@@ -2546,11 +3294,15 @@ export default function AdsManagementPage() {
                   <div>
                     <input
                       type="text"
-                      placeholder="https://... Masukkan URL gambar banner baru"
+                      placeholder="https://... Masukkan URL foto atau video banner baru (.mp4, .webm, dsb)"
                       value={newImageUrl}
                       onChange={(e) => {
                         setNewImageUrl(e.target.value)
-                        setNewImageLabel('URL Kustom')
+                        setNewImageLabel(
+                          isVideoMedia(e.target.value)
+                            ? 'URL Video Kustom'
+                            : 'URL Kustom'
+                        )
                       }}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                     />
@@ -2558,24 +3310,46 @@ export default function AdsManagementPage() {
                 )}
               </div>
 
-              {/* Pratinjau Foto Baru yang Dipilih */}
+              {/* Pratinjau Media Banner Baru yang Dipilih */}
               {newImageUrl && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex items-center justify-between pb-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300">
                     <span>
-                      Pratinjau Foto Baru:{' '}
+                      Pratinjau Media Baru:{' '}
                       <strong className="text-orange-600 dark:text-orange-400">
-                        {newImageLabel || 'Foto Pengganti'}
+                        {newImageLabel ||
+                          (isVideoMedia(newImageUrl)
+                            ? 'Video Pengganti'
+                            : 'Foto Pengganti')}
                       </strong>
                     </span>
                   </div>
                   <div className="relative aspect-[21/9] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-800">
-                    <img
-                      src={newImageUrl}
-                      alt="New Preview"
-                      className="h-full w-full object-cover"
-                    />
+                    {isVideoMedia(newImageUrl) ? (
+                      <video
+                        src={newImageUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={newImageUrl}
+                        alt="New Preview"
+                        className="h-full w-full object-cover"
+                      />
+                    )}
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                    {isVideoMedia(newImageUrl) && (
+                      <div className="backdrop-blur-xs shadow-xs absolute left-2.5 top-2.5 z-10 flex items-center gap-1 rounded-md bg-orange-600/90 px-2 py-0.5 text-[9px] font-black text-white">
+                        <Play className="h-2.5 w-2.5 fill-white text-white" />
+                        <span>VIDEO PROMO</span>
+                      </div>
+                    )}
+
                     <div className="pointer-events-none absolute bottom-2 left-3 right-3 text-white">
                       <p className="text-xs font-bold leading-tight drop-shadow-md">
                         {editingAdForImage.title}
@@ -2634,10 +3408,10 @@ export default function AdsManagementPage() {
                   {savingImage ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Menyimpan Foto...</span>
+                      <span>Menyimpan Media...</span>
                     </>
                   ) : (
-                    <span>Simpan Foto Baru</span>
+                    <span>Simpan Media Banner</span>
                   )}
                 </button>
               </div>
@@ -2784,8 +3558,8 @@ export default function AdsManagementPage() {
                 <span>Penempatan:</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200">
                   {approveModalAd.placement === 'HOMEPAGE_HERO'
-                    ? 'Homepage Hero Slider'
-                    : 'Katalog Produk Terpromosi'}
+                    ? 'Level 1: Hero Carousel Mobile (Eksklusif)'
+                    : 'Level 2: In-Feed Grid Produk'}
                 </span>
               </div>
               <div className="flex justify-between border-t border-slate-200/60 py-1 text-slate-600 dark:border-slate-800 dark:text-slate-400">
@@ -2793,11 +3567,52 @@ export default function AdsManagementPage() {
                 <span className="font-bold text-slate-800 dark:text-slate-200">
                   {calculateDurationText(
                     approveModalAd.startDate,
-                    approveModalAd.endDate
+                    approveModalAd.endDate,
+                    approveModalAd.placement === 'HOMEPAGE_HERO'
+                      ? 'LEVEL_1'
+                      : 'LEVEL_2'
                   )}
                 </span>
               </div>
             </div>
+
+            {/* Warning if Level 1 slot is currently occupied by another ad */}
+            {approveModalAd.placement === 'HOMEPAGE_HERO' &&
+              level1Slot.isOccupied &&
+              level1Slot.activeAd &&
+              level1Slot.activeAd.id !== approveModalAd.id && (
+                <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-rose-200 bg-rose-50/90 p-3.5 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                  <div>
+                    <p className="font-bold">Slot Level 1 Sedang Digunakan!</p>
+                    <p className="mt-1 text-[11px] leading-relaxed">
+                      Slot Level 1 bersifat{' '}
+                      <strong>
+                        eksklusif (hanya 1 iklan yang boleh aktif pada satu
+                        waktu)
+                      </strong>
+                      . Saat ini slot sedang aktif oleh iklan{' '}
+                      <strong>&ldquo;{level1Slot.activeAd.title}&rdquo;</strong>{' '}
+                      ({level1Slot.activeAd.store?.name || 'Toko Lain'}) hingga{' '}
+                      {level1Slot.activeAd.endDate
+                        ? new Date(
+                            level1Slot.activeAd.endDate
+                          ).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })
+                        : 'selesai'}{' '}
+                      ({level1Slot.activeAd.remainingText}).
+                    </p>
+                    <p className="mt-1 text-[11px] font-semibold text-rose-700 dark:text-rose-300">
+                      Anda tidak dapat mengaktifkan 2 iklan Level 1 sekaligus.
+                      Nonaktifkan iklan lama terlebih dahulu atau tunggu hingga
+                      masa aktifnya berakhir.
+                    </p>
+                  </div>
+                </div>
+              )}
 
             <div className="mt-6 flex items-center justify-center gap-3">
               <button
@@ -2810,7 +3625,13 @@ export default function AdsManagementPage() {
               </button>
               <button
                 type="button"
-                disabled={actionLoading === approveModalAd.id}
+                disabled={
+                  actionLoading === approveModalAd.id ||
+                  (approveModalAd.placement === 'HOMEPAGE_HERO' &&
+                    level1Slot.isOccupied &&
+                    level1Slot.activeAd !== null &&
+                    level1Slot.activeAd.id !== approveModalAd.id)
+                }
                 onClick={() => executeApprove(approveModalAd.id)}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
               >
@@ -2819,8 +3640,13 @@ export default function AdsManagementPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Menyetujui...</span>
                   </>
+                ) : approveModalAd.placement === 'HOMEPAGE_HERO' &&
+                  level1Slot.isOccupied &&
+                  level1Slot.activeAd !== null &&
+                  level1Slot.activeAd.id !== approveModalAd.id ? (
+                  <span>Slot Sedang Terisi</span>
                 ) : (
-                  <span>Ya, Setujui & Tayangkan</span>
+                  <span>Ya, Setujui &amp; Tayangkan</span>
                 )}
               </button>
             </div>

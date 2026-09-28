@@ -1207,16 +1207,23 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                       Pelacakan Pengiriman & Kurir
                     </h3>
                   </div>
-                  <button
-                    onClick={handleViewThermalLabel}
-                    disabled={viewingLabel}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                  >
-                    <Printer className="h-3.5 w-3.5 text-slate-500" />
-                    <span>
-                      {viewingLabel ? 'Memuat...' : 'Lihat Label Resi'}
+                  {order.trackingNumber ? (
+                    <button
+                      onClick={handleViewThermalLabel}
+                      disabled={viewingLabel}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      <Printer className="h-3.5 w-3.5 text-slate-500" />
+                      <span>
+                        {viewingLabel ? 'Memuat...' : 'Lihat Label Resi'}
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+                      <Clock className="h-3 w-3 text-amber-500" />
+                      <span>Resi Terbit Saat Pick Up</span>
                     </span>
-                  </button>
+                  )}
                 </div>
 
                 <LiveCourierTracker orderId={order.id} />
@@ -1398,7 +1405,6 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                       </span>
                     </button>
                   )}
-
 
                   {/* Chat Toko Direct Action */}
                   <Link

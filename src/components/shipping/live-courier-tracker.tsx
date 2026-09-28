@@ -37,6 +37,10 @@ export function LiveCourierTracker({
   const [loading, setLoading] = useState(!initialData)
   const [copiedResi, setCopiedResi] = useState(false)
   const [exception, setException] = useState<ShippingException | null>(null)
+  const [pendingPickupInfo, setPendingPickupInfo] = useState<{
+    message: string
+    orderStatus?: string
+  } | null>(null)
 
   const fetchTracking = async () => {
     try {
@@ -46,6 +50,13 @@ export function LiveCourierTracker({
         const json = await res.json()
         if (json.data) {
           setData(json.data)
+          setPendingPickupInfo(null)
+        } else if (json.isPendingPickup) {
+          setData(null)
+          setPendingPickupInfo({
+            message: json.message,
+            orderStatus: json.orderStatus,
+          })
         }
         if (json.exception) {
           setException(json.exception)
@@ -79,8 +90,25 @@ export function LiveCourierTracker({
     )
   }
 
-  if (!data) {
-    return null
+  if (pendingPickupInfo || !data) {
+    return (
+      <div className="rounded-3xl border border-dashed border-amber-200/90 bg-amber-50/40 p-6 text-center dark:border-amber-900/40 dark:bg-amber-950/20 sm:p-7">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-900/60 dark:text-amber-400">
+          <Clock className="h-6 w-6" />
+        </div>
+        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+          Menunggu Penjemputan Kurir (Request Pick Up)
+        </h4>
+        <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          {pendingPickupInfo?.message ||
+            'Pesanan sedang disiapkan oleh cabang toko fisik. Pelacakan kurir real-time dan nomor resi AWB resmi akan aktif secara otomatis setelah pihak toko melakukan Request Pick Up.'}
+        </p>
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-200/80 bg-white px-3.5 py-1 text-[11px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-300">
+          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+          <span>Pengiriman Terproteksi Asuransi 100%</span>
+        </div>
+      </div>
+    )
   }
 
   const isGojek = data.courierCode === 'GOJEK'
