@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -12,13 +12,13 @@ import {
   Edit3,
   Award,
   Settings,
-  LogOut,
-  Zap,
   TrendingUp,
+  ExternalLink,
   type LucideIcon,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import { toast } from 'sonner'
 
 interface MitraAnalytics {
   profileViews: number
@@ -58,78 +58,71 @@ const itemVariants = {
   },
 }
 
-// Stat Card Component (matching teknisi dashboard style)
+// Stat Card Component (matching e-commerce bento style)
 const StatCard = ({
   title,
   value,
   subtitle,
   icon: Icon,
-  color,
+  variant = 'default',
   trend,
 }: {
   title: string
   value: string | number
   subtitle?: string
   icon: LucideIcon
-  color: 'indigo' | 'emerald' | 'amber' | 'rose'
+  variant?: 'orange' | 'emerald' | 'blue' | 'amber' | 'default'
   trend?: string
 }) => {
-  const gradients = {
-    indigo:
-      'from-indigo-500/10 to-blue-500/5 border-indigo-200/50 text-indigo-600',
+  const iconTheme = {
+    orange:
+      'bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400',
     emerald:
-      'from-emerald-500/10 to-teal-500/5 border-emerald-200/50 text-emerald-600',
+      'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
     amber:
-      'from-amber-500/10 to-orange-500/5 border-amber-200/50 text-amber-600',
-    rose: 'from-rose-500/10 to-pink-500/5 border-rose-200/50 text-rose-600',
-  }
-
-  const iconBg = {
-    indigo: 'bg-indigo-100 text-indigo-600',
-    emerald: 'bg-emerald-100 text-emerald-600',
-    amber: 'bg-amber-100 text-amber-600',
-    rose: 'bg-rose-100 text-rose-600',
+      'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+    default:
+      'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
   }
 
   return (
     <motion.div
       variants={itemVariants}
-      whileHover={{ y: -5, boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)' }}
-      className={`relative overflow-hidden rounded-3xl border bg-gradient-to-br p-6 backdrop-blur-sm transition-all ${gradients[color]}`}
+      whileHover={{ y: -3 }}
+      className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-5 transition-all duration-200 hover:border-orange-200 dark:border-slate-800 dark:bg-slate-900"
     >
-      <div className="flex items-start justify-between">
-        <div className="relative z-10">
-          <p className="text-sm font-semibold text-gray-500/90">{title}</p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <h3 className="text-3xl font-bold tracking-tight text-gray-900">
-              {value}
-            </h3>
-          </div>
-          {subtitle && (
-            <p className="mt-1 text-sm font-medium text-gray-500/80">
-              {subtitle}
-            </p>
-          )}
-          {trend && (
-            <div
-              className={`mt-3 flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${color === 'emerald' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}
-            >
-              <TrendingUp className="h-3 w-3" />
-              <span>{trend}</span>
-            </div>
-          )}
-        </div>
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          {title}
+        </span>
         <div
-          className={`relative z-10 rounded-2xl p-3.5 shadow-sm transition-transform duration-300 group-hover:scale-110 ${iconBg[color]}`}
+          className={`flex h-8 w-8 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${iconTheme[variant]}`}
         >
-          <Icon className="h-6 w-6" />
+          <Icon className="h-4 w-4" />
         </div>
       </div>
-
-      {/* Decorative blurred circles */}
-      <div
-        className={`absolute -right-6 -top-6 h-32 w-32 rounded-full opacity-20 blur-3xl ${color === 'indigo' ? 'bg-indigo-400' : color === 'emerald' ? 'bg-emerald-400' : color === 'amber' ? 'bg-amber-400' : 'bg-rose-400'}`}
-      />
+      <div className="mt-3">
+        <p className="text-2xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+          {value}
+        </p>
+        {subtitle && (
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {subtitle}
+          </p>
+        )}
+        {trend && (
+          <div className="mt-2.5 flex items-center gap-1.5 text-[11px]">
+            <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+              <TrendingUp className="h-3 w-3" />
+              <span>{trend}</span>
+            </span>
+            <span className="text-slate-400 dark:text-slate-500">
+              · Bulan ini
+            </span>
+          </div>
+        )}
+      </div>
     </motion.div>
   )
 }
@@ -189,20 +182,21 @@ const ReviewsList = ({
 
   if (reviews.length === 0) {
     return (
-      <div className="space-y-4 p-8 pt-6">
+      <div className="space-y-4 p-6 sm:p-8">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-16 text-center"
+          className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-12 text-center dark:border-slate-800 dark:bg-slate-900/50 sm:p-16"
         >
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
-            <MessageSquare className="h-8 w-8 text-indigo-400" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+            <MessageSquare className="h-7 w-7" />
           </div>
-          <h3 className="mt-4 text-lg font-bold text-gray-900">
+          <h3 className="mt-4 text-base font-bold text-slate-900 dark:text-white">
             Belum ada ulasan
           </h3>
-          <p className="mx-auto mt-2 max-w-xs text-gray-500">
-            Ulasan dari pelanggan akan muncul di sini.
+          <p className="mx-auto mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
+            Ulasan dari pelanggan akan otomatis tampil di sini setelah layanan
+            selesai.
           </p>
         </motion.div>
       </div>
@@ -210,9 +204,9 @@ const ReviewsList = ({
   }
 
   return (
-    <div className="p-8 pt-6">
+    <div className="p-6 sm:p-8">
       {/* Reviews List */}
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         <AnimatePresence mode="popLayout">
           {currentReviews.map((review, i) => (
             <motion.div
@@ -222,12 +216,14 @@ const ReviewsList = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ delay: i * 0.05 }}
-              className="group relative flex flex-col gap-4 rounded-3xl border border-gray-100 bg-white p-5 transition-all hover:border-indigo-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+              className="group relative flex flex-col gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 transition-all hover:border-orange-200 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700 sm:p-5"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-bold text-gray-900">{review.userName}</h3>
-                  <p className="text-xs text-gray-500">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {review.userName}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">
                     {new Date(review.createdAt).toLocaleDateString('id-ID', {
                       year: 'numeric',
                       month: 'long',
@@ -235,16 +231,16 @@ const ReviewsList = ({
                     })}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   {[...Array(review.rating)].map((_, i) => (
                     <Star
                       key={i}
-                      className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                      className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
                     />
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-gray-700">
+              <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
                 {review.comment || 'Tidak ada komentar'}
               </p>
             </motion.div>
@@ -259,7 +255,7 @@ const ReviewsList = ({
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-gray-500"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-all hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-700"
           >
             <svg
               className="h-4 w-4"
@@ -283,12 +279,12 @@ const ReviewsList = ({
                 key={idx}
                 onClick={() => typeof page === 'number' && setCurrentPage(page)}
                 disabled={page === '...'}
-                className={`flex h-10 min-w-[40px] items-center justify-center rounded-xl px-3 text-sm font-semibold transition-all ${
+                className={`flex h-9 min-w-[36px] items-center justify-center rounded-xl px-2.5 text-xs font-semibold transition-all ${
                   page === currentPage
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-200'
+                    ? 'shadow-xs bg-orange-500 text-white'
                     : page === '...'
-                      ? 'cursor-default text-gray-400'
-                      : 'border border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600'
+                      ? 'cursor-default text-slate-400'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
                 }`}
               >
                 {page}
@@ -300,7 +296,7 @@ const ReviewsList = ({
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-gray-500"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-all hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-700"
           >
             <svg
               className="h-4 w-4"
@@ -321,7 +317,7 @@ const ReviewsList = ({
 
       {/* Page Info */}
       {totalPages > 1 && (
-        <p className="mt-4 text-center text-sm text-gray-500">
+        <p className="mt-3 text-center text-xs text-slate-400 dark:text-slate-500">
           Menampilkan {startIndex + 1}-{Math.min(endIndex, reviews.length)} dari{' '}
           {reviews.length} ulasan
         </p>
@@ -331,25 +327,25 @@ const ReviewsList = ({
 }
 
 const SkeletonLoader = () => (
-  <div className="container mx-auto max-w-7xl space-y-8 p-6">
-    <div className="flex animate-pulse gap-6">
-      <div className="h-24 w-24 rounded-full bg-gray-200"></div>
-      <div className="w-full space-y-4 pt-4">
-        <div className="h-8 w-1/3 rounded-lg bg-gray-200"></div>
-        <div className="h-4 w-1/4 rounded bg-gray-200"></div>
+  <div className="container mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="flex animate-pulse items-center gap-5">
+      <div className="h-16 w-16 rounded-2xl bg-slate-200 dark:bg-slate-800 sm:h-20 sm:w-20"></div>
+      <div className="w-full space-y-3">
+        <div className="h-6 w-1/3 rounded-lg bg-slate-200 dark:bg-slate-800"></div>
+        <div className="h-4 w-1/4 rounded bg-slate-200 dark:bg-slate-800"></div>
       </div>
     </div>
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="h-40 animate-pulse rounded-3xl bg-gray-200"
+          className="h-32 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800"
         ></div>
       ))}
     </div>
-    <div className="grid gap-8 lg:grid-cols-3">
-      <div className="h-96 animate-pulse rounded-3xl bg-gray-200 lg:col-span-2"></div>
-      <div className="h-96 animate-pulse rounded-3xl bg-gray-200"></div>
+    <div className="grid gap-6 lg:grid-cols-12">
+      <div className="h-80 animate-pulse rounded-3xl bg-slate-200 dark:bg-slate-800 lg:col-span-8"></div>
+      <div className="h-80 animate-pulse rounded-3xl bg-slate-200 dark:bg-slate-800 lg:col-span-4"></div>
     </div>
   </div>
 )
@@ -370,11 +366,11 @@ const Header = ({
   return (
     <motion.div
       variants={itemVariants}
-      className="mb-12 hidden flex-col justify-between gap-6 md:flex md:flex-row md:items-end"
+      className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-center"
     >
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4 sm:gap-5">
         <div className="group relative">
-          <div className="relative h-24 w-24 overflow-hidden rounded-full border-[3px] border-white shadow-xl transition-transform hover:scale-105">
+          <div className="shadow-xs relative h-16 w-16 overflow-hidden rounded-2xl border-2 border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:h-20 sm:w-20">
             {user.image ? (
               <Image
                 src={user.image}
@@ -384,7 +380,7 @@ const Header = ({
                 priority
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-500 to-violet-600 text-3xl font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-500 to-amber-500 text-2xl font-black text-white sm:text-3xl">
                 {user.name?.charAt(0) || 'M'}
               </div>
             )}
@@ -393,54 +389,44 @@ const Header = ({
 
         <div>
           <div className="flex items-center gap-2">
-            <span className="inline-block rounded-full bg-white/60 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-indigo-600 backdrop-blur-md">
-              Mitra Dashboard
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-200/80 bg-orange-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:border-orange-900/40 dark:bg-orange-950/40 dark:text-orange-400">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
+              Mitra Servis Resmi
             </span>
           </div>
-          <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-gray-900 drop-shadow-sm">
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
             {getGreeting()},{' '}
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-              {user.name?.split(' ')[0]}
-            </span>
-            !
+            <span className="text-orange-500">{user.name?.split(' ')[0]}</span>!
           </h1>
-          <p className="flex items-center gap-2 text-lg text-gray-600">
-            Semoga harimu produktif dan menyenangkan.{' '}
-            <Zap className="h-4 w-4 fill-amber-500 text-amber-500" />
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+            Kelola profil layanan, respons ulasan, dan pantau performa tokomu
+            secara real-time.
           </p>
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
         <Link href="/dashboard/mitra/settings">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/80 px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm backdrop-blur-sm transition-all hover:border-gray-300 hover:bg-white hover:shadow-md"
+            className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            <Settings className="h-4 w-4" />
-            Pengaturan
+            <Settings className="h-3.5 w-3.5 text-slate-500" />
+            <span>Pengaturan</span>
           </motion.button>
         </Link>
+
         <Link href="/dashboard/mitra/profile/edit">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-gray-900/20 transition-all hover:bg-gray-800 hover:shadow-xl"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95"
           >
-            <Edit3 className="h-4 w-4" />
-            Edit Profil
+            <Edit3 className="h-3.5 w-3.5" />
+            <span>Edit Profil Toko</span>
           </motion.button>
         </Link>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50/80 px-5 py-3 text-sm font-semibold text-rose-600 shadow-sm backdrop-blur-sm transition-all hover:border-rose-300 hover:bg-rose-100 hover:shadow-md"
-        >
-          <LogOut className="h-4 w-4" />
-          Keluar
-        </motion.button>
       </div>
     </motion.div>
   )
@@ -451,6 +437,7 @@ export default function MitraDashboard() {
   const router = useRouter()
   const [analytics, setAnalytics] = useState<MitraAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [hasProfile, setHasProfile] = useState(false)
   const [mitraId, setMitraId] = useState<string>('')
 
@@ -472,65 +459,77 @@ export default function MitraDashboard() {
     return Math.round((completed / total) * 100)
   }
 
-  const fetchAnalytics = useCallback(async () => {
-    try {
-      // Check profile existence
-      const profileResponse = await fetch('/api/mitra/profile')
+  const fetchAnalytics = useCallback(
+    async (isSilent = false) => {
+      if (!isSilent) setIsRefreshing(true)
+      try {
+        // Check profile existence with no-store cache
+        const profileResponse = await fetch('/api/mitra/profile', {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' },
+        })
 
-      if (profileResponse.status === 404) {
-        const mitraStatus = (session?.user as { mitraStatus?: string })
-          ?.mitraStatus
-        if (session?.user?.role === 'MITRA' && mitraStatus !== 'APPROVED') {
-          router.push('/dashboard/mitra/pending')
-        } else {
-          router.push('/dashboard/mitra/profile/edit')
+        if (profileResponse.status === 404) {
+          const mitraStatus = (session?.user as { mitraStatus?: string })
+            ?.mitraStatus
+          if (session?.user?.role === 'MITRA' && mitraStatus !== 'APPROVED') {
+            router.push('/dashboard/mitra/pending')
+          } else {
+            router.push('/dashboard/mitra/profile/edit')
+          }
+          return
         }
-        return
-      }
 
-      if (profileResponse.ok) {
-        setHasProfile(true)
-        const profileData = await profileResponse.json()
-        setMitraId(profileData.id || '')
+        if (profileResponse.ok) {
+          setHasProfile(true)
+          const profileData = await profileResponse.json()
+          setMitraId(profileData.id || '')
 
-        // Calculate analytics from profile data
-        const completion = calculateCompletion(profileData)
+          // Calculate analytics from profile data
+          const completion = calculateCompletion(profileData)
 
-        // Fetch real analytics
-        const analyticsResponse = await fetch('/api/mitra/analytics')
-        if (analyticsResponse.ok) {
-          const analyticsData = await analyticsResponse.json()
-
-          setAnalytics({
-            profileViews: analyticsData.totalViews || 0,
-            totalReviews: analyticsData.totalReviews || 0,
-            averageRating: analyticsData.averageRating || 0,
-            inquiries: analyticsData.totalInquiries || 0,
-            servicesCount: profileData.services?.length || 0,
-            imagesCount: profileData.images?.length || 0,
-            profileCompletion: completion,
-            recentReviews: analyticsData.recentReviews || [],
+          // Fetch real analytics with no-store cache
+          const analyticsResponse = await fetch('/api/mitra/analytics', {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' },
           })
-        } else {
-          // Fallback to profile data if analytics API fails
-          setAnalytics({
-            profileViews: 0,
-            totalReviews: profileData.totalReview || 0,
-            averageRating: profileData.rating || 0,
-            inquiries: 0,
-            servicesCount: profileData.services?.length || 0,
-            imagesCount: profileData.images?.length || 0,
-            profileCompletion: completion,
-            recentReviews: [],
-          })
+
+          if (analyticsResponse.ok) {
+            const analyticsData = await analyticsResponse.json()
+
+            setAnalytics({
+              profileViews: analyticsData.totalViews || 0,
+              totalReviews: analyticsData.totalReviews || 0,
+              averageRating: analyticsData.averageRating || 0,
+              inquiries: analyticsData.totalInquiries || 0,
+              servicesCount: profileData.services?.length || 0,
+              imagesCount: profileData.images?.length || 0,
+              profileCompletion: completion,
+              recentReviews: analyticsData.recentReviews || [],
+            })
+          } else {
+            // Fallback to profile data if analytics API fails
+            setAnalytics({
+              profileViews: 0,
+              totalReviews: profileData.totalReview || 0,
+              averageRating: profileData.rating || 0,
+              inquiries: 0,
+              servicesCount: profileData.services?.length || 0,
+              imagesCount: profileData.images?.length || 0,
+              profileCompletion: completion,
+              recentReviews: [],
+            })
+          }
         }
+      } catch (error) {
+        console.error('Error fetching analytics:', error)
+      } finally {
+        setLoading(false)
+        if (!isSilent) setIsRefreshing(false)
       }
-    } catch (error) {
-      console.error('Error fetching analytics:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [router])
+    },
+    [router, session]
+  )
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -544,36 +543,22 @@ export default function MitraDashboard() {
     }
   }, [status, session, router, fetchAnalytics])
 
-  // Auto-refresh analytics every 30 seconds
+  // Auto-refresh analytics every 10 seconds for real-time live data
   useEffect(() => {
     if (!hasProfile || status !== 'authenticated') return
 
-    const refreshAnalytics = async () => {
-      try {
-        const analyticsResponse = await fetch('/api/mitra/analytics')
-        if (analyticsResponse.ok) {
-          const analyticsData = await analyticsResponse.json()
+    const intervalId = setInterval(() => {
+      fetchAnalytics(true)
+    }, 10000)
 
-          setAnalytics((prev) => {
-            if (!prev) return prev
-            return {
-              ...prev,
-              profileViews: analyticsData.totalViews || 0,
-              totalReviews: analyticsData.totalReviews || 0,
-              averageRating: analyticsData.averageRating || 0,
-              inquiries: analyticsData.totalInquiries || 0,
-              recentReviews: analyticsData.recentReviews || [],
-            }
-          })
-        }
-      } catch (error) {
-        console.error('Error refreshing analytics:', error)
-      }
+    const onFocus = () => fetchAnalytics(true)
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      clearInterval(intervalId)
+      window.removeEventListener('focus', onFocus)
     }
-
-    const intervalId = setInterval(refreshAnalytics, 30000)
-    return () => clearInterval(intervalId)
-  }, [hasProfile, status])
+  }, [hasProfile, status, fetchAnalytics])
 
   // Redirect pending mitra
   useEffect(() => {
@@ -596,77 +581,70 @@ export default function MitraDashboard() {
   const user = session?.user || { name: null, email: null, image: null }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Abstract Background Mesh */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute left-[-10%] top-[-10%] h-[500px] w-[500px] rounded-full bg-blue-400/20 blur-[100px]" />
-        <div className="absolute right-[-10%] top-[10%] h-[600px] w-[600px] rounded-full bg-violet-400/20 blur-[100px]" />
-        <div className="absolute bottom-[-10%] left-[20%] h-[500px] w-[500px] rounded-full bg-indigo-300/20 blur-[100px]" />
-      </div>
-
+    <div className="space-y-6">
       <motion.main
         initial="hidden"
         animate="visible"
         variants={containerVariants}
-        className="container relative z-10 mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8"
+        className="space-y-8"
       >
         <Header user={user} />
 
         {/* Stats Grid */}
         <motion.div
           variants={itemVariants}
-          className="mb-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+          className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4"
         >
           <StatCard
-            title="Total Views"
+            title="Total Kunjungan Profil"
             value={analytics.profileViews}
             icon={Eye}
-            color="indigo"
+            variant="orange"
             trend="+12%"
           />
           <StatCard
             title="Rating Rata-rata"
             value={analytics.averageRating.toFixed(1)}
-            subtitle={`Dari ${analytics.totalReviews} ulasan`}
+            subtitle={`Dari ${analytics.totalReviews} ulasan verified`}
             icon={Star}
-            color="rose"
+            variant="amber"
           />
           <StatCard
             title="Total Ulasan"
             value={analytics.totalReviews}
             icon={MessageSquare}
-            color="emerald"
+            variant="emerald"
             trend="+8%"
           />
           <StatCard
-            title="Inquiries"
+            title="Pertanyaan Masuk"
             value={analytics.inquiries}
             icon={Phone}
-            color="amber"
+            variant="blue"
             trend="+15%"
           />
         </motion.div>
 
         {/* Bento Grid Content */}
-        <div className="grid gap-8 lg:grid-cols-12">
+        <div className="grid gap-6 lg:grid-cols-12">
           {/* Main Column: Recent Reviews (8 cols) */}
           <motion.div
             variants={itemVariants}
-            className="space-y-8 lg:col-span-8"
+            className="space-y-6 lg:col-span-8"
           >
-            <div className="relative overflow-hidden rounded-[2.5rem] border border-white/60 bg-white/60 shadow-xl shadow-indigo-100/20 backdrop-blur-xl">
-              <div className="border-b border-indigo-50/50 p-8 pb-6">
+            <div className="shadow-xs rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <div className="border-b border-slate-100 p-6 pb-5 dark:border-slate-800">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
                       Ulasan Pelanggan
                     </h2>
-                    <p className="text-sm text-gray-500">
-                      Lihat feedback dari pelanggan Anda
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                      Ulasan dan feedback langsung dari pengguna jasa tokomu
                     </p>
                   </div>
                   {analytics.recentReviews.length > 0 && (
-                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-600">
+                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
                       {analytics.recentReviews.length} ulasan
                     </span>
                   )}
@@ -678,119 +656,98 @@ export default function MitraDashboard() {
             </div>
           </motion.div>
 
-          {/* Right Column: Sidebar (4 cols) */}
+          {/* Right Column: Profile Status Card (4 cols) */}
           <motion.div
             variants={itemVariants}
-            className="space-y-8 lg:col-span-4"
+            className="space-y-6 lg:col-span-4"
           >
-            {/* Profile Status Card */}
-            <div className="hover:shadow-3xl relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-800 p-8 text-white shadow-2xl transition-all">
-              {/* Animated glow */}
-              <div className="absolute -right-20 -top-20 h-64 w-64 animate-pulse rounded-full bg-white/20 blur-3xl" />
-
-              <div className="relative z-10 mb-6 flex items-center justify-between">
-                <span className="text-sm font-bold uppercase tracking-widest opacity-80">
-                  Status Profil
-                </span>
-                <div className="rounded-full bg-emerald-400/30 p-2 text-emerald-100 backdrop-blur-md">
-                  <Award className="h-6 w-6" />
+            {/* Profile Status Card - High Contrast Clean Bento Style */}
+            <div className="shadow-xs relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Tingkat Kelengkapan
+                  </span>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Status Profil Toko
+                  </h3>
+                </div>
+                <div className="rounded-xl bg-orange-50 p-2.5 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                  <Award className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="relative z-10 mb-6 flex justify-center">
+              {/* Circular Gauge */}
+              <div className="my-6 flex justify-center">
                 <div className="relative h-32 w-32">
                   <svg className="h-full w-full -rotate-90 transform">
                     <circle
                       cx="64"
                       cy="64"
-                      r="56"
+                      r="54"
                       fill="none"
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth="12"
+                      className="stroke-slate-100 dark:stroke-slate-800"
+                      strokeWidth="10"
                     />
                     <circle
                       cx="64"
                       cy="64"
-                      r="56"
+                      r="54"
                       fill="none"
-                      stroke="white"
-                      strokeWidth="12"
-                      strokeDasharray={`${analytics.profileCompletion * 3.52} 352`}
+                      stroke="#F97316"
+                      strokeWidth="10"
+                      strokeDasharray={`${analytics.profileCompletion * 3.39} 339`}
                       strokeLinecap="round"
                     />
                   </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-3xl font-bold">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-black tabular-nums text-slate-900 dark:text-white">
                       {analytics.profileCompletion}%
+                    </span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                      Lengkap
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="relative z-10 space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-indigo-100/80">Layanan</span>
-                  <span className="font-semibold">
+              {/* Info Metrics Box */}
+              <div className="space-y-2.5 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">
+                    Layanan Aktif
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-white">
                     {analytics.servicesCount} layanan
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-indigo-100/80">Foto Galeri</span>
-                  <span className="font-semibold">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">
+                    Foto Galeri Toko
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-white">
                     {analytics.imagesCount} foto
                   </span>
                 </div>
               </div>
 
-              <Link href="/dashboard/mitra/profile/edit">
-                <button className="mt-8 w-full rounded-2xl bg-white py-4 font-bold text-gray-900 shadow-lg transition-transform hover:scale-[1.02] active:scale-95">
-                  Edit Profil Lengkap
+              {/* Action Buttons */}
+              <Link href="/dashboard/mitra/profile/edit" className="block">
+                <button className="mt-5 w-full rounded-xl bg-orange-500 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95">
+                  Lengkapi Profil Toko
                 </button>
               </Link>
-            </div>
 
-            {/* Quick Actions */}
-            <div className="flex flex-col rounded-[2.5rem] border border-white/60 bg-white/60 p-8 shadow-xl shadow-indigo-100/10 backdrop-blur-xl">
-              <h3 className="mb-6 text-lg font-bold text-gray-900">
-                Aksi Cepat
-              </h3>
-              <div className="flex-1 space-y-4">
+              {mitraId && (
                 <Link
-                  href={mitraId ? `/rekomendasi/${mitraId}` : '/rekomendasi'}
-                  className="group flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-100 hover:shadow-md"
+                  href={`/rekomendasi/${mitraId}`}
+                  target="_blank"
+                  className="mt-3.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 transition hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-400"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-indigo-100 p-2">
-                      <Eye className="h-5 w-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900 transition-colors group-hover:text-indigo-600">
-                        Lihat Profil Publik
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Preview profil Anda
-                      </p>
-                    </div>
-                  </div>
+                  <span>Lihat Tampilan Profil Publik</span>
+                  <ExternalLink className="h-3 w-3" />
                 </Link>
-
-                <Link
-                  href="/dashboard/mitra/settings"
-                  className="group flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-100 hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-emerald-100 p-2">
-                      <Settings className="h-5 w-5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900 transition-colors group-hover:text-emerald-600">
-                        Pengaturan Akun
-                      </p>
-                      <p className="text-xs text-gray-500">Kelola akun Anda</p>
-                    </div>
-                  </div>
-                </Link>
-              </div>
+              )}
             </div>
           </motion.div>
         </div>

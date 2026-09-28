@@ -79,11 +79,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Verify store exists
+    // Verify store exists (support ID or Slug)
     const store =
       (resolvedOrder?.storeId === storeId ? resolvedOrder.store : null) ||
-      (await prisma.store.findUnique({
-        where: { id: storeId },
+      (await prisma.store.findFirst({
+        where: {
+          OR: [{ id: storeId }, { slug: storeId }],
+        },
         select: {
           id: true,
           name: true,
@@ -106,6 +108,7 @@ export async function POST(req: NextRequest) {
     if (!store) {
       return NextResponse.json({ error: 'Store not found' }, { status: 404 })
     }
+    storeId = store.id
 
     // Look up product from DB if productId is provided for richest data
     let dbProduct: {

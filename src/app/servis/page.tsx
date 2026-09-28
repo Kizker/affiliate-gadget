@@ -3,12 +3,12 @@ import { Navbar, Footer, MobileBottomNav } from '@/components/layouts'
 import { IntegratedServiceView } from '@/components/service/integrated-service-view'
 
 export const metadata: Metadata = {
-  title: 'Layanan Servis Gadget Kilat & Terintegrasi | Affiliate Gadget',
+  title: 'Layanan Servis Gadget Terintegrasi | Affiliate Gadget',
   description:
-    'Pusat layanan servis gadget & LCD kilat 2 jam terpercaya di Indonesia. Teknisi level-3 specialist standby, meja reparasi open lab transparan, dan garansi resmi toko.',
+    'Pusat layanan servis gadget profesional & terpercaya di Indonesia. Meja pengerjaan open lab transparan, teknisi level-3 specialist standby, dan garansi resmi nota digital.',
 }
 
-export default function ServisLcdPage() {
+export default function ServisPage() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar variant="light" />

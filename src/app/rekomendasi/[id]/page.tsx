@@ -46,7 +46,9 @@ type MitraData = {
   banner: string | null
   address: string
   city: string
+  province: string
   phone: string
+  whatsapp: string | null
   email: string | null
   website: string | null
   features: string[] | null
@@ -62,6 +64,7 @@ type MitraData = {
     name: string
     price: string
     icon: string | null
+    description?: string | null
   }>
   images: Array<{ id: string; url: string }>
 }
@@ -100,7 +103,9 @@ async function getMitra(id: string): Promise<MitraData | null> {
       banner: mitra.banner,
       address: mitra.address,
       city: mitra.city,
+      province: mitra.province,
       phone: mitra.phone,
+      whatsapp: mitra.whatsapp,
       email: mitra.email,
       website: mitra.website,
       features: mitra.features,
@@ -111,12 +116,21 @@ async function getMitra(id: string): Promise<MitraData | null> {
       rating: mitra.rating,
       totalReview: mitra.totalReview,
       isOpen,
-      services: mitra.services.map((s: { id: string; name: string; price: string | null; icon: string | null }) => ({
-        id: s.id,
-        name: s.name,
-        price: s.price || 'Hubungi kami',
-        icon: s.icon,
-      })),
+      services: mitra.services.map(
+        (s: {
+          id: string
+          name: string
+          price: string | null
+          icon: string | null
+          description?: string | null
+        }) => ({
+          id: s.id,
+          name: s.name,
+          price: s.price || 'Hubungi kami',
+          icon: s.icon,
+          description: s.description || null,
+        })
+      ),
       images: mitra.images.map((img: { id: string; url: string }) => ({
         id: img.id,
         url: img.url,

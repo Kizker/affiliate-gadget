@@ -284,8 +284,8 @@ function MitraSettingsContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
       </div>
     )
   }
@@ -295,108 +295,106 @@ function MitraSettingsContent() {
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="relative"
+      className="space-y-6"
     >
-      {/* Background Mesh */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute left-[-10%] top-[-10%] h-[500px] w-[500px] rounded-full bg-blue-100/40 blur-[100px]" />
-        <div className="absolute right-[-10%] top-[10%] h-[600px] w-[600px] rounded-full bg-sky-100/30 blur-[100px]" />
-      </div>
-
-      <div className="relative z-10">
+      <div className="relative">
         {/* Header */}
-        <motion.div variants={itemVariants} className="mb-10">
+        <motion.div variants={itemVariants} className="mb-6">
           <Link
             href="/dashboard/mitra"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-blue-600"
+            className="shadow-2xs mb-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Kembali ke Dashboard
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Kembali ke Dashboard</span>
           </Link>
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">
-            Pengaturan
-          </h1>
-          <p className="text-lg text-gray-600">
-            Kelola profil dan preferensi akun Anda
-          </p>
+          <div className="mt-1">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+              Pengaturan Akun & Keamanan
+            </h1>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+              Kelola data pribadi, informasi toko resmi, koordinat GPS, dan kata
+              sandi akun
+            </p>
+          </div>
         </motion.div>
 
-        <div className="grid gap-8 lg:grid-cols-1">
+        <div className="grid gap-6 lg:grid-cols-1">
           <motion.div variants={itemVariants}>
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="shadow-xs overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">
               <div className="grid gap-0 lg:grid-cols-4">
                 {/* Sidebar Tabs */}
-                <div className="border-b border-gray-200 p-6 lg:col-span-1 lg:border-b-0 lg:border-r">
-                  <nav className="space-y-2">
+                <div className="border-b border-slate-100 p-5 dark:border-slate-800 sm:p-6 lg:col-span-1 lg:border-b-0 lg:border-r">
+                  <nav className="space-y-1.5">
                     <button
                       onClick={() => setActiveTab('profile')}
-                      className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition-all ${
+                      className={`flex w-full items-center gap-2.5 rounded-xl px-4 py-2.5 text-left text-xs font-bold transition-all sm:text-sm ${
                         activeTab === 'profile'
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                          : 'text-gray-700 hover:bg-blue-50'
+                          ? 'shadow-xs bg-orange-500 text-white'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                       }`}
                     >
-                      <User className="h-5 w-5" />
-                      <span>Profil</span>
+                      <User className="h-4 w-4" />
+                      <span>Profil Toko</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('security')}
-                      className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition-all ${
+                      className={`flex w-full items-center gap-2.5 rounded-xl px-4 py-2.5 text-left text-xs font-bold transition-all sm:text-sm ${
                         activeTab === 'security'
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                          : 'text-gray-700 hover:bg-blue-50'
+                          ? 'shadow-xs bg-orange-500 text-white'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                       }`}
                     >
-                      <Lock className="h-5 w-5" />
-                      <span>Keamanan</span>
+                      <Lock className="h-4 w-4" />
+                      <span>Keamanan Sandi</span>
                     </button>
                   </nav>
                 </div>
 
                 {/* Content */}
-                <div className="p-8 lg:col-span-3">
+                <div className="p-6 sm:p-8 lg:col-span-3">
                   <AnimatePresence mode="wait">
                     {/* Profile Tab */}
                     {activeTab === 'profile' && (
                       <motion.div
                         key="profile"
-                        initial={{ opacity: 0, x: 20 }}
+                        initial={{ opacity: 0, x: 15 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
+                        exit={{ opacity: 0, x: -15 }}
                         className="space-y-6"
                       >
                         <div>
-                          <h2 className="text-2xl font-bold text-gray-900">
-                            Profil Mitra
+                          <h2 className="text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
+                            Informasi Profil Mitra
                           </h2>
-                          <p className="text-sm text-gray-600">
-                            Update informasi profil dan bisnis Anda
+                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                            Perbarui identitas pribadi dan detail bisnis toko
+                            Anda
                           </p>
                         </div>
 
                         {/* Sub-tabs for Profile */}
-                        <div className="flex gap-1 rounded-xl bg-blue-50 p-1">
+                        <div className="flex gap-1.5 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
                           <button
                             onClick={() => setProfileSubTab('personal')}
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
                               profileSubTab === 'personal'
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-600 hover:text-blue-600'
+                                ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
+                                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                             }`}
                           >
-                            <User className="h-4 w-4" />
-                            Informasi Pribadi
+                            <User className="h-3.5 w-3.5" />
+                            <span>Informasi Pribadi</span>
                           </button>
                           <button
                             onClick={() => setProfileSubTab('business')}
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
                               profileSubTab === 'business'
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-600 hover:text-blue-600'
+                                ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
+                                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                             }`}
                           >
-                            <Building2 className="h-4 w-4" />
-                            Informasi Bisnis
+                            <Building2 className="h-3.5 w-3.5" />
+                            <span>Informasi Bisnis & Lokasi</span>
                           </button>
                         </div>
 
@@ -410,11 +408,11 @@ function MitraSettingsContent() {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className="space-y-5"
+                                className="space-y-4"
                               >
                                 <div>
-                                  <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                    Nama Lengkap
+                                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                                    Nama Lengkap Penanggung Jawab
                                   </label>
                                   <input
                                     type="text"
@@ -426,14 +424,14 @@ function MitraSettingsContent() {
                                       })
                                     }
                                     placeholder="Masukkan nama lengkap"
-                                    className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 sm:text-sm"
                                   />
                                 </div>
 
                                 <div className="grid gap-4 md:grid-cols-2">
                                   <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                      Email
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                                      Alamat Email Akun
                                     </label>
                                     <input
                                       type="email"
@@ -445,13 +443,13 @@ function MitraSettingsContent() {
                                         })
                                       }
                                       placeholder="mitra@example.com"
-                                      className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                      className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 sm:text-sm"
                                     />
                                   </div>
 
                                   <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                      Nomor Telepon
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                                      Nomor Telepon Pribadi
                                     </label>
                                     <input
                                       type="tel"
@@ -463,7 +461,7 @@ function MitraSettingsContent() {
                                         })
                                       }
                                       placeholder="08123456789"
-                                      className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                      className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 sm:text-sm"
                                     />
                                   </div>
                                 </div>
@@ -477,13 +475,13 @@ function MitraSettingsContent() {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className="space-y-5"
+                                className="space-y-4"
                               >
                                 {/* Business Details */}
                                 <div className="grid gap-4 md:grid-cols-2">
                                   <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                      Nama Bisnis
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                                      Nama Bisnis / Toko
                                     </label>
                                     <input
                                       type="text"
@@ -495,12 +493,12 @@ function MitraSettingsContent() {
                                         })
                                       }
                                       placeholder="Nama bisnis Anda"
-                                      className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                      className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 sm:text-sm"
                                     />
                                   </div>
 
                                   <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                                       WhatsApp Bisnis
                                     </label>
                                     <input
@@ -513,40 +511,42 @@ function MitraSettingsContent() {
                                         })
                                       }
                                       placeholder="08123456789"
-                                      className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                      className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 sm:text-sm"
                                     />
                                   </div>
                                 </div>
 
                                 {/* Location Section */}
-                                <div className="rounded-xl border border-gray-200 p-5">
-                                  <div className="mb-4 flex items-center justify-between">
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/50 sm:p-5">
+                                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex items-center gap-3">
-                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-                                        <MapPin className="h-5 w-5" />
+                                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                                        <MapPin className="h-4 w-4" />
                                       </div>
                                       <div>
-                                        <h3 className="font-bold text-gray-900">
-                                          Lokasi Bisnis
+                                        <h3 className="text-xs font-bold text-slate-900 dark:text-white sm:text-sm">
+                                          Lokasi Fisik Bisnis
                                         </h3>
-                                        <p className="text-xs text-gray-500">
-                                          Alamat lengkap dengan koordinat GPS
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                          Alamat lengkap dengan sinkronisasi
+                                          koordinat GPS Google Maps
                                         </p>
                                       </div>
                                     </div>
                                     <button
+                                      type="button"
                                       onClick={handleGetCurrentLocation}
-                                      className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700"
+                                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
                                     >
-                                      <Navigation className="h-4 w-4" />
-                                      Lokasi Saya
+                                      <Navigation className="h-3.5 w-3.5" />
+                                      <span>Lokasi GPS Saya</span>
                                     </button>
                                   </div>
 
                                   {/* Address Autocomplete */}
-                                  <div className="mb-4">
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                      Cari Alamat
+                                  <div className="mb-3.5">
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                                      Cari Alamat (Places)
                                     </label>
                                     {isLoaded ? (
                                       <Autocomplete
@@ -561,27 +561,25 @@ function MitraSettingsContent() {
                                         }}
                                       >
                                         <div className="relative">
-                                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                           <input
                                             type="text"
-                                            placeholder="Ketik alamat untuk mencari..."
-                                            className="w-full rounded-xl border border-gray-200 bg-white p-3 pl-10 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                            placeholder="Ketik nama jalan atau landmark untuk mencari..."
+                                            className="w-full rounded-xl border border-slate-200 bg-white p-2.5 pl-9 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                                           />
                                         </div>
                                       </Autocomplete>
                                     ) : (
-                                      <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-500">
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        <span className="text-sm">
-                                          Loading Google Maps...
-                                        </span>
+                                      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 p-2.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800">
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        <span>Memuat Google Maps...</span>
                                       </div>
                                     )}
                                   </div>
 
                                   {/* Full Address */}
-                                  <div className="mb-4">
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                  <div className="mb-3.5">
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                                       Alamat Lengkap
                                     </label>
                                     <textarea
@@ -592,17 +590,17 @@ function MitraSettingsContent() {
                                           address: e.target.value,
                                         })
                                       }
-                                      placeholder="Alamat lengkap bisnis"
+                                      placeholder="Alamat lengkap fisik toko"
                                       rows={3}
-                                      className="w-full resize-none rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                      className="w-full resize-none rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                                     />
                                   </div>
 
                                   {/* City & Province */}
-                                  <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                  <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
-                                      <label className="mb-2 block text-sm font-semibold text-gray-700">
-                                        Kota
+                                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                                        Kota / Kabupaten
                                       </label>
                                       <input
                                         type="text"
@@ -614,11 +612,11 @@ function MitraSettingsContent() {
                                           })
                                         }
                                         placeholder="Kota"
-                                        className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                        className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                                       />
                                     </div>
                                     <div>
-                                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                                         Provinsi
                                       </label>
                                       <input
@@ -631,7 +629,7 @@ function MitraSettingsContent() {
                                           })
                                         }
                                         placeholder="Provinsi"
-                                        className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                        className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                                       />
                                     </div>
                                   </div>
@@ -640,15 +638,15 @@ function MitraSettingsContent() {
                                   {formData.latitude !== 0 &&
                                     formData.longitude !== 0 &&
                                     isLoaded && (
-                                      <div className="space-y-2">
-                                        <label className="block text-sm font-semibold text-gray-700">
-                                          Preview Lokasi
+                                      <div className="space-y-2 pt-1">
+                                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                                          Pratinjau Pin Lokasi Toko
                                         </label>
-                                        <div className="overflow-hidden rounded-xl border border-gray-200">
+                                        <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
                                           <GoogleMap
                                             mapContainerStyle={{
                                               width: '100%',
-                                              height: '250px',
+                                              height: '240px',
                                             }}
                                             center={{
                                               lat: formData.latitude,
@@ -670,8 +668,9 @@ function MitraSettingsContent() {
                                             />
                                           </GoogleMap>
                                         </div>
-                                        <p className="text-center text-xs text-gray-500">
-                                          📍 {formData.latitude.toFixed(6)},{' '}
+                                        <p className="text-center text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                                          📍 Koordinat:{' '}
+                                          {formData.latitude.toFixed(6)},{' '}
                                           {formData.longitude.toFixed(6)}
                                         </p>
                                       </div>
@@ -682,20 +681,22 @@ function MitraSettingsContent() {
                           </AnimatePresence>
                         </div>
 
-                        <div className="flex justify-end pt-4">
+                        <div className="flex justify-end pt-2">
                           <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleSaveProfile}
                             disabled={saving}
-                            className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
                           >
                             {saving ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Check className="h-4 w-4" />
                             )}
-                            Simpan Perubahan
+                            <span>
+                              {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                            </span>
                           </motion.button>
                         </div>
                       </motion.div>
@@ -705,24 +706,25 @@ function MitraSettingsContent() {
                     {activeTab === 'security' && (
                       <motion.div
                         key="security"
-                        initial={{ opacity: 0, x: 20 }}
+                        initial={{ opacity: 0, x: 15 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
+                        exit={{ opacity: 0, x: -15 }}
                         className="space-y-6"
                       >
                         <div>
-                          <h2 className="text-2xl font-bold text-gray-900">
-                            Keamanan
+                          <h2 className="text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
+                            Keamanan Kata Sandi
                           </h2>
-                          <p className="text-sm text-gray-600">
-                            Ubah password dan kelola keamanan akun Anda
+                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                            Ubah kata sandi akun untuk menjaga keamanan akses
+                            dashboard
                           </p>
                         </div>
 
-                        <div className="space-y-5">
+                        <div className="max-w-md space-y-4">
                           <div>
-                            <label className="mb-2 block text-sm font-semibold text-gray-700">
-                              Password Saat Ini
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                              Kata Sandi Saat Ini
                             </label>
                             <input
                               type="password"
@@ -733,13 +735,13 @@ function MitraSettingsContent() {
                                   currentPassword: e.target.value,
                                 })
                               }
-                              placeholder="Masukkan password saat ini"
-                              className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                              placeholder="Masukkan kata sandi saat ini"
+                              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                             />
                           </div>
                           <div>
-                            <label className="mb-2 block text-sm font-semibold text-gray-700">
-                              Password Baru
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                              Kata Sandi Baru
                             </label>
                             <input
                               type="password"
@@ -751,12 +753,12 @@ function MitraSettingsContent() {
                                 })
                               }
                               placeholder="Minimal 6 karakter"
-                              className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                             />
                           </div>
                           <div>
-                            <label className="mb-2 block text-sm font-semibold text-gray-700">
-                              Konfirmasi Password Baru
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                              Konfirmasi Kata Sandi Baru
                             </label>
                             <input
                               type="password"
@@ -767,16 +769,17 @@ function MitraSettingsContent() {
                                   confirmPassword: e.target.value,
                                 })
                               }
-                              placeholder="Ulangi password baru"
-                              className="w-full rounded-xl border border-gray-200 bg-white p-3 font-medium outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                              placeholder="Ulangi kata sandi baru"
+                              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                             />
-                            <p className="mt-1 text-xs text-gray-500">
-                              Password minimal 6 karakter
+                            <p className="mt-1 text-[11px] text-slate-400">
+                              Kata sandi minimal 6 karakter kombinasi huruf dan
+                              angka
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex justify-end pt-4">
+                        <div className="flex justify-start pt-2">
                           <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -787,14 +790,16 @@ function MitraSettingsContent() {
                               !passwordData.newPassword ||
                               !passwordData.confirmPassword
                             }
-                            className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
                           >
                             {saving ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Check className="h-4 w-4" />
                             )}
-                            Ubah Password
+                            <span>
+                              {saving ? 'Menyimpan...' : 'Perbarui Kata Sandi'}
+                            </span>
                           </motion.button>
                         </div>
                       </motion.div>

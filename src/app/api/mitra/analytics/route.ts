@@ -7,11 +7,26 @@ export async function GET() {
   try {
     const session = await auth()
 
-    if (!session?.user) {
+    if (!session?.user?.id && !session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (session.user.role !== 'MITRA') {
+    const user = await prisma.user.findFirst({
+      where: session.user.id
+        ? { id: session.user.id }
+        : { email: session.user.email! },
+      select: { id: true, role: true },
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    if (
+      user.role !== 'MITRA' &&
+      user.role !== 'STORE_ADMIN' &&
+      user.role !== 'SUPER_ADMIN'
+    ) {
       return NextResponse.json(
         { error: 'Only mitra can access analytics' },
         { status: 403 }
@@ -20,7 +35,7 @@ export async function GET() {
 
     // Get mitra profile with analytics
     const mitra = await prisma.mitra.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
       select: {
         id: true,
         totalViews: true,
@@ -57,13 +72,27 @@ export async function GET() {
       userName: review.user.name || 'Anonymous',
     }))
 
-    return NextResponse.json({
-      totalViews: mitra.totalViews,
-      totalInquiries: mitra.totalInquiries,
-      averageRating: mitra.rating,
-      totalReviews: mitra.totalReview,
+    const totalReviews =
+      mitra.reviews.length > 0 ? mitra.reviews.length : mitra.totalReview || 0
+    const averageRating =
+      mitra.reviews.length > 0
+        ? mitra.reviews.reduce((acc, r) => acc + r.rating, 0) /
+          mitra.reviews.length
+        : mitra.rating || 0
+
+    const response = NextResponse.json({
+      totalViews: mitra.totalViews || 0,
+      totalInquiries: mitra.totalInquiries || 0,
+      averageRating,
+      totalReviews,
       recentReviews,
     })
+
+    response.headers.set(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, proxy-revalidate'
+    )
+    return response
   } catch (error) {
     console.error('Error fetching analytics:', error)
     return NextResponse.json(

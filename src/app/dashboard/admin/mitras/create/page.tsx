@@ -445,7 +445,7 @@ export default function CreateMitraPage() {
               value={profile.banner}
               onChange={(url) => setProfile({ ...profile, banner: url })}
               onRemove={() => setProfile({ ...profile, banner: '' })}
-              folder="affiliate-gadget/banners"
+              folder="banners"
             />
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

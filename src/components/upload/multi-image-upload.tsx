@@ -1,7 +1,8 @@
 'use client'
 
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Loader2 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 
 interface MultiImageUploadProps {
   value: string[]
@@ -16,7 +17,7 @@ export default function MultiImageUpload({
   onChange,
   maxImages = 8,
   label = 'Upload Images',
-  folder = 'affiliate-gadget/gallery',
+  folder = 'gallery',
 }: MultiImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -33,35 +34,41 @@ export default function MultiImageUpload({
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Ukuran file terlalu besar. Maksimal 15MB.')
+      return
+    }
+
     setIsUploading(true)
 
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append(
-        'upload_preset',
-        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || ''
-      )
       formData.append('folder', folder)
 
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      )
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
 
       const data = await response.json()
 
-      if (data.secure_url) {
-        const updatedImages = [...imagesRef.current, data.secure_url]
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal mengunggah foto.')
+      }
+
+      const fileUrl = data.url || data.secure_url
+      if (fileUrl) {
+        const updatedImages = [...imagesRef.current, fileUrl]
         imagesRef.current = updatedImages
         onChange(updatedImages)
+        toast.success('Foto berhasil ditambahkan ke galeri!')
+      } else {
+        throw new Error('URL foto tidak ditemukan pada respons server.')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error)
-      alert('Failed to upload image. Please try again.')
+      toast.error(error.message || 'Gagal mengunggah foto. Silakan coba lagi.')
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) {
@@ -88,11 +95,11 @@ export default function MultiImageUpload({
     <div className="space-y-3">
       {label && (
         <div className="flex items-center justify-between">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
             {label}
           </label>
-          <span className="text-sm text-gray-500">
-            {images.length} / {maxImages} images
+          <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+            {images.length} / {maxImages} foto
           </span>
         </div>
       )}
@@ -100,7 +107,7 @@ export default function MultiImageUpload({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp,image/gif"
         onChange={handleFileChange}
         className="hidden"
       />
@@ -110,19 +117,19 @@ export default function MultiImageUpload({
         {images.map((url, index) => (
           <div
             key={url}
-            className="group relative overflow-hidden rounded-xl border-2 border-gray-200"
+            className="group relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
           >
             <img
               src={url}
               alt={`Gallery ${index + 1}`}
-              className="h-40 w-full object-cover"
+              className="h-36 w-full object-cover sm:h-40"
             />
 
             {/* Remove Button */}
             <button
               type="button"
               onClick={() => handleRemove(url)}
-              className="absolute right-2 top-2 rounded-full bg-red-600 p-1.5 text-white opacity-0 transition-all hover:bg-red-700 group-hover:opacity-100"
+              className="absolute right-2 top-2 rounded-xl bg-rose-600 p-1.5 text-white opacity-0 shadow-sm transition-all hover:bg-rose-700 group-hover:opacity-100"
             >
               <X className="h-4 w-4" />
             </button>
@@ -135,16 +142,20 @@ export default function MultiImageUpload({
             type="button"
             onClick={triggerFileInput}
             disabled={isUploading}
-            className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50"
+            className="flex h-36 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 transition-all hover:border-orange-400 hover:bg-orange-50/40 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900/60 sm:h-40"
           >
             {isUploading ? (
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
             ) : (
               <>
-                <div className="rounded-full bg-blue-100 p-3">
-                  <Plus className="h-6 w-6 text-blue-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                  <Plus className="h-5 w-5" />
                 </div>
-                <p className="text-xs font-medium text-gray-600">Add Image</p>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Tambah Foto
+                </p>
               </>
             )}
           </button>
@@ -152,8 +163,8 @@ export default function MultiImageUpload({
       </div>
 
       {!canAddMore && (
-        <p className="text-sm text-gray-500">
-          Maximum {maxImages} images reached
+        <p className="text-xs text-slate-400">
+          Maksimal {maxImages} foto galeri telah tercapai.
         </p>
       )}
     </div>

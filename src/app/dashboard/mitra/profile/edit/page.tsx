@@ -17,9 +17,13 @@ import {
   CheckCircle,
   Eye,
   ArrowLeft,
+  Wrench,
+  Image as ImageIcon,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import ImageUpload from '@/components/upload/image-upload'
+import MultiImageUpload from '@/components/upload/multi-image-upload'
 import { motion } from 'framer-motion'
 
 interface Service {
@@ -33,9 +37,10 @@ interface MitraProfile {
   tagline: string
   description: string
   city: string
-  province?: string
+  province: string
   address: string
   phone: string
+  whatsapp: string
   email: string
   website: string
   banner: string
@@ -58,6 +63,7 @@ const DEFAULT_PROFILE: MitraProfile = {
   province: '',
   address: '',
   phone: '',
+  whatsapp: '',
   email: '',
   website: '',
   banner: '',
@@ -78,13 +84,13 @@ const FEATURE_OPTIONS = [
   'Home Service',
   'Express Service',
   'Pickup & Delivery',
-  '24 Jam',
+  'Buka Setiap Hari',
   'Pembayaran Cicilan',
 ]
 
 const SERVICE_ICONS = [
-  '💻',
   '📱',
+  '💻',
   '🖥️',
   '⚡',
   '💾',
@@ -95,23 +101,25 @@ const SERVICE_ICONS = [
   '🔌',
 ]
 
-export default function MitraDashboard() {
+export default function MitraProfileEdit() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [profile, setProfile] = useState<MitraProfile>(DEFAULT_PROFILE)
   const [loading, setLoading] = useState(false)
   const [fetchingProfile, setFetchingProfile] = useState(true)
-  const [activeTab, setActiveTab] = useState('info')
+  const [activeTab, setActiveTab] = useState<
+    'info' | 'services' | 'gallery' | 'contact'
+  >('info')
   const [newService, setNewService] = useState({
     name: '',
     price: '',
-    icon: '💻',
+    icon: '📱',
   })
   const [newFeature, setNewFeature] = useState('')
-  const MAX_FEATURE_LENGTH = 30 // Character limit for custom features
+  const MAX_FEATURE_LENGTH = 30
   const [mitraId, setMitraId] = useState<string | null>(null)
 
-  // Redirect pending mitra FIRST - before any other logic
+  // Redirect pending mitra FIRST
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.role === 'MITRA') {
       const mitraStatus = (session.user as { mitraStatus?: string }).mitraStatus
@@ -125,11 +133,13 @@ export default function MitraDashboard() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch('/api/mitra/profile')
+        const response = await fetch('/api/mitra/profile', {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' },
+        })
         if (response.ok) {
           const data = await response.json()
 
-          // Store mitra ID for preview
           if (data.id) {
             setMitraId(data.id)
           }
@@ -140,31 +150,32 @@ export default function MitraDashboard() {
             tagline: data.tagline || '',
             description: data.description || '',
             city: data.city || '',
+            province: data.province || '',
             address: data.address || '',
             phone: data.phone || '',
+            whatsapp: data.whatsapp || data.phone || '',
             email: data.email || '',
             website: data.website || '',
             banner: data.banner || '',
             gallery: data.images?.map((img: { url: string }) => img.url) || [],
             services:
               data.services?.map(
-                (svc: { name: string; price?: number; icon?: string }) => ({
+                (svc: {
+                  name: string
+                  price?: number | string
+                  icon?: string
+                }) => ({
                   name: svc.name,
-                  price: svc.price || '',
-                  icon: svc.icon || '💻',
+                  price: svc.price ? String(svc.price) : '',
+                  icon: svc.icon || '📱',
                 })
               ) || [],
-            features: data.features || [],
+            features: Array.isArray(data.features) ? data.features : [],
             hours: {
               weekday: data.weekdayHours || 'Senin - Sabtu: 09:00 - 18:00',
               weekend: data.weekendHours || 'Minggu: Tutup',
             },
           })
-        } else if (response.status === 404) {
-          // Profile doesn't exist yet - this is OK for new mitra
-          // Keep default profile state, don't reset
-        } else {
-          console.error('Error fetching profile:', response.status)
         }
       } catch (error) {
         console.error('Error fetching profile:', error)
@@ -174,7 +185,6 @@ export default function MitraDashboard() {
     }
 
     if (status === 'authenticated') {
-      // Don't fetch profile if pending mitra
       if (session?.user?.role === 'MITRA') {
         const mitraStatus = (session.user as { mitraStatus?: string })
           .mitraStatus
@@ -187,81 +197,78 @@ export default function MitraDashboard() {
     }
   }, [status, session])
 
-  // Calculate profile completion
+  // Calculate profile completion (10 criteria)
   const getProfileCompletion = () => {
     let completed = 0
     const total = 10
-    if (profile.name) completed++
-    if (profile.tagline) completed++
-    if (profile.description) completed++
-    if (profile.address) completed++
-    if (profile.city) completed++
-    if (profile.phone) completed++
-    if (profile.banner) completed++
+    if (profile.name?.trim()) completed++
+    if (profile.tagline?.trim()) completed++
+    if (profile.description?.trim()) completed++
+    if (profile.address?.trim()) completed++
+    if (profile.city?.trim()) completed++
+    if (profile.phone?.trim()) completed++
+    if (profile.banner?.trim()) completed++
     if (profile.services.length > 0) completed++
     if (profile.gallery.length > 0) completed++
     if (profile.features.length > 0) completed++
     return Math.round((completed / total) * 100)
   }
 
-  if (status === 'loading' || fetchingProfile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    )
-  }
-
-  // Don't render if pending mitra (will redirect)
-  if (session?.user?.role === 'MITRA') {
-    const mitraStatus = (session.user as { mitraStatus?: string }).mitraStatus
-    if (mitraStatus === 'PENDING') {
-      return (
-        <div className="flex min-h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        </div>
-      )
-    }
-  }
-
   const completion = getProfileCompletion()
 
   const handleSave = async () => {
-    // Validation
-    if (!profile.name || !profile.address || !profile.city || !profile.phone) {
-      toast.error(
-        'Mohon lengkapi data wajib: Nama Toko, Alamat, Kota, dan Telepon'
-      )
+    // Form validation
+    if (!profile.name.trim()) {
+      toast.error('Nama toko wajib diisi')
+      setActiveTab('info')
+      return
+    }
+    if (!profile.address.trim()) {
+      toast.error('Alamat lengkap toko wajib diisi')
+      setActiveTab('info')
+      return
+    }
+    if (!profile.city.trim()) {
+      toast.error('Kota toko wajib diisi')
+      setActiveTab('info')
+      return
+    }
+    if (!profile.phone.trim()) {
+      toast.error('Nomor telepon / WhatsApp toko wajib diisi')
+      setActiveTab('contact')
       return
     }
 
     setLoading(true)
+
     try {
       // Transform frontend state to API format
       const payload = {
-        businessName: profile.name,
-        tagline: profile.tagline,
-        description: profile.description,
-        banner: profile.banner,
-        address: profile.address,
-        city: profile.city,
-        province: '', // You can add province field if needed
-        phone: profile.phone,
-        whatsapp: profile.phone, // Use phone as whatsapp for now
-        email: profile.email,
-        website: profile.website,
+        businessName: profile.name.trim(),
+        tagline: profile.tagline.trim(),
+        description: profile.description.trim(),
+        banner: profile.banner || null,
+        address: profile.address.trim(),
+        city: profile.city.trim(),
+        province: profile.province.trim() || 'DKI Jakarta',
+        phone: profile.phone.trim(),
+        whatsapp: (profile.whatsapp || profile.phone).trim(),
+        email: profile.email.trim() || null,
+        website: profile.website.trim() || null,
         features: profile.features,
         weekdayHours: profile.hours.weekday,
         weekendHours: profile.hours.weekend,
-        latitude: profile.latitude,
-        longitude: profile.longitude,
-        services: profile.services.map((svc) => ({
-          name: svc.name,
-          price: svc.price,
-          icon: svc.icon,
-          description: null,
-        })),
-        images: profile.gallery.map((url) => ({ url })),
+        latitude: profile.latitude || null,
+        longitude: profile.longitude || null,
+        services: profile.services
+          .filter((svc) => svc.name.trim())
+          .map((svc) => ({
+            name: svc.name.trim(),
+            price: svc.price.trim(),
+            icon: svc.icon || '📱',
+            description: null,
+          })),
+        images: profile.gallery.filter(Boolean).map((url) => ({ url })),
       }
 
       const response = await fetch('/api/mitra/profile', {
@@ -272,28 +279,25 @@ export default function MitraDashboard() {
         body: JSON.stringify(payload),
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Gagal menyimpan profil')
-      }
-
       const data = await response.json()
 
-      // Store mitra ID for preview
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal menyimpan profil')
+      }
+
       if (data.id) {
         setMitraId(data.id)
       }
 
-      if (data.isPendingReview || session?.user?.role === 'MITRA') {
+      // Check whether this mitra was pending or approved
+      if (data.isPendingReview) {
         toast.success(
-          'Profil toko berhasil disimpan dan dikirim ke Super Admin untuk ditinjau!'
+          'Profil toko berhasil disimpan dan dikirim ke Admin untuk ditinjau!'
         )
         router.push('/dashboard/mitra/pending')
-        router.refresh()
       } else {
-        toast.success(
-          'Profil berhasil disimpan! Klik "Lihat Preview" untuk melihat hasilnya.'
-        )
+        toast.success('Seluruh data profil toko berhasil disimpan!')
+        router.push('/dashboard/mitra')
       }
     } catch (error) {
       console.error('Error saving profile:', error)
@@ -306,14 +310,21 @@ export default function MitraDashboard() {
   }
 
   const addService = () => {
-    if (newService.name && newService.price) {
-      setProfile({
-        ...profile,
-        services: [...profile.services, { ...newService }],
-      })
-      setNewService({ name: '', price: '', icon: '💻' })
-      toast.success('Layanan ditambahkan!')
+    if (!newService.name.trim()) {
+      toast.error('Nama layanan servis wajib diisi')
+      return
     }
+    if (!newService.price.trim()) {
+      toast.error('Estimasi harga layanan wajib diisi')
+      return
+    }
+
+    setProfile({
+      ...profile,
+      services: [...profile.services, { ...newService }],
+    })
+    setNewService({ name: '', price: '', icon: '📱' })
+    toast.success('Layanan servis ditambahkan!')
   }
 
   const removeService = (index: number) => {
@@ -321,6 +332,7 @@ export default function MitraDashboard() {
       ...profile,
       services: profile.services.filter((_, i) => i !== index),
     })
+    toast.success('Layanan dihapus dari daftar')
   }
 
   const toggleFeature = (feature: string) => {
@@ -364,117 +376,122 @@ export default function MitraDashboard() {
     })
   }
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Abstract Background Mesh */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute left-[-10%] top-[-10%] h-[500px] w-[500px] rounded-full bg-blue-400/20 blur-[100px]" />
-        <div className="absolute right-[-10%] top-[10%] h-[600px] w-[600px] rounded-full bg-violet-400/20 blur-[100px]" />
-        <div className="absolute bottom-[-10%] left-[20%] h-[500px] w-[500px] rounded-full bg-indigo-300/20 blur-[100px]" />
+  if (status === 'loading' || fetchingProfile) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+          <p className="text-xs font-semibold text-slate-500">
+            Memuat profil tokomu...
+          </p>
+        </div>
       </div>
+    )
+  }
 
-      <div className="relative z-10">
-        {/* Header */}
+  return (
+    <div className="min-h-screen py-4 sm:py-6">
+      <div className="mx-auto max-w-5xl space-y-6">
+        {/* Top Navigation Bar */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-start sm:justify-between"
+          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
         >
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-              Kelola Profil Bisnis
-            </h1>
-            <p className="mt-1 text-sm text-gray-600 sm:text-base">
-              Lengkapi profil untuk tampil di halaman rekomendasi
-            </p>
-          </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
             <Link href="/dashboard/mitra">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/80 px-4 py-2 font-medium text-gray-700 shadow-sm backdrop-blur-sm transition-all hover:border-gray-300 hover:bg-white hover:shadow-md"
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
               >
-                <ArrowLeft className="h-5 w-5" />
-                <span className="hidden sm:inline">Kembali ke Dashboard</span>
-                <span className="sm:hidden">Kembali</span>
-              </motion.button>
+                <ArrowLeft className="h-4 w-4" />
+              </button>
             </Link>
+            <div>
+              <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+                Edit Profil Toko
+              </h1>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                Lengkapi identitas, galeri workshop, tarif servis, dan kontak
+                resmi
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {mitraId && (
+              <Link href={`/rekomendasi/${mitraId}`} target="_blank">
+                <button
+                  type="button"
+                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>Lihat Profil Publik</span>
+                </button>
+              </Link>
+            )}
+
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleSave}
               disabled={loading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-2 font-medium text-white shadow-lg shadow-gray-900/20 transition-all hover:bg-gray-800 hover:shadow-xl disabled:opacity-50 sm:flex-none"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
             >
               {loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="hidden sm:inline">Menyimpan...</span>
-                  <span className="sm:hidden">Simpan...</span>
-                </>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <>
-                  <Save className="h-5 w-5" />
-                  <span>Simpan</span>
-                </>
+                <Save className="h-3.5 w-3.5" />
               )}
+              <span>{loading ? 'Menyimpan...' : 'Simpan Profil'}</span>
             </motion.button>
-            {mitraId && (
-              <Link href={`/rekomendasi/${mitraId}`} target="_blank">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/80 px-4 py-2 font-medium text-gray-700 shadow-sm backdrop-blur-sm transition-all hover:border-gray-300 hover:bg-white hover:shadow-md"
-                >
-                  <Eye className="h-5 w-5" />
-                  <span className="hidden sm:inline">Lihat Preview</span>
-                </motion.button>
-              </Link>
-            )}
           </div>
         </motion.div>
 
-        {/* Profile Completion Card */}
+        {/* Profile Completion Bento Card */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="mb-6 overflow-hidden rounded-[2rem] bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-800 p-4 shadow-2xl sm:mb-8 sm:p-6"
+          className="shadow-xs overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6"
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
-              <h2 className="text-lg font-bold text-white sm:text-xl">
-                Kelengkapan Profil
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Tingkat Kelengkapan Profil
+              </span>
+              <h2 className="mt-0.5 text-lg font-black text-slate-900 dark:text-white sm:text-xl">
+                Status Kelengkapan Toko
               </h2>
-              <p className="mt-1 text-sm text-blue-100 sm:text-base">
-                Lengkapi informasi agar tampil di rekomendasi
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+                Lengkapi seluruh 10 indikator agar toko Anda memperoleh
+                verifikasi penuh dan dipercaya pelanggan.
               </p>
             </div>
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-start sm:justify-end">
               <div className="relative h-16 w-16 sm:h-20 sm:w-20">
                 <svg className="h-full w-full -rotate-90 transform">
                   <circle
                     cx="50%"
                     cy="50%"
-                    r="45%"
+                    r="42%"
                     fill="none"
-                    stroke="rgba(255,255,255,0.2)"
+                    className="stroke-slate-100 dark:stroke-slate-800"
                     strokeWidth="8"
                   />
                   <circle
                     cx="50%"
                     cy="50%"
-                    r="45%"
+                    r="42%"
                     fill="none"
-                    stroke="white"
+                    stroke="#F97316"
                     strokeWidth="8"
-                    strokeDasharray={`${completion * 2.2} 220`}
+                    strokeDasharray={`${completion * 2.1} 210`}
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold text-white sm:text-xl">
+                  <span className="text-base font-black text-slate-900 dark:text-white sm:text-lg">
                     {completion}%
                   </span>
                 </div>
@@ -483,24 +500,35 @@ export default function MitraDashboard() {
           </div>
         </motion.div>
 
-        {/* Tabs */}
+        {/* 4 Tabs Navigation */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mb-6 flex gap-2 overflow-x-auto pb-2"
+          className="flex gap-2 overflow-x-auto pb-1"
         >
           {[
             {
-              id: 'info',
-              label: 'Informasi Dasar',
+              id: 'info' as const,
+              label: 'Informasi Toko',
               shortLabel: 'Info',
               icon: Store,
             },
-
             {
-              id: 'contact',
-              label: 'Kontak',
+              id: 'services' as const,
+              label: `Layanan & Tarif (${profile.services.length})`,
+              shortLabel: 'Layanan',
+              icon: Wrench,
+            },
+            {
+              id: 'gallery' as const,
+              label: `Galeri Workshop (${profile.gallery.length})`,
+              shortLabel: 'Galeri',
+              icon: ImageIcon,
+            },
+            {
+              id: 'contact' as const,
+              label: 'Kontak & Jam Buka',
               shortLabel: 'Kontak',
               icon: Phone,
             },
@@ -508,46 +536,57 @@ export default function MitraDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all sm:px-5 sm:py-3 sm:text-base ${
+              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-bold transition-all sm:text-sm ${
                 activeTab === tab.id
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
-                  : 'bg-white text-gray-600 shadow-sm hover:bg-gray-50'
+                  ? 'shadow-xs bg-orange-500 text-white'
+                  : 'border border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
-              <tab.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+              <tab.icon className="h-4 w-4" />
               <span className="hidden sm:inline">{tab.label}</span>
               <span className="sm:hidden">{tab.shortLabel}</span>
             </button>
           ))}
         </motion.div>
 
-        {/* Content */}
+        {/* Tab Content Box */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-[2rem] border border-white/60 bg-white/60 p-6 shadow-xl shadow-indigo-100/20 backdrop-blur-xl"
+          className="shadow-xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8"
         >
-          {/* Basic Info Tab */}
+          {/* TAB 1: BASIC INFO */}
           {activeTab === 'info' && (
             <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">
-                Informasi Dasar
-              </h3>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+                  Informasi Dasar & Lokasi
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Data utama identitas tokomu di katalog servis platform
+                </p>
+              </div>
 
               {/* Banner Upload */}
-              <ImageUpload
-                label="Banner Toko"
-                value={profile.banner}
-                onChange={(url) => setProfile({ ...profile, banner: url })}
-                onRemove={() => setProfile({ ...profile, banner: '' })}
-                folder="affiliate-gadget/banners"
-              />
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  Banner Profil Toko
+                </label>
+                <ImageUpload
+                  label="Upload Banner Toko"
+                  value={profile.banner}
+                  onChange={(url) => setProfile({ ...profile, banner: url })}
+                  onRemove={() => setProfile({ ...profile, banner: '' })}
+                  folder="banners"
+                />
+              </div>
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Nama Toko
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    Nama Toko / Workshop{' '}
+                    <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -556,12 +595,12 @@ export default function MitraDashboard() {
                       setProfile({ ...profile, name: e.target.value })
                     }
                     placeholder="Contoh: TechCare Pro Service"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                     Tagline
                   </label>
                   <input
@@ -570,14 +609,14 @@ export default function MitraDashboard() {
                     onChange={(e) =>
                       setProfile({ ...profile, tagline: e.target.value })
                     }
-                    placeholder="Contoh: Solusi Teknologi Terpercaya Anda"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Contoh: Solusi Perbaikan Gadget Kilat & Bergaransi"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                   Deskripsi Toko
                 </label>
                 <textarea
@@ -585,31 +624,32 @@ export default function MitraDashboard() {
                   onChange={(e) =>
                     setProfile({ ...profile, description: e.target.value })
                   }
-                  placeholder="Jelaskan tentang toko Anda, pengalaman, keahlian, dll..."
+                  placeholder="Jelaskan tentang toko Anda, pengalaman teknisi, spesialisasi perbaikan LCD/Mesin, garansi, sertifikasi, dll..."
                   rows={4}
-                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Alamat Lengkap <span className="text-red-500">*</span>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  Alamat Lengkap Fisik Toko{' '}
+                  <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   value={profile.address}
                   onChange={(e) =>
                     setProfile({ ...profile, address: e.target.value })
                   }
-                  placeholder="Masukkan alamat lengkap fisik toko (Jalan, No, RT/RW, Kecamatan)..."
+                  placeholder="Masukkan alamat lengkap fisik toko (Jalan, No, Lantai/Blok Mall, RT/RW, Kecamatan)..."
                   rows={3}
-                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Kota <span className="text-red-500">*</span>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    Kota <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -618,35 +658,34 @@ export default function MitraDashboard() {
                       setProfile({ ...profile, city: e.target.value })
                     }
                     placeholder="Contoh: Jakarta Pusat"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Provinsi <span className="text-red-500">*</span>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    Provinsi <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={profile.province || ''}
+                    value={profile.province}
                     onChange={(e) =>
                       setProfile({ ...profile, province: e.target.value })
                     }
                     placeholder="Contoh: DKI Jakarta"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
               </div>
 
-              {/* Features */}
-              <div>
-                <label className="mb-3 block text-sm font-medium text-gray-700">
-                  Keunggulan Toko
+              {/* Features Chips */}
+              <div className="border-t border-slate-100 pt-5 dark:border-slate-800">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  Keunggulan & Layanan Unggulan Toko
                 </label>
 
-                {/* Suggested Features */}
                 <div className="mb-4">
-                  <p className="mb-2 text-xs text-gray-500">
-                    Pilih dari saran:
+                  <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                    Pilih dari saran keunggulan:
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {FEATURE_OPTIONS.map((feature) => (
@@ -654,16 +693,16 @@ export default function MitraDashboard() {
                         key={feature}
                         type="button"
                         onClick={() => toggleFeature(feature)}
-                        className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
                           profile.features.includes(feature)
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'shadow-xs bg-orange-500 font-semibold text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                         }`}
                       >
                         {profile.features.includes(feature) && (
-                          <CheckCircle className="mr-1 inline h-4 w-4" />
+                          <CheckCircle className="h-3.5 w-3.5" />
                         )}
-                        {feature}
+                        <span>{feature}</span>
                       </button>
                     ))}
                   </div>
@@ -671,49 +710,49 @@ export default function MitraDashboard() {
 
                 {/* Custom Feature Input */}
                 <div className="mb-4">
-                  <p className="mb-2 text-xs text-gray-500">
-                    Atau tambahkan keunggulan custom:
+                  <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                    Atau tambah keunggulan sendiri:
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex max-w-md gap-2">
                     <input
                       type="text"
                       value={newFeature}
                       onChange={(e) => setNewFeature(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && addCustomFeature()}
-                      placeholder="Contoh: Buka 24 Jam"
+                      placeholder="Contoh: Teknisi Sertifikasi Apple"
                       maxLength={MAX_FEATURE_LENGTH}
-                      className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                     />
                     <button
                       type="button"
                       onClick={addCustomFeature}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-blue-700"
+                      className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
                     >
-                      <Plus className="inline h-4 w-4" />
+                      <Plus className="h-4 w-4" />
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-[11px] text-slate-400">
                     {newFeature.length}/{MAX_FEATURE_LENGTH} karakter
                   </p>
                 </div>
 
-                {/* Selected Features */}
+                {/* Active Features */}
                 {profile.features.length > 0 && (
                   <div>
-                    <p className="mb-2 text-xs font-medium text-gray-700">
-                      Keunggulan terpilih:
+                    <p className="mb-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                      Keunggulan aktif terpilih:
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {profile.features.map((feature, index) => (
                         <div
                           key={index}
-                          className="group relative rounded-full bg-blue-600 px-4 py-2 pr-8 text-sm font-medium text-white"
+                          className="group relative inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-50/80 px-3 py-1 text-xs font-bold text-orange-600 dark:border-orange-900/40 dark:bg-orange-950/40 dark:text-orange-400"
                         >
-                          {feature}
+                          <span>{feature}</span>
                           <button
                             type="button"
                             onClick={() => removeFeature(feature)}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-1 opacity-0 transition-all hover:bg-white/30 group-hover:opacity-100"
+                            className="rounded-full p-0.5 hover:bg-orange-200 dark:hover:bg-orange-900"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -726,17 +765,188 @@ export default function MitraDashboard() {
             </div>
           )}
 
-          {/* Contact Tab */}
+          {/* TAB 2: SERVICES & TARIFF */}
+          {activeTab === 'services' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+                  Layanan & Tarif Servis
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Tambahkan jenis layanan perbaikan gadget yang disediakan toko
+                  Anda beserta estimasi biayanya
+                </p>
+              </div>
+
+              {/* Form Tambah Layanan Baru */}
+              <div className="rounded-2xl border border-orange-200/80 bg-orange-50/40 p-5 dark:border-orange-950/40 dark:bg-orange-950/20">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                  + Tambah Layanan Baru
+                </h4>
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12">
+                  <div className="sm:col-span-5">
+                    <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Nama Layanan <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newService.name}
+                      onChange={(e) =>
+                        setNewService({ ...newService, name: e.target.value })
+                      }
+                      placeholder="Contoh: Ganti LCD / Touchscreen OLED"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-4">
+                    <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Estimasi Biaya <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newService.price}
+                      onChange={(e) =>
+                        setNewService({ ...newService, price: e.target.value })
+                      }
+                      placeholder="Contoh: Rp 250.000 / Mulai Rp 150rb"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                    />
+                  </div>
+
+                  <div className="flex items-end sm:col-span-3">
+                    <button
+                      type="button"
+                      onClick={addService}
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-orange-600 active:scale-95"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Tambah Layanan</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Pilihan Icon */}
+                <div className="mt-4">
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Pilih Icon Layanan:
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {SERVICE_ICONS.map((icon) => (
+                      <button
+                        key={icon}
+                        type="button"
+                        onClick={() => setNewService({ ...newService, icon })}
+                        className={`flex h-9 w-9 items-center justify-center rounded-xl border text-base transition-all ${
+                          newService.icon === icon
+                            ? 'shadow-xs border-orange-500 bg-orange-100 dark:bg-orange-950/60'
+                            : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
+                        }`}
+                      >
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Daftar Layanan yang Tersedia */}
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    Daftar Layanan Aktif ({profile.services.length})
+                  </h4>
+                </div>
+
+                {profile.services.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+                    <Wrench className="mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" />
+                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                      Belum ada layanan servis yang didaftarkan
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                      Gunakan formulir di atas untuk menambahkan layanan servis
+                      pertama tokomu
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {profile.services.map((svc, index) => (
+                      <div
+                        key={index}
+                        className="shadow-xs flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-xl dark:bg-orange-950/40">
+                            {svc.icon || '📱'}
+                          </span>
+                          <div>
+                            <h5 className="text-xs font-bold text-slate-900 dark:text-white sm:text-sm">
+                              {svc.name}
+                            </h5>
+                            <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">
+                              {svc.price}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeService(index)}
+                          className="rounded-xl p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                          title="Hapus Layanan"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: GALLERY */}
+          {activeTab === 'gallery' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+                  Galeri Foto Workshop & Toko
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Unggah foto fisik toko, suasana workshop, meja kerja teknisi,
+                  atau fasilitas untuk meyakinkan calon pelanggan
+                </p>
+              </div>
+
+              <MultiImageUpload
+                label="Foto Galeri Toko (Maksimal 8 Foto)"
+                value={profile.gallery}
+                onChange={(urls) => setProfile({ ...profile, gallery: urls })}
+                maxImages={8}
+                folder="gallery"
+              />
+            </div>
+          )}
+
+          {/* TAB 4: CONTACT & HOURS */}
           {activeTab === 'contact' && (
             <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">
-                Kontak & Jam Operasional
-              </h3>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+                  Kontak & Jam Operasional
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Saluran komunikasi yang akan dihubungi oleh customer saat
+                  membutuhkan bantuan teknisi
+                </p>
+              </div>
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Phone className="h-4 w-4" /> Nomor Telepon
+                  <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    <Phone className="h-3.5 w-3.5 text-orange-500" />
+                    <span>Nomor Telepon Toko</span>{' '}
+                    <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -744,14 +954,31 @@ export default function MitraDashboard() {
                     onChange={(e) =>
                       setProfile({ ...profile, phone: e.target.value })
                     }
-                    placeholder="+62 812-xxxx-xxxx"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="021-xxxx-xxxx / 0812-xxxx-xxxx"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Mail className="h-4 w-4" /> Email
+                  <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    <Phone className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>Nomor WhatsApp Resmi</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.whatsapp}
+                    onChange={(e) =>
+                      setProfile({ ...profile, whatsapp: e.target.value })
+                    }
+                    placeholder="0812-xxxx-xxxx (Untuk chat konsultasi)"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    <Mail className="h-3.5 w-3.5 text-orange-500" />
+                    <span>Email Bisnis</span>
                   </label>
                   <input
                     type="email"
@@ -760,13 +987,14 @@ export default function MitraDashboard() {
                       setProfile({ ...profile, email: e.target.value })
                     }
                     placeholder="toko@email.com"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Globe className="h-4 w-4" /> Website (opsional)
+                  <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    <Globe className="h-3.5 w-3.5 text-orange-500" />
+                    <span>Website Toko (opsional)</span>
                   </label>
                   <input
                     type="text"
@@ -774,14 +1002,15 @@ export default function MitraDashboard() {
                     onChange={(e) =>
                       setProfile({ ...profile, website: e.target.value })
                     }
-                    placeholder="www.toko-anda.com"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://toko-anda.com"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Clock className="h-4 w-4" /> Jam Buka (Weekday)
+                  <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    <Clock className="h-3.5 w-3.5 text-orange-500" />
+                    <span>Jam Buka (Senin - Sabtu)</span>
                   </label>
                   <input
                     type="text"
@@ -793,13 +1022,14 @@ export default function MitraDashboard() {
                       })
                     }
                     placeholder="Senin - Sabtu: 09:00 - 18:00"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Clock className="h-4 w-4" /> Jam Buka (Weekend)
+                <div>
+                  <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    <Clock className="h-3.5 w-3.5 text-orange-500" />
+                    <span>Jam Buka (Minggu & Libur)</span>
                   </label>
                   <input
                     type="text"
@@ -811,7 +1041,7 @@ export default function MitraDashboard() {
                       })
                     }
                     placeholder="Minggu: Tutup / 10:00 - 15:00"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
               </div>
@@ -819,9 +1049,9 @@ export default function MitraDashboard() {
           )}
         </motion.div>
 
-        {/* Save Button */}
+        {/* Bottom Save Button */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="mt-6 flex justify-end"
@@ -831,14 +1061,14 @@ export default function MitraDashboard() {
             whileTap={{ scale: 0.98 }}
             onClick={handleSave}
             disabled={loading}
-            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-8 py-4 font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all hover:shadow-xl disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-8 py-3.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
           >
             {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Save className="h-5 w-5" />
+              <Save className="h-4 w-4" />
             )}
-            {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
+            <span>{loading ? 'Menyimpan...' : 'Simpan Seluruh Data Toko'}</span>
           </motion.button>
         </motion.div>
       </div>

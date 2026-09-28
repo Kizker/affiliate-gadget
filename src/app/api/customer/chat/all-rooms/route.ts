@@ -23,6 +23,21 @@ export async function GET() {
             email: true,
             image: true,
             role: true,
+            mitra: {
+              select: {
+                id: true,
+                businessName: true,
+                banner: true,
+                city: true,
+                phone: true,
+                isActive: true,
+                images: {
+                  where: { isBanner: true },
+                  take: 1,
+                  select: { url: true },
+                },
+              },
+            },
           },
         },
         store: {
@@ -266,8 +281,25 @@ export async function GET() {
       const resolvedOrder = room.order || orderLookupMap[room.id] || null
       const totalUnreadCount = unreadMap.get(room.id) || 0
       const hasOrder = !!resolvedOrder
+
+      const mitra = (room.claimedBy as any)?.mitra
+      const resolvedStore =
+        room.store ||
+        (mitra
+          ? {
+              id: mitra.id,
+              name: mitra.businessName,
+              companyName: mitra.businessName,
+              phone: mitra.phone,
+              city: mitra.city,
+              logo: mitra.banner || mitra.images?.[0]?.url || null,
+              isActive: mitra.isActive,
+            }
+          : null)
+
       return {
         ...room,
+        store: resolvedStore,
         order: resolvedOrder,
         hasOrder,
         totalUnread: totalUnreadCount,

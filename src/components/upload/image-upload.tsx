@@ -1,7 +1,8 @@
 'use client'
 
-import { Upload, X, Image as ImageIcon } from 'lucide-react'
+import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
 import { useState, useRef } from 'react'
+import { toast } from 'sonner'
 
 interface ImageUploadProps {
   value?: string
@@ -16,7 +17,7 @@ export default function ImageUpload({
   onChange,
   onRemove,
   label = 'Upload Image',
-  folder = 'affiliate-gadget',
+  folder = 'banners',
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -25,33 +26,40 @@ export default function ImageUpload({
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Quick client-side size check (15MB)
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Ukuran file terlalu besar. Maksimal 15MB.')
+      return
+    }
+
     setIsUploading(true)
 
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append(
-        'upload_preset',
-        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || ''
-      )
       formData.append('folder', folder)
 
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      )
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
 
       const data = await response.json()
 
-      if (data.secure_url) {
-        onChange(data.secure_url)
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal mengunggah gambar.')
       }
-    } catch (error) {
+
+      const fileUrl = data.url || data.secure_url
+      if (fileUrl) {
+        onChange(fileUrl)
+        toast.success('Foto berhasil diunggah!')
+      } else {
+        throw new Error('URL foto tidak ditemukan pada respons server.')
+      }
+    } catch (error: any) {
       console.error('Upload error:', error)
-      alert('Failed to upload image. Please try again.')
+      toast.error(error.message || 'Gagal mengunggah foto. Silakan coba lagi.')
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) {
@@ -67,7 +75,7 @@ export default function ImageUpload({
   return (
     <div className="space-y-2">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
           {label}
         </label>
       )}
@@ -75,7 +83,7 @@ export default function ImageUpload({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp,image/gif"
         onChange={handleFileChange}
         className="hidden"
       />
@@ -83,33 +91,37 @@ export default function ImageUpload({
       <div className="relative">
         {value ? (
           // Preview Image
-          <div className="group relative overflow-hidden rounded-2xl border-2 border-gray-200">
+          <div className="group relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
             <img
               src={value}
-              alt="Uploaded"
-              className="h-48 w-full object-cover"
+              alt="Uploaded banner"
+              className="h-48 w-full object-cover sm:h-56"
             />
 
             {/* Overlay on hover */}
-            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="absolute inset-0 flex items-center justify-center gap-2.5 bg-slate-950/60 opacity-0 backdrop-blur-[2px] transition-opacity group-hover:opacity-100">
               <button
                 type="button"
                 onClick={triggerFileInput}
                 disabled={isUploading}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-orange-600 active:scale-95 disabled:opacity-50"
               >
-                <Upload className="h-4 w-4" />
-                {isUploading ? 'Uploading...' : 'Ganti'}
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                <span>{isUploading ? 'Mengunggah...' : 'Ganti Banner'}</span>
               </button>
 
               {onRemove && !isUploading && (
                 <button
                   type="button"
                   onClick={onRemove}
-                  className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-red-700"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-rose-700 active:scale-95"
                 >
                   <X className="h-4 w-4" />
-                  Hapus
+                  <span>Hapus</span>
                 </button>
               )}
             </div>
@@ -120,26 +132,28 @@ export default function ImageUpload({
             type="button"
             onClick={triggerFileInput}
             disabled={isUploading}
-            className="relative flex h-48 w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50"
+            className="relative flex h-48 w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 transition-all hover:border-orange-400 hover:bg-orange-50/40 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-orange-500/40 sm:h-56"
           >
             {isUploading ? (
               <>
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-                <p className="text-sm font-medium text-gray-600">
-                  Uploading...
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Sedang Mengunggah Banner...
                 </p>
               </>
             ) : (
               <>
-                <div className="rounded-full bg-blue-100 p-4">
-                  <ImageIcon className="h-8 w-8 text-blue-600" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                  <ImageIcon className="h-6 w-6" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-gray-900">
-                    Click to upload image
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 sm:text-sm">
+                    Klik untuk Mengunggah Banner Toko
                   </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    PNG, JPG, WEBP up to 10MB
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Format PNG, JPG, atau WebP (Maksimal 15MB)
                   </p>
                 </div>
               </>

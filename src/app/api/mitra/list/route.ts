@@ -143,6 +143,12 @@ export async function GET(request: NextRequest) {
         )
       }
 
+      // Build Google Maps URL from coordinates or address
+      const googleMapsUrl =
+        mitra.latitude && mitra.longitude
+          ? `https://maps.google.com/?q=${mitra.latitude},${mitra.longitude}`
+          : `https://maps.google.com/?q=${encodeURIComponent(mitra.address + ', ' + mitra.city)}`
+
       return {
         id: mitra.id,
         businessName: mitra.businessName,
@@ -150,16 +156,20 @@ export async function GET(request: NextRequest) {
         description: mitra.description,
         banner: mitra.banner || mitra.images[0]?.url || null,
         city: mitra.city,
+        province: mitra.province,
         address: mitra.address,
         phone: mitra.phone,
+        whatsapp: mitra.whatsapp,
         rating: mitra.rating,
         totalReview: mitra.totalReview,
         reviewCount: mitra._count.reviews,
+        features: mitra.features,
         services: mitra.services,
         weekdayHours: mitra.weekdayHours,
         weekendHours: mitra.weekendHours,
         latitude: mitra.latitude,
         longitude: mitra.longitude,
+        googleMapsUrl,
         distance,
       }
     })

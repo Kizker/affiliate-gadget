@@ -26,6 +26,8 @@ import {
   Store,
   CheckCheck,
   ShoppingBag,
+  Wrench,
+  MapPin,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { isStoreOperational, getChatTickStatus } from '@/lib/chat-status'
@@ -260,6 +262,10 @@ function CustomerChatContent() {
   const paramOrderId = searchParams.get('orderId')
   const paramOrderNumber = searchParams.get('orderNumber')
   const paramStoreId = searchParams.get('storeId')
+  const paramMitraId = searchParams.get('mitraId')
+  const paramMitraName = searchParams.get('mitraName')
+  const paramMitraCity = searchParams.get('mitraCity')
+  const paramMitraImage = searchParams.get('mitraImage')
   const paramProductId = searchParams.get('productId')
   const paramProductName = searchParams.get('productName')
   const paramProductPrice = searchParams.get('productPrice')
@@ -269,6 +275,15 @@ function CustomerChatContent() {
   const paramReturnReason = searchParams.get('returnReason')
   const paramReturnStatus = searchParams.get('returnStatus')
   const paramReturnType = searchParams.get('returnType')
+  const paramServiceContext =
+    searchParams.get('serviceContext') || searchParams.get('initialMessage')
+
+  const [activeServiceContext, setActiveServiceContext] = useState<{
+    mitraId: string
+    mitraName: string
+    mitraCity?: string
+    mitraImage?: string
+  } | null>(null)
 
   const [activeProductContext, setActiveProductContext] = useState<{
     productId?: string
@@ -358,7 +373,11 @@ function CustomerChatContent() {
   // Redirect if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?callbackUrl=/dashboard/customer/chat')
+      const fullUrl =
+        typeof window !== 'undefined'
+          ? window.location.pathname + window.location.search
+          : '/dashboard/customer/chat'
+      router.push(`/login?callbackUrl=${encodeURIComponent(fullUrl)}`)
     }
   }, [status, router])
 
@@ -469,6 +488,7 @@ function CustomerChatContent() {
     if (
       !hasAutoSelectedRef.current &&
       !paramStoreId &&
+      !paramMitraId &&
       !paramOrderId &&
       rooms.length > 0 &&
       !selectedRoom &&
@@ -478,7 +498,7 @@ function CustomerChatContent() {
       hasAutoSelectedRef.current = true
       setSelectedRoom(rooms[0])
     }
-  }, [rooms, paramStoreId, paramOrderId, selectedRoom])
+  }, [rooms, paramStoreId, paramMitraId, paramOrderId, selectedRoom])
 
   // Fetch messages for selected room
   const fetchMessages = useCallback(
@@ -612,6 +632,7 @@ function CustomerChatContent() {
       loadedRoomIdRef.current = room.id
       setActiveProductContext(null)
       setActiveOrderContext(null)
+      setActiveServiceContext(null)
       setSelectedRoom(room)
       setShowChatOnMobile(true)
       setShouldScrollToBottom(true)
@@ -645,7 +666,11 @@ function CustomerChatContent() {
 
   // Auto-open and initialize direct store room from URL parameters
   useEffect(() => {
-    if (status !== 'authenticated' || (!paramStoreId && !paramOrderId)) return
+    if (
+      status !== 'authenticated' ||
+      (!paramStoreId && !paramOrderId && !paramMitraId)
+    )
+      return
 
     const safeParam = (p: string | null) => {
       if (!p) return undefined
@@ -667,8 +692,12 @@ function CustomerChatContent() {
     const resolvedReturnReason = safeParam(paramReturnReason)
     const resolvedReturnStatus = safeParam(paramReturnStatus)
     const resolvedReturnType = safeParam(paramReturnType)
+    const resolvedServiceContext = safeParam(paramServiceContext)
+    const resolvedMitraName = safeParam(paramMitraName)
+    const resolvedMitraCity = safeParam(paramMitraCity)
+    const resolvedMitraImage = safeParam(paramMitraImage)
 
-    const initKey = `${paramOrderId || ''}_${paramStoreId || ''}_${paramProductId || ''}_${resolvedProductName || ''}_${resolvedVariantName || ''}_${resolvedReturnReason || ''}`
+    const initKey = `${paramOrderId || ''}_${paramStoreId || ''}_${paramMitraId || ''}_${paramProductId || ''}_${resolvedProductName || ''}_${resolvedMitraName || ''}_${resolvedVariantName || ''}_${resolvedReturnReason || ''}_${resolvedServiceContext || ''}`
     if (lastInitializedKeyRef.current === initKey) return
     lastInitializedKeyRef.current = initKey
 
@@ -676,7 +705,8 @@ function CustomerChatContent() {
       (paramOrderId && sentContextsRef.current.has(paramOrderId)) ||
       (resolvedOrderNumber &&
         sentContextsRef.current.has(resolvedOrderNumber)) ||
-      (paramProductId && sentContextsRef.current.has(paramProductId))
+      (paramProductId && sentContextsRef.current.has(paramProductId)) ||
+      (paramMitraId && sentContextsRef.current.has(paramMitraId))
 
     if (!isAlreadySent) {
       if (paramProductId || resolvedProductName) {
@@ -705,28 +735,51 @@ function CustomerChatContent() {
             : null,
         })
       }
+
+      if (paramMitraId || resolvedMitraName) {
+        setActiveServiceContext({
+          mitraId: paramMitraId || '',
+          mitraName: resolvedMitraName || 'Mitra Servis',
+          mitraCity: resolvedMitraCity,
+          mitraImage: resolvedMitraImage,
+        })
+      }
     }
 
     async function initStoreRoom() {
       try {
         setIsInitializingRoom(true)
-        const res = await fetch('/api/customer/chat/store-room', {
+
+        // Determine which endpoint and payload to use
+        const isMitraRoom = !!paramMitraId && !paramStoreId && !paramOrderId
+        const endpoint = isMitraRoom
+          ? '/api/customer/chat/mitra-room'
+          : '/api/customer/chat/store-room'
+
+        const fetchBody = isMitraRoom
+          ? JSON.stringify({
+              mitraId: paramMitraId,
+              serviceContext: resolvedServiceContext || undefined,
+            })
+          : JSON.stringify({
+              orderId: paramOrderId || undefined,
+              orderNumber: resolvedOrderNumber || undefined,
+              returnId: paramReturnId || undefined,
+              returnReason: resolvedReturnReason || undefined,
+              returnStatus: resolvedReturnStatus || undefined,
+              returnType: resolvedReturnType || undefined,
+              storeId: paramStoreId || undefined,
+              productId: paramProductId || undefined,
+              productName: resolvedProductName,
+              productPrice: resolvedProductPrice,
+              variantName: resolvedVariantName,
+              productImage: resolvedProductImage,
+            })
+
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: paramOrderId || undefined,
-            orderNumber: resolvedOrderNumber || undefined,
-            returnId: paramReturnId || undefined,
-            returnReason: resolvedReturnReason || undefined,
-            returnStatus: resolvedReturnStatus || undefined,
-            returnType: resolvedReturnType || undefined,
-            storeId: paramStoreId || undefined,
-            productId: paramProductId || undefined,
-            productName: resolvedProductName,
-            productPrice: resolvedProductPrice,
-            variantName: resolvedVariantName,
-            productImage: resolvedProductImage,
-          }),
+          body: fetchBody,
         })
 
         if (res.ok) {
@@ -824,6 +877,13 @@ function CustomerChatContent() {
               }
               return currentInput
             })
+          } else if (resolvedServiceContext) {
+            setMessageInput((currentInput) => {
+              if (!currentInput.trim()) {
+                return resolvedServiceContext
+              }
+              return currentInput
+            })
           }
 
           // Refresh rooms list in background
@@ -862,6 +922,10 @@ function CustomerChatContent() {
     paramOrderId,
     paramOrderNumber,
     paramStoreId,
+    paramMitraId,
+    paramMitraName,
+    paramMitraCity,
+    paramMitraImage,
     paramProductId,
     paramProductName,
     paramProductPrice,
@@ -870,6 +934,7 @@ function CustomerChatContent() {
     paramReturnReason,
     paramReturnStatus,
     paramReturnType,
+    paramServiceContext,
     fetchRooms,
     session?.user?.id,
     router,
@@ -906,6 +971,11 @@ function CustomerChatContent() {
       setActiveProductContext(null)
       if (currentProductContext.productId)
         sentContextsRef.current.add(currentProductContext.productId)
+    }
+    if (activeServiceContext) {
+      if (activeServiceContext.mitraId)
+        sentContextsRef.current.add(activeServiceContext.mitraId)
+      setActiveServiceContext(null)
     }
     if (typeof window !== 'undefined') {
       window.history.replaceState(null, '', '/dashboard/customer/chat')
@@ -1565,8 +1635,18 @@ function CustomerChatContent() {
 
                           {!orderNumber && room.claimedBy?.name && (
                             <div className="mt-0.5 flex items-center gap-1">
-                              <span className="truncate text-[10px] font-semibold text-blue-600 dark:text-blue-400">
-                                • Admin: {room.claimedBy.name}
+                              <span
+                                className={`truncate text-[10px] font-semibold ${
+                                  (room.claimedBy as any)?.role === 'MITRA'
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-blue-600 dark:text-blue-400'
+                                }`}
+                              >
+                                •{' '}
+                                {(room.claimedBy as any)?.role === 'MITRA'
+                                  ? 'Mitra Servis'
+                                  : 'Admin'}
+                                : {room.claimedBy.name}
                               </span>
                             </div>
                           )}
@@ -1642,6 +1722,13 @@ function CustomerChatContent() {
                         <p className="truncate text-[11px] text-slate-400">
                           {selectedRoom.order ? (
                             `Pesanan #${selectedRoom.order.orderNumber}`
+                          ) : (selectedRoom.claimedBy as any)?.role ===
+                            'MITRA' ? (
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                              Mitra Servis Resmi:{' '}
+                              {selectedRoom.store?.name ||
+                                selectedRoom.claimedBy?.name}
+                            </span>
                           ) : selectedRoom.claimedBy?.name ? (
                             <span className="font-semibold text-blue-600 dark:text-blue-400">
                               Admin Toko: {selectedRoom.claimedBy.name}
@@ -2353,6 +2440,68 @@ function CustomerChatContent() {
                         <button
                           type="button"
                           onClick={() => setActiveProductContext(null)}
+                          className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+                          title="Tutup ringkasan"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contextual Pinned Service / Mitra Booking Bar */}
+                  {activeServiceContext && (
+                    <div className="flex items-center justify-between gap-3 border-t border-emerald-100 bg-emerald-50/80 px-4 py-2.5 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        {activeServiceContext.mitraImage ? (
+                          <img
+                            src={activeServiceContext.mitraImage}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-xl border border-emerald-200/80 bg-white object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
+                            <Wrench className="h-5 w-5 text-emerald-600" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400">
+                              Konsultasi Servis:
+                            </span>
+                            <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                              {activeServiceContext.mitraName}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px]">
+                            {activeServiceContext.mitraCity && (
+                              <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                                <MapPin className="h-3 w-3 text-slate-400" />
+                                {activeServiceContext.mitraCity}
+                              </span>
+                            )}
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                              • Booking & Estimasi Servis
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMessageInput(
+                              `Halo teknisi ${activeServiceContext.mitraName}, saya ingin konsultasi dan tanya estimasi pengerjaan servis gadget saya.`
+                            )
+                          }}
+                          className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10.5px] font-bold text-emerald-600 transition hover:bg-emerald-50 dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-300 sm:inline-flex"
+                        >
+                          <span>Template Tanya</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveServiceContext(null)}
                           className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
                           title="Tutup ringkasan"
                         >

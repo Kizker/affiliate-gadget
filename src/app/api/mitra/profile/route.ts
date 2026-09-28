@@ -7,20 +7,31 @@ export async function GET() {
   try {
     const session = await auth()
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id && !session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user is a mitra or store admin
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+    const user = await prisma.user.findFirst({
+      where: session.user.id
+        ? { id: session.user.id }
+        : { email: session.user.email! },
       select: {
+        id: true,
         role: true,
         storeApplication: true,
       },
     })
 
-    if (user?.role !== 'MITRA' && user?.role !== 'STORE_ADMIN') {
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    if (
+      user.role !== 'MITRA' &&
+      user.role !== 'STORE_ADMIN' &&
+      user.role !== 'SUPER_ADMIN'
+    ) {
       return NextResponse.json(
         { error: 'User is not a mitra' },
         { status: 403 }
@@ -29,7 +40,7 @@ export async function GET() {
 
     // Fetch mitra profile with relations
     const mitra = await prisma.mitra.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
       include: {
         services: {
           orderBy: { createdAt: 'asc' },
@@ -41,7 +52,7 @@ export async function GET() {
     })
 
     if (!mitra) {
-      if (user?.storeApplication) {
+      if (user.storeApplication) {
         return NextResponse.json({
           businessName: user.storeApplication.storeName,
           companyName: user.storeApplication.companyName,
@@ -60,7 +71,12 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json(mitra)
+    const response = NextResponse.json(mitra)
+    response.headers.set(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, proxy-revalidate'
+    )
+    return response
   } catch (error) {
     console.error('Error fetching mitra profile:', error)
     return NextResponse.json(
@@ -75,17 +91,27 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth()
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id && !session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user is a mitra or store admin
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+    const user = await prisma.user.findFirst({
+      where: session.user.id
+        ? { id: session.user.id }
+        : { email: session.user.email! },
       select: { id: true, role: true, mitraStatus: true, storeId: true },
     })
 
-    if (user?.role !== 'MITRA' && user?.role !== 'STORE_ADMIN') {
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    if (
+      user.role !== 'MITRA' &&
+      user.role !== 'STORE_ADMIN' &&
+      user.role !== 'SUPER_ADMIN'
+    ) {
       return NextResponse.json(
         { error: 'User is not a mitra' },
         { status: 403 }
@@ -93,7 +119,9 @@ export async function POST(request: NextRequest) {
     }
 
     const isAlreadyApproved =
-      user?.mitraStatus === 'APPROVED' || user?.role === 'STORE_ADMIN'
+      user.mitraStatus === 'APPROVED' ||
+      user.role === 'STORE_ADMIN' ||
+      user.role === 'SUPER_ADMIN'
 
     const body = await request.json()
 
@@ -109,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     // Check if mitra profile exists
     const existingMitra = await prisma.mitra.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
     })
 
     let mitra
@@ -117,7 +145,7 @@ export async function POST(request: NextRequest) {
     if (existingMitra) {
       // Update existing profile
       mitra = await prisma.mitra.update({
-        where: { userId: session.user.id },
+        where: { userId: user.id },
         data: {
           businessName: body.businessName,
           tagline: body.tagline || null,
@@ -125,9 +153,9 @@ export async function POST(request: NextRequest) {
           banner: body.banner || null,
           address: body.address,
           city: body.city,
-          province: body.province || 'Indonesia',
+          province: body.province || 'DKI Jakarta',
           phone: body.phone,
-          whatsapp: body.whatsapp || null,
+          whatsapp: body.whatsapp || body.phone || null,
           email: body.email || null,
           website: body.website || null,
           features: body.features || [],
@@ -154,16 +182,16 @@ export async function POST(request: NextRequest) {
       // Create new profile
       mitra = await prisma.mitra.create({
         data: {
-          userId: session.user.id,
+          userId: user.id,
           businessName: body.businessName,
           tagline: body.tagline || null,
           description: body.description || null,
           banner: body.banner || null,
           address: body.address,
           city: body.city,
-          province: body.province || 'Indonesia',
+          province: body.province || 'DKI Jakarta',
           phone: body.phone,
-          whatsapp: body.whatsapp || null,
+          whatsapp: body.whatsapp || body.phone || null,
           email: body.email || null,
           website: body.website || null,
           features: body.features || [],
@@ -182,8 +210,9 @@ export async function POST(request: NextRequest) {
 
     // Create services if provided
     if (body.services && Array.isArray(body.services)) {
-      await prisma.mitraService.createMany({
-        data: body.services.map(
+      const validServices = body.services
+        .filter((s: { name?: string }) => s && s.name && s.name.trim())
+        .map(
           (service: {
             name: string
             description?: string
@@ -191,24 +220,38 @@ export async function POST(request: NextRequest) {
             price?: number | string
           }) => ({
             mitraId: mitra.id,
-            name: service.name,
+            name: service.name.trim(),
             description: service.description || null,
-            icon: service.icon || null,
-            price: service.price ? String(service.price) : null,
+            icon: service.icon || '📱',
+            price: service.price ? String(service.price).trim() : null,
           })
-        ),
-      })
+        )
+
+      if (validServices.length > 0) {
+        await prisma.mitraService.createMany({
+          data: validServices,
+        })
+      }
     }
 
     // Create images if provided
     if (body.images && Array.isArray(body.images)) {
-      await prisma.mitraImage.createMany({
-        data: body.images.map((image: { url?: string } | string) => ({
+      const validImages = body.images
+        .map((img: { url?: string } | string) =>
+          typeof img === 'string' ? img.trim() : img?.url ? img.url.trim() : ''
+        )
+        .filter((url: string) => Boolean(url))
+        .map((url: string) => ({
           mitraId: mitra.id,
-          url: typeof image === 'string' ? image : image.url || '',
+          url,
           isBanner: false,
-        })),
-      })
+        }))
+
+      if (validImages.length > 0) {
+        await prisma.mitraImage.createMany({
+          data: validImages,
+        })
+      }
     }
 
     // If unapproved mitra submits profile, mark status as PENDING and upsert StoreApplication
@@ -216,13 +259,13 @@ export async function POST(request: NextRequest) {
     if (!isAlreadyApproved) {
       await prisma.$transaction([
         prisma.user.update({
-          where: { id: session.user.id },
+          where: { id: user.id },
           data: {
             mitraStatus: 'PENDING',
           },
         }),
         prisma.storeApplication.upsert({
-          where: { userId: session.user.id },
+          where: { userId: user.id },
           create: {
             userId: session.user.id,
             storeName: body.businessName,

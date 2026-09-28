@@ -31,6 +31,21 @@ export async function GET(req: NextRequest) {
             email: true,
             image: true,
             role: true,
+            mitra: {
+              select: {
+                id: true,
+                businessName: true,
+                banner: true,
+                city: true,
+                phone: true,
+                isActive: true,
+                images: {
+                  where: { isBanner: true },
+                  take: 1,
+                  select: { url: true },
+                },
+              },
+            },
           },
         },
         store: {
@@ -221,9 +236,25 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const mitra = (room.claimedBy as any)?.mitra
+    const resolvedStore =
+      room.store ||
+      (mitra
+        ? {
+            id: mitra.id,
+            name: mitra.businessName,
+            companyName: mitra.businessName,
+            phone: mitra.phone,
+            city: mitra.city,
+            logo: mitra.banner || mitra.images?.[0]?.url || null,
+            isActive: mitra.isActive,
+          }
+        : null)
+
     return NextResponse.json({
       room: {
         ...room,
+        store: resolvedStore,
         order: resolvedOrder,
         hasOrder: !!resolvedOrder,
       },

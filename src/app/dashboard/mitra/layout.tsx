@@ -59,9 +59,9 @@ export default function MitraLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50">
+    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
       <Navbar variant="light" />
-      <main className="min-h-screen pb-8 pt-24">
+      <main className="min-h-screen pb-12 pt-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
       <Footer variant="light" />

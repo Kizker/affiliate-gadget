@@ -8,7 +8,7 @@ import { existsSync } from 'fs'
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id) {
+    if (!session?.user?.id && !session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -47,7 +47,14 @@ export async function POST(req: NextRequest) {
     }
 
     const folderParam = formData.get('folder') as string | null
-    const folder = folderParam && /^[a-zA-Z0-9_-]+$/.test(folderParam) ? folderParam : 'reviews'
+    // Extract last segment if path like 'affiliate-gadget/banners' is passed, and sanitize
+    const folderSegment = folderParam
+      ? folderParam.split('/').filter(Boolean).pop()
+      : null
+    const sanitizedFolder = folderSegment
+      ? folderSegment.replace(/[^a-zA-Z0-9_-]/g, '_')
+      : ''
+    const folder = sanitizedFolder || 'reviews'
 
     // Create uploads directory if it doesn't exist
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads', folder)
