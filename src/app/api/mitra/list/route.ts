@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { ensureMitrasExist } from '@/lib/mitra-seed-data'
+
+export const dynamic = 'force-dynamic'
 
 // Haversine formula to calculate distance between two points
 function calculateDistance(
@@ -24,6 +27,11 @@ function calculateDistance(
 // GET /api/mitra/list - Get public list of approved mitras
 export async function GET(request: NextRequest) {
   try {
+    // Ensure default official mitras exist if database table is currently empty
+    await ensureMitrasExist().catch((err) => {
+      console.error('Failed to auto-seed default mitras:', err)
+    })
+
     const { searchParams } = new URL(request.url)
     const city = searchParams.get('city')
     const search = searchParams.get('search')
@@ -181,9 +189,9 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => (a.distance || 0) - (b.distance || 0))
     }
 
-    // Cache response for 60 seconds, serve stale for up to 5 minutes while revalidating
+    // Ensure fresh response on every request
     const headers = {
-      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
     }
 
     return NextResponse.json(

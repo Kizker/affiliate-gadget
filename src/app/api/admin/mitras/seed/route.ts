@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth'
-import { seedMitras } from '../../../../../../prisma/seed-mitras'
+import { seedMitras } from '@/lib/mitra-seed-data'
 
 export const dynamic = 'force-dynamic'
 
