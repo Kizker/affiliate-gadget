@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { ensureMitrasExist } from '@/lib/mitra-seed-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,11 +26,6 @@ function calculateDistance(
 // GET /api/mitra/list - Get public list of approved mitras
 export async function GET(request: NextRequest) {
   try {
-    // Ensure default official mitras exist if database table is currently empty
-    await ensureMitrasExist().catch((err) => {
-      console.error('Failed to auto-seed default mitras:', err)
-    })
-
     const { searchParams } = new URL(request.url)
     const city = searchParams.get('city')
     const search = searchParams.get('search')
