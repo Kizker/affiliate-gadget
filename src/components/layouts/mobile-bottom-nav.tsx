@@ -3,15 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import {
-  Home,
-  Smartphone,
-  Store,
-  ShoppingBag,
-  User,
-  LogIn,
-  Wrench,
-} from 'lucide-react'
+import { Home, Store, ShoppingBag, User, LogIn, Wrench } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
 import { useEffect, useState } from 'react'
 
@@ -59,22 +51,22 @@ export function MobileBottomNav({
   // Resolve current active tab if not explicitly given
   const currentTab =
     activeTab !== undefined
-      ? activeTab
+      ? activeTab === 'katalog'
+        ? 'beranda'
+        : activeTab
       : isChatPage || isCartPage || isOrderConfirmationPage
         ? 'none'
-        : pathname === '/'
+        : pathname === '/' || pathname.startsWith('/gadget')
           ? 'beranda'
-          : pathname.startsWith('/gadget')
-            ? 'katalog'
-            : pathname.startsWith('/servis')
-              ? 'servis'
-              : pathname.startsWith('/toko')
-                ? 'toko'
-                : pathname.startsWith('/dashboard') ||
-                    pathname.startsWith('/login') ||
-                    pathname.startsWith('/register')
-                  ? 'akun'
-                  : 'beranda'
+          : pathname.startsWith('/servis')
+            ? 'servis'
+            : pathname.startsWith('/toko')
+              ? 'toko'
+              : pathname.startsWith('/dashboard') ||
+                  pathname.startsWith('/login') ||
+                  pathname.startsWith('/register')
+                ? 'akun'
+                : 'beranda'
 
   const accountHref = isLoggedIn
     ? session?.user?.role === 'SUPER_ADMIN' ||
@@ -90,9 +82,9 @@ export function MobileBottomNav({
       className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/80 bg-white/95 px-4 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.04)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 md:hidden"
     >
       <div className="mx-auto flex max-w-md items-center justify-around">
-        {/* 1. Beranda */}
+        {/* 1. Beranda (Katalog Gadget yang kini berfungsi sebagai Beranda utama di mode mobile) */}
         <Link
-          href="/"
+          href="/gadget"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'beranda'
               ? 'font-bold text-orange-500'
@@ -106,24 +98,6 @@ export function MobileBottomNav({
             strokeWidth={currentTab === 'beranda' ? 2.5 : 1.8}
           />
           <span className="mt-1 text-[10px] tracking-tight">Beranda</span>
-        </Link>
-
-        {/* 2. Katalog */}
-        <Link
-          href="/gadget"
-          className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
-            currentTab === 'katalog'
-              ? 'font-bold text-orange-500'
-              : 'font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-        >
-          <Smartphone
-            className={`h-5 w-5 transition-transform ${
-              currentTab === 'katalog' ? 'scale-110 text-orange-500' : ''
-            }`}
-            strokeWidth={currentTab === 'katalog' ? 2.5 : 1.8}
-          />
-          <span className="mt-1 text-[10px] tracking-tight">Katalog</span>
         </Link>
 
         {/* 3. Servis */}

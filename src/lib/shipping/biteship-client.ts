@@ -66,6 +66,8 @@ export interface ShippingBookingRecord {
 const DATA_DIR = path.join(process.cwd(), '.data')
 const SHIPPING_STORE_FILE = path.join(DATA_DIR, 'shipping-store.json')
 
+const inMemoryCache: Record<string, ShippingBookingRecord> = {}
+
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true })
@@ -77,15 +79,17 @@ function loadShippingStore(): Record<string, ShippingBookingRecord> {
   try {
     if (fs.existsSync(SHIPPING_STORE_FILE)) {
       const raw = fs.readFileSync(SHIPPING_STORE_FILE, 'utf-8')
-      return JSON.parse(raw)
+      const parsed = JSON.parse(raw)
+      return { ...inMemoryCache, ...parsed }
     }
   } catch (err) {
     console.error('Error loading shipping-store.json:', err)
   }
-  return {}
+  return { ...inMemoryCache }
 }
 
 function saveShippingStore(data: Record<string, ShippingBookingRecord>) {
+  Object.assign(inMemoryCache, data)
   ensureDataDir()
   try {
     fs.writeFileSync(

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { auth } from '@/auth'
+import { analyzeSmartQuery } from '@/lib/smart-search'
 
 export async function GET(request: Request) {
   try {
@@ -48,12 +49,18 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { brand: { contains: search, mode: 'insensitive' } },
-        { model: { contains: search, mode: 'insensitive' } },
-      ]
+      const smart = analyzeSmartQuery(search)
+      const searchTerms = [search]
+      if (smart.hasCorrection && !searchTerms.includes(smart.effectiveQuery)) {
+        searchTerms.push(smart.effectiveQuery)
+      }
+
+      where.OR = searchTerms.flatMap((term) => [
+        { name: { contains: term, mode: 'insensitive' } },
+        { description: { contains: term, mode: 'insensitive' } },
+        { brand: { contains: term, mode: 'insensitive' } },
+        { model: { contains: term, mode: 'insensitive' } },
+      ])
     }
 
     if (brand && brand !== 'ALL') {

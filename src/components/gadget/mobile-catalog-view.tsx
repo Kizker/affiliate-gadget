@@ -18,6 +18,7 @@ import {
   Smartphone,
   CheckCircle2,
   Loader2,
+  Sparkles,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
@@ -29,6 +30,7 @@ import {
   InFeedAdData,
 } from '@/components/ads/in-feed-store-ad-card'
 import { MobileTopHeroBanner } from '@/components/ads/mobile-top-hero-banner'
+import { SmartAnalysisResult } from '@/lib/smart-search'
 
 const INITIAL_COUNT = 16
 const BATCH_SIZE = 8
@@ -46,6 +48,9 @@ interface MobileCatalogViewProps {
   status: string
   promotedAd?: InFeedAdData | null
   promotedAds?: InFeedAdData[]
+  smartAnalysis?: SmartAnalysisResult
+  ignoreCorrection?: boolean
+  setIgnoreCorrection?: (v: boolean) => void
 }
 
 export function MobileCatalogView({
@@ -61,6 +66,9 @@ export function MobileCatalogView({
   status,
   promotedAd,
   promotedAds,
+  smartAnalysis,
+  ignoreCorrection = false,
+  setIgnoreCorrection,
 }: MobileCatalogViewProps) {
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const { items } = useCartStore()
@@ -398,17 +406,26 @@ export function MobileCatalogView({
           <button
             type="button"
             onClick={() => {
-              // Toggle through sort or quick reset
-              setSortBy(
-                sortBy === 'PRICE_LOW'
-                  ? 'PRICE_HIGH'
-                  : sortBy === 'PRICE_HIGH'
-                    ? 'RATING'
-                    : 'PRICE_LOW'
-              )
-              toast.info(
-                `Urutan: ${sortBy === 'PRICE_LOW' ? 'Harga Tertinggi' : sortBy === 'PRICE_HIGH' ? 'Rating Tertinggi' : 'Harga Terendah'}`
-              )
+              // Toggle through sort: RELEVANCE -> POPULAR -> PRICE_LOW -> PRICE_HIGH -> RATING -> RELEVANCE
+              const nextSort =
+                sortBy === 'RELEVANCE' || sortBy === 'DEFAULT'
+                  ? 'POPULAR'
+                  : sortBy === 'POPULAR'
+                    ? 'PRICE_LOW'
+                    : sortBy === 'PRICE_LOW'
+                      ? 'PRICE_HIGH'
+                      : sortBy === 'PRICE_HIGH'
+                        ? 'RATING'
+                        : 'RELEVANCE'
+              setSortBy(nextSort)
+              const labels: Record<string, string> = {
+                RELEVANCE: 'Paling Relevan',
+                POPULAR: 'Terlaris',
+                PRICE_LOW: 'Harga Terendah',
+                PRICE_HIGH: 'Harga Tertinggi',
+                RATING: 'Rating Tertinggi',
+              }
+              toast.info(`Urutan: ${labels[nextSort] || nextSort}`)
             }}
             className="shadow-2xs flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200/80 bg-slate-50/90 text-orange-500 transition-all hover:bg-orange-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-orange-950/30"
             aria-label="Filter"
@@ -417,6 +434,58 @@ export function MobileCatalogView({
           </button>
         </div>
       </section>
+
+      {/* Smart Typo Correction Banner (Mobile) */}
+      {search.trim().length > 0 &&
+        smartAnalysis?.hasCorrection &&
+        !ignoreCorrection && (
+          <section className="px-4 pt-2">
+            <div className="shadow-2xs flex items-center justify-between gap-2 rounded-2xl border border-orange-200/90 bg-gradient-to-r from-orange-50 via-amber-50/60 to-white p-2.5 px-3 text-[11px] text-orange-950 dark:border-orange-900/50 dark:from-orange-950/40 dark:to-slate-900 dark:text-orange-200">
+              <div className="flex min-w-0 items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 animate-pulse text-orange-500" />
+                <span className="truncate">
+                  Hasil untuk{' '}
+                  <strong className="font-extrabold text-orange-600 underline decoration-orange-400 dark:text-orange-400">
+                    "{smartAnalysis.effectiveQuery}"
+                  </strong>
+                  <span className="ml-1 text-slate-500 dark:text-slate-400">
+                    (typo "{search}")
+                  </span>
+                </span>
+              </div>
+              {setIgnoreCorrection && (
+                <button
+                  type="button"
+                  onClick={() => setIgnoreCorrection(true)}
+                  className="shrink-0 text-[10px] font-semibold text-slate-500 underline hover:text-slate-900 dark:text-slate-400"
+                >
+                  Cari "{search}"
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
+      {search.trim().length > 0 &&
+        smartAnalysis?.hasCorrection &&
+        ignoreCorrection && (
+          <section className="px-4 pt-2">
+            <div className="shadow-2xs flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 px-3 text-[11px] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              <span className="truncate">
+                Cari persis: <strong>"{search}"</strong>
+              </span>
+              {setIgnoreCorrection && (
+                <button
+                  type="button"
+                  onClick={() => setIgnoreCorrection(false)}
+                  className="shrink-0 font-bold text-orange-600 hover:underline dark:text-orange-400"
+                >
+                  Gunakan "{smartAnalysis.effectiveQuery}"
+                </button>
+              )}
+            </div>
+          </section>
+        )}
 
       {/* 3. HORIZONTAL BRAND SELECTOR (Pills) */}
       <section className="mt-2.5 px-4">
@@ -460,7 +529,9 @@ export function MobileCatalogView({
             size="sm"
             icon={<ArrowUpDown className="h-3 w-3 text-slate-400" />}
             options={[
-              { value: 'DEFAULT', label: 'Terlaris' },
+              { value: 'RELEVANCE', label: 'Paling Relevan' },
+              { value: 'POPULAR', label: 'Terlaris' },
+              { value: 'LATEST', label: 'Urutan Terbaru' },
               { value: 'PRICE_LOW', label: 'Harga Terendah' },
               { value: 'PRICE_HIGH', label: 'Harga Tertinggi' },
               { value: 'RATING', label: 'Rating Tertinggi' },

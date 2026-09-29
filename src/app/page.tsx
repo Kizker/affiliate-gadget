@@ -1,19 +1,29 @@
 'use client'
 
-import { Navbar, Footer, MobileBottomNav } from '@/components/layouts'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Navbar, Footer } from '@/components/layouts'
 import { SectionHeroClean } from '@/components/landing/section-hero-clean'
 import { SectionTrustPillars } from '@/components/landing/section-trust-pillars'
 import { SectionFeaturedGadgets } from '@/components/landing/section-featured-gadgets'
 import { SectionStoreSpotlight } from '@/components/landing/section-store-spotlight'
-import { MobileHomeView } from '@/components/landing/mobile-home-view'
+import GadgetKatalogPage from '@/app/gadget/page'
 
 export default function HomePage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Pada mode mobile, halaman beranda ditiadakan karena redundan dengan katalog yang kini menjadi Beranda
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      router.replace('/gadget')
+    }
+  }, [router])
+
   return (
     <>
-      {/* 1. Mobile View — Figma Screen 1: Beranda AffiliateGadget */}
+      {/* 1. Mobile View — Katalog Gadget sebagai Beranda Mobile Tunggal */}
       <div className="block md:hidden">
-        <MobileHomeView />
-        <MobileBottomNav activeTab="beranda" />
+        <GadgetKatalogPage />
       </div>
 
       {/* 2. Desktop View — Fullscreen Snap Layout Intact */}

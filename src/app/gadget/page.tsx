@@ -21,6 +21,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/ui/custom-select'
 import {
@@ -31,6 +32,13 @@ import {
   buildPaginatedCatalogGrid,
   CatalogGridItem,
 } from '@/lib/catalog-grid-layout'
+import { sortProductsByRelevance } from '@/lib/relevance-scoring'
+import {
+  filterGadgetsWithSmartSearch,
+  createProductFuseIndex,
+  analyzeSmartQuery,
+  SmartAnalysisResult,
+} from '@/lib/smart-search'
 
 function GadgetKatalogContent() {
   const searchParams = useSearchParams()
@@ -41,7 +49,13 @@ function GadgetKatalogContent() {
   const [loading, setLoading] = useState(true)
   const [brand, setBrand] = useState('ALL')
   const [search, setSearch] = useState(() => searchParams.get('search') ?? '')
-  const [sortBy, setSortBy] = useState('DEFAULT')
+  const [sortBy, setSortBy] = useState('RELEVANCE')
+  const [ignoreCorrection, setIgnoreCorrection] = useState(false)
+
+  // Reset ignore correction when search query changes
+  useEffect(() => {
+    setIgnoreCorrection(false)
+  }, [search])
 
   // Sync search state jika URL param berubah (mis. navigasi dari navbar)
   useEffect(() => {
@@ -81,30 +95,106 @@ function GadgetKatalogContent() {
 
   const brands = ['ALL', 'Apple', 'Samsung', 'Xiaomi', 'ASUS']
 
-  const filtered = gadgets.filter((g) => {
-    if (brand !== 'ALL' && g.brand?.toUpperCase() !== brand.toUpperCase()) {
-      return false
+  // Smart Search: Analisis Typo Tolerant & Fuzzy Matching (Fuse.js ML-grade)
+  const { filtered, smartAnalysis } = useMemo(() => {
+    if (ignoreCorrection) {
+      const litFiltered = gadgets.filter((g) => {
+        if (brand !== 'ALL' && g.brand?.toUpperCase() !== brand.toUpperCase()) {
+          return false
+        }
+        if (!search) return true
+        const s = search.toLowerCase()
+        return (
+          g.name?.toLowerCase().includes(s) ||
+          g.brand?.toLowerCase().includes(s) ||
+          g.store?.name?.toLowerCase().includes(s)
+        )
+      })
+      return {
+        filtered: litFiltered,
+        smartAnalysis: {
+          originalQuery: search,
+          effectiveQuery: search,
+          hasCorrection: false,
+          corrections: [],
+        },
+      }
     }
-    if (!search) return true
-    return (
-      g.name.toLowerCase().includes(search.toLowerCase()) ||
-      (g.brand && g.brand.toLowerCase().includes(search.toLowerCase())) ||
-      (g.store && g.store.name.toLowerCase().includes(search.toLowerCase()))
-    )
-  })
 
-  // Apply sorting
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === 'PRICE_LOW')
-      return (Number(a.price) || 0) - (Number(b.price) || 0)
-    if (sortBy === 'PRICE_HIGH')
-      return (Number(b.price) || 0) - (Number(a.price) || 0)
-    if (sortBy === 'RATING')
-      return (Number(b.rating) || 0) - (Number(a.rating) || 0)
-    if (sortBy === 'POPULAR' || sortBy === 'BEST_SELLER')
-      return (Number(b.soldCount) || 0) - (Number(a.soldCount) || 0)
-    return 0
-  })
+    // Layer 1: Smart Search (dictionary + Levenshtein + Fuse vocab)
+    const primaryResult = filterGadgetsWithSmartSearch(gadgets, search, brand)
+
+    // Layer 2: Fuse.js direct product search sebagai ultimate fallback
+    // Aktif hanya jika: ada query, hasil primary kosong, dan query >= 2 karakter
+    if (primaryResult.filtered.length === 0 && search.trim().length >= 2) {
+      // Saring brand dulu sebelum masuk Fuse
+      const brandFiltered =
+        brand !== 'ALL'
+          ? gadgets.filter(
+              (g) => g.brand?.toUpperCase() === brand.toUpperCase()
+            )
+          : gadgets
+
+      const fuseIndex = createProductFuseIndex(brandFiltered)
+      const fuseResults = fuseIndex.search(search.trim())
+
+      if (fuseResults.length > 0) {
+        const fuseFiltered = fuseResults.map((r) => r.item)
+        // Buat smartAnalysis dari koreksi dictionary/Fuse vocab
+        const analysis = analyzeSmartQuery(search)
+        return {
+          filtered: fuseFiltered,
+          smartAnalysis: {
+            ...analysis,
+            // Jika Fuse berhasil tapi tidak ada koreksi dictionary, tandai sebagai hasCorrection
+            // agar banner 'Menampilkan hasil untuk...' tetap tampil
+            hasCorrection:
+              analysis.hasCorrection ||
+              analysis.effectiveQuery !== search.toLowerCase(),
+          },
+        }
+      }
+    }
+
+    return primaryResult
+  }, [gadgets, search, brand, ignoreCorrection])
+
+  // Apply sorting — Default "Paling Relevan" (Shopee-Style Multi-Factor Relevance)
+  const sorted = useMemo(() => {
+    if (sortBy === 'PRICE_LOW') {
+      return [...filtered].sort(
+        (a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)
+      )
+    }
+    if (sortBy === 'PRICE_HIGH') {
+      return [...filtered].sort(
+        (a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)
+      )
+    }
+    if (sortBy === 'RATING') {
+      return [...filtered].sort(
+        (a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0)
+      )
+    }
+    if (sortBy === 'POPULAR' || sortBy === 'BEST_SELLER') {
+      return [...filtered].sort(
+        (a, b) => (Number(b.soldCount) || 0) - (Number(a.soldCount) || 0)
+      )
+    }
+    if (sortBy === 'LATEST') {
+      return [...filtered].sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+        return dateB - dateA
+      })
+    }
+
+    // Default: 'RELEVANCE' / 'DEFAULT' (Shopee-Style Multi-Factor Relevance Scoring)
+    const effectiveSearch = ignoreCorrection
+      ? search
+      : smartAnalysis.effectiveQuery || search
+    return sortProductsByRelevance(filtered, effectiveSearch)
+  }, [filtered, sortBy, search, ignoreCorrection, smartAnalysis])
 
   // Desktop Pagination with exact 4-column balanced spans
   const [currentPage, setCurrentPage] = useState(1)
@@ -173,8 +263,11 @@ function GadgetKatalogContent() {
           status={status}
           promotedAd={promotedAd}
           promotedAds={promotedAds}
+          smartAnalysis={smartAnalysis}
+          ignoreCorrection={ignoreCorrection}
+          setIgnoreCorrection={setIgnoreCorrection}
         />
-        <MobileBottomNav activeTab="katalog" />
+        <MobileBottomNav activeTab="beranda" />
       </div>
 
       {/* 2. Desktop View — Clean Responsive Grid */}
@@ -233,8 +326,9 @@ function GadgetKatalogContent() {
                     onChange={(val) => setSortBy(val)}
                     size="sm"
                     options={[
-                      { value: 'DEFAULT', label: 'Urutan Terbaru' },
+                      { value: 'RELEVANCE', label: 'Paling Relevan' },
                       { value: 'POPULAR', label: 'Terlaris' },
+                      { value: 'LATEST', label: 'Urutan Terbaru' },
                       { value: 'PRICE_LOW', label: 'Harga Terendah' },
                       { value: 'PRICE_HIGH', label: 'Harga Tertinggi' },
                     ]}
@@ -247,6 +341,54 @@ function GadgetKatalogContent() {
             <div className="mb-6 md:mb-8">
               <MobileTopHeroBanner />
             </div>
+
+            {/* Smart Search Typo Correction Indicator (Desktop) */}
+            {search.trim().length > 0 &&
+              smartAnalysis.hasCorrection &&
+              !ignoreCorrection && (
+                <div className="px-4.5 shadow-xs mb-6 flex items-center justify-between gap-3 rounded-2xl border border-orange-200/90 bg-gradient-to-r from-orange-50 via-amber-50/60 to-white p-3 text-xs text-orange-950 dark:border-orange-900/40 dark:from-orange-950/30 dark:via-slate-900 dark:to-slate-900 dark:text-orange-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="shadow-xs flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <span className="text-slate-600 dark:text-slate-300">
+                        Menampilkan hasil untuk{' '}
+                      </span>
+                      <strong className="font-extrabold text-orange-600 underline decoration-orange-400 underline-offset-4 dark:text-orange-400">
+                        "{smartAnalysis.effectiveQuery}"
+                      </strong>
+                      <span className="ml-1.5 text-slate-500 dark:text-slate-400">
+                        (Koreksi cerdas dari <em>"{search}"</em>)
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIgnoreCorrection(true)}
+                    className="shadow-2xs cursor-pointer whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    Cari "{search}" saja
+                  </button>
+                </div>
+              )}
+
+            {search.trim().length > 0 &&
+              smartAnalysis.hasCorrection &&
+              ignoreCorrection && (
+                <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/90 p-3 px-4 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-300">
+                  <span>
+                    Mencari secara persis: <strong>"{search}"</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIgnoreCorrection(false)}
+                    className="cursor-pointer font-bold text-orange-600 hover:underline dark:text-orange-400"
+                  >
+                    Gunakan pencarian pintar "{smartAnalysis.effectiveQuery}"
+                  </button>
+                </div>
+              )}
 
             {/* Products Grid: 4 Columns on Desktop */}
             {loading ? (
