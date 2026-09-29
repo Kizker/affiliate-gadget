@@ -533,7 +533,7 @@ export function LiveStreamViewer({ streamId }: LiveStreamViewerProps) {
             <button
               type="button"
               onClick={() => setShowProductModal(false)}
-              className="absolute right-4 top-4 rounded-full p-1 text-slate-400 hover:text-white"
+              className="absolute right-4 top-4 z-20 rounded-full bg-slate-800/80 p-1 text-slate-300 backdrop-blur-sm transition hover:text-white"
             >
               <X className="h-4 w-4" />
             </button>
