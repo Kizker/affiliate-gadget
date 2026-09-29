@@ -176,15 +176,18 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
           // Persist comment to PostgreSQL
           let savedComment: any = null
           try {
+            const commentPayload: any = {
+              streamId: targetStreamId,
+              userName: session.userName,
+              userAvatar: session.userAvatar || null,
+              message: sanitized,
+              type: 'CHAT',
+            }
+            if (session.userId) {
+              commentPayload.userId = session.userId
+            }
             savedComment = await prisma.liveStreamComment.create({
-              data: {
-                streamId: targetStreamId,
-                userId: session.userId || null,
-                userName: session.userName,
-                userAvatar: session.userAvatar || null,
-                message: sanitized,
-                type: 'CHAT',
-              },
+              data: commentPayload,
             })
           } catch {
             // Fallback object if database insert temporarily fails
