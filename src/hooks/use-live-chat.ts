@@ -74,12 +74,22 @@ export function useLiveChat({
 
   // 2. Resolve WebSocket Server URL
   const getWsUrl = useCallback(() => {
-    const configuredUrl =
-      process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001'
+    const configuredUrl = process.env.NEXT_PUBLIC_WS_URL
 
     let base = configuredUrl
-    if (typeof window !== 'undefined' && configuredUrl.includes('localhost')) {
-      base = `ws://${window.location.hostname}:3001`
+    if (typeof window !== 'undefined') {
+      const isHttps = window.location.protocol === 'https:'
+      if (!base) {
+        base = isHttps
+          ? `wss://${window.location.host}/ws`
+          : `ws://${window.location.hostname}:3001`
+      } else if (configuredUrl?.includes('localhost')) {
+        base = isHttps
+          ? `wss://${window.location.host}/ws`
+          : `ws://${window.location.hostname}:3001`
+      }
+    } else if (!base) {
+      base = 'ws://localhost:3001'
     }
 
     const params = new URLSearchParams()

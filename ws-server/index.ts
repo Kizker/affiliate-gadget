@@ -49,12 +49,17 @@ const wss = new WebSocketServer({ noServer: true })
 server.on('upgrade', (request, socket, head) => {
   const origin = request.headers.origin
 
-  // Origin security check: allow same origin or localhost in dev
+  // Origin security check: allow same origin, production domain, or localhost in dev
   if (origin) {
+    const normOrigin = origin.replace(/\/+$/, '')
+    const normAllowed = ALLOWED_ORIGIN.replace(/\/+$/, '')
     const isAllowed =
-      origin === ALLOWED_ORIGIN ||
-      origin.includes('localhost:') ||
-      origin.includes('127.0.0.1:')
+      normOrigin === normAllowed ||
+      normOrigin === normAllowed.replace('://', '://www.') ||
+      normOrigin.replace('://www.', '://') === normAllowed ||
+      normOrigin.includes('affiliategadget.tech') ||
+      normOrigin.includes('localhost:') ||
+      normOrigin.includes('127.0.0.1:')
 
     if (!isAllowed) {
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n')

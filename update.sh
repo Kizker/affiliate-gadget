@@ -38,15 +38,21 @@ docker run --rm \
     node:22-alpine \
     sh -c "apk add --no-cache openssl && npm install -g tsx@4.19.2 && npx prisma@6 db push --schema=./prisma/schema.prisma --skip-generate" 2>&1 || true
 
-# 3. Rebuild container Next.js app dengan kode baru
+# 3. Rebuild container Next.js app & ws-server dengan kode baru
 echo ""
-echo "[3/4] Melakukan build container Next.js (app)..."
-docker compose -f "$COMPOSE_FILE" build app
+echo "[3/4] Melakukan build container Next.js (app) & WebSocket Server (ws-server)..."
+docker compose -f "$COMPOSE_FILE" build app ws-server
 
-# 4. Restart container app
+# 4. Restart container app, ws-server & reload Nginx
 echo ""
 echo "[4/4] Memperbarui dan menjalankan container..."
-docker compose -f "$COMPOSE_FILE" up -d app
+docker compose -f "$COMPOSE_FILE" up -d app ws-server
+
+# Reload Nginx jika container nginx berjalan (untuk mengaktifkan proxy /ws)
+if docker compose -f "$COMPOSE_FILE" ps --services --filter "status=running" | grep -q nginx; then
+    echo "  → Reloading Nginx configuration..."
+    docker compose -f "$COMPOSE_FILE" exec -T nginx nginx -s reload 2>/dev/null || true
+fi
 
 echo ""
 echo "=========================================="
@@ -54,5 +60,8 @@ echo "✅ UPDATE DEPLOY BERHASIL!"
 echo "=========================================="
 docker compose -f "$COMPOSE_FILE" ps
 echo ""
-echo "📋 Log aplikasi (10 baris terakhir):"
+echo "📋 Log Next.js (app):"
 docker compose -f "$COMPOSE_FILE" logs --tail=10 app
+echo ""
+echo "📋 Log WebSocket Server (ws-server):"
+docker compose -f "$COMPOSE_FILE" logs --tail=10 ws-server
