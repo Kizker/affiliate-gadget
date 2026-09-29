@@ -1,0 +1,98 @@
+'use client'
+
+import React from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { ShoppingBag, Pin, X, ExternalLink, Zap } from 'lucide-react'
+import type { PinnedProduct } from '@/hooks/use-live-chat'
+
+interface LiveProductPinProps {
+  product: PinnedProduct | null
+  isBroadcaster?: boolean
+  onUnpin?: () => void
+  className?: string
+}
+
+export function LiveProductPin({
+  product,
+  isBroadcaster = false,
+  onUnpin,
+  className = '',
+}: LiveProductPinProps) {
+  if (!product) return null
+
+  const formatPrice = (val?: number) => {
+    if (typeof val !== 'number') return 'Rp -'
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0,
+    }).format(val)
+  }
+
+  return (
+    <div
+      className={`animate-slide-up group relative flex max-w-sm items-center gap-3 rounded-2xl border border-orange-500/40 bg-slate-900/90 p-2.5 shadow-xl shadow-orange-500/5 backdrop-blur-md transition-all duration-300 hover:bg-slate-900 ${className}`}
+    >
+      {/* Pinned Badge */}
+      <div className="absolute -top-2.5 left-3 flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
+        <Pin className="h-2.5 w-2.5 fill-white" />
+        PRODUK DISOROT
+      </div>
+
+      {/* Product Image Thumbnail */}
+      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-slate-800">
+        {product.productImage ? (
+          <Image
+            src={product.productImage}
+            alt={product.productTitle || 'Produk'}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-slate-500">
+            <ShoppingBag className="h-5 w-5" />
+          </div>
+        )}
+      </div>
+
+      {/* Info Content */}
+      <div className="min-w-0 flex-1 pr-1">
+        <h4 className="line-clamp-1 truncate text-xs font-semibold text-white">
+          {product.productTitle || 'Produk Pilihan'}
+        </h4>
+        <div className="mt-0.5 flex items-center gap-1.5">
+          <span className="text-sm font-bold text-orange-400">
+            {formatPrice(product.productPrice)}
+          </span>
+          <span className="inline-flex items-center gap-0.5 rounded-sm bg-orange-500/20 px-1.5 py-0.5 text-[9px] font-bold text-orange-300">
+            <Zap className="h-2.5 w-2.5" />
+            LIVE PROMO
+          </span>
+        </div>
+      </div>
+
+      {/* Buy Button */}
+      <Link
+        href={`/gadget/${product.productId}`}
+        target="_blank"
+        className="flex shrink-0 items-center gap-1 rounded-xl bg-orange-500 px-3 py-2 text-xs font-semibold text-white shadow-md transition-all hover:bg-orange-600 active:scale-95"
+      >
+        <span>Beli</span>
+        <ExternalLink className="h-3.5 w-3.5" />
+      </Link>
+
+      {/* Unpin button for Host/Broadcaster */}
+      {isBroadcaster && onUnpin && (
+        <button
+          type="button"
+          onClick={onUnpin}
+          title="Lepas Sematan Produk"
+          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
+}

@@ -113,6 +113,9 @@ export async function POST(req: NextRequest) {
       storeId = firstStore?.id || null
     }
 
+    const randomSuffix = Math.random().toString(36).substring(2, 8)
+    const livekitRoomName = `ag-live-${Date.now().toString(36)}-${randomSuffix}`
+
     const stream = await prisma.liveStream.create({
       data: {
         storeId,
@@ -124,6 +127,7 @@ export async function POST(req: NextRequest) {
         status: 'SCHEDULED',
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         featuredProductIds: [],
+        livekitRoomName,
       },
       include: {
         store: {

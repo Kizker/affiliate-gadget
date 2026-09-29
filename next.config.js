@@ -51,6 +51,8 @@ const nextConfig = {
     '@prisma/client',
     'prisma',
     'redis',
+    'livekit-server-sdk',
+    'ws',
   ],
   experimental: {
     optimizePackageImports: [
@@ -75,7 +77,8 @@ const nextConfig = {
         headers: [
           {
             key: 'Permissions-Policy',
-            value: 'geolocation=*',
+            value:
+              'camera=(self), microphone=(self), display-capture=(self), geolocation=*',
           },
           {
             key: 'X-DNS-Prefetch-Control',

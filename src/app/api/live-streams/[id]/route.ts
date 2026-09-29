@@ -141,6 +141,16 @@ export async function PATCH(
     } else if (status === 'ENDED') {
       updateData.status = 'ENDED'
       updateData.endedAt = new Date()
+
+      // Gracefully clean up LiveKit cloud room
+      const roomName = stream.livekitRoomName || `ag-live-${stream.id}`
+      try {
+        const { getLiveKitRoomService } = await import('@/lib/livekit')
+        const roomService = getLiveKitRoomService()
+        await roomService.deleteRoom(roomName)
+      } catch {
+        // Room might have already ended or closed
+      }
     } else if (status === 'SCHEDULED') {
       updateData.status = 'SCHEDULED'
     } else if (status !== undefined) {

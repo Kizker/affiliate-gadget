@@ -65,6 +65,7 @@ model User {
   notificationLogs       NotificationLog[]
   emailVerificationTokens EmailVerificationToken[]
   voucherUsages          VoucherUsage[]
+  liveStreamComments     LiveStreamComment[]
 
   @@index([email])
   @@index([phone])
@@ -270,6 +271,8 @@ model LiveStream {
   endedAt            DateTime?
   viewerCount        Int                 @default(0)
   featuredProductIds String[]            @default([])
+  livekitRoomName    String?
+  livekitEgressId    String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   store              Store?              @relation(fields: [storeId], references: [id])
@@ -284,14 +287,19 @@ model LiveStream {
 model LiveStreamComment {
   id           String     @id @default(cuid())
   streamId     String
+  userId       String?
   userName     String
   userAvatar   String?
   message      String
+  type         String     @default("CHAT")
+  metadata     Json?
   isPinned     Boolean    @default(false)
   createdAt    DateTime   @default(now())
   liveStream   LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([streamId])
+  @@index([streamId, createdAt])
   @@map("live_stream_comments")
 }
 

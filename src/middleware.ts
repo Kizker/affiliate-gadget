@@ -229,11 +229,11 @@ export default auth((req) => {
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://maps.google.com https://widget.cloudinary.com https://upload-widget.cloudinary.com https://cdn.tiny.cloud; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://widget.cloudinary.com https://cdn.tiny.cloud; img-src 'self' blob: data: https://utfs.io https://lh3.googleusercontent.com https://images.unsplash.com https://res.cloudinary.com https://ui-avatars.com https://maps.gstatic.com https://maps.googleapis.com https://sp.tinymce.com https://i.ytimg.com; media-src 'self' blob: data: https://videos.pexels.com https://commondatastorage.googleapis.com https://*.googlevideo.com; font-src 'self' https://fonts.gstatic.com https://cdn.tiny.cloud; connect-src 'self' https://utfs.io https://api.cloudinary.com https://res.cloudinary.com https://maps.googleapis.com https://cdn.tiny.cloud https://sp.tinymce.com; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.twitch.tv; frame-ancestors 'none';"
+    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://maps.google.com https://widget.cloudinary.com https://upload-widget.cloudinary.com https://cdn.tiny.cloud; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://widget.cloudinary.com https://cdn.tiny.cloud; img-src 'self' blob: data: https://utfs.io https://lh3.googleusercontent.com https://images.unsplash.com https://res.cloudinary.com https://ui-avatars.com https://maps.gstatic.com https://maps.googleapis.com https://sp.tinymce.com https://i.ytimg.com; media-src 'self' blob: data: https://videos.pexels.com https://commondatastorage.googleapis.com https://*.googlevideo.com https://*.livekit.cloud wss://*.livekit.cloud; font-src 'self' https://fonts.gstatic.com https://cdn.tiny.cloud; connect-src 'self' https://utfs.io https://api.cloudinary.com https://res.cloudinary.com https://maps.googleapis.com https://cdn.tiny.cloud https://sp.tinymce.com https://*.livekit.cloud wss://*.livekit.cloud ws://localhost:3001 ws://127.0.0.1:3001 wss://localhost:3001; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.twitch.tv; frame-ancestors 'none';"
   )
   response.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), browsing-topics=()'
+    'camera=(self), microphone=(self), display-capture=(self), geolocation=*, browsing-topics=()'
   )
 
   return response

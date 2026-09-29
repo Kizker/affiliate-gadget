@@ -40,12 +40,17 @@ export const authConfig = {
     // JWT callback - needed for middleware to read role
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id
+        token.id = user.id || ''
         token.role = user.role || 'CUSTOMER'
         token.name = user.name
         token.email = user.email
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        token.image = (user.image && !user.image.startsWith('data:') && user.image.length < 500) ? user.image : null
+
+        token.image =
+          user.image &&
+          !user.image.startsWith('data:') &&
+          user.image.length < 500
+            ? user.image
+            : null
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.isTechnician = (user as any).isTechnician || false
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -68,3 +68,6 @@ scratch/
 # Local runtime data
 .data/
 
+# Temporary planning files
+livestream.md
+
