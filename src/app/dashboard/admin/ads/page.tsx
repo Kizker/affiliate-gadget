@@ -1042,7 +1042,7 @@ export default function AdsManagementPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-black text-slate-950 dark:text-white sm:text-base">
-                Tab Level 1: Hero Carousel
+                Tab Level 1: Hero Carousel (Maks. 1)
               </h3>
               <span
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
@@ -1055,8 +1055,7 @@ export default function AdsManagementPage() {
               </span>
             </div>
             <p className="mt-1 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
-              Slot eksklusif teratas • Video aktif tayang di atas &amp; antrean
-              tayang berikutnya
+              Slot eksklusif teratas • Maksimal 1 iklan saja di seluruh platform
             </p>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               {level1Slot.isOccupied ? (
@@ -1103,7 +1102,7 @@ export default function AdsManagementPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-black text-slate-950 dark:text-white sm:text-base">
-                Tab Level 2: In-Feed Grid Produk
+                Tab Level 2: In-Feed Grid Produk (Boleh Banyak)
               </h3>
               <span
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
@@ -1116,8 +1115,8 @@ export default function AdsManagementPage() {
               </span>
             </div>
             <p className="mt-1 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
-              Diselipkan di antara katalog • Diurutkan mana yang sebentar lagi
-              habis waktu
+              Diselipkan di antara katalog • Boleh ada banyak iklan dari seluruh
+              toko cabang
             </p>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               {urgentLevel2Count > 0 ? (
@@ -1384,11 +1383,12 @@ export default function AdsManagementPage() {
                 ad.imageUrl.toLowerCase().includes('/video/'))
             )
 
-            // Store ownership check for editing media
+            // Store ownership check for editing media & deletion
             const isMyStoreAd = !isSuperAdmin
               ? !ad.store?.id || ad.store?.id === currentStore?.id
               : true
             const canEditMedia = isSuperAdmin || isMyStoreAd
+            const canDeleteAd = isSuperAdmin || isMyStoreAd
 
             // Dynamic card border styling based on status / queue
             const cardBorderClass = isStreamingNow
@@ -1765,19 +1765,21 @@ export default function AdsManagementPage() {
                       </button>
                     )}
 
-                    {/* Delete action (Superadmin always, or Store Admin for rejected history) */}
-                    {(isSuperAdmin || (!isSuperAdmin && isRejected)) && (
+                    {/* Delete action (Super Admin can delete any ad, Store Admin can delete their store's ad) */}
+                    {canDeleteAd && (
                       <button
+                        type="button"
                         onClick={() => handleDelete(ad)}
                         disabled={actionLoading === ad.id}
-                        className="rounded-xl border border-slate-200 p-1.5 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-800 dark:hover:border-rose-900 dark:hover:bg-rose-950/40"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/80 px-2.5 py-1 text-[11px] font-bold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800 active:scale-95 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
                         title={
                           isSuperAdmin
-                            ? 'Hapus Iklan'
-                            : 'Hapus Riwayat Pengajuan'
+                            ? 'Hapus Iklan dari Sistem'
+                            : 'Hapus Iklan / Pengajuan Toko'
                         }
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                        <span>Hapus</span>
                       </button>
                     )}
                   </div>
@@ -1867,9 +1869,15 @@ export default function AdsManagementPage() {
                 </label>
                 <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   <div
-                    onClick={() =>
+                    onClick={() => {
+                      if (level1Slot.isOccupied && !isSuperAdmin) {
+                        toast.error(
+                          'Slot Carousel (Level 1) maksimal 1 iklan saja dan saat ini sedang digunakan. Hapus iklan carousel lama terlebih dahulu jika ingin menggantinya, atau gunakan slot Iklan Grid Produk.'
+                        )
+                        return
+                      }
                       setFormData((p) => ({ ...p, placement: 'HOMEPAGE_HERO' }))
-                    }
+                    }}
                     className={`cursor-pointer rounded-2xl border p-3.5 transition ${
                       formData.placement === 'HOMEPAGE_HERO'
                         ? 'shadow-xs border-blue-500 bg-blue-50/50 dark:border-blue-500 dark:bg-blue-950/30'
@@ -1878,17 +1886,25 @@ export default function AdsManagementPage() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="rounded-md bg-blue-600 px-2 py-0.5 text-[10px] font-extrabold text-white">
-                        LEVEL 1 • HEADER
+                        LEVEL 1 • CAROUSEL
                       </span>
-                      <Smartphone className="h-4 w-4 text-blue-600" />
+                      {level1Slot.isOccupied ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                          MAKS. 1 (TERISI)
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                          SLOT TERSEDIA
+                        </span>
+                      )}
                     </div>
                     <p className="mt-2 text-xs font-bold text-slate-900 dark:text-white">
-                      Mobile Header Hero Carousel
+                      Mobile &amp; Desktop Hero Carousel
                     </p>
                     <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                      Tampil di slider banner paling atas beranda mobile.
+                      Tampil di slider banner paling atas.
                       <strong className="mt-1 block text-blue-600 dark:text-blue-400">
-                        Pilihan Berdasarkan HARI
+                        Eksklusif: Maksimal 1 Iklan Saja
                       </strong>
                     </p>
                   </div>
@@ -1905,9 +1921,11 @@ export default function AdsManagementPage() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="rounded-md bg-orange-600 px-2 py-0.5 text-[10px] font-extrabold text-white">
-                        LEVEL 2 • IN-FEED
+                        LEVEL 2 • GRID PRODUK
                       </span>
-                      <Layers className="h-4 w-4 text-orange-600" />
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        BOLEH BANYAK IKLAN
+                      </span>
                     </div>
                     <p className="mt-2 text-xs font-bold text-slate-900 dark:text-white">
                       In-Feed Grid Produk (Katalog)
@@ -1915,7 +1933,7 @@ export default function AdsManagementPage() {
                     <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
                       Diselipkan di antara etalase kartu produk toko.
                       <strong className="mt-1 block text-orange-600 dark:text-orange-400">
-                        Berdasarkan BERAPA BANYAK MUNCUL & HARI
+                        Bebas: Dapat Memuat Banyak Iklan
                       </strong>
                     </p>
                   </div>
@@ -3549,13 +3567,16 @@ export default function AdsManagementPage() {
 
             <div className="mt-4 text-center">
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                {isSuperAdmin ? 'Hapus Iklan?' : 'Hapus Riwayat Pengajuan?'}
+                Hapus Iklan?
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                 Iklan{' '}
                 <span className="font-bold text-slate-800 dark:text-slate-200">
                   &ldquo;{deleteModalAd.title}&rdquo;
                 </span>{' '}
+                {deleteModalAd.store?.name
+                  ? `(${deleteModalAd.store.name}) `
+                  : ''}
                 akan dihapus permanen dari sistem. Tindakan ini tidak dapat
                 dibatalkan.
               </p>

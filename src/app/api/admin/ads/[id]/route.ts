@@ -322,32 +322,15 @@ export async function DELETE(
           { status: 403 }
         )
       }
-
-      // Admin toko hanya dapat membatalkan pengajuan (PENDING) atau membersihkan yang ditolak (REJECTED)
-      if (existing.status === 'APPROVED') {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              'Iklan yang telah disetujui hanya dapat dinonaktifkan atau dihapus oleh Super Admin',
-          },
-          { status: 403 }
-        )
-      }
     }
 
     await prisma.internalAd.delete({
       where: { id },
     })
 
-    const successMessage =
-      existing.status === 'PENDING'
-        ? 'Pengajuan iklan berhasil dibatalkan'
-        : 'Iklan berhasil dihapus'
-
     return NextResponse.json({
       success: true,
-      message: successMessage,
+      message: 'Iklan berhasil dihapus',
     })
   } catch (error: any) {
     console.error('Error deleting internal ad:', error)

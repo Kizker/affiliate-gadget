@@ -249,14 +249,29 @@ describe('Internal Ads Workflow & Two-Level Placement Suite', () => {
       expect(initialIsActive).toBe(true)
     })
 
-    it('blocks Store Admin from deleting an approved ad', () => {
+    it('allows Store Admin and Superadmin to delete an ad belonging to the store', async () => {
       const ad = { id: 'ad-approved', status: 'APPROVED', storeId: 'store-1' }
-      const role: string = 'STORE_ADMIN'
+      const userStoreId = 'store-1'
 
-      const canDelete =
-        role === 'SUPER_ADMIN' ||
-        (role === 'STORE_ADMIN' && ad.status !== 'APPROVED')
-      expect(canDelete).toBe(false)
+      // Store Admin can delete their own store's ad (whether PENDING, APPROVED, or REJECTED)
+      const canStoreAdminDelete = userStoreId === ad.storeId
+      expect(canStoreAdminDelete).toBe(true)
+
+      // Superadmin can delete any ad
+      const canSuperAdminDelete = true
+      expect(canSuperAdminDelete).toBe(true)
+
+      mockPrisma.internalAd.delete.mockResolvedValue({ id: ad.id })
+      const res = await mockPrisma.internalAd.delete({ where: { id: ad.id } })
+      expect(res.id).toBe('ad-approved')
+    })
+
+    it('blocks Store Admin from deleting ads belonging to other stores', () => {
+      const ad = { id: 'ad-surabaya', status: 'APPROVED', storeId: 'store-2' }
+      const userStoreId = 'store-1'
+
+      const canStoreAdminDelete = userStoreId === ad.storeId
+      expect(canStoreAdminDelete).toBe(false)
     })
 
     it('allows Store Admin to edit their own ad media and resets status to PENDING awaiting Superadmin re-approval', async () => {

@@ -239,19 +239,24 @@ export async function POST(req: NextRequest) {
         : true
       : false
 
-    // Exclusivity rule: Level 1 (HOMEPAGE_HERO) is exclusive to 1 active ad at a time
-    if (
-      placement === 'HOMEPAGE_HERO' &&
-      initialStatus === 'APPROVED' &&
-      initialIsActive
-    ) {
-      const exclusivityCheck = await validateLevel1Exclusivity()
-      if (!exclusivityCheck.allowed) {
+    // Aturan Penayangan: Level 1 (Hero Carousel) maksimal 1 iklan saja, sedangkan Iklan Grid boleh banyak
+    if (placement === 'HOMEPAGE_HERO') {
+      const existingHero = await prisma.internalAd.findFirst({
+        where: {
+          placement: 'HOMEPAGE_HERO',
+          status: { in: ['APPROVED', 'PENDING'] },
+          OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+        },
+        include: {
+          store: { select: { name: true } },
+        },
+      })
+
+      if (existingHero) {
         return NextResponse.json(
           {
             success: false,
-            message: exclusivityCheck.message,
-            currentActive: exclusivityCheck.currentActive,
+            message: `Slot Hero Carousel (Level 1) maksimal 1 iklan saja dan saat ini sedang digunakan oleh "${existingHero.title}" (${existingHero.store?.name || 'Toko'}). Harap hapus iklan carousel tersebut terlebih dahulu jika ingin menggantinya, atau gunakan slot Iklan Grid Produk (Level 2) yang dapat memuat banyak iklan.`,
           },
           { status: 409 }
         )
