@@ -48,10 +48,10 @@ echo ""
 echo "[4/4] Memperbarui dan menjalankan container..."
 docker compose -f "$COMPOSE_FILE" up -d app ws-server
 
-# Reload Nginx jika container nginx berjalan (untuk mengaktifkan proxy /ws)
+# Restart Nginx jika container nginx berjalan (untuk mengaktifkan pembaruan konfigurasi bind-mount)
 if docker compose -f "$COMPOSE_FILE" ps --services --filter "status=running" | grep -q nginx; then
-    echo "  → Reloading Nginx configuration..."
-    docker compose -f "$COMPOSE_FILE" exec -T nginx nginx -s reload 2>/dev/null || true
+    echo "  → Restarting Nginx container..."
+    docker compose -f "$COMPOSE_FILE" restart nginx
 fi
 
 echo ""
