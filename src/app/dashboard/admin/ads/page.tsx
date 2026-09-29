@@ -20,6 +20,7 @@ import {
   Smartphone,
   Tag,
   AlertTriangle,
+  AlertCircle,
   Loader2,
   ArrowUpRight,
   Filter,
@@ -274,6 +275,7 @@ export default function AdsManagementPage() {
     useState<InternalAdItem | null>(null)
   const [newImageUrl, setNewImageUrl] = useState('')
   const [newImageLabel, setNewImageLabel] = useState('')
+  const [editTitle, setEditTitle] = useState('')
   const [editTargetUrl, setEditTargetUrl] = useState('')
   const [changeImageTab, setChangeImageTab] = useState<
     'STORE_BANNER' | 'PRODUCTS' | 'PRESETS' | 'UPLOAD' | 'URL'
@@ -793,7 +795,8 @@ export default function AdsManagementPage() {
   const handleOpenChangeImage = (ad: InternalAdItem) => {
     setEditingAdForImage(ad)
     setNewImageUrl(ad.imageUrl || ad.store?.banner || '')
-    setNewImageLabel('Foto Saat Ini')
+    setNewImageLabel('Media Saat Ini')
+    setEditTitle(ad.title || '')
     setEditTargetUrl(
       ad.targetUrl || (ad.store?.slug ? `/toko/${ad.store.slug}` : '/gadget')
     )
@@ -821,19 +824,28 @@ export default function AdsManagementPage() {
         body: JSON.stringify({
           imageUrl: newImageUrl.trim(),
           bannerUrl: newImageUrl.trim(),
+          title: editTitle.trim() || undefined,
           targetUrl: editTargetUrl.trim() || undefined,
         }),
       })
       const data = await res.json()
       if (data.success) {
-        toast.success('Foto banner & link iklan berhasil diperbarui!')
+        toast.success(
+          isSuperAdmin
+            ? 'Media banner & link iklan berhasil diperbarui!'
+            : 'Perubahan media iklan berhasil diajukan ke Superadmin untuk persetujuan!'
+        )
         setAds((prev) =>
           prev.map((item) =>
             item.id === editingAdForImage.id
               ? {
                   ...item,
                   imageUrl: newImageUrl.trim(),
+                  title: editTitle.trim() || item.title,
                   targetUrl: editTargetUrl.trim() || item.targetUrl,
+                  status: isSuperAdmin ? item.status : 'PENDING',
+                  isActive: isSuperAdmin ? item.isActive : false,
+                  rejectionReason: isSuperAdmin ? item.rejectionReason : null,
                 }
               : item
           )
@@ -1372,6 +1384,12 @@ export default function AdsManagementPage() {
                 ad.imageUrl.toLowerCase().includes('/video/'))
             )
 
+            // Store ownership check for editing media
+            const isMyStoreAd = !isSuperAdmin
+              ? !ad.store?.id || ad.store?.id === currentStore?.id
+              : true
+            const canEditMedia = isSuperAdmin || isMyStoreAd
+
             // Dynamic card border styling based on status / queue
             const cardBorderClass = isStreamingNow
               ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md'
@@ -1511,9 +1529,17 @@ export default function AdsManagementPage() {
 
                   {/* Banner Image / Video Visual Preview */}
                   <div
-                    onClick={() => handleOpenChangeImage(ad)}
-                    className="group/banner relative mb-3 aspect-[21/9] w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-100 bg-slate-950 dark:border-slate-800"
-                    title="Klik untuk mengganti foto atau video banner"
+                    onClick={
+                      canEditMedia ? () => handleOpenChangeImage(ad) : undefined
+                    }
+                    className={`group/banner relative mb-3 aspect-[21/9] w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-950 dark:border-slate-800 ${
+                      canEditMedia ? 'cursor-pointer' : 'cursor-default'
+                    }`}
+                    title={
+                      canEditMedia
+                        ? 'Klik untuk mengganti foto atau video banner'
+                        : undefined
+                    }
                   >
                     {isVideo ? (
                       <video
@@ -1547,10 +1573,12 @@ export default function AdsManagementPage() {
                     )}
 
                     {/* Hover Overlay Button to Change Image */}
-                    <div className="backdrop-blur-2xs absolute inset-0 flex items-center justify-center gap-1.5 bg-black/55 text-xs font-bold text-white opacity-0 transition duration-200 group-hover/banner:opacity-100">
-                      <ImageIcon className="h-4 w-4 text-orange-400" />
-                      <span>Klik untuk Ganti Foto / Video Banner</span>
-                    </div>
+                    {canEditMedia && (
+                      <div className="backdrop-blur-2xs absolute inset-0 flex items-center justify-center gap-1.5 bg-black/55 text-xs font-bold text-white opacity-0 transition duration-200 group-hover/banner:opacity-100">
+                        <ImageIcon className="h-4 w-4 text-orange-400" />
+                        <span>Klik untuk Ganti Foto / Video Banner</span>
+                      </div>
+                    )}
 
                     <div className="pointer-events-none absolute bottom-2.5 left-3 right-3 text-white">
                       <p className="text-xs font-bold leading-tight drop-shadow-md">
@@ -1665,15 +1693,19 @@ export default function AdsManagementPage() {
                       </span>
                     )}
 
-                    {(isSuperAdmin || isPending) && (
+                    {canEditMedia && (
                       <button
                         type="button"
                         onClick={() => handleOpenChangeImage(ad)}
                         className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50/60 hover:text-orange-600 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-orange-400"
-                        title="Ganti foto banner iklan ini"
+                        title={
+                          isSuperAdmin
+                            ? 'Ganti foto atau video banner iklan ini'
+                            : 'Ganti media iklan (wajib persetujuan ulang Superadmin)'
+                        }
                       >
                         <ImageIcon className="h-3.5 w-3.5 text-orange-500" />
-                        <span>Ganti Gambar</span>
+                        <span>Ganti Foto / Video</span>
                       </button>
                     )}
                   </div>
@@ -3022,6 +3054,23 @@ export default function AdsManagementPage() {
               </button>
             </div>
 
+            {/* Notice untuk Admin Toko */}
+            {!isSuperAdmin && (
+              <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div>
+                  <p className="font-bold">Ketentuan Persetujuan Superadmin</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                    Setiap perubahan foto, video, judul, atau target link oleh
+                    Admin Toko akan otomatis mengubah status iklan menjadi{' '}
+                    <strong>Menunggu Persetujuan (Pending)</strong> dan
+                    memerlukan peninjauan kembali oleh{' '}
+                    <strong>Superadmin</strong> sebelum ditayangkan kembali.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="mt-4 space-y-4">
               {/* Tab Pilihan Sumber Foto/Video Baru */}
               <div>
@@ -3352,7 +3401,7 @@ export default function AdsManagementPage() {
 
                     <div className="pointer-events-none absolute bottom-2 left-3 right-3 text-white">
                       <p className="text-xs font-bold leading-tight drop-shadow-md">
-                        {editingAdForImage.title}
+                        {editTitle || editingAdForImage.title}
                       </p>
                       <p className="text-[10px] text-white/80">
                         {editingAdForImage.store?.name || 'Toko Resmi PT'}
@@ -3361,6 +3410,21 @@ export default function AdsManagementPage() {
                   </div>
                 </div>
               )}
+
+              {/* Judul Promosi Iklan */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-950/40">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                  <Sparkles className="h-4 w-4 text-orange-500" />
+                  <span>Judul Promosi Iklan:</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Promo Spesial Toko Kami..."
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
 
               {/* Target Link Editing */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-950/40">
@@ -3411,7 +3475,11 @@ export default function AdsManagementPage() {
                       <span>Menyimpan Media...</span>
                     </>
                   ) : (
-                    <span>Simpan Media Banner</span>
+                    <span>
+                      {isSuperAdmin
+                        ? 'Simpan Media Banner'
+                        : 'Ajukan Perubahan ke Superadmin'}
+                    </span>
                   )}
                 </button>
               </div>

@@ -148,17 +148,12 @@ export async function PATCH(
         updateData.isActive = false
         updateData.rejectionReason = 'Dibatalkan oleh Admin Toko'
       } else {
-        // Toko hanya boleh mengedit detail iklan jika masih berstatus PENDING
-        if (existing.status !== 'PENDING') {
-          return NextResponse.json(
-            {
-              success: false,
-              message:
-                'Iklan yang telah disetujui hanya dapat dikelola oleh Super Admin',
-            },
-            { status: 403 }
-          )
-        }
+        // Admin Toko mengubah foto/video atau detail iklan:
+        // Setiap perubahan oleh admin toko WAJIB disetujui ulang oleh Superadmin.
+        // Status otomatis diatur ulang ke PENDING, nonaktif, dan hapus alasan penolakan lama.
+        updateData.status = 'PENDING'
+        updateData.isActive = false
+        updateData.rejectionReason = null
 
         if (body.imageUrl || body.bannerUrl) {
           updateData.bannerUrl = (body.imageUrl || body.bannerUrl).trim()
@@ -255,9 +250,14 @@ export async function PATCH(
       },
     })
 
+    const successMessage =
+      role === 'STORE_ADMIN'
+        ? 'Perubahan media iklan berhasil disimpan dan diajukan ke Superadmin untuk persetujuan'
+        : 'Iklan berhasil diperbarui'
+
     return NextResponse.json({
       success: true,
-      message: 'Iklan berhasil diperbarui',
+      message: successMessage,
       data: {
         ...updated,
         imageUrl: updated.bannerUrl,

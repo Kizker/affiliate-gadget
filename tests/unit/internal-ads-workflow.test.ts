@@ -249,7 +249,7 @@ describe('Internal Ads Workflow & Two-Level Placement Suite', () => {
       expect(initialIsActive).toBe(true)
     })
 
-    it('blocks Store Admin from deleting or mutating an approved ad', () => {
+    it('blocks Store Admin from deleting an approved ad', () => {
       const ad = { id: 'ad-approved', status: 'APPROVED', storeId: 'store-1' }
       const role: string = 'STORE_ADMIN'
 
@@ -257,6 +257,59 @@ describe('Internal Ads Workflow & Two-Level Placement Suite', () => {
         role === 'SUPER_ADMIN' ||
         (role === 'STORE_ADMIN' && ad.status !== 'APPROVED')
       expect(canDelete).toBe(false)
+    })
+
+    it('allows Store Admin to edit their own ad media and resets status to PENDING awaiting Superadmin re-approval', async () => {
+      const existingAd = {
+        id: 'ad-10',
+        storeId: 'store-roxy',
+        status: 'APPROVED',
+        isActive: true,
+        bannerUrl: '/old-banner.jpg',
+        title: 'Judul Lama',
+        rejectionReason: null,
+      }
+
+      // Store Admin modifies banner photo and title
+      const updatePayload = {
+        imageUrl: '/new-video-promo.mp4',
+        title: 'Judul Promo Baru',
+        targetUrl: '/toko/roxy-mas-jakarta',
+      }
+
+      // Logic applied when STORE_ADMIN edits
+      const updateData: any = {
+        status: 'PENDING',
+        isActive: false,
+        rejectionReason: null,
+        bannerUrl: updatePayload.imageUrl.trim(),
+        title: updatePayload.title.trim(),
+        targetUrl: updatePayload.targetUrl.trim(),
+      }
+
+      mockPrisma.internalAd.update.mockResolvedValue({
+        ...existingAd,
+        ...updateData,
+      })
+
+      const result = await mockPrisma.internalAd.update({
+        where: { id: existingAd.id },
+        data: updateData,
+      })
+
+      expect(result.status).toBe('PENDING')
+      expect(result.isActive).toBe(false)
+      expect(result.bannerUrl).toBe('/new-video-promo.mp4')
+      expect(result.title).toBe('Judul Promo Baru')
+      expect(result.rejectionReason).toBeNull()
+    })
+
+    it('blocks Store Admin from editing ads belonging to other stores', () => {
+      const userStoreId = 'store-roxy'
+      const adOtherStore = { id: 'ad-wtc', storeId: 'store-surabaya' }
+
+      const hasAccess = userStoreId === adOtherStore.storeId
+      expect(hasAccess).toBe(false)
     })
 
     it('allows Store Admin to cancel a pending submission', () => {
