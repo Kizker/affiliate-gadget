@@ -38,12 +38,17 @@ import {
   analyzeSmartQuery,
   SmartAnalysisResult,
 } from '@/lib/smart-search'
+import {
+  LiveBannerCard,
+  LiveBannerData,
+} from '@/components/live/live-banner-card'
 
 function GadgetKatalogContent() {
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const [gadgets, setGadgets] = useState<any[]>([])
   const [promotedAds, setPromotedAds] = useState<InFeedAdData[]>([])
+  const [liveStreams, setLiveStreams] = useState<LiveBannerData[]>([])
   const promotedAd = promotedAds[0] || null
   const [loading, setLoading] = useState(true)
   const [brand, setBrand] = useState('ALL')
@@ -69,9 +74,10 @@ function GadgetKatalogContent() {
   const fetchGadgets = async () => {
     setLoading(true)
     try {
-      const [gRes, adRes] = await Promise.all([
+      const [gRes, adRes, liveRes] = await Promise.all([
         fetch('/api/gadgets'),
         fetch('/api/ads?placement=PROMOTED_LIST&limit=50'),
+        fetch('/api/live-streams?status=LIVE&limit=3'),
       ])
       const data = await gRes.json()
       if (data.success && data.data) {
@@ -84,6 +90,10 @@ function GadgetKatalogContent() {
         adData.data.length > 0
       ) {
         setPromotedAds(adData.data)
+      }
+      const liveData = await liveRes.json()
+      if (liveData.success && Array.isArray(liveData.data)) {
+        setLiveStreams(liveData.data)
       }
     } catch (e) {
       console.error(e)
@@ -265,6 +275,7 @@ function GadgetKatalogContent() {
           smartAnalysis={smartAnalysis}
           ignoreCorrection={ignoreCorrection}
           setIgnoreCorrection={setIgnoreCorrection}
+          liveStreams={liveStreams}
         />
         <MobileBottomNav activeTab="beranda" />
       </div>
@@ -361,6 +372,15 @@ function GadgetKatalogContent() {
               </div>
             ) : (
               <>
+                {/* Live Stream Banner — if any store is LIVE, show at top of grid */}
+                {liveStreams.length > 0 && (
+                  <div className="mb-4 grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+                    {liveStreams.slice(0, 2).map((ls) => (
+                      <LiveBannerCard key={ls.id} stream={ls} />
+                    ))}
+                  </div>
+                )}
+
                 <div
                   id="desktop-catalog-grid"
                   className="grid scroll-mt-28 grid-cols-2 items-stretch gap-2 sm:gap-4 lg:grid-cols-4"

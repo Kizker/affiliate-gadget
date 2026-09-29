@@ -30,6 +30,10 @@ import {
 } from '@/components/ads/in-feed-store-ad-card'
 import { MobileTopHeroBanner } from '@/components/ads/mobile-top-hero-banner'
 import { SmartAnalysisResult } from '@/lib/smart-search'
+import {
+  LiveBannerCard,
+  LiveBannerData,
+} from '@/components/live/live-banner-card'
 
 const INITIAL_COUNT = 16
 const BATCH_SIZE = 8
@@ -50,6 +54,7 @@ interface MobileCatalogViewProps {
   smartAnalysis?: SmartAnalysisResult
   ignoreCorrection?: boolean
   setIgnoreCorrection?: (v: boolean) => void
+  liveStreams?: LiveBannerData[]
 }
 
 export function MobileCatalogView({
@@ -68,6 +73,7 @@ export function MobileCatalogView({
   smartAnalysis,
   ignoreCorrection = false,
   setIgnoreCorrection,
+  liveStreams = [],
 }: MobileCatalogViewProps) {
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const { items } = useCartStore()
@@ -376,6 +382,25 @@ export function MobileCatalogView({
       <section className="px-3.5 pb-1 pt-3">
         <MobileTopHeroBanner />
       </section>
+
+      {/* 2b. LIVE STREAM STRIP — horizontal scroll if any store is LIVE */}
+      {liveStreams.length > 0 && (
+        <section className="px-3.5 pb-2">
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+            <span className="text-[10px] font-bold text-red-500">
+              SEDANG LIVE
+            </span>
+          </div>
+          <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
+            {liveStreams.map((ls) => (
+              <div key={ls.id} className="w-36 shrink-0">
+                <LiveBannerCard stream={ls} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 3. SEARCH BAR & FILTER ICON ROW */}
       <section className="px-4 pt-2">
