@@ -20,6 +20,7 @@ import {
   withdrawalSecurityAlertEmailTemplate,
   normalizePhone,
 } from '@/lib/notifications'
+import { createIrisPayout } from '@/lib/midtrans-iris'
 
 export async function POST(request: NextRequest) {
   try {
@@ -378,6 +379,17 @@ export async function POST(request: NextRequest) {
       requestedBy: session.user.name || session.user.email || 'Admin Toko',
     })
 
+    // Eksekusi Payout ke Midtrans Iris (Disbursement API)
+    const irisPayout = await createIrisPayout({
+      referenceNo: withdrawal.refNumber,
+      beneficiaryName: primaryBank.accountName || store.companyName,
+      beneficiaryAccount: primaryBank.accountNumber,
+      beneficiaryBank: primaryBank.bankName,
+      beneficiaryEmail: session.user.email || 'finance@affiliategadget.tech',
+      amount: numericAmount,
+      notes: `Pencairan Saldo ${store.name} - Ref #${withdrawal.refNumber}`,
+    })
+
     // Audit log sukses (Task 7.2)
     await prisma.auditLog.create({
       data: {
@@ -392,6 +404,8 @@ export async function POST(request: NextRequest) {
           accountNumber: primaryBank.accountNumber,
           accountName: primaryBank.accountName,
           refNumber: withdrawal.refNumber,
+          irisMode: irisPayout.mode,
+          irisStatus: irisPayout.status,
         },
       },
     })
@@ -416,7 +430,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: withdrawal,
+      data: {
+        ...withdrawal,
+        iris: {
+          mode: irisPayout.mode,
+          status: irisPayout.status,
+          message: irisPayout.message,
+        },
+      },
       message: `Pencairan dana sebesar Rp ${numericAmount.toLocaleString('id-ID')} berhasil diproses ke ${primaryBank.bankName} ${primaryBank.accountNumber}.`,
     })
   } catch (error) {
