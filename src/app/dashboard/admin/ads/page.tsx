@@ -1042,7 +1042,7 @@ export default function AdsManagementPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-black text-slate-950 dark:text-white sm:text-base">
-                Tab Level 1: Hero Carousel (Maks. 1)
+                Tab Level 1: Hero Carousel
               </h3>
               <span
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
@@ -1102,7 +1102,7 @@ export default function AdsManagementPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-black text-slate-950 dark:text-white sm:text-base">
-                Tab Level 2: In-Feed Grid Produk (Boleh Banyak)
+                Tab Level 2: In-Feed Grid Produk
               </h3>
               <span
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
