@@ -18,7 +18,6 @@ import {
   Smartphone,
   CheckCircle2,
   Loader2,
-  Sparkles,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
@@ -434,58 +433,6 @@ export function MobileCatalogView({
           </button>
         </div>
       </section>
-
-      {/* Smart Typo Correction Banner (Mobile) */}
-      {search.trim().length > 0 &&
-        smartAnalysis?.hasCorrection &&
-        !ignoreCorrection && (
-          <section className="px-4 pt-2">
-            <div className="shadow-2xs flex items-center justify-between gap-2 rounded-2xl border border-orange-200/90 bg-gradient-to-r from-orange-50 via-amber-50/60 to-white p-2.5 px-3 text-[11px] text-orange-950 dark:border-orange-900/50 dark:from-orange-950/40 dark:to-slate-900 dark:text-orange-200">
-              <div className="flex min-w-0 items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 shrink-0 animate-pulse text-orange-500" />
-                <span className="truncate">
-                  Hasil untuk{' '}
-                  <strong className="font-extrabold text-orange-600 underline decoration-orange-400 dark:text-orange-400">
-                    "{smartAnalysis.effectiveQuery}"
-                  </strong>
-                  <span className="ml-1 text-slate-500 dark:text-slate-400">
-                    (typo "{search}")
-                  </span>
-                </span>
-              </div>
-              {setIgnoreCorrection && (
-                <button
-                  type="button"
-                  onClick={() => setIgnoreCorrection(true)}
-                  className="shrink-0 text-[10px] font-semibold text-slate-500 underline hover:text-slate-900 dark:text-slate-400"
-                >
-                  Cari "{search}"
-                </button>
-              )}
-            </div>
-          </section>
-        )}
-
-      {search.trim().length > 0 &&
-        smartAnalysis?.hasCorrection &&
-        ignoreCorrection && (
-          <section className="px-4 pt-2">
-            <div className="shadow-2xs flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 px-3 text-[11px] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              <span className="truncate">
-                Cari persis: <strong>"{search}"</strong>
-              </span>
-              {setIgnoreCorrection && (
-                <button
-                  type="button"
-                  onClick={() => setIgnoreCorrection(false)}
-                  className="shrink-0 font-bold text-orange-600 hover:underline dark:text-orange-400"
-                >
-                  Gunakan "{smartAnalysis.effectiveQuery}"
-                </button>
-              )}
-            </div>
-          </section>
-        )}
 
       {/* 3. HORIZONTAL BRAND SELECTOR (Pills) */}
       <section className="mt-2.5 px-4">

@@ -21,7 +21,6 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/ui/custom-select'
 import {
@@ -341,54 +340,6 @@ function GadgetKatalogContent() {
             <div className="mb-6 md:mb-8">
               <MobileTopHeroBanner />
             </div>
-
-            {/* Smart Search Typo Correction Indicator (Desktop) */}
-            {search.trim().length > 0 &&
-              smartAnalysis.hasCorrection &&
-              !ignoreCorrection && (
-                <div className="px-4.5 shadow-xs mb-6 flex items-center justify-between gap-3 rounded-2xl border border-orange-200/90 bg-gradient-to-r from-orange-50 via-amber-50/60 to-white p-3 text-xs text-orange-950 dark:border-orange-900/40 dark:from-orange-950/30 dark:via-slate-900 dark:to-slate-900 dark:text-orange-200">
-                  <div className="flex items-center gap-2.5">
-                    <div className="shadow-xs flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
-                      <Sparkles className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <span className="text-slate-600 dark:text-slate-300">
-                        Menampilkan hasil untuk{' '}
-                      </span>
-                      <strong className="font-extrabold text-orange-600 underline decoration-orange-400 underline-offset-4 dark:text-orange-400">
-                        "{smartAnalysis.effectiveQuery}"
-                      </strong>
-                      <span className="ml-1.5 text-slate-500 dark:text-slate-400">
-                        (Koreksi cerdas dari <em>"{search}"</em>)
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIgnoreCorrection(true)}
-                    className="shadow-2xs cursor-pointer whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    Cari "{search}" saja
-                  </button>
-                </div>
-              )}
-
-            {search.trim().length > 0 &&
-              smartAnalysis.hasCorrection &&
-              ignoreCorrection && (
-                <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/90 p-3 px-4 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-300">
-                  <span>
-                    Mencari secara persis: <strong>"{search}"</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIgnoreCorrection(false)}
-                    className="cursor-pointer font-bold text-orange-600 hover:underline dark:text-orange-400"
-                  >
-                    Gunakan pencarian pintar "{smartAnalysis.effectiveQuery}"
-                  </button>
-                </div>
-              )}
 
             {/* Products Grid: 4 Columns on Desktop */}
             {loading ? (
