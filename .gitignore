@@ -56,11 +56,15 @@ prisma/migrations/**/migration.sql
 # Logs
 logs/
 
-# Database exports
+# Database exports & dumps
 database-exports/*.sql
+*.dump
+*.sql
 
 # Agents & AI tooling
 .agents
+scratch/
 
 # Local runtime data
 .data/
+
