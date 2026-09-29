@@ -37,12 +37,22 @@ export async function GET(
       const encoder = new TextEncoder()
       controller.enqueue(encoder.encode(`: connected\n\n`))
 
+      // Keepalive heartbeat ping every 15s to keep proxy connections alive
+      const pingInterval = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(`: ping\n\n`))
+        } catch {
+          clearInterval(pingInterval)
+        }
+      }, 15000)
+
       // Send viewer count update
       const viewerCount = subscribers.get(streamId)?.size ?? 0
       broadcast(streamId, { type: 'viewers', count: viewerCount })
 
       // Cleanup on disconnect
       req.signal.addEventListener('abort', () => {
+        clearInterval(pingInterval)
         subscribers.get(streamId)?.delete(controller)
         try {
           controller.close()
