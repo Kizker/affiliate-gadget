@@ -108,6 +108,11 @@ export async function POST(req: NextRequest) {
       storeId = user?.storeId || null
     }
 
+    if (!storeId) {
+      const firstStore = await prisma.store.findFirst({ select: { id: true } })
+      storeId = firstStore?.id || null
+    }
+
     const stream = await prisma.liveStream.create({
       data: {
         storeId,

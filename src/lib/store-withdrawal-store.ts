@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 
 export interface StoreWithdrawalRecord {
   id: string
@@ -17,30 +18,66 @@ export interface StoreWithdrawalRecord {
   completedAt?: string
 }
 
-const DATA_DIR = path.join(process.cwd(), '.data')
-const WITHDRAWALS_FILE = path.join(DATA_DIR, 'store-withdrawals.json')
+const DEFAULT_DATA_DIR = path.join(process.cwd(), '.data')
+let activeDataDir = DEFAULT_DATA_DIR
+
+function getDataDir(): string {
+  try {
+    if (!fs.existsSync(activeDataDir)) {
+      fs.mkdirSync(activeDataDir, { recursive: true })
+    }
+    const testFile = path.join(activeDataDir, `.test-write-${process.pid}`)
+    fs.writeFileSync(testFile, 'ok', 'utf-8')
+    fs.unlinkSync(testFile)
+    return activeDataDir
+  } catch {
+    const fallbackDir = path.join(os.tmpdir(), 'affiliate-gadget-data')
+    try {
+      if (!fs.existsSync(fallbackDir)) {
+        fs.mkdirSync(fallbackDir, { recursive: true })
+      }
+    } catch {}
+    activeDataDir = fallbackDir
+    return activeDataDir
+  }
+}
+
+function getWithdrawalsFile(): string {
+  return path.join(getDataDir(), 'store-withdrawals.json')
+}
+
+const inMemoryWithdrawals: StoreWithdrawalRecord[] = []
 
 function ensureDirAndFile() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
-  }
-  if (!fs.existsSync(WITHDRAWALS_FILE)) {
-    fs.writeFileSync(WITHDRAWALS_FILE, JSON.stringify([]), 'utf-8')
+  const file = getWithdrawalsFile()
+  if (!fs.existsSync(file)) {
+    try {
+      fs.writeFileSync(file, JSON.stringify([]), 'utf-8')
+    } catch (err) {
+      console.warn('Notice writing store-withdrawals.json:', err)
+    }
   }
 }
 
 export function getStoreWithdrawals(storeId?: string): StoreWithdrawalRecord[] {
   try {
     ensureDirAndFile()
-    const content = fs.readFileSync(WITHDRAWALS_FILE, 'utf-8')
-    const list: StoreWithdrawalRecord[] = JSON.parse(content || '[]')
-    if (storeId) {
-      return list.filter((w) => w.storeId === storeId)
+    const file = getWithdrawalsFile()
+    if (fs.existsSync(file)) {
+      const content = fs.readFileSync(file, 'utf-8')
+      const list: StoreWithdrawalRecord[] = JSON.parse(content || '[]')
+      if (storeId) {
+        return list.filter((w) => w.storeId === storeId)
+      }
+      return list
     }
-    return list
+    return inMemoryWithdrawals
   } catch (error) {
-    console.error('Error reading store withdrawals:', error)
-    return []
+    console.warn(
+      'Notice reading store withdrawals, using in-memory list:',
+      error
+    )
+    return inMemoryWithdrawals
   }
 }
 
@@ -67,6 +104,15 @@ export function createStoreWithdrawal(
     completedAt: now.toISOString(),
   }
   list.unshift(newRecord)
-  fs.writeFileSync(WITHDRAWALS_FILE, JSON.stringify(list, null, 2), 'utf-8')
+  try {
+    fs.writeFileSync(
+      getWithdrawalsFile(),
+      JSON.stringify(list, null, 2),
+      'utf-8'
+    )
+  } catch (writeErr) {
+    console.warn('Notice saving store withdrawal, stored in-memory:', writeErr)
+    inMemoryWithdrawals.unshift(newRecord)
+  }
   return newRecord
 }

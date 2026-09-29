@@ -17,9 +17,7 @@ import {
   Package,
   Settings,
   Clock,
-  Radio,
 } from 'lucide-react'
-import { LiveStreamBroadcaster } from '@/components/live/live-stream-broadcaster'
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -815,35 +813,6 @@ export default function AdminDashboardPage() {
                 })}
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* STORE ADMIN: Live Streaming Panel */}
-      {isStoreAdmin && (
-        <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-          <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800/80">
-            <div>
-              <div className="flex items-center gap-2">
-                <Radio className="h-4 w-4 text-red-500" />
-                <h2 className="text-sm font-bold tracking-tight text-slate-950 dark:text-white sm:text-base">
-                  Live Shopping Toko
-                </h2>
-              </div>
-              <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                Siaran langsung penjualan ke pelanggan — ala Shopee Live
-              </p>
-            </div>
-            <Link
-              href="/live"
-              className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 transition hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-400"
-            >
-              <span>Lihat Hub</span>
-              <ChevronRight className="h-3.5 w-3.5 stroke-[2.5]" />
-            </Link>
-          </div>
-          <div className="[&_*]:text-slate-900 [&_*]:dark:text-white">
-            <LiveStreamBroadcaster />
           </div>
         </div>
       )}

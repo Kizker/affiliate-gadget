@@ -6,6 +6,7 @@
 
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 
 export interface DriverInfo {
   name: string
@@ -63,42 +64,60 @@ export interface ShippingBookingRecord {
   }>
 }
 
-const DATA_DIR = path.join(process.cwd(), '.data')
-const SHIPPING_STORE_FILE = path.join(DATA_DIR, 'shipping-store.json')
+const DEFAULT_DATA_DIR = path.join(process.cwd(), '.data')
+let activeDataDir = DEFAULT_DATA_DIR
 
-const inMemoryCache: Record<string, ShippingBookingRecord> = {}
-
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
+function getDataDir(): string {
+  try {
+    if (!fs.existsSync(activeDataDir)) {
+      fs.mkdirSync(activeDataDir, { recursive: true })
+    }
+    const testFile = path.join(activeDataDir, `.test-write-${process.pid}`)
+    fs.writeFileSync(testFile, 'ok', 'utf-8')
+    fs.unlinkSync(testFile)
+    return activeDataDir
+  } catch {
+    const fallbackDir = path.join(os.tmpdir(), 'affiliate-gadget-data')
+    try {
+      if (!fs.existsSync(fallbackDir)) {
+        fs.mkdirSync(fallbackDir, { recursive: true })
+      }
+    } catch {}
+    activeDataDir = fallbackDir
+    return activeDataDir
   }
 }
 
+function getShippingStoreFile(): string {
+  return path.join(getDataDir(), 'shipping-store.json')
+}
+
+const inMemoryCache: Record<string, ShippingBookingRecord> = {}
+
 function loadShippingStore(): Record<string, ShippingBookingRecord> {
-  ensureDataDir()
+  const storeFile = getShippingStoreFile()
   try {
-    if (fs.existsSync(SHIPPING_STORE_FILE)) {
-      const raw = fs.readFileSync(SHIPPING_STORE_FILE, 'utf-8')
+    if (fs.existsSync(storeFile)) {
+      const raw = fs.readFileSync(storeFile, 'utf-8')
       const parsed = JSON.parse(raw)
       return { ...inMemoryCache, ...parsed }
     }
   } catch (err) {
-    console.error('Error loading shipping-store.json:', err)
+    console.warn(
+      'Notice reading shipping-store.json, using in-memory store:',
+      err
+    )
   }
   return { ...inMemoryCache }
 }
 
 function saveShippingStore(data: Record<string, ShippingBookingRecord>) {
   Object.assign(inMemoryCache, data)
-  ensureDataDir()
   try {
-    fs.writeFileSync(
-      SHIPPING_STORE_FILE,
-      JSON.stringify(data, null, 2),
-      'utf-8'
-    )
+    const storeFile = getShippingStoreFile()
+    fs.writeFileSync(storeFile, JSON.stringify(data, null, 2), 'utf-8')
   } catch (err) {
-    console.error('Error saving shipping-store.json:', err)
+    console.warn('Notice saving shipping-store.json, stored in-memory:', err)
   }
 }
 

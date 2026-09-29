@@ -92,6 +92,9 @@ services:
       - UPLOADTHING_APP_ID=${UPLOADTHING_APP_ID:-}
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
+      - RESEND_FROM_NAME=${RESEND_FROM_NAME:-Affiliate Gadget}
+      - ADMIN_NOTIFICATION_EMAIL=${ADMIN_NOTIFICATION_EMAIL:-}
+      - BITESHIP_API_KEY=${BITESHIP_API_KEY:-}
       - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY:-}
       - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY:-}
       - MIDTRANS_IS_PRODUCTION=${MIDTRANS_IS_PRODUCTION:-false}
@@ -101,9 +104,9 @@ services:
       - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
       - NEXT_PUBLIC_TINYMCE_API_KEY=${NEXT_PUBLIC_TINYMCE_API_KEY:-}
     volumes:
-      # Persistent uploads directory — mounted from VPS host disk
-      # Files written here survive container restarts
+      # Persistent uploads directory & runtime data store
       - ./public/uploads:/app/public/uploads
+      - ./.data:/app/.data
       - ./.env:/app/.env:ro
     depends_on:
       postgres:

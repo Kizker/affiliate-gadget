@@ -30,6 +30,7 @@ import {
   Tag,
   Heart,
   Sparkles,
+  Radio,
 } from 'lucide-react'
 import { useSidebarSafe } from '@/context/sidebar-context'
 
@@ -81,6 +82,7 @@ const superAdminNavSections: NavSection[] = [
         label: 'Laporan Finansial',
         href: '/dashboard/admin/reports',
       },
+      { icon: Radio, label: 'Siaran Langsung', href: '/dashboard/admin/live' },
       { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
       {
         icon: ShieldCheck,
@@ -170,6 +172,7 @@ const storeAdminNavSections: NavSection[] = [
         href: '/dashboard/admin/products',
       },
       { icon: ShoppingCart, label: 'Pesanan', href: '/dashboard/admin/orders' },
+      { icon: Radio, label: 'Siaran Langsung', href: '/dashboard/admin/live' },
       { icon: Wallet, label: 'Keuangan', href: '/dashboard/admin/finance' },
       {
         icon: BarChart3,

@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 
 export type OtpPurpose =
   | 'LOGIN'
@@ -21,14 +22,37 @@ interface TwoFactorData {
 }
 
 // Ensure .data folder exists for persistence
-const DATA_DIR = path.join(process.cwd(), '.data')
+const DEFAULT_DATA_DIR = path.join(process.cwd(), '.data')
+let activeDataDir = DEFAULT_DATA_DIR
+
+function getDataDir(): string {
+  try {
+    if (!fs.existsSync(activeDataDir)) {
+      fs.mkdirSync(activeDataDir, { recursive: true })
+    }
+    const testFile = path.join(activeDataDir, `.test-write-${process.pid}`)
+    fs.writeFileSync(testFile, 'ok', 'utf-8')
+    fs.unlinkSync(testFile)
+    return activeDataDir
+  } catch {
+    const fallbackDir = path.join(os.tmpdir(), 'affiliate-gadget-data')
+    try {
+      if (!fs.existsSync(fallbackDir)) {
+        fs.mkdirSync(fallbackDir, { recursive: true })
+      }
+    } catch {}
+    activeDataDir = fallbackDir
+    return activeDataDir
+  }
+}
 
 function getStorageFile(): string {
   const workerId = process.env.VITEST_POOL_ID || process.env.VITEST_WORKER_ID
+  const dir = getDataDir()
   if (workerId !== undefined) {
-    return path.join(DATA_DIR, `two-factor-store-test-${workerId}.json`)
+    return path.join(dir, `two-factor-store-test-${workerId}.json`)
   }
-  return path.join(DATA_DIR, 'two-factor-store.json')
+  return path.join(dir, 'two-factor-store.json')
 }
 
 // In-memory cache synced with disk
@@ -38,9 +62,6 @@ function loadData(): TwoFactorData {
   const dataFile = getStorageFile()
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true })
-      }
       if (fs.existsSync(dataFile)) {
         const content = fs.readFileSync(dataFile, 'utf-8')
         if (content.trim()) {
@@ -49,7 +70,7 @@ function loadData(): TwoFactorData {
           return parsed
         }
       }
-      return { enabledUsers: {}, otps: {} }
+      return cachedData || { enabledUsers: {}, otps: {} }
     } catch {
       if (attempt === 2) {
         return cachedData || { enabledUsers: {}, otps: {} }
@@ -63,9 +84,6 @@ function saveData(data: TwoFactorData) {
   cachedData = data
   const dataFile = getStorageFile()
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
     const tempFile = `${dataFile}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`
     fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8')
     fs.renameSync(tempFile, dataFile)
@@ -73,7 +91,7 @@ function saveData(data: TwoFactorData) {
     try {
       fs.writeFileSync(dataFile, JSON.stringify(data, null, 2), 'utf-8')
     } catch (writeErr) {
-      console.error('Error saving two-factor-store:', writeErr)
+      console.warn('Notice saving two-factor-store, kept in-memory:', writeErr)
     }
   }
 }

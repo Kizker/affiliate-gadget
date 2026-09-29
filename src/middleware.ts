@@ -26,6 +26,7 @@ const ADMIN_SUBROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/admin/vouchers': ['SUPER_ADMIN'],
   '/dashboard/admin/mitras': ['SUPER_ADMIN', 'ADMIN'],
   '/dashboard/admin/ads': ['SUPER_ADMIN', 'STORE_ADMIN'],
+  '/dashboard/admin/live': ['SUPER_ADMIN', 'STORE_ADMIN'],
   '/dashboard/admin/blog': ['SUPER_ADMIN', 'CONTENT_EDITOR'],
   '/dashboard/admin/orders': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
   '/dashboard/admin/complaints': [

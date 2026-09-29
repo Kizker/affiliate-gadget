@@ -40,10 +40,10 @@ export function LiveBannerCard({
   return (
     <Link
       href={`/live/${stream.id}`}
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl sm:rounded-3xl ${
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:bg-slate-900 sm:rounded-3xl ${
         isLive
-          ? 'border-red-500/60 hover:border-red-400 hover:shadow-red-500/20'
-          : 'border-blue-500/40 hover:border-blue-400 hover:shadow-blue-500/20'
+          ? 'border-red-500/80 hover:border-red-500 hover:shadow-red-500/10'
+          : 'border-slate-200 hover:border-orange-400 dark:border-slate-800'
       } ${className}`}
     >
       {/* Thumbnail */}

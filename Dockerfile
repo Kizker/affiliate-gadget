@@ -60,6 +60,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
+# Ensure .data and upload directories exist and are writable by non-root user
+RUN mkdir -p /app/.data /app/public/uploads && chown -R nextjs:nodejs /app/.data /app/public/uploads
+
 USER nextjs
 
 EXPOSE 3000
