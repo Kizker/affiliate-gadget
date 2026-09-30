@@ -20,6 +20,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Auto-cancel any overdue (>24h) pending orders before querying
+    const { batchCancelExpiredOrders } = await import('@/lib/order-expiration')
+    await batchCancelExpiredOrders().catch((err) => {
+      console.error(
+        '[Admin Orders API] Error running batchCancelExpiredOrders:',
+        err
+      )
+    })
+
     // Parse query parameters
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')

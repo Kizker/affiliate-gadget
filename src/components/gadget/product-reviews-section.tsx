@@ -290,7 +290,7 @@ export function ProductReviewsSection({
               <span>
                 {userEligibility.existingReview
                   ? 'Ubah Ulasan Saya'
-                  : 'Tulis Ulasan Pembeli'}
+                  : 'Berikan Ulasan'}
               </span>
             </button>
           )}
@@ -553,34 +553,32 @@ export function ProductReviewsSection({
               <MessageSquare className="h-6 w-6" />
             </div>
             <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-              Belum Ada Ulasan untuk Filter Ini
+              {selectedRating !== null || hasMediaOnly
+                ? 'Belum Ada Ulasan untuk Filter Ini'
+                : 'Belum Ada Ulasan'}
             </h4>
-            <p className="mx-auto max-w-sm text-xs text-slate-500">
-              {userEligibility.canReview
-                ? 'Pesanan Anda telah selesai checkout! Bagikan pengalaman dan ulasan mengenai gadget ini.'
-                : 'Ulasan hanya dapat diisi oleh pembeli yang telah selesai checkout produk ini.'}
-            </p>
-            <div className="pt-2">
-              {userEligibility.canReview ? (
-                <button
-                  type="button"
-                  onClick={handleOpenReviewModal}
-                  className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
-                >
-                  <PenSquare className="h-3.5 w-3.5" />
-                  <span>
-                    {userEligibility.existingReview
-                      ? 'Ubah Ulasan Anda'
-                      : 'Beri Ulasan Sekarang'}
-                  </span>
-                </button>
-              ) : (
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Khusus Pembeli yang Selesai Checkout</span>
+            {userEligibility.canReview && (
+              <>
+                <p className="mx-auto max-w-sm text-xs text-slate-500">
+                  Pesanan Anda telah selesai checkout! Bagikan pengalaman dan
+                  ulasan mengenai gadget ini.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenReviewModal}
+                    className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
+                  >
+                    <PenSquare className="h-3.5 w-3.5" />
+                    <span>
+                      {userEligibility.existingReview
+                        ? 'Ubah Ulasan Anda'
+                        : 'Berikan Ulasan'}
+                    </span>
+                  </button>
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         ) : (
           <>

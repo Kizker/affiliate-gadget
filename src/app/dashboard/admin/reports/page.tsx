@@ -13,7 +13,6 @@ import {
   DollarSign,
   TrendingUp,
   Sparkles,
-  Receipt,
   Percent,
   FileText,
   Wallet,
@@ -31,15 +30,18 @@ function formatRupiah(amount: number): string {
 }
 
 interface ReportData {
+  isSuperAdmin?: boolean
+  userRole?: string
   financials?: {
     grossRevenue: number
     cogs: number
     grossProfit: number
     grossMarginPct: number
+    storeNetProfit?: number
+    platformCommission?: number
     operationalExpenses: {
       platformCommission: number
       gatewayFee?: number
-      maintenanceFee?: number
       packingCost: number
       voucherDiscount: number
       shipping: number
@@ -523,7 +525,9 @@ export default function ReportsPage() {
         <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Pendapatan Kotor
+              {data.isSuperAdmin
+                ? 'Total Omzet Penjualan (GMV)'
+                : 'Pendapatan Kotor'}
             </span>
             <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
               <DollarSign className="h-3.5 w-3.5" />
@@ -540,7 +544,9 @@ export default function ReportsPage() {
                 Gross Sales
               </span>
               <span className="text-slate-400 dark:text-slate-500">
-                · Sebelum potongan beban
+                {data.isSuperAdmin
+                  ? '· Konsolidasi Seluruh Toko'
+                  : '· Sebelum potongan beban'}
               </span>
             </div>
           </div>
@@ -550,7 +556,9 @@ export default function ReportsPage() {
         <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Total HPP (Modal)
+              {data.isSuperAdmin
+                ? 'Total HPP (Modal Toko)'
+                : 'Total HPP (Modal)'}
             </span>
             <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
               <Package className="h-3.5 w-3.5" />
@@ -565,7 +573,9 @@ export default function ReportsPage() {
                 Harga Pokok
               </span>
               <span className="text-slate-400 dark:text-slate-500">
-                · Modal dasar inventori
+                {data.isSuperAdmin
+                  ? '· Modal Inventori Toko Cabang'
+                  : '· Modal dasar inventori'}
               </span>
             </div>
           </div>
@@ -575,7 +585,7 @@ export default function ReportsPage() {
         <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Laba Kotor
+              {data.isSuperAdmin ? 'Laba Kotor Toko Cabang' : 'Laba Kotor'}
             </span>
             <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
               <TrendingUp className="h-3.5 w-3.5" />
@@ -590,17 +600,21 @@ export default function ReportsPage() {
                 Margin {data.financials?.grossMarginPct ?? 0}%
               </span>
               <span className="text-slate-400 dark:text-slate-500">
-                · Omzet - HPP
+                {data.isSuperAdmin
+                  ? '· Omzet - HPP Toko Cabang'
+                  : '· Omzet - HPP'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Card 4: Laba Bersih Toko (Net Profit) */}
+        {/* Card 4: Laba Bersih Platform (Superadmin) vs Laba Bersih Toko */}
         <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Laba Bersih Toko
+              {data.isSuperAdmin
+                ? 'Laba Bersih Platform (Komisi)'
+                : 'Laba Bersih Toko'}
             </span>
             <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400">
               <Sparkles className="h-3.5 w-3.5" />
@@ -608,14 +622,24 @@ export default function ReportsPage() {
           </div>
           <div className="mt-2.5">
             <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
-              {formatRupiah(data.financials?.netProfit ?? 0)}
+              {formatRupiah(
+                data.isSuperAdmin
+                  ? (data.financials?.platformCommission ?? 0)
+                  : (data.financials?.storeNetProfit ??
+                      data.financials?.netProfit ??
+                      0)
+              )}
             </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
               <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 font-bold text-purple-700 dark:bg-purple-950/60 dark:text-purple-400">
-                Net {data.financials?.netMarginPct ?? 0}%
+                {data.isSuperAdmin
+                  ? 'Bagi Hasil 1.5%'
+                  : `Net ${data.financials?.netMarginPct ?? 0}%`}
               </span>
               <span className="text-slate-400 dark:text-slate-500">
-                · Setelah potongan beban
+                {data.isSuperAdmin
+                  ? `· Laba Toko: ${formatRupiah(data.financials?.storeNetProfit ?? 0)}`
+                  : '· Setelah potongan beban'}
               </span>
             </div>
           </div>
@@ -648,194 +672,206 @@ export default function ReportsPage() {
             </div>
           </div>
         </div>
-
-        {/* Card PPh 23 Wajib Setor */}
-        {(data.financials?.totalPph23Withheld ?? 0) > 0 && (
-          <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-amber-200/80 bg-amber-50/20 p-4 transition-all duration-200 hover:border-amber-300 dark:border-amber-900/50 dark:bg-amber-950/10 sm:p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                PPh 23 Wajib Setor
-              </span>
-              <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                <Receipt className="h-3.5 w-3.5" />
-              </div>
-            </div>
-            <div className="mt-2.5">
-              <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-amber-900 dark:text-amber-100 sm:text-xl">
-                {formatRupiah(data.financials?.totalPph23Withheld ?? 0)}
-              </p>
-              <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-                <span className="font-semibold text-amber-700 dark:text-amber-400">
-                  e-Billing DJP
-                </span>
-                <span className="text-amber-600/80 dark:text-amber-500">
-                  · 2% komisi platform · Batas Tgl 10
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ========================================================================= */}
       {/* 2.5 PANEL RINCIAN BEBAN TRANSAKSI & LOGISTIK TERPROTEKSI                 */}
       {/* ========================================================================= */}
-      <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-        <div className="flex flex-col gap-1 border-b border-slate-100 pb-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-              Rincian Beban Transaksi & Logistik Terproteksi
-            </h2>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              Biaya operasional penjualan handphone dan status asuransi
-              pengiriman
-            </p>
-          </div>
-          <span className="text-[11px] font-semibold text-slate-500">
-            Total Beban Toko:{' '}
-            <strong className="font-mono text-slate-900 dark:text-white">
-              {formatRupiah(data.financials?.operationalExpenses.total ?? 0)}
-            </strong>
-          </span>
-        </div>
+      {(() => {
+        const grossRev = data.financials?.grossRevenue ?? 0
+        const commAmount =
+          data.financials?.operationalExpenses.platformCommission ?? 0
+        const effectiveCommissionRate =
+          grossRev > 0 && commAmount > 0
+            ? ((commAmount / grossRev) * 100).toFixed(1)
+            : '1.5'
 
-        <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-2">
-          {/* Kolom Kiri: Beban Mengurangi Laba Toko */}
-          <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800/80 dark:bg-slate-800/30">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200">
-              <span>Beban Toko (Mengurangi Laba)</span>
-              <span className="font-mono text-rose-600 dark:text-rose-400">
-                -{' '}
-                {formatRupiah(data.financials?.operationalExpenses.total ?? 0)}
+        return (
+          <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+            <div className="flex flex-col gap-1 border-b border-slate-100 pb-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                  Rincian Beban Transaksi & Logistik Terproteksi
+                </h2>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                  {data.isSuperAdmin
+                    ? 'Transparansi pemotongan komisi platform, beban operasional toko fisik, dan asuransi pengiriman'
+                    : 'Biaya operasional penjualan handphone dan status asuransi pengiriman'}
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">
+                {data.isSuperAdmin
+                  ? 'Total Beban Transaksi Toko: '
+                  : 'Total Beban Toko: '}
+                <strong className="font-mono text-slate-900 dark:text-white">
+                  {formatRupiah(
+                    data.financials?.operationalExpenses.total ?? 0
+                  )}
+                </strong>
               </span>
             </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Komisi Platform (2%)</span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {formatRupiah(
-                    data.financials?.operationalExpenses.platformCommission ?? 0
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">
-                  Biaya Packing (Rp 5.000 / Pesanan)
-                </span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {formatRupiah(
-                    data.financials?.operationalExpenses.packingCost ?? 0
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Diskon Voucher Toko</span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {formatRupiah(
-                    data.financials?.operationalExpenses.voucherDiscount ?? 0
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">
-                  Biaya Payment Gateway (QRIS/VA/CC)
-                </span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {formatRupiah(
-                    data.financials?.operationalExpenses.gatewayFee ?? 0
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">
-                  Biaya Pemeliharaan Sistem E-Commerce
-                </span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {formatRupiah(
-                    data.financials?.operationalExpenses.maintenanceFee ?? 0
-                  )}
-                </span>
-              </div>
-            </div>
-          </div>
 
-          {/* Kolom Kanan: Logistik Pass-Through (Tidak Mengurangi Laba Toko) */}
-          <div className="space-y-3 rounded-xl border border-blue-100/60 bg-blue-50/30 p-4 dark:border-blue-900/30 dark:bg-blue-950/20">
-            <div className="flex items-center justify-between text-xs font-bold text-blue-900 dark:text-blue-300">
-              <span>Logistik Pass-Through (Kurir JNE / Gojek)</span>
-              <span className="rounded-full bg-blue-100/80 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
-                100% Ditanggung Pembeli
-              </span>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">
-                  Ongkir Kurir (JNE / Gojek)
-                </span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {formatRupiah(
-                    data.financials?.operationalExpenses.shipping ?? 0
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">
-                  Asuransi Wajib Pengiriman (0.2%)
-                </span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {formatRupiah(
-                    data.financials?.operationalExpenses.insurance ?? 0
-                  )}
-                </span>
-              </div>
-              <p className="pt-1 text-[11px] leading-relaxed text-blue-700/80 dark:text-blue-300/80">
-                🛡️ Transparan: Biaya logistik dan asuransi penuh dipungut dari
-                customer dan diteruskan ke ekspedisi. Tidak memotong omzet
-                maupun laba bersih toko.
-              </p>
-            </div>
-          </div>
-        </div>
+            <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-2">
+              {/* Kolom Kiri: Beban Mengurangi Laba Toko / Pendapatan Komisi Superadmin */}
+              <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800/80 dark:bg-slate-800/30">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200">
+                  <span>
+                    {data.isSuperAdmin
+                      ? 'Distribusi Laba & Beban Operasional Toko'
+                      : 'Beban Toko (Mengurangi Laba)'}
+                  </span>
+                  <span className="font-mono text-rose-600 dark:text-rose-400">
+                    -{' '}
+                    {formatRupiah(
+                      data.financials?.operationalExpenses.total ?? 0
+                    )}
+                  </span>
+                </div>
 
-        {/* Operational Strip */}
-        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800/80 sm:grid-cols-4">
-          <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="font-mono text-base font-bold text-slate-900 dark:text-white">
-              {data.orders.total}
-            </p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Total Transaksi
-            </p>
+                {data.isSuperAdmin && (
+                  <div className="rounded-lg border border-purple-200/70 bg-purple-50/60 p-2.5 dark:border-purple-900/50 dark:bg-purple-950/20">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-purple-900 dark:text-purple-200">
+                        Pendapatan Platform Superadmin (Komisi{' '}
+                        {effectiveCommissionRate}%)
+                      </span>
+                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        + {formatRupiah(commAmount)}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[11px] text-purple-700 dark:text-purple-300">
+                      <span>Laba Bersih Mitra Toko Cabang:</span>
+                      <span className="font-mono font-semibold">
+                        {formatRupiah(
+                          data.financials?.storeNetProfit ??
+                            (data.financials?.grossProfit ?? 0) -
+                              (data.financials?.operationalExpenses.total ?? 0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">
+                      Komisi Platform ({effectiveCommissionRate}%)
+                    </span>
+                    <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                      {formatRupiah(commAmount)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">
+                      Biaya Packing (Rp 5.000 / Pesanan)
+                    </span>
+                    <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                      {formatRupiah(
+                        data.financials?.operationalExpenses.packingCost ?? 0
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Diskon Voucher Toko</span>
+                    <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                      {formatRupiah(
+                        data.financials?.operationalExpenses.voucherDiscount ??
+                          0
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">
+                      Biaya Payment Gateway (Midtrans VA/QRIS)
+                    </span>
+                    <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                      {formatRupiah(
+                        data.financials?.operationalExpenses.gatewayFee ?? 0
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Kolom Kanan: Logistik Pass-Through (Tidak Mengurangi Laba Toko) */}
+              <div className="space-y-3 rounded-xl border border-blue-100/60 bg-blue-50/30 p-4 dark:border-blue-900/30 dark:bg-blue-950/20">
+                <div className="flex items-center justify-between text-xs font-bold text-blue-900 dark:text-blue-300">
+                  <span>Logistik Pass-Through (Kurir JNE / Gojek)</span>
+                  <span className="rounded-full bg-blue-100/80 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                    100% Ditanggung Pembeli
+                  </span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">
+                      Ongkir Kurir (JNE / Gojek)
+                    </span>
+                    <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                      {formatRupiah(
+                        data.financials?.operationalExpenses.shipping ?? 0
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">
+                      Asuransi Wajib Pengiriman (0.2%)
+                    </span>
+                    <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                      {formatRupiah(
+                        data.financials?.operationalExpenses.insurance ?? 0
+                      )}
+                    </span>
+                  </div>
+                  <p className="pt-1 text-[11px] leading-relaxed text-blue-700/80 dark:text-blue-300/80">
+                    🛡️ Transparan: Biaya logistik dan asuransi penuh dipungut
+                    dari customer dan diteruskan ke ekspedisi. Tidak memotong
+                    omzet maupun laba bersih toko.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Operational Strip */}
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800/80 sm:grid-cols-4">
+              <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
+                <p className="font-mono text-base font-bold text-slate-900 dark:text-white">
+                  {data.orders.total}
+                </p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Total Transaksi
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
+                <p className="font-mono text-base font-bold text-slate-900 dark:text-white">
+                  {data.customers.total}
+                </p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Pelanggan ({data.customers.activeRate}% Repeat)
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
+                <p className="font-mono text-base font-bold text-orange-600 dark:text-orange-400">
+                  {data.products.lowStockCount}
+                </p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Stok Menipis
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
+                <p className="font-mono text-base font-bold text-emerald-600 dark:text-emerald-400">
+                  {data.revenue.storeCount ??
+                    data.stores?.active ??
+                    data.mitras.approved ??
+                    0}
+                </p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Toko Jaringan Aktif
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="font-mono text-base font-bold text-slate-900 dark:text-white">
-              {data.customers.total}
-            </p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Pelanggan ({data.customers.activeRate}% Repeat)
-            </p>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="font-mono text-base font-bold text-orange-600 dark:text-orange-400">
-              {data.products.lowStockCount}
-            </p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Stok Menipis
-            </p>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="font-mono text-base font-bold text-emerald-600 dark:text-emerald-400">
-              {data.revenue.storeCount ??
-                data.stores?.active ??
-                data.mitras.approved ??
-                0}
-            </p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Toko Jaringan Aktif
-            </p>
-          </div>
-        </div>
-      </div>
+        )
+      })()}
 
       {/* ========================================================================= */}
       {/* 2.8 ANALITIK TREN PENJUALAN & PERFORMA FINANSIAL                         */}

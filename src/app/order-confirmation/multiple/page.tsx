@@ -29,6 +29,8 @@ import {
   ExternalLink,
   CreditCard,
   Building2,
+  X,
+  AlertCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -376,7 +378,12 @@ function MultipleOrderConfirmationContent() {
                 </div>
               </div>
 
-              {currentOrder.status === 'PENDING_PAYMENT' ? (
+              {currentOrder.status === 'CANCELLED' ? (
+                <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-rose-200/50 bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 sm:self-auto">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Pesanan Dibatalkan</span>
+                </div>
+              ) : currentOrder.status === 'PENDING_PAYMENT' ? (
                 <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-amber-200/50 bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 sm:self-auto">
                   <CreditCard className="h-3 w-3" />
                   <span>Menunggu Pembayaran</span>
@@ -589,7 +596,7 @@ function MultipleOrderConfirmationContent() {
                 className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.99]"
               >
                 <CreditCard className="h-4 w-4" />
-                <span>Bayar Sekarang via Midtrans</span>
+                <span>Bayar Sekarang</span>
               </button>
             ) : (
               <Link
@@ -612,7 +619,11 @@ function MultipleOrderConfirmationContent() {
           orderId={activePaymentOrder.id}
           orderNumber={activePaymentOrder.orderNumber}
           totalAmount={activePaymentOrder.total}
+          orderCreatedAt={activePaymentOrder.createdAt}
           onPaymentSuccess={() => {
+            fetchOrders()
+          }}
+          onPaymentExpired={() => {
             fetchOrders()
           }}
         />

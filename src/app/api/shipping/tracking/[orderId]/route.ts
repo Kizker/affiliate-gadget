@@ -58,6 +58,19 @@ export async function GET(
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
+      // If the order has been cancelled, courier shipping is halted completely:
+      if (order.status === 'CANCELLED') {
+        return NextResponse.json({
+          success: true,
+          data: null,
+          isCancelled: true,
+          isPendingPickup: false,
+          orderStatus: 'CANCELLED',
+          message:
+            'Pesanan telah dibatalkan. Pengiriman kurir dan logistik tidak diproses.',
+        })
+      }
+
       // If the order has NOT been processed with "Request Pick Up" yet (no trackingNumber or status is PENDING_PAYMENT / PAID):
       // Biteship shipping has NOT started yet! Never fabricate fake AWB or driver.
       if (

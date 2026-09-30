@@ -56,6 +56,7 @@ interface OrderItem {
     images: string[]
     model?: string | null
     category?: string | null
+    weightGram?: number | null
   } | null
   service?: {
     name: string
@@ -229,6 +230,8 @@ export default function AdminOrdersPage() {
     null
   )
   const [activeThermalLabel, setActiveThermalLabel] = useState<any | null>(null)
+  const [previousOrderForModal, setPreviousOrderForModal] =
+    useState<Order | null>(null)
   const [showLiveTracker, setShowLiveTracker] = useState(false)
   const [taxInvoiceOrder, setTaxInvoiceOrder] = useState<Order | null>(null)
 
@@ -345,6 +348,10 @@ export default function AdminOrdersPage() {
             : o
         )
       )
+      // Tutup modal rincian pesanan dan tampilkan label thermal
+      setPreviousOrderForModal(order)
+      setSelectedOrder(null)
+      setShowLiveTracker(false)
       setActiveThermalLabel(data.data)
     } catch (err: any) {
       console.error('Error requesting pickup:', err)
@@ -356,6 +363,11 @@ export default function AdminOrdersPage() {
 
   // Buka Label Thermal untuk pesanan yang sudah ada
   const handleOpenThermalLabel = async (order: Order) => {
+    // 1. Simpan referensi order & tutup modal rincian pesanan seketika
+    setPreviousOrderForModal(order)
+    setSelectedOrder(null)
+    setShowLiveTracker(false)
+
     try {
       const res = await fetch(`/api/shipping/tracking/${order.id}`)
       if (res.ok) {
@@ -365,8 +377,63 @@ export default function AdminOrdersPage() {
           return
         }
       }
-      // Fallback
-      toast.info('Menyiapkan template label thermal...')
+
+      // 2. Fallback data instan dari object order jika Biteship record belum ada / offline
+      const isGojek = (order.courierCode || '').toUpperCase() === 'GOJEK'
+      const fallbackRecord: any = {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        courierCode: isGojek ? 'GOJEK' : 'JNE',
+        courierService: order.courierService || (isGojek ? 'INSTANT' : 'REG'),
+        trackingNumber:
+          order.trackingNumber || `AGY-${Date.now().toString().slice(-8)}`,
+        status: order.status === 'COMPLETED' ? 'DELIVERED' : 'ALLOCATED',
+        statusLabel:
+          order.status === 'COMPLETED'
+            ? 'Paket Telah Diterima'
+            : isGojek
+              ? 'Driver Sedang Menuju Lokasi'
+              : 'Paket Dalam Perjalanan Ekspedisi',
+        bookedAt: order.createdAt || new Date().toISOString(),
+        originStore: {
+          name: order.store?.name || 'Affiliate Gadget Store',
+          companyName: order.store?.companyName || 'PT Gadget Jaya Sentosa',
+          address: order.store?.city
+            ? `Cabang ${order.store.name}, ${order.store.city}`
+            : 'Toko Cabang Resmi',
+          city: order.store?.city || 'Jakarta Pusat',
+          phone: '081234567890',
+        },
+        destinationCustomer: {
+          name: order.user?.name || 'Customer Pembeli',
+          address: order.user?.address || 'Alamat Penerima Belum Lengkap',
+          city: order.user?.city || 'Jakarta',
+          province: order.user?.province || 'DKI Jakarta',
+          postalCode: order.user?.postalCode || undefined,
+          phone: order.user?.phone || '081298765432',
+        },
+        items:
+          order.items?.map((i) => ({
+            name:
+              i.product?.name ||
+              i.rentalItem?.name ||
+              i.service?.name ||
+              'Unit Gadget',
+            quantity: i.quantity,
+            weightGram: i.product?.weightGram || 500,
+          })) || [],
+        checkpoints: [
+          {
+            id: 'cp-0',
+            status: 'ALLOCATED',
+            description:
+              'Pesanan siap dicetak label dan dijemput kurir logistik',
+            location: order.store?.city || 'Jakarta',
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      }
+      setActiveThermalLabel(fallbackRecord)
     } catch {
       toast.error('Gagal memuat label thermal')
     }
@@ -1332,7 +1399,20 @@ export default function AdminOrdersPage() {
       {activeThermalLabel && (
         <ThermalShippingLabel
           data={activeThermalLabel}
-          onClose={() => setActiveThermalLabel(null)}
+          onClose={() => {
+            setActiveThermalLabel(null)
+            setPreviousOrderForModal(null)
+          }}
+          onBackToOrder={
+            previousOrderForModal
+              ? () => {
+                  const target = previousOrderForModal
+                  setActiveThermalLabel(null)
+                  setPreviousOrderForModal(null)
+                  setSelectedOrder(target)
+                }
+              : undefined
+          }
         />
       )}
 

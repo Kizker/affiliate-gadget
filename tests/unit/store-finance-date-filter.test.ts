@@ -279,5 +279,36 @@ describe('Store Finance Date Filter & Export Integration', () => {
       // Available balance is NOT zeroed out by September filter
       expect(availableBalance).toBe(19_500_000)
     })
+
+    it('should recognize order completed today even if createdAt was earlier (revenue realized on completion date)', () => {
+      const fixedNow = new Date('2026-09-30T13:00:00.000Z')
+      const { startDate, endDate } = getDateRange('today', fixedNow)
+      const s = new Date(startDate).getTime()
+      const e = new Date(endDate).getTime()
+
+      // Order created on 18 Sep 2026, but completed today on 30 Sep 2026
+      const order = {
+        id: 'ord-today-completed',
+        orderNumber: 'SPR-20260918-7F13792E',
+        createdAt: '2026-09-18T04:16:09.120Z',
+        completedAt: '2026-09-30T06:03:03.259Z',
+        status: 'COMPLETED',
+        total: 26_566_998,
+        subtotal: 26_499_000,
+        commission: 397_485,
+      }
+
+      // Check whether order is within period based on completion date
+      const orderCompletionDate = new Date(order.completedAt).getTime()
+      const isCompletedToday =
+        orderCompletionDate >= s && orderCompletionDate <= e
+
+      expect(isCompletedToday).toBe(true)
+
+      // When filtering today, gross revenue and net revenue must include this order
+      const netStoreAmount = order.subtotal - order.commission
+      expect(order.total).toBe(26_566_998)
+      expect(netStoreAmount).toBe(26_101_515)
+    })
   })
 })

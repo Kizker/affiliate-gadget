@@ -70,6 +70,13 @@ describe('Live Streaming Engine — Full End-to-End Pipeline Simulation', () => 
 
   beforeEach(() => {
     vi.clearAllMocks()
+    process.env.LIVEKIT_API_KEY =
+      process.env.LIVEKIT_API_KEY || 'mock_test_api_key_12345'
+    process.env.LIVEKIT_API_SECRET =
+      process.env.LIVEKIT_API_SECRET ||
+      'mock_test_api_secret_abcdef1234567890abcdef'
+    process.env.LIVEKIT_URL =
+      process.env.LIVEKIT_URL || 'wss://mock-test.livekit.cloud'
   })
 
   it('Step 1: Security Gate — Blocks non-admin users from creating live stream', async () => {

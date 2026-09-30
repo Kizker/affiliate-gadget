@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Download,
+  AlertCircle,
 } from 'lucide-react'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
@@ -27,7 +28,9 @@ export interface CustomPaymentModalProps {
   orderId: string
   orderNumber: string
   totalAmount: number
+  orderCreatedAt?: string | Date
   onPaymentSuccess?: () => void
+  onPaymentExpired?: () => void
 }
 
 interface PaymentChargeResult {
@@ -51,25 +54,47 @@ export function CustomPaymentModal({
   orderId,
   orderNumber,
   totalAmount,
+  orderCreatedAt,
   onPaymentSuccess,
+  onPaymentExpired,
 }: CustomPaymentModalProps) {
   const [selectedMethod, setSelectedMethod] =
     useState<CustomPaymentMethod | null>(null)
   const [loading, setLoading] = useState(false)
   const [chargeData, setChargeData] = useState<PaymentChargeResult | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [isExpired, setIsExpired] = useState(false)
   const [copiedText, setCopiedText] = useState<string | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(false)
-  const [timeLeft, setTimeLeft] = useState<number>(900) // default 15 minutes countdown
+  const [timeLeft, setTimeLeft] = useState<number>(86400) // default 24 hours countdown
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [generatingQr, setGeneratingQr] = useState<boolean>(false)
 
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const userWantsToChangeRef = useRef<boolean>(false)
+
+  const getFallbackRemainingSeconds = useCallback(() => {
+    if (!orderCreatedAt) return 15 * 60
+    const createdTime = new Date(orderCreatedAt).getTime()
+    if (isNaN(createdTime)) return 15 * 60
+    const deadline = createdTime + 15 * 60 * 1000
+    return Math.max(0, Math.floor((deadline - Date.now()) / 1000))
+  }, [orderCreatedAt])
+
+  const calculateRemainingSeconds = useCallback(() => {
+    if (chargeData?.expiryTime) {
+      const expTime = new Date(chargeData.expiryTime).getTime()
+      if (!isNaN(expTime)) {
+        return Math.max(0, Math.floor((expTime - Date.now()) / 1000))
+      }
+    }
+    return getFallbackRemainingSeconds()
+  }, [chargeData, getFallbackRemainingSeconds])
 
   // Polling payment status
   const checkStatus = useCallback(
     async (manual: boolean = false) => {
-      if (!orderNumber || isSuccess) return
+      if (!orderNumber || isSuccess || isExpired) return
       if (manual) setCheckingStatus(true)
       try {
         const query = new URLSearchParams({ orderNumber })
@@ -79,13 +104,36 @@ export function CustomPaymentModal({
         const res = await fetch(`/api/payment/status?${query.toString()}`)
         if (!res.ok) return
         const data = await res.json()
-        if (data.isPaid || data.paymentStatus === 'SUCCESS') {
+        if (
+          data.isPaid ||
+          data.paymentStatus === 'SUCCESS' ||
+          data.paymentStatus === 'VERIFIED'
+        ) {
           setIsSuccess(true)
           if (pollTimerRef.current) clearInterval(pollTimerRef.current)
           toast.success('Pembayaran berhasil dikonfirmasi!')
           if (onPaymentSuccess) onPaymentSuccess()
+        } else if (
+          data.isExpired ||
+          data.paymentStatus === 'EXPIRED' ||
+          data.orderStatus === 'CANCELLED'
+        ) {
+          setIsExpired(true)
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+          toast.error(
+            data.message ||
+              'Batas waktu pembayaran 24 jam telah berakhir. Pesanan otomatis dibatalkan.'
+          )
+          if (onPaymentExpired) onPaymentExpired()
         } else if (manual) {
           toast.info('Menunggu pembayaran diselesaikan...')
+        }
+
+        if (data.remainingSeconds !== undefined) {
+          setTimeLeft(data.remainingSeconds)
+          if (data.remainingSeconds <= 0) {
+            setIsExpired(true)
+          }
         }
       } catch (err) {
         console.error('Status check error:', err)
@@ -93,7 +141,14 @@ export function CustomPaymentModal({
         if (manual) setCheckingStatus(false)
       }
     },
-    [orderNumber, chargeData, isSuccess, onPaymentSuccess]
+    [
+      orderNumber,
+      chargeData,
+      isSuccess,
+      isExpired,
+      onPaymentSuccess,
+      onPaymentExpired,
+    ]
   )
 
   // Generate high-res base64 QR Code directly from qrString or qrCodeUrl
@@ -130,7 +185,7 @@ export function CustomPaymentModal({
 
   // Auto poll every 3.5 seconds when charge data is visible
   useEffect(() => {
-    if (isOpen && chargeData && !isSuccess) {
+    if (isOpen && chargeData && !isSuccess && !isExpired) {
       pollTimerRef.current = setInterval(() => {
         checkStatus(false)
       }, 3500)
@@ -138,28 +193,116 @@ export function CustomPaymentModal({
     return () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current)
     }
-  }, [isOpen, chargeData, isSuccess, checkStatus])
+  }, [isOpen, chargeData, isSuccess, isExpired, checkStatus])
 
-  // Countdown timer
+  // Countdown timer: tick every second and auto-cancel on 0
   useEffect(() => {
-    if (!chargeData || isSuccess) return
+    if (!chargeData || isSuccess || isExpired) return
     const interval = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsExpired(true)
+          clearInterval(interval)
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+          toast.error(
+            'Batas waktu pembayaran 24 jam telah berakhir. Pesanan otomatis dibatalkan.'
+          )
+          fetch(
+            `/api/payment/status?orderNumber=${encodeURIComponent(orderNumber)}`
+          )
+          if (onPaymentExpired) onPaymentExpired()
+          return 0
+        }
+        return prev - 1
+      })
     }, 1000)
     return () => clearInterval(interval)
-  }, [chargeData, isSuccess])
+  }, [chargeData, isSuccess, isExpired, orderNumber, onPaymentExpired])
 
-  // Reset state when closed
+  const handleChangePaymentMethod = async () => {
+    userWantsToChangeRef.current = true
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+    setChargeData(null)
+    setSelectedMethod(null)
+    setQrDataUrl(null)
+    setCopiedText(null)
+
+    try {
+      const idToCheck = orderId || orderNumber
+      if (idToCheck) {
+        await fetch(
+          `/api/payment/charge?orderId=${encodeURIComponent(idToCheck)}`,
+          { method: 'DELETE' }
+        )
+      }
+    } catch (err) {
+      console.error('Failed to reset active charge on server:', err)
+    }
+  }
+
+  // Restore active charge from server on modal open so timer and payment channel do not reset
   useEffect(() => {
     if (!isOpen) {
-      setSelectedMethod(null)
-      setChargeData(null)
-      setQrDataUrl(null)
+      userWantsToChangeRef.current = false
       setIsSuccess(false)
+      setIsExpired(false)
       setCopiedText(null)
-      setTimeLeft(900)
+      return
     }
-  }, [isOpen])
+
+    let isMounted = true
+
+    const loadActiveCharge = async () => {
+      // Don't auto-restore if user explicitly indicated they want to change payment
+      if (userWantsToChangeRef.current) return
+
+      try {
+        const idToCheck = orderId || orderNumber
+        if (!idToCheck) return
+
+        const res = await fetch(
+          `/api/payment/charge?orderId=${encodeURIComponent(idToCheck)}`
+        )
+        if (!res.ok) return
+        const json = await res.json()
+
+        if (!isMounted || userWantsToChangeRef.current) return
+
+        if (json.data && json.data.expiryTime) {
+          const expTime = new Date(json.data.expiryTime).getTime()
+          const rem = Math.max(0, Math.floor((expTime - Date.now()) / 1000))
+
+          setChargeData(json.data)
+          setSelectedMethod(json.data.type)
+          setTimeLeft(rem)
+          if (rem <= 0) {
+            setIsExpired(true)
+          } else {
+            setIsExpired(false)
+          }
+        } else {
+          // No active charge yet -> calculate from fastest deadline (15 minutes)
+          const rem = getFallbackRemainingSeconds()
+          setTimeLeft(rem)
+          if (rem <= 0) {
+            setIsExpired(true)
+          } else {
+            setIsExpired(false)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load active charge:', err)
+        const rem = getFallbackRemainingSeconds()
+        setTimeLeft(rem)
+      }
+    }
+
+    loadActiveCharge()
+
+    return () => {
+      isMounted = false
+    }
+  }, [isOpen, orderId, orderNumber, getFallbackRemainingSeconds])
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -179,6 +322,17 @@ export function CustomPaymentModal({
   if (!isOpen) return null
 
   const handleSelectPayment = async (method: CustomPaymentMethod) => {
+    userWantsToChangeRef.current = false
+    const remaining = calculateRemainingSeconds()
+    if (remaining <= 0) {
+      setIsExpired(true)
+      toast.error(
+        'Batas waktu pembayaran 24 jam telah berakhir. Pesanan dibatalkan.'
+      )
+      if (onPaymentExpired) onPaymentExpired()
+      return
+    }
+
     setSelectedMethod(method)
     setLoading(true)
     try {
@@ -197,7 +351,13 @@ export function CustomPaymentModal({
       }
 
       setChargeData(json.data)
-      setTimeLeft(method === 'qris' ? 900 : 86400) // 15 mins for QRIS, 24h for VA
+      if (json.data.expiryTime) {
+        const expTime = new Date(json.data.expiryTime).getTime()
+        const rem = Math.max(0, Math.floor((expTime - Date.now()) / 1000))
+        setTimeLeft(rem)
+      } else {
+        setTimeLeft(remaining)
+      }
     } catch (err: any) {
       console.error('Charge error:', err)
       toast.error(err.message || 'Gagal memproses pembayaran')
@@ -215,8 +375,13 @@ export function CustomPaymentModal({
   }
 
   const formatCountdown = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
+    const s = Math.max(0, seconds)
+    const hours = Math.floor(s / 3600)
+    const mins = Math.floor((s % 3600) / 60)
+    const secs = s % 60
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
@@ -272,11 +437,12 @@ export function CustomPaymentModal({
             {chargeData && !isSuccess ? (
               <button
                 type="button"
-                onClick={() => setChargeData(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-                title="Ganti Metode"
+                onClick={handleChangePaymentMethod}
+                className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 active:scale-95 dark:bg-slate-800 dark:text-slate-200"
+                title="Ganti Metode Pembayaran"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Ganti</span>
               </button>
             ) : (
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 text-white">
@@ -287,9 +453,11 @@ export function CustomPaymentModal({
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 {isSuccess
                   ? 'Pembayaran Berhasil'
-                  : chargeData
-                    ? 'Selesaikan Pembayaran'
-                    : 'Pilih Metode Pembayaran'}
+                  : isExpired
+                    ? 'Pembayaran Kedaluwarsa'
+                    : chargeData
+                      ? 'Selesaikan Pembayaran'
+                      : 'Pilih Metode Pembayaran'}
               </h3>
               <p className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
                 {orderNumber}
@@ -349,6 +517,54 @@ export function CustomPaymentModal({
                 className="w-full rounded-2xl bg-emerald-600 py-3.5 text-xs font-bold text-white shadow-sm shadow-emerald-600/25 transition hover:bg-emerald-700"
               >
                 Tutup & Lihat Pesanan
+              </button>
+            </div>
+          ) : isExpired ? (
+            /* Expired / Cancelled State */
+            <div className="space-y-5 py-6 text-center">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/50">
+                <AlertCircle className="h-12 w-12" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+                  Batas Waktu Pembayaran Habis
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Waktu pembayaran maksimal 24 jam telah terlampaui. Pembayaran
+                  dinyatakan gagal dan pesanan otomatis dibatalkan.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-4 text-xs dark:border-rose-950/40 dark:bg-rose-950/20">
+                <div className="flex justify-between py-1 text-slate-500">
+                  <span>Nomor Pesanan</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">
+                    {orderNumber}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 text-slate-500">
+                  <span>Status Pembayaran</span>
+                  <span className="font-bold text-rose-600">
+                    GAGAL / KEDALUWARSA
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 text-slate-500">
+                  <span>Status Pesanan</span>
+                  <span className="font-bold text-rose-600">DIBATALKAN</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-400">
+                Stok produk telah dikembalikan ke inventori toko. Anda dapat
+                melakukan pemesanan ulang kapan saja.
+              </p>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full rounded-2xl bg-slate-900 py-3.5 text-xs font-bold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+              >
+                Tutup Jendela
               </button>
             </div>
           ) : chargeData ? (
@@ -562,6 +778,16 @@ export function CustomPaymentModal({
                   <span>Cek Sekarang</span>
                 </button>
               </div>
+
+              {/* Tombol Ganti Metode Pembayaran */}
+              <button
+                type="button"
+                onClick={handleChangePaymentMethod}
+                className="shadow-2xs flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200/90 bg-white py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <RefreshCw className="h-3.5 w-3.5 text-orange-500" />
+                <span>Ganti Metode Pembayaran Lain</span>
+              </button>
             </div>
           ) : (
             /* Select Payment Method View */

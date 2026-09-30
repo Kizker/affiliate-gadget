@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { checkMidtransTransactionStatus } from '@/lib/midtrans'
+import {
+  cancelExpiredOrderIfDue,
+  getOrderPaymentRemainingSeconds,
+} from '@/lib/order-expiration'
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,6 +37,32 @@ export async function GET(request: NextRequest) {
         { error: 'Pesanan tidak ditemukan' },
         { status: 404 }
       )
+    }
+
+    // Jika pesanan sudah kedaluwarsa (> 24 jam) atau dibatalkan, eksekusi pembatalan otomatis
+    if (order.status === 'CANCELLED' || order.payment?.status === 'REJECTED') {
+      return NextResponse.json({
+        isPaid: false,
+        isFailed: true,
+        isExpired: true,
+        orderStatus: 'CANCELLED',
+        paymentStatus: 'EXPIRED',
+        message:
+          'Batas waktu pembayaran 24 jam telah berakhir. Pesanan otomatis dibatalkan.',
+      })
+    }
+
+    const cancelCheck = await cancelExpiredOrderIfDue(order.id)
+    if (cancelCheck.wasCancelled) {
+      return NextResponse.json({
+        isPaid: false,
+        isFailed: true,
+        isExpired: true,
+        orderStatus: 'CANCELLED',
+        paymentStatus: 'EXPIRED',
+        message:
+          'Batas waktu pembayaran 24 jam telah berakhir. Pesanan otomatis dibatalkan.',
+      })
     }
 
     // If order is already paid in DB, return success immediately
@@ -122,12 +152,18 @@ export async function GET(request: NextRequest) {
       txStatus === 'cancel' || txStatus === 'expire' || txStatus === 'deny'
 
     if (isFailed) {
+      await cancelExpiredOrderIfDue(order.id, true)
       return NextResponse.json({
         isPaid: false,
         isFailed: true,
-        orderStatus: order.status,
-        paymentStatus: 'FAILED',
+        isExpired: txStatus === 'expire',
+        orderStatus: 'CANCELLED',
+        paymentStatus: txStatus === 'expire' ? 'EXPIRED' : 'FAILED',
         transactionStatus: txStatus,
+        message:
+          txStatus === 'expire'
+            ? 'Batas waktu pembayaran 24 jam telah berakhir. Pesanan otomatis dibatalkan.'
+            : 'Pembayaran ditolak atau dibatalkan.',
       })
     }
 
@@ -136,6 +172,7 @@ export async function GET(request: NextRequest) {
       orderStatus: order.status,
       paymentStatus: 'PENDING',
       transactionStatus: txStatus || 'pending',
+      remainingSeconds: getOrderPaymentRemainingSeconds(order),
     })
   } catch (error: any) {
     console.error('[Payment Status API] Error:', error)

@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/db'
+import { batchCancelExpiredOrders } from '@/lib/order-expiration'
 import OrdersClient from './orders-client'
 
 export const dynamic = 'force-dynamic'
@@ -14,10 +15,27 @@ export default async function CustomerOrdersPage() {
     redirect('/login')
   }
 
+  // Auto-cancel any overdue pending orders before querying
+  await batchCancelExpiredOrders().catch((err) => {
+    console.error(
+      '[Customer Orders Page] Error running batchCancelExpiredOrders:',
+      err
+    )
+  })
+
   // Pre-fetch orders on server for faster initial load
   const orders = await prisma.order.findMany({
     where: { userId: session.user.id },
     include: {
+      payment: {
+        select: {
+          id: true,
+          status: true,
+          method: true,
+          notes: true,
+          updatedAt: true,
+        },
+      },
       items: {
         select: {
           id: true,
@@ -112,6 +130,13 @@ export default async function CustomerOrdersPage() {
     warrantyExpiryDate: order.warrantyExpiryDate?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
     notes: order.notes,
+    payment: order.payment
+      ? {
+          id: order.payment.id,
+          status: order.payment.status,
+          notes: order.payment.notes,
+        }
+      : null,
     store: order.store
       ? {
           id: order.store.id,

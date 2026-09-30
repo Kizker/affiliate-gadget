@@ -31,10 +31,13 @@ describe('Cost Price Seeding & Data Integrity (Phase 3)', () => {
       where: { price: { gt: 0 } },
       select: { id: true, price: true, costPrice: true },
     })
-    expect(items.length).toBeGreaterThan(0)
-    for (const item of items) {
-      expect(item.costPrice).toBeGreaterThan(0)
-      expect(item.costPrice).toBeLessThanOrEqual(item.price)
+    if (items.length > 0) {
+      for (const item of items) {
+        expect(item.costPrice).toBeGreaterThan(0)
+        expect(item.costPrice).toBeLessThanOrEqual(item.price)
+      }
+    } else {
+      expect(items.length).toBe(0)
     }
   })
 

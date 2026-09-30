@@ -9,7 +9,11 @@ import {
   MobileTopNav,
   MobileBottomNav,
 } from '@/components/layouts'
+import { cancelExpiredOrderIfDue } from '@/lib/order-expiration'
 import OrderDetailClient from './order-detail-client'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 interface Props {
   params: Promise<{ orderId: string }>
@@ -23,6 +27,11 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
   }
 
   const { orderId } = await params
+
+  // Auto-cancel if overdue before querying
+  await cancelExpiredOrderIfDue(orderId).catch((err) => {
+    console.error('[Order Detail Page] Error checking expiration:', err)
+  })
 
   // Fetch order data on server for faster initial load
   const order = await prisma.order.findUnique({
@@ -98,6 +107,14 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
           videos: true,
         },
       },
+      payment: {
+        select: {
+          id: true,
+          status: true,
+          method: true,
+          notes: true,
+        },
+      },
     },
   })
 
@@ -164,7 +181,13 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     notes: order.notes,
-    paymentStatus: order.status === 'PENDING_PAYMENT' ? 'PENDING' : 'PAID',
+    paymentStatus:
+      order.status === 'CANCELLED' || order.payment?.status === 'REJECTED'
+        ? 'CANCELLED'
+        : order.status === 'PENDING_PAYMENT' ||
+            order.payment?.status === 'PENDING'
+          ? 'PENDING'
+          : 'PAID',
     store: order.store
       ? {
           id: order.store.id,

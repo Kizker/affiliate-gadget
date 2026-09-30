@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
@@ -34,10 +34,41 @@ import {
   Package,
   Heart,
   Play,
+  Star,
+  Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { isVideoMedia } from '@/types/ads'
+
+function getDesktopConditionBadge(item: any) {
+  switch (item.condition) {
+    case 'LIKE_NEW':
+      return {
+        label: 'Like New 99%',
+        color:
+          'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+      }
+    case 'SECOND_MULUS':
+      return {
+        label: 'Mulus 95%',
+        color:
+          'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+      }
+    case 'GRADE_A':
+      return {
+        label: 'Grade A',
+        color:
+          'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+      }
+    default:
+      return {
+        label: 'Teruji Normal',
+        color:
+          'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+      }
+  }
+}
 
 export default function GadgetDetailPage() {
   const params = useParams()
@@ -52,6 +83,48 @@ export default function GadgetDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [isAddedToCart, setIsAddedToCart] = useState(false)
   const [isDesktopDescExpanded, setIsDesktopDescExpanded] = useState(false)
+
+  // Desktop Recommendations Lazy Loading
+  const [desktopRecsVisible, setDesktopRecsVisible] = useState(8)
+  const [isLoadingMoreDesktopRecs, setIsLoadingMoreDesktopRecs] =
+    useState(false)
+  const desktopRecsSentinelRef = useRef<HTMLDivElement | null>(null)
+
+  const relatedList = product?.relatedProducts || []
+  const hasMoreDesktopRecs = desktopRecsVisible < relatedList.length
+  const displayedDesktopRecs = relatedList.slice(0, desktopRecsVisible)
+
+  useEffect(() => {
+    setDesktopRecsVisible(8)
+  }, [product?.id])
+
+  const loadMoreDesktopRecs = useCallback(() => {
+    if (isLoadingMoreDesktopRecs || desktopRecsVisible >= relatedList.length)
+      return
+    setIsLoadingMoreDesktopRecs(true)
+    setTimeout(() => {
+      setDesktopRecsVisible((prev) => Math.min(prev + 8, relatedList.length))
+      setIsLoadingMoreDesktopRecs(false)
+    }, 250)
+  }, [isLoadingMoreDesktopRecs, desktopRecsVisible, relatedList.length])
+
+  useEffect(() => {
+    if (!hasMoreDesktopRecs) return
+    const el = desktopRecsSentinelRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMoreDesktopRecs()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMoreDesktopRecs, loadMoreDesktopRecs])
 
   const { addItem, setBuyNowItem } = useCartStore()
   const { isInWishlist, toggleItem } = useWishlistSafe()
@@ -1102,6 +1175,151 @@ export default function GadgetDetailPage() {
               productName={product.name}
               storeName={product.store?.name}
             />
+
+            {/* Rekomendasi Gadget Lainnya (Desktop) */}
+            {relatedList.length > 0 && (
+              <section className="mt-14 border-t border-slate-200/80 pt-10 dark:border-slate-800">
+                <div className="mb-6 flex items-baseline justify-between">
+                  <div>
+                    <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+                      Rekomendasi Gadget Lainnya
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Pilihan gadget terpopuler dan paling relevan dengan
+                      pilihan Anda
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-400">
+                    {relatedList.length} Pilihan
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                  {displayedDesktopRecs.map((item: any) => {
+                    const badge = getDesktopConditionBadge(item)
+                    const strikePrice =
+                      item.originalPrice && item.originalPrice > item.price
+                        ? item.originalPrice
+                        : Math.round((item.price || 0) * 1.25)
+                    const storeCleanName = (
+                      item.store?.name ||
+                      item.store?.city ||
+                      'Toko Resmi PT'
+                    )
+                      .replace('Affiliate Gadget - ', '')
+                      .replace('AffiliateGadget Store - ', '')
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="shadow-xs group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-3 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+                      >
+                        <Link href={`/gadget/${item.id}`} className="block">
+                          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-slate-50 dark:bg-slate-800">
+                            <Image
+                              src={
+                                (item.images && item.images[0]) ||
+                                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+                              }
+                              alt={item.name}
+                              fill
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                              className="object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+
+                            <span
+                              className={`backdrop-blur-xs shadow-2xs absolute left-2 top-2 flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-bold ${badge.color}`}
+                            >
+                              <CheckCircle2 className="h-3 w-3 shrink-0" />
+                              <span>{badge.label}</span>
+                            </span>
+                          </div>
+
+                          <div className="mt-2.5 space-y-1.5">
+                            <div className="flex items-center gap-1">
+                              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                              <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                                {(item.rating || 5.0).toFixed(1)}
+                              </span>
+                              <span className="text-[10px] font-medium text-slate-400">
+                                ({item.totalReview ?? item.reviewCount ?? 0})
+                              </span>
+                            </div>
+
+                            <h3 className="line-clamp-2 min-h-[32px] text-xs font-bold leading-snug text-slate-950 transition-colors group-hover:text-orange-600 dark:text-white">
+                              {item.name}
+                            </h3>
+
+                            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                              <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                                Garansi 30 Hari
+                              </span>
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                Bonus 3-in-1
+                              </span>
+                            </div>
+
+                            <div className="pt-0.5">
+                              <span className="block text-sm font-black leading-tight text-orange-500">
+                                Rp {(item.price || 0).toLocaleString('id-ID')}
+                              </span>
+                              {strikePrice > (item.price || 0) && (
+                                <span className="mt-0.5 block text-[10px] leading-none text-slate-400 line-through">
+                                  Rp {strikePrice.toLocaleString('id-ID')}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1 truncate pt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                              <Store className="h-3 w-3 shrink-0 text-slate-400" />
+                              <span className="truncate">{storeCleanName}</span>
+                            </div>
+                          </div>
+                        </Link>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Desktop Lazy Loading Sentinel & Load More Indicator */}
+                {hasMoreDesktopRecs ? (
+                  <div
+                    ref={desktopRecsSentinelRef}
+                    className="mt-8 flex flex-col items-center justify-center text-center"
+                  >
+                    {isLoadingMoreDesktopRecs ? (
+                      <div className="shadow-2xs flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 px-4 py-2 text-xs font-semibold text-orange-600 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400">
+                        <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                        <span>Memuat rekomendasi berikutnya...</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={loadMoreDesktopRecs}
+                        className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                      >
+                        <span>Muat Rekomendasi Lainnya</span>
+                        <span className="text-[10px] text-slate-400">
+                          ({desktopRecsVisible} / {relatedList.length})
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  relatedList.length > 8 && (
+                    <div className="mt-8 text-center">
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50 px-4 py-1.5 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <span>
+                          Semua {relatedList.length} rekomendasi telah
+                          ditampilkan
+                        </span>
+                      </div>
+                    </div>
+                  )
+                )}
+              </section>
+            )}
           </div>
         </main>
 

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   calculateRelevanceScore,
   sortProductsByRelevance,
+  calculateProductSimilarityScore,
+  sortRelatedProductsByRelevance,
   ProductRelevanceItem,
 } from '@/lib/relevance-scoring'
 
@@ -165,5 +167,108 @@ describe('Shopee-Style E-Commerce Relevance Scoring Engine Suite', () => {
 
     expect(sorted[0].brand).toBe('Samsung')
     expect(sorted[0].name).toContain('Samsung Galaxy S24')
+  })
+
+  it('ranks same-brand and same-category gadgets higher in related product recommendations', () => {
+    const targetProduct: ProductRelevanceItem = {
+      id: 'target-iphone',
+      name: 'Apple iPhone 15 Pro Max 256GB',
+      brand: 'Apple',
+      category: 'Smartphone',
+      price: 20000000,
+    }
+
+    const candidateSameBrandPhone: ProductRelevanceItem = {
+      id: 'cand-1',
+      name: 'Apple iPhone 14 Pro 128GB',
+      brand: 'Apple',
+      category: 'Smartphone',
+      price: 15000000,
+    }
+
+    const candidateDifferentBrandPhone: ProductRelevanceItem = {
+      id: 'cand-2',
+      name: 'Xiaomi Redmi 13C 128GB',
+      brand: 'Xiaomi',
+      category: 'Smartphone',
+      price: 1500000,
+    }
+
+    const candidateAccessory: ProductRelevanceItem = {
+      id: 'cand-3',
+      name: 'Kabel Charger Type-C Universal',
+      brand: 'Generic',
+      category: 'Aksesoris',
+      price: 50000,
+    }
+
+    const scoreSameBrand = calculateProductSimilarityScore(
+      candidateSameBrandPhone,
+      targetProduct
+    )
+    const scoreDiffBrand = calculateProductSimilarityScore(
+      candidateDifferentBrandPhone,
+      targetProduct
+    )
+    const scoreAccessory = calculateProductSimilarityScore(
+      candidateAccessory,
+      targetProduct
+    )
+
+    expect(scoreSameBrand).toBeGreaterThan(scoreDiffBrand)
+    expect(scoreDiffBrand).toBeGreaterThan(scoreAccessory)
+  })
+
+  it('sortRelatedProductsByRelevance excludes target product and sorts all candidates by relevance', () => {
+    const targetProduct: ProductRelevanceItem = {
+      id: 'target-1',
+      name: 'Apple iPhone 15 Pro Max',
+      brand: 'Apple',
+      category: 'Smartphone',
+      price: 20000000,
+    }
+
+    const candidates: ProductRelevanceItem[] = [
+      {
+        id: 'target-1', // target itself
+        name: 'Apple iPhone 15 Pro Max',
+        brand: 'Apple',
+        category: 'Smartphone',
+      },
+      {
+        id: 'p-other-phone',
+        name: 'Samsung Galaxy S24',
+        brand: 'Samsung',
+        category: 'Smartphone',
+        price: 16000000,
+      },
+      {
+        id: 'p-apple-phone',
+        name: 'Apple iPhone 14 Pro Max',
+        brand: 'Apple',
+        category: 'Smartphone',
+        price: 17000000,
+      },
+      {
+        id: 'p-accessory',
+        name: 'Casing Silikon',
+        brand: 'Universal',
+        category: 'Aksesoris',
+        price: 30000,
+      },
+    ]
+
+    const result = sortRelatedProductsByRelevance(candidates, targetProduct)
+
+    // Target itself must be excluded
+    expect(result.some((p) => p.id === 'target-1')).toBe(false)
+    expect(result.length).toBe(3)
+
+    // The most relevant (same brand + smartphone + iPhone keyword + close price) must be first
+    expect(result[0].id).toBe('p-apple-phone')
+    // Followed by the other smartphone
+    expect(result[1].id).toBe('p-other-phone')
+    // Accessory at the end
+    expect(result[2].id).toBe('p-accessory')
   })
 })

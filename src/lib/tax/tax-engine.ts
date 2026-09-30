@@ -36,7 +36,8 @@ export function calculateOrderVat(
   const safeSubtotal = Math.max(0, Math.round(subtotalAfterDiscount || 0))
   const isPkp = Boolean(taxConfig?.isPkp)
   const vatRate = Math.max(0, Number(taxConfig?.vatRate ?? 11.0))
-  const taxType: TaxType = taxConfig?.taxType === 'EXCLUSIVE' ? 'EXCLUSIVE' : 'INCLUSIVE'
+  const taxType: TaxType =
+    taxConfig?.taxType === 'EXCLUSIVE' ? 'EXCLUSIVE' : 'INCLUSIVE'
 
   if (!isPkp || vatRate === 0 || safeSubtotal === 0) {
     return {
@@ -222,12 +223,14 @@ export interface PaymentGatewayFeeResult {
  */
 export function calculatePaymentGatewayFee(
   paymentMethod: string | null | undefined,
-  grossAmount: number
+  grossAmount: number,
+  paymentNotes?: string | null
 ): PaymentGatewayFeeResult {
   const method = (paymentMethod || '').toUpperCase()
+  const notes = (paymentNotes || '').toUpperCase()
   const safeGross = Math.max(0, Math.round(grossAmount || 0))
 
-  if (method.includes('QRIS')) {
+  if (method.includes('QRIS') || notes.includes('QRIS')) {
     const feeAmount = Math.round(safeGross * 0.007)
     return {
       method: 'QRIS',
@@ -243,7 +246,8 @@ export function calculatePaymentGatewayFee(
     method.includes('CARD') ||
     method === 'CC' ||
     method.includes('VISA') ||
-    method.includes('MASTERCARD')
+    method.includes('MASTERCARD') ||
+    notes.includes('CREDIT_CARD')
   ) {
     const feeAmount = Math.round(safeGross * 0.029) + 2000
     return {
@@ -252,23 +256,6 @@ export function calculatePaymentGatewayFee(
       feeAmount,
       feeFormula: '2.9% + Rp 2.000',
       isPercentage: true,
-    }
-  }
-
-  if (
-    method.includes('VA') ||
-    method.includes('VIRTUAL') ||
-    method.includes('BANK_TRANSFER') ||
-    method.includes('BCA') ||
-    method.includes('BNI') ||
-    method.includes('BRI')
-  ) {
-    return {
-      method: 'VIRTUAL_ACCOUNT',
-      methodLabel: 'Virtual Account Bank (VA)',
-      feeAmount: 4000,
-      feeFormula: 'Flat Rp 4.000 / transaksi',
-      isPercentage: false,
     }
   }
 
@@ -282,11 +269,28 @@ export function calculatePaymentGatewayFee(
     }
   }
 
+  if (
+    method.includes('GOPAY') ||
+    method.includes('SHOPEEPAY') ||
+    notes.includes('GOPAY') ||
+    notes.includes('SHOPEEPAY')
+  ) {
+    const feeAmount = Math.round(safeGross * 0.02)
+    return {
+      method: 'E_WALLET',
+      methodLabel: 'E-Wallet (GoPay / ShopeePay)',
+      feeAmount,
+      feeFormula: '2.0% dari total pembayaran',
+      isPercentage: true,
+    }
+  }
+
+  // Standar Midtrans Virtual Account Bank (BCA, Mandiri, BNI, BRI)
   return {
-    method: 'PAYMENT_GATEWAY',
-    methodLabel: 'Payment Gateway Midtrans',
-    feeAmount: 2500,
-    feeFormula: 'Flat Rp 2.500 / transaksi',
+    method: 'VIRTUAL_ACCOUNT',
+    methodLabel: 'Payment Gateway Midtrans (Virtual Account)',
+    feeAmount: 4000,
+    feeFormula: 'Flat Rp 4.000 / transaksi',
     isPercentage: false,
   }
 }
@@ -298,16 +302,15 @@ export interface MaintenanceFeeResult {
 
 /**
  * Kalkulasi Biaya Pemeliharaan Sistem E-Commerce (Maintenance Fee):
- * Potongan rutin/berkala untuk server, database, dan pemeliharaan transaksi aman escrow.
+ * Di-disable (Rp 0) sesuai arahan operasional platform.
  */
 export function calculateMaintenanceFee(
-  orderSubtotal: number,
-  feePerOrder: number = 1000
+  _orderSubtotal: number,
+  _feePerOrder: number = 0
 ): MaintenanceFeeResult {
-  const feeAmount = orderSubtotal > 0 ? Math.max(0, feePerOrder) : 0
   return {
-    feeAmount,
-    description: 'Biaya Pemeliharaan Sistem E-Commerce (Server & Escrow)',
+    feeAmount: 0,
+    description: 'Biaya Pemeliharaan Sistem E-Commerce (Bebas Biaya)',
   }
 }
 
@@ -327,4 +330,3 @@ export function generateTaxInvoiceNumber(
   const sequence = numericOnly.slice(-8).padStart(8, '0')
   return `010.0${yearSuffix}-${yearSuffix}.${sequence}`
 }
-

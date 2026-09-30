@@ -59,6 +59,20 @@ export async function GET(request: NextRequest) {
       dateFilter.createdAt = { gte: startDate, lte: endDate }
     }
 
+    const orderDateWhereClause =
+      startDate && endDate
+        ? {
+            OR: [
+              { createdAt: { gte: startDate, lte: endDate } },
+              { completedAt: { gte: startDate, lte: endDate } },
+              {
+                status: 'COMPLETED' as const,
+                updatedAt: { gte: startDate, lte: endDate },
+              },
+            ],
+          }
+        : {}
+
     // STORE_ADMIN scope isolation — restrict all queries to their own store
     const isStoreAdmin = session.user.role === 'STORE_ADMIN'
     const storeId: string | undefined = isStoreAdmin
@@ -73,7 +87,7 @@ export async function GET(request: NextRequest) {
       prisma.order.findMany({
         where: {
           status: { in: [...REVENUE_STATUSES] },
-          ...dateFilter,
+          ...orderDateWhereClause,
           ...storeScope,
         },
         include: {
@@ -85,6 +99,7 @@ export async function GET(request: NextRequest) {
           payment: {
             select: {
               method: true,
+              notes: true,
             },
           },
           items: {
@@ -114,7 +129,7 @@ export async function GET(request: NextRequest) {
     let totalPph23Withheld = 0
     let totalVatOutput = 0
     let totalGatewayFee = 0
-    let totalMaintenanceFee = 0
+    const totalMaintenanceFee = 0
 
     const revenueByCategory = {
       JASA: 0,
@@ -147,14 +162,13 @@ export async function GET(request: NextRequest) {
       const packingFee = order.store?.defaultPackingFee ?? 5000
       totalPackingCost += packingFee
 
-      // Kalkulasi Biaya Gateway Dinamis & Pemeliharaan Sistem
+      // Kalkulasi Biaya Gateway Dinamis
       const gatewayFeeRes = calculatePaymentGatewayFee(
         order.payment?.method || 'MIDTRANS',
-        order.total
+        order.total,
+        order.payment?.notes
       )
-      const maintenanceFeeRes = calculateMaintenanceFee(order.subtotal, 1000)
       totalGatewayFee += gatewayFeeRes.feeAmount
-      totalMaintenanceFee += maintenanceFeeRes.feeAmount
 
       let orderItemGross = 0
       let orderItemCost = 0
@@ -186,7 +200,7 @@ export async function GET(request: NextRequest) {
         orderGrossProfit - (orderCommission + packingFee + orderDiscount)
 
       // Kumpulkan ke Sales Trend Map (Timeline Analysis)
-      const orderDate = new Date(order.createdAt)
+      const orderDate = new Date(order.completedAt || order.createdAt)
       const dateKey = orderDate.toISOString().slice(0, 10)
       const dateLabel = new Intl.DateTimeFormat('id-ID', {
         day: 'numeric',
@@ -502,27 +516,41 @@ export async function GET(request: NextRequest) {
     })
 
     // Return comprehensive report data with cache-prevention headers
+    const isSuperAdmin = session.user.role === 'SUPER_ADMIN'
+
     return NextResponse.json(
       {
         success: true,
         data: {
+          userRole: session.user.role,
+          isSuperAdmin,
           financials: {
             grossRevenue: totalGrossRevenue,
             cogs: totalCOGS,
             grossProfit: totalGrossProfit,
             grossMarginPct,
+            storeNetProfit: totalNetProfit,
+            platformCommission: totalPlatformCommission,
+            netProfit: isSuperAdmin ? totalPlatformCommission : totalNetProfit,
+            netMarginPct: isSuperAdmin
+              ? totalGrossRevenue > 0
+                ? Number(
+                    (
+                      (totalPlatformCommission / totalGrossRevenue) *
+                      100
+                    ).toFixed(2)
+                  )
+                : 0
+              : netMarginPct,
             operationalExpenses: {
               platformCommission: totalPlatformCommission,
               gatewayFee: totalGatewayFee,
-              maintenanceFee: totalMaintenanceFee,
               packingCost: totalPackingCost,
               voucherDiscount: totalVoucherDiscount,
               shipping: totalShippingCost,
               insurance: totalInsuranceFee,
               total: totalEcommerceExpenses,
             },
-            netProfit: totalNetProfit,
-            netMarginPct,
             totalPph23Withheld,
             totalVatOutput,
           },

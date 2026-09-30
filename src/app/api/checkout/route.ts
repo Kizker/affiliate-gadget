@@ -23,7 +23,7 @@ import {
 } from '@/lib/constants/shipping'
 import { verifyServerShippingCost } from '@/lib/shipping/shipping-engine'
 import { calculateVoucherDiscountAmount } from '@/lib/constants/voucher'
-import { calculateOrderVat, calculatePph23 } from '@/lib/tax/tax-engine'
+import { calculateOrderVat } from '@/lib/tax/tax-engine'
 
 interface CartItem {
   type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
@@ -741,10 +741,6 @@ export async function POST(request: NextRequest) {
                 vatRate,
               })
 
-              // PPh 23 Komisi Platform & Cadangan PPh 22 Final UMKM
-              // PPh 23 Komisi Platform (2% otomatis permanen)
-              const pph23Result = calculatePph23(commissionAmount)
-
               // Dynamic 3-in-1 bonus based on product schema flags (BONUS-01)
               const bonusChargerIncluded =
                 orderType === 'PRODUCT'
@@ -777,8 +773,8 @@ export async function POST(request: NextRequest) {
                   dppAmount: vatResult.dppAmount,
                   vatRate: vatResult.vatRate,
                   taxTypeApplied: 'INCLUSIVE',
-                  pph23Amount: pph23Result.pph23Amount,
-                  pph23Rate: pph23Result.pph23Rate,
+                  pph23Amount: 0,
+                  pph23Rate: 0,
                   shippingCost,
                   totalWeightGram,
                   voucherId: appliedVoucherId,

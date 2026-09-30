@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Determine payment & order status
-    let paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED' = 'PENDING'
+    let paymentStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' = 'PENDING'
     let orderStatus: 'PENDING_PAYMENT' | 'PROCESSING' | 'CANCELLED' =
       'PENDING_PAYMENT'
 
@@ -104,11 +104,11 @@ export async function POST(req: NextRequest) {
         paymentStatus = 'PENDING'
         orderStatus = 'PENDING_PAYMENT'
       } else if (fraud_status === 'accept') {
-        paymentStatus = 'PAID'
+        paymentStatus = 'VERIFIED'
         orderStatus = 'PROCESSING'
       }
     } else if (transaction_status === 'settlement') {
-      paymentStatus = 'PAID'
+      paymentStatus = 'VERIFIED'
       orderStatus = 'PROCESSING'
     } else if (transaction_status === 'pending') {
       paymentStatus = 'PENDING'
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       transaction_status === 'cancel' ||
       transaction_status === 'expire'
     ) {
-      paymentStatus = transaction_status === 'expire' ? 'EXPIRED' : 'FAILED'
+      paymentStatus = 'REJECTED'
       orderStatus = 'CANCELLED'
     }
 
@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
     })
 
     // 5. Fire non-blocking PAYMENT_VERIFIED notification if paid
-    if (paymentStatus === 'PAID') {
+    if (paymentStatus === 'VERIFIED') {
       import('@/lib/notifications').then(({ dispatchTransactional }) => {
         dispatchTransactional({
           event: 'PAYMENT_VERIFIED',

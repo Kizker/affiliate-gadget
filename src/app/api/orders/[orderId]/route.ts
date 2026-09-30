@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
+import { cancelExpiredOrderIfDue } from '@/lib/order-expiration'
 
 export async function GET(
   request: NextRequest,
@@ -106,6 +107,30 @@ export async function GET(
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    // Auto-cancel jika pesanan PENDING_PAYMENT sudah melebihi batas 24 jam
+    if (order.status === 'PENDING_PAYMENT') {
+      const cancelCheck = await cancelExpiredOrderIfDue(order.id)
+      if (cancelCheck.wasCancelled && cancelCheck.order) {
+        return NextResponse.json(
+          {
+            order: {
+              ...order,
+              status: 'CANCELLED',
+              notes: cancelCheck.order.notes,
+              payment: order.payment
+                ? { ...order.payment, status: 'EXPIRED' }
+                : null,
+            },
+          },
+          {
+            headers: {
+              'Cache-Control': 'no-store, must-revalidate',
+            },
+          }
+        )
+      }
     }
 
     // No cache for order data to ensure price updates are reflected immediately

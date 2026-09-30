@@ -13,6 +13,8 @@ import {
   Check,
   X,
   RotateCcw,
+  Clock,
+  AlertCircle,
 } from 'lucide-react'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { MobileBottomNav } from '@/components/layouts/mobile-bottom-nav'
@@ -22,6 +24,10 @@ import {
   isReturnOrder,
   getOrderStatusMeta,
 } from '@/lib/order-return-utils'
+import {
+  getOrderPaymentRemainingSeconds,
+  formatPaymentCountdown,
+} from '@/lib/order-expiration'
 
 export interface OrderItem {
   id?: string
@@ -61,6 +67,11 @@ export interface MobileOrder {
     city: string
     phone?: string | null
   } | null
+  payment?: {
+    id: string
+    status: string
+    notes?: string | null
+  } | null
   items: OrderItem[]
   returnRequests?: Array<{
     id: string
@@ -76,6 +87,61 @@ interface MobileOrdersViewProps {
   orders: MobileOrder[]
   onOpenReturnModal?: (order: MobileOrder) => void
   initialTab?: string
+}
+
+function MobilePaymentCountdown({
+  createdAt,
+  payment,
+  orderNumber,
+}: {
+  createdAt: string
+  payment?: { notes?: string | null } | null
+  orderNumber: string
+}) {
+  const getSecs = () => {
+    return getOrderPaymentRemainingSeconds({ createdAt, payment })
+  }
+
+  const [timeLeft, setTimeLeft] = useState<number>(getSecs)
+  const [hasExpired, setHasExpired] = useState(false)
+
+  useEffect(() => {
+    setTimeLeft(getSecs())
+    const interval = setInterval(() => {
+      const rem = getSecs()
+      setTimeLeft(rem)
+      if (rem <= 0) {
+        clearInterval(interval)
+        setHasExpired(true)
+        fetch(
+          `/api/payment/status?orderNumber=${encodeURIComponent(orderNumber)}`
+        )
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [createdAt, payment, orderNumber])
+
+  if (hasExpired || timeLeft <= 0) {
+    return (
+      <div className="flex flex-col items-end">
+        <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+          <AlertCircle className="h-2.5 w-2.5" />
+          <span>Waktu Habis</span>
+        </span>
+        <span className="mt-0.5 text-[8px] text-rose-400">Dibatalkan</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-end">
+      <div className="inline-flex items-center gap-1 rounded-md border border-orange-200/90 bg-orange-50/80 px-2 py-0.5 text-[10px] font-bold text-orange-600 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-400">
+        <Clock className="h-2.5 w-2.5 animate-pulse text-orange-500" />
+        <span>{formatPaymentCountdown(timeLeft)}</span>
+      </div>
+      <span className="mt-0.5 text-[8px] text-slate-400">Batas Bayar</span>
+    </div>
+  )
 }
 
 const DEFAULT_IMAGE =
@@ -394,6 +460,17 @@ export function MobileOrdersView({
                         </span>
                       </div>
                     </div>
+
+                    {/* Limit Waktu Pembayaran Tercepat (QRIS 15m / VA) */}
+                    {order.status === 'PENDING_PAYMENT' && (
+                      <div className="shrink-0 self-start pt-0.5">
+                        <MobilePaymentCountdown
+                          createdAt={order.createdAt}
+                          payment={order.payment}
+                          orderNumber={order.orderNumber}
+                        />
+                      </div>
+                    )}
                   </div>
                 </Link>
 

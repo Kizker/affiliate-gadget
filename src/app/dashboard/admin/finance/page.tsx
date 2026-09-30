@@ -19,7 +19,6 @@ import {
   X,
   Loader2,
   ChevronDown,
-  Receipt,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -49,7 +48,7 @@ interface TransactionMutation {
   title: string
   subtitle: string
   type: 'INCOME' | 'EXPENSE' | 'ESCROW' | 'PAYOUT'
-  category: 'SALE' | 'COMMISSION' | 'WITHDRAWAL' | 'ESCROW' | 'PPH23'
+  category: 'SALE' | 'COMMISSION' | 'WITHDRAWAL' | 'ESCROW'
   categoryLabel: string
   amount: number
   date: string
@@ -71,13 +70,13 @@ interface CourierBreakdown {
 interface FinanceStats {
   availableBalance: number
   grossRevenue: number
+  storeGMV?: number
   platformCommission: number
   escrowBalance: number
   totalUnitsSold: number
   totalWithdrawn: number
   completedNetRevenue: number
   totalVatOutput?: number
-  totalPph23Withheld?: number
   totalVatOnCommission?: number
   courierBreakdown: CourierBreakdown
 }
@@ -119,14 +118,7 @@ export default function StoreAdminFinancePage() {
   const { data: session } = useSession()
 
   const [activeTab, setActiveTab] = useState<
-    | 'ALL'
-    | 'SALE'
-    | 'COMMISSION'
-    | 'WITHDRAWAL'
-    | 'ESCROW'
-    | 'PPH23'
-    | 'GATEWAY'
-    | 'MAINTENANCE'
+    'ALL' | 'SALE' | 'COMMISSION' | 'WITHDRAWAL' | 'ESCROW' | 'GATEWAY'
   >('ALL')
   const [isDeadlineBannerDismissed, setIsDeadlineBannerDismissed] =
     useState(false)
@@ -184,13 +176,30 @@ export default function StoreAdminFinancePage() {
   const getDateRange = (range: string) => {
     const now = new Date()
     let startDate: Date
-    const endDate = new Date()
+    let endDate: Date = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999
+    )
 
     switch (range) {
       case 'today': {
         const d = new Date(now.getTime())
         d.setHours(0, 0, 0, 0)
         startDate = d
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59,
+          999
+        )
         break
       }
       case 'thisWeek': {
@@ -200,13 +209,32 @@ export default function StoreAdminFinancePage() {
         d.setDate(diff)
         d.setHours(0, 0, 0, 0)
         startDate = d
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59,
+          999
+        )
         break
       }
       case 'thisMonth':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999
+        )
         break
       case 'thisYear':
-        startDate = new Date(now.getFullYear(), 0, 1)
+        startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
         break
       case 'january':
         startDate = new Date(now.getFullYear(), 0, 1)
@@ -313,7 +341,6 @@ export default function StoreAdminFinancePage() {
     totalWithdrawn: 0,
     completedNetRevenue: 0,
     totalVatOutput: 0,
-    totalPph23Withheld: 0,
     totalVatOnCommission: 0,
     courierBreakdown: {
       paidCount: 0,
@@ -524,11 +551,9 @@ export default function StoreAdminFinancePage() {
                   ? 'border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
                   : tx.category === 'COMMISSION'
                     ? 'border-orange-200/60 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400'
-                    : tx.category === 'PPH23'
-                      ? 'border-rose-200/60 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                      : tx.category === 'WITHDRAWAL'
-                        ? 'border-blue-200/60 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
-                        : 'border-amber-200/60 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                    : tx.category === 'WITHDRAWAL'
+                      ? 'border-blue-200/60 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
+                      : 'border-amber-200/60 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
               }`}
             >
               {tx.categoryLabel}
@@ -879,6 +904,9 @@ export default function StoreAdminFinancePage() {
   }
 
   const { courierBreakdown } = stats
+  const isConsolidated =
+    session?.user?.role === 'SUPER_ADMIN' &&
+    (!selectedStoreId || selectedStoreId === 'ALL')
   const todayDate = new Date().getDate()
   const isApproachingDeadline = todayDate >= 7 && todayDate <= 10
   const currentMonthName = new Intl.DateTimeFormat('id-ID', {
@@ -900,53 +928,10 @@ export default function StoreAdminFinancePage() {
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Kelola saldo siap cair, mutasi kas per cabang PT, bagi hasil
-            platform, pajak PPh 23, dan penarikan dana (withdraw) ke rekening
-            resmi.
+            platform, dan penarikan dana (withdraw) ke rekening resmi.
           </p>
         </div>
       </div>
-      {/* Peringatan Deadline e-Billing DJP PPh 23 (Tgl 7-10) */}
-      {!isDeadlineBannerDismissed &&
-        (stats.totalPph23Withheld || 0) > 0 &&
-        isApproachingDeadline && (
-          <div className="shadow-2xs flex flex-col items-start justify-between gap-3 rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-50 to-orange-50 p-3.5 text-amber-900 dark:border-amber-800/80 dark:from-amber-950/40 dark:to-orange-950/30 dark:text-amber-200 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-base">
-                ⚠️
-              </span>
-              <p className="text-xs font-semibold leading-relaxed">
-                <strong className="font-bold">Perhatian Perpajakan:</strong>{' '}
-                Batas waktu setor PPh 23 via e-Billing DJP adalah{' '}
-                <span className="font-bold underline decoration-amber-500">
-                  Tgl 10 {currentMonthName}
-                </span>
-                . Nominal wajib setor:{' '}
-                <span className="font-mono font-bold text-amber-950 dark:text-white">
-                  Rp {(stats.totalPph23Withheld || 0).toLocaleString('id-ID')}
-                </span>
-                .
-              </p>
-            </div>
-            <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-              <a
-                href="https://ebilling.pajak.go.id"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shadow-2xs inline-flex items-center gap-1 whitespace-nowrap rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-amber-700 active:scale-95"
-              >
-                <span>Buat e-Billing DJP →</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => setIsDeadlineBannerDismissed(true)}
-                className="rounded-lg p-1 text-amber-700 transition hover:bg-amber-200/50 dark:text-amber-300 dark:hover:bg-amber-900/40"
-                title="Tutup pemberitahuan"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
 
       {/* ========================================================================= */}
       {/* 1. UNIFIED CONTROL BAR (Tabs, Search & Refresh)                           */}
@@ -959,10 +944,8 @@ export default function StoreAdminFinancePage() {
             { key: 'SALE', label: 'Penjualan' },
             { key: 'COMMISSION', label: 'Bagi Hasil' },
             { key: 'GATEWAY', label: 'Biaya Gateway' },
-            { key: 'MAINTENANCE', label: 'Pemeliharaan' },
             { key: 'WITHDRAWAL', label: 'Pencairan' },
             { key: 'ESCROW', label: 'Dana Tertahan' },
-            { key: 'PPH23', label: 'PPh 23' },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -979,13 +962,6 @@ export default function StoreAdminFinancePage() {
                 courierBreakdown.totalEscrowOrders > 0 && (
                   <span className="py-0.2 ml-1.5 inline-flex items-center rounded-full bg-amber-500 px-1.5 text-[10px] font-black text-white">
                     {courierBreakdown.totalEscrowOrders}
-                  </span>
-                )}
-              {tab.key === 'PPH23' &&
-                transactions.filter((t) => t.category === 'PPH23').length >
-                  0 && (
-                  <span className="py-0.2 ml-1.5 inline-flex items-center rounded-full bg-rose-500 px-1.5 text-[10px] font-black text-white">
-                    {transactions.filter((t) => t.category === 'PPH23').length}
                   </span>
                 )}
             </button>
@@ -1068,16 +1044,18 @@ export default function StoreAdminFinancePage() {
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                 ● Siap Transfer
               </span>
-              <span className="text-[11px] text-slate-400">ke Rekening PT</span>
+              <span className="text-[11px] text-slate-400">
+                {isConsolidated ? 'ke Rekening Pusat PT' : 'ke Rekening PT'}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Pendapatan Kotor */}
+        {/* Card 2: Pendapatan Kotor / Pendapatan Platform */}
         <div className="shadow-xs rounded-3xl border border-slate-200/80 bg-white p-5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Pendapatan Kotor
+              {isConsolidated ? 'Pendapatan Platform' : 'Pendapatan Kotor'}
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-blue-100/60 bg-blue-50 text-blue-600 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-400">
               <TrendingUp className="h-4 w-4" />
@@ -1092,20 +1070,24 @@ export default function StoreAdminFinancePage() {
             </div>
             <div className="mt-1 flex items-center gap-1.5">
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                Akumulasi
+                {isConsolidated ? 'Bagi Hasil' : 'Akumulasi'}
               </span>
               <span className="text-[11px] text-slate-400">
-                · {stats.totalUnitsSold} Unit Terjual
+                {isConsolidated
+                  ? '· Komisi Penjualan Cabang'
+                  : `· ${stats.totalUnitsSold} Unit Terjual`}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Bagi Hasil Platform */}
+        {/* Card 3: Bagi Hasil Platform / Total Omzet Cabang */}
         <div className="shadow-xs rounded-3xl border border-slate-200/80 bg-white p-5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Bagi Hasil Platform
+              {isConsolidated
+                ? 'Total Omzet Cabang (GMV)'
+                : 'Bagi Hasil Platform'}
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-orange-100/60 bg-orange-50 text-orange-600 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-400">
               <Percent className="h-4 w-4" />
@@ -1115,15 +1097,22 @@ export default function StoreAdminFinancePage() {
             <div className="flex items-baseline gap-1">
               <span className="text-xs font-semibold text-slate-400">Rp</span>
               <p className="text-xl font-bold tabular-nums tracking-tight text-slate-950 dark:text-white">
-                {stats.platformCommission.toLocaleString('id-ID')}
+                {(isConsolidated
+                  ? (stats.storeGMV ?? 0)
+                  : stats.platformCommission
+                ).toLocaleString('id-ID')}
               </p>
             </div>
             <div className="mt-1 flex items-center gap-1.5">
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 dark:text-orange-400">
-                2.0% - 2.5% Rate
+                {isConsolidated
+                  ? `${stats.totalUnitsSold} Unit Terjual`
+                  : '1.5% - 2.5% Rate'}
               </span>
               <span className="text-[11px] text-slate-400">
-                · Terpotong otomatis
+                {isConsolidated
+                  ? '· Volume Penjualan Toko'
+                  : '· Terpotong otomatis'}
               </span>
             </div>
           </div>
@@ -1395,35 +1384,35 @@ export default function StoreAdminFinancePage() {
               </span>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-5 text-white shadow-md">
+            <div className="shadow-2xs relative overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 p-5 transition-all dark:border-slate-800 dark:bg-slate-800/50">
               <div className="mb-4 flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">
                   {store?.bankAccount?.bankName || 'BANK MANDIRI'}
                 </span>
-                <Building2 className="h-5 w-5 text-slate-400" />
+                <Building2 className="h-5 w-5 text-slate-400 dark:text-slate-500" />
               </div>
 
               <div className="mb-4 space-y-1">
-                <p className="text-[10px] uppercase tracking-wider text-slate-400">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   Nomor Rekening PT
                 </p>
-                <p className="font-mono text-base font-black tracking-widest text-white">
+                <p className="font-mono text-base font-black tracking-widest text-slate-900 dark:text-white">
                   {store?.bankAccount?.accountNumber || '1180 0192 8374 1'}
                 </p>
               </div>
 
-              <div className="flex items-end justify-between border-t border-slate-800/80 pt-3">
+              <div className="flex items-end justify-between border-t border-slate-200/80 pt-3 dark:border-slate-700/80">
                 <div>
-                  <p className="text-[9px] uppercase tracking-wider text-slate-400">
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                     Nama Pemilik Rekening
                   </p>
-                  <p className="max-w-[190px] truncate text-xs font-bold text-slate-200">
+                  <p className="max-w-[190px] truncate text-xs font-bold text-slate-800 dark:text-slate-200">
                     {store?.bankAccount?.accountName ||
                       store?.companyName ||
                       'PT Gadget Jaya Sentosa'}
                   </p>
                 </div>
-                <span className="text-[9px] font-semibold text-slate-400">
+                <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400">
                   {store?.city ? `Cab. ${store.city}` : 'Cab. Pusat'}
                 </span>
               </div>
@@ -1431,14 +1420,14 @@ export default function StoreAdminFinancePage() {
 
             {/* Cooling-down Alert Banner (Task 5.2) */}
             {store?.cooldownStatus?.isLocked && (
-              <div className="mt-3 rounded-2xl border border-amber-500/40 bg-amber-500/15 p-3 text-amber-200">
+              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
                 <div className="flex items-start gap-2.5">
-                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <div className="space-y-0.5">
-                    <p className="text-[11px] font-bold text-amber-300">
+                    <p className="text-[11px] font-bold text-amber-900 dark:text-amber-200">
                       Penarikan Terkunci (Cooling-down 24 Jam)
                     </p>
-                    <p className="text-[10px] leading-relaxed text-amber-200/90">
+                    <p className="text-[10px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
                       Perubahan rekening bank terdeteksi. Demi keamanan dana PT,
                       penarikan saldo dikunci sementara hingga{' '}
                       <strong>
@@ -1468,8 +1457,8 @@ export default function StoreAdminFinancePage() {
               className={cn(
                 'shadow-xs mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-bold transition-all',
                 store?.cooldownStatus?.isLocked
-                  ? 'cursor-not-allowed border border-amber-500/30 bg-amber-500/10 text-amber-400'
-                  : 'bg-slate-950 text-white hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100'
+                  ? 'cursor-not-allowed border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 dark:bg-blue-600 dark:hover:bg-blue-500'
               )}
             >
               {store?.cooldownStatus?.isLocked ? (
@@ -1488,110 +1477,6 @@ export default function StoreAdminFinancePage() {
               )}
             </button>
           </div>
-
-          {/* Legalitas PT & NPWP Summary */}
-          <div className="shadow-xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-            <div className="mb-3 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                <FileText className="h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                  Pajak & Legalitas PT
-                </h3>
-                <p className="text-[10px] text-slate-400">
-                  {store?.companyName || 'PT Gadget Jaya Sentosa'}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 py-1.5 dark:border-slate-800">
-                <span className="text-slate-400">NPWP Cabang PT</span>
-                <span className="font-mono text-[11px] font-bold text-slate-900 dark:text-white">
-                  {store?.taxId || '01.428.910.4-015.000'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-slate-100 py-1.5 dark:border-slate-800">
-                <span className="text-slate-400">Faktur Pajak</span>
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                  Otomatis Terbit
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-slate-400">Periode Tutup Buku</span>
-                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  Akhir Bulan (Tgl 30/31)
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200/80 bg-slate-50/80 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span>Unduh Rekap Kas (CSV)</span>
-            </button>
-          </div>
-
-          {/* Panel Kewajiban Setoran PPh 23 */}
-          {(stats.totalPph23Withheld || 0) > 0 && (
-            <div className="shadow-xs rounded-3xl border border-amber-200/80 bg-gradient-to-b from-amber-50/40 to-white p-6 dark:border-amber-900/60 dark:from-amber-950/20 dark:to-slate-900">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                    <Receipt className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                      Kewajiban Setoran PPh 23
-                    </h3>
-                    <p className="text-[10px] text-slate-400">
-                      e-Billing DJP (Kode Akun 411124)
-                    </p>
-                  </div>
-                </div>
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
-                  Wajib Setor
-                </span>
-              </div>
-
-              <div className="space-y-2.5 text-xs">
-                <div className="flex items-center justify-between border-b border-slate-100 py-1.5 dark:border-slate-800">
-                  <span className="text-slate-400">
-                    Total PPh 23 Periode Ini
-                  </span>
-                  <span className="font-mono text-[12px] font-bold text-amber-700 dark:text-amber-400">
-                    Rp {(stats.totalPph23Withheld || 0).toLocaleString('id-ID')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between border-b border-slate-100 py-1.5 dark:border-slate-800">
-                  <span className="text-slate-400">Batas Waktu Setor</span>
-                  <span className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
-                    <AlertCircle className="h-3 w-3 text-amber-500" />
-                    Tgl 10 Bulan Berikutnya
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-1.5">
-                  <span className="text-slate-400">Keterangan</span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    2% atas Jasa Platform
-                  </span>
-                </div>
-              </div>
-
-              <a
-                href="https://ebilling.pajak.go.id"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shadow-2xs mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl bg-amber-600 py-2.5 text-xs font-bold text-white transition hover:bg-amber-700 active:scale-95"
-              >
-                <span>Buka e-Billing DJP →</span>
-              </a>
-            </div>
-          )}
         </div>
       </div>
 

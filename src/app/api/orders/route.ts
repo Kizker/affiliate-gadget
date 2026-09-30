@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
+import { batchCancelExpiredOrders } from '@/lib/order-expiration'
 
 export async function GET() {
   try {
@@ -8,6 +9,11 @@ export async function GET() {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Auto-cancel any overdue (>24h) pending orders before querying
+    await batchCancelExpiredOrders().catch((err) => {
+      console.error('[Orders API] Error running batchCancelExpiredOrders:', err)
+    })
 
     // Get all orders for this user with reviews included (fixes N+1 problem)
     const orders = await prisma.order.findMany({

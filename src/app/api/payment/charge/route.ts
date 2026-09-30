@@ -2,6 +2,83 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { chargeMidtransTransaction, CustomPaymentMethod } from '@/lib/midtrans'
+import { cancelExpiredOrderIfDue } from '@/lib/order-expiration'
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const orderId =
+      searchParams.get('orderId') || searchParams.get('orderNumber')
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: 'orderId wajib diisi' },
+        { status: 400 }
+      )
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [{ id: orderId }, { orderNumber: orderId }],
+      },
+      include: {
+        payment: true,
+      },
+    })
+
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Pesanan tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    // Auto-cancel if expired
+    const cancelCheck = await cancelExpiredOrderIfDue(order.id)
+    if (cancelCheck.wasCancelled || order.status === 'CANCELLED') {
+      return NextResponse.json({
+        success: false,
+        isExpired: true,
+        orderStatus: 'CANCELLED',
+        data: null,
+      })
+    }
+
+    // Parse active charge from payment.notes if present
+    if (order.payment?.notes && order.payment.notes.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(order.payment.notes)
+        if (parsed.expiryTime) {
+          const expMs = new Date(parsed.expiryTime).getTime()
+          const remainingSeconds = Math.max(
+            0,
+            Math.floor((expMs - Date.now()) / 1000)
+          )
+          if (remainingSeconds > 0) {
+            return NextResponse.json({
+              success: true,
+              data: parsed,
+              remainingSeconds,
+            })
+          }
+        }
+      } catch (_) {}
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: null,
+    })
+  } catch (err: any) {
+    console.error('[Payment Charge GET] Error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,6 +117,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Periksa apakah batas waktu pembayaran telah habis
+    const cancelCheck = await cancelExpiredOrderIfDue(order.id)
+    if (cancelCheck.wasCancelled || order.status === 'CANCELLED') {
+      return NextResponse.json(
+        {
+          error:
+            'Batas waktu pembayaran telah berakhir. Pesanan ini telah otomatis dibatalkan.',
+        },
+        { status: 400 }
+      )
+    }
+
     if (
       order.userId !== session.user.id &&
       session.user.role !== 'SUPER_ADMIN' &&
@@ -49,6 +138,28 @@ export async function POST(request: NextRequest) {
         { error: 'Akses ditolak ke pesanan ini' },
         { status: 403 }
       )
+    }
+
+    // Jika sudah ada tagihan aktif untuk metode yang sama dan belum kedaluwarsa, kembalikan data yang sama agar timer & VA tidak tereset!
+    if (order.payment?.notes && order.payment.notes.startsWith('{')) {
+      try {
+        const existing = JSON.parse(order.payment.notes)
+        if (existing.type === paymentType && existing.expiryTime) {
+          const expMs = new Date(existing.expiryTime).getTime()
+          const remainingSeconds = Math.max(
+            0,
+            Math.floor((expMs - Date.now()) / 1000)
+          )
+          if (remainingSeconds > 0) {
+            return NextResponse.json({
+              success: true,
+              data: existing,
+              remainingSeconds,
+              resumed: true,
+            })
+          }
+        }
+      } catch (_) {}
     }
 
     // Generate unique Midtrans transaction attempt ID per channel/attempt to prevent 406 Conflict
@@ -67,19 +178,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Record the active Midtrans transaction ID in the order payment record
-    try {
-      await prisma.payment.updateMany({
-        where: { orderId: order.id },
-        data: {
-          notes: `Midtrans Transaction ID: ${midtransOrderId}`,
-        },
-      })
-    } catch (dbErr) {
-      console.warn(
-        '[Payment Charge API] Failed to update payment notes:',
-        dbErr
-      )
+    // Calculate standardized expiryTime
+    const isShort =
+      paymentType === 'qris' ||
+      paymentType === 'gopay' ||
+      paymentType === 'shopeepay'
+    let calculatedExpiry: string
+    if (chargeRes.expiry_time) {
+      const formatted = chargeRes.expiry_time.includes('T')
+        ? chargeRes.expiry_time
+        : chargeRes.expiry_time.replace(' ', 'T') + '+07:00'
+      calculatedExpiry = new Date(formatted).toISOString()
+    } else {
+      calculatedExpiry = new Date(
+        Date.now() + (isShort ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000)
+      ).toISOString()
     }
 
     // Extract standardized response based on payment type
@@ -88,7 +201,7 @@ export async function POST(request: NextRequest) {
       orderNumber: string
       midtransOrderId: string
       grossAmount: number
-      expiryTime?: string
+      expiryTime: string
       qrCodeUrl?: string
       qrString?: string
       vaNumber?: string
@@ -101,7 +214,7 @@ export async function POST(request: NextRequest) {
       orderNumber: order.orderNumber,
       midtransOrderId,
       grossAmount: order.total,
-      expiryTime: chargeRes.expiry_time,
+      expiryTime: calculatedExpiry,
     }
 
     if (paymentType === 'qris') {
@@ -134,6 +247,34 @@ export async function POST(request: NextRequest) {
       result.qrString = chargeRes.qr_string
     }
 
+    // Record the full active charge details in the order payment record so it persists across refreshes
+    try {
+      if (order.payment) {
+        await prisma.payment.update({
+          where: { id: order.payment.id },
+          data: {
+            notes: JSON.stringify(result),
+            updatedAt: new Date(),
+          },
+        })
+      } else {
+        await prisma.payment.create({
+          data: {
+            orderId: order.id,
+            method: 'MIDTRANS',
+            amount: order.total,
+            status: 'PENDING',
+            notes: JSON.stringify(result),
+          },
+        })
+      }
+    } catch (dbErr) {
+      console.warn(
+        '[Payment Charge API] Failed to update payment notes:',
+        dbErr
+      )
+    }
+
     return NextResponse.json({
       success: true,
       data: result,
@@ -145,5 +286,68 @@ export async function POST(request: NextRequest) {
       { error: error.message || 'Gagal memproses pembayaran via Core API' },
       { status: 500 }
     )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const orderId =
+      searchParams.get('orderId') || searchParams.get('orderNumber')
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: 'orderId wajib diisi' },
+        { status: 400 }
+      )
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [{ id: orderId }, { orderNumber: orderId }],
+      },
+      include: {
+        payment: true,
+      },
+    })
+
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Pesanan tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    if (
+      order.userId !== session.user.id &&
+      session.user.role !== 'SUPER_ADMIN' &&
+      session.user.role !== 'ADMIN'
+    ) {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 })
+    }
+
+    // Reset notes di payment record
+    if (order.payment) {
+      await prisma.payment.update({
+        where: { id: order.payment.id },
+        data: {
+          notes: null,
+          updatedAt: new Date(),
+        },
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Tagihan pembayaran aktif berhasil direset',
+    })
+  } catch (err: any) {
+    console.error('[Payment Charge DELETE] Error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

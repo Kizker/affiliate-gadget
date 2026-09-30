@@ -92,26 +92,38 @@ export async function GET(request: NextRequest) {
       : {}
 
     // Filter tanggal (Periode: hari ini, minggu ini, bulan ini, tahun ini, per bulan)
+    // Filter tanggal (Periode: hari ini, minggu ini, bulan ini, tahun ini, per bulan)
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
 
-    const dateFilter: {
-      createdAt?: {
-        gte: Date
-        lte: Date
-      }
-    } = {}
+    let s: Date | undefined
+    let e: Date | undefined
 
     if (startDateParam && endDateParam) {
-      const s = new Date(startDateParam)
-      const e = new Date(endDateParam)
-      if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
-        dateFilter.createdAt = {
-          gte: s,
-          lte: e,
-        }
+      const parsedS = new Date(startDateParam)
+      const parsedE = new Date(endDateParam)
+      if (!isNaN(parsedS.getTime()) && !isNaN(parsedE.getTime())) {
+        s = parsedS
+        e = parsedE
       }
     }
+
+    const dateWhereClause =
+      s && e
+        ? {
+            OR: [
+              // Pesanan yang dibuat pada rentang tanggal
+              { createdAt: { gte: s, lte: e } },
+              // Pesanan yang diselesaikan pada rentang tanggal
+              { completedAt: { gte: s, lte: e } },
+              // Fallback pesanan COMPLETED yang diupdate pada rentang tanggal
+              {
+                status: 'COMPLETED' as const,
+                updatedAt: { gte: s, lte: e },
+              },
+            ],
+          }
+        : {}
 
     // Ambil semua order terkait yang relevan secara paralel
     const [orders, allStores, allTimeCompletedAgg] = await Promise.all([
@@ -119,7 +131,7 @@ export async function GET(request: NextRequest) {
         where: {
           status: { in: [...ACTIVE_ORDER_STATUSES] },
           ...storeWhereClause,
-          ...dateFilter,
+          ...dateWhereClause,
         },
         include: {
           user: {
@@ -139,6 +151,7 @@ export async function GET(request: NextRequest) {
             select: {
               method: true,
               status: true,
+              notes: true,
             },
           },
           items: {
@@ -187,10 +200,10 @@ export async function GET(request: NextRequest) {
     let escrowBalance = 0
     let totalUnitsSold = 0
     let totalVatOutput = 0
-    let totalPph23Withheld = 0
+    const totalPph23Withheld = 0
     let totalVatOnCommission = 0
     let totalGatewayFees = 0
-    let totalMaintenanceFees = 0
+    const totalMaintenanceFees = 0
 
     // Rincian status kurir & pengiriman untuk Escrow
     const courierBreakdown = {
@@ -235,12 +248,6 @@ export async function GET(request: NextRequest) {
       const commission = order.commissionAmount || 0
       const discount = order.discountAmount || 0
 
-      grossRevenue += orderTotal
-      platformCommission += commission
-      totalVatOutput += order.tax || 0
-      totalPph23Withheld += (order as { pph23Amount?: number }).pph23Amount || 0
-      totalVatOnCommission += Math.round(commission * 0.11)
-
       // Hak bersih toko = subtotal - diskon - komisi platform
       const netStoreAmount = Math.max(0, orderSubtotal - discount - commission)
 
@@ -249,7 +256,6 @@ export async function GET(request: NextRequest) {
         (sum, item) => sum + (item.quantity || 1),
         0
       )
-      totalUnitsSold += unitsCount
 
       const customerName = order.user?.name || 'Customer'
       const firstProductName =
@@ -266,36 +272,172 @@ export async function GET(request: NextRequest) {
         .filter(Boolean)
         .join(' ')
 
-      const formattedDate = new Intl.DateTimeFormat('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(new Date(order.createdAt))
+      const orderCompletionDate =
+        order.completedAt ||
+        (order.status === 'COMPLETED' ? order.updatedAt : null)
+
+      const isCompletedInPeriod =
+        order.status === 'COMPLETED' &&
+        (!s ||
+          !e ||
+          (orderCompletionDate &&
+            orderCompletionDate >= s &&
+            orderCompletionDate <= e))
+
+      const isCreatedInPeriod =
+        !s || !e || (order.createdAt >= s && order.createdAt <= e)
 
       if (order.status === 'COMPLETED') {
+        if (!isCompletedInPeriod) return
+
+        grossRevenue += orderTotal
+        platformCommission += commission
+        totalVatOutput += order.tax || 0
+        totalVatOnCommission += Math.round(commission * 0.11)
+        totalUnitsSold += unitsCount
         completedNetRevenue += netStoreAmount
 
-        // Mutasi Penjualan Masuk Saldo
-        mutations.push({
-          id: `sale-${order.id}`,
-          refNumber: order.orderNumber,
-          title: productTitle,
-          subtitle: `Customer: ${customerName} · ${courierDesc} · Selesai`,
-          type: 'INCOME',
-          category: 'SALE',
-          categoryLabel: 'Penjualan Gadget',
-          amount: netStoreAmount,
-          date: formattedDate,
-          rawDate: order.completedAt || order.createdAt,
-          status: 'SETTLED',
-          statusLabel: 'Masuk Saldo',
-          orderStatus: order.status,
-          courierInfo: courierDesc,
-          trackingNumber: order.trackingNumber,
-        })
+        const effectiveDate = orderCompletionDate || order.createdAt
+        const formattedDate = new Intl.DateTimeFormat('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(new Date(effectiveDate))
+
+        if (isConsolidated) {
+          // Bagi Superadmin (Holding Platform):
+          // 1. Komisi Platform adalah PEMASUKAN kas holding (INCOME)
+          if (commission > 0) {
+            mutations.push({
+              id: `fee-${order.id}`,
+              refNumber: `FEE-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+              title: `Bagi Hasil Platform (${order.commissionRate || 1.5}% Komisi)`,
+              subtitle: `Diterima dari ${order.store?.companyName || order.store?.name || 'Toko Cabang'} (#${order.orderNumber})`,
+              type: 'INCOME',
+              category: 'COMMISSION',
+              categoryLabel: 'Komisi Platform',
+              amount: commission,
+              date: formattedDate,
+              rawDate: effectiveDate,
+              status: 'SETTLED',
+              statusLabel: 'Masuk Kas Platform',
+              orderStatus: order.status,
+            })
+          }
+
+          // 2. Penjualan Gadget adalah transaksi milik mitra toko cabang (bukan pendapatan superadmin)
+          mutations.push({
+            id: `sale-${order.id}`,
+            refNumber: order.orderNumber,
+            title: productTitle,
+            subtitle: `Toko: ${order.store?.companyName || order.store?.name || 'Cabang'} · Customer: ${customerName} · Selesai`,
+            type: 'ESCROW',
+            category: 'SALE',
+            categoryLabel: 'Penjualan Cabang',
+            amount: netStoreAmount,
+            date: formattedDate,
+            rawDate: effectiveDate,
+            status: 'SETTLED',
+            statusLabel: 'Hak Toko Cabang',
+            orderStatus: order.status,
+            courierInfo: courierDesc,
+            trackingNumber: order.trackingNumber,
+          })
+
+          // 3. Biaya Payment Gateway Transaksi Toko
+          const gatewayFeeResult = calculatePaymentGatewayFee(
+            order.payment?.method || 'MIDTRANS',
+            orderTotal,
+            order.payment?.notes
+          )
+          if (gatewayFeeResult.feeAmount > 0) {
+            totalGatewayFees += gatewayFeeResult.feeAmount
+            mutations.push({
+              id: `gw-${order.id}`,
+              refNumber: `GW-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+              title: `Biaya Gateway: ${gatewayFeeResult.methodLabel}`,
+              subtitle: `${gatewayFeeResult.feeFormula} · Dipotong dari Toko (#${order.orderNumber})`,
+              type: 'EXPENSE',
+              category: 'GATEWAY',
+              categoryLabel: 'Biaya Transaksi',
+              amount: gatewayFeeResult.feeAmount,
+              date: formattedDate,
+              rawDate: effectiveDate,
+              status: 'SETTLED',
+              statusLabel: 'Dipotong dari Toko',
+              orderStatus: order.status,
+            })
+          }
+        } else {
+          // Bagi Toko Cabang (Store Admin):
+          // 1. Mutasi Penjualan Masuk Saldo Toko (INCOME)
+          mutations.push({
+            id: `sale-${order.id}`,
+            refNumber: order.orderNumber,
+            title: productTitle,
+            subtitle: `Customer: ${customerName} · ${courierDesc} · Selesai`,
+            type: 'INCOME',
+            category: 'SALE',
+            categoryLabel: 'Penjualan Gadget',
+            amount: netStoreAmount,
+            date: formattedDate,
+            rawDate: effectiveDate,
+            status: 'SETTLED',
+            statusLabel: 'Masuk Saldo',
+            orderStatus: order.status,
+            courierInfo: courierDesc,
+            trackingNumber: order.trackingNumber,
+          })
+
+          // 2. Mutasi Bagi Hasil Platform Dipotong (EXPENSE)
+          if (commission > 0) {
+            mutations.push({
+              id: `fee-${order.id}`,
+              refNumber: `FEE-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+              title: `Bagi Hasil Platform (${order.commissionRate || 1.5}% Komisi)`,
+              subtitle: `Dipotong otomatis untuk pesanan #${order.orderNumber}`,
+              type: 'EXPENSE',
+              category: 'COMMISSION',
+              categoryLabel: 'Komisi Platform',
+              amount: commission,
+              date: formattedDate,
+              rawDate: effectiveDate,
+              status: 'SETTLED',
+              statusLabel: 'Terpotong',
+              orderStatus: order.status,
+            })
+          }
+
+          // 3. Potongan Biaya Payment Gateway Toko (EXPENSE)
+          const gatewayFeeResult = calculatePaymentGatewayFee(
+            order.payment?.method || 'MIDTRANS',
+            orderTotal,
+            order.payment?.notes
+          )
+          if (gatewayFeeResult.feeAmount > 0) {
+            totalGatewayFees += gatewayFeeResult.feeAmount
+            mutations.push({
+              id: `gw-${order.id}`,
+              refNumber: `GW-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+              title: `Biaya Gateway: ${gatewayFeeResult.methodLabel}`,
+              subtitle: `${gatewayFeeResult.feeFormula} (#${order.orderNumber})`,
+              type: 'EXPENSE',
+              category: 'GATEWAY',
+              categoryLabel: 'Biaya Transaksi',
+              amount: gatewayFeeResult.feeAmount,
+              date: formattedDate,
+              rawDate: effectiveDate,
+              status: 'SETTLED',
+              statusLabel: 'Terpotong',
+              orderStatus: order.status,
+            })
+          }
+        }
       } else if (ESCROW_STATUSES.includes(order.status as any)) {
+        if (!isCreatedInPeriod) return
+
         escrowBalance += netStoreAmount
         courierBreakdown.totalEscrowOrders += 1
 
@@ -320,6 +462,14 @@ export async function GET(request: NextRequest) {
           subtitleStatus = 'Komplain Garansi'
         }
 
+        const formattedDate = new Intl.DateTimeFormat('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(new Date(order.createdAt))
+
         // Mutasi Escrow Tertahan
         mutations.push({
           id: `escrow-${order.id}`,
@@ -339,110 +489,62 @@ export async function GET(request: NextRequest) {
           trackingNumber: order.trackingNumber,
         })
       }
-
-      // Mutasi Bagi Hasil Platform
-      if (commission > 0) {
-        mutations.push({
-          id: `fee-${order.id}`,
-          refNumber: `FEE-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
-          title: `Bagi Hasil Platform (${order.commissionRate || 2}% Komisi)`,
-          subtitle: `Dipotong otomatis untuk pesanan #${order.orderNumber}`,
-          type: 'EXPENSE',
-          category: 'COMMISSION',
-          categoryLabel: 'Komisi Platform',
-          amount: commission,
-          date: formattedDate,
-          rawDate: order.createdAt,
-          status: 'SETTLED',
-          statusLabel: 'Terpotong',
-          orderStatus: order.status,
-        })
-      }
-
-      // Mutasi PPh 23 atas Jasa Platform (Kewajiban Setor Toko ke DJP)
-      const orderPph23 = (order as { pph23Amount?: number; pph23Rate?: number })
-        .pph23Amount
-      const orderPph23Rate = (
-        order as { pph23Amount?: number; pph23Rate?: number }
-      ).pph23Rate
-      if (orderPph23 && orderPph23 > 0) {
-        mutations.push({
-          id: `pph23-${order.id}`,
-          refNumber: `PPH23-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
-          title: `PPh 23 Komisi Platform (${orderPph23Rate || 2}%)`,
-          subtitle: `Kewajiban setor ke kas negara via e-Billing DJP (#${order.orderNumber})`,
-          type: 'EXPENSE',
-          category: 'PPH23',
-          categoryLabel: 'PPh 23 Komisi',
-          amount: orderPph23,
-          date: formattedDate,
-          rawDate: order.createdAt,
-          status: 'SETTLED',
-          statusLabel: 'Wajib Setor',
-          orderStatus: order.status,
-        })
-      }
-
-      // Potongan Biaya Payment Gateway Dinamis
-      const gatewayFeeResult = calculatePaymentGatewayFee(
-        order.payment?.method || 'MIDTRANS',
-        orderTotal
-      )
-      if (gatewayFeeResult.feeAmount > 0) {
-        totalGatewayFees += gatewayFeeResult.feeAmount
-        mutations.push({
-          id: `gw-${order.id}`,
-          refNumber: `GW-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
-          title: `Biaya Gateway: ${gatewayFeeResult.methodLabel}`,
-          subtitle: `${gatewayFeeResult.feeFormula} (#${order.orderNumber})`,
-          type: 'EXPENSE',
-          category: 'GATEWAY',
-          categoryLabel: 'Biaya Transaksi',
-          amount: gatewayFeeResult.feeAmount,
-          date: formattedDate,
-          rawDate: order.createdAt,
-          status: 'SETTLED',
-          statusLabel: 'Terpotong',
-          orderStatus: order.status,
-        })
-      }
-
-      // Potongan Biaya Pemeliharaan Sistem (Maintenance Fee)
-      const maintenanceFeeResult = calculateMaintenanceFee(orderSubtotal, 1000)
-      if (maintenanceFeeResult.feeAmount > 0) {
-        totalMaintenanceFees += maintenanceFeeResult.feeAmount
-        mutations.push({
-          id: `maint-${order.id}`,
-          refNumber: `MNT-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
-          title: `Biaya Pemeliharaan Sistem E-Commerce`,
-          subtitle: `Operasional Server & Escrow Terproteksi (#${order.orderNumber})`,
-          type: 'EXPENSE',
-          category: 'MAINTENANCE',
-          categoryLabel: 'Pemeliharaan Sistem',
-          amount: maintenanceFeeResult.feeAmount,
-          date: formattedDate,
-          rawDate: order.createdAt,
-          status: 'SETTLED',
-          statusLabel: 'Terpotong',
-          orderStatus: order.status,
-        })
-      }
     })
 
     // Hitung riwayat penarikan saldo (Withdrawals)
-    const allTimeWithdrawn = getTotalWithdrawn(targetStoreId)
-    const allTimeNetRevenue = Math.max(
-      0,
-      (allTimeCompletedAgg._sum.subtotal || 0) -
-        (allTimeCompletedAgg._sum.discountAmount || 0) -
-        (allTimeCompletedAgg._sum.commissionAmount || 0)
+    // Guard: hanya izinkan withdrawal dari storeId yang benar-benar ada di DB
+    const allRealStoreIds = new Set(
+      (
+        await prisma.store.findMany({
+          select: { id: true },
+        })
+      ).map((s) => s.id)
     )
-    const availableBalance = Math.max(0, allTimeNetRevenue - allTimeWithdrawn)
 
-    let withdrawals = getStoreWithdrawals(targetStoreId)
-    if (dateFilter.createdAt) {
-      const sTime = dateFilter.createdAt.gte.getTime()
-      const eTime = dateFilter.createdAt.lte.getTime()
+    let allTimeWithdrawn = 0
+    let availableBalance = 0
+
+    if (isConsolidated) {
+      // Untuk Superadmin (Holding Platform):
+      // Saldo siap cair adalah seluruh komisi platform dari pesanan selesai dikurangi pencairan holding
+      const holdingWithdrawals = getStoreWithdrawals().filter(
+        (w) =>
+          ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
+          w.status === 'SUCCESS'
+      )
+      allTimeWithdrawn = holdingWithdrawals.reduce(
+        (sum, w) => sum + w.amount,
+        0
+      )
+      const allTimeCommission = allTimeCompletedAgg._sum.commissionAmount || 0
+      availableBalance = Math.max(0, allTimeCommission - allTimeWithdrawn)
+    } else {
+      // Untuk Toko Cabang:
+      // Saldo siap cair adalah hak bersih toko dikurangi penarikan toko tersebut
+      const storeWithdrawals = getStoreWithdrawals(targetStoreId).filter(
+        (w) =>
+          w.storeId === targetStoreId &&
+          allRealStoreIds.has(w.storeId) &&
+          w.status === 'SUCCESS'
+      )
+      allTimeWithdrawn = storeWithdrawals.reduce((sum, w) => sum + w.amount, 0)
+      const allTimeNetRevenue = Math.max(
+        0,
+        (allTimeCompletedAgg._sum.subtotal || 0) -
+          (allTimeCompletedAgg._sum.discountAmount || 0) -
+          (allTimeCompletedAgg._sum.commissionAmount || 0)
+      )
+      availableBalance = Math.max(0, allTimeNetRevenue - allTimeWithdrawn)
+    }
+
+    let withdrawals = getStoreWithdrawals(targetStoreId).filter((w) =>
+      isConsolidated
+        ? ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId)
+        : w.storeId === targetStoreId && allRealStoreIds.has(w.storeId)
+    )
+    if (s && e) {
+      const sTime = s.getTime()
+      const eTime = e.getTime()
       withdrawals = withdrawals.filter((w) => {
         const t = new Date(w.createdAt).getTime()
         return t >= sTime && t <= eTime
@@ -518,7 +620,8 @@ export async function GET(request: NextRequest) {
       bankAccountCooldownStatus,
       stats: {
         availableBalance,
-        grossRevenue,
+        grossRevenue: isConsolidated ? platformCommission : grossRevenue,
+        storeGMV: grossRevenue,
         platformCommission,
         escrowBalance,
         totalUnitsSold,

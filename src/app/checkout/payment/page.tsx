@@ -115,6 +115,9 @@ function CheckoutPaymentContent() {
     order.status === 'COMPLETED' ||
     order.payment?.status === 'SUCCESS'
 
+  const isCancelled =
+    order.status === 'CANCELLED' || order.payment?.status === 'EXPIRED'
+
   const isMidtrans = order.payment?.method === 'MIDTRANS'
 
   return (
@@ -138,10 +141,16 @@ function CheckoutPaymentContent() {
                 className={`rounded-full px-3 py-1 text-xs font-bold ${
                   isAlreadyPaid
                     ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                    : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                    : isCancelled
+                      ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                      : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
                 }`}
               >
-                {isAlreadyPaid ? 'Sudah Dibayar' : 'Menunggu Pembayaran'}
+                {isAlreadyPaid
+                  ? 'Sudah Dibayar'
+                  : isCancelled
+                    ? 'Pesanan Dibatalkan'
+                    : 'Menunggu Pembayaran'}
               </div>
             </div>
 
@@ -173,6 +182,26 @@ function CheckoutPaymentContent() {
                     </Link>
                   </div>
                 </div>
+              ) : isCancelled ? (
+                <div className="rounded-2xl border border-rose-200/60 bg-rose-50/50 p-5 text-center dark:border-rose-950/40 dark:bg-rose-950/20">
+                  <AlertCircle className="mx-auto mb-2 h-8 w-8 text-rose-600" />
+                  <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200">
+                    Batas Waktu Pembayaran 24 Jam Habis
+                  </h3>
+                  <p className="mt-1 text-xs text-rose-700/80 dark:text-rose-300/70">
+                    Pembayaran dinyatakan gagal dan pesanan telah dibatalkan
+                    secara otomatis. Stok produk telah dikembalikan ke etalase
+                    toko.
+                  </p>
+                  <div className="mt-4">
+                    <Link
+                      href="/gadget"
+                      className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                    >
+                      Belanja Ulang di Katalog
+                    </Link>
+                  </div>
+                </div>
               ) : isMidtrans ? (
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 text-xs text-blue-800 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-300">
@@ -192,7 +221,7 @@ function CheckoutPaymentContent() {
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-sm font-bold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 active:scale-[0.99]"
                   >
                     <CreditCard className="h-4 w-4" />
-                    <span>Bayar Sekarang via Midtrans</span>
+                    <span>Bayar Sekarang</span>
                   </button>
                 </div>
               ) : (
@@ -292,7 +321,11 @@ function CheckoutPaymentContent() {
           orderId={order.id}
           orderNumber={order.orderNumber}
           totalAmount={order.total}
+          orderCreatedAt={order.createdAt}
           onPaymentSuccess={() => {
+            loadOrder()
+          }}
+          onPaymentExpired={() => {
             loadOrder()
           }}
         />

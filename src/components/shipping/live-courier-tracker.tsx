@@ -16,6 +16,7 @@ import {
   User,
   AlertTriangle,
   Shield,
+  XCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import { ShippingBookingRecord } from '@/lib/shipping/biteship-client'
@@ -41,6 +42,9 @@ export function LiveCourierTracker({
     message: string
     orderStatus?: string
   } | null>(null)
+  const [cancelledInfo, setCancelledInfo] = useState<{
+    message: string
+  } | null>(null)
 
   const fetchTracking = async () => {
     try {
@@ -48,11 +52,23 @@ export function LiveCourierTracker({
       const res = await fetch(`/api/shipping/tracking/${orderId}`)
       if (res.ok) {
         const json = await res.json()
+        if (json.isCancelled || json.orderStatus === 'CANCELLED') {
+          setData(null)
+          setPendingPickupInfo(null)
+          setCancelledInfo({
+            message:
+              json.message ||
+              'Pesanan telah dibatalkan. Pengiriman kurir dan logistik tidak diproses.',
+          })
+          return
+        }
         if (json.data) {
           setData(json.data)
           setPendingPickupInfo(null)
+          setCancelledInfo(null)
         } else if (json.isPendingPickup) {
           setData(null)
+          setCancelledInfo(null)
           setPendingPickupInfo({
             message: json.message,
             orderStatus: json.orderStatus,
@@ -86,6 +102,22 @@ export function LiveCourierTracker({
       <div className="flex items-center justify-center p-8 text-xs text-slate-400">
         <RefreshCw className="mr-2 h-4 w-4 animate-spin text-orange-500" />
         <span>Memuat data pelacakan kurir real-time...</span>
+      </div>
+    )
+  }
+
+  if (cancelledInfo) {
+    return (
+      <div className="rounded-3xl border border-rose-200/80 bg-rose-50/50 p-6 text-center dark:border-rose-900/40 dark:bg-rose-950/20 sm:p-7">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-900/60 dark:text-rose-400">
+          <XCircle className="h-6 w-6" />
+        </div>
+        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+          Pengiriman Tidak Diproses (Pesanan Dibatalkan)
+        </h4>
+        <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          {cancelledInfo.message}
+        </p>
       </div>
     )
   }

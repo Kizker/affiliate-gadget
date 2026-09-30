@@ -122,6 +122,10 @@ export async function createMidtransSnapTransaction(
         : undefined,
     },
     item_details: items,
+    custom_expiry: {
+      expiry_duration: 24,
+      unit: 'hour',
+    },
   }
 
   const transaction = await snapInstance.createTransaction(parameter)
@@ -170,6 +174,11 @@ export async function chargeMidtransTransaction(
   const gross_amount = Math.round(params.grossAmount)
   const order_id = params.orderId
 
+  const isShortExpiry =
+    params.paymentType === 'qris' ||
+    params.paymentType === 'gopay' ||
+    params.paymentType === 'shopeepay'
+
   const parameter: any = {
     transaction_details: {
       order_id,
@@ -182,6 +191,10 @@ export async function chargeMidtransTransaction(
           phone: params.customerDetails.phone || '',
         }
       : undefined,
+    custom_expiry: {
+      expiry_duration: isShortExpiry ? 15 : 24,
+      unit: isShortExpiry ? 'minute' : 'hour',
+    },
   }
 
   switch (params.paymentType) {

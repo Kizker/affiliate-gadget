@@ -140,10 +140,24 @@ export async function PATCH(
         }
       }
 
+      const now = new Date()
+      const warrantyExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+      const isNewlyCompleted =
+        status === 'COMPLETED' && order.status !== 'COMPLETED'
+
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: {
           status,
+          ...(status === 'COMPLETED'
+            ? {
+                completedAt: isNewlyCompleted ? now : order.completedAt || now,
+                customerConfirmedAt: isNewlyCompleted
+                  ? now
+                  : order.customerConfirmedAt || now,
+                warrantyExpiryDate: order.warrantyExpiryDate || warrantyExpiry,
+              }
+            : {}),
           ...(trackingNumber ? { trackingNumber } : {}),
         },
       })
@@ -197,7 +211,8 @@ export async function PATCH(
           await sendOrderComplainedEmail({
             orderId,
             subject: 'Pesanan Ditandai Komplain',
-            description: 'Status pesanan diubah ke tahap komplain untuk penanganan garansi/unit.',
+            description:
+              'Status pesanan diubah ke tahap komplain untuk penanganan garansi/unit.',
           })
         }
       } catch (notifErr) {

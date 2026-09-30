@@ -12,6 +12,8 @@ export interface ProductRelevanceItem {
   id?: string
   name: string
   brand?: string | null
+  category?: string | null
+  condition?: string | null
   description?: string | null
   price?: number | string | null
   originalPrice?: number | string | null
@@ -19,7 +21,9 @@ export interface ProductRelevanceItem {
   totalReview?: number | null
   soldCount?: number | null
   createdAt?: string | Date | null
+  storeId?: string | null
   store?: {
+    id?: string
     name?: string
     city?: string
   } | null
@@ -211,4 +215,146 @@ export function sortProductsByRelevance<T extends ProductRelevanceItem>(
 
     return 0
   })
+}
+
+/**
+ * Hitung skor kemiripan / relevansi produk rekomendasi terhadap produk yang sedang dilihat.
+ * Memprioritaskan:
+ * 1. Merek yang sama (Apple ke iPhone/MacBook/iPad lainnya)
+ * 2. Kategori yang sama (SMARTPHONE ke smartphone lainnya)
+ * 3. Token nama/tipe serupa (misal "Pro", "Max", "Ultra", "Fold", "Flip")
+ * 4. Rentang harga mendekati (price proximity bracket)
+ * 5. Toko fisik yang sama (memudahkan pembelian multi-item satu ongkir)
+ * 6. Social proof & reputasi e-commerce (soldCount, rating, ulasan, garansi)
+ */
+export function calculateProductSimilarityScore(
+  candidate: ProductRelevanceItem,
+  target: ProductRelevanceItem
+): number {
+  if (candidate.id && target.id && candidate.id === target.id) {
+    return -999999
+  }
+
+  let score = 0
+
+  const targetBrand = (target.brand || '').trim().toLowerCase()
+  const candBrand = (candidate.brand || '').trim().toLowerCase()
+  const targetCategory = (target.category || '').trim().toLowerCase()
+  const candCategory = (candidate.category || '').trim().toLowerCase()
+  const targetName = (target.name || '').toLowerCase()
+  const candName = (candidate.name || '').toLowerCase()
+
+  // 1. Kecocokan Merek (Brand) — Bobot Terbesar
+  if (targetBrand && candBrand && targetBrand === candBrand) {
+    score += 100
+  } else if (targetBrand && candName.includes(targetBrand)) {
+    score += 75
+  }
+
+  // 2. Kecocokan Kategori (mis. Smartphone -> Smartphone)
+  if (targetCategory && candCategory && targetCategory === candCategory) {
+    score += 60
+  }
+
+  // 3. Kecocokan Token Nama (Karakteristik Seri / Model)
+  const stopWords = new Set([
+    'dan',
+    'dengan',
+    'yang',
+    'atau',
+    'untuk',
+    'gb',
+    'ram',
+    'rom',
+    'resmi',
+    'sein',
+    'ibox',
+    'second',
+    'mulus',
+    'original',
+  ])
+  const targetTokens = targetName
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length > 2 && !stopWords.has(t))
+
+  for (const token of targetTokens) {
+    if (candName.includes(token)) {
+      score += 20 // Setiap kata kunci (misal "iphone", "15", "pro", "max", "ultra")
+    }
+  }
+
+  // 4. Proksimitas Rentang Harga (Price Bracket)
+  const targetPrice = Number(target.price) || 0
+  const candPrice = Number(candidate.price) || 0
+  if (targetPrice > 0 && candPrice > 0) {
+    const diffRatio = Math.abs(candPrice - targetPrice) / targetPrice
+    if (diffRatio <= 0.25) {
+      score += 35 // Sangat dekat (selisih <= 25%)
+    } else if (diffRatio <= 0.5) {
+      score += 20 // Cukup dekat (selisih <= 50%)
+    } else if (diffRatio <= 1.0) {
+      score += 10 // Dalam rentang 2x lipat
+    }
+  }
+
+  // 5. Kesamaan Toko / Cabang PT (Memudahkan bundling ongkir)
+  const targetStoreId = target.storeId || target.store?.id
+  const candStoreId = candidate.storeId || candidate.store?.id
+  if (targetStoreId && candStoreId && targetStoreId === candStoreId) {
+    score += 20
+  }
+
+  // 6. Social Proof & Penjualan (Shopee style logaritmik)
+  const sold = Math.max(0, Number(candidate.soldCount) || 0)
+  if (sold > 0) {
+    score += Math.min(30, Math.log10(1 + sold) * 15)
+  }
+
+  // 7. Rating & Ulasan
+  const rating = Number(candidate.rating) || 0
+  if (rating >= 4.8) score += 18
+  else if (rating >= 4.5) score += 12
+  else if (rating >= 4.0) score += 6
+
+  const reviewCount = Math.max(0, Number(candidate.totalReview) || 0)
+  if (reviewCount > 0) {
+    score += Math.min(12, Math.log10(1 + reviewCount) * 6)
+  }
+
+  // 8. Nilai Tambah Garansi & Bonus
+  if (candidate.warrantyDays && candidate.warrantyDays >= 30) score += 5
+  if (candidate.has3in1Bonus) score += 5
+
+  return Math.round(score * 100) / 100
+}
+
+/**
+ * Urutkan produk rekomendasi berdasarkan skor relevansi terhadap produk target.
+ */
+export function sortRelatedProductsByRelevance<T extends ProductRelevanceItem>(
+  candidates: T[],
+  target: ProductRelevanceItem
+): T[] {
+  return [...candidates]
+    .filter((c) => (c.id && target.id ? c.id !== target.id : true))
+    .sort((a, b) => {
+      const scoreA = calculateProductSimilarityScore(a, target)
+      const scoreB = calculateProductSimilarityScore(b, target)
+
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA
+      }
+
+      // Tie breaker 1: soldCount
+      const soldDiff = (Number(b.soldCount) || 0) - (Number(a.soldCount) || 0)
+      if (soldDiff !== 0) return soldDiff
+
+      // Tie breaker 2: rating
+      const ratingDiff = (Number(b.rating) || 0) - (Number(a.rating) || 0)
+      if (ratingDiff !== 0) return ratingDiff
+
+      // Tie breaker 3: price
+      return (Number(b.price) || 0) - (Number(a.price) || 0)
+    })
 }

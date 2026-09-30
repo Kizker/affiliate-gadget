@@ -26,10 +26,15 @@ import {
   CreditCard,
   ChevronRight,
   Undo2,
+  AlertCircle,
 } from 'lucide-react'
 import { ReturnModal } from '@/components/customer/return-modal'
 import { MobileOrdersView } from '@/components/customer/mobile-orders-view'
 import { toast } from 'sonner'
+import {
+  getOrderPaymentRemainingSeconds,
+  formatPaymentCountdown,
+} from '@/lib/order-expiration'
 
 interface Order {
   id: string
@@ -46,6 +51,11 @@ interface Order {
   warrantyExpiryDate?: string | null
   createdAt: string
   notes?: string | null
+  payment?: {
+    id: string
+    status: string
+    notes?: string | null
+  } | null
   store?: {
     id: string
     name: string
@@ -104,6 +114,55 @@ interface Order {
     createdAt: string
     resolvedAt?: string | null
   }>
+}
+
+function OrderPaymentCountdown({
+  createdAt,
+  payment,
+  orderNumber,
+}: {
+  createdAt: string
+  payment?: { notes?: string | null } | null
+  orderNumber: string
+}) {
+  const getSecs = () => {
+    return getOrderPaymentRemainingSeconds({ createdAt, payment })
+  }
+
+  const [timeLeft, setTimeLeft] = useState<number>(getSecs)
+  const [hasExpired, setHasExpired] = useState(false)
+
+  useEffect(() => {
+    setTimeLeft(getSecs())
+    const interval = setInterval(() => {
+      const rem = getSecs()
+      setTimeLeft(rem)
+      if (rem <= 0) {
+        clearInterval(interval)
+        setHasExpired(true)
+        fetch(
+          `/api/payment/status?orderNumber=${encodeURIComponent(orderNumber)}`
+        )
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [createdAt, payment, orderNumber])
+
+  if (hasExpired || timeLeft <= 0) {
+    return (
+      <div className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+        <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+        <span>Batas Bayar Habis</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="inline-flex items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/80 px-3 py-1 text-xs font-bold text-orange-600 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-400">
+      <Clock className="h-3.5 w-3.5 animate-pulse text-orange-500" />
+      <span>Bayar dalam {formatPaymentCountdown(timeLeft)}</span>
+    </div>
+  )
 }
 
 const statusConfig: Record<
@@ -528,14 +587,23 @@ export default function OrdersClient({
                           </span>
                         </div>
 
-                        {/* Semantic Status Badge */}
-                        <div
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-xs font-bold ${currentStatus.badgeBg}`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${currentStatus.dotColor}`}
-                          />
-                          <span>{currentStatus.label}</span>
+                        {/* Semantic Status Badge & Countdown Timer */}
+                        <div className="flex items-center gap-2">
+                          {order.status === 'PENDING_PAYMENT' && (
+                            <OrderPaymentCountdown
+                              createdAt={order.createdAt}
+                              payment={order.payment}
+                              orderNumber={order.orderNumber}
+                            />
+                          )}
+                          <div
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-xs font-bold ${currentStatus.badgeBg}`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${currentStatus.dotColor}`}
+                            />
+                            <span>{currentStatus.label}</span>
+                          </div>
                         </div>
                       </div>
 

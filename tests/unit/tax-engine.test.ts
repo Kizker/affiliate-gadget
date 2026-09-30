@@ -156,11 +156,18 @@ describe('Tax Engine — PPh Pasal 22, Gateway Fees & Maintenance', () => {
     expect(res.isPercentage).toBe(true)
   })
 
-  it('19. Kalkulasi Payment Gateway dinamis Virtual Account (Flat Rp 4.000)', () => {
+  it('19. Kalkulasi Payment Gateway dinamis Virtual Account & Midtrans VA (Flat Rp 4.000)', () => {
     const res = calculatePaymentGatewayFee('BCA_VA', 10_000_000)
     expect(res.method).toBe('VIRTUAL_ACCOUNT')
     expect(res.feeAmount).toBe(4_000)
     expect(res.isPercentage).toBe(false)
+
+    const midtransVaRes = calculatePaymentGatewayFee(
+      'MIDTRANS',
+      26_499_000,
+      'bca_va'
+    )
+    expect(midtransVaRes.feeAmount).toBe(4_000)
   })
 
   it('20. Kalkulasi Payment Gateway dinamis Kartu Kredit (2.9% + Rp 2.000)', () => {
@@ -169,9 +176,9 @@ describe('Tax Engine — PPh Pasal 22, Gateway Fees & Maintenance', () => {
     expect(res.feeAmount).toBe(29_000 + 2000)
   })
 
-  it('21. Kalkulasi Maintenance Fee (Rp 1.000 per pesanan)', () => {
+  it('21. Kalkulasi Maintenance Fee dinonaktifkan / 0 rupiah', () => {
     const res = calculateMaintenanceFee(5_000_000)
-    expect(res.feeAmount).toBe(1_000)
+    expect(res.feeAmount).toBe(0)
   })
 
   it('22. Generator Nomor Seri Faktur Pajak resmi (format DJP: 010.026-26.XXXXXXXX)', () => {
@@ -180,4 +187,3 @@ describe('Tax Engine — PPh Pasal 22, Gateway Fees & Maintenance', () => {
     expect(nsfp).toContain('00123456')
   })
 })
-

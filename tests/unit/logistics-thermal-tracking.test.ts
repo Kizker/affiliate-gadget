@@ -170,4 +170,53 @@ describe('Logistics Thermal Label & Real-Time Tracking Engine', () => {
     )
     expect(updated.status).toBe('DROPPING_OFF')
   })
+
+  it('manages modal transitions: closes order details modal and displays thermal shipping label with back navigation', () => {
+    // Simulate UI state transition logic
+    let selectedOrder: any = { id: 'order-123', orderNumber: 'ORD-123' }
+    let showLiveTracker = true
+    let activeThermalLabel: any = null
+    let previousOrderForModal: any = null
+
+    // Handler when "Cetak Label Thermal" is pressed
+    const handleOpenThermalLabel = (order: any, labelData: any) => {
+      previousOrderForModal = order
+      selectedOrder = null
+      showLiveTracker = false
+      activeThermalLabel = labelData
+    }
+
+    const mockLabel = {
+      orderId: 'order-123',
+      orderNumber: 'ORD-123',
+      courierCode: 'GOJEK',
+      trackingNumber: 'GK-999',
+    }
+
+    // Trigger open
+    handleOpenThermalLabel(selectedOrder, mockLabel)
+
+    // Order detail modal must be closed, and thermal label must be active
+    expect(selectedOrder).toBeNull()
+    expect(showLiveTracker).toBe(false)
+    expect(activeThermalLabel).toEqual(mockLabel)
+    expect(previousOrderForModal).toBeDefined()
+    expect(previousOrderForModal.orderNumber).toBe('ORD-123')
+
+    // Trigger back to order details from thermal label
+    const onBackToOrder = () => {
+      const target = previousOrderForModal
+      activeThermalLabel = null
+      previousOrderForModal = null
+      selectedOrder = target
+    }
+
+    onBackToOrder()
+
+    // Thermal label must be closed, and order detail modal restored
+    expect(activeThermalLabel).toBeNull()
+    expect(previousOrderForModal).toBeNull()
+    expect(selectedOrder).toBeDefined()
+    expect(selectedOrder.orderNumber).toBe('ORD-123')
+  })
 })

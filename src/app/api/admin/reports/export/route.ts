@@ -12,6 +12,7 @@ interface FinancialOrderRecord {
   orderNumber: string
   status: any
   createdAt: Date
+  completedAt?: Date | null
   commissionAmount: number | null
   discountAmount: number | null
   shippingCost: number | null
@@ -86,6 +87,9 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
+    let s: Date | undefined
+    let e: Date | undefined
+
     const dateFilter: {
       createdAt?: {
         gte: Date
@@ -93,9 +97,11 @@ export async function GET(request: NextRequest) {
       }
     } = {}
     if (startDate && endDate) {
-      const s = new Date(startDate)
-      const e = new Date(endDate)
-      if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+      const parsedS = new Date(startDate)
+      const parsedE = new Date(endDate)
+      if (!isNaN(parsedS.getTime()) && !isNaN(parsedE.getTime())) {
+        s = parsedS
+        e = parsedE
         dateFilter.createdAt = {
           gte: s,
           lte: e,
@@ -161,10 +167,24 @@ export async function GET(request: NextRequest) {
     switch (type) {
       case 'financials':
       case 'pnl': {
+        const financialDateWhereClause =
+          s && e
+            ? {
+                OR: [
+                  { createdAt: { gte: s, lte: e } },
+                  { completedAt: { gte: s, lte: e } },
+                  {
+                    status: 'COMPLETED' as const,
+                    updatedAt: { gte: s, lte: e },
+                  },
+                ],
+              }
+            : {}
+
         const rawFinancialOrders = await prisma.order.findMany({
           where: {
             status: { in: [...REVENUE_STATUSES] },
-            ...dateFilter,
+            ...financialDateWhereClause,
             ...storeScope,
           },
           include: {
@@ -295,7 +315,7 @@ export async function GET(request: NextRequest) {
               index + 1,
               order.orderNumber,
               order.store?.companyName || order.store?.name || '-',
-              formatDate(order.createdAt),
+              formatDate(order.completedAt || order.createdAt),
               formatStatus(order.status),
               productNames,
               totalQty,

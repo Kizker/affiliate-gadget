@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -27,6 +27,7 @@ import {
   Check,
   MapPin,
   Play,
+  Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCartStore } from '@/lib/store/cart-store'
@@ -34,6 +35,9 @@ import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { isVideoMedia } from '@/types/ads'
 import { ProductReviewsSection } from './product-reviews-section'
 import { ProductShareModal } from './product-share-modal'
+
+const INITIAL_RECOMMENDATIONS = 8
+const RECOMMENDATIONS_BATCH_SIZE = 8
 
 interface ShopeeMobileProductDetailProps {
   product: any
@@ -384,6 +388,64 @@ export function ShopeeMobileProductDetail({
 
   const otherStoreProducts = product?.store?.products || []
   const relatedProducts = product?.relatedProducts || []
+
+  // Mobile Lazy Loading State for Recommendations
+  const [recommendationsCount, setRecommendationsCount] = useState(
+    INITIAL_RECOMMENDATIONS
+  )
+  const [isLoadingMoreRecommendations, setIsLoadingMoreRecommendations] =
+    useState(false)
+  const recommendationSentinelRef = useRef<HTMLDivElement | null>(null)
+
+  // Reset pagination when product id changes
+  useEffect(() => {
+    setRecommendationsCount(INITIAL_RECOMMENDATIONS)
+  }, [product?.id])
+
+  const hasMoreRecommendations = recommendationsCount < relatedProducts.length
+  const displayedRecommendations = relatedProducts.slice(
+    0,
+    recommendationsCount
+  )
+
+  const loadMoreRecommendations = useCallback(() => {
+    if (
+      isLoadingMoreRecommendations ||
+      recommendationsCount >= relatedProducts.length
+    ) {
+      return
+    }
+    setIsLoadingMoreRecommendations(true)
+    setTimeout(() => {
+      setRecommendationsCount((prev) =>
+        Math.min(prev + RECOMMENDATIONS_BATCH_SIZE, relatedProducts.length)
+      )
+      setIsLoadingMoreRecommendations(false)
+    }, 250)
+  }, [
+    isLoadingMoreRecommendations,
+    recommendationsCount,
+    relatedProducts.length,
+  ])
+
+  // IntersectionObserver for recommendations lazy load
+  useEffect(() => {
+    if (!hasMoreRecommendations) return
+    const el = recommendationSentinelRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMoreRecommendations()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMoreRecommendations, loadMoreRecommendations])
 
   // Condition Label mapping
   const conditionLabel =
@@ -1084,20 +1146,60 @@ export function ShopeeMobileProductDetail({
         />
       </div>
 
-      {/* 13. Rekomendasi Gadget Terkait (Format Kartu Katalog Konsisten) */}
+      {/* 13. Rekomendasi Gadget Terkait (Format Kartu Katalog Konsisten dengan Lazy Loading) */}
       {relatedProducts.length > 0 && (
         <div className="mt-3 px-3">
-          <div className="mb-2.5 px-1">
+          <div className="mb-2.5 flex items-center justify-between px-1">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Rekomendasi Gadget Lainnya
             </h3>
+            <span className="text-[10px] font-semibold text-slate-400">
+              {relatedProducts.length} Pilihan
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            {relatedProducts.map((rel: any) => (
+            {displayedRecommendations.map((rel: any) => (
               <ProductCatalogMiniCard key={rel.id} item={rel} />
             ))}
           </div>
+
+          {/* Lazy Loading Sentinel & Load More Indicator */}
+          {hasMoreRecommendations ? (
+            <div
+              ref={recommendationSentinelRef}
+              className="flex flex-col items-center justify-center py-5 text-center"
+            >
+              {isLoadingMoreRecommendations ? (
+                <div className="shadow-2xs flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 px-4 py-2 text-xs font-semibold text-orange-600 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-500" />
+                  <span>Memuat rekomendasi berikutnya...</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={loadMoreRecommendations}
+                  className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  <span>Muat Rekomendasi Lainnya</span>
+                  <span className="text-[10px] text-slate-400">
+                    ({recommendationsCount} / {relatedProducts.length})
+                  </span>
+                </button>
+              )}
+            </div>
+          ) : (
+            relatedProducts.length > INITIAL_RECOMMENDATIONS && (
+              <div className="py-5 text-center">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50 px-4 py-1.5 text-[11px] font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>
+                    Semua {relatedProducts.length} rekomendasi telah ditampilkan
+                  </span>
+                </div>
+              </div>
+            )
+          )}
         </div>
       )}
 
