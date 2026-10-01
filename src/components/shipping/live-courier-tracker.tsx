@@ -124,8 +124,8 @@ export function LiveCourierTracker({
 
   if (pendingPickupInfo || !data) {
     return (
-      <div className="rounded-3xl border border-dashed border-amber-200/90 bg-amber-50/40 p-6 text-center dark:border-amber-900/40 dark:bg-amber-950/20 sm:p-7">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-900/60 dark:text-amber-400">
+      <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center dark:border-slate-800 dark:bg-slate-800/40 sm:p-7">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           <Clock className="h-6 w-6" />
         </div>
         <h4 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -135,8 +135,8 @@ export function LiveCourierTracker({
           {pendingPickupInfo?.message ||
             'Pesanan sedang disiapkan oleh cabang toko fisik. Pelacakan kurir real-time dan nomor resi AWB resmi akan aktif secara otomatis setelah pihak toko melakukan Request Pick Up.'}
         </p>
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-200/80 bg-white px-3.5 py-1 text-[11px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-300">
-          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <ShieldCheck className="h-3.5 w-3.5 text-slate-500" />
           <span>Pengiriman Terproteksi Asuransi 100%</span>
         </div>
       </div>

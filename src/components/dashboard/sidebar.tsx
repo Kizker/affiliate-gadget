@@ -33,6 +33,7 @@ import {
   Radio,
 } from 'lucide-react'
 import { useSidebarSafe } from '@/context/sidebar-context'
+import { useAdminNotifications } from '@/context/admin-notifications-context'
 
 interface NavItem {
   icon: React.ElementType
@@ -74,24 +75,14 @@ const superAdminNavSections: NavSection[] = [
     items: [
       {
         icon: Wallet,
-        label: 'Keuangan & Penarikan',
+        label: 'Keuangan & Laporan',
         href: '/dashboard/admin/finance',
-      },
-      {
-        icon: BarChart3,
-        label: 'Laporan Finansial',
-        href: '/dashboard/admin/reports',
       },
       { icon: Radio, label: 'Siaran Langsung', href: '/dashboard/admin/live' },
       { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
       {
-        icon: ShieldCheck,
-        label: 'Klaim Garansi',
-        href: '/dashboard/admin/complaints',
-      },
-      {
         icon: RotateCcw,
-        label: 'Pengembalian',
+        label: 'Pengembalian & Klaim Garansi',
         href: '/dashboard/admin/returns',
       },
     ],
@@ -132,13 +123,8 @@ const adminPlatformNavSections: NavSection[] = [
     title: 'Layanan',
     items: [
       {
-        icon: ShieldCheck,
-        label: 'Klaim Garansi',
-        href: '/dashboard/admin/complaints',
-      },
-      {
         icon: RotateCcw,
-        label: 'Pengembalian',
+        label: 'Pengembalian & Klaim Garansi',
         href: '/dashboard/admin/returns',
       },
     ],
@@ -173,21 +159,15 @@ const storeAdminNavSections: NavSection[] = [
       },
       { icon: ShoppingCart, label: 'Pesanan', href: '/dashboard/admin/orders' },
       { icon: Radio, label: 'Siaran Langsung', href: '/dashboard/admin/live' },
-      { icon: Wallet, label: 'Keuangan', href: '/dashboard/admin/finance' },
       {
-        icon: BarChart3,
-        label: 'Laporan Keuangan',
-        href: '/dashboard/admin/reports',
+        icon: Wallet,
+        label: 'Keuangan & Laporan',
+        href: '/dashboard/admin/finance',
       },
       { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
       {
-        icon: ShieldCheck,
-        label: 'Klaim Garansi',
-        href: '/dashboard/admin/complaints',
-      },
-      {
         icon: RotateCcw,
-        label: 'Pengembalian',
+        label: 'Pengembalian & Klaim Garansi',
         href: '/dashboard/admin/returns',
       },
       {
@@ -242,6 +222,7 @@ interface SidebarProps {
 
 export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
   const sidebarCtx = useSidebarSafe()
+  const { counts, markAsRead } = useAdminNotifications()
 
   const [localOpen, setLocalOpen] = useState(false)
   const pathname = usePathname()
@@ -331,6 +312,33 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
     return (
       pathname === href || (href !== '/' && pathname.startsWith(href + '/'))
     )
+  }
+
+  // Helper to get real-time actionable notification badge count per nav item
+  const getItemBadgeCount = (href: string): number => {
+    if (href === '/dashboard/admin/orders') return counts.orders
+    if (href === '/dashboard/admin/chat') return counts.chat
+    if (href === '/dashboard/admin/finance') return counts.finance
+    if (href === '/dashboard/admin/returns')
+      return counts.returns + counts.complaints
+    if (href === '/dashboard/admin/complaints') return counts.complaints
+    if (href === '/dashboard/admin/ads') return counts.ads
+    if (href === '/dashboard/admin/live') return counts.live
+    if (href === '/dashboard/admin/mitras') return counts.mitras
+    return 0
+  }
+
+  // Helper to get notification key from href
+  const getSectionKeyFromHref = (href: string): string | null => {
+    if (href === '/dashboard/admin/orders') return 'orders'
+    if (href === '/dashboard/admin/chat') return 'chat'
+    if (href === '/dashboard/admin/finance') return 'finance'
+    if (href === '/dashboard/admin/complaints') return 'complaints'
+    if (href === '/dashboard/admin/returns') return 'returns'
+    if (href === '/dashboard/admin/ads') return 'ads'
+    if (href === '/dashboard/admin/live') return 'live'
+    if (href === '/dashboard/admin/mitras') return 'mitras'
+    return null
   }
 
   // Get user initials
@@ -472,11 +480,25 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                       const Icon = item.icon
                       const isActive = checkIsActive(item.href)
 
+                      const rawBadge = getItemBadgeCount(item.href)
+                      const dynamicBadge = isActive ? 0 : rawBadge
+                      const hasDynamicBadge = dynamicBadge > 0
+                      const isLiveItem =
+                        item.isLive ||
+                        (item.href === '/dashboard/admin/live' &&
+                          counts.live > 0)
+
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
-                          onClick={closeMobile}
+                          onClick={() => {
+                            closeMobile()
+                            const sectionKey = getSectionKeyFromHref(item.href)
+                            if (sectionKey) {
+                              markAsRead(sectionKey)
+                            }
+                          }}
                           className={`group relative flex items-center rounded-xl text-xs font-medium transition-all duration-150 ${
                             isCollapsed
                               ? 'mx-auto h-10 w-10 justify-center'
@@ -505,22 +527,47 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                           </div>
 
                           {/* Expanded Live Indicator & Badge */}
-                          {!isCollapsed && item.isLive && (
+                          {!isCollapsed && isLiveItem && (
                             <span className="flex h-2 w-2 items-center justify-center">
                               <span className="absolute h-2 w-2 animate-ping rounded-full bg-emerald-400 opacity-75" />
                               <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-500" />
                             </span>
                           )}
 
-                          {!isCollapsed && item.badge && !item.isLive && (
+                          {/* Dynamic Notification Count Badge (Expanded Mode) */}
+                          {!isCollapsed && hasDynamicBadge && (
                             <span
-                              className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
+                              className={`shadow-xs inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none ${
                                 isActive
-                                  ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-950'
-                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                  ? 'bg-rose-500 text-white'
+                                  : 'bg-rose-500 text-white dark:bg-rose-600 dark:text-white'
                               }`}
                             >
-                              {item.badge}
+                              {dynamicBadge > 99 ? '99+' : dynamicBadge}
+                            </span>
+                          )}
+
+                          {/* Fallback Static Badge if no dynamic badge */}
+                          {!isCollapsed &&
+                            item.badge &&
+                            !hasDynamicBadge &&
+                            !isLiveItem && (
+                              <span
+                                className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
+                                  isActive
+                                    ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-950'
+                                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+
+                          {/* Collapsed Mini Alert Dot */}
+                          {isCollapsed && hasDynamicBadge && (
+                            <span className="absolute right-1.5 top-1.5 flex h-2.5 w-2.5">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full border border-white bg-rose-500 dark:border-slate-950" />
                             </span>
                           )}
 
@@ -528,12 +575,16 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                           {isCollapsed && (
                             <div className="pointer-events-none invisible absolute left-full top-1/2 z-50 ml-3 flex -translate-y-1/2 scale-95 items-center gap-2 whitespace-nowrap rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:scale-100 group-hover:opacity-100 dark:bg-white dark:text-slate-950">
                               <span>{item.label}</span>
-                              {item.badge && (
+                              {hasDynamicBadge ? (
+                                <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                                  {dynamicBadge > 99 ? '99+' : dynamicBadge}
+                                </span>
+                              ) : item.badge ? (
                                 <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
                                   {item.badge}
                                 </span>
-                              )}
-                              {item.isLive && (
+                              ) : null}
+                              {isLiveItem && (
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                               )}
                             </div>

@@ -23,13 +23,23 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Clean up abandoned empty rooms (older than 30 seconds and 0 messages)
+    await prisma.adminChatRoom
+      .deleteMany({
+        where: {
+          messages: { none: {} },
+          createdAt: { lt: new Date(Date.now() - 30 * 1000) },
+        },
+      })
+      .catch(() => {})
+
     // Build where clause
-    // STORE_ADMIN: lihat chat direct store (storeId), chat order di toko mereka, atau chat yang di-claim
-    // Admin/SuperAdmin: lihat semua room yang di-claim mereka atau unclaimed
+    // Only return rooms that actually have messages (non-empty rooms)
     let whereClause: Record<string, unknown>
 
     if (user.role === 'STORE_ADMIN' && user.storeId) {
       whereClause = {
+        messages: { some: {} },
         OR: [
           // Rooms direct chat dengan toko cabang ini
           { storeId: user.storeId },
@@ -45,6 +55,7 @@ export async function GET() {
       }
     } else {
       whereClause = {
+        messages: { some: {} },
         OR: [
           { claimedById: session.user.id }, // Rooms claimed by this admin
           { claimedById: null }, // Unclaimed rooms (new customer chats)
@@ -175,67 +186,58 @@ export async function POST(request: Request) {
 
     const { customerId, orderId } = await request.json()
 
-    if (!customerId) {
-      return NextResponse.json(
-        { error: 'Customer ID required' },
-        { status: 400 }
-      )
-    }
+    let effectiveCustomerId = customerId
+    let orderStoreId: string | null = null
 
-    // STORE_ADMIN: validasi bahwa order yang di-chat adalah milik tokonya
-    if (orderId && user.role === 'STORE_ADMIN' && user.storeId) {
+    if (orderId) {
       const order = await prisma.order.findUnique({
         where: { id: orderId },
         select: {
+          userId: true,
           storeId: true,
           items: { select: { product: { select: { storeId: true } } } },
         },
       })
 
       if (order) {
-        const orderStoreId = order.storeId
-        const itemStoreId = order.items.find((i) => i.product?.storeId)?.product
-          ?.storeId
-        const belongsToThisStore =
-          orderStoreId === user.storeId || itemStoreId === user.storeId
+        if (!effectiveCustomerId) {
+          effectiveCustomerId = order.userId
+        }
+        orderStoreId =
+          order.storeId ||
+          order.items.find((i) => i.product?.storeId)?.product?.storeId ||
+          null
 
-        if (!belongsToThisStore) {
-          return NextResponse.json(
-            { error: 'Pesanan ini bukan milik toko Anda' },
-            { status: 403 }
-          )
+        // STORE_ADMIN: validasi bahwa order yang di-chat adalah milik tokonya
+        if (user.role === 'STORE_ADMIN' && user.storeId) {
+          const belongsToThisStore =
+            order.storeId === user.storeId ||
+            order.items.some((i) => i.product?.storeId === user.storeId)
+
+          if (!belongsToThisStore) {
+            return NextResponse.json(
+              { error: 'Pesanan ini bukan milik toko Anda' },
+              { status: 403 }
+            )
+          }
         }
       }
     }
 
-    // Check if room with this order already exists
-    if (orderId) {
-      const existingRoom = await prisma.adminChatRoom.findUnique({
-        where: { orderId },
-      })
-
-      if (existingRoom) {
-        return NextResponse.json({ room: existingRoom })
-      }
+    if (!effectiveCustomerId) {
+      return NextResponse.json(
+        { error: 'Customer ID required' },
+        { status: 400 }
+      )
     }
 
-    // Check if room with this customer (without order) already exists
-    const existingCustomerRoom = await prisma.adminChatRoom.findFirst({
+    const targetStoreId = user.storeId || orderStoreId || null
+
+    // 1. Check if a room already exists for this customer + store (Unified Room)
+    let existingRoom = await prisma.adminChatRoom.findFirst({
       where: {
-        customerId,
-        orderId: null,
-      },
-    })
-
-    if (existingCustomerRoom && !orderId) {
-      return NextResponse.json({ room: existingCustomerRoom })
-    }
-
-    // Create new room
-    const room = await prisma.adminChatRoom.create({
-      data: {
-        customerId,
-        orderId: orderId || null,
+        customerId: effectiveCustomerId,
+        ...(targetStoreId ? { storeId: targetStoreId } : {}),
       },
       include: {
         customer: {
@@ -252,6 +254,99 @@ export async function POST(request: Request) {
             orderNumber: true,
             status: true,
             total: true,
+            items: {
+              include: {
+                product: {
+                  select: { name: true, images: true },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { lastMessageAt: 'desc' },
+    })
+
+    if (existingRoom) {
+      // If customer asks about another order from the same store, update orderId to the latest order context
+      const updates: any = {}
+      if (orderId && existingRoom.orderId !== orderId) {
+        updates.orderId = orderId
+      }
+      if (targetStoreId && !existingRoom.storeId) {
+        updates.storeId = targetStoreId
+      }
+      if (!existingRoom.claimedById) {
+        updates.claimedById = session.user.id
+        updates.claimedAt = new Date()
+      }
+
+      if (Object.keys(updates).length > 0) {
+        existingRoom = await prisma.adminChatRoom.update({
+          where: { id: existingRoom.id },
+          data: updates,
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              },
+            },
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+                status: true,
+                total: true,
+                items: {
+                  include: {
+                    product: {
+                      select: { name: true, images: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        })
+      }
+
+      return NextResponse.json({ room: existingRoom })
+    }
+
+    // 2. No room exists between this customer and store -> create 1 new room
+    const room = await prisma.adminChatRoom.create({
+      data: {
+        customerId: effectiveCustomerId,
+        storeId: targetStoreId,
+        orderId: orderId || null,
+        claimedById: session.user.id,
+        claimedAt: new Date(),
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            total: true,
+            items: {
+              include: {
+                product: {
+                  select: { name: true, images: true },
+                },
+              },
+            },
           },
         },
       },

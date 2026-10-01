@@ -29,6 +29,7 @@ import {
   Sparkles,
   Check,
   RotateCcw,
+  Store,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -162,29 +163,73 @@ export default function ProductsPage() {
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
   const userStoreId = session?.user?.storeId
 
-  // Bulk Excel Update Modal State (Superadmin only)
+  // Stores list & Export Modal State
+  const [stores, setStores] = useState<
+    Array<{ id: string; name: string; city?: string }>
+  >([])
+  const [isExportStoreModalOpen, setIsExportStoreModalOpen] = useState(false)
+  const [selectedExportStoreId, setSelectedExportStoreId] = useState<string>('')
+
+  // Bulk Excel Update Modal State (Superadmin and Store Admin)
   const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
-  const handleExportExcel = async () => {
+  useEffect(() => {
+    fetch('/api/stores?scoped=true')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setStores(data.data)
+          if (data.data.length > 0) {
+            setSelectedExportStoreId(data.data[0].id)
+          }
+        }
+      })
+      .catch((e) => console.error('Failed to load stores:', e))
+  }, [])
+
+  const onExportExcelClick = () => {
+    if (isSuperAdmin) {
+      if (stores.length > 0 && !selectedExportStoreId) {
+        setSelectedExportStoreId(stores[0].id)
+      }
+      setIsExportStoreModalOpen(true)
+    } else {
+      handleExportExcel(userStoreId || undefined)
+    }
+  }
+
+  const handleExportExcel = async (targetStoreId?: string) => {
     setIsExporting(true)
     try {
-      const res = await fetch('/api/admin/products/export-excel')
+      let url = '/api/admin/products/export-excel'
+      if (targetStoreId) {
+        url += `?storeId=${encodeURIComponent(targetStoreId)}`
+      } else if (isStoreAdmin && userStoreId) {
+        url += `?storeId=${encodeURIComponent(userStoreId)}`
+      }
+
+      const res = await fetch(url)
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || 'Gagal mengunduh file katalog Excel.')
       }
       const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
+      const downloadUrl = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
+      a.href = downloadUrl
       const nowStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-      a.download = `mass_update_sales_info_${nowStr}.xlsx`
+      const targetStoreObj = stores.find((s) => s.id === targetStoreId)
+      const slug = targetStoreObj
+        ? targetStoreObj.name.toLowerCase().replace(/[^a-z0-9]/g, '_')
+        : 'catalog'
+      a.download = `mass_update_sales_info_${slug}_${nowStr}.xlsx`
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(url)
+      window.URL.revokeObjectURL(downloadUrl)
       document.body.removeChild(a)
       toast.success('Data katalog format Shopee berhasil diekspor!')
+      setIsExportStoreModalOpen(false)
     } catch (err: any) {
       toast.error(err.message || 'Gagal mengekspor file Excel.')
     } finally {
@@ -691,15 +736,19 @@ export default function ProductsPage() {
             />
           )}
 
-          {/* Superadmin Bulk Excel Actions */}
-          {isSuperAdmin && (
+          {/* Bulk Excel Actions (Superadmin & Store Admin) */}
+          {(isSuperAdmin || isStoreAdmin) && (
             <>
               <button
                 type="button"
-                onClick={handleExportExcel}
+                onClick={onExportExcelClick}
                 disabled={isExporting}
                 className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                title="Unduh seluruh data katalog dan SKU ke format Excel (.xlsx)"
+                title={
+                  isSuperAdmin
+                    ? 'Pilih cabang toko dan unduh data katalog serta SKU ke format Excel (.xlsx)'
+                    : 'Unduh seluruh data katalog dan SKU toko Anda ke format Excel (.xlsx)'
+                }
               >
                 {isExporting ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
@@ -713,7 +762,11 @@ export default function ProductsPage() {
                 type="button"
                 onClick={() => setIsBulkUpdateOpen(true)}
                 className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl border border-emerald-200/90 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition-all hover:bg-emerald-100 active:scale-95 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
-                title="Perbarui harga & stok massal berdasarkan SKU melalui upload Excel"
+                title={
+                  isSuperAdmin
+                    ? 'Perbarui harga & stok massal berdasarkan SKU untuk toko terpilih atau semua toko'
+                    : 'Perbarui harga & stok massal berdasarkan SKU untuk toko Anda sendiri'
+                }
               >
                 <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span className="hidden sm:inline">Update Massal (Excel)</span>
@@ -1674,12 +1727,80 @@ export default function ProductsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Superadmin Store Selector for Export Excel */}
+      <Dialog
+        open={isExportStoreModalOpen}
+        onOpenChange={(open) => !isExporting && setIsExportStoreModalOpen(open)}
+      >
+        <DialogContent className="max-w-md rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 sm:p-7">
+          <DialogTitle className="flex items-center gap-2.5 text-base font-bold text-slate-950 dark:text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+              <Download className="h-5 w-5" />
+            </div>
+            <span>Pilih Cabang Toko untuk Ekspor Excel</span>
+          </DialogTitle>
+
+          <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+            Superadmin wajib memilih salah satu cabang toko untuk mengunduh data
+            katalog dan SKU format Shopee.
+          </DialogDescription>
+
+          <div className="mt-4 space-y-4">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <Store className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span>Pilih Cabang Toko:</span>
+              </label>
+              <CustomSelect
+                value={selectedExportStoreId}
+                onChange={(val) => setSelectedExportStoreId(val)}
+                options={stores.map((s) => ({
+                  value: s.id,
+                  label: `${s.name}${s.city ? ` (${s.city})` : ''}`,
+                }))}
+                placeholder="Pilih salah satu toko..."
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsExportStoreModalOpen(false)}
+                disabled={isExporting}
+                className="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExportExcel(selectedExportStoreId)}
+                disabled={!selectedExportStoreId || isExporting}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-blue-600/25 transition hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Mengekspor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Download Excel</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Excel Bulk Update Modal */}
-      {isSuperAdmin && (
+      {(isSuperAdmin || isStoreAdmin) && (
         <BulkPriceUpdateModal
           isOpen={isBulkUpdateOpen}
           onClose={() => setIsBulkUpdateOpen(false)}
           onSuccess={() => fetchProducts()}
+          stores={stores}
         />
       )}
     </div>

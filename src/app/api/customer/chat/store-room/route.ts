@@ -211,26 +211,15 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Find existing chat room: first check if a room exists for this specific order
-    let room = orderId
-      ? await prisma.adminChatRoom.findFirst({
-          where: {
-            customerId: session.user.id,
-            orderId: orderId,
-          } as any,
-        })
-      : null
-
-    // If no order-specific room, check direct chat room between this customer and this store (orderId = null)
-    if (!room) {
-      room = await prisma.adminChatRoom.findFirst({
-        where: {
-          customerId: session.user.id,
-          storeId: store.id,
-          orderId: null,
-        } as any,
-      })
-    }
+    // Customer + Store = SINGLE CHAT ROOM
+    // Find existing chat room between this customer and this store
+    let room = await prisma.adminChatRoom.findFirst({
+      where: {
+        customerId: session.user.id,
+        storeId: store.id,
+      },
+      orderBy: { lastMessageAt: 'desc' },
+    })
 
     const isNew = !room
 
@@ -240,20 +229,28 @@ export async function POST(req: NextRequest) {
         data: {
           customerId: session.user.id,
           storeId: store.id,
+          orderId: orderId || null,
           claimedById: storeAdmin?.id || null,
           claimedAt: storeAdmin ? new Date() : null,
           lastMessageAt: new Date(),
         } as any,
       })
     } else {
-      // If room exists but not yet assigned to store admin, auto-connect
+      // If customer asks about another order from the same store, update orderId to the latest order context
+      const updates: any = {}
+      if (orderId && room.orderId !== orderId) {
+        updates.orderId = orderId
+        updates.lastMessageAt = new Date()
+      }
       if (!room.claimedById && storeAdmin) {
+        updates.claimedById = storeAdmin.id
+        updates.claimedAt = new Date()
+      }
+
+      if (Object.keys(updates).length > 0) {
         room = await prisma.adminChatRoom.update({
           where: { id: room.id },
-          data: {
-            claimedById: storeAdmin.id,
-            claimedAt: new Date(),
-          },
+          data: updates,
         })
       }
     }

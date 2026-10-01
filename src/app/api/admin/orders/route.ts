@@ -133,6 +133,7 @@ export async function GET(request: Request) {
       include: {
         user: {
           select: {
+            id: true,
             name: true,
             email: true,
             phone: true,

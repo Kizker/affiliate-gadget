@@ -17,6 +17,7 @@ import {
   Package,
   Settings,
   Clock,
+  RotateCcw,
 } from 'lucide-react'
 
 // ============================================================
@@ -1067,10 +1068,10 @@ export default function AdminDashboardPage() {
                   sub: 'Verifikasi cabang fisik & PT',
                 },
                 {
-                  href: '/dashboard/admin/complaints',
-                  icon: ShieldCheck,
-                  label: 'Klaim Garansi',
-                  sub: 'Pusat komplain & garansi 30 hari',
+                  href: '/dashboard/admin/returns',
+                  icon: RotateCcw,
+                  label: 'Pengembalian & Klaim Garansi',
+                  sub: 'Retur unit, garansi 30 hari & refund',
                 },
                 {
                   href: '/dashboard/admin/settings',

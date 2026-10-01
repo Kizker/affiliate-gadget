@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -113,6 +114,12 @@ interface ChatRoom {
       price?: number
     }>
   } | null
+  store?: {
+    id: string
+    name: string
+    companyName?: string
+    city?: string
+  } | null
   hasOrder?: boolean
   totalUnread?: number
   messages: Array<{
@@ -178,6 +185,18 @@ interface OrderReference {
     service?: { name: string } | null
     price: number
   }>
+}
+
+interface PinnedOrderContext {
+  messageId?: string
+  orderId?: string
+  orderNumber: string
+  total?: number
+  status?: string
+  productName?: string | null
+  isReturn?: boolean
+  returnReason?: string | null
+  returnStatus?: string | null
 }
 
 interface TechnicianItem {
@@ -250,7 +269,11 @@ const isImageMedia = (
   return false
 }
 
-export default function AdminChatPage() {
+function AdminChatContent() {
+  const searchParams = useSearchParams()
+  const paramRoomId = searchParams?.get('roomId')
+  const paramOrderId = searchParams?.get('orderId')
+
   const { isLoading: guardLoading, isAllowed } = usePageGuard(
     '/dashboard/admin/chat'
   )
@@ -272,6 +295,17 @@ export default function AdminChatPage() {
   )
   const [stats, setStats] = useState({ totalRooms: 0, unreadRooms: 0 })
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
+  const [activePinnedOrder, setActivePinnedOrder] =
+    useState<PinnedOrderContext | null>(null)
+  const [activeOrderContext, setActiveOrderContext] = useState<{
+    orderId: string
+    orderNumber: string
+    status: string
+    total: number
+    productName: string
+    productImage?: string | null
+    productPrice?: number
+  } | null>(null)
 
   // Catalog Modal States
   const [showCatalogModal, setShowCatalogModal] = useState(false)
@@ -335,65 +369,93 @@ export default function AdminChatPage() {
   }, [messages, scrollToBottom])
 
   // Fetch all chat rooms
-  const fetchRooms = useCallback(async (isPolling = false) => {
-    try {
-      if (!isPolling) setLoading(true)
-      const res = await fetch('/api/admin/chat/rooms')
-      if (!res.ok) throw new Error('Failed to fetch rooms')
-      const data = await res.json()
+  const fetchRooms = useCallback(
+    async (isPolling = false) => {
+      try {
+        if (!isPolling) setLoading(true)
+        const res = await fetch('/api/admin/chat/rooms')
+        if (!res.ok) throw new Error('Failed to fetch rooms')
+        const data = await res.json()
 
-      const rawRooms: ChatRoom[] = data.rooms || []
-      // Clear unread count for currently active room so badge stays cleared while room is open
-      const mappedRooms = rawRooms.map((r) =>
-        selectedRoomRef.current?.id === r.id
-          ? { ...r, _count: { messages: 0 } }
-          : r
-      )
+        const rawRooms: ChatRoom[] = data.rooms || []
+        // Clear unread count for currently active room so badge stays cleared while room is open
+        const mappedRooms = rawRooms.map((r) =>
+          selectedRoomRef.current?.id === r.id
+            ? { ...r, _count: { messages: 0 } }
+            : r
+        )
 
-      setRooms((prev) => {
-        if (prev.length !== mappedRooms.length) return mappedRooms
-        const hasDiff = mappedRooms.some((r, i) => {
-          const p = prev[i]
-          return (
-            !p ||
-            r.id !== p.id ||
-            r.lastMessageAt !== p.lastMessageAt ||
-            (r._count?.messages || 0) !== (p._count?.messages || 0)
-          )
+        setRooms((prev) => {
+          if (prev.length !== mappedRooms.length) return mappedRooms
+          const hasDiff = mappedRooms.some((r, i) => {
+            const p = prev[i]
+            return (
+              !p ||
+              r.id !== p.id ||
+              r.lastMessageAt !== p.lastMessageAt ||
+              (r._count?.messages || 0) !== (p._count?.messages || 0)
+            )
+          })
+          return hasDiff ? mappedRooms : prev
         })
-        return hasDiff ? mappedRooms : prev
-      })
-      const unreadCount = mappedRooms.filter(
-        (r) => (r._count?.messages || 0) > 0
-      ).length
-      setStats({
-        totalRooms: data.stats?.totalRooms ?? mappedRooms.length,
-        unreadRooms: unreadCount,
-      })
+        const unreadCount = mappedRooms.filter(
+          (r) => (r._count?.messages || 0) > 0
+        ).length
+        setStats({
+          totalRooms: data.stats?.totalRooms ?? mappedRooms.length,
+          unreadRooms: unreadCount,
+        })
 
-      // Auto select first room if none selected on desktop (keep reference to avoid re-triggering effects)
-      setSelectedRoom((curr) => {
-        if (curr) {
-          return curr
+        // Auto select room: prioritized by paramRoomId / paramOrderId, then current or first on desktop
+        setSelectedRoom((curr) => {
+          if (paramRoomId || paramOrderId) {
+            const match = mappedRooms.find(
+              (r) =>
+                (paramRoomId && r.id === paramRoomId) ||
+                (paramOrderId &&
+                  (r.orderId === paramOrderId || r.order?.id === paramOrderId))
+            )
+            if (match) return match
+          }
+          if (curr) {
+            return curr
+          }
+          if (
+            typeof window !== 'undefined' &&
+            window.innerWidth >= 1024 &&
+            mappedRooms.length > 0
+          ) {
+            return mappedRooms[0]
+          }
+          return null
+        })
+      } catch (error) {
+        if (!isPolling) {
+          console.error('Error fetching rooms:', error)
+          toast.error('Gagal memuat daftar pesan')
         }
-        if (
-          typeof window !== 'undefined' &&
-          window.innerWidth >= 1024 &&
-          mappedRooms.length > 0
-        ) {
-          return mappedRooms[0]
-        }
-        return null
-      })
-    } catch (error) {
-      if (!isPolling) {
-        console.error('Error fetching rooms:', error)
-        toast.error('Gagal memuat daftar pesan')
+      } finally {
+        if (!isPolling) setLoading(false)
       }
-    } finally {
-      if (!isPolling) setLoading(false)
+    },
+    [paramRoomId, paramOrderId]
+  )
+
+  // Priority auto-selection from URL parameters (e.g. from Order Detail modal "Hubungi via Chat")
+  useEffect(() => {
+    if ((paramRoomId || paramOrderId) && rooms.length > 0) {
+      const match = rooms.find(
+        (r) =>
+          (paramRoomId && r.id === paramRoomId) ||
+          (paramOrderId &&
+            (r.orderId === paramOrderId || r.order?.id === paramOrderId))
+      )
+      if (match && selectedRoom?.id !== match.id) {
+        setSelectedRoom(match)
+        setShowChatOnMobile(true)
+      }
     }
-  }, [])
+  }, [paramRoomId, paramOrderId, rooms, selectedRoom?.id])
 
   // Initial rooms fetch
   useEffect(() => {
@@ -484,6 +546,218 @@ export default function AdminChatPage() {
     fetchMessages(room.id)
   }
 
+  // Extract all order contexts present in this conversation
+  const conversationOrderContexts = useMemo<PinnedOrderContext[]>(() => {
+    if (!selectedRoom) return []
+    const list: PinnedOrderContext[] = []
+    const seenOrderNumbers = new Set<string>()
+
+    // Check all messages for order context cards
+    for (const msg of messages) {
+      const contentTrimmed = msg.content?.trim() || ''
+      const isReturn =
+        msg.messageType === 'return_reference' ||
+        (contentTrimmed.startsWith('{') &&
+          (contentTrimmed.includes('"returnReason"') ||
+            contentTrimmed.includes('"return_reference"')))
+      const isOrder =
+        isReturn ||
+        msg.messageType === 'order' ||
+        msg.messageType === 'order_reference' ||
+        (contentTrimmed.startsWith('{') &&
+          contentTrimmed.includes('"orderNumber"'))
+
+      if (isOrder) {
+        try {
+          const data = JSON.parse(msg.content)
+          const num = data.orderNumber || data.orderNum
+          if (num && !seenOrderNumbers.has(num)) {
+            seenOrderNumbers.add(num)
+            list.push({
+              messageId: msg.id,
+              orderId: data.orderId || selectedRoom.order?.id,
+              orderNumber: num,
+              total:
+                Number(data.orderTotal) ||
+                Number(data.total) ||
+                Number(data.productPrice) ||
+                selectedRoom.order?.total ||
+                0,
+              status:
+                data.orderStatus ||
+                data.status ||
+                selectedRoom.order?.status ||
+                'PAID',
+              productName: data.productName || null,
+              isReturn,
+              returnReason: data.returnReason || null,
+              returnStatus: data.returnStatus || null,
+            })
+          }
+        } catch {}
+      }
+    }
+
+    // Also include selectedRoom.order if not yet in list
+    if (
+      selectedRoom.order &&
+      !seenOrderNumbers.has(selectedRoom.order.orderNumber)
+    ) {
+      list.unshift({
+        orderId: selectedRoom.order.id,
+        orderNumber: selectedRoom.order.orderNumber,
+        total: selectedRoom.order.total,
+        status: selectedRoom.order.status,
+      })
+    }
+
+    return list
+  }, [selectedRoom, messages])
+
+  // Track active context card on scroll (like WhatsApp pinned feature)
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container || conversationOrderContexts.length === 0) {
+      if (conversationOrderContexts.length > 0) {
+        setActivePinnedOrder(conversationOrderContexts[0])
+      } else {
+        setActivePinnedOrder(null)
+      }
+      return
+    }
+
+    const updateActivePinnedContext = () => {
+      const containerRect = container.getBoundingClientRect()
+      // Threshold: around 120px from top of container viewport
+      const thresholdY = containerRect.top + 120
+
+      let currentContext = conversationOrderContexts[0]
+
+      // Check all context messages that have rendered elements in DOM
+      for (const ctx of conversationOrderContexts) {
+        if (!ctx.messageId) continue
+        const el = document.getElementById(`chat-context-msg-${ctx.messageId}`)
+        if (el) {
+          const rect = el.getBoundingClientRect()
+          // If this card is at or has passed the threshold
+          if (rect.top <= thresholdY) {
+            currentContext = ctx
+          }
+        }
+      }
+
+      setActivePinnedOrder((prev: PinnedOrderContext | null) => {
+        if (
+          !prev ||
+          prev.orderNumber !== currentContext.orderNumber ||
+          prev.messageId !== currentContext.messageId
+        ) {
+          return currentContext
+        }
+        return prev
+      })
+    }
+
+    container.addEventListener('scroll', updateActivePinnedContext, {
+      passive: true,
+    })
+    updateActivePinnedContext()
+
+    return () => {
+      container.removeEventListener('scroll', updateActivePinnedContext)
+    }
+  }, [conversationOrderContexts])
+
+  const handleScrollToContextMessage = (messageId?: string) => {
+    if (!messageId) return
+    const el = document.getElementById(`chat-context-msg-${messageId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add(
+        'ring-2',
+        'ring-blue-500',
+        'ring-offset-2',
+        'transition-all',
+        'duration-300'
+      )
+      setTimeout(() => {
+        el.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2')
+      }, 2000)
+    }
+  }
+
+  // Synchronize active order context strictly when URL paramOrderId is provided
+  useEffect(() => {
+    if (!selectedRoom) return
+
+    if (paramOrderId) {
+      // 1. Try from selectedRoom.order
+      if (
+        selectedRoom.order &&
+        (selectedRoom.order.id === paramOrderId ||
+          selectedRoom.order.orderNumber === paramOrderId)
+      ) {
+        const firstItem = selectedRoom.order.items?.[0]
+        const firstProduct = (firstItem as any)?.product
+        setActiveOrderContext({
+          orderId: selectedRoom.order.id,
+          orderNumber: selectedRoom.order.orderNumber,
+          status: selectedRoom.order.status,
+          total: selectedRoom.order.total,
+          productName:
+            firstProduct?.name || (firstItem as any)?.name || 'Unit Gadget',
+          productImage: firstProduct?.images?.[0] || null,
+          productPrice: (firstItem as any)?.price || 0,
+        })
+        return
+      }
+
+      // 2. Try from conversationOrderContexts
+      const match = conversationOrderContexts.find(
+        (c) => c.orderId === paramOrderId || c.orderNumber === paramOrderId
+      )
+      if (match) {
+        setActiveOrderContext({
+          orderId: match.orderId || paramOrderId,
+          orderNumber: match.orderNumber,
+          status: match.status || 'PAID',
+          total: match.total || 0,
+          productName: match.productName || 'Unit Gadget',
+          productImage: null,
+          productPrice: match.total || 0,
+        })
+        return
+      }
+
+      // 3. Fallback: fetch order info if paramOrderId is present but not in selectedRoom
+      fetch(`/api/admin/orders?search=${paramOrderId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const found = data.orders?.find(
+            (o: any) => o.id === paramOrderId || o.orderNumber === paramOrderId
+          )
+          if (found) {
+            const firstItem = found.items?.[0]
+            const firstProduct = (firstItem as any)?.product
+            setActiveOrderContext({
+              orderId: found.id,
+              orderNumber: found.orderNumber,
+              status: found.status,
+              total: found.total,
+              productName:
+                firstProduct?.name || (firstItem as any)?.name || 'Unit Gadget',
+              productImage: firstProduct?.images?.[0] || null,
+              productPrice: (firstItem as any)?.price || 0,
+            })
+          }
+        })
+        .catch(() => {})
+    } else {
+      // Navbar access or standard room change without ?orderId= -> No context staged
+      setActiveOrderContext(null)
+    }
+  }, [paramOrderId, selectedRoom, conversationOrderContexts])
+
   // Back to room list on mobile
   const handleBackToList = () => {
     setShowChatOnMobile(false)
@@ -496,7 +770,31 @@ export default function AdminChatPage() {
     extraData: any = null
   ) => {
     if (!selectedRoom) return
-    if (type === 'text' && !messageInput.trim()) return
+    if (type === 'text' && !messageInput.trim() && !activeOrderContext) return
+
+    // If activeOrderContext is present when user sends text/caption, automatically send order card with typed message as caption (note)
+    if (type === 'text' && activeOrderContext) {
+      const caption = messageInput.trim()
+      const payload = {
+        type: 'order_reference',
+        orderId: activeOrderContext.orderId,
+        orderNumber: activeOrderContext.orderNumber,
+        status: activeOrderContext.status,
+        total: activeOrderContext.total,
+        productName: activeOrderContext.productName,
+        productImage: activeOrderContext.productImage,
+        productPrice: activeOrderContext.productPrice,
+        note: caption || undefined,
+      }
+      setActiveOrderContext(null)
+      setMessageInput('')
+      if (typeof window !== 'undefined' && window.history) {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('orderId')
+        window.history.replaceState(null, '', url.toString())
+      }
+      return handleSendMessage('order_reference', null, payload)
+    }
 
     const contentToSend =
       type !== 'text' && extraData
@@ -812,7 +1110,13 @@ export default function AdminChatPage() {
   }
 
   // Render message content for text/catalog/order
-  const renderMessageContent = (message: Message, isAdmin: boolean) => {
+  // Render message content for text/catalog/order
+  const renderMessageContent = (
+    message: Message,
+    isAdmin: boolean,
+    formattedTime?: string,
+    isCustomerOnline?: boolean
+  ) => {
     const contentTrimmed = message.content?.trim() || ''
     const isReturn =
       message.messageType === 'return_reference' ||
@@ -826,14 +1130,176 @@ export default function AdminChatPage() {
       (contentTrimmed.startsWith('{') &&
         contentTrimmed.includes('"orderNumber"'))
     const isProduct =
-      message.messageType === 'product' ||
-      message.messageType === 'product_reference' ||
-      message.messageType === 'rental' ||
-      (contentTrimmed.startsWith('{') &&
-        (contentTrimmed.includes('"name"') ||
-          contentTrimmed.includes('"productName"')) &&
-        (contentTrimmed.includes('"price"') ||
-          contentTrimmed.includes('"productPrice"')))
+      !isOrder &&
+      (message.messageType === 'product' ||
+        message.messageType === 'product_reference' ||
+        message.messageType === 'rental' ||
+        (contentTrimmed.startsWith('{') &&
+          (contentTrimmed.includes('"name"') ||
+            contentTrimmed.includes('"productName"')) &&
+          (contentTrimmed.includes('"price"') ||
+            contentTrimmed.includes('"productPrice"'))))
+
+    if (isOrder) {
+      try {
+        const data = JSON.parse(message.content)
+        const isReturnCard =
+          isReturn ||
+          data.type === 'return_reference' ||
+          Boolean(data.returnReason)
+
+        const orderNum = data.orderNumber || ''
+        const prodName =
+          data.productName ||
+          data.name ||
+          data.items?.[0]?.product?.name ||
+          'Produk Pesanan'
+        const rawPrice =
+          data.productPrice ??
+          data.price ??
+          data.items?.[0]?.price ??
+          data.total ??
+          data.orderTotal ??
+          0
+        const prodPrice = Number(rawPrice) || 0
+        const prodImage =
+          data.productImage ||
+          data.image ||
+          data.items?.[0]?.product?.images?.[0] ||
+          null
+        const brand = data.brand || data.items?.[0]?.product?.brand || null
+        const statusLabel = data.status || data.orderStatus || ''
+        const storeName =
+          data.storeName || selectedRoom?.store?.name || 'Affiliate Gadget'
+
+        return (
+          <div className="shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px]">
+            {/* Top Header Info Pill */}
+            <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                  isReturnCard
+                    ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400'
+                    : 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
+                }`}
+              >
+                {isReturnCard ? (
+                  <RotateCcw className="h-2.5 w-2.5" />
+                ) : (
+                  <Package className="h-2.5 w-2.5" />
+                )}
+                {isReturnCard ? 'Pengajuan Retur' : 'Rincian Pesanan'}
+              </span>
+              <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                <span>{formattedTime}</span>
+                {isAdmin &&
+                  renderAdminWhatsAppTick(
+                    message.isRead,
+                    isCustomerOnline,
+                    'light'
+                  )}
+              </div>
+            </div>
+
+            {/* Main Product / Order Row */}
+            <div className="flex items-center gap-2">
+              {prodImage ? (
+                <img
+                  src={prodImage}
+                  alt={prodName}
+                  className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover p-0.5 dark:border-slate-800 dark:bg-slate-800"
+                />
+              ) : (
+                <div
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
+                    isReturnCard
+                      ? 'border-purple-200/60 bg-purple-50 dark:border-purple-900/40 dark:bg-purple-950/40'
+                      : 'border-blue-200/60 bg-blue-50 dark:border-blue-900/40 dark:bg-blue-950/40'
+                  }`}
+                >
+                  {isReturnCard ? (
+                    <RotateCcw className="h-5 w-5 text-purple-500" />
+                  ) : (
+                    <Package className="h-5 w-5 text-blue-500" />
+                  )}
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                {brand && (
+                  <span className="block text-[8.5px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                    {brand}
+                  </span>
+                )}
+                <p
+                  className="truncate text-[11px] font-bold leading-tight text-slate-950 dark:text-white"
+                  title={prodName}
+                >
+                  {prodName}
+                </p>
+                {orderNum && (
+                  <p className="truncate font-mono text-[9.5px] font-bold text-blue-600 dark:text-blue-400">
+                    #{orderNum}
+                  </p>
+                )}
+                {isReturnCard && data.returnReason && (
+                  <p className="truncate text-[9.5px] font-medium text-purple-600 dark:text-purple-400">
+                    Kendala: {data.returnReason}
+                  </p>
+                )}
+                {data.variantName && !orderNum && (
+                  <p className="truncate text-[9.5px] font-medium text-slate-500 dark:text-slate-400">
+                    Varian: {data.variantName}
+                  </p>
+                )}
+                {prodPrice > 0 && (
+                  <p className="mt-0.5 font-mono text-xs font-black text-orange-600 dark:text-orange-400">
+                    Rp {prodPrice.toLocaleString('id-ID')}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Note ONLY if user explicitly typed a note (filter out automated greeting) */}
+            {typeof data.note === 'string' &&
+              data.note.trim() !== '' &&
+              !data.note.includes('ingin mengonfirmasi pesanan') && (
+                <div className="mt-1 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
+                  <p className="whitespace-pre-wrap break-words leading-relaxed">
+                    {data.note}
+                  </p>
+                </div>
+              )}
+
+            {/* Footer CTA */}
+            <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 dark:border-slate-800">
+              <span className="max-w-[160px] truncate text-[9.5px] text-slate-400">
+                {isReturnCard
+                  ? data.returnStatus === 'APPROVED'
+                    ? 'Disetujui'
+                    : data.returnStatus === 'REJECTED'
+                      ? 'Ditolak'
+                      : 'Menunggu Verifikasi Toko'
+                  : storeName}
+              </span>
+              {(data.orderId || orderNum) && (
+                <a
+                  href={`/dashboard/admin/orders?search=${orderNum || data.orderId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shadow-2xs inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                >
+                  <span>Lihat Pesanan</span>
+                  <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+              )}
+            </div>
+          </div>
+        )
+      } catch {
+        return <p className="text-xs text-slate-400">Info Pesanan</p>
+      }
+    }
 
     if (isProduct) {
       try {
@@ -853,13 +1319,30 @@ export default function AdminChatPage() {
         const prodId = data.productId || data.id
 
         return (
-          <div className="shadow-2xs max-w-[80%] space-y-2 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[300px]">
+          <div className="shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px]">
+            {/* Top Header Info Pill */}
+            <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                <Package className="h-2.5 w-2.5" />
+                {isReference ? 'Tanya Produk' : 'Rekomendasi Gadget'}
+              </span>
+              <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                <span>{formattedTime}</span>
+                {isAdmin &&
+                  renderAdminWhatsAppTick(
+                    message.isRead,
+                    isCustomerOnline,
+                    'light'
+                  )}
+              </div>
+            </div>
+
             <div className="flex items-center gap-2">
               {prodImage ? (
                 <img
                   src={prodImage}
                   alt={prodName}
-                  className="h-11 w-11 shrink-0 rounded-xl border bg-slate-50 object-contain p-0.5 dark:border-slate-800 dark:bg-slate-800"
+                  className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover p-0.5 dark:border-slate-800 dark:bg-slate-800"
                 />
               ) : (
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-orange-200/60 bg-orange-50 dark:border-orange-900/40 dark:bg-orange-950/40">
@@ -894,30 +1377,27 @@ export default function AdminChatPage() {
               </div>
             </div>
             {data.note && (
-              <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
+              <div className="mt-1 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
                 <p className="whitespace-pre-wrap break-words leading-relaxed">
                   {data.note}
                 </p>
               </div>
             )}
-            <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-[10.5px] font-semibold dark:border-slate-800">
-              <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
-                <Package className="h-3 w-3" />
-                <span>
-                  {isReference
-                    ? 'Produk Ditanyakan Customer'
-                    : 'Rekomendasi Toko'}
-                </span>
-              </div>
+            <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 text-[10px] font-semibold dark:border-slate-800">
+              <span className="text-slate-400">
+                {isReference
+                  ? 'Produk Ditanyakan'
+                  : selectedRoom?.store?.name || 'Rekomendasi Toko'}
+              </span>
               {prodId && (
                 <a
                   href={`/gadget/${prodId}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-0.5 text-slate-500 transition hover:text-slate-900 dark:hover:text-white"
+                  className="shadow-2xs inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
                 >
                   <span>Detail</span>
-                  <ExternalLink className="h-3 w-3" />
+                  <ExternalLink className="h-2.5 w-2.5" />
                 </a>
               )}
             </div>
@@ -925,146 +1405,6 @@ export default function AdminChatPage() {
         )
       } catch {
         return <p className="text-xs text-slate-400">Rekomendasi Produk</p>
-      }
-    }
-
-    if (isOrder) {
-      try {
-        const data = JSON.parse(message.content)
-        const isReturnCard =
-          isReturn ||
-          data.type === 'return_reference' ||
-          Boolean(data.returnReason)
-
-        return (
-          <div className="shadow-2xs max-w-sm space-y-2.5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-              <div className="flex min-w-0 items-center gap-1.5">
-                {isReturnCard ? (
-                  <RotateCcw className="h-4 w-4 shrink-0 text-purple-600 dark:text-purple-400" />
-                ) : (
-                  <ShoppingBag className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                )}
-                <span className="truncate font-mono text-xs font-bold">
-                  #{data.orderNumber}
-                </span>
-              </div>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider ${
-                  isReturnCard
-                    ? 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400'
-                    : 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
-                }`}
-              >
-                {isReturnCard
-                  ? data.returnStatus === 'APPROVED'
-                    ? 'Retur Disetujui'
-                    : data.returnStatus === 'REJECTED'
-                      ? 'Retur Ditolak'
-                      : 'Verifikasi Retur'
-                  : data.status || 'Pesanan'}
-              </span>
-            </div>
-
-            {/* Single Product / Return Item Snippet if from reference */}
-            {(data.productName || data.name) && (
-              <div className="flex items-center gap-2.5">
-                {data.productImage || data.image ? (
-                  <img
-                    src={data.productImage || data.image}
-                    alt=""
-                    className="h-11 w-11 shrink-0 rounded-xl border bg-slate-50 object-contain p-1"
-                  />
-                ) : (
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-purple-200 bg-purple-50">
-                    <RotateCcw className="h-5 w-5 text-purple-600" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  {data.brand && (
-                    <span className="block text-[8.5px] font-black uppercase text-orange-600 dark:text-orange-400">
-                      {data.brand}
-                    </span>
-                  )}
-                  <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
-                    {data.productName || data.name}
-                  </p>
-                  {isReturnCard && data.returnReason && (
-                    <p className="truncate text-[10px] font-medium text-purple-600 dark:text-purple-400">
-                      Kendala: {data.returnReason}
-                    </p>
-                  )}
-                  {data.variantName && (
-                    <p className="truncate text-[9.5px] font-medium text-slate-400">
-                      Varian: {data.variantName}
-                    </p>
-                  )}
-                  {Number(data.productPrice || data.price) > 0 && (
-                    <p className="font-mono text-[10.5px] font-bold text-orange-600 dark:text-orange-400">
-                      Rp{' '}
-                      {Number(data.productPrice || data.price).toLocaleString(
-                        'id-ID'
-                      )}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {data.items && data.items.length > 0 && (
-              <div className="space-y-2">
-                {data.items.map((it: any, idx: number) => {
-                  const name =
-                    it.product?.name ||
-                    it.rentalItem?.name ||
-                    it.service?.name ||
-                    it.name ||
-                    'Unit Gadget'
-                  const img =
-                    it.product?.images?.[0] ||
-                    it.rentalItem?.images?.[0] ||
-                    it.image
-                  return (
-                    <div key={idx} className="flex items-center gap-2.5">
-                      {img && (
-                        <img
-                          src={img}
-                          alt=""
-                          className="h-10 w-10 shrink-0 rounded-xl border bg-slate-50 object-contain p-1"
-                        />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-slate-800 dark:text-slate-200">
-                          {name}
-                        </p>
-                        <p className="font-mono text-[10px] text-slate-400">
-                          {it.quantity || 1}x • Rp{' '}
-                          {(it.price || 0).toLocaleString('id-ID')}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {data.note && (
-              <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
-                <p className="whitespace-pre-wrap break-words leading-relaxed">
-                  {data.note}
-                </p>
-              </div>
-            )}
-            <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs dark:border-slate-800">
-              <span className="text-[11px] text-slate-500">Total Pesanan:</span>
-              <span className="font-mono text-xs font-black text-orange-600 dark:text-orange-400 sm:text-sm">
-                Rp {data.total?.toLocaleString('id-ID')}
-              </span>
-            </div>
-          </div>
-        )
-      } catch {
-        return <p className="text-xs text-slate-400">Info Pesanan</p>
       }
     }
 
@@ -1371,34 +1711,66 @@ export default function AdminChatPage() {
                 </div>
               </div>
 
-              {/* Contextual Order Banner (If order linked) */}
-              {selectedRoom.order && (
-                <div className="flex shrink-0 items-center justify-between border-b border-blue-100/70 bg-blue-50/50 px-4 py-2 text-xs dark:border-blue-900/30 dark:bg-blue-950/20">
-                  <div className="flex items-center gap-2 truncate">
-                    <Package className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-                    <span className="truncate font-mono font-bold text-blue-950 dark:text-blue-200">
-                      Order #{selectedRoom.order.orderNumber}
-                    </span>
-                    <span className="hidden text-slate-400 sm:inline">•</span>
-                    <span className="hidden font-medium text-slate-600 dark:text-slate-300 sm:inline">
-                      Rp {selectedRoom.order.total.toLocaleString('id-ID')}
-                    </span>
-                    {statusConfig[selectedRoom.order.status] && (
-                      <span className="py-0.2 rounded bg-blue-100/80 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
-                        {statusConfig[selectedRoom.order.status].label}
-                      </span>
+              {/* Dynamic Pinned Order Context Banner (Changes on Scroll like WhatsApp Pinned) */}
+              {activePinnedOrder && (
+                <div
+                  onClick={() =>
+                    handleScrollToContextMessage(activePinnedOrder.messageId)
+                  }
+                  className="flex shrink-0 cursor-pointer items-center justify-between border-b border-blue-100/80 bg-blue-50/70 px-4 py-2 text-xs transition-all hover:bg-blue-100/60 dark:border-blue-900/40 dark:bg-blue-950/40"
+                  title="Klik untuk melompat ke kartu pesanan ini di chat"
+                >
+                  <div className="flex min-w-0 items-center gap-2 truncate">
+                    {activePinnedOrder.isReturn ? (
+                      <RotateCcw className="h-3.5 w-3.5 shrink-0 text-purple-600 dark:text-purple-400" />
+                    ) : (
+                      <Package className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
                     )}
+                    <span className="truncate font-mono font-bold text-blue-950 dark:text-blue-200">
+                      Order #{activePinnedOrder.orderNumber}
+                    </span>
+                    {(activePinnedOrder.total ?? 0) > 0 && (
+                      <>
+                        <span className="hidden text-slate-400 sm:inline">
+                          •
+                        </span>
+                        <span className="hidden font-medium text-slate-600 dark:text-slate-300 sm:inline">
+                          Rp {activePinnedOrder.total!.toLocaleString('id-ID')}
+                        </span>
+                      </>
+                    )}
+                    {activePinnedOrder.isReturn ? (
+                      <span className="py-0.2 rounded bg-purple-100 px-1.5 text-[9.5px] font-bold text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                        Retur:{' '}
+                        {activePinnedOrder.returnStatus === 'APPROVED'
+                          ? 'Disetujui'
+                          : activePinnedOrder.returnStatus === 'REJECTED'
+                            ? 'Ditolak'
+                            : 'Verifikasi'}
+                      </span>
+                    ) : statusConfig[activePinnedOrder.status || ''] ? (
+                      <span className="py-0.2 rounded bg-blue-100/80 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                        {statusConfig[activePinnedOrder.status!].label}
+                      </span>
+                    ) : null}
                   </div>
 
-                  <a
-                    href={`/dashboard/admin/orders?search=${selectedRoom.order.orderNumber}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-blue-600 transition hover:text-blue-700 hover:underline"
-                  >
-                    <span>Lihat Rincian</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  <div className="flex shrink-0 items-center gap-2.5">
+                    <span className="hidden items-center gap-1 text-[10.5px] font-semibold text-blue-600/80 dark:text-blue-400/80 md:inline-flex">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
+                      Konteks Pinned
+                    </span>
+                    <a
+                      href={`/dashboard/admin/orders?search=${activePinnedOrder.orderNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-blue-600 transition hover:text-blue-700 hover:underline dark:text-blue-400"
+                    >
+                      <span>Lihat Rincian</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
                 </div>
               )}
 
@@ -1459,6 +1831,30 @@ export default function AdminChatPage() {
                       minute: '2-digit',
                     })
 
+                    const contentTrimmed = message.content?.trim() || ''
+                    const isReturn =
+                      message.messageType === 'return_reference' ||
+                      (contentTrimmed.startsWith('{') &&
+                        (contentTrimmed.includes('"returnReason"') ||
+                          contentTrimmed.includes('"return_reference"')))
+                    const isOrder =
+                      isReturn ||
+                      message.messageType === 'order' ||
+                      message.messageType === 'order_reference' ||
+                      (contentTrimmed.startsWith('{') &&
+                        contentTrimmed.includes('"orderNumber"'))
+                    const isProduct =
+                      !isOrder &&
+                      (message.messageType === 'product' ||
+                        message.messageType === 'product_reference' ||
+                        message.messageType === 'rental' ||
+                        (contentTrimmed.startsWith('{') &&
+                          (contentTrimmed.includes('"name"') ||
+                            contentTrimmed.includes('"productName"')) &&
+                          (contentTrimmed.includes('"price"') ||
+                            contentTrimmed.includes('"productPrice"'))))
+                    const isCardMessage = isOrder || isProduct
+
                     return (
                       <React.Fragment key={message.id}>
                         {showDateSeparator && (
@@ -1466,6 +1862,11 @@ export default function AdminChatPage() {
                         )}
 
                         <div
+                          id={
+                            isCardMessage
+                              ? `chat-context-msg-${message.id}`
+                              : undefined
+                          }
                           className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
                         >
                           {isMedia ? (
@@ -1532,8 +1933,16 @@ export default function AdminChatPage() {
                                   )}
                               </div>
                             </div>
+                          ) : isCardMessage ? (
+                            /* Standalone Card Bubble (No Blue Background Wrapper) */
+                            renderMessageContent(
+                              message,
+                              isAdmin,
+                              formattedTime,
+                              isCustomerOnline
+                            )
                           ) : (
-                            /* Standard Text / Card Bubble */
+                            /* Standard Text Bubble */
                             <div
                               className={`shadow-2xs max-w-[80%] rounded-2xl px-4 py-2.5 text-xs sm:max-w-[70%] ${
                                 isAdmin
@@ -1547,7 +1956,12 @@ export default function AdminChatPage() {
                                 </p>
                               )}
 
-                              {renderMessageContent(message, isAdmin)}
+                              {renderMessageContent(
+                                message,
+                                isAdmin,
+                                formattedTime,
+                                isCustomerOnline
+                              )}
 
                               {/* Timestamp & Read Status */}
                               <div
@@ -1576,6 +1990,73 @@ export default function AdminChatPage() {
 
               {/* Bottom Message Input Bar */}
               <div className="shrink-0 space-y-2 border-t border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-3.5">
+                {/* Contextual Active Order Banner above Input */}
+                {activeOrderContext && (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 p-2.5 dark:border-blue-900/40 dark:bg-blue-950/30">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      {activeOrderContext.productImage ? (
+                        <img
+                          src={activeOrderContext.productImage}
+                          alt=""
+                          className="h-10 w-10 shrink-0 rounded-xl border border-blue-200/80 bg-white object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/50">
+                          <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400">
+                            Membahas Pesanan:
+                          </span>
+                          <span className="truncate font-mono text-xs font-bold text-slate-900 dark:text-white">
+                            #{activeOrderContext.orderNumber}
+                          </span>
+                          {statusConfig[activeOrderContext.status] && (
+                            <span className="py-0.2 rounded bg-blue-100 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                              {statusConfig[activeOrderContext.status].label}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="truncate text-slate-600 dark:text-slate-300">
+                            {activeOrderContext.productName}
+                          </span>
+                          {activeOrderContext.total > 0 && (
+                            <span className="font-mono font-bold text-slate-900 dark:text-white">
+                              • Rp{' '}
+                              {activeOrderContext.total.toLocaleString('id-ID')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveOrderContext(null)
+                          if (typeof window !== 'undefined' && window.history) {
+                            const url = new URL(window.location.href)
+                            url.searchParams.delete('orderId')
+                            window.history.replaceState(
+                              null,
+                              '',
+                              url.toString()
+                            )
+                          }
+                        }}
+                        className="rounded-full p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
+                        title="Tutup Konteks"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Action Shortcuts */}
                 <div className="flex items-center gap-2">
                   <button
@@ -1632,13 +2113,19 @@ export default function AdminChatPage() {
                         handleSendMessage('text')
                       }
                     }}
-                    placeholder="Tulis balasan untuk customer..."
+                    placeholder={
+                      activeOrderContext
+                        ? `Ketik caption untuk pesanan #${activeOrderContext.orderNumber}... (Enter untuk kirim)`
+                        : 'Tulis balasan untuk customer...'
+                    }
                     className="flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
 
                   <button
                     onClick={() => handleSendMessage('text')}
-                    disabled={!messageInput.trim() || sending}
+                    disabled={
+                      (!messageInput.trim() && !activeOrderContext) || sending
+                    }
                     className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950"
                     title="Kirim Pesan"
                   >
@@ -1871,5 +2358,19 @@ export default function AdminChatPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function AdminChatPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex h-[75vh] items-center justify-center">
+          <Loader2 className="h-7 w-7 animate-spin text-slate-400" />
+        </div>
+      }
+    >
+      <AdminChatContent />
+    </React.Suspense>
   )
 }

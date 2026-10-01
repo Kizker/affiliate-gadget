@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
@@ -254,6 +254,31 @@ const renderWhatsAppTick = (
   )
 }
 
+interface PinnedOrderContext {
+  messageId?: string
+  orderId?: string
+  orderNumber: string
+  total?: number
+  status?: string
+  productName?: string | null
+  isReturn?: boolean
+  returnReason?: string | null
+  returnStatus?: string | null
+}
+
+const statusConfig: Record<string, { label: string; color: string }> = {
+  PENDING_PAYMENT: {
+    label: 'Belum Bayar',
+    color: 'bg-amber-50 text-amber-700',
+  },
+  PAID: { label: 'Dibayar', color: 'bg-blue-50 text-blue-700' },
+  PROCESSING: { label: 'Diproses', color: 'bg-purple-50 text-purple-700' },
+  SHIPPED: { label: 'Dikirim', color: 'bg-indigo-50 text-indigo-700' },
+  DELIVERED: { label: 'Terkirim', color: 'bg-teal-50 text-teal-700' },
+  COMPLETED: { label: 'Selesai', color: 'bg-emerald-50 text-emerald-700' },
+  CANCELLED: { label: 'Dibatalkan', color: 'bg-rose-50 text-rose-700' },
+}
+
 function CustomerChatContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -338,6 +363,10 @@ function CustomerChatContent() {
     type: 'image' | 'video'
   } | null>(null)
 
+  const [activePinnedOrder, setActivePinnedOrder] =
+    useState<PinnedOrderContext | null>(null)
+
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
@@ -664,6 +693,168 @@ function CustomerChatContent() {
     [fetchMessages]
   )
 
+  // Extract all order contexts present in this conversation
+  const conversationOrderContexts = useMemo<PinnedOrderContext[]>(() => {
+    if (!selectedRoom) return []
+    const list: PinnedOrderContext[] = []
+    const seenOrderNumbers = new Set<string>()
+
+    // Check all messages for order context cards
+    for (const msg of messages) {
+      const contentTrimmed = msg.content?.trim() || ''
+      let parsed: any = null
+      if (contentTrimmed.startsWith('{')) {
+        try {
+          parsed = JSON.parse(contentTrimmed)
+        } catch {}
+      }
+
+      const isReturn =
+        msg.messageType === 'return_reference' ||
+        parsed?.type === 'return_reference' ||
+        Boolean(parsed?.returnReason)
+      const isOrder =
+        isReturn ||
+        msg.messageType === 'order' ||
+        msg.messageType === 'order_reference' ||
+        parsed?.type === 'order' ||
+        parsed?.type === 'order_reference' ||
+        Boolean(parsed?.orderNumber)
+
+      if (isOrder && parsed) {
+        const num = parsed.orderNumber || parsed.orderNum
+        if (num && !seenOrderNumbers.has(num)) {
+          seenOrderNumbers.add(num)
+          list.push({
+            messageId: msg.id,
+            orderId:
+              parsed.orderId ||
+              selectedRoom.order?.id ||
+              activeOrderContext?.orderId,
+            orderNumber: num,
+            total:
+              Number(parsed.orderTotal) ||
+              Number(parsed.total) ||
+              Number(parsed.productPrice) ||
+              selectedRoom.order?.total ||
+              activeOrderContext?.total ||
+              0,
+            status:
+              parsed.orderStatus ||
+              parsed.status ||
+              selectedRoom.order?.status ||
+              activeOrderContext?.status ||
+              'PAID',
+            productName: parsed.productName || null,
+            isReturn,
+            returnReason: parsed.returnReason || null,
+            returnStatus: parsed.returnStatus || null,
+          })
+        }
+      }
+    }
+
+    // Include activeOrderContext if not yet in list
+    if (
+      activeOrderContext?.orderNumber &&
+      !seenOrderNumbers.has(activeOrderContext.orderNumber)
+    ) {
+      seenOrderNumbers.add(activeOrderContext.orderNumber)
+      list.unshift({
+        orderId: activeOrderContext.orderId,
+        orderNumber: activeOrderContext.orderNumber,
+        total: activeOrderContext.total,
+        status: activeOrderContext.status,
+        productName: activeOrderContext.productName,
+        isReturn: Boolean(activeOrderContext.returnRequest),
+        returnReason: activeOrderContext.returnRequest?.reason,
+        returnStatus: activeOrderContext.returnRequest?.status,
+      })
+    }
+
+    // Include selectedRoom.order if not yet in list
+    if (
+      selectedRoom.order &&
+      !seenOrderNumbers.has(selectedRoom.order.orderNumber)
+    ) {
+      seenOrderNumbers.add(selectedRoom.order.orderNumber)
+      list.unshift({
+        orderId: selectedRoom.order.id,
+        orderNumber: selectedRoom.order.orderNumber,
+        total: selectedRoom.order.total,
+        status: selectedRoom.order.status,
+      })
+    }
+
+    return list
+  }, [selectedRoom, messages, activeOrderContext])
+
+  // Track active context card on scroll (like WhatsApp pinned feature)
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container || conversationOrderContexts.length === 0) {
+      if (conversationOrderContexts.length > 0) {
+        setActivePinnedOrder(conversationOrderContexts[0])
+      } else {
+        setActivePinnedOrder(null)
+      }
+      return
+    }
+
+    const updateActivePinnedContext = () => {
+      const containerRect = container.getBoundingClientRect()
+      // Threshold: around 120px from top of container viewport
+      const thresholdY = containerRect.top + 120
+
+      let currentContext = conversationOrderContexts[0]
+
+      // Check all context messages that have rendered elements in DOM
+      for (const ctx of conversationOrderContexts) {
+        if (!ctx.messageId) continue
+        const el = document.getElementById(`chat-context-msg-${ctx.messageId}`)
+        if (el) {
+          const rect = el.getBoundingClientRect()
+          // If this card is at or has passed the threshold
+          if (rect.top <= thresholdY) {
+            currentContext = ctx
+          }
+        }
+      }
+
+      setActivePinnedOrder((prev) => {
+        if (
+          !prev ||
+          prev.orderNumber !== currentContext.orderNumber ||
+          prev.messageId !== currentContext.messageId
+        ) {
+          return currentContext
+        }
+        return prev
+      })
+    }
+
+    container.addEventListener('scroll', updateActivePinnedContext, {
+      passive: true,
+    })
+    updateActivePinnedContext()
+
+    return () => {
+      container.removeEventListener('scroll', updateActivePinnedContext)
+    }
+  }, [conversationOrderContexts])
+
+  const handleScrollToContextMessage = (messageId?: string) => {
+    if (!messageId) return
+    const el = document.getElementById(`chat-context-msg-${messageId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2')
+      setTimeout(() => {
+        el.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2')
+      }, 2000)
+    }
+  }
+
   // Auto-open and initialize direct store room from URL parameters
   useEffect(() => {
     if (
@@ -839,13 +1030,7 @@ function CustomerChatContent() {
               (data.order?.id && m.content?.includes(data.order.id))
           )
 
-          if (hasExistingOrderMessage) {
-            // Already sent previously, do NOT show floating draft popup or prefill input!
-            if (data.order?.id) sentContextsRef.current.add(data.order.id)
-            if (data.order?.orderNumber)
-              sentContextsRef.current.add(data.order.orderNumber)
-            setActiveOrderContext(null)
-          } else if (data.order && !isAlreadySent) {
+          if (data.order) {
             const firstItem = data.order.items?.[0]
             const prod = firstItem?.product
             const ret = data.order.returnRequests?.[0]
@@ -1742,59 +1927,83 @@ function CustomerChatContent() {
                     </div>
                   </div>
 
-                  {/* Contextual Order Banner (If order linked) */}
-                  {(selectedRoom.order || activeOrderContext) && (
-                    <div className="flex shrink-0 items-center justify-between border-b border-blue-100/70 bg-blue-50/50 px-4 py-2 text-xs dark:border-blue-900/30 dark:bg-blue-950/20">
-                      <div className="flex items-center gap-2 truncate">
-                        <Package className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+                  {/* Dynamic Pinned Order Context Banner (Changes on Scroll like WhatsApp Pinned) */}
+                  {activePinnedOrder && (
+                    <div
+                      onClick={() =>
+                        handleScrollToContextMessage(
+                          activePinnedOrder.messageId
+                        )
+                      }
+                      className="flex shrink-0 cursor-pointer items-center justify-between border-b border-blue-100/80 bg-blue-50/70 px-4 py-2 text-xs transition-all hover:bg-blue-100/60 dark:border-blue-900/40 dark:bg-blue-950/40"
+                      title="Klik untuk melompat ke kartu pesanan ini di chat"
+                    >
+                      <div className="flex min-w-0 items-center gap-2 truncate">
+                        {activePinnedOrder.isReturn ? (
+                          <RotateCcw className="h-3.5 w-3.5 shrink-0 text-purple-600 dark:text-purple-400" />
+                        ) : (
+                          <Package className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+                        )}
                         <span className="truncate font-mono font-bold text-blue-950 dark:text-blue-200">
-                          Order #
-                          {selectedRoom.order?.orderNumber ||
-                            activeOrderContext?.orderNumber}
+                          Order #{activePinnedOrder.orderNumber}
                         </span>
-                        {activeOrderContext?.returnRequest ||
-                        (selectedRoom.order?.returnRequests &&
-                          selectedRoom.order.returnRequests.length > 0) ? (
+                        {(activePinnedOrder.total ?? 0) > 0 && (
+                          <>
+                            <span className="hidden text-slate-400 sm:inline">
+                              •
+                            </span>
+                            <span className="hidden font-medium text-slate-600 dark:text-slate-300 sm:inline">
+                              Rp{' '}
+                              {activePinnedOrder.total!.toLocaleString('id-ID')}
+                            </span>
+                          </>
+                        )}
+                        {activePinnedOrder.isReturn ? (
                           <span className="py-0.2 rounded bg-purple-100 px-1.5 text-[9.5px] font-bold text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
                             Retur:{' '}
-                            {(activeOrderContext?.returnRequest?.status ||
-                              selectedRoom.order?.returnRequests?.[0]
-                                ?.status) === 'APPROVED'
+                            {activePinnedOrder.returnStatus === 'APPROVED'
                               ? 'Disetujui'
-                              : (activeOrderContext?.returnRequest?.status ||
-                                    selectedRoom.order?.returnRequests?.[0]
-                                      ?.status) === 'REJECTED'
+                              : activePinnedOrder.returnStatus === 'REJECTED'
                                 ? 'Ditolak'
-                                : (activeOrderContext?.returnRequest?.status ||
-                                      selectedRoom.order?.returnRequests?.[0]
-                                        ?.status) === 'COMPLETED'
+                                : activePinnedOrder.returnStatus === 'COMPLETED'
                                   ? 'Selesai'
-                                  : 'Menunggu Verifikasi Toko'}
+                                  : 'Verifikasi'}
                           </span>
-                        ) : selectedRoom.order?.status ||
-                          activeOrderContext?.status ? (
+                        ) : statusConfig[activePinnedOrder.status || ''] ? (
                           <span className="py-0.2 rounded bg-blue-100/80 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
-                            {selectedRoom.order?.status ||
-                              activeOrderContext?.status}
+                            {statusConfig[activePinnedOrder.status!].label}
+                          </span>
+                        ) : activePinnedOrder.status ? (
+                          <span className="py-0.2 rounded bg-blue-100/80 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                            {activePinnedOrder.status}
                           </span>
                         ) : null}
                       </div>
 
-                      {(selectedRoom.order?.id ||
-                        activeOrderContext?.orderId) && (
-                        <Link
-                          href={`/dashboard/customer/orders/${selectedRoom.order?.id || activeOrderContext?.orderId}`}
-                          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-blue-600 transition hover:text-blue-700 hover:underline"
-                        >
-                          <span>Lihat Rincian</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      )}
+                      <div className="flex shrink-0 items-center gap-2.5">
+                        <span className="hidden items-center gap-1 text-[10.5px] font-semibold text-blue-600/80 dark:text-blue-400/80 md:inline-flex">
+                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
+                          Konteks Pinned
+                        </span>
+                        {activePinnedOrder.orderId && (
+                          <Link
+                            href={`/dashboard/customer/orders/${activePinnedOrder.orderId}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-blue-600 transition hover:text-blue-700 hover:underline dark:text-blue-400"
+                          >
+                            <span>Lihat Rincian</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   )}
 
                   {/* Messages Bubble Canvas */}
-                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden p-4 sm:p-5">
+                  <div
+                    ref={messagesContainerRef}
+                    className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden p-4 sm:p-5"
+                  >
                     {messagesLoading ? (
                       <div className="flex h-full items-center justify-center">
                         <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
@@ -1900,7 +2109,12 @@ function CustomerChatContent() {
                         return (
                           <div
                             key={msg.id}
-                            className={`flex items-end gap-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}
+                            id={
+                              isStructuredInquiry
+                                ? `chat-context-msg-${msg.id}`
+                                : undefined
+                            }
+                            className={`flex items-end gap-2.5 transition-all ${isMe ? 'justify-end' : 'justify-start'}`}
                           >
                             {!isMe && (
                               <div className="mb-1 shrink-0">
@@ -2159,9 +2373,12 @@ function CustomerChatContent() {
                                         </div>
                                       </div>
 
-                                      {/* Customer Note / Caption sent together */}
+                                      {/* Customer Note / Caption sent together (filter automated confirmation greeting) */}
                                       {typeof p.note === 'string' &&
-                                        p.note.trim() !== '' && (
+                                        p.note.trim() !== '' &&
+                                        !p.note.includes(
+                                          'ingin mengonfirmasi pesanan'
+                                        ) && (
                                           <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
                                             <p className="whitespace-pre-wrap break-words leading-relaxed">
                                               {p.note}
@@ -2444,6 +2661,73 @@ function CustomerChatContent() {
                           title="Tutup ringkasan"
                         >
                           <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contextual Pinned Order Bar if customer entered from an order */}
+                  {activeOrderContext && (
+                    <div className="flex items-center justify-between gap-3 border-t border-blue-100 bg-blue-50/80 px-4 py-2.5 dark:border-blue-900/40 dark:bg-blue-950/30">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        {activeOrderContext.productImage ? (
+                          <img
+                            src={activeOrderContext.productImage}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-xl border border-blue-200/80 bg-white object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/50">
+                            <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400">
+                              Membahas Pesanan:
+                            </span>
+                            <span className="truncate font-mono text-xs font-bold text-slate-900 dark:text-white">
+                              #{activeOrderContext.orderNumber}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px]">
+                            {activeOrderContext.productName && (
+                              <span className="truncate text-slate-500 dark:text-slate-400">
+                                {activeOrderContext.productName}
+                              </span>
+                            )}
+                            {activeOrderContext.total !== undefined && (
+                              <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                                Rp{' '}
+                                {activeOrderContext.total.toLocaleString(
+                                  'id-ID'
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMessageInput(
+                              `Halo admin, saya ingin menanyakan tentang pesanan saya #${activeOrderContext.orderNumber}`
+                            )
+                          }}
+                          className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-blue-200 bg-white px-3 py-1 text-[10.5px] font-bold text-blue-600 transition hover:bg-blue-50 dark:border-blue-900 dark:bg-slate-900 dark:text-blue-300 sm:inline-flex"
+                        >
+                          <Send className="h-3 w-3" />
+                          <span>Tanyakan Pesanan</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveOrderContext(null)}
+                          className="rounded-full p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
+                          title="Tutup Konteks"
+                        >
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>

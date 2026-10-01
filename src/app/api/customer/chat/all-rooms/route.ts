@@ -10,10 +10,21 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all admin chat rooms for this customer
+    // Clean up abandoned empty rooms (older than 30 seconds and 0 messages)
+    await prisma.adminChatRoom
+      .deleteMany({
+        where: {
+          messages: { none: {} },
+          createdAt: { lt: new Date(Date.now() - 30 * 1000) },
+        },
+      })
+      .catch(() => {})
+
+    // Get all admin chat rooms for this customer that have messages
     const rooms = await prisma.adminChatRoom.findMany({
       where: {
         customerId: session.user.id,
+        messages: { some: {} },
       },
       include: {
         claimedBy: {

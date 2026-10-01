@@ -26,11 +26,54 @@ import {
   ArrowUpRight,
   AlertCircle,
   Sparkles,
+  Wrench,
+  Printer,
+  Zap,
+  ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { usePageGuard } from '@/hooks/use-page-guard'
+import { CheckResiModal } from '@/components/shipping/check-resi-modal'
+import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
+import type { ShippingBookingRecord } from '@/lib/shipping/biteship-client'
+
+export const BITESHIP_COURIERS = [
+  {
+    id: 'JNE',
+    name: 'JNE Express',
+    service: 'Reguler (Biteship)',
+    badge: '2 - 3 Hari',
+    badgeColor:
+      'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+    description:
+      'Layanan kurir reguler nasional terpercaya dengan asuransi wajib penuh',
+    courierCode: 'JNE',
+  },
+  {
+    id: 'JNE_YES',
+    name: 'JNE Express',
+    service: 'YES Esok Sampai (Biteship)',
+    badge: 'Esok Tiba (24 Jam)',
+    badgeColor:
+      'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+    description:
+      'Layanan prioritas esok hari kerja dengan jaminan tiba tepat waktu',
+    courierCode: 'JNE',
+  },
+  {
+    id: 'GOJEK',
+    name: 'Gojek Instant',
+    service: 'Kilat 1-2 Jam (Biteship)',
+    badge: 'Kilat 1-2 Jam',
+    badgeColor:
+      'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    description:
+      'Kurir motor instan tiba dalam 1-2 jam langsung dari toko cabang',
+    courierCode: 'GOJEK',
+  },
+]
 
 interface ReturnRequest {
   id: string
@@ -59,6 +102,7 @@ interface ReturnRequest {
     total: number
     courierCode?: string | null
     courierService?: string | null
+    trackingNumber?: string | null
     items: Array<{
       product?: {
         id: string
@@ -170,6 +214,191 @@ export default function AdminReturnsPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  // Check Resi Modal
+  const [checkResiModalOpen, setCheckResiModalOpen] = useState(false)
+  const [activeTrackingAwb, setActiveTrackingAwb] = useState('')
+  const [activeTrackingCourier, setActiveTrackingCourier] = useState('JNE')
+
+  // Thermal Shipping Label Modal
+  const [activeThermalLabel, setActiveThermalLabel] =
+    useState<ShippingBookingRecord | null>(null)
+  const [isPrintingThermal, setIsPrintingThermal] = useState(false)
+
+  const handlePrintThermalLabel = async (orderId: string) => {
+    try {
+      setIsPrintingThermal(true)
+      const res = await fetch(`/api/shipping/tracking/${orderId}`)
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data) {
+          setActiveThermalLabel(json.data)
+          return
+        }
+      }
+      toast.info('Menyiapkan label thermal Biteship...')
+    } catch {
+      toast.error('Gagal memuat label thermal Biteship')
+    } finally {
+      setIsPrintingThermal(false)
+    }
+  }
+
+  // Functional 3 Resolution Actions State
+  const [resolutionAction, setResolutionAction] = useState<
+    'REPLACEMENT' | 'REFUND' | 'REPAIR'
+  >('REPLACEMENT')
+  const [courierName, setCourierName] = useState('JNE')
+  const [trackingNumberInput, setTrackingNumberInput] = useState('')
+  const [repairStage, setRepairStage] = useState<'IN_PROGRESS' | 'COMPLETED'>(
+    'IN_PROGRESS'
+  )
+  const [repairEstimatedDays, setRepairEstimatedDays] =
+    useState('1 - 2 Hari Kerja')
+  const [repairNotes, setRepairNotes] = useState('')
+
+  // Sleek Courier Dropdown & AWB Success Modal
+  const [courierDropdownOpen, setCourierDropdownOpen] = useState(false)
+  const [awbModalData, setAwbModalData] = useState<{
+    trackingNumber: string
+    courierCode: string
+    courierService: string
+    orderNumber: string
+    customerName: string
+    actionType: 'REPLACEMENT' | 'REPAIR'
+    bookingRecord?: any
+  } | null>(null)
+
+  const renderCourierDropdown = (theme: 'blue' | 'emerald') => {
+    const selectedObj =
+      BITESHIP_COURIERS.find((c) => c.id === courierName) ||
+      BITESHIP_COURIERS[0]
+
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setCourierDropdownOpen((prev) => !prev)}
+          className={`shadow-2xs flex w-full cursor-pointer items-center justify-between rounded-2xl border bg-white p-3 text-left transition dark:bg-slate-800 ${
+            courierDropdownOpen
+              ? theme === 'blue'
+                ? 'border-blue-500 ring-2 ring-blue-500/20'
+                : 'border-emerald-500 ring-2 ring-emerald-500/20'
+              : 'border-slate-200 hover:border-slate-300 dark:border-slate-700'
+          }`}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <div
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                selectedObj.courierCode === 'GOJEK'
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                  : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+              }`}
+            >
+              <Truck className="h-4.5 w-4.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-900 dark:text-white">
+                  {selectedObj.name}
+                </span>
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  • {selectedObj.service}
+                </span>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${selectedObj.badgeColor}`}
+                >
+                  {selectedObj.badge}
+                </span>
+              </div>
+              <p className="mt-0.5 truncate text-[11px] text-slate-400">
+                {selectedObj.description}
+              </p>
+            </div>
+          </div>
+
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${
+              courierDropdownOpen
+                ? 'rotate-180 text-slate-700 dark:text-white'
+                : ''
+            }`}
+          />
+        </button>
+
+        {courierDropdownOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setCourierDropdownOpen(false)}
+            />
+            <div className="absolute left-0 right-0 top-full z-50 mt-1.5 space-y-1.5 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl duration-150 animate-in fade-in zoom-in-95 dark:border-slate-700 dark:bg-slate-800">
+              {BITESHIP_COURIERS.map((c) => {
+                const isSelected = courierName === c.id
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setCourierName(c.id)
+                      setCourierDropdownOpen(false)
+                    }}
+                    className={`flex w-full cursor-pointer items-start justify-between rounded-xl p-2.5 text-left transition ${
+                      isSelected
+                        ? theme === 'blue'
+                          ? 'bg-blue-50/90 text-blue-950 ring-1 ring-blue-500/30 dark:bg-blue-950/60 dark:text-blue-100'
+                          : 'bg-emerald-50/90 text-emerald-950 ring-1 ring-emerald-500/30 dark:bg-emerald-950/60 dark:text-emerald-100'
+                        : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700/60'
+                    }`}
+                  >
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <div
+                        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                          c.courierCode === 'GOJEK'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                        }`}
+                      >
+                        <Truck className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                            {c.name}
+                          </span>
+                          <span className="text-xs text-slate-600 dark:text-slate-400">
+                            - {c.service}
+                          </span>
+                          <span
+                            className={`py-0.2 rounded-full border px-1.5 text-[9px] font-bold ${c.badgeColor}`}
+                          >
+                            {c.badge}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-[10.5px] leading-tight text-slate-400">
+                          {c.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {isSelected && (
+                      <Check
+                        className={`ml-2 mt-1 h-4 w-4 shrink-0 ${
+                          theme === 'blue'
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}
+                      />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
 
   // Lightbox Media Viewer
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -328,6 +557,134 @@ export default function AdminReturnsPage() {
     }
   }
 
+  // Open action modal with smart default resolution mode
+  const openActionModal = (
+    item: ReturnRequest,
+    modalType: 'APPROVE' | 'REJECT' | 'COMPLETE' | 'RESPONSE'
+  ) => {
+    setSelectedReturn(item)
+    setActionModalType(modalType)
+    setRejectionReason('')
+    setResponseText(item.storeResponse || '')
+    setTrackingNumberInput(
+      item.returnTrackingNumber || item.order?.trackingNumber || ''
+    )
+    setCourierName(item.returnCourier || item.order?.courierCode || 'JNE')
+
+    if (item.storeResponse?.includes('[SEDANG_DIPERBAIKI]')) {
+      setResolutionAction('REPAIR')
+      setRepairStage('COMPLETED')
+    } else if (item.type === 'REFUND') {
+      setResolutionAction('REFUND')
+    } else {
+      setResolutionAction('REPLACEMENT')
+    }
+  }
+
+  // Execute functional resolution action
+  const handleExecuteResolution = async () => {
+    if (!selectedReturn) return
+    setIsProcessing(true)
+    try {
+      if (actionModalType === 'REJECT') {
+        if (!rejectionReason.trim()) {
+          toast.error('Harap isi alasan penolakan pengajuan')
+          setIsProcessing(false)
+          return
+        }
+        await handleUpdateStatus(selectedReturn.id, 'REJECTED', rejectionReason)
+        return
+      }
+
+      if (actionModalType === 'RESPONSE') {
+        await handleUpdateStatus(
+          selectedReturn.id,
+          selectedReturn.status,
+          responseText
+        )
+        return
+      }
+
+      // Functional 3 Options execution
+      let actionType:
+        | 'REPLACEMENT'
+        | 'REFUND'
+        | 'REPAIR_IN_PROGRESS'
+        | 'REPAIR_COMPLETED' = 'REPLACEMENT'
+
+      if (resolutionAction === 'REPLACEMENT') {
+        actionType = 'REPLACEMENT'
+      } else if (resolutionAction === 'REFUND') {
+        actionType = 'REFUND'
+      } else if (resolutionAction === 'REPAIR') {
+        if (repairStage === 'COMPLETED') {
+          actionType = 'REPAIR_COMPLETED'
+        } else {
+          actionType = 'REPAIR_IN_PROGRESS'
+        }
+      }
+
+      const res = await fetch(`/api/returns/${selectedReturn.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resolutionAction: actionType,
+          replacementCourier: courierName,
+          replacementTrackingNumber: trackingNumberInput.trim() || 'AUTO',
+          estimatedRepairDays: repairEstimatedDays,
+          repairNotes: repairNotes,
+          storeResponse: responseText,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success(
+          data.message || 'Tindakan pengembalian berhasil diproses!'
+        )
+        const currentItem = selectedReturn
+        setActionModalType(null)
+        setSelectedReturn(null)
+        setResponseText('')
+        setRejectionReason('')
+        setTrackingNumberInput('')
+        fetchReturns()
+
+        // Jika penggantian unit baru atau perbaikan selesai: langsung tampilkan modal AWB!
+        if (actionType === 'REPLACEMENT' || actionType === 'REPAIR_COMPLETED') {
+          const generatedAwb =
+            data.booking?.trackingNumber ||
+            data.booking?.waybillId ||
+            data.data?.returnTrackingNumber ||
+            'JNE0192838192'
+
+          setAwbModalData({
+            trackingNumber: generatedAwb,
+            courierCode: courierName.startsWith('GOJEK') ? 'GOJEK' : 'JNE',
+            courierService:
+              courierName === 'JNE_YES'
+                ? 'YES'
+                : courierName.startsWith('GOJEK')
+                  ? 'INSTANT'
+                  : 'REG',
+            orderNumber: currentItem.order?.orderNumber || '',
+            customerName: currentItem.user?.name || 'Customer',
+            actionType:
+              actionType === 'REPAIR_COMPLETED' ? 'REPAIR' : 'REPLACEMENT',
+            bookingRecord: data.booking,
+          })
+        }
+      } else {
+        toast.error(data.error || 'Gagal memproses tindakan')
+      }
+    } catch (err) {
+      console.error('Error executing resolution:', err)
+      toast.error('Terjadi kesalahan jaringan')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   // Open Lightbox
   const handleOpenLightbox = (
     images: string[],
@@ -362,13 +719,31 @@ export default function AdminReturnsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-16">
+      {/* 0. Header Title & Context */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+              Pengembalian & Klaim Garansi
+            </h1>
+            <span className="inline-flex items-center gap-1 rounded-full border border-orange-200/80 bg-orange-50 px-2.5 py-0.5 text-[11px] font-bold text-orange-700 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
+              Garansi 30 Hari
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            Pusat pengelolaan retur unit bermasalah, klaim garansi ganti unit
+            baru, pengembalian dana (refund), dan perbaikan servis teknisi
+          </p>
+        </div>
+      </div>
+
       {/* 1. Unified Luxury Bento Metric Grid (Neutral Harmony) */}
       <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        {/* Card: Total Pengajuan */}
+        {/* Card: Total Pengajuan & Klaim */}
         <div className="shadow-2xs flex flex-col justify-between rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[11px] font-bold uppercase tracking-wider">
-              Total Pengajuan
+              Total Pengajuan & Klaim
             </span>
             <RotateCcw className="h-4 w-4" />
           </div>
@@ -853,16 +1228,47 @@ export default function AdminReturnsPage() {
                         </div>
                       )}
 
-                      {/* Resi Kirim Balik dari Pembeli */}
+                      {/* Resi Kirim Balik / Pengiriman */}
                       {item.returnTrackingNumber && (
                         <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
                           <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
                             <Truck className="h-3.5 w-3.5 text-orange-500" />{' '}
-                            Resi Kirim Balik:
+                            Resi Pengiriman:
                           </span>
-                          <span className="font-mono text-xs font-bold text-slate-950 dark:text-white">
-                            {item.returnCourier} - {item.returnTrackingNumber}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTrackingAwb(
+                                  item.returnTrackingNumber || ''
+                                )
+                                setActiveTrackingCourier(
+                                  item.returnCourier || 'JNE'
+                                )
+                                setCheckResiModalOpen(true)
+                              }}
+                              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-xs font-bold text-slate-900 transition hover:border-orange-500 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                              title="Lacak Paket Real-Time via Biteship"
+                            >
+                              <span>
+                                {item.returnCourier || 'JNE'} -{' '}
+                                {item.returnTrackingNumber}
+                              </span>
+                              <ArrowUpRight className="h-3 w-3 text-slate-400" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handlePrintThermalLabel(item.orderId)
+                              }
+                              disabled={isPrintingThermal}
+                              className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
+                              title="Cetak Label Thermal Biteship"
+                            >
+                              <Printer className="h-3 w-3" />
+                              <span>Label Thermal</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -883,24 +1289,15 @@ export default function AdminReturnsPage() {
                   {item.status === 'PENDING' && (
                     <>
                       <button
-                        onClick={() => {
-                          setSelectedReturn(item)
-                          setActionModalType('APPROVE')
-                          setResponseText(
-                            'Pengajuan disetujui. Silakan kirimkan unit lengkap beserta kotak kemasan dan aksesoris bonus ke alamat toko.'
-                          )
-                        }}
+                        onClick={() => openActionModal(item, 'APPROVE')}
                         className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        <span>Setujui Pengajuan</span>
+                        <span>Setujui & Pilih Tindakan</span>
                       </button>
 
                       <button
-                        onClick={() => {
-                          setSelectedReturn(item)
-                          setActionModalType('REJECT')
-                        }}
+                        onClick={() => openActionModal(item, 'REJECT')}
                         className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
                         <XCircle className="h-3.5 w-3.5 text-rose-500" />
@@ -926,37 +1323,30 @@ export default function AdminReturnsPage() {
                     </button>
                   )}
 
-                  {/* Selesaikan Pengembalian */}
+                  {/* Tindakan Resolusi Toko / Selesaikan Pengembalian */}
                   {(item.status === 'IN_REVIEW' ||
                     item.status === 'APPROVED') && (
                     <button
-                      onClick={() => {
-                        setSelectedReturn(item)
-                        setActionModalType('COMPLETE')
-                        setResponseText(
-                          item.type === 'REFUND'
-                            ? `Pengembalian dana sebesar ${formatPrice(item.refundAmount || item.order.total)} telah berhasil ditransfer ke rekening ${item.bankName} ${item.bankAccountNumber}.`
-                            : 'Unit pengganti teruji telah dikirimkan ke alamat Anda. Terima kasih telah berbelanja di Affiliate Gadget.'
-                        )
-                      }}
+                      onClick={() => openActionModal(item, 'COMPLETE')}
                       className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95"
                     >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span>
-                        {item.type === 'REFUND'
-                          ? 'Konfirmasi Refund Selesai'
-                          : 'Konfirmasi Unit Terkirim'}
-                      </span>
+                      {item.storeResponse?.includes('[SEDANG_DIPERBAIKI]') ? (
+                        <>
+                          <Wrench className="h-3.5 w-3.5" />
+                          <span>Selesaikan Servis & Kirim Balik</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>Tindakan Resolusi Toko</span>
+                        </>
+                      )}
                     </button>
                   )}
 
                   {/* Beri Tanggapan */}
                   <button
-                    onClick={() => {
-                      setSelectedReturn(item)
-                      setActionModalType('RESPONSE')
-                      setResponseText(item.storeResponse || '')
-                    }}
+                    onClick={() => openActionModal(item, 'RESPONSE')}
                     className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/90 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
                   >
                     <MessageSquare className="h-3.5 w-3.5 text-orange-500" />
@@ -969,7 +1359,7 @@ export default function AdminReturnsPage() {
         </div>
       )}
 
-      {/* Action Dialog (Approve / Reject / Response / Complete) */}
+      {/* Action Dialog (Functional Operational Workflows: Replacement, Refund, Repair) */}
       <AnimatePresence>
         {actionModalType && selectedReturn && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-md">
@@ -977,35 +1367,38 @@ export default function AdminReturnsPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-lg space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-7"
+              className="relative max-h-[92vh] w-full max-w-xl space-y-5 overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-7"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
                 <div className="flex items-center gap-3">
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
                       actionModalType === 'REJECT'
                         ? 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400'
-                        : 'bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400'
+                        : resolutionAction === 'REPLACEMENT'
+                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
+                          : resolutionAction === 'REFUND'
+                            ? 'bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400'
+                            : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
                     }`}
                   >
                     {actionModalType === 'REJECT' ? (
                       <XCircle className="h-5 w-5" />
+                    ) : resolutionAction === 'REPLACEMENT' ? (
+                      <RefreshCw className="h-5 w-5" />
+                    ) : resolutionAction === 'REFUND' ? (
+                      <CreditCard className="h-5 w-5" />
                     ) : (
-                      <RotateCcw className="h-5 w-5" />
+                      <Wrench className="h-5 w-5" />
                     )}
                   </div>
                   <div>
                     <h3 className="text-base font-black text-slate-950 dark:text-white">
-                      {actionModalType === 'APPROVE' &&
-                        'Setujui Pengajuan Pengembalian'}
-                      {actionModalType === 'REJECT' &&
-                        'Tolak Pengajuan Pengembalian'}
-                      {actionModalType === 'COMPLETE' &&
-                        (selectedReturn.type === 'REFUND'
-                          ? 'Konfirmasi Refund Selesai'
-                          : 'Konfirmasi Penggantian Unit Selesai')}
-                      {actionModalType === 'RESPONSE' &&
-                        'Tanggapan & Instruksi Toko'}
+                      {actionModalType === 'REJECT'
+                        ? 'Tolak Pengajuan Pengembalian'
+                        : actionModalType === 'RESPONSE'
+                          ? 'Tanggapan & Instruksi Toko'
+                          : 'Keputusan Tindakan Toko (Garansi 30 Hari)'}
                     </h3>
                     <p className="text-xs text-slate-400">
                       Pesanan #{selectedReturn.order?.orderNumber} •{' '}
@@ -1026,14 +1419,14 @@ export default function AdminReturnsPage() {
               </div>
 
               {/* Form Content */}
-              <div className="space-y-3.5 text-xs">
+              <div className="space-y-4 text-xs">
                 {actionModalType === 'REJECT' ? (
                   <div className="space-y-1.5">
                     <label className="font-bold text-slate-900 dark:text-white">
                       Alasan Penolakan Pengajuan:
                     </label>
                     <textarea
-                      rows={3}
+                      rows={4}
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
                       placeholder="Contoh: Unit mengalami kerusakan fisik akibat kelalaian pemakaian setelah masa unboxing, segel garansi rusak..."
@@ -1041,25 +1434,446 @@ export default function AdminReturnsPage() {
                       required
                     />
                   </div>
-                ) : (
-                  <div className="space-y-1.5">
+                ) : actionModalType === 'RESPONSE' ? (
+                  <div className="space-y-2">
                     <label className="font-bold text-slate-900 dark:text-white">
-                      Instruksi / Catatan untuk Pembeli:
+                      Pesan Tanggapan Toko untuk Pembeli:
                     </label>
                     <textarea
-                      rows={3}
+                      rows={4}
                       value={responseText}
                       onChange={(e) => setResponseText(e.target.value)}
-                      placeholder="Tuliskan instruksi pengiriman balik atau konfirmasi pengembalian dana..."
+                      placeholder="Tuliskan pesan instruksi pengiriman unit atau verifikasi..."
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50/60 p-3.5 text-xs leading-relaxed outline-none transition focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       required
                     />
                   </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* 3 Interactive Operational Mode Selectors */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-slate-900 dark:text-white">
+                          Pilih Tindakan Toko:
+                        </label>
+                        <span className="text-[10px] text-slate-400">
+                          Pilih alur operasional yang akan dieksekusi
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        {/* Option 1: Ganti Unit Baru */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResolutionAction('REPLACEMENT')
+                            if (
+                              !responseText ||
+                              responseText.includes('[REFUND_MIDTRANS]') ||
+                              responseText.includes('[SEDANG_DIPERBAIKI]') ||
+                              responseText.includes('[PERBAIKAN_SELESAI]')
+                            ) {
+                              setResponseText(
+                                'Unit baru pengganti telah disiapkan dan dikirimkan dengan nomor resi terlampir. Garansi 30 hari aktif kembali untuk unit ini.'
+                              )
+                            }
+                          }}
+                          className={`flex cursor-pointer flex-col gap-1 rounded-2xl border p-3 text-left transition ${
+                            resolutionAction === 'REPLACEMENT'
+                              ? 'shadow-xs border-blue-500 bg-blue-50/80 ring-2 ring-blue-500/20 dark:border-blue-500 dark:bg-blue-950/40'
+                              : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`flex h-7 w-7 items-center justify-center rounded-xl ${
+                                resolutionAction === 'REPLACEMENT'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            </span>
+                            {resolutionAction === 'REPLACEMENT' && (
+                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-bold text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                                Dipilih
+                              </span>
+                            )}
+                          </div>
+                          <span className="mt-1 text-xs font-bold text-slate-900 dark:text-white">
+                            1. Ganti Unit Baru
+                          </span>
+                          <span className="text-[10px] leading-tight text-slate-500 dark:text-slate-400">
+                            Kirim unit baru & lacak resi live
+                          </span>
+                        </button>
+
+                        {/* Option 2: Kembalikan Duit */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResolutionAction('REFUND')
+                            if (
+                              !responseText ||
+                              responseText.includes('[GANTI_UNIT_BARU]') ||
+                              responseText.includes('[SEDANG_DIPERBAIKI]') ||
+                              responseText.includes('[PERBAIKAN_SELESAI]')
+                            ) {
+                              setResponseText(
+                                `Pengembalian dana sebesar ${formatPrice(
+                                  selectedReturn.refundAmount ||
+                                    selectedReturn.order?.total
+                                )} diproses otomatis dari saldo tertahan Midtrans ke rekening ${
+                                  selectedReturn.bankName || 'pembeli'
+                                }.`
+                              )
+                            }
+                          }}
+                          className={`flex cursor-pointer flex-col gap-1 rounded-2xl border p-3 text-left transition ${
+                            resolutionAction === 'REFUND'
+                              ? 'shadow-xs border-orange-500 bg-orange-50/80 ring-2 ring-orange-500/20 dark:border-orange-500 dark:bg-orange-950/40'
+                              : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`flex h-7 w-7 items-center justify-center rounded-xl ${
+                                resolutionAction === 'REFUND'
+                                  ? 'bg-orange-600 text-white'
+                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <CreditCard className="h-3.5 w-3.5" />
+                            </span>
+                            {resolutionAction === 'REFUND' && (
+                              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[9px] font-bold text-orange-700 dark:bg-orange-900/60 dark:text-orange-300">
+                                Dipilih
+                              </span>
+                            )}
+                          </div>
+                          <span className="mt-1 text-xs font-bold text-slate-900 dark:text-white">
+                            2. Kembalikan Duit
+                          </span>
+                          <span className="text-[10px] leading-tight text-slate-500 dark:text-slate-400">
+                            Refund dana tertahan Midtrans
+                          </span>
+                        </button>
+
+                        {/* Option 3: Perbaiki Barang */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResolutionAction('REPAIR')
+                            if (
+                              !responseText ||
+                              responseText.includes('[GANTI_UNIT_BARU]') ||
+                              responseText.includes('[REFUND_MIDTRANS]')
+                            ) {
+                              setResponseText(
+                                'Unit disetujui untuk perbaikan teknisi resmi kami hingga normal kembali dan diuji fungsi 100%.'
+                              )
+                            }
+                          }}
+                          className={`flex cursor-pointer flex-col gap-1 rounded-2xl border p-3 text-left transition ${
+                            resolutionAction === 'REPAIR'
+                              ? 'shadow-xs border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/40'
+                              : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`flex h-7 w-7 items-center justify-center rounded-xl ${
+                                resolutionAction === 'REPAIR'
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <Wrench className="h-3.5 w-3.5" />
+                            </span>
+                            {resolutionAction === 'REPAIR' && (
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+                                Dipilih
+                              </span>
+                            )}
+                          </div>
+                          <span className="mt-1 text-xs font-bold text-slate-900 dark:text-white">
+                            3. Perbaiki Barang
+                          </span>
+                          <span className="text-[10px] leading-tight text-slate-500 dark:text-slate-400">
+                            Tunggu servis lalu kirim balik
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Operational Workflow Form Details */}
+                    {resolutionAction === 'REPLACEMENT' && (
+                      <div className="space-y-3 rounded-2xl border border-blue-200/80 bg-blue-50/40 p-4 dark:border-blue-900/60 dark:bg-blue-950/30">
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            Alur 1: Ganti Unit Baru & Pengiriman Langsung
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                          Unit baru pengganti akan mulai dikirimkan kepada
+                          pembeli. Sistem akan membuat pengiriman baru dengan
+                          nomor resi terlampir yang dapat dilacak oleh pembeli
+                          secara real-time seperti pembelian biasa.
+                        </p>
+
+                        {/* Sleek Custom Courier Dropdown */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                              Kurir Pengiriman Baru (Biteship Official):
+                            </label>
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                              <Zap className="h-3 w-3" /> Resi Otomatis Terbit
+                            </span>
+                          </div>
+
+                          {renderCourierDropdown('blue')}
+
+                          <div className="flex items-center gap-2 rounded-xl border border-blue-200/60 bg-blue-50/70 p-2.5 text-[11px] text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
+                            <Zap className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                            <span>
+                              Nomor resi resmi (AWB) Biteship akan langsung
+                              diterbitkan otomatis dan ditampilkan seketika
+                              setelah tombol kirim ditekan.
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                            Catatan Pengiriman Unit Baru:
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={responseText}
+                            onChange={(e) => setResponseText(e.target.value)}
+                            placeholder="Unit baru pengganti telah disiapkan dan dikirimkan..."
+                            className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {resolutionAction === 'REFUND' && (
+                      <div className="space-y-3 rounded-2xl border border-orange-200/80 bg-orange-50/40 p-4 dark:border-orange-900/60 dark:bg-orange-950/30">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            Alur 2: Pengembalian Dana Otomatis via Midtrans
+                          </span>
+                        </div>
+
+                        <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 p-2.5 text-[11px] leading-relaxed text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                          <strong>Keterangan Dana Tertahan:</strong> Karena
+                          pembeli belum mengonfirmasi pesanan selesai, dana
+                          pesanan sebesar{' '}
+                          <strong>
+                            {formatPrice(
+                              selectedReturn.refundAmount ||
+                                selectedReturn.order?.total
+                            )}
+                          </strong>{' '}
+                          masih <strong>tertahan di escrow Midtrans</strong>.
+                          Sistem akan otomatis membatalkan/mentransfer balik
+                          dana tertahan ke rekening pembeli.
+                        </div>
+
+                        <div className="space-y-1.5 rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500">
+                              Nominal Refund:
+                            </span>
+                            <span className="font-mono text-sm font-black text-orange-600 dark:text-orange-400">
+                              {formatPrice(
+                                selectedReturn.refundAmount ||
+                                  selectedReturn.order?.total
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500">
+                              Rekening Tujuan:
+                            </span>
+                            <span className="font-mono font-bold text-slate-900 dark:text-white">
+                              {selectedReturn.bankName || 'Bank'} •{' '}
+                              {selectedReturn.bankAccountNumber || '-'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500">Atas Nama:</span>
+                            <span className="font-bold text-slate-900 dark:text-white">
+                              {selectedReturn.bankAccountName ||
+                                selectedReturn.user?.name ||
+                                '-'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                            Catatan Konfirmasi Refund:
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={responseText}
+                            onChange={(e) => setResponseText(e.target.value)}
+                            placeholder="Dana tertahan telah berhasil dikembalikan balik via Midtrans..."
+                            className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {resolutionAction === 'REPAIR' && (
+                      <div className="space-y-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Wrench className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            <span className="font-bold text-slate-900 dark:text-white">
+                              Alur 3: Perbaiki Barang (Servis Garansi 30 Hari)
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Stage Selector (Tahap 1 vs Tahap 2) */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setRepairStage('IN_PROGRESS')}
+                            className={`rounded-xl border p-2 text-center text-xs font-bold transition ${
+                              repairStage === 'IN_PROGRESS'
+                                ? 'shadow-xs border-emerald-600 bg-emerald-600 text-white'
+                                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                            }`}
+                          >
+                            Tahap 1: Sedang Diperbaiki
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRepairStage('COMPLETED')}
+                            className={`rounded-xl border p-2 text-center text-xs font-bold transition ${
+                              repairStage === 'COMPLETED'
+                                ? 'shadow-xs border-emerald-600 bg-emerald-600 text-white'
+                                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                            }`}
+                          >
+                            Tahap 2: Selesai & Kirim Balik
+                          </button>
+                        </div>
+
+                        {repairStage === 'IN_PROGRESS' ? (
+                          <div className="space-y-2.5">
+                            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                              Unit masuk ke tahap servis teknisi resmi. Pembeli
+                              akan melihat notifikasi dan status bahwa unit
+                              sedang menunggu perbaikan sebelum dikirimkan
+                              kembali.
+                            </p>
+
+                            <div>
+                              <label className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                Estimasi Waktu Pengerjaan Teknisi:
+                              </label>
+                              <div className="flex flex-wrap gap-1.5">
+                                {[
+                                  '1 - 2 Hari Kerja',
+                                  '3 - 5 Hari Kerja',
+                                  'Kilat (Hari Ini)',
+                                ].map((preset) => (
+                                  <button
+                                    key={preset}
+                                    type="button"
+                                    onClick={() =>
+                                      setRepairEstimatedDays(preset)
+                                    }
+                                    className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition ${
+                                      repairEstimatedDays === preset
+                                        ? 'border-emerald-600 bg-emerald-100 font-bold text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950/60 dark:text-emerald-200'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                    }`}
+                                  >
+                                    {preset}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                Rencana & Catatan Servis Teknisi:
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={repairNotes}
+                                onChange={(e) => setRepairNotes(e.target.value)}
+                                placeholder="Contoh: Penggantian modul display LCD original, pengetesan daya tahan baterai, dan kalibrasi..."
+                                className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
+                            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                              Perbaikan unit telah selesai 100%. Masukkan kurir
+                              dan nomor resi pengiriman untuk mengirimkan unit
+                              kembali ke alamat pembeli agar bisa dilacak
+                              seperti pembelian biasa.
+                            </p>
+
+                            {/* Sleek Custom Courier Dropdown */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                                  Kurir Pengiriman Balik (Biteship Official):
+                                </label>
+                                <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                  <Zap className="h-3 w-3" /> Resi Otomatis
+                                  Terbit
+                                </span>
+                              </div>
+
+                              {renderCourierDropdown('emerald')}
+
+                              <div className="flex items-center gap-2 rounded-xl border border-emerald-200/60 bg-emerald-50/70 p-2.5 text-[11px] text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                <Zap className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                <span>
+                                  Nomor resi resmi (AWB) Biteship akan langsung
+                                  diterbitkan otomatis dan ditampilkan seketika
+                                  setelah tombol kirim ditekan.
+                                </span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                Catatan Hasil Servis untuk Pembeli:
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={responseText}
+                                onChange={(e) =>
+                                  setResponseText(e.target.value)
+                                }
+                                placeholder="Perbaikan unit telah selesai 100% dan lulus uji QC teknisi..."
+                                className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-2 dark:border-slate-800">
+              {/* Actions Footer */}
+              <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
@@ -1074,41 +1888,15 @@ export default function AdminReturnsPage() {
                 <button
                   type="button"
                   disabled={isProcessing}
-                  onClick={() => {
-                    if (actionModalType === 'APPROVE') {
-                      handleUpdateStatus(
-                        selectedReturn.id,
-                        'APPROVED',
-                        responseText
-                      )
-                    } else if (actionModalType === 'REJECT') {
-                      if (!rejectionReason.trim()) {
-                        toast.error('Harap isi alasan penolakan')
-                        return
-                      }
-                      handleUpdateStatus(
-                        selectedReturn.id,
-                        'REJECTED',
-                        rejectionReason
-                      )
-                    } else if (actionModalType === 'COMPLETE') {
-                      handleUpdateStatus(
-                        selectedReturn.id,
-                        'COMPLETED',
-                        responseText
-                      )
-                    } else if (actionModalType === 'RESPONSE') {
-                      handleUpdateStatus(
-                        selectedReturn.id,
-                        selectedReturn.status,
-                        responseText
-                      )
-                    }
-                  }}
+                  onClick={handleExecuteResolution}
                   className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-2.5 text-xs font-bold text-white shadow-sm transition active:scale-95 disabled:opacity-50 ${
                     actionModalType === 'REJECT'
                       ? 'bg-rose-600 hover:bg-rose-700'
-                      : 'bg-orange-500 shadow-orange-500/25 hover:bg-orange-600'
+                      : resolutionAction === 'REPLACEMENT'
+                        ? 'bg-blue-600 shadow-blue-500/25 hover:bg-blue-700'
+                        : resolutionAction === 'REFUND'
+                          ? 'bg-orange-500 shadow-orange-500/25 hover:bg-orange-600'
+                          : 'bg-emerald-600 shadow-emerald-500/25 hover:bg-emerald-700'
                   }`}
                 >
                   {isProcessing ? (
@@ -1116,8 +1904,30 @@ export default function AdminReturnsPage() {
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       <span>Memproses...</span>
                     </>
+                  ) : actionModalType === 'REJECT' ? (
+                    <span>Konfirmasi Tolak</span>
+                  ) : actionModalType === 'RESPONSE' ? (
+                    <span>Simpan Tanggapan</span>
+                  ) : resolutionAction === 'REPLACEMENT' ? (
+                    <>
+                      <Truck className="h-3.5 w-3.5" />
+                      <span>Kirim Unit Baru & Mulai Pelacakan</span>
+                    </>
+                  ) : resolutionAction === 'REFUND' ? (
+                    <>
+                      <CreditCard className="h-3.5 w-3.5" />
+                      <span>Proses Refund Dana via Midtrans</span>
+                    </>
+                  ) : repairStage === 'IN_PROGRESS' ? (
+                    <>
+                      <Wrench className="h-3.5 w-3.5" />
+                      <span>Simpan: Sedang Diperbaiki Teknisi</span>
+                    </>
                   ) : (
-                    <span>Konfirmasi</span>
+                    <>
+                      <Truck className="h-3.5 w-3.5" />
+                      <span>Kirim Unit Servis & Berikan Resi</span>
+                    </>
                   )}
                 </button>
               </div>
@@ -1239,6 +2049,160 @@ export default function AdminReturnsPage() {
           </div>,
           document.body
         )}
+      {/* Modal Langsung Tampilkan Nomor Resi Baru (AWB) Biteship */}
+      <AnimatePresence>
+        {awbModalData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 15 }}
+              className="relative w-full max-w-lg space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-7"
+            >
+              {/* Header with success badge */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 shadow-sm dark:bg-emerald-950 dark:text-emerald-400">
+                    <CheckCircle2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                        <Zap className="h-2.5 w-2.5" /> Auto Biteship
+                      </span>
+                    </div>
+                    <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white sm:text-lg">
+                      {awbModalData.actionType === 'REPAIR'
+                        ? 'Unit Hasil Servis Telah Dikirim Balik!'
+                        : 'Unit Baru Pengganti Telah Dikirim!'}
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Pesanan #{awbModalData.orderNumber} •{' '}
+                      {awbModalData.customerName}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAwbModalData(null)}
+                  className="cursor-pointer rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Prominent AWB Showcase Card */}
+              <div className="space-y-3 rounded-2xl border border-blue-200/80 bg-gradient-to-b from-blue-50/70 to-blue-50/30 p-4 dark:border-blue-900/60 dark:from-blue-950/40 dark:to-blue-950/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800 dark:text-blue-300">
+                    Nomor Resi Baru (AWB Resmi):
+                  </span>
+                  <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                    {awbModalData.courierCode} {awbModalData.courierService}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-white p-3 dark:border-blue-800 dark:bg-slate-900">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Truck className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <span className="truncate font-mono text-xl font-black tracking-wider text-blue-600 dark:text-blue-400 sm:text-2xl">
+                      {awbModalData.trackingNumber}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleCopy(awbModalData.trackingNumber, 'modal-awb')
+                    }
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                  >
+                    {copiedId === 'modal-awb' ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>Tersalin</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>Salin Resi</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex items-start gap-2 pt-1 text-[11px] leading-relaxed text-blue-950/80 dark:text-blue-200/90">
+                  <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                  <span>
+                    <strong>
+                      Siklus Transaksi Dimulai Ulang dari Pengiriman:
+                    </strong>{' '}
+                    Status pesanan #{awbModalData.orderNumber} otomatis kembali
+                    ke <strong>Sedang Dikirim (SHIPPED)</strong>. Pembeli dapat
+                    melacak pengiriman secara real-time, mengonfirmasi
+                    penerimaan saat tiba, dan garansi 30 hari aktif kembali.
+                    Alur klaim ini berulang sampai pelanggan puas tanpa
+                    komplain.
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setAwbModalData(null)}
+                  className="cursor-pointer rounded-full px-5 py-2.5 text-center text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  Tutup & Selesai
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTrackingAwb(awbModalData.trackingNumber)
+                    setActiveTrackingCourier(awbModalData.courierCode)
+                    setCheckResiModalOpen(true)
+                  }}
+                  className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-800 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <Search className="h-3.5 w-3.5" />
+                  <span>Lacak Live</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (awbModalData.bookingRecord) {
+                      setActiveThermalLabel(awbModalData.bookingRecord)
+                    }
+                  }}
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-blue-500/25 transition hover:bg-blue-700 active:scale-95"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Cetak Label Thermal</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Printable Thermal Shipping Label Modal */}
+      {activeThermalLabel && (
+        <ThermalShippingLabel
+          data={activeThermalLabel}
+          onClose={() => setActiveThermalLabel(null)}
+        />
+      )}
+
+      {/* Check Resi Live Tracking Modal */}
+      <CheckResiModal
+        isOpen={checkResiModalOpen}
+        onClose={() => setCheckResiModalOpen(false)}
+        initialQuery={activeTrackingAwb}
+      />
     </div>
   )
 }

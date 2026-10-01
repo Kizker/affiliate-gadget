@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Search,
   Package,
@@ -26,6 +28,7 @@ import {
   Navigation,
   RefreshCw,
   AlertTriangle,
+  MessageSquare,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -38,6 +41,7 @@ import {
 import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
 import { LiveCourierTracker } from '@/components/shipping/live-courier-tracker'
 import TaxInvoiceModal from '@/components/modals/tax-invoice-modal'
+import { CheckResiModal } from '@/components/shipping/check-resi-modal'
 import { usePageGuard } from '@/hooks/use-page-guard'
 
 interface OrderItem {
@@ -88,7 +92,9 @@ interface Order {
   status: string
   createdAt: string
   notes?: string | null
+  userId?: string
   user: {
+    id?: string
     name: string | null
     email: string
     phone: string | null
@@ -234,8 +240,12 @@ export default function AdminOrdersPage() {
     useState<Order | null>(null)
   const [showLiveTracker, setShowLiveTracker] = useState(false)
   const [taxInvoiceOrder, setTaxInvoiceOrder] = useState<Order | null>(null)
+  const [showCheckResiModal, setShowCheckResiModal] = useState(false)
+  const [checkResiQuery, setCheckResiQuery] = useState('')
 
   const [syncingStatusId, setSyncingStatusId] = useState<string | null>(null)
+  const [isConnectingChat, setIsConnectingChat] = useState(false)
+  const router = useRouter()
 
   // Debounce search input
   useEffect(() => {
@@ -484,6 +494,40 @@ export default function AdminOrdersPage() {
     }
   }
 
+  // Hubungi Customer via Chat dengan konteks pesanan utuh
+  const handleChatCustomer = async (order: Order) => {
+    try {
+      setIsConnectingChat(true)
+      const customerId = order.user?.id || (order as any).userId
+
+      // 1. Dapatkan atau buat ruang chat
+      const res = await fetch('/api/admin/chat/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          customerId,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.room?.id) {
+        throw new Error(data.error || 'Gagal membuka ruang chat')
+      }
+
+      const roomId = data.room.id
+
+      // 2. Tutup modal pesanan dan arahkan ke admin chat dengan konteks orderId aktif
+      setSelectedOrder(null)
+      router.push(`/dashboard/admin/chat?roomId=${roomId}&orderId=${order.id}`)
+    } catch (err: any) {
+      console.error('Error connecting to customer chat:', err)
+      toast.error(err.message || 'Gagal menghubungkan ke chat customer')
+    } finally {
+      setIsConnectingChat(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-5 pb-16">
       {/* 1. Unified Control Panel (Identik dengan Manajemen Produk) */}
@@ -510,6 +554,18 @@ export default function AdminOrdersPage() {
               {tab.label}
             </button>
           ))}
+
+          {/* Tombol Cek Resi (Modal Langsung Tanpa Pindah Halaman) */}
+          <button
+            type="button"
+            onClick={() => {
+              setCheckResiQuery('')
+              setShowCheckResiModal(true)
+            }}
+            className="cursor-pointer whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold text-slate-500 transition-all duration-200 hover:bg-white hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+          >
+            Cek Resi
+          </button>
         </div>
 
         {/* Right: Search & Refresh */}
@@ -725,9 +781,18 @@ export default function AdminOrdersPage() {
                           </span>
                           {order.trackingNumber ? (
                             <div className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                              <span className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setCheckResiQuery(order.trackingNumber || '')
+                                  setShowCheckResiModal(true)
+                                }}
+                                title="Klik untuk Lacak Resi Ini"
+                                className="cursor-pointer rounded bg-slate-100 px-1 py-0.5 transition hover:bg-blue-100 hover:text-blue-700 dark:bg-slate-800 dark:hover:bg-blue-950/60 dark:hover:text-blue-300"
+                              >
                                 {order.trackingNumber}
-                              </span>
+                              </button>
                               <button
                                 type="button"
                                 title="Cetak Label Thermal"
@@ -1070,21 +1135,26 @@ export default function AdminOrdersPage() {
                         </div>
                       </div>
 
-                      {selectedOrder.user?.phone && (
-                        <div className="pt-1">
-                          <a
-                            href={`https://wa.me/${selectedOrder.user.phone.replace(/[^0-9]/g, '')}?text=Halo%20${encodeURIComponent(selectedOrder.user.name || '')},%20kami%20dari%20${encodeURIComponent(selectedOrder.store?.name || 'Affiliate Gadget')}%20ingin%20mengonfirmasi%20pesanan%20%23${selectedOrder.orderNumber}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="shadow-2xs flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                          >
-                            <Phone className="h-3.5 w-3.5 text-slate-500" />
-                            <span>
-                              Hubungi via WhatsApp ({selectedOrder.user.phone})
-                            </span>
-                          </a>
-                        </div>
-                      )}
+                      {/* Hubungi Customer via Chat */}
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          disabled={isConnectingChat}
+                          onClick={() => handleChatCustomer(selectedOrder)}
+                          className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          {isConnectingChat ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
+                          ) : (
+                            <MessageSquare className="h-3.5 w-3.5 text-slate-500" />
+                          )}
+                          <span>
+                            {isConnectingChat
+                              ? 'Menghubungkan ke Chat...'
+                              : 'Hubungi via Chat'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Destination Address Card */}
@@ -1171,9 +1241,9 @@ export default function AdminOrdersPage() {
                               onClick={() =>
                                 handleOpenThermalLabel(selectedOrder)
                               }
-                              className="shadow-2xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                              className="shadow-2xs inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             >
-                              <Printer className="h-3.5 w-3.5 text-slate-500" />
+                              <Printer className="ml-1.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
                               <span>Cetak Label Thermal</span>
                             </button>
                             <button
@@ -1421,6 +1491,13 @@ export default function AdminOrdersPage() {
         isOpen={Boolean(taxInvoiceOrder)}
         onClose={() => setTaxInvoiceOrder(null)}
         order={taxInvoiceOrder as any}
+      />
+
+      {/* Modal Cek Resi Pengiriman (Tetap di Halaman Ini) */}
+      <CheckResiModal
+        isOpen={showCheckResiModal}
+        onClose={() => setShowCheckResiModal(false)}
+        initialQuery={checkResiQuery}
       />
     </div>
   )

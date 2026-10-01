@@ -84,7 +84,7 @@ export function LiveChatPanel({
       {/* Panel Header */}
       <div className="flex items-center justify-between border-b border-white/10 bg-slate-950/40 px-4 py-3">
         <div className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-orange-400" />
+          <MessageSquare className="h-4 w-4 text-slate-300" />
           <h3 className="text-sm font-semibold text-white">Live Chat</h3>
           <span className="text-[11px] text-slate-400">
             ({messages.length})
@@ -180,13 +180,13 @@ export function LiveChatPanel({
             }
             disabled={!isConnected}
             maxLength={300}
-            className="focus:outline-hidden flex-1 rounded-xl border border-white/10 bg-slate-800/90 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 transition-colors focus:border-orange-500"
+            className="focus:outline-hidden flex-1 rounded-xl border border-white/10 bg-slate-800/90 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 transition-colors focus:border-blue-500"
           />
 
           <button
             type="submit"
             disabled={!inputText.trim() || !isConnected}
-            className="cursor-pointer rounded-xl bg-orange-500 p-2.5 font-medium text-white shadow-md transition-all hover:bg-orange-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-orange-500"
+            className="cursor-pointer rounded-xl bg-blue-600 p-2.5 font-medium text-white shadow-md transition-all hover:bg-blue-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-blue-600"
           >
             <Send className="h-4 w-4" />
           </button>

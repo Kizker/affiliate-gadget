@@ -2,7 +2,9 @@
 
 import React from 'react'
 import { SidebarProvider, useSidebar } from '@/context/sidebar-context'
+import { AdminNotificationsProvider } from '@/context/admin-notifications-context'
 import { Sidebar } from '@/components/dashboard/sidebar'
+import { AdminNotificationBell } from '@/components/dashboard/admin-notification-bell'
 import { PanelLeft, ExternalLink, Store } from 'lucide-react'
 
 import Link from 'next/link'
@@ -44,8 +46,10 @@ function AdminLayoutInner({
             </button>
           </div>
 
-          {/* Right Header Quick Links */}
-          <div className="flex items-center gap-2">
+          {/* Right Header Quick Links & Notifications */}
+          <div className="flex items-center gap-2.5">
+            <AdminNotificationBell />
+
             <Link
               href="/"
               target="_blank"
@@ -99,7 +103,9 @@ export function AdminLayoutClient({
 }) {
   return (
     <SidebarProvider>
-      <AdminLayoutInner userRole={userRole}>{children}</AdminLayoutInner>
+      <AdminNotificationsProvider>
+        <AdminLayoutInner userRole={userRole}>{children}</AdminLayoutInner>
+      </AdminNotificationsProvider>
     </SidebarProvider>
   )
 }

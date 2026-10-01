@@ -302,7 +302,7 @@ function LiveKitStudioControls({
         <div className="flex h-2/5 min-h-[220px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/90 p-4 shadow-xl backdrop-blur-md">
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
-              <ShoppingBag className="h-4 w-4 text-orange-400" />
+              <ShoppingBag className="h-4 w-4 text-slate-300" />
               <span>Sematan Produk ({products.length})</span>
             </div>
             {pinnedProduct && (
@@ -328,7 +328,7 @@ function LiveKitStudioControls({
                     key={p.id}
                     className={`flex items-center justify-between rounded-xl border p-2 text-xs transition-all ${
                       isPinned
-                        ? 'border-orange-500/40 bg-orange-500/10 text-orange-200'
+                        ? 'border-white/30 bg-white/10 text-white'
                         : 'border-white/5 bg-white/5 text-slate-300 hover:bg-white/10'
                     }`}
                   >
@@ -349,7 +349,7 @@ function LiveKitStudioControls({
                         <p className="max-w-[130px] truncate font-medium">
                           {p.name}
                         </p>
-                        <p className="text-[11px] font-bold text-orange-400">
+                        <p className="text-[11px] font-bold text-slate-300">
                           Rp {p.price.toLocaleString('id-ID')}
                         </p>
                       </div>
@@ -360,8 +360,8 @@ function LiveKitStudioControls({
                       disabled={isPinned}
                       className={`flex cursor-pointer items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
                         isPinned
-                          ? 'cursor-default bg-orange-500 text-white'
-                          : 'bg-white/10 text-slate-300 hover:bg-orange-500 hover:text-white'
+                          ? 'cursor-default bg-white font-bold text-slate-950'
+                          : 'bg-white/10 text-slate-300 hover:bg-white hover:text-slate-950'
                       }`}
                     >
                       <Pin className="h-3 w-3" />
@@ -528,11 +528,13 @@ export function LiveStreamBroadcaster() {
   if (step === 'live' && activeStream) {
     if (isTokenLoading) {
       return (
-        <div className="flex min-h-[500px] flex-col items-center justify-center text-white">
-          <RefreshCw className="mb-4 h-10 w-10 animate-spin text-orange-500" />
-          <h3 className="text-lg font-bold">Mempersiapkan Studio LiveKit...</h3>
-          <p className="text-sm text-slate-400">
-            Menghubungkan kamera & mikrofon
+        <div className="flex min-h-[400px] flex-col items-center justify-center text-slate-800 dark:text-slate-200">
+          <RefreshCw className="mb-4 h-8 w-8 animate-spin text-slate-600 dark:text-slate-400" />
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            Mempersiapkan Studio LiveKit...
+          </h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Menghubungkan kamera & mikrofon perangkat
           </p>
         </div>
       )
@@ -540,16 +542,17 @@ export function LiveStreamBroadcaster() {
 
     if (tokenError || !livekitToken) {
       return (
-        <div className="mx-auto my-12 max-w-lg rounded-3xl border border-rose-500/30 bg-slate-900 p-8 text-center text-white">
-          <p className="mb-2 font-bold text-rose-400">
+        <div className="shadow-2xs mx-auto my-12 max-w-lg rounded-3xl border border-rose-200 bg-white p-8 text-center text-slate-900 dark:border-rose-900/50 dark:bg-slate-900 dark:text-white">
+          <p className="mb-2 text-sm font-bold text-rose-600 dark:text-rose-400">
             Gagal Menghubungkan ke LiveKit
           </p>
-          <p className="mb-6 text-sm text-slate-300">
-            {tokenError || 'Kredensial token tidak valid'}
+          <p className="mb-6 text-xs text-slate-500 dark:text-slate-400">
+            {tokenError ||
+              'Kredensial token tidak valid atau sesi siaran telah berakhir'}
           </p>
           <button
             onClick={() => setStep('idle')}
-            className="cursor-pointer rounded-xl bg-slate-800 px-6 py-2.5 text-sm font-semibold hover:bg-slate-700"
+            className="shadow-2xs active:scale-98 cursor-pointer rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-950"
           >
             Kembali ke Beranda Live
           </button>
@@ -581,32 +584,39 @@ export function LiveStreamBroadcaster() {
   // 2. STEP: SETUP STREAM FORM
   if (step === 'setup') {
     return (
-      <div className="mx-auto max-w-2xl rounded-3xl border border-white/10 bg-slate-900/90 p-6 text-white shadow-2xl sm:p-8">
+      <div className="shadow-2xs mx-auto max-w-2xl rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8">
         <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Radio className="h-6 w-6 animate-pulse text-orange-500" />
-            <h2 className="text-xl font-bold">
-              Persiapan Siaran Langsung Baru
-            </h2>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              <Radio className="h-4.5 w-4.5 text-slate-800 dark:text-slate-200" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+                Persiapan Siaran Langsung Baru
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Lengkapi rincian siaran dan sematkan produk katalog toko Anda
+              </p>
+            </div>
           </div>
           <button
             onClick={() => setStep('idle')}
-            className="text-xs text-slate-400 hover:text-white"
+            className="dark:hover:bg-slate-750 cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
           >
             Batal
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/20 p-3 text-xs text-rose-300">
+          <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
             {error}
           </div>
         )}
 
         <form onSubmit={handleCreateStream} className="space-y-5">
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-300">
-              Judul Siaran Langsung *
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Judul Siaran Langsung <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -614,12 +624,12 @@ export function LiveStreamBroadcaster() {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="Contoh: Flash Sale iPhone 15 Pro Max & Promo Garansi 30 Hari!"
-              className="focus:outline-hidden w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-orange-500"
+              className="focus:outline-hidden w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:focus:border-slate-500"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-300">
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
               Deskripsi Singkat (Opsional)
             </label>
             <textarea
@@ -629,22 +639,22 @@ export function LiveStreamBroadcaster() {
                 setForm({ ...form, description: e.target.value })
               }
               placeholder="Tuliskan info promo, unit yang akan di-review, atau diskon khusus penonton..."
-              className="focus:outline-hidden w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-orange-500"
+              className="focus:outline-hidden w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:focus:border-slate-500"
             />
           </div>
 
           {/* Select Featured Products */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Pilih Produk yang Akan Dijual (Maks. 5)
               </label>
-              <span className="text-[11px] text-orange-400">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                 {featuredProductIds.length} / 5 dipilih
               </span>
             </div>
 
-            <div className="scrollbar-thin scrollbar-thumb-slate-700 max-h-56 space-y-2 overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/40 p-2">
+            <div className="max-h-60 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/60 p-2.5 dark:border-slate-800 dark:bg-slate-950/40">
               {products.slice(0, 15).map((p) => {
                 const isSelected = featuredProductIds.includes(p.id)
                 return (
@@ -659,14 +669,14 @@ export function LiveStreamBroadcaster() {
                         setFeaturedProductIds([...featuredProductIds, p.id])
                       }
                     }}
-                    className={`flex cursor-pointer items-center justify-between rounded-xl p-2 transition-all ${
+                    className={`flex cursor-pointer items-center justify-between rounded-xl p-2.5 transition-all ${
                       isSelected
-                        ? 'border border-orange-500/50 bg-orange-500/20 text-white'
-                        : 'border border-transparent bg-white/5 text-slate-300 hover:bg-white/10'
+                        ? 'shadow-2xs border border-slate-900 bg-white text-slate-900 dark:border-white dark:bg-slate-800 dark:text-white'
+                        : 'border border-transparent bg-white/70 text-slate-700 hover:bg-white dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-900'
                     }`}
                   >
-                    <div className="flex min-w-0 items-center gap-2.5 pr-2">
-                      <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-slate-800">
+                    <div className="flex min-w-0 items-center gap-3 pr-2">
+                      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
                         {p.images[0] && (
                           <Image
                             src={p.images[0]}
@@ -677,17 +687,19 @@ export function LiveStreamBroadcaster() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-medium">{p.name}</p>
-                        <p className="text-[11px] font-bold text-orange-400">
+                        <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
+                          {p.name}
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
                           Rp {p.price.toLocaleString('id-ID')}
                         </p>
                       </div>
                     </div>
                     <div
-                      className={`flex h-4 w-4 items-center justify-center rounded-full border text-[10px] ${
+                      className={`flex h-5 w-5 items-center justify-center rounded-md border text-xs transition-colors ${
                         isSelected
-                          ? 'border-orange-500 bg-orange-500 font-bold text-white'
-                          : 'border-slate-500'
+                          ? 'border-slate-900 bg-slate-900 font-bold text-white dark:border-white dark:bg-white dark:text-slate-950'
+                          : 'border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-800'
                       }`}
                     >
                       {isSelected ? '✓' : ''}
@@ -702,7 +714,7 @@ export function LiveStreamBroadcaster() {
             <button
               type="submit"
               disabled={loading}
-              className="active:scale-98 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 py-3.5 text-sm font-bold text-white shadow-xl transition-all hover:from-orange-600 hover:to-amber-600 disabled:opacity-50"
+              className="shadow-2xs active:scale-98 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-xs font-semibold text-white transition-all hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
             >
               <Radio className="h-4 w-4" />
               <span>
@@ -719,59 +731,130 @@ export function LiveStreamBroadcaster() {
 
   // 3. STEP: IDLE (DAFTAR SIARAN & TOMBOL MULAI)
   return (
-    <div className="space-y-6 text-white">
+    <div className="space-y-6 text-slate-900 dark:text-slate-100">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 shadow-xl sm:p-8">
-        <div className="relative z-10 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 animate-ping rounded-full bg-orange-500" />
-              <span className="text-xs font-bold uppercase tracking-wider text-orange-400">
-                Live Streaming Hub (LiveKit SFU)
-              </span>
+      <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100/80 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span>Live Shopping Studio</span>
             </div>
-            <h1 className="text-2xl font-black">Studio Siaran Langsung Toko</h1>
-            <p className="mt-1 max-w-xl text-sm text-slate-300">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+              Studio Siaran Langsung Toko
+            </h1>
+            <p className="max-w-xl text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
               Siarkan produk gadget langsung dari toko fisik Anda dengan latensi
-              rendah, interaksi chat WebSocket real-time, dan sematan produk
-              langsung ke keranjang pembeli.
+              rendah, interaksi chat pelanggan real-time, dan sematkan produk
+              langsung ke keranjang belanja.
             </p>
           </div>
 
-          <button
-            onClick={() => setStep('setup')}
-            className="flex shrink-0 cursor-pointer items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3 text-sm font-bold text-white shadow-xl transition-all hover:from-orange-600 hover:to-amber-600 active:scale-95"
-          >
-            <Radio className="h-4 w-4" />
-            <span>Mulai Siaran Baru</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href="/live"
+              target="_blank"
+              className="shadow-2xs active:scale-98 dark:hover:bg-slate-750 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+              <span>Halaman Live Publik</span>
+            </Link>
+            <button
+              onClick={() => setStep('setup')}
+              className="shadow-2xs active:scale-98 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+            >
+              <Radio className="h-3.5 w-3.5" />
+              <span>Mulai Siaran Baru</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Studio Info Bento Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Infrastruktur Siaran
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+              <Radio className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
+            LiveKit SFU Cloud
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+            Ultra-low latency streaming
+          </p>
+        </div>
+
+        <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Katalog Toko
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+              <ShoppingBag className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
+            {products.length} Unit Siap Semat
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+            Langsung checkout dari live chat
+          </p>
+        </div>
+
+        <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Riwayat Siaran
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+              <Play className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
+            {streams.length} Total Sesi
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+            {streams.filter((s) => s.status === 'LIVE').length} sedang mengudara
+          </p>
         </div>
       </div>
 
       {/* Streams Grid */}
-      <div>
-        <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
-          <span>Daftar Siaran Toko</span>
-          <span className="text-xs font-normal text-slate-400">
-            ({streams.length})
-          </span>
-        </h2>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
+              Daftar Sesi Siaran Toko
+            </h2>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+              {streams.length}
+            </span>
+          </div>
+        </div>
 
         {streams.length === 0 ? (
-          <div className="rounded-3xl border border-white/5 bg-slate-900/50 py-16 text-center">
-            <Radio className="mx-auto mb-3 h-12 w-12 text-slate-600" />
-            <h3 className="text-base font-bold text-slate-300">
+          <div className="shadow-2xs rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <Radio className="stroke-1.5 h-6 w-6" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               Belum Ada Sesi Siaran
             </h3>
-            <p className="mx-auto mb-6 mt-1 max-w-md text-xs text-slate-500">
-              Mulai live streaming pertama Anda untuk meningkatkan penjualan
-              produk gadget cabang toko fisik Anda.
+            <p className="mx-auto mb-5 mt-1 max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              Mulai live streaming pertama toko cabang Anda untuk mempromosikan
+              katalog gadget dengan interaksi real-time kepada pembeli.
             </p>
             <button
               onClick={() => setStep('setup')}
-              className="cursor-pointer rounded-xl bg-orange-500 px-5 py-2.5 text-xs font-semibold text-white transition-all hover:bg-orange-600"
+              className="shadow-2xs active:scale-98 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
             >
-              Buat Siaran Sekarang
+              <Radio className="h-3.5 w-3.5" />
+              <span>Buat Sesi Siaran Sekarang</span>
             </button>
           </div>
         ) : (
@@ -781,35 +864,38 @@ export function LiveStreamBroadcaster() {
               return (
                 <div
                   key={s.id}
-                  className="flex flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-lg transition-all hover:border-white/20"
+                  className="shadow-2xs flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
                 >
                   <div>
-                    <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="mb-2.5 flex items-center justify-between gap-2">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
                           isLive
-                            ? 'animate-pulse bg-rose-500/20 text-rose-400'
+                            ? 'animate-pulse border border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300'
                             : s.status === 'ENDED'
-                              ? 'bg-slate-800 text-slate-400'
-                              : 'bg-amber-500/20 text-amber-400'
+                              ? 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400'
+                              : 'border border-amber-200/80 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300'
                         }`}
                       >
+                        {isLive && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-rose-600" />
+                        )}
                         {s.status}
                       </span>
-                      <span className="font-mono text-xs text-slate-400">
+                      <span className="font-mono text-xs text-slate-400 dark:text-slate-500">
                         {s.viewerCount} penonton
                       </span>
                     </div>
-                    <h3 className="line-clamp-2 text-sm font-bold text-white">
+                    <h3 className="line-clamp-2 text-sm font-bold text-slate-900 dark:text-white">
                       {s.title}
                     </h3>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+                  <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                     <Link
                       href={`/live/${s.id}`}
                       target="_blank"
-                      className="flex items-center gap-1 text-xs text-slate-400 transition-colors hover:text-white"
+                      className="flex items-center gap-1 text-xs font-semibold text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                       <span>Lihat Publik</span>
@@ -818,13 +904,13 @@ export function LiveStreamBroadcaster() {
                     {s.status !== 'ENDED' ? (
                       <button
                         onClick={() => handleEnterStudio(s)}
-                        className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-md transition-all hover:bg-orange-600 active:scale-95"
+                        className="shadow-2xs active:scale-98 flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
                       >
-                        <Play className="h-3.5 w-3.5 fill-white" />
+                        <Play className="h-3.5 w-3.5 fill-current" />
                         <span>Buka Studio</span>
                       </button>
                     ) : (
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
                         Siaran Selesai
                       </span>
                     )}

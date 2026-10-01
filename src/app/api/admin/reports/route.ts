@@ -483,26 +483,36 @@ export async function GET(request: NextRequest) {
         : '0.0'
 
     const recentActivityFormatted = recentOrders.map((order) => {
-      const orderGrossRevenue = order.items.reduce(
-        (sum, item) => sum + item.price * (item.quantity || 1),
-        0
-      )
-      const orderCOGS = order.items.reduce(
-        (sum, item) => sum + (item.costPrice ?? 0) * (item.quantity || 1),
-        0
-      )
-      const orderGrossProfit = orderGrossRevenue - orderCOGS
+      const isCancelled =
+        order.status === 'CANCELLED' || order.status === 'RETURNED'
+
+      const orderGrossRevenue = isCancelled
+        ? 0
+        : order.items.reduce(
+            (sum, item) => sum + item.price * (item.quantity || 1),
+            0
+          )
+      const orderCOGS = isCancelled
+        ? 0
+        : order.items.reduce(
+            (sum, item) => sum + (item.costPrice ?? 0) * (item.quantity || 1),
+            0
+          )
+      const orderGrossProfit = isCancelled ? 0 : orderGrossRevenue - orderCOGS
       const orderGrossMarginPct =
-        orderGrossRevenue > 0
+        !isCancelled && orderGrossRevenue > 0
           ? Number(((orderGrossProfit / orderGrossRevenue) * 100).toFixed(2))
           : 0
-      const orderCommission = order.commissionAmount ?? 0
-      const orderPacking = order.store?.defaultPackingFee ?? 5000
-      const orderDiscount = order.discountAmount ?? 0
-      const orderNetProfit =
-        orderGrossProfit - (orderCommission + orderPacking + orderDiscount)
+      const orderCommission = isCancelled ? 0 : (order.commissionAmount ?? 0)
+      const orderPacking = isCancelled
+        ? 0
+        : (order.store?.defaultPackingFee ?? 5000)
+      const orderDiscount = isCancelled ? 0 : (order.discountAmount ?? 0)
+      const orderNetProfit = isCancelled
+        ? 0
+        : orderGrossProfit - (orderCommission + orderPacking + orderDiscount)
       const orderNetMarginPct =
-        orderGrossRevenue > 0
+        !isCancelled && orderGrossRevenue > 0
           ? Number(((orderNetProfit / orderGrossRevenue) * 100).toFixed(2))
           : 0
 
@@ -516,8 +526,8 @@ export async function GET(request: NextRequest) {
           platformCommission: orderCommission,
           packingCost: orderPacking,
           voucherDiscount: orderDiscount,
-          shippingCost: order.shippingCost ?? 0,
-          insuranceFee: order.insuranceFee ?? 0,
+          shippingCost: isCancelled ? 0 : (order.shippingCost ?? 0),
+          insuranceFee: isCancelled ? 0 : (order.insuranceFee ?? 0),
           netProfit: orderNetProfit,
           netMarginPct: orderNetMarginPct,
         },

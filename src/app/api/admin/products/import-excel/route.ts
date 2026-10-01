@@ -132,13 +132,14 @@ function extractVariantSpecs(variantName: string, productName: string) {
 export async function POST(request: Request) {
   try {
     const session = await auth()
+    const userRole = session?.user?.role
 
-    // Strict Authorization: Only SUPER_ADMIN
-    if (session?.user?.role !== 'SUPER_ADMIN') {
+    // Strict Authorization: SUPER_ADMIN or STORE_ADMIN
+    if (userRole !== 'SUPER_ADMIN' && userRole !== 'STORE_ADMIN') {
       return NextResponse.json(
         {
           error:
-            'Akses ditolak: Fitur update harga & stok massal hanya dapat diakses oleh Superadmin.',
+            'Akses ditolak: Fitur update harga & stok massal hanya dapat diakses oleh Superadmin dan Admin Toko.',
         },
         { status: 403 }
       )
@@ -147,10 +148,52 @@ export async function POST(request: Request) {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const mirrorModeParam = formData.get('mirrorMode')
+    const storeIdParam =
+      (formData.get('storeId') as string | null)?.trim() || null
     const isMirrorMode =
       mirrorModeParam === null ||
       mirrorModeParam === 'true' ||
       mirrorModeParam === '1'
+
+    let storeScope: string = 'ALL'
+
+    if (userRole === 'STORE_ADMIN') {
+      let storeId = session?.user?.storeId
+      if (!storeId && session?.user?.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        storeId = u?.storeId || null
+      }
+      if (!storeId) {
+        return NextResponse.json(
+          {
+            error:
+              'Akses gagal: Akun Admin Toko Anda belum terhubung ke toko cabang manapun.',
+          },
+          { status: 400 }
+        )
+      }
+      storeScope = storeId
+    } else {
+      // SUPER_ADMIN: storeScope can be 'ALL' or a specific storeId
+      if (storeIdParam && storeIdParam !== 'ALL') {
+        const storeExists = await prisma.store.findUnique({
+          where: { id: storeIdParam },
+          select: { id: true, name: true },
+        })
+        if (!storeExists) {
+          return NextResponse.json(
+            { error: 'Cabang toko target yang dipilih tidak ditemukan.' },
+            { status: 404 }
+          )
+        }
+        storeScope = storeIdParam
+      } else {
+        storeScope = 'ALL'
+      }
+    }
 
     if (!file) {
       return NextResponse.json(
@@ -367,9 +410,11 @@ export async function POST(request: Request) {
     const allStores = await prisma.store.findMany({
       select: { id: true, name: true, city: true },
     })
-    const defaultStoreId = allStores[0]?.id || null
+    const defaultStoreId =
+      storeScope !== 'ALL' ? storeScope : allStores[0]?.id || null
 
     const findStoreId = (rawStore: string): string | null => {
+      if (storeScope !== 'ALL') return storeScope
       if (!rawStore || allStores.length === 0) return defaultStoreId
       const q = rawStore.toLowerCase().trim()
       const found = allStores.find(
@@ -613,7 +658,10 @@ export async function POST(request: Request) {
               include: { product: true },
             })
 
-            if (variant) {
+            if (
+              variant &&
+              (storeScope === 'ALL' || variant.product.storeId === storeScope)
+            ) {
               let hasChanges = false
               const variantUpdates: any = {}
 
@@ -656,7 +704,12 @@ export async function POST(request: Request) {
           // ─── 2. Match by Existing SKU ───────────────────────────────
           if (!processed && cleanSku) {
             const variant = await tx.productVariant.findFirst({
-              where: { sku: cleanSku },
+              where: {
+                sku: cleanSku,
+                ...(storeScope !== 'ALL'
+                  ? { product: { storeId: storeScope } }
+                  : {}),
+              },
               include: { product: true },
             })
 
@@ -717,8 +770,11 @@ export async function POST(request: Request) {
 
             // If not in cache, query database by ID or Shopee Item ID
             if (!product && cleanKodeProduk) {
-              product = await tx.product.findUnique({
-                where: { id: cleanKodeProduk },
+              product = await tx.product.findFirst({
+                where: {
+                  id: cleanKodeProduk,
+                  ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
+                },
                 include: { variants: true },
               })
 
@@ -729,6 +785,7 @@ export async function POST(request: Request) {
                       path: ['shopeeItemId'],
                       equals: cleanKodeProduk,
                     },
+                    ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
                   },
                   include: { variants: true },
                 })
@@ -743,6 +800,7 @@ export async function POST(request: Request) {
                     equals: item.namaProduk.trim(),
                     mode: 'insensitive',
                   },
+                  ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
                 },
                 include: { variants: true },
               })
@@ -756,6 +814,7 @@ export async function POST(request: Request) {
                     equals: item.skuInduk.trim(),
                     mode: 'insensitive',
                   },
+                  ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
                 },
                 include: { variants: true },
               })
@@ -989,7 +1048,10 @@ export async function POST(request: Request) {
 
           // B. Product-Level Pruning: Remove or deactivate products in website NOT present in Excel
           const allDbProducts = await tx.product.findMany({
-            where: { isActive: true },
+            where: {
+              isActive: true,
+              ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
+            },
             select: {
               id: true,
               name: true,
@@ -1072,11 +1134,16 @@ export async function POST(request: Request) {
     const totalDeleted =
       deletedProductsCount + deletedVariantsCount + deactivatedProductsCount
 
+    const targetStoreName =
+      storeScope !== 'ALL'
+        ? allStores.find((s) => s.id === storeScope)?.name || 'Toko Cabang'
+        : 'Semua Cabang Toko'
+
     let summaryMsg = ''
     if (updatedCount === 0 && createdCount === 0 && totalDeleted === 0) {
-      summaryMsg = `Pemeriksaan selesai: Katalog website sudah 100% identik dengan Excel (${unchangedCount} unit sama).`
+      summaryMsg = `Pemeriksaan selesai (${targetStoreName}): Katalog website sudah 100% identik dengan Excel (${unchangedCount} unit sama).`
     } else {
-      summaryMsg = `Sinkronisasi katalog berhasil:`
+      summaryMsg = `Sinkronisasi katalog (${targetStoreName}) berhasil:`
       const parts: string[] = []
       if (updatedCount > 0) parts.push(`${updatedCount} unit diperbarui`)
       if (createdCount > 0)

@@ -18,12 +18,22 @@ export async function GET() {
       where: { userId },
     })
 
+    // Clean up abandoned empty technician chat rooms (older than 30 seconds and 0 messages)
+    await prisma.chatRoom
+      .deleteMany({
+        where: {
+          messages: { none: {} },
+          createdAt: { lt: new Date(Date.now() - 30 * 1000) },
+        },
+      })
+      .catch(() => {})
+
     let rooms
 
     if (technician) {
-      // Get rooms where user is the technician
+      // Get rooms where user is the technician (only with messages)
       rooms = await prisma.chatRoom.findMany({
-        where: { technicianId: technician.id },
+        where: { technicianId: technician.id, messages: { some: {} } },
         include: {
           customer: {
             select: {
@@ -90,9 +100,9 @@ export async function GET() {
         orderBy: { lastMessageAt: 'desc' },
       })
     } else {
-      // Get rooms where user is the customer
+      // Get rooms where user is the customer (only with messages)
       rooms = await prisma.chatRoom.findMany({
-        where: { customerId: userId },
+        where: { customerId: userId, messages: { some: {} } },
         include: {
           customer: {
             select: {

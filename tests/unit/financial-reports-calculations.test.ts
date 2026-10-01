@@ -194,4 +194,132 @@ describe('Financial Reports Gross/Net Profit & COGS Engine (Phase 5)', () => {
     expect(result.netProfit).toBe(0)
     expect(result.netMarginPct).toBe(0)
   })
+
+  it('should strictly evaluate CANCELLED and RETURNED orders to Rp 0 for all financial metrics', () => {
+    interface ActivityOrder {
+      id: string
+      orderNumber: string
+      status: string
+      total: number
+      commissionAmount: number | null
+      discountAmount: number | null
+      shippingCost: number | null
+      insuranceFee: number | null
+      store?: { defaultPackingFee: number } | null
+      items: MockOrderItem[]
+    }
+
+    function formatRecentOrderFinancials(order: ActivityOrder) {
+      const isCancelled =
+        order.status === 'CANCELLED' || order.status === 'RETURNED'
+
+      const grossRevenue = isCancelled
+        ? 0
+        : order.items.reduce(
+            (sum, item) => sum + item.price * (item.quantity || 1),
+            0
+          )
+      const cogs = isCancelled
+        ? 0
+        : order.items.reduce(
+            (sum, item) => sum + (item.costPrice ?? 0) * (item.quantity || 1),
+            0
+          )
+      const grossProfit = isCancelled ? 0 : grossRevenue - cogs
+      const grossMarginPct =
+        !isCancelled && grossRevenue > 0
+          ? Number(((grossProfit / grossRevenue) * 100).toFixed(2))
+          : 0
+      const platformCommission = isCancelled ? 0 : (order.commissionAmount ?? 0)
+      const packingCost = isCancelled
+        ? 0
+        : (order.store?.defaultPackingFee ?? 5000)
+      const voucherDiscount = isCancelled ? 0 : (order.discountAmount ?? 0)
+      const totalExpense = isCancelled
+        ? 0
+        : platformCommission + packingCost + voucherDiscount
+      const netProfit = isCancelled ? 0 : grossProfit - totalExpense
+      const netMarginPct =
+        !isCancelled && grossRevenue > 0
+          ? Number(((netProfit / grossRevenue) * 100).toFixed(2))
+          : 0
+
+      return {
+        grossRevenue,
+        cogs,
+        grossProfit,
+        grossMarginPct,
+        platformCommission,
+        packingCost,
+        voucherDiscount,
+        shippingCost: isCancelled ? 0 : (order.shippingCost ?? 0),
+        insuranceFee: isCancelled ? 0 : (order.insuranceFee ?? 0),
+        totalExpense,
+        netProfit,
+        netMarginPct,
+      }
+    }
+
+    // Order CANCELLED persis seperti pada screenshot (iPhone 16 Pro Max Rp 29.200.000)
+    const cancelledOrder: ActivityOrder = {
+      id: 'ord-cancelled',
+      orderNumber: 'SPR-20260930-F004E40E',
+      status: 'CANCELLED',
+      total: 29200000,
+      commissionAmount: 438000,
+      discountAmount: 0,
+      shippingCost: 35000,
+      insuranceFee: 58400,
+      store: { defaultPackingFee: 5000 },
+      items: [
+        {
+          price: 29200000,
+          costPrice: 27000000,
+          quantity: 1,
+        },
+      ],
+    }
+
+    const cancelledFin = formatRecentOrderFinancials(cancelledOrder)
+
+    expect(cancelledFin.grossRevenue).toBe(0)
+    expect(cancelledFin.cogs).toBe(0)
+    expect(cancelledFin.grossProfit).toBe(0)
+    expect(cancelledFin.grossMarginPct).toBe(0)
+    expect(cancelledFin.platformCommission).toBe(0)
+    expect(cancelledFin.packingCost).toBe(0)
+    expect(cancelledFin.totalExpense).toBe(0)
+    expect(cancelledFin.shippingCost).toBe(0)
+    expect(cancelledFin.insuranceFee).toBe(0)
+    expect(cancelledFin.netProfit).toBe(0)
+    expect(cancelledFin.netMarginPct).toBe(0)
+
+    // Order COMPLETED harus menghitung normal
+    const completedOrder: ActivityOrder = {
+      id: 'ord-completed',
+      orderNumber: 'SPR-20261001-7298F9EA',
+      status: 'COMPLETED',
+      total: 5199000,
+      commissionAmount: 77985,
+      discountAmount: 0,
+      shippingCost: 20000,
+      insuranceFee: 10398,
+      store: { defaultPackingFee: 5000 },
+      items: [
+        {
+          price: 5199000,
+          costPrice: 4200000,
+          quantity: 1,
+        },
+      ],
+    }
+
+    const completedFin = formatRecentOrderFinancials(completedOrder)
+
+    expect(completedFin.grossRevenue).toBe(5199000)
+    expect(completedFin.cogs).toBe(4200000)
+    expect(completedFin.grossProfit).toBe(999000)
+    expect(completedFin.totalExpense).toBe(77985 + 5000) // 82985
+    expect(completedFin.netProfit).toBe(999000 - 82985) // 916015
+  })
 })

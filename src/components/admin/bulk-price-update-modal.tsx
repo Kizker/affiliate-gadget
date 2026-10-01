@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { CustomSelect } from '@/components/ui/custom-select'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +19,8 @@ import {
   X,
   FileCheck,
   RefreshCw,
+  Store,
+  Building2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -24,6 +28,7 @@ interface BulkPriceUpdateModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
+  stores?: Array<{ id: string; name: string; city?: string }>
 }
 
 interface UpdateResult {
@@ -42,7 +47,19 @@ export function BulkPriceUpdateModal({
   isOpen,
   onClose,
   onSuccess,
+  stores: initialStores,
 }: BulkPriceUpdateModalProps) {
+  const { data: session } = useSession()
+  const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
+  const isStoreAdmin = session?.user?.role === 'STORE_ADMIN'
+  const userStoreId = session?.user?.storeId
+
+  const [stores, setStores] = useState<
+    Array<{ id: string; name: string; city?: string }>
+  >(initialStores || [])
+  const [selectedTargetStore, setSelectedTargetStore] = useState<string>('ALL')
+  const [loadingStores, setLoadingStores] = useState<boolean>(false)
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [mirrorMode, setMirrorMode] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
@@ -52,24 +69,91 @@ export function BulkPriceUpdateModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  useEffect(() => {
+    if (!isOpen) return
+    let isMounted = true
+
+    const loadStores = async () => {
+      if (initialStores && initialStores.length > 0) {
+        setStores(initialStores)
+        if (isStoreAdmin) {
+          setSelectedTargetStore(userStoreId || initialStores[0]?.id || '')
+        }
+        return
+      }
+
+      setLoadingStores(true)
+      try {
+        const res = await fetch('/api/stores?scoped=true')
+        const data = await res.json()
+        if (data.success && isMounted) {
+          const list = data.data || []
+          setStores(list)
+          if (isStoreAdmin) {
+            setSelectedTargetStore(userStoreId || list[0]?.id || '')
+          } else {
+            setSelectedTargetStore((prev) =>
+              prev && prev !== 'ALL' ? prev : 'ALL'
+            )
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load stores for bulk update:', err)
+      } finally {
+        if (isMounted) setLoadingStores(false)
+      }
+    }
+
+    loadStores()
+
+    return () => {
+      isMounted = false
+    }
+  }, [isOpen, initialStores, isStoreAdmin, userStoreId])
+
   const handleDownloadTemplate = async () => {
+    if (
+      isSuperAdmin &&
+      (!selectedTargetStore || selectedTargetStore === 'ALL')
+    ) {
+      toast.error(
+        'Pilih salah satu cabang toko target di atas terlebih dahulu untuk mengunduh template Excel format Shopee.'
+      )
+      return
+    }
+
     setDownloadingTemplate(true)
     try {
-      const res = await fetch('/api/admin/products/export-excel')
+      let url = '/api/admin/products/export-excel'
+      if (
+        isSuperAdmin &&
+        selectedTargetStore &&
+        selectedTargetStore !== 'ALL'
+      ) {
+        url += `?storeId=${encodeURIComponent(selectedTargetStore)}`
+      } else if (isStoreAdmin && userStoreId) {
+        url += `?storeId=${encodeURIComponent(userStoreId)}`
+      }
+
+      const res = await fetch(url)
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || 'Gagal mengunduh file template Excel.')
       }
 
       const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
+      const downloadUrl = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
+      a.href = downloadUrl
       const nowStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-      a.download = `mass_update_sales_info_${nowStr}.xlsx`
+      const targetStoreObj = stores.find((s) => s.id === selectedTargetStore)
+      const slug = targetStoreObj
+        ? targetStoreObj.name.toLowerCase().replace(/[^a-z0-9]/g, '_')
+        : 'catalog'
+      a.download = `mass_update_sales_info_${slug}_${nowStr}.xlsx`
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(url)
+      window.URL.revokeObjectURL(downloadUrl)
       document.body.removeChild(a)
       toast.success('Template & data katalog format Shopee berhasil diunduh!')
     } catch (err: any) {
@@ -121,6 +205,14 @@ export function BulkPriceUpdateModal({
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('mirrorMode', String(mirrorMode))
+
+      const effectiveStoreId = isStoreAdmin
+        ? userStoreId || stores[0]?.id || ''
+        : selectedTargetStore
+
+      if (effectiveStoreId) {
+        formData.append('storeId', effectiveStoreId)
+      }
 
       const res = await fetch('/api/admin/products/import-excel', {
         method: 'POST',
@@ -174,6 +266,68 @@ export function BulkPriceUpdateModal({
 
         {!result ? (
           <div className="mt-4 space-y-5">
+            {/* Target Store Selection for Superadmin */}
+            {isSuperAdmin && (
+              <div className="space-y-1.5 rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <Store className="h-4 w-4 text-orange-500" />
+                    <span>Pilih Target Cabang Toko untuk Di-Import:</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-slate-500">
+                    {selectedTargetStore === 'ALL'
+                      ? '🌐 Semua Toko (Global Sync)'
+                      : '🏪 Toko Spesifik'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Pilih cabang toko mana yang di-import, atau pilih &quot;Semua
+                  Cabang Toko&quot; untuk sinkronisasi global multi-toko.
+                </p>
+                <div className="pt-1">
+                  <CustomSelect
+                    value={selectedTargetStore}
+                    onChange={(val) => setSelectedTargetStore(val)}
+                    options={[
+                      {
+                        value: 'ALL',
+                        label: '🌐 Semua Cabang Toko (Global Sync)',
+                      },
+                      ...stores.map((st) => ({
+                        value: st.id,
+                        label: `🏪 ${st.name}${st.city ? ` (${st.city})` : ''}`,
+                      })),
+                    ]}
+                    placeholder="Pilih target toko..."
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Locked Store Display for Store Admin */}
+            {isStoreAdmin && (
+              <div className="flex items-center gap-3 rounded-2xl border border-blue-200/80 bg-blue-50/60 p-3.5 dark:border-blue-900/40 dark:bg-blue-950/30">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                  <Building2 className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-blue-950 dark:text-blue-200">
+                      Target: {stores[0]?.name || 'Toko Cabang Anda'}
+                    </span>
+                    <span className="rounded-full bg-blue-200/70 px-2 py-0.5 text-[9px] font-black uppercase text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                      Terisolasi
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-blue-700/80 dark:text-blue-300/70">
+                    Pembaruan katalog dan stok inventori ini hanya akan
+                    terupdate di toko Anda sendiri, tidak memengaruhi cabang
+                    lain.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Download Template Shortcut Banner */}
             <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-orange-100 bg-orange-50/60 p-4 dark:border-orange-900/40 dark:bg-orange-950/30 sm:flex-row sm:items-center">
               <div className="space-y-0.5">

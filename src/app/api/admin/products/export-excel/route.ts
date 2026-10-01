@@ -32,24 +32,78 @@ function extractCleanModel(productName: string): string {
   )
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await auth()
+    const userRole = session?.user?.role
 
-    // Strict Authorization: Only SUPER_ADMIN
-    if (session?.user?.role !== 'SUPER_ADMIN') {
+    // Authorization: SUPER_ADMIN or STORE_ADMIN
+    if (userRole !== 'SUPER_ADMIN' && userRole !== 'STORE_ADMIN') {
       return NextResponse.json(
         {
           error:
-            'Akses ditolak: Fitur ekspor template & update massal hanya dapat diakses oleh Superadmin.',
+            'Akses ditolak: Fitur ekspor template & update massal hanya dapat diakses oleh Superadmin dan Admin Toko.',
         },
         { status: 403 }
       )
     }
 
-    // Fetch all active products with their variants and store
+    let targetStoreId: string | null = null
+
+    if (userRole === 'STORE_ADMIN') {
+      let storeId = session?.user?.storeId
+      if (!storeId && session?.user?.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        storeId = u?.storeId || null
+      }
+      if (!storeId) {
+        return NextResponse.json(
+          {
+            error:
+              'Akses gagal: Akun Admin Toko Anda belum terhubung ke toko cabang manapun.',
+          },
+          { status: 400 }
+        )
+      }
+      targetStoreId = storeId
+    } else {
+      // SUPER_ADMIN: Wajib memilih salah satu toko
+      const { searchParams } = new URL(request.url)
+      const storeIdParam = searchParams.get('storeId')
+      if (!storeIdParam || storeIdParam === 'ALL') {
+        return NextResponse.json(
+          {
+            error:
+              'Superadmin wajib memilih salah satu cabang toko untuk melakukan ekspor data katalog Excel.',
+          },
+          { status: 400 }
+        )
+      }
+      targetStoreId = storeIdParam
+    }
+
+    // Verify store exists
+    const targetStore = await prisma.store.findUnique({
+      where: { id: targetStoreId },
+      select: { id: true, name: true, city: true },
+    })
+
+    if (!targetStore) {
+      return NextResponse.json(
+        { error: 'Cabang toko yang dipilih tidak ditemukan di database.' },
+        { status: 404 }
+      )
+    }
+
+    // Fetch active products of this specific store with variants
     const products = await prisma.product.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        storeId: targetStoreId,
+      },
       include: {
         store: {
           select: {
@@ -256,7 +310,12 @@ export async function GET() {
 
     const buffer = await workbook.xlsx.writeBuffer()
     const nowStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    const filename = `mass_update_sales_info_${nowStr}.xlsx`
+    const storeSlug = (targetStore.name || 'store')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+    const filename = `mass_update_sales_info_${storeSlug}_${nowStr}.xlsx`
 
     return new NextResponse(buffer, {
       status: 200,
