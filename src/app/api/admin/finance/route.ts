@@ -41,7 +41,9 @@ export async function GET(request: NextRequest) {
 
     // Tentukan storeId yang menjadi target
     const rawStoreId = isStoreAdmin
-      ? (session.user as { storeId?: string }).storeId
+      ? (session.user as { storeId?: string }).storeId ||
+        searchParams.get('storeId') ||
+        undefined
       : searchParams.get('storeId') || undefined
 
     const targetStoreId = rawStoreId === 'ALL' ? undefined : rawStoreId
@@ -81,17 +83,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Filter order berdasarkan storeId
-    const storeWhereClause = targetStoreId
-      ? {
-          OR: [
-            { storeId: targetStoreId },
-            { items: { some: { product: { storeId: targetStoreId } } } },
-          ],
-        }
-      : {}
+    // Filter order berdasarkan storeId (isolasi ketat per PT Toko Cabang)
+    const storeWhereClause = targetStoreId ? { storeId: targetStoreId } : {}
 
-    // Filter tanggal (Periode: hari ini, minggu ini, bulan ini, tahun ini, per bulan)
     // Filter tanggal (Periode: hari ini, minggu ini, bulan ini, tahun ini, per bulan)
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')

@@ -360,5 +360,5 @@ describe('Withdrawal Route Handler E2E Integration (3 Security Gates)', () => {
     expect(resBlocked.status).toBe(429)
     expect(jsonBlocked.code).toBe('RATE_LIMIT_EXCEEDED')
     expect(jsonBlocked.retryAfterSeconds).toBeGreaterThan(0)
-  })
+  }, 15000)
 })

@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { usePageGuard } from '@/hooks/use-page-guard'
 import {
   Package,
+  PackageCheck,
   Download,
   Calendar,
   Loader2,
@@ -18,8 +19,10 @@ import {
   Wallet,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from 'lucide-react'
 import { PeriodSelect } from '@/components/dashboard/period-select'
+import { StoreSelect } from '@/components/dashboard/store-select'
 
 function formatRupiah(amount: number): string {
   return new Intl.NumberFormat('id-ID', {
@@ -32,11 +35,19 @@ function formatRupiah(amount: number): string {
 interface ReportData {
   isSuperAdmin?: boolean
   userRole?: string
+  selectedStoreId?: string
+  allStores?: Array<{
+    id: string
+    name: string
+    companyName: string
+    city: string
+  }>
   financials?: {
     grossRevenue: number
     cogs: number
     grossProfit: number
     grossMarginPct: number
+    totalCompletedUnits?: number
     storeNetProfit?: number
     platformCommission?: number
     operationalExpenses: {
@@ -252,7 +263,18 @@ export default function ReportsPage() {
   const [mounted, setMounted] = useState(false)
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<string>('')
   const [dateRange, setDateRange] = useState('thisMonth')
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('')
+  const [allStores, setAllStores] = useState<
+    Array<{
+      id: string
+      name: string
+      companyName: string
+      city: string
+    }>
+  >([])
   const [exporting, setExporting] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 10
@@ -261,31 +283,69 @@ export default function ReportsPage() {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    fetchReportData()
-    setCurrentPage(1)
-  }, [dateRange])
-
-  const getDateRange = () => {
+  // Safe non-mutating date range helper with end-of-day bounds
+  const getDateRange = (range: string) => {
     const now = new Date()
     let startDate: Date
-    const endDate = new Date()
+    let endDate: Date = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999
+    )
 
-    switch (dateRange) {
-      case 'today':
-        startDate = new Date(now.setHours(0, 0, 0, 0))
+    switch (range) {
+      case 'today': {
+        const d = new Date(now.getTime())
+        d.setHours(0, 0, 0, 0)
+        startDate = d
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59,
+          999
+        )
         break
-      case 'thisWeek':
-        const day = now.getDay()
-        const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-        startDate = new Date(now.setDate(diff))
-        startDate.setHours(0, 0, 0, 0)
+      }
+      case 'thisWeek': {
+        const d = new Date(now.getTime())
+        const day = d.getDay()
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+        d.setDate(diff)
+        d.setHours(0, 0, 0, 0)
+        startDate = d
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59,
+          999
+        )
         break
+      }
       case 'thisMonth':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999
+        )
         break
       case 'thisYear':
-        startDate = new Date(now.getFullYear(), 0, 1)
+        startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
         break
       case 'january':
         startDate = new Date(now.getFullYear(), 0, 1)
@@ -369,37 +429,70 @@ export default function ReportsPage() {
     }
   }
 
-  const fetchReportData = async () => {
-    try {
-      setLoading(true)
-      const { startDate, endDate } = getDateRange()
-      const params = new URLSearchParams({ startDate, endDate })
+  const fetchReportData = useCallback(
+    async (showLoading = false) => {
+      try {
+        if (showLoading) setLoading(true)
+        else setIsRefreshing(true)
 
-      const res = await fetch(`/api/admin/reports?${params}`)
+        const { startDate, endDate } = getDateRange(dateRange)
+        const params = new URLSearchParams({ startDate, endDate })
+        if (selectedStoreId && selectedStoreId !== 'ALL') {
+          params.append('storeId', selectedStoreId)
+        }
 
-      if (res.status === 401) {
-        router.push('/login')
-        return
+        const res = await fetch(`/api/admin/reports?${params.toString()}`)
+
+        if (res.status === 401) {
+          router.push('/login')
+          return
+        }
+
+        if (!res.ok) throw new Error('Failed to fetch report data')
+
+        const result = await res.json()
+        setData(result.data)
+        if (result.data?.allStores && result.data.allStores.length > 0) {
+          setAllStores(result.data.allStores)
+        }
+        const nowStr = new Intl.DateTimeFormat('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }).format(new Date())
+        setLastUpdated(nowStr)
+      } catch (error) {
+        console.error('Error fetching report data:', error)
+      } finally {
+        setLoading(false)
+        setIsRefreshing(false)
       }
+    },
+    [dateRange, selectedStoreId, router]
+  )
 
-      if (!res.ok) throw new Error('Failed to fetch report data')
+  useEffect(() => {
+    fetchReportData(true)
+    setCurrentPage(1)
 
-      const result = await res.json()
-      setData(result.data)
-    } catch (error) {
-      console.error('Error fetching report data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    // Auto sync berkala setiap 30 detik untuk mendeteksi transaksi secara real-time
+    const interval = setInterval(() => {
+      fetchReportData(false)
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [fetchReportData])
 
   const handleExport = async (type: string, format: 'xlsx' | 'csv') => {
     try {
       setExporting(`${type}_${format}`)
-      const { startDate, endDate } = getDateRange()
+      const { startDate, endDate } = getDateRange(dateRange)
       const params = new URLSearchParams({ type, format, startDate, endDate })
+      if (selectedStoreId && selectedStoreId !== 'ALL') {
+        params.append('storeId', selectedStoreId)
+      }
 
-      const res = await fetch(`/api/admin/reports/export?${params}`)
+      const res = await fetch(`/api/admin/reports/export?${params.toString()}`)
       if (!res.ok) throw new Error('Export failed')
 
       const blob = await res.blob()
@@ -489,7 +582,7 @@ export default function ReportsPage() {
     <div className="mx-auto max-w-6xl space-y-6 pb-16 pt-1">
       {/* Top Filter Bar (Zero title noise, compact period filter & quick export) */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/dashboard/admin/finance"
             className="shadow-xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -514,7 +607,41 @@ export default function ReportsPage() {
           </button>
         </div>
 
-        <PeriodSelect value={dateRange} onChange={(val) => setDateRange(val)} />
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {/* Live Indicator & Manual Refresh */}
+          <div className="shadow-2xs flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+            {lastUpdated && (
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                Live: {lastUpdated}
+              </span>
+            )}
+            <button
+              onClick={() => fetchReportData(false)}
+              disabled={isRefreshing}
+              className="rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 active:scale-90 disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+              title="Segarkan Data Real-Time"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`}
+              />
+            </button>
+          </div>
+
+          {/* Store Selector for Superadmin */}
+          {allStores && allStores.length > 0 && (
+            <StoreSelect
+              value={selectedStoreId}
+              onChange={(val) => setSelectedStoreId(val)}
+              stores={allStores}
+            />
+          )}
+
+          <PeriodSelect
+            value={dateRange}
+            onChange={(val) => setDateRange(val)}
+          />
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -539,14 +666,9 @@ export default function ReportsPage() {
                 data.financials?.grossRevenue ?? data.revenue.total
               )}
             </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+            <div className="mt-1.5 flex items-center text-[11px]">
               <span className="inline-flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400">
                 Gross Sales
-              </span>
-              <span className="text-slate-400 dark:text-slate-500">
-                {data.isSuperAdmin
-                  ? '· Konsolidasi Seluruh Toko'
-                  : '· Sebelum potongan beban'}
               </span>
             </div>
           </div>
@@ -568,41 +690,36 @@ export default function ReportsPage() {
             <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
               {formatRupiah(data.financials?.cogs ?? 0)}
             </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+            <div className="mt-1.5 flex items-center text-[11px]">
               <span className="font-semibold text-amber-600 dark:text-amber-400">
                 Harga Pokok
-              </span>
-              <span className="text-slate-400 dark:text-slate-500">
-                {data.isSuperAdmin
-                  ? '· Modal Inventori Toko Cabang'
-                  : '· Modal dasar inventori'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Laba Kotor (Gross Profit) */}
+        {/* Card 3: Total Volume Fisik Unit Terjual (Status Completed) */}
         <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              {data.isSuperAdmin ? 'Laba Kotor Toko Cabang' : 'Laba Kotor'}
+              Total Volume Unit Terjual
             </span>
             <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-              <TrendingUp className="h-3.5 w-3.5" />
+              <PackageCheck className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="mt-2.5">
             <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
-              {formatRupiah(data.financials?.grossProfit ?? 0)}
-            </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-                Margin {data.financials?.grossMarginPct ?? 0}%
+              {(data.financials?.totalCompletedUnits ?? 0).toLocaleString(
+                'id-ID'
+              )}{' '}
+              <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                Unit
               </span>
-              <span className="text-slate-400 dark:text-slate-500">
-                {data.isSuperAdmin
-                  ? '· Omzet - HPP Toko Cabang'
-                  : '· Omzet - HPP'}
+            </p>
+            <div className="mt-1.5 flex items-center text-[11px]">
+              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                Status Selesai
               </span>
             </div>
           </div>
@@ -630,44 +747,11 @@ export default function ReportsPage() {
                       0)
               )}
             </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+            <div className="mt-1.5 flex items-center text-[11px]">
               <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 font-bold text-purple-700 dark:bg-purple-950/60 dark:text-purple-400">
                 {data.isSuperAdmin
                   ? 'Bagi Hasil 1.5%'
                   : `Net ${data.financials?.netMarginPct ?? 0}%`}
-              </span>
-              <span className="text-slate-400 dark:text-slate-500">
-                {data.isSuperAdmin
-                  ? `· Laba Toko: ${formatRupiah(data.financials?.storeNetProfit ?? 0)}`
-                  : '· Setelah potongan beban'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Row Kartu Perpajakan (PPN & PPh) */}
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        {/* Card PPN Keluaran */}
-        <div className="shadow-2xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              PPN Keluaran Terkumpul
-            </span>
-            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-              <FileText className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <div className="mt-2.5">
-            <p className="font-sans text-lg font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
-              {formatRupiah(data.financials?.totalVatOutput ?? 0)}
-            </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-              <span className="font-semibold text-blue-600 dark:text-blue-400">
-                SPT Masa PPN
-              </span>
-              <span className="text-slate-400 dark:text-slate-500">
-                · PPN Terutang Konsolidasi
               </span>
             </div>
           </div>

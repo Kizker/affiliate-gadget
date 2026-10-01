@@ -757,7 +757,7 @@ export default function StoreAdminFinancePage() {
       })
       if (selectedStoreId && selectedStoreId !== 'ALL') {
         params.append('storeId', selectedStoreId)
-      } else if (store?.id) {
+      } else if (store?.id && store.id !== 'ALL') {
         params.append('storeId', store.id)
       }
 
@@ -801,7 +801,7 @@ export default function StoreAdminFinancePage() {
       })
       if (selectedStoreId && selectedStoreId !== 'ALL') {
         params.append('storeId', selectedStoreId)
-      } else if (store?.id) {
+      } else if (store?.id && store.id !== 'ALL') {
         params.append('storeId', store.id)
       }
 

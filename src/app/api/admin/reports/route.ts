@@ -73,11 +73,15 @@ export async function GET(request: NextRequest) {
           }
         : {}
 
-    // STORE_ADMIN scope isolation — restrict all queries to their own store
+    // STORE_ADMIN scope isolation — restrict all queries to their own store, or filter by storeId for platform admins
     const isStoreAdmin = session.user.role === 'STORE_ADMIN'
-    const storeId: string | undefined = isStoreAdmin
+    const queryStoreId = searchParams.get('storeId')
+    const effectiveStoreId: string | undefined = isStoreAdmin
       ? ((session.user as { storeId?: string }).storeId ?? undefined)
-      : undefined
+      : queryStoreId && queryStoreId !== 'ALL'
+        ? queryStoreId
+        : undefined
+    const storeId: string | undefined = effectiveStoreId
 
     // Shared store scope filter for order-level queries
     const storeScope = storeId ? { storeId } : {}
@@ -113,7 +117,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.order.groupBy({
         by: ['status'],
-        where: { ...dateFilter, ...storeScope },
+        where: { ...orderDateWhereClause, ...storeScope },
         _count: true,
       }),
     ])
@@ -129,6 +133,7 @@ export async function GET(request: NextRequest) {
     let totalPph23Withheld = 0
     let totalVatOutput = 0
     let totalGatewayFee = 0
+    let totalCompletedUnits = 0
     const totalMaintenanceFee = 0
 
     const revenueByCategory = {
@@ -182,6 +187,10 @@ export async function GET(request: NextRequest) {
         orderItemCost += itemCost
         totalGrossRevenue += itemGross
         totalCOGS += itemCost
+
+        if (order.status === 'COMPLETED') {
+          totalCompletedUnits += itemQuantity
+        }
 
         if (item.service) {
           revenueByCategory.JASA += itemGross
@@ -290,7 +299,7 @@ export async function GET(request: NextRequest) {
       prisma.user.count({ where: { role: 'CUSTOMER' } }),
       prisma.user.count({ where: { role: 'CUSTOMER', ...dateFilter } }),
       prisma.user.count({
-        where: { role: 'CUSTOMER', orders: { some: {} } },
+        where: { role: 'CUSTOMER', orders: { some: storeScope } },
       }),
       prisma.orderItem.groupBy({
         by: ['productId'],
@@ -298,7 +307,7 @@ export async function GET(request: NextRequest) {
           productId: { not: null },
           order: {
             status: { in: [...REVENUE_STATUSES] },
-            ...dateFilter,
+            ...orderDateWhereClause,
             ...storeScope,
           },
         },
@@ -383,7 +392,7 @@ export async function GET(request: NextRequest) {
         take: 10,
       }),
       prisma.order.findMany({
-        where: { ...dateFilter, ...storeScope },
+        where: { ...orderDateWhereClause, ...storeScope },
         include: {
           store: { select: { defaultPackingFee: true } },
           user: { select: { name: true, email: true } },
@@ -395,8 +404,8 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
+        orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 100,
       }),
     ])
 
@@ -517,6 +526,20 @@ export async function GET(request: NextRequest) {
 
     // Return comprehensive report data with cache-prevention headers
     const isSuperAdmin = session.user.role === 'SUPER_ADMIN'
+    const allStores = ['SUPER_ADMIN', 'ADMIN', 'FINANCE_ADMIN'].includes(
+      session.user.role
+    )
+      ? await prisma.store.findMany({
+          where: { isActive: true },
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            city: true,
+          },
+          orderBy: { name: 'asc' },
+        })
+      : []
 
     return NextResponse.json(
       {
@@ -524,11 +547,14 @@ export async function GET(request: NextRequest) {
         data: {
           userRole: session.user.role,
           isSuperAdmin,
+          selectedStoreId: storeId || 'ALL',
+          allStores,
           financials: {
             grossRevenue: totalGrossRevenue,
             cogs: totalCOGS,
             grossProfit: totalGrossProfit,
             grossMarginPct,
+            totalCompletedUnits,
             storeNetProfit: totalNetProfit,
             platformCommission: totalPlatformCommission,
             netProfit: isSuperAdmin ? totalPlatformCommission : totalNetProfit,

@@ -21,6 +21,15 @@ vi.mock('@/auth', () => ({
   auth: vi.fn(),
 }))
 
+// Mock livekit service
+vi.mock('@/lib/livekit', () => ({
+  createLiveKitToken: vi.fn().mockResolvedValue('mock-livekit-jwt-token'),
+  getLiveKitRoomService: vi.fn().mockReturnValue({
+    deleteRoom: vi.fn().mockResolvedValue(true),
+  }),
+  isLiveKitConfigured: vi.fn().mockReturnValue(true),
+}))
+
 import { auth } from '@/auth'
 
 describe('Live Streaming Engine — Full End-to-End Pipeline Simulation', () => {

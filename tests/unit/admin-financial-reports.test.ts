@@ -153,4 +153,170 @@ describe('Admin Financial Reports Calculation & Integrity Engine', () => {
     expect(activeStores).toBe(2)
     expect(totalSales).toBe(20)
   })
+
+  it('should generate non-mutating date ranges with 23:59:59.999 end-of-day bounds', () => {
+    const getDateRange = (
+      range: string,
+      testNow = new Date('2026-09-30T10:15:00.000Z')
+    ) => {
+      const now = new Date(testNow.getTime())
+      let startDate: Date
+      let endDate: Date = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+        999
+      )
+
+      switch (range) {
+        case 'today': {
+          const d = new Date(now.getTime())
+          d.setHours(0, 0, 0, 0)
+          startDate = d
+          break
+        }
+        case 'thisMonth':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+          endDate = new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+            999
+          )
+          break
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      }
+
+      return { startDate, endDate }
+    }
+
+    const { startDate: todayStart, endDate: todayEnd } = getDateRange('today')
+    expect(todayStart.getHours()).toBe(0)
+    expect(todayStart.getMinutes()).toBe(0)
+    expect(todayEnd.getHours()).toBe(23)
+    expect(todayEnd.getMinutes()).toBe(59)
+    expect(todayEnd.getSeconds()).toBe(59)
+    expect(todayEnd.getMilliseconds()).toBe(999)
+
+    const { startDate: monthStart, endDate: monthEnd } =
+      getDateRange('thisMonth')
+    expect(monthStart.getDate()).toBe(1)
+    expect(monthEnd.getDate()).toBe(30) // September has 30 days
+    expect(monthEnd.getHours()).toBe(23)
+    expect(monthEnd.getMinutes()).toBe(59)
+    expect(monthEnd.getMilliseconds()).toBe(999)
+  })
+
+  it('should correctly scope queries when storeId is provided or omitted', () => {
+    const getStoreScope = (
+      userRole: string,
+      userStoreId: string | undefined,
+      queryStoreId: string | null
+    ) => {
+      const isStoreAdmin = userRole === 'STORE_ADMIN'
+      const effectiveStoreId = isStoreAdmin
+        ? (userStoreId ?? undefined)
+        : queryStoreId && queryStoreId !== 'ALL'
+          ? queryStoreId
+          : undefined
+      return effectiveStoreId ? { storeId: effectiveStoreId } : {}
+    }
+
+    // Superadmin without storeId: empty scope (consolidated)
+    expect(getStoreScope('SUPER_ADMIN', undefined, null)).toEqual({})
+    expect(getStoreScope('SUPER_ADMIN', undefined, 'ALL')).toEqual({})
+
+    // Superadmin with Roxy store selected: filtered to Roxy
+    expect(getStoreScope('SUPER_ADMIN', undefined, 'store-roxy-123')).toEqual({
+      storeId: 'store-roxy-123',
+    })
+
+    // Store Admin: strictly locked to own store, ignores queryStoreId
+    expect(
+      getStoreScope('STORE_ADMIN', 'store-roxy-123', 'store-surabaya-456')
+    ).toEqual({
+      storeId: 'store-roxy-123',
+    })
+  })
+
+  it('should recognize orders completed today even if createdAt was in previous period', () => {
+    const startOfToday = new Date('2026-09-30T00:00:00.000Z')
+    const endOfToday = new Date('2026-09-30T23:59:59.999Z')
+
+    const orders = [
+      {
+        id: 'ord-1',
+        createdAt: new Date('2026-09-25T10:00:00.000Z'),
+        completedAt: new Date('2026-09-30T14:20:00.000Z'),
+        status: 'COMPLETED',
+        total: 2500000,
+      },
+      {
+        id: 'ord-2',
+        createdAt: new Date('2026-09-29T10:00:00.000Z'),
+        completedAt: null,
+        status: 'IN_PROGRESS',
+        total: 1500000,
+      },
+    ]
+
+    const matchesOrderDate = (order: (typeof orders)[0]) => {
+      const createdInRange =
+        order.createdAt >= startOfToday && order.createdAt <= endOfToday
+      const completedInRange =
+        order.completedAt !== null &&
+        order.completedAt >= startOfToday &&
+        order.completedAt <= endOfToday
+      return createdInRange || completedInRange
+    }
+
+    const todayOrders = orders.filter(matchesOrderDate)
+    expect(todayOrders.length).toBe(1)
+    expect(todayOrders[0].id).toBe('ord-1')
+    expect(todayOrders[0].total).toBe(2500000)
+  })
+
+  it('should accurately calculate total completed units sold for physical volume card', () => {
+    const orders = [
+      {
+        id: 'ord-1',
+        status: 'COMPLETED',
+        items: [{ quantity: 2 }, { quantity: 1 }],
+      },
+      {
+        id: 'ord-2',
+        status: 'SHIPPED', // in escrow, not completed yet
+        items: [{ quantity: 3 }],
+      },
+      {
+        id: 'ord-3',
+        status: 'COMPLETED',
+        items: [{ quantity: 4 }],
+      },
+      {
+        id: 'ord-4',
+        status: 'CANCELLED',
+        items: [{ quantity: 5 }],
+      },
+    ]
+
+    let totalCompletedUnits = 0
+    orders.forEach((order) => {
+      order.items.forEach((item) => {
+        if (order.status === 'COMPLETED') {
+          totalCompletedUnits += item.quantity || 1
+        }
+      })
+    })
+
+    // ord-1 (2 + 1) + ord-3 (4) = 7 completed physical units
+    expect(totalCompletedUnits).toBe(7)
+  })
 })
