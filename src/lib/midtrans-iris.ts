@@ -141,6 +141,9 @@ export async function createIrisPayout(
         bank: bankCode,
       })
 
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+
       const res = await fetch(`${baseUrl}/payouts`, {
         method: 'POST',
         headers: {
@@ -150,7 +153,8 @@ export async function createIrisPayout(
           'X-Idempotency-Key': param.referenceNo,
         },
         body: JSON.stringify(payload),
-      })
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId))
 
       const data = await res.json()
 

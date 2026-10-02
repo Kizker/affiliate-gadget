@@ -12,21 +12,12 @@ import {
   calculateMaintenanceFee,
 } from '@/lib/tax/tax-engine'
 
-// Status canonical transaksi aktif/berbayar
-const ACTIVE_ORDER_STATUSES = [
-  'PAID',
-  'IN_PROGRESS',
-  'SHIPPED',
-  'COMPLETED',
-  'COMPLAINED',
-] as const
-
-const ESCROW_STATUSES = [
-  'PAID',
-  'IN_PROGRESS',
-  'SHIPPED',
-  'COMPLAINED',
-] as const
+import {
+  PLATFORM_COMMISSION_RATE,
+  GATEWAY_FEE_PER_TRANSACTION,
+  ACTIVE_ORDER_STATUSES,
+  ESCROW_STATUSES,
+} from '@/lib/finance-constants'
 
 export async function GET(request: NextRequest) {
   try {
@@ -184,6 +175,9 @@ export async function GET(request: NextRequest) {
           discountAmount: true,
           commissionAmount: true,
         },
+        _count: {
+          _all: true,
+        },
       }),
     ])
 
@@ -340,30 +334,24 @@ export async function GET(request: NextRequest) {
             trackingNumber: order.trackingNumber,
           })
 
-          // 3. Biaya Payment Gateway Transaksi Toko
-          const gatewayFeeResult = calculatePaymentGatewayFee(
-            order.payment?.method || 'MIDTRANS',
-            orderTotal,
-            order.payment?.notes
-          )
-          if (gatewayFeeResult.feeAmount > 0) {
-            totalGatewayFees += gatewayFeeResult.feeAmount
-            mutations.push({
-              id: `gw-${order.id}`,
-              refNumber: `GW-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
-              title: `Biaya Gateway: ${gatewayFeeResult.methodLabel}`,
-              subtitle: `${gatewayFeeResult.feeFormula} · Dipotong dari Toko (#${order.orderNumber})`,
-              type: 'EXPENSE',
-              category: 'GATEWAY',
-              categoryLabel: 'Biaya Transaksi',
-              amount: gatewayFeeResult.feeAmount,
-              date: formattedDate,
-              rawDate: effectiveDate,
-              status: 'SETTLED',
-              statusLabel: 'Dipotong dari Toko',
-              orderStatus: order.status,
-            })
-          }
+          // 3. Biaya Payment Gateway Transaksi Toko (Flat Rp 4.000 per transaksi)
+          const gatewayFeeAmount = GATEWAY_FEE_PER_TRANSACTION
+          totalGatewayFees += gatewayFeeAmount
+          mutations.push({
+            id: `gw-${order.id}`,
+            refNumber: `GW-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+            title: 'Biaya Gateway Midtrans (Flat)',
+            subtitle: `Rp 4.000 per transaksi · Beban Toko (#${order.orderNumber})`,
+            type: 'EXPENSE',
+            category: 'GATEWAY',
+            categoryLabel: 'Biaya Transaksi',
+            amount: gatewayFeeAmount,
+            date: formattedDate,
+            rawDate: effectiveDate,
+            status: 'SETTLED',
+            statusLabel: 'Dipotong dari Toko',
+            orderStatus: order.status,
+          })
         } else {
           // Bagi Toko Cabang (Store Admin):
           // 1. Mutasi Penjualan Masuk Saldo Toko (INCOME)
@@ -404,30 +392,24 @@ export async function GET(request: NextRequest) {
             })
           }
 
-          // 3. Potongan Biaya Payment Gateway Toko (EXPENSE)
-          const gatewayFeeResult = calculatePaymentGatewayFee(
-            order.payment?.method || 'MIDTRANS',
-            orderTotal,
-            order.payment?.notes
-          )
-          if (gatewayFeeResult.feeAmount > 0) {
-            totalGatewayFees += gatewayFeeResult.feeAmount
-            mutations.push({
-              id: `gw-${order.id}`,
-              refNumber: `GW-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
-              title: `Biaya Gateway: ${gatewayFeeResult.methodLabel}`,
-              subtitle: `${gatewayFeeResult.feeFormula} (#${order.orderNumber})`,
-              type: 'EXPENSE',
-              category: 'GATEWAY',
-              categoryLabel: 'Biaya Transaksi',
-              amount: gatewayFeeResult.feeAmount,
-              date: formattedDate,
-              rawDate: effectiveDate,
-              status: 'SETTLED',
-              statusLabel: 'Terpotong',
-              orderStatus: order.status,
-            })
-          }
+          // 3. Potongan Biaya Payment Gateway Toko (Flat Rp 4.000 per transaksi)
+          const gatewayFeeAmount = GATEWAY_FEE_PER_TRANSACTION
+          totalGatewayFees += gatewayFeeAmount
+          mutations.push({
+            id: `gw-${order.id}`,
+            refNumber: `GW-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+            title: 'Biaya Gateway Midtrans (Flat)',
+            subtitle: `Rp 4.000 per transaksi · Beban Toko (#${order.orderNumber})`,
+            type: 'EXPENSE',
+            category: 'GATEWAY',
+            categoryLabel: 'Biaya Transaksi',
+            amount: gatewayFeeAmount,
+            date: formattedDate,
+            rawDate: effectiveDate,
+            status: 'SETTLED',
+            statusLabel: 'Terpotong',
+            orderStatus: order.status,
+          })
         }
       } else if (ESCROW_STATUSES.includes(order.status as any)) {
         if (!isCreatedInPeriod) return
@@ -495,13 +477,14 @@ export async function GET(request: NextRequest) {
       ).map((s) => s.id)
     )
 
+    const allTimeCompletedOrdersCount = allTimeCompletedAgg._count?._all || 0
     let allTimeWithdrawn = 0
     let availableBalance = 0
 
     if (isConsolidated) {
       // Untuk Superadmin (Holding Platform):
       // Saldo siap cair adalah seluruh komisi platform dari pesanan selesai dikurangi pencairan holding
-      const holdingWithdrawals = getStoreWithdrawals().filter(
+      const holdingWithdrawals = (await getStoreWithdrawals()).filter(
         (w) =>
           ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
           w.status === 'SUCCESS'
@@ -514,8 +497,10 @@ export async function GET(request: NextRequest) {
       availableBalance = Math.max(0, allTimeCommission - allTimeWithdrawn)
     } else {
       // Untuk Toko Cabang:
-      // Saldo siap cair adalah hak bersih toko dikurangi penarikan toko tersebut
-      const storeWithdrawals = getStoreWithdrawals(targetStoreId).filter(
+      // Saldo siap cair adalah hak bersih toko dikurangi penarikan dan gateway fee flat Rp 4.000 per transaksi
+      const storeWithdrawals = (
+        await getStoreWithdrawals(targetStoreId)
+      ).filter(
         (w) =>
           w.storeId === targetStoreId &&
           allRealStoreIds.has(w.storeId) &&
@@ -528,10 +513,15 @@ export async function GET(request: NextRequest) {
           (allTimeCompletedAgg._sum.discountAmount || 0) -
           (allTimeCompletedAgg._sum.commissionAmount || 0)
       )
-      availableBalance = Math.max(0, allTimeNetRevenue - allTimeWithdrawn)
+      const allTimeGatewayFees =
+        allTimeCompletedOrdersCount * GATEWAY_FEE_PER_TRANSACTION
+      availableBalance = Math.max(
+        0,
+        allTimeNetRevenue - allTimeWithdrawn - allTimeGatewayFees
+      )
     }
 
-    let withdrawals = getStoreWithdrawals(targetStoreId).filter((w) =>
+    let withdrawals = (await getStoreWithdrawals(targetStoreId)).filter((w) =>
       isConsolidated
         ? ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId)
         : w.storeId === targetStoreId && allRealStoreIds.has(w.storeId)
@@ -617,6 +607,7 @@ export async function GET(request: NextRequest) {
         grossRevenue: isConsolidated ? platformCommission : grossRevenue,
         storeGMV: grossRevenue,
         platformCommission,
+        platformCommissionRate: PLATFORM_COMMISSION_RATE,
         escrowBalance,
         totalUnitsSold,
         totalWithdrawn,
@@ -624,7 +615,11 @@ export async function GET(request: NextRequest) {
         totalVatOutput,
         totalPph23Withheld,
         totalVatOnCommission,
-        totalGatewayFees,
+        totalGatewayFees: isConsolidated
+          ? totalGatewayFees
+          : allTimeCompletedOrdersCount * GATEWAY_FEE_PER_TRANSACTION,
+        gatewayFeePerTransaction: GATEWAY_FEE_PER_TRANSACTION,
+        totalCompletedOrders: allTimeCompletedOrdersCount,
         totalMaintenanceFees,
         courierBreakdown,
       },

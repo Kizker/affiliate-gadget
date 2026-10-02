@@ -172,12 +172,12 @@ describe('Store Finance Real-Time Escrow & Courier Integration Engine', () => {
     expect(isAllowed).toBe(false)
   })
 
-  it('should accurately track store withdrawals and deduct from Available Balance', () => {
+  it('should accurately track store withdrawals and deduct from Available Balance', async () => {
     const testStoreId = 'test-store-123'
     const completedNetRevenue = 50000000
 
     // Buat penarikan baru
-    const withdrawal = createStoreWithdrawal({
+    const withdrawal = await createStoreWithdrawal({
       storeId: testStoreId,
       storeName: 'Test Gadget Roxy',
       companyName: 'PT Test Gadget Sentosa',
@@ -192,7 +192,7 @@ describe('Store Finance Real-Time Escrow & Courier Integration Engine', () => {
     expect(withdrawal.refNumber).toMatch(/^WD-\d{8}-\d{4}$/)
     expect(withdrawal.amount).toBe(20000000)
 
-    const totalWithdrawn = getTotalWithdrawn(testStoreId)
+    const totalWithdrawn = await getTotalWithdrawn(testStoreId)
     expect(totalWithdrawn).toBeGreaterThanOrEqual(20000000)
 
     const remainingBalance = Math.max(0, completedNetRevenue - totalWithdrawn)

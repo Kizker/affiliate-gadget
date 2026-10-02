@@ -25,7 +25,14 @@ declare const globalThis: {
   prismaGlobal: ReturnType<typeof prismaClientSingleton>
 } & typeof global
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
+// Ensure the cached singleton is refreshed if models added dynamically (e.g. storeWithdrawal) are missing
+const isOutdatedSingleton =
+  globalThis.prismaGlobal && !(globalThis.prismaGlobal as any).storeWithdrawal
+
+const prisma =
+  !globalThis.prismaGlobal || isOutdatedSingleton
+    ? prismaClientSingleton()
+    : globalThis.prismaGlobal
 
 export const db = prisma
 export default prisma

@@ -135,7 +135,7 @@ describe('E2E Complete Financial Lifecycle: Checkout -> Escrow -> Settlement -> 
     dynamicWithdrawals = []
 
     vi.spyOn(storeWithdrawalStore, 'getStoreWithdrawals').mockImplementation(
-      (sId?: string) => {
+      async (sId?: string) => {
         if (sId) {
           return dynamicWithdrawals.filter((w) => w.storeId === sId)
         }
@@ -144,7 +144,7 @@ describe('E2E Complete Financial Lifecycle: Checkout -> Escrow -> Settlement -> 
     )
 
     vi.spyOn(storeWithdrawalStore, 'getTotalWithdrawn').mockImplementation(
-      (sId?: string) => {
+      async (sId?: string) => {
         const list = sId
           ? dynamicWithdrawals.filter((w) => w.storeId === sId)
           : dynamicWithdrawals
@@ -155,7 +155,7 @@ describe('E2E Complete Financial Lifecycle: Checkout -> Escrow -> Settlement -> 
     )
 
     vi.spyOn(storeWithdrawalStore, 'createStoreWithdrawal').mockImplementation(
-      (rec: any) => {
+      async (rec: any) => {
         const newRec = {
           ...rec,
           id: `wd-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -662,19 +662,19 @@ describe('E2E Complete Financial Lifecycle: Checkout -> Escrow -> Settlement -> 
     expect(json.data.iris.status).toBe('completed')
 
     // Verifikasi saldo siap cair toko berkurang dari Rp 9.750.000 menjadi Rp 4.750.000
-    const totalWd = storeWithdrawalStore.getTotalWithdrawn(mockStore.id)
+    const totalWd = await storeWithdrawalStore.getTotalWithdrawn(mockStore.id)
     expect(totalWd).toBe(5000000)
     const remainingBalance = 9750000 - totalWd
     expect(remainingBalance).toBe(4750000)
 
     // Verifikasi saldo Superadmin TIDAK BERKURANG (tetap Rp 150.000)
-    const superAdminHoldingWd = storeWithdrawalStore
-      .getStoreWithdrawals()
-      .filter(
-        (w) =>
-          ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
-          w.status === 'SUCCESS'
-      )
+    const superAdminHoldingWd = (
+      await storeWithdrawalStore.getStoreWithdrawals()
+    ).filter(
+      (w) =>
+        ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
+        w.status === 'SUCCESS'
+    )
     const superAdminWithdrawn = superAdminHoldingWd.reduce(
       (sum, w) => sum + w.amount,
       0
@@ -691,7 +691,7 @@ describe('E2E Complete Financial Lifecycle: Checkout -> Escrow -> Settlement -> 
   // =========================================================================
   it('6. [SUPERADMIN WITHDRAWAL]: Superadmin mencairkan laba komisi Rp 150.000 tanpa memengaruhi saldo toko', async () => {
     // Simulasikan penarikan holding ke Rekening Mandiri Pusat
-    const holdingWithdrawal = storeWithdrawalStore.createStoreWithdrawal({
+    const holdingWithdrawal = await storeWithdrawalStore.createStoreWithdrawal({
       storeId: 'ALL',
       storeName: 'Konsolidasi Seluruh Toko',
       companyName: 'PT Affiliate Gadget Nusantara',
@@ -707,13 +707,13 @@ describe('E2E Complete Financial Lifecycle: Checkout -> Escrow -> Settlement -> 
     expect(holdingWithdrawal.status).toBe('SUCCESS')
 
     // Saldo Superadmin kini menjadi Rp 0
-    const superAdminHoldingWd = storeWithdrawalStore
-      .getStoreWithdrawals()
-      .filter(
-        (w) =>
-          ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
-          w.status === 'SUCCESS'
-      )
+    const superAdminHoldingWd = (
+      await storeWithdrawalStore.getStoreWithdrawals()
+    ).filter(
+      (w) =>
+        ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
+        w.status === 'SUCCESS'
+    )
     const superAdminWithdrawn = superAdminHoldingWd.reduce(
       (sum, w) => sum + w.amount,
       0
@@ -725,7 +725,7 @@ describe('E2E Complete Financial Lifecycle: Checkout -> Escrow -> Settlement -> 
     expect(superAdminAvailableBalance).toBe(0)
 
     // Tambahkan catatan penarikan toko sebelumnya untuk verifikasi isolasi
-    storeWithdrawalStore.createStoreWithdrawal({
+    await storeWithdrawalStore.createStoreWithdrawal({
       storeId: mockStore.id,
       storeName: mockStore.name,
       companyName: mockStore.companyName,
@@ -738,7 +738,7 @@ describe('E2E Complete Financial Lifecycle: Checkout -> Escrow -> Settlement -> 
     })
 
     // Saldo Toko Cabang tetap aman di Rp 4.750.000 (tidak berkurang oleh penarikan holding Rp 150.000)
-    const storeWd = storeWithdrawalStore.getTotalWithdrawn(mockStore.id)
+    const storeWd = await storeWithdrawalStore.getTotalWithdrawn(mockStore.id)
     expect(storeWd).toBe(5000000)
     const storeRemaining = 9750000 - storeWd
     expect(storeRemaining).toBe(4750000)

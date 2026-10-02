@@ -129,7 +129,7 @@ export async function GET() {
     ])
 
     // 9. Finance / Pending withdrawals from store-withdrawals store
-    const allWithdrawals = getStoreWithdrawals(storeId || undefined)
+    const allWithdrawals = await getStoreWithdrawals(storeId || undefined)
     const pendingFinance = allWithdrawals.filter(
       (w) => w.status === 'PENDING'
     ).length

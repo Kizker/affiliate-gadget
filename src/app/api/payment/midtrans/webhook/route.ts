@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Determine payment & order status
     let paymentStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' = 'PENDING'
-    let orderStatus: 'PENDING_PAYMENT' | 'PROCESSING' | 'CANCELLED' =
+    let orderStatus: 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED' =
       'PENDING_PAYMENT'
 
     if (transaction_status === 'capture') {
@@ -105,11 +105,11 @@ export async function POST(req: NextRequest) {
         orderStatus = 'PENDING_PAYMENT'
       } else if (fraud_status === 'accept') {
         paymentStatus = 'VERIFIED'
-        orderStatus = 'PROCESSING'
+        orderStatus = 'PAID'
       }
     } else if (transaction_status === 'settlement') {
       paymentStatus = 'VERIFIED'
-      orderStatus = 'PROCESSING'
+      orderStatus = 'PAID'
     } else if (transaction_status === 'pending') {
       paymentStatus = 'PENDING'
       orderStatus = 'PENDING_PAYMENT'
@@ -133,12 +133,16 @@ export async function POST(req: NextRequest) {
       })
 
       // Update or create payment record
+      const paymentNotes = body.transaction_id
+        ? `Midtrans TX: ${body.transaction_id}`
+        : order.payment?.notes || undefined
+
       if (order.payment) {
         await tx.payment.update({
           where: { id: order.payment.id },
           data: {
             status: paymentStatus,
-            referenceNumber: body.transaction_id || undefined,
+            notes: paymentNotes,
           },
         })
       } else {
@@ -148,7 +152,7 @@ export async function POST(req: NextRequest) {
             method: 'MIDTRANS',
             amount: order.total,
             status: paymentStatus,
-            referenceNumber: body.transaction_id || undefined,
+            notes: paymentNotes,
           },
         })
       }

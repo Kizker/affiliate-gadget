@@ -90,6 +90,10 @@ interface FinanceStats {
   completedNetRevenue: number
   totalVatOutput?: number
   totalVatOnCommission?: number
+  totalGatewayFees?: number
+  gatewayFeePerTransaction?: number
+  totalCompletedOrders?: number
+  platformCommissionRate?: number
   courierBreakdown: CourierBreakdown
 }
 
@@ -492,6 +496,10 @@ export default function UnifiedFinanceAndReportsPage() {
     totalUnitsSold: 0,
     totalWithdrawn: 0,
     completedNetRevenue: 0,
+    totalGatewayFees: 0,
+    gatewayFeePerTransaction: 4000,
+    totalCompletedOrders: 0,
+    platformCommissionRate: 0.02,
     courierBreakdown: {
       paidCount: 0,
       inProgressCount: 0,
@@ -830,7 +838,13 @@ export default function UnifiedFinanceAndReportsPage() {
         }),
       })
 
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error(`Respon server tidak valid (HTTP ${res.status})`)
+      }
+
       if (!res.ok) {
         setWithdrawalError({
           code: data.code,
@@ -872,7 +886,13 @@ export default function UnifiedFinanceAndReportsPage() {
         }),
       })
 
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error(`Respon server tidak valid (HTTP ${res.status})`)
+      }
+
       if (!res.ok) {
         setWithdrawalError({
           code: data.code,
@@ -918,7 +938,13 @@ export default function UnifiedFinanceAndReportsPage() {
         }),
       })
 
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error(`Respon server tidak valid (HTTP ${res.status})`)
+      }
+
       if (!res.ok) {
         setWithdrawalError({
           code: data.code,
@@ -1440,6 +1466,14 @@ export default function UnifiedFinanceAndReportsPage() {
                 Tarik ↗
               </button>
             </div>
+            {!isConsolidated && (stats.totalCompletedOrders ?? 0) > 0 ? (
+              <div className="mt-2 border-t border-slate-100 pt-1.5 text-[10px] text-slate-400 dark:border-slate-800 dark:text-slate-500">
+                <span>
+                  Bersih potongan komisi 2% & gateway (
+                  {stats.totalCompletedOrders} trx × Rp 4.000)
+                </span>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -1527,7 +1561,7 @@ export default function UnifiedFinanceAndReportsPage() {
             <div className="mt-1 flex items-center gap-1.5 text-[11px]">
               <span className="font-semibold text-purple-600 dark:text-purple-400">
                 {isConsolidated
-                  ? 'Bagi Hasil 1.5%'
+                  ? 'Bagi Hasil 2%'
                   : `Net ${reportData.financials?.netMarginPct ?? 0}%`}
               </span>
               <span className="text-slate-400">· Realisasi Kas</span>

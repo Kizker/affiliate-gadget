@@ -271,7 +271,7 @@ async function runE2ETest() {
       (storeCompletedAggBefore._sum.discountAmount || 0) -
       (storeCompletedAggBefore._sum.commissionAmount || 0)
   )
-  const storeWithdrawnBefore = getTotalWithdrawn(store.id)
+  const storeWithdrawnBefore = await getTotalWithdrawn(store.id)
   const storeAvailableBefore = Math.max(
     0,
     storeNetRevenueBefore - storeWithdrawnBefore
@@ -300,7 +300,7 @@ async function runE2ETest() {
     where: { status: 'COMPLETED' },
     _sum: { commissionAmount: true },
   })
-  const superHoldingWithdrawalsBefore = getStoreWithdrawals()
+  const superHoldingWithdrawalsBefore = (await getStoreWithdrawals())
     .filter(
       (w) =>
         ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
@@ -540,7 +540,7 @@ async function runE2ETest() {
   )
 
   // Simpan record pencairan toko
-  const wdRecord = createStoreWithdrawal({
+  const wdRecord = await createStoreWithdrawal({
     storeId: store.id,
     storeName: store.name,
     companyName: store.companyName,
@@ -554,7 +554,7 @@ async function runE2ETest() {
   console.log(`   - No. Referensi Penarikan: ${wdRecord.refNumber}`)
 
   // Verifikasi saldo toko setelah pencairan
-  const storeWithdrawnAfter = getTotalWithdrawn(store.id)
+  const storeWithdrawnAfter = await getTotalWithdrawn(store.id)
   const storeAvailableAfterWithdraw = Math.max(
     0,
     storeNetRevenueAfter - storeWithdrawnAfter
@@ -599,7 +599,7 @@ async function runE2ETest() {
     `- Rekening Tujuan: Bank Mandiri (Pusat) 1180099887766 a.n. PT Affiliate Gadget Nusantara`
   )
 
-  const superWdRecord = createStoreWithdrawal({
+  const superWdRecord = await createStoreWithdrawal({
     storeId: 'ALL',
     storeName: 'Konsolidasi Seluruh Toko',
     companyName: 'PT Affiliate Gadget Nusantara',
@@ -611,7 +611,7 @@ async function runE2ETest() {
     requestedBy: 'Super Administrator',
   })
 
-  const superHoldingWithdrawalsAfter = getStoreWithdrawals()
+  const superHoldingWithdrawalsAfter = (await getStoreWithdrawals())
     .filter(
       (w) =>
         ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
@@ -633,7 +633,7 @@ async function runE2ETest() {
   // Verifikasi saldo toko Roxy TIDAK BERKURANG
   const storeFinalCheck = Math.max(
     0,
-    storeNetRevenueAfter - getTotalWithdrawn(store.id)
+    storeNetRevenueAfter - (await getTotalWithdrawn(store.id))
   )
   console.log(
     `- Saldo Toko Roxy Tetap: Rp ${storeFinalCheck.toLocaleString('id-ID')} (Tidak terpotong penarikan holding) ✅\n`

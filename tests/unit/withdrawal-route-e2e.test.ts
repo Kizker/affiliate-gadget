@@ -26,8 +26,8 @@ vi.mock('@/lib/store-withdrawal-store', async (importOriginal) => {
     await importOriginal<typeof import('@/lib/store-withdrawal-store')>()
   return {
     ...actual,
-    getTotalWithdrawn: vi.fn().mockReturnValue(0),
-    createStoreWithdrawal: vi.fn().mockImplementation((rec) => ({
+    getTotalWithdrawn: vi.fn().mockResolvedValue(0),
+    createStoreWithdrawal: vi.fn().mockImplementation(async (rec) => ({
       ...rec,
       id: 'wd-mock-test-1',
       refNumber: 'WD-20260925-9999',

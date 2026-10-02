@@ -6,6 +6,7 @@ import {
   createStoreWithdrawal,
   getTotalWithdrawn,
 } from '@/lib/store-withdrawal-store'
+import { GATEWAY_FEE_PER_TRANSACTION } from '@/lib/finance-constants'
 import {
   checkBankAccountCooldown,
   validateAccountNameMatch,
@@ -21,6 +22,14 @@ import {
   normalizePhone,
 } from '@/lib/notifications'
 import { createIrisPayout } from '@/lib/midtrans-iris'
+
+async function safeCreateAuditLog(data: any) {
+  try {
+    await prisma.auditLog.create({ data })
+  } catch (err) {
+    console.warn('[AuditLog] Non-critical audit log failure:', err)
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -117,8 +126,12 @@ export async function POST(request: NextRequest) {
       return sum + net
     }, 0)
 
-    const totalWithdrawn = getTotalWithdrawn(store.id)
-    const availableBalance = Math.max(0, completedNetRevenue - totalWithdrawn)
+    const totalWithdrawn = await getTotalWithdrawn(store.id)
+    const totalGatewayFee = completedOrders.length * GATEWAY_FEE_PER_TRANSACTION
+    const availableBalance = Math.max(
+      0,
+      completedNetRevenue - totalWithdrawn - totalGatewayFee
+    )
 
     if (numericAmount > availableBalance) {
       return NextResponse.json(
@@ -137,21 +150,19 @@ export async function POST(request: NextRequest) {
       | undefined
     const cooldownStatus = checkBankAccountCooldown(storeBankAccountUpdatedAt)
     if (cooldownStatus.isLocked) {
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: 'WITHDRAWAL_BLOCKED_COOLDOWN',
-          entityType: 'StoreWithdrawal',
-          entityId: store.id,
-          details: {
-            storeId: store.id,
-            amount: numericAmount,
-            bankAccountUpdatedAt: storeBankAccountUpdatedAt
-              ? new Date(storeBankAccountUpdatedAt).toISOString()
-              : null,
-            cooldownStatus: { ...cooldownStatus },
-          } as any,
-        },
+      await safeCreateAuditLog({
+        userId: session.user.id,
+        action: 'WITHDRAWAL_BLOCKED_COOLDOWN',
+        entityType: 'StoreWithdrawal',
+        entityId: store.id,
+        details: {
+          storeId: store.id,
+          amount: numericAmount,
+          bankAccountUpdatedAt: storeBankAccountUpdatedAt
+            ? new Date(storeBankAccountUpdatedAt).toISOString()
+            : null,
+          cooldownStatus: { ...cooldownStatus },
+        } as any,
       })
 
       return NextResponse.json(
@@ -178,22 +189,20 @@ export async function POST(request: NextRequest) {
     )
 
     if (!nameValidation.isValid) {
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: 'WITHDRAWAL_BLOCKED_NAME_MISMATCH',
-          entityType: 'StoreWithdrawal',
-          entityId: store.id,
-          details: {
-            storeId: store.id,
-            amount: numericAmount,
-            bankName: primaryBank.bankName,
-            accountNumber: primaryBank.accountNumber,
-            accountName: primaryBank.accountName,
-            companyName: store.companyName,
-            similarityScore: nameValidation.similarityScore,
-            reason: nameValidation.reason,
-          },
+      await safeCreateAuditLog({
+        userId: session.user.id,
+        action: 'WITHDRAWAL_BLOCKED_NAME_MISMATCH',
+        entityType: 'StoreWithdrawal',
+        entityId: store.id,
+        details: {
+          storeId: store.id,
+          amount: numericAmount,
+          bankName: primaryBank.bankName,
+          accountNumber: primaryBank.accountNumber,
+          accountName: primaryBank.accountName,
+          companyName: store.companyName,
+          similarityScore: nameValidation.similarityScore,
+          reason: nameValidation.reason,
         },
       })
 
@@ -285,18 +294,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (!otpValidation.valid) {
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: 'WITHDRAWAL_FAILED_OTP',
-          entityType: 'StoreWithdrawal',
-          entityId: store.id,
-          details: {
-            storeId: store.id,
-            amount: numericAmount,
-            error: otpValidation.error,
-            attemptsLeft: otpValidation.attemptsLeft,
-          },
+      await safeCreateAuditLog({
+        userId: session.user.id,
+        action: 'WITHDRAWAL_FAILED_OTP',
+        entityType: 'StoreWithdrawal',
+        entityId: store.id,
+        details: {
+          storeId: store.id,
+          amount: numericAmount,
+          error: otpValidation.error,
+          attemptsLeft: otpValidation.attemptsLeft,
         },
       })
 
@@ -367,7 +374,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Buat record withdrawal setelah semua gerbang keamanan lolos
-    const withdrawal = createStoreWithdrawal({
+    const withdrawal = await createStoreWithdrawal({
       storeId: store.id,
       storeName: store.name,
       companyName: store.companyName,
@@ -391,22 +398,20 @@ export async function POST(request: NextRequest) {
     })
 
     // Audit log sukses (Task 7.2)
-    await prisma.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: 'WITHDRAWAL_SUCCESS',
-        entityType: 'StoreWithdrawal',
-        entityId: withdrawal.id,
-        details: {
-          storeId: store.id,
-          amount: numericAmount,
-          bankName: primaryBank.bankName,
-          accountNumber: primaryBank.accountNumber,
-          accountName: primaryBank.accountName,
-          refNumber: withdrawal.refNumber,
-          irisMode: irisPayout.mode,
-          irisStatus: irisPayout.status,
-        },
+    await safeCreateAuditLog({
+      userId: session.user.id,
+      action: 'WITHDRAWAL_SUCCESS',
+      entityType: 'StoreWithdrawal',
+      entityId: withdrawal.id,
+      details: {
+        storeId: store.id,
+        amount: numericAmount,
+        bankName: primaryBank.bankName,
+        accountNumber: primaryBank.accountNumber,
+        accountName: primaryBank.accountName,
+        refNumber: withdrawal.refNumber,
+        irisMode: irisPayout.mode,
+        irisStatus: irisPayout.status,
       },
     })
 
@@ -440,10 +445,25 @@ export async function POST(request: NextRequest) {
       },
       message: `Pencairan dana sebesar Rp ${numericAmount.toLocaleString('id-ID')} berhasil diproses ke ${primaryBank.bankName} ${primaryBank.accountNumber}.`,
     })
-  } catch (error) {
-    console.error('Error processing withdrawal:', error)
+  } catch (error: any) {
+    console.error('[WITHDRAWAL_FATAL_ERROR]:', error)
+    try {
+      const fs = await import('fs')
+      const path = await import('path')
+      fs.appendFileSync(
+        path.join(process.cwd(), '.data', 'withdraw-error.log'),
+        `[${new Date().toISOString()}] ${error?.stack || error?.message || String(error)}\n`
+      )
+    } catch (logErr) {
+      console.error('Failed writing error log:', logErr)
+    }
+
     return NextResponse.json(
-      { error: 'Internal server error while processing withdrawal' },
+      {
+        error:
+          error?.message || 'Internal server error while processing withdrawal',
+        code: 'INTERNAL_ERROR',
+      },
       { status: 500 }
     )
   }

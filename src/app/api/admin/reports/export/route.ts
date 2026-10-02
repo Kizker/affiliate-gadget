@@ -438,7 +438,7 @@ export async function GET(request: NextRequest) {
         let availableBalance = 0
 
         if (isConsolidated) {
-          const holdingWithdrawals = getStoreWithdrawals().filter(
+          const holdingWithdrawals = (await getStoreWithdrawals()).filter(
             (w) =>
               ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
               w.status === 'SUCCESS'
@@ -451,7 +451,9 @@ export async function GET(request: NextRequest) {
             allTimeCompletedAgg._sum.commissionAmount || 0
           availableBalance = Math.max(0, allTimeCommission - allTimeWithdrawn)
         } else {
-          const storeWithdrawals = getStoreWithdrawals(effectiveStoreId).filter(
+          const storeWithdrawals = (
+            await getStoreWithdrawals(effectiveStoreId)
+          ).filter(
             (w) =>
               w.storeId === effectiveStoreId &&
               allRealStoreIds.has(w.storeId) &&
@@ -471,11 +473,12 @@ export async function GET(request: NextRequest) {
         }
 
         // Period withdrawals (jika ada filter rentang tanggal)
-        let periodWithdrawals = getStoreWithdrawals(effectiveStoreId).filter(
-          (w) =>
-            isConsolidated
-              ? ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId)
-              : w.storeId === effectiveStoreId && allRealStoreIds.has(w.storeId)
+        let periodWithdrawals = (
+          await getStoreWithdrawals(effectiveStoreId)
+        ).filter((w) =>
+          isConsolidated
+            ? ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId)
+            : w.storeId === effectiveStoreId && allRealStoreIds.has(w.storeId)
         )
         if (s && e) {
           const sTime = s.getTime()
