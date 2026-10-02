@@ -2,15 +2,25 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Heart, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, Heart, ShoppingBag, Trash2 } from 'lucide-react'
 import { Navbar } from '@/components/layouts/navbar'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { MobileBottomNav } from '@/components/layouts/mobile-bottom-nav'
 import { CustomerWishlistView } from '@/components/customer/customer-wishlist-view'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
+import { toast } from 'sonner'
 
 export default function WishlistClient() {
-  const { totalCount } = useWishlistSafe()
+  const { totalCount, clearWishlist } = useWishlistSafe()
+
+  const handleClearAll = () => {
+    if (
+      confirm('Apakah Anda yakin ingin menghapus semua item dari Wishlist?')
+    ) {
+      clearWishlist()
+      toast.success('Semua item Wishlist berhasil dikosongkan')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50/50 text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
@@ -33,12 +43,24 @@ export default function WishlistClient() {
               Wishlist Saya
             </h1>
             {totalCount > 0 && (
-              <span className="rounded-full bg-rose-100 px-2 py-0.2 text-[10px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+              <span className="py-0.2 rounded-full bg-rose-100 px-2 text-[10px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
                 {totalCount}
               </span>
             )}
           </div>
-          <div className="w-10" />
+          {totalCount > 0 ? (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 active:scale-95 dark:text-rose-400 dark:hover:bg-rose-950/40"
+              title="Kosongkan Wishlist"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Kosongkan</span>
+            </button>
+          ) : (
+            <div className="w-16" />
+          )}
         </div>
 
         <main className="p-4">
@@ -55,17 +77,36 @@ export default function WishlistClient() {
         <main className="mx-auto max-w-5xl px-4 pb-20 pt-24 sm:px-6 lg:px-8">
           {/* Header Banner */}
           <div className="shadow-2xs mb-6 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex flex-col items-start justify-between gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center dark:border-slate-800">
+            <div className="flex flex-col items-start justify-between gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 sm:flex-row sm:items-center">
               <div className="flex items-center gap-3.5">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-950/40 dark:text-rose-400">
                   <Heart className="h-6 w-6 fill-rose-500" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-slate-950 dark:text-white">
-                    Wishlist Produk Impian
-                  </h1>
+                  <div className="flex items-center gap-2.5">
+                    <h1 className="text-lg font-bold text-slate-950 dark:text-white">
+                      Wishlist Saya
+                    </h1>
+                    {totalCount > 0 && (
+                      <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                        {totalCount}
+                      </span>
+                    )}
+                    {totalCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAll}
+                        className="ml-2 flex items-center gap-1 rounded-lg border border-rose-200/80 bg-rose-50/50 px-2.5 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 active:scale-95 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-400"
+                        title="Kosongkan Semua Wishlist"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>Kosongkan</span>
+                      </button>
+                    )}
+                  </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Pantau dan amankan gadget bekas bergaransi 30 hari favorit Anda
+                    Pantau dan amankan gadget bekas bergaransi 30 hari favorit
+                    Anda
                   </p>
                 </div>
               </div>

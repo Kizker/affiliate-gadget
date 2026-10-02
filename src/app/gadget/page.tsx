@@ -21,7 +21,10 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Heart,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { CustomSelect } from '@/components/ui/custom-select'
 import {
   InFeedStoreAdCard,
@@ -44,6 +47,7 @@ import {
 } from '@/components/live/live-banner-card'
 
 function GadgetKatalogContent() {
+  const { isInWishlist, toggleItem } = useWishlistSafe()
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const [gadgets, setGadgets] = useState<any[]>([])
@@ -55,6 +59,39 @@ function GadgetKatalogContent() {
   const [search, setSearch] = useState(() => searchParams.get('search') ?? '')
   const [sortBy, setSortBy] = useState('RELEVANCE')
   const [ignoreCorrection, setIgnoreCorrection] = useState(false)
+
+  const toggleWishlist = (item: any, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rawImg =
+      (item.images && item.images[0]) ||
+      item.image ||
+      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+
+    const storeName =
+      typeof item.store === 'object'
+        ? item.store?.name || item.store?.companyName
+        : item.store
+
+    const wasAdded = toggleItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      image: rawImg,
+      href: `/gadget/${item.id}`,
+      rating: item.rating,
+      reviewCount: item.totalReview,
+      originCity: item.store?.city,
+      storeName: storeName || 'Affiliate Gadget Official',
+    })
+
+    if (wasAdded) {
+      toast.success(`Ditambahkan ke Wishlist: ${item.name}`)
+    } else {
+      toast.info(`Dihapus dari Wishlist: ${item.name}`)
+    }
+  }
 
   // Reset ignore correction when search query changes
   useEffect(() => {
@@ -410,6 +447,27 @@ function GadgetKatalogContent() {
                         key={item.id}
                         className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border-2 border-slate-200 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4"
                       >
+                        {/* Top-Right: Wishlist Love Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleWishlist(item, e)}
+                          className="group/wish absolute right-3.5 top-3.5 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-slate-200/90 bg-white/95 text-slate-400 shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-90 dark:border-slate-700/80 dark:bg-slate-900/95 dark:hover:border-rose-900/60 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 sm:right-5 sm:top-5 sm:h-8 sm:w-8"
+                          aria-label="Wishlist"
+                          title={
+                            isInWishlist(item.id)
+                              ? 'Hapus dari Wishlist'
+                              : 'Tambah ke Wishlist'
+                          }
+                        >
+                          <Heart
+                            className={`h-3.5 w-3.5 transition-colors sm:h-4 sm:w-4 ${
+                              isInWishlist(item.id)
+                                ? 'fill-rose-500 text-rose-500'
+                                : 'text-slate-400 group-hover/wish:text-rose-500'
+                            }`}
+                          />
+                        </button>
+
                         <Link
                           href={`/gadget/${item.id}`}
                           className="block cursor-pointer focus:outline-none"
@@ -428,8 +486,8 @@ function GadgetKatalogContent() {
                               className="object-cover transition-transform duration-500 group-hover:scale-105"
                             />
 
-                            {/* Top-Right: Solid Clean Rating Capsule */}
-                            <div className="absolute right-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:right-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
+                            {/* Top-Left: Solid Clean Rating Capsule */}
+                            <div className="absolute left-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm backdrop-blur-md transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:left-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
                               <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400 sm:h-3 sm:w-3" />
                               <span className="font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white">
                                 {(item.rating || 5.0).toFixed(1)}

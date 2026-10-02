@@ -44,7 +44,9 @@ export function CustomerWishlistView({
   }
 
   const handleClearAll = () => {
-    if (confirm('Apakah Anda yakin ingin menghapus semua item dari Wishlist?')) {
+    if (
+      confirm('Apakah Anda yakin ingin menghapus semua item dari Wishlist?')
+    ) {
       clearWishlist()
       toast.success('Semua item Wishlist berhasil dikosongkan')
     }
@@ -52,28 +54,30 @@ export function CustomerWishlistView({
 
   return (
     <div className="w-full space-y-4 pb-20">
-      {/* Top Bar / Controls */}
-      <div className="flex items-center justify-between px-1">
-        <div>
-          <span className="text-xs font-bold text-slate-900 dark:text-white">
-            {items.length} Gadget Tersimpan
-          </span>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Daftar produk incaran yang siap Anda bawa pulang
-          </p>
-        </div>
+      {/* Top Bar / Controls (Hanya di tab pengaturan profil, bukan di halaman standalone) */}
+      {!isStandalonePage && (
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">
+              {items.length} Gadget Tersimpan
+            </span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Daftar produk incaran yang siap Anda bawa pulang
+            </p>
+          </div>
 
-        {items.length > 0 && (
-          <button
-            type="button"
-            onClick={handleClearAll}
-            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50 active:scale-95 dark:text-rose-400 dark:hover:bg-rose-950/40"
-          >
-            <Trash2 className="h-3 w-3" />
-            <span>Kosongkan</span>
-          </button>
-        )}
-      </div>
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50 active:scale-95 dark:text-rose-400 dark:hover:bg-rose-950/40"
+            >
+              <Trash2 className="h-3 w-3" />
+              <span>Kosongkan</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Empty State */}
       {items.length === 0 ? (
@@ -85,8 +89,8 @@ export function CustomerWishlistView({
             Wishlist Anda Masih Kosong
           </h3>
           <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
-            Klik ikon hati pada produk smartphone pilihan di beranda atau katalog
-            untuk menyimpannya di sini.
+            Klik ikon hati pada produk smartphone pilihan di beranda atau
+            katalog untuk menyimpannya di sini.
           </p>
           <Link
             href="/gadget"
@@ -142,7 +146,7 @@ export function CustomerWishlistView({
 
                     {/* Condition Badge */}
                     {item.conditionBadge && (
-                      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[8.5px] font-bold text-white backdrop-blur-xs">
+                      <span className="backdrop-blur-xs absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[8.5px] font-bold text-white">
                         {item.conditionBadge}
                       </span>
                     )}
@@ -170,7 +174,7 @@ export function CustomerWishlistView({
 
                       {/* Trust Badges */}
                       <div className="mt-1 flex items-center gap-1.5">
-                        <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.2 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                        <span className="py-0.2 inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
                           <ShieldCheck className="h-2.5 w-2.5" />
                           Garansi 30H
                         </span>

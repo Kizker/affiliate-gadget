@@ -1,5 +1,10 @@
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
+import { Heart } from 'lucide-react'
+import { toast } from 'sonner'
+import { useWishlistSafe } from '@/lib/store/wishlist-store'
 
 interface ProductCardProps {
   id: string
@@ -20,6 +25,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({
+  id,
   title,
   image,
   price,
@@ -33,6 +39,28 @@ export function ProductCard({
   imageAspect = 'aspect-[3/4]', // Default layout stability
   priority = false, // Default to lazy loading
 }: ProductCardProps) {
+  const { isInWishlist, toggleItem } = useWishlistSafe()
+  const isWishlisted = isInWishlist(id)
+
+  const handleWishlistClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const wasAdded = toggleItem({
+      id,
+      name: title,
+      price: price ?? priceRange?.min ?? 0,
+      image,
+      href,
+      rating,
+      reviewCount,
+    })
+    if (wasAdded) {
+      toast.success(`Ditambahkan ke Wishlist: ${title}`)
+    } else {
+      toast.info(`Dihapus dari Wishlist: ${title}`)
+    }
+  }
+
   const badgeColors = {
     green: 'bg-green-100 text-green-700',
     blue: 'bg-blue-100 text-blue-700',
@@ -44,6 +72,23 @@ export function ProductCard({
     <div
       className={`group relative overflow-hidden rounded-xl shadow-md transition-shadow hover:shadow-xl ${imageAspect}`}
     >
+      {/* Top-Right: Wishlist Love Button */}
+      <button
+        type="button"
+        onClick={handleWishlistClick}
+        className="group/wish absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/40 bg-black/40 text-white/90 shadow-md backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-rose-300 hover:bg-rose-500/80 hover:text-white active:scale-90"
+        aria-label="Wishlist"
+        title={isWishlisted ? 'Hapus dari Wishlist' : 'Tambah ke Wishlist'}
+      >
+        <Heart
+          className={`h-4 w-4 transition-colors ${
+            isWishlisted
+              ? 'fill-rose-500 text-rose-500 group-hover/wish:fill-white group-hover/wish:text-white'
+              : 'text-white/90 group-hover/wish:text-white'
+          }`}
+        />
+      </button>
+
       <Link href={href} className="block h-full w-full">
         <Image
           src={image}
@@ -54,10 +99,10 @@ export function ProductCard({
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" // Optimized for 2-col mobile, 3-col tablet, 4-col desktop
           className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
-        {/* Badge */}
+        {/* Badge (Top Left) */}
         {badge && (
           <div
-            className={`absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-sm ${badgeColors[badgeColor]}`}
+            className={`absolute left-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-sm ${badgeColors[badgeColor]}`}
           >
             {badge}
           </div>

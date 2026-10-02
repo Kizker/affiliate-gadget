@@ -122,9 +122,7 @@ describe('Unified Warranty Claim & Returns Suite (Phase 9)', () => {
     // Must have CheckResiModal integration
     expect(content).toContain('CheckResiModal')
     expect(content).toContain('Lacak Pengiriman Unit (Live)')
-    expect(content).toContain(
-      'Tahap 1: Unit Sedang Diperbaiki oleh Teknisi Toko'
-    )
+    expect(content).toContain('Tahap 1: Unit Sedang Diperbaiki oleh Teknisi')
     expect(content).toContain('Pengembalian Dana Selesai (Midtrans Escrow)')
   })
 

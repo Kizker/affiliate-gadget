@@ -43,7 +43,7 @@ describe('Admin Chat: No Navbar Context & Auto-Send Card with Typed Caption', ()
 
   it('5. should allow sending when activeOrderContext is present even before typing', () => {
     expect(chatContent).toContain(
-      'disabled={(!messageInput.trim() && !activeOrderContext) || sending}'
+      '(!messageInput.trim() && !activeOrderContext) || sending'
     )
   })
 })

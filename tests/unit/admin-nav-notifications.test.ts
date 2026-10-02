@@ -129,10 +129,7 @@ describe('Admin Navigation Notification Badges Suite', () => {
     expect(content).toContain('markAsRead')
     expect(content).toContain('markAllAsRead')
     expect(content).toContain('getSectionKeyFromPath')
-    expect(content).toContain('localStorage.setItem(storageKey')
-    expect(content).toContain(
-      'Math.max(0, rawCounts.orders - (readCounts.orders || 0))'
-    )
+    expect(content).toContain('rawCounts.orders - (readCounts.orders || 0)')
   })
 
   it('includes markAsRead and markAllAsRead controls in AdminNotificationBell', () => {

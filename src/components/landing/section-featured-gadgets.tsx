@@ -14,7 +14,10 @@ import {
   Star,
   Loader2,
   ChevronDown,
+  Heart,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useWishlistSafe } from '@/lib/store/wishlist-store'
 
 const MAX_TOP_PHONES = 20
 const INITIAL_COUNT = 20
@@ -28,9 +31,45 @@ const FALLBACK_GADGET_IMAGES = [
 ]
 
 export function SectionFeaturedGadgets() {
+  const { isInWishlist, toggleItem } = useWishlistSafe()
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  const toggleWishlist = (product: any, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rawImg =
+      Array.isArray(product.images) && product.images.length > 0
+        ? product.images[0]
+        : typeof product.images === 'string' &&
+            product.images.startsWith('http')
+          ? product.images
+          : product.image
+
+    const storeName =
+      typeof product.store === 'object'
+        ? product.store?.name || product.store?.companyName
+        : product.store
+
+    const wasAdded = toggleItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      image: rawImg,
+      href: `/gadget/${product.id}`,
+      rating: product.rating,
+      reviewCount: product.totalReview,
+      storeName: storeName || 'Toko Resmi',
+    })
+
+    if (wasAdded) {
+      toast.success(`Ditambahkan ke Wishlist: ${product.name}`)
+    } else {
+      toast.info(`Dihapus dari Wishlist: ${product.name}`)
+    }
+  }
 
   // Lazy Loading State (Default 20 items langsung tampil)
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT)
@@ -174,14 +213,16 @@ export function SectionFeaturedGadgets() {
               })}
             </div>
 
-            {/* Right: Action Orange Discovery Capsule */}
-            <Link
-              href="/gadget"
-              className="group inline-flex w-fit shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-orange-500 px-3.5 py-1 text-[11px] font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 active:scale-95 sm:px-4 sm:py-1.5 sm:text-xs"
-            >
-              <span>Lihat Semua ({products.length} Unit)</span>
-              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </Link>
+            {/* Right: Action Button (Discovery Capsule) */}
+            <div className="flex items-center gap-2">
+              <Link
+                href="/gadget"
+                className="group inline-flex w-fit shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-orange-500 px-3.5 py-1 text-[11px] font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 active:scale-95 sm:px-4 sm:py-1.5 sm:text-xs"
+              >
+                <span>Lihat Semua ({products.length} Unit)</span>
+                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -253,6 +294,27 @@ export function SectionFeaturedGadgets() {
                     key={product.id}
                     className="shadow-2xs sm:shadow-xs group relative flex flex-col justify-between rounded-2xl border-2 border-slate-200 bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:rounded-3xl sm:p-4"
                   >
+                    {/* Top-Right: Wishlist Love Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => toggleWishlist(product, e)}
+                      className="group/wish absolute right-3.5 top-3.5 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-slate-200/90 bg-white/95 text-slate-400 shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-90 dark:border-slate-700/80 dark:bg-slate-900/95 dark:hover:border-rose-900/60 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 sm:right-5 sm:top-5 sm:h-8 sm:w-8"
+                      aria-label="Wishlist"
+                      title={
+                        isInWishlist(product.id)
+                          ? 'Hapus dari Wishlist'
+                          : 'Tambah ke Wishlist'
+                      }
+                    >
+                      <Heart
+                        className={`h-3.5 w-3.5 transition-colors sm:h-4 sm:w-4 ${
+                          isInWishlist(product.id)
+                            ? 'fill-rose-500 text-rose-500'
+                            : 'text-slate-400 group-hover/wish:text-rose-500'
+                        }`}
+                      />
+                    </button>
+
                     <Link
                       href={`/gadget/${product.id}`}
                       className="block cursor-pointer focus:outline-none"
@@ -269,8 +331,8 @@ export function SectionFeaturedGadgets() {
                           loading="lazy"
                         />
 
-                        {/* Top-Right: Solid Clean Rating Capsule */}
-                        <div className="absolute right-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:right-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
+                        {/* Top-Left: Solid Clean Rating Capsule */}
+                        <div className="absolute left-1.5 top-1.5 z-10 flex select-none items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold text-slate-900 shadow-sm backdrop-blur-md transition-transform duration-300 group-hover:scale-105 dark:border-slate-700/80 dark:bg-slate-900 dark:text-white sm:left-2.5 sm:top-2.5 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px]">
                           <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400 sm:h-3 sm:w-3" />
                           <span className="font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white">
                             {(product.rating || 5.0).toFixed(1)}

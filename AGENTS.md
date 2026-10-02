@@ -52,7 +52,24 @@
 - **Port Tersedia:** Port 3000 (Next.js Web App) & Port 3001 (Standalone WebSocket Server)
 - **Mode Eksekusi:** `pnpm dev` (menjalankan Next.js port 3000 dan WS Server port 3001 secara paralel via `concurrently`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
-- **Unit Tests:** 90 test files, 694 tests lulus 100% (`pnpm test:unit` pass)
+- **Unit Tests:** 93 test files, 712 tests lulus 100% (`pnpm test:unit` pass)
+
+- **2026-10-02 (Perapian Halaman Wishlist — Pemindahan Tombol Kosongkan ke Header & Penghapusan Banner Redundan):**
+  - **1. Penghapusan Banner Redundan ([`src/components/customer/customer-wishlist-view.tsx`](file:///src/components/customer/customer-wishlist-view.tsx)):** Menghapus teks "1 Gadget Tersimpan" dan "Daftar produk incaran yang siap Anda bawa pulang" pada halaman standalone Wishlist (`!isStandalonePage`), sehingga layout kartu langsung tampil bersih tanpa header ganda.
+  - **2. Pemindahan Tombol Kosongkan ke Sebelah Kanan "Wishlist Saya" ([`src/app/dashboard/customer/wishlist/wishlist-client.tsx`](file:///src/app/dashboard/customer/wishlist/wishlist-client.tsx)):** Memindahkan tombol "Kosongkan" (`Trash2`) ke header bar atas di sebelah kanan "Wishlist Saya" (pada mode mobile di sisi kanan header dengan konfirmasi dialog & toast, serta pada mode desktop berdampingan langsung di samping judul wishlist).
+  - **3. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 93 test files dengan 712 unit tests lulus 100% (`pnpm test:unit` pass).
+
+- **2026-10-02 (Pencabutan Tombol Wishlist di Header Navbar — Cukup di Dropdown Profil):**
+  - **1. Pencabutan Tombol Wishlist dari Header Navbar ([`src/components/layouts/navbar.tsx`](file:///src/components/layouts/navbar.tsx)):** Menghapus tombol Love Wishlist mandiri yang sempat disematkan di antara Live Chat dan Keranjang pada header desktop.
+  - **2. Pemeliharaan Wishlist Eksklusif pada Dropdown Profil ([`src/components/layouts/navbar.tsx`](file:///src/components/layouts/navbar.tsx)):** Menu Wishlist tetap tersedia secara bersih di dalam dropdown menu profil avatar pembeli (`Wishlist Saya` -> `/dashboard/customer/wishlist`).
+  - **3. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 93 test files dengan 711 unit tests lulus 100% (`pnpm test:unit` pass).
+
+- **2026-10-02 (Tombol Love Wishlist Mode Desktop pada Seluruh Kartu Produk):**
+  - **1. Beranda Desktop ([`src/components/landing/section-featured-gadgets.tsx`](file:///src/components/landing/section-featured-gadgets.tsx)):** Menambahkan tombol Love (Wishlist) floating di sudut kanan atas kartu produk desktop (`group/wish absolute right-3.5 top-3.5 sm:right-5 sm:top-5 z-20`) dengan transisi scale, border rose, dan warna merah rose saat aktif. Rating capsule (`★ 5.0 (0)`) digeser ke sudut kiri atas (`left-1.5 top-1.5 sm:left-2.5 sm:top-2.5`) agar tata letak seimbang dan tidak tumpang tindih.
+  - **2. Halaman Katalog Gadget Desktop ([`src/app/gadget/page.tsx`](file:///src/app/gadget/page.tsx)):** Mengintegrasikan tombol Love Wishlist pada seluruh kartu grid katalog desktop, terhubung langsung dengan `useWishlistSafe`, notifikasi sonner toast real-time, dan status penyimpanan lokal/akun.
+  - **3. Kartu Produk Universal & Toko Cabang ([`src/components/catalog/product-card.tsx`](file:///src/components/catalog/product-card.tsx), [`src/app/toko/[slug]/page.tsx`](file:///src/app/toko/[slug]/page.tsx)):** Menyediakan tombol Wishlist Love di sudut kanan atas pada komponen `ProductCard` universal serta halaman rincian toko cabang.
+  - **4. Pencegahan Konflik Navigasi & Hydration:** Tombol ditempatkan sebagai kontrol independen dengan `e.preventDefault()` dan `e.stopPropagation()` sehingga klik Love tidak memicu pembukaan rute halaman rincian gadget.
+  - **5. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 93 unit test files dengan 710 unit tests lulus 100% (`pnpm test:unit` pass), mencakup pengujian unit baru ([`tests/unit/desktop-product-wishlist-button.test.ts`](file:///tests/unit/desktop-product-wishlist-button.test.ts)).
 
 - **2026-10-01 (Perbaikan Runtime TypeError reportData.orders.total & Unwrapping Payload API Laporan):**
   - **1. Unwrapping Payload API Laporan ([`src/app/dashboard/admin/finance/page.tsx`](file:///src/app/dashboard/admin/finance/page.tsx)):** Response endpoint `/api/admin/reports` memiliki amplop `{ success: true, data: { ... } }`. Memperbaiki unpacking data laporan dengan `const payload = reportsJson?.data || reportsJson` serta memastikan seluruh field memiliki fallback default agar objek bersarang tidak undefined.
