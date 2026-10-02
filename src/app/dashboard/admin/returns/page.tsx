@@ -39,7 +39,7 @@ import { CheckResiModal } from '@/components/shipping/check-resi-modal'
 import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
 import type { ShippingBookingRecord } from '@/lib/shipping/biteship-client'
 
-export const BITESHIP_COURIERS = [
+const BITESHIP_COURIERS = [
   {
     id: 'JNE',
     name: 'JNE Express',
