@@ -116,4 +116,27 @@ describe('Live Streaming Enhancements Suite (Mirror Sync, Instagram Mobile & You
     expect(productPinCode).toContain('product.productPrice')
     expect(productPinCode).toContain('product.productTitle')
   })
+
+  it('7. Fullscreen & Landscape Floating Chat on Right with Pinned Product on Left', () => {
+    // Viewer renders LiveProductPin on left of player canvas
+    expect(viewerCode).toContain('<LiveProductPin')
+    expect(viewerCode).toContain('isBroadcaster={false}')
+    // Fullscreen state and floating right chat column with input & like
+    expect(viewerCode).toContain('isFullscreen')
+    expect(viewerCode).toContain('showFullscreenChat')
+    expect(viewerCode).toContain('handleSendFullscreenComment')
+    expect(viewerCode).toContain('sendLike(1)')
+    // Mobile landscape support
+    expect(viewerCode).toContain('isLandscape')
+  })
+
+  it('8. Full Catalog Selection & Pinning in Broadcaster Studio (200+ items)', () => {
+    // Broadcaster loads full catalog
+    expect(broadcasterCode).toContain('/api/gadgets?limit=500')
+    // Supports instant search and category filtering in live studio
+    expect(broadcasterCode).toContain('productSearch')
+    expect(broadcasterCode).toContain('productFilterMode')
+    expect(broadcasterCode).toContain('filteredCatalogProducts')
+    expect(broadcasterCode).toContain('handlePinProduct')
+  })
 })

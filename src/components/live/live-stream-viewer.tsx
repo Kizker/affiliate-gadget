@@ -18,6 +18,7 @@ import {
   Volume2,
   VolumeX,
   Maximize2,
+  Minimize2,
   ExternalLink,
   ShieldCheck,
   RefreshCw,
@@ -31,6 +32,7 @@ import { useLiveKitToken } from '@/hooks/use-livekit-token'
 import { useLiveChat } from '@/hooks/use-live-chat'
 import { LiveStreamStatusBar } from './live-stream-status-bar'
 import { LiveChatPanel } from './live-chat-panel'
+import { LiveProductPin } from './live-product-pin'
 import { FloatingHeartsOverlay } from './floating-hearts'
 import { VIEWER_ROOM_OPTIONS } from '@/lib/livekit-options'
 
@@ -260,6 +262,35 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   const [isProductDrawerOpen, setIsProductDrawerOpen] = useState(false)
   const mobileChatScrollRef = useRef<HTMLDivElement>(null)
   const playerContainerRef = useRef<HTMLDivElement>(null)
+  const mobileRootRef = useRef<HTMLDivElement>(null)
+
+  // Fullscreen & Orientation states
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isLandscape, setIsLandscape] = useState(false)
+  const [fullscreenInputText, setFullscreenInputText] = useState('')
+  const [showFullscreenChat, setShowFullscreenChat] = useState(true)
+  const fullscreenChatScrollRef = useRef<HTMLDivElement>(null)
+
+  // Listen to fullscreen changes & orientation
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    const checkOrientation = () => {
+      if (typeof window !== 'undefined') {
+        setIsLandscape(window.innerWidth > window.innerHeight)
+      }
+    }
+    document.addEventListener('fullscreenchange', handleFsChange)
+    window.addEventListener('resize', checkOrientation)
+    window.addEventListener('orientationchange', checkOrientation)
+    checkOrientation()
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange)
+      window.removeEventListener('resize', checkOrientation)
+      window.removeEventListener('orientationchange', checkOrientation)
+    }
+  }, [])
 
   // 1. Fetch Stream Metadata
   const fetchStreamData = async () => {
@@ -342,14 +373,45 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
     }
   }, [messages])
 
-  // Fullscreen handler for Desktop
+  // Auto-scroll fullscreen chat to bottom
+  useEffect(() => {
+    if (fullscreenChatScrollRef.current) {
+      fullscreenChatScrollRef.current.scrollTop =
+        fullscreenChatScrollRef.current.scrollHeight
+    }
+  }, [messages])
+
+  // Fullscreen handler for Desktop and Mobile (otomatis landscape di HP jika didukung)
   const handleFullscreen = () => {
-    if (!playerContainerRef.current) return
+    const target = isMobile
+      ? mobileRootRef.current || document.documentElement
+      : playerContainerRef.current
+    if (!target) return
+
     if (!document.fullscreenElement) {
-      playerContainerRef.current.requestFullscreen().catch(() => {})
+      target.requestFullscreen().catch(() => {})
+      if (isMobile && screen.orientation && (screen.orientation as any).lock) {
+        ;(screen.orientation as any).lock('landscape').catch(() => {})
+      }
     } else {
       document.exitFullscreen().catch(() => {})
+      if (
+        isMobile &&
+        screen.orientation &&
+        (screen.orientation as any).unlock
+      ) {
+        ;(screen.orientation as any).unlock()
+      }
     }
+  }
+
+  // Handle Fullscreen Comment Send
+  const handleSendFullscreenComment = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const trimmed = fullscreenInputText.trim()
+    if (!trimmed) return
+    sendMessage(trimmed)
+    setFullscreenInputText('')
   }
 
   // Handle Mobile Comment Send
@@ -447,8 +509,111 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   // 1. MOBILE VIEW: INSTAGRAM LIVE STYLE (Full-bleed 9:16 Portrait)
   // ===================================================================
   if (isMobile) {
+    // Mode Mobile Miring / Landscape Fullscreen (Kolom komentar melayang di kanan, barang di kiri)
+    if (isLandscape || isFullscreen) {
+      return (
+        <div
+          ref={mobileRootRef}
+          className="fixed inset-0 z-50 flex h-[100dvh] w-full select-none overflow-hidden bg-black text-white"
+        >
+          {/* Fullscreen Video Background */}
+          <div className="absolute inset-0 z-0">{renderLiveVideo(false)}</div>
+          <FloatingHeartsOverlay triggerCount={likeCount} />
+
+          {/* Minimal Top Header on Mobile Landscape */}
+          <div className="pointer-events-auto absolute left-3 top-3 z-30 flex items-center gap-2">
+            <span className="flex items-center gap-1 rounded-md bg-rose-600 px-2 py-0.5 text-[9px] font-extrabold uppercase text-white shadow-md">
+              <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white" />
+              LIVE
+            </span>
+            <span className="rounded-md bg-black/50 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-md">
+              👁 {viewerCount}
+            </span>
+            <span className="max-w-[120px] truncate text-xs font-bold text-white drop-shadow">
+              {stream.store?.name}
+            </span>
+          </div>
+
+          {/* Pinned Product Floating on Left Side (Mobile Landscape) */}
+          {pinnedProduct && (
+            <div className="pointer-events-auto absolute bottom-3 left-3 z-30 max-w-[280px] animate-in fade-in slide-in-from-bottom-2 sm:max-w-xs">
+              <LiveProductPin product={pinnedProduct} isBroadcaster={false} />
+            </div>
+          )}
+
+          {/* Floating Right Column for Comments & Like (Mobile Landscape) */}
+          <div className="pointer-events-auto absolute bottom-3 right-3 top-3 z-30 flex w-72 flex-col justify-between rounded-2xl border border-white/15 bg-black/75 p-3 shadow-2xl backdrop-blur-md animate-in slide-in-from-right-3">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <span className="text-xs font-bold text-white">
+                Live Komentar
+              </span>
+              <button
+                type="button"
+                onClick={handleFullscreen}
+                className="rounded-lg p-1 text-white/70 hover:bg-white/10 hover:text-white"
+                title="Keluar Layar Penuh"
+              >
+                <Minimize2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div
+              ref={mobileChatScrollRef}
+              className="flex-1 space-y-1.5 overflow-y-auto py-2 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {messages.slice(-25).map((msg) => (
+                <div
+                  key={msg.id}
+                  className="rounded-xl border border-white/5 bg-white/5 p-1.5 text-xs text-white"
+                >
+                  <span className="font-bold text-orange-400">
+                    {msg.userName}:{' '}
+                  </span>
+                  <span className="break-words text-white/95">
+                    {msg.message}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Mobile Landscape Comment & Like Input Form */}
+            <form
+              onSubmit={handleSendMobileComment}
+              className="flex items-center gap-1.5 border-t border-white/10 pt-2"
+            >
+              <input
+                type="text"
+                value={mobileInputText}
+                onChange={(e) => setMobileInputText(e.target.value)}
+                placeholder="Komentar..."
+                enterKeyHint="send"
+                style={{ fontSize: 16, outline: 'none' }}
+                className="w-full rounded-xl border border-white/20 bg-white/10 px-2.5 py-1.5 text-xs text-white placeholder-white/50 outline-none focus:border-orange-500"
+              />
+              {mobileInputText.trim() && (
+                <button
+                  type="submit"
+                  className="shrink-0 rounded-xl bg-orange-500 p-2 text-white active:scale-95"
+                >
+                  <Send className="h-3 w-3" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => sendLike(1)}
+                className="shrink-0 rounded-xl border border-rose-500/40 bg-rose-500/25 p-2 text-rose-500 active:scale-90"
+              >
+                <Heart className="h-3.5 w-3.5 fill-rose-500" />
+              </button>
+            </form>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div
+        ref={mobileRootRef}
         className="fixed inset-x-0 top-0 flex h-[100dvh] w-full select-none flex-col justify-between overflow-hidden bg-black text-white"
         style={{ transform: `translateY(${offsetTop}px)` }}
       >
@@ -643,6 +808,16 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             >
               <Heart className="h-4 w-4 fill-rose-500" />
             </button>
+
+            {/* Fullscreen / Rotate Button */}
+            <button
+              type="button"
+              onClick={handleFullscreen}
+              className="shrink-0 rounded-full border border-white/20 bg-black/60 p-2.5 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-90"
+              title="Layar Penuh / Miring"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
@@ -763,6 +938,117 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
               {renderLiveVideo(true)}
             </div>
+
+            {/* Floating Pinned Product on Desktop Video Player (Kiri Layar Mengambang seperti sisi Host) */}
+            {pinnedProduct && (
+              <div className="pointer-events-auto absolute bottom-4 left-4 z-30 max-w-[calc(100%-2rem)] animate-in fade-in slide-in-from-bottom-2 sm:max-w-xs md:max-w-sm">
+                <LiveProductPin product={pinnedProduct} isBroadcaster={false} />
+              </div>
+            )}
+
+            {/* Fullscreen Floating Comments Column on the Right (Kolom komentar melayang di kanan saat layar penuh) */}
+            {isFullscreen && (
+              <>
+                {showFullscreenChat ? (
+                  <div className="pointer-events-auto absolute bottom-6 right-4 top-16 z-40 flex w-80 max-w-[35vw] flex-col justify-between rounded-2xl border border-white/15 bg-black/75 p-3.5 shadow-2xl backdrop-blur-md animate-in slide-in-from-right-4">
+                    {/* Header Live Chat */}
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                        <span className="text-xs font-bold text-white">
+                          Live Chat
+                        </span>
+                        <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70">
+                          👁 {viewerCount}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowFullscreenChat(false)}
+                          className="rounded-lg p-1 text-white/70 hover:bg-white/10 hover:text-white"
+                          title="Sembunyikan Chat"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleFullscreen}
+                          className="rounded-lg p-1 text-white/70 hover:bg-white/10 hover:text-white"
+                          title="Keluar Layar Penuh"
+                        >
+                          <Minimize2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Messages stream */}
+                    <div
+                      ref={fullscreenChatScrollRef}
+                      className="flex-1 space-y-2 overflow-y-auto py-2 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      {messages.slice(-30).map((msg) => (
+                        <div
+                          key={msg.id}
+                          className="rounded-xl border border-white/5 bg-white/5 p-2 text-xs text-white backdrop-blur-sm"
+                        >
+                          <span className="font-bold text-orange-400">
+                            {msg.userName}:{' '}
+                          </span>
+                          <span className="break-words text-white/95">
+                            {msg.message}
+                          </span>
+                        </div>
+                      ))}
+                      {messages.length === 0 && (
+                        <div className="py-6 text-center text-xs italic text-white/50">
+                          Belum ada komentar siaran...
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Chat input form & Like button */}
+                    <form
+                      onSubmit={handleSendFullscreenComment}
+                      className="flex items-center gap-1.5 border-t border-white/10 pt-2"
+                    >
+                      <input
+                        type="text"
+                        value={fullscreenInputText}
+                        onChange={(e) => setFullscreenInputText(e.target.value)}
+                        placeholder="Kirim komentar..."
+                        className="w-full rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs text-white placeholder-white/50 outline-none focus:border-orange-500 focus:bg-white/15"
+                      />
+                      {fullscreenInputText.trim() && (
+                        <button
+                          type="submit"
+                          className="shrink-0 rounded-xl bg-orange-500 p-2 text-white transition-all hover:bg-orange-600 active:scale-95"
+                          title="Kirim"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => sendLike(1)}
+                        className="shrink-0 rounded-xl border border-rose-500/40 bg-rose-500/25 p-2 text-rose-500 transition-all hover:bg-rose-500/35 active:scale-90"
+                        title="Kirim Suka"
+                      >
+                        <Heart className="h-3.5 w-3.5 fill-rose-500" />
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowFullscreenChat(true)}
+                    className="pointer-events-auto absolute bottom-6 right-4 z-40 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/70 px-3.5 py-2 text-xs font-bold text-white shadow-xl backdrop-blur-md hover:bg-black/90"
+                  >
+                    <span>💬 Buka Chat</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
           {/* Title & Channel Bar (YouTube Style) */}

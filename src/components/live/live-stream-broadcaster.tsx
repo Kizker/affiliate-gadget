@@ -27,6 +27,8 @@ import {
   FlipHorizontal,
   MessageSquare,
   Crop,
+  Search,
+  X,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useLiveKitToken } from '@/hooks/use-livekit-token'
@@ -75,6 +77,10 @@ function LiveKitStudioControls({
   const [isMirrored, setIsMirrored] = useState(true)
   const [showGuides, setShowGuides] = useState(true)
   const [mobileTab, setMobileTab] = useState<'chat' | 'products'>('chat')
+  const [productSearch, setProductSearch] = useState('')
+  const [productFilterMode, setProductFilterMode] = useState<
+    'all' | 'featured'
+  >('all')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(
     null
   )
@@ -166,8 +172,8 @@ function LiveKitStudioControls({
     setMirror(nextMirror)
   }
 
-  // Handle Pin Product
-  const handlePinProduct = (prod: StoreProduct) => {
+  // Handle Pin Product (dari katalog manapun)
+  const handlePinProduct = async (prod: StoreProduct) => {
     pinProduct({
       productId: prod.id,
       productTitle: prod.name,
@@ -176,7 +182,38 @@ function LiveKitStudioControls({
       productSlug: prod.id,
     })
     setSelectedProductId(prod.id)
+
+    // Tambahkan otomatis ke featuredProductIds di database jika belum ada
+    if (stream.id && !stream.featuredProductIds?.includes(prod.id)) {
+      try {
+        const nextIds = Array.from(
+          new Set([...(stream.featuredProductIds || []), prod.id])
+        )
+        await fetch(`/api/live-streams/${stream.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ featuredProductIds: nextIds }),
+        })
+        stream.featuredProductIds = nextIds
+      } catch {
+        // Abaikan kegagalan patch non-kritis
+      }
+    }
   }
+
+  // Filter produk katalog berdasarkan search & filter mode
+  const filteredCatalogProducts = products.filter((p) => {
+    if (productFilterMode === 'featured') {
+      const isInitial = (stream.featuredProductIds || []).includes(p.id)
+      if (!isInitial) return false
+    }
+    if (!productSearch.trim()) return true
+    const q = productSearch.toLowerCase()
+    return (
+      p.name.toLowerCase().includes(q) ||
+      (p.brand && p.brand.toLowerCase().includes(q))
+    )
+  })
 
   const handleCopyLink = () => {
     const url = `${window.location.origin}/live/${stream.id}`
@@ -412,10 +449,10 @@ function LiveKitStudioControls({
             mobileTab === 'products' ? 'flex' : 'hidden lg:flex'
           }`}
         >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-slate-800">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
               <ShoppingBag className="h-4 w-4 text-orange-500" />
-              <span>Sematan Produk ({products.length})</span>
+              <span>Katalog Sematan ({products.length})</span>
             </div>
             {pinnedProduct && (
               <button
@@ -427,24 +464,76 @@ function LiveKitStudioControls({
             )}
           </div>
 
+          {/* Search bar & filter pills untuk memilih dari semua 200+ katalog */}
+          <div className="mt-2 space-y-1.5">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Cari semua gadget katalog..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-7 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+              {productSearch && (
+                <button
+                  type="button"
+                  onClick={() => setProductSearch('')}
+                  className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setProductFilterMode('all')}
+                className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                  productFilterMode === 'all'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                }`}
+              >
+                Semua ({products.length})
+              </button>
+              {stream.featuredProductIds &&
+                stream.featuredProductIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setProductFilterMode('featured')}
+                    className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                      productFilterMode === 'featured'
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                    }`}
+                  >
+                    Pilihan Awal ({stream.featuredProductIds.length})
+                  </button>
+                )}
+            </div>
+          </div>
+
           <div className="scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 mt-2 flex-1 space-y-2 overflow-y-auto">
-            {products.length === 0 ? (
+            {filteredCatalogProducts.length === 0 ? (
               <div className="py-6 text-center text-xs text-slate-400">
-                Tidak ada produk yang dipilih untuk siaran ini.
+                {productSearch
+                  ? 'Tidak ada produk yang cocok dengan pencarian.'
+                  : 'Tidak ada produk di katalog toko.'}
               </div>
             ) : (
-              products.map((p) => {
+              filteredCatalogProducts.map((p) => {
                 const isPinned = pinnedProduct?.productId === p.id
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center justify-between rounded-2xl border p-2.5 text-xs transition-all ${
+                    className={`flex items-center justify-between rounded-2xl border p-2 text-xs transition-all ${
                       isPinned
-                        ? 'shadow-xs border-orange-400 bg-orange-50/70 dark:border-orange-500/40 dark:bg-orange-950/20'
+                        ? 'border-orange-400 bg-orange-50/70 shadow-sm dark:border-orange-500/40 dark:bg-orange-950/20'
                         : 'border-slate-200/70 bg-slate-50/80 hover:bg-slate-100/80 dark:border-slate-800 dark:bg-slate-800/40'
                     }`}
                   >
-                    <div className="flex min-w-0 items-center gap-2.5 pr-2">
+                    <div className="flex min-w-0 items-center gap-2 pr-2">
                       <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-700">
                         {p.images[0] ? (
                           <Image
@@ -472,8 +561,8 @@ function LiveKitStudioControls({
                       disabled={isPinned}
                       className={`flex cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-all ${
                         isPinned
-                          ? 'shadow-xs cursor-default bg-orange-500 text-white'
-                          : 'shadow-2xs border border-slate-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                          ? 'cursor-default bg-orange-500 text-white shadow-sm'
+                          : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
                       }`}
                     >
                       <Pin className="h-3 w-3" />
@@ -520,10 +609,10 @@ export function LiveStreamBroadcaster() {
     }
   }
 
-  // Load store products
+  // Load store products (semua katalog untuk disematkan saat live)
   const loadProducts = async () => {
     try {
-      const res = await fetch('/api/gadgets?limit=50')
+      const res = await fetch('/api/gadgets?limit=500')
       const json = await res.json()
       if (json.success && Array.isArray(json.data)) {
         setProducts(json.data)
@@ -685,9 +774,7 @@ export function LiveStreamBroadcaster() {
         <RoomAudioRenderer />
         <LiveKitStudioControls
           stream={activeStream}
-          products={
-            activeProducts.length > 0 ? activeProducts : products.slice(0, 5)
-          }
+          products={products}
           onEndStream={handleEndActiveStream}
         />
       </LiveKitRoom>
