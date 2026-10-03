@@ -26,6 +26,7 @@ import {
   Share2,
   FlipHorizontal,
   MessageSquare,
+  Crop,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useLiveKitToken } from '@/hooks/use-livekit-token'
@@ -34,6 +35,8 @@ import { LiveStreamStatusBar } from './live-stream-status-bar'
 import { LiveChatPanel } from './live-chat-panel'
 import { LiveProductPin } from './live-product-pin'
 import { FloatingHeartsOverlay } from './floating-hearts'
+import { LiveFrameGuides } from './live-frame-guides'
+import { HOST_ROOM_OPTIONS } from '@/lib/livekit-options'
 
 interface StoreProduct {
   id: string
@@ -70,6 +73,7 @@ function LiveKitStudioControls({
   const [micActive, setMicActive] = useState(true)
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
   const [isMirrored, setIsMirrored] = useState(true)
+  const [showGuides, setShowGuides] = useState(true)
   const [mobileTab, setMobileTab] = useState<'chat' | 'products'>('chat')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(
     null
@@ -241,13 +245,20 @@ function LiveKitStudioControls({
               playsInline
               muted
               style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}
-              className="h-full w-full object-cover transition-transform duration-300"
+              className={`h-full w-full transition-transform duration-300 ${
+                showGuides ? 'object-contain' : 'object-cover'
+              }`}
             />
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 text-slate-500">
               <CameraOff className="h-16 w-16 stroke-1 text-slate-600" />
               <p className="text-sm font-medium">Kamera Dimatikan</p>
             </div>
+          )}
+
+          {/* Panduan Frame: batas layar HP (9:16) & desktop (16:9) untuk host */}
+          {showGuides && cameraActive && (
+            <LiveFrameGuides videoRef={videoElementRef} />
           )}
 
           {/* Floating Hearts Animation Overlay on Video Canvas */}
@@ -326,6 +337,23 @@ function LiveKitStudioControls({
               }
             >
               <FlipHorizontal className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+
+            {/* Panduan Frame Toggle (batas layar HP & desktop) */}
+            <button
+              onClick={() => setShowGuides((v) => !v)}
+              className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
+                showGuides
+                  ? 'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-400/50 hover:bg-emerald-500/40'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+              }`}
+              title={
+                showGuides
+                  ? 'Panduan Frame Aktif (batas layar HP & Desktop) - Klik untuk sembunyikan'
+                  : 'Tampilkan Panduan Frame (batas layar HP & Desktop)'
+              }
+            >
+              <Crop className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
           </div>
         </div>
@@ -651,6 +679,7 @@ export function LiveStreamBroadcaster() {
         connect={true}
         video={true}
         audio={true}
+        options={HOST_ROOM_OPTIONS}
         className="w-full"
       >
         <RoomAudioRenderer />

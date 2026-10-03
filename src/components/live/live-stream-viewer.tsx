@@ -6,9 +6,10 @@ import Link from 'next/link'
 import {
   LiveKitRoom,
   RoomAudioRenderer,
+  useConnectionState,
   useTracks,
 } from '@livekit/components-react'
-import { Track } from 'livekit-client'
+import { Track, ConnectionState } from 'livekit-client'
 import {
   Radio,
   ShoppingBag,
@@ -31,6 +32,7 @@ import { useLiveChat } from '@/hooks/use-live-chat'
 import { LiveStreamStatusBar } from './live-stream-status-bar'
 import { LiveChatPanel } from './live-chat-panel'
 import { FloatingHeartsOverlay } from './floating-hearts'
+import { VIEWER_ROOM_OPTIONS } from '@/lib/livekit-options'
 
 interface StoreInfo {
   id: string
@@ -82,6 +84,44 @@ function useIsMobile() {
   return isMobile
 }
 
+/**
+ * Melacak keyboard virtual pada layar HP dengan VisualViewport API.
+ * - keyboardInset: tinggi keyboard yang menutupi layout viewport (px)
+ * - offsetTop: pergeseran visual viewport (iOS Safari scroll saat fokus input)
+ * Dipakai agar bar komentar "melayang" naik di atas keyboard tanpa tertutup.
+ */
+function useKeyboardInset(enabled: boolean) {
+  const [state, setState] = useState({ keyboardInset: 0, offsetTop: 0 })
+
+  useEffect(() => {
+    if (!enabled || typeof window === 'undefined' || !window.visualViewport) {
+      setState({ keyboardInset: 0, offsetTop: 0 })
+      return
+    }
+    const vv = window.visualViewport
+    const update = () => {
+      const inset = Math.max(
+        0,
+        Math.round(window.innerHeight - vv.height - vv.offsetTop)
+      )
+      setState({
+        // Abaikan perubahan kecil (toolbar browser) agar tidak "goyang"
+        keyboardInset: inset > 80 ? inset : 0,
+        offsetTop: Math.max(0, Math.round(vv.offsetTop)),
+      })
+    }
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [enabled])
+
+  return state
+}
+
 // Sub-component for rendering video within LiveKit context
 function LiveKitSubscriberVideo({
   onFullscreen,
@@ -100,42 +140,46 @@ function LiveKitSubscriberVideo({
   const videoRef = useRef<HTMLVideoElement>(null)
 
   // Track camera publications from remote host
+  const connectionState = useConnectionState()
   const tracks = useTracks([Track.Source.Camera])
-  const hostCameraTrack =
-    tracks.find(
-      (t) =>
-        t.publication.source === Track.Source.Camera &&
-        t.publication.isSubscribed
-    ) || tracks[0]
+  const hostCameraTrack = tracks.find(
+    (t) => t.publication.source === Track.Source.Camera && !!t.publication.track
+  )
+  const activeTrack = hostCameraTrack?.publication?.track
 
   useEffect(() => {
-    const track = hostCameraTrack?.publication?.track
-    if (!track || !videoRef.current) return
+    const el = videoRef.current
+    if (!activeTrack || !el) return
 
-    track.attach(videoRef.current)
+    activeTrack.attach(el)
 
     // Ensure playback starts smoothly; fallback to muted if mobile autoplay policy blocks unmuted audio
-    videoRef.current.play().catch(() => {
-      if (videoRef.current) {
-        videoRef.current.muted = true
-        setIsMuted(true)
-        videoRef.current.play().catch(() => {})
-      }
+    el.play().catch(() => {
+      el.muted = true
+      setIsMuted(true)
+      el.play().catch(() => {})
     })
 
     return () => {
-      if (videoRef.current && track) {
-        track.detach(videoRef.current)
-      }
+      activeTrack.detach(el)
     }
-  }, [hostCameraTrack])
+  }, [activeTrack])
+
+  const statusTitle =
+    connectionState === ConnectionState.Connected
+      ? 'Menunggu video dari Host...'
+      : connectionState === ConnectionState.Reconnecting
+        ? 'Koneksi tidak stabil, menyambungkan ulang...'
+        : connectionState === ConnectionState.Disconnected
+          ? 'Koneksi terputus, mencoba lagi...'
+          : 'Menghubungkan ke Host Toko...'
 
   return (
     <div
       onDoubleClick={onSendLike}
       className="relative flex h-full w-full items-center justify-center overflow-hidden bg-slate-950"
     >
-      {hostCameraTrack ? (
+      {activeTrack ? (
         <video
           ref={videoRef}
           autoPlay
@@ -150,12 +194,9 @@ function LiveKitSubscriberVideo({
             <Radio className="h-14 w-14 animate-pulse text-orange-500" />
             <span className="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-orange-400" />
           </div>
-          <h4 className="text-base font-bold text-white">
-            Menghubungkan ke Host Toko...
-          </h4>
+          <h4 className="text-base font-bold text-white">{statusTitle}</h4>
           <p className="max-w-xs text-xs text-slate-400">
-            Siaran sedang berlangsung. Menunggu sinyal video dari kamera toko
-            cabang.
+            Kualitas video menyesuaikan jaringan Anda secara otomatis.
           </p>
         </div>
       )}
@@ -271,6 +312,28 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
     isBroadcaster: false,
   })
 
+  const { keyboardInset, offsetTop } = useKeyboardInset(isMobile)
+
+  // Kunci scroll body di mobile agar layout tidak bergeser saat keyboard muncul
+  useEffect(() => {
+    if (!isMobile) return
+    const html = document.documentElement
+    const body = document.body
+    const prev = [
+      html.style.overflow,
+      body.style.overflow,
+      body.style.overscrollBehavior,
+    ]
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    body.style.overscrollBehavior = 'none'
+    return () => {
+      html.style.overflow = prev[0]
+      body.style.overflow = prev[1]
+      body.style.overscrollBehavior = prev[2]
+    }
+  }, [isMobile])
+
   // Auto-scroll mobile comments stream to bottom
   useEffect(() => {
     if (mobileChatScrollRef.current) {
@@ -365,6 +428,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
         connect={true}
         video={false}
         audio={false}
+        options={VIEWER_ROOM_OPTIONS}
         className="h-full w-full"
       >
         <RoomAudioRenderer />
@@ -384,7 +448,10 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   // ===================================================================
   if (isMobile) {
     return (
-      <div className="relative flex h-[100dvh] w-full select-none flex-col justify-between overflow-hidden bg-black text-white">
+      <div
+        className="fixed inset-x-0 top-0 flex h-[100dvh] w-full select-none flex-col justify-between overflow-hidden bg-black text-white"
+        style={{ transform: `translateY(${offsetTop}px)` }}
+      >
         {/* Fullscreen Video Stream Background (Single LiveKit Mount) */}
         <div className="absolute inset-0 z-0">{renderLiveVideo(false)}</div>
 
@@ -423,7 +490,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 </span>
               </div>
               <div className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-white/80">
-                <span className="backdrop-blur-xs flex items-center gap-1 rounded-md bg-black/40 px-1.5 py-0.5">
+                <span className="flex items-center gap-1 rounded-md bg-black/40 px-1.5 py-0.5 backdrop-blur-sm">
                   👁 {viewerCount}
                 </span>
                 <span className="text-white/60">•</span>
@@ -446,11 +513,18 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
         </div>
 
         {/* Instagram Live Bottom Section (Comments Stream, Pinned Product, Input Bar) */}
-        <div className="pointer-events-none relative z-30 flex flex-col justify-end gap-2.5 p-3 pb-6">
+        <div
+          className="pointer-events-none relative z-30 flex flex-col justify-end gap-2.5 p-3 pb-6"
+          style={{
+            transform: `translateY(-${keyboardInset}px)`,
+            transition: 'transform 150ms ease-out',
+            paddingBottom: keyboardInset > 0 ? 12 : undefined,
+          }}
+        >
           {/* Floating Comments Stream (scrolling upwards over the video) */}
           <div
             ref={mobileChatScrollRef}
-            className="scrollbar-none pointer-events-auto flex max-h-[175px] flex-col gap-1.5 overflow-y-auto pr-14"
+            className="pointer-events-auto flex max-h-[175px] flex-col gap-1.5 overflow-y-auto pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               maskImage:
                 'linear-gradient(to bottom, transparent 0%, black 20%)',
@@ -472,7 +546,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               </div>
             ))}
             {messages.length === 0 && (
-              <div className="backdrop-blur-xs self-start rounded-full bg-black/40 px-3 py-1 text-[11px] italic text-white/70">
+              <div className="self-start rounded-full bg-black/40 px-3 py-1 text-[11px] italic text-white/70 backdrop-blur-sm">
                 Kirim sapaan pertama ke host siaran...
               </div>
             )}
@@ -545,7 +619,10 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 value={mobileInputText}
                 onChange={(e) => setMobileInputText(e.target.value)}
                 placeholder="Tambahkan komentar..."
-                className="focus:outline-hidden w-full bg-transparent text-xs text-white placeholder-white/60"
+                enterKeyHint="send"
+                autoComplete="off"
+                style={{ fontSize: 16, outline: 'none', boxShadow: 'none' }}
+                className="w-full bg-transparent text-white placeholder-white/60 outline-none focus:outline-none focus:ring-0"
               />
               {mobileInputText.trim() && (
                 <button
@@ -571,7 +648,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
 
         {/* Instagram Shopping Bottom Sheet Drawer (Mobile) */}
         {isProductDrawerOpen && (
-          <div className="backdrop-blur-xs fixed inset-0 z-50 flex flex-col justify-end bg-black/60 animate-in fade-in">
+          <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-in fade-in">
             <div
               className="fixed inset-0"
               onClick={() => setIsProductDrawerOpen(false)}
@@ -735,7 +812,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                     <Link
                       href={`/toko/${stream.store.slug}`}
                       target="_blank"
-                      className="shadow-xs rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                      className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                     >
                       Kunjungi Toko
                     </Link>
@@ -744,7 +821,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                         href={`https://wa.me/${stream.store.whatsapp.replace(/\D/g, '')}?text=Halo%20Admin%20${encodeURIComponent(stream.store.name)},%20saya%20tertarik%20dengan%20produk%20di%20Live%20Streaming`}
                         target="_blank"
                         rel="noreferrer"
-                        className="shadow-xs flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-emerald-700"
+                        className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-emerald-700"
                       >
                         Chat WhatsApp
                       </a>
@@ -799,7 +876,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                     )}
                   </div>
                   <div>
-                    <span className="shadow-2xs inline-flex items-center gap-1 rounded-md bg-orange-500 px-2 py-0.5 text-[10px] font-extrabold uppercase text-white">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-orange-500 px-2 py-0.5 text-[10px] font-extrabold uppercase text-white shadow-sm">
                       <Zap className="h-2.5 w-2.5 fill-white" />
                       Rekomendasi Host Sekarang
                     </span>
@@ -852,7 +929,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                   {stream.featuredProducts.map((p) => (
                     <div
                       key={p.id}
-                      className="shadow-2xs flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3 transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                      className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
                     >
                       <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800">
                         {p.images[0] ? (

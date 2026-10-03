@@ -156,6 +156,8 @@ export function useLiveChat({
       }
 
       ws.onmessage = (event) => {
+        // Abaikan pesan dari socket lama/stale (mencegah chat ganda)
+        if (socketRef.current !== ws) return
         try {
           const data = JSON.parse(event.data)
           switch (data.type) {
@@ -169,7 +171,10 @@ export function useLiveChat({
                 createdAt: data.payload?.createdAt || new Date().toISOString(),
                 isPinned: data.payload?.isPinned,
               }
-              setMessages((prev) => [...prev.slice(-100), newMsg])
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === newMsg.id)) return prev
+                return [...prev.slice(-100), newMsg]
+              })
               break
             }
 
@@ -219,6 +224,8 @@ export function useLiveChat({
       }
 
       ws.onclose = () => {
+        // Socket ini sudah digantikan/ditutup sengaja saat cleanup: jangan reconnect
+        if (socketRef.current !== ws) return
         setIsConnected(false)
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current)
@@ -249,15 +256,18 @@ export function useLiveChat({
     return () => {
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current)
-      if (socketRef.current) {
+      const current = socketRef.current
+      // Lepas referensi lebih dulu agar handler onclose/onmessage socket lama diabaikan
+      socketRef.current = null
+      if (current) {
         try {
-          if (socketRef.current.readyState === WebSocket.OPEN) {
-            socketRef.current.send(JSON.stringify({ type: 'leave', streamId }))
+          if (current.readyState === WebSocket.OPEN) {
+            current.send(JSON.stringify({ type: 'leave', streamId }))
           }
         } catch {
           // Ignore
         }
-        socketRef.current.close()
+        current.close()
       }
     }
   }, [connectWs])

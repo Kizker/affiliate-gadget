@@ -92,14 +92,15 @@ export async function GET(
       participantIdentity = user.id || `host-${stream.storeId || 'unknown'}`
       participantName = user.name || stream.store?.name || 'Host Toko'
     } else {
-      // Viewer role
+      // Viewer role: identity HARUS unik per koneksi agar akun yang sama di
+      // beberapa tab/device tidak saling memutus (duplicate identity loop)
       isBroadcaster = false
+      const uniqueSuffix = Math.random().toString(36).slice(2, 9)
       if (user) {
-        participantIdentity = user.id || `user-${Date.now()}`
+        participantIdentity = `viewer-${user.id || 'user'}-${uniqueSuffix}`
         participantName = user.name || 'Penonton'
       } else {
-        const randomId = Math.random().toString(36).slice(2, 9)
-        participantIdentity = `guest-${randomId}`
+        participantIdentity = `guest-${uniqueSuffix}`
         participantName = guestNameParam.slice(0, 30) || 'Penonton'
       }
     }
