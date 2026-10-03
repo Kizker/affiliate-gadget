@@ -52,7 +52,14 @@
 - **Port Tersedia:** Port 3000 (Next.js Web App) & Port 3001 (Standalone WebSocket Server)
 - **Mode Eksekusi:** `pnpm dev` (menjalankan Next.js port 3000 dan WS Server port 3001 secara paralel via `concurrently`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
-- **Unit Tests:** 93 test files, 712 tests lulus 100% (`pnpm test:unit` pass)
+- **Unit Tests:** 94 test files, 718 tests lulus 100% (`pnpm test:unit` pass)
+
+- **2026-10-03 (Optimalisasi Tata Letak Live Streaming Mode Mobile — Broadcaster & Viewer):**
+  - **1. Pengembalian Ketinggian Kamera Proporsional ([`src/components/live/live-stream-broadcaster.tsx`](file:///src/components/live/live-stream-broadcaster.tsx), [`src/components/live/live-stream-viewer.tsx`](file:///src/components/live/live-stream-viewer.tsx)):** Menghapus batasan tinggi fixed 1-kolom yang menghimpit video menjadi ~120px. Menggantinya dengan rasio vertikal mobile yang luas dan tegak (`h-[54vh] min-h-[360px] max-h-[580px] sm:h-[62vh] lg:h-full lg:max-h-none`) menyerupai standar aplikasi live mobile (TikTok / Instagram Live).
+  - **2. Tata Letak Header & Kontrol Kamera Ramping Tanpa Tumpang Tindih ([`src/components/live/live-stream-status-bar.tsx`](file:///src/components/live/live-stream-status-bar.tsx)):** Menyesuaikan padding status bar atas, menyembunyikan durasi menit pada layar sangat kecil (`hidden sm:flex`), mengubah tombol "Bagikan" menjadi icon button ringkas di mobile, dan merampingkan tombol "Akhiri Siaran" sehingga tidak bertabrakan dengan tombol kontrol hardware (kamera, mic, flip, mirror).
+  - **3. Integrasi Mobile Tab Switcher 1-Klik:** Menambahkan tab switcher interaktif di bawah layar video pada mode smartphone (`lg:hidden`) untuk beralih instan antara `[Live Chat]` dan `[Sematan Produk]` (atau `[Katalog Produk]` pada penonton). Pada tampilan desktop (`lg:block`), kedua panel tetap tampil penuh berdampingan.
+  - **4. Posisi Pin Produk Mengambang Bersih Tanpa Overflow:** Pin produk disematkan mengambang di atas bilah kontrol hardware (`bottom-16 left-2.5 right-2.5 z-30 max-w-[calc(100%-20px)] sm:bottom-20 sm:left-4 sm:right-auto sm:max-w-sm`) lengkap dengan backdrop blur tanpa keluar dari kanvas.
+  - **5. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 94 test files dengan 718 unit tests lulus 100% (`pnpm test:unit` pass), dan telah berhasil diredeploy ke VPS Hostinger.
 
 - **2026-10-02 (Perapian Halaman Wishlist — Pemindahan Tombol Kosongkan ke Header & Penghapusan Banner Redundan):**
   - **1. Penghapusan Banner Redundan ([`src/components/customer/customer-wishlist-view.tsx`](file:///src/components/customer/customer-wishlist-view.tsx)):** Menghapus teks "1 Gadget Tersimpan" dan "Daftar produk incaran yang siap Anda bawa pulang" pada halaman standalone Wishlist (`!isStandalonePage`), sehingga layout kartu langsung tampil bersih tanpa header ganda.
