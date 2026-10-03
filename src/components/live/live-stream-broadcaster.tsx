@@ -8,7 +8,9 @@ import {
   LiveKitRoom,
   RoomAudioRenderer,
   useLocalParticipant,
+  useRoomContext,
 } from '@livekit/components-react'
+import type { LocalVideoTrack } from 'livekit-client'
 import {
   Radio,
   StopCircle,
@@ -87,6 +89,7 @@ function LiveKitStudioControls({
   products: StoreProduct[]
   onEndStream: () => void
 }) {
+  const room = useRoomContext()
   const { localParticipant } = useLocalParticipant()
   const [cameraActive, setCameraActive] = useState(true)
   const [micActive, setMicActive] = useState(true)
@@ -188,18 +191,118 @@ function LiveKitStudioControls({
   const flipCamera = async () => {
     if (!localParticipant) return
     const nextMode = facingMode === 'user' ? 'environment' : 'user'
-    setFacingMode(nextMode)
-    // Front camera is mirrored by default, rear camera is normal
     const nextMirror = nextMode === 'user'
-    setIsMirrored(nextMirror)
-    setMirror(nextMirror)
+
     try {
-      await localParticipant.setCameraEnabled(false)
-      await localParticipant.setCameraEnabled(true, {
-        facingMode: nextMode,
-      })
-    } catch {
-      // Ignore if device has only one camera
+      // Cari perangkat kamera fisik (depan / belakang) via enumerateDevices
+      let targetDeviceId: string | undefined
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.mediaDevices?.enumerateDevices
+      ) {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const videoDevices = devices.filter((d) => d.kind === 'videoinput')
+
+        if (videoDevices.length > 1) {
+          if (nextMode === 'environment') {
+            const backCam = videoDevices.find((d) =>
+              /back|rear|environment|belakang|main/i.test(d.label)
+            )
+            if (backCam) {
+              targetDeviceId = backCam.deviceId
+            } else {
+              const currentPub = localParticipant.getTrackPublication(
+                'camera' as any
+              )
+              const currentTrack = currentPub?.track?.mediaStreamTrack
+              const currentId = currentTrack?.getSettings()?.deviceId
+              const otherCam = videoDevices.find(
+                (d) => d.deviceId !== currentId
+              )
+              if (otherCam) targetDeviceId = otherCam.deviceId
+            }
+          } else {
+            const frontCam = videoDevices.find((d) =>
+              /front|user|depan|selfie|face/i.test(d.label)
+            )
+            if (frontCam) {
+              targetDeviceId = frontCam.deviceId
+            } else {
+              const currentPub = localParticipant.getTrackPublication(
+                'camera' as any
+              )
+              const currentTrack = currentPub?.track?.mediaStreamTrack
+              const currentId = currentTrack?.getSettings()?.deviceId
+              const otherCam = videoDevices.find(
+                (d) => d.deviceId !== currentId
+              )
+              if (otherCam) targetDeviceId = otherCam.deviceId
+            }
+          }
+        }
+      }
+
+      // 1. Restart LocalVideoTrack dengan constraints target facingMode & deviceId
+      const publication = localParticipant.getTrackPublication('camera' as any)
+      const localTrack = publication?.track as LocalVideoTrack | undefined
+
+      if (localTrack && typeof localTrack.restartTrack === 'function') {
+        const videoOptions: {
+          facingMode?: 'user' | 'environment'
+          deviceId?: string
+        } = {
+          facingMode: nextMode,
+        }
+        if (targetDeviceId) {
+          videoOptions.deviceId = targetDeviceId
+        }
+        await localTrack.restartTrack(videoOptions)
+
+        if (videoElementRef.current) {
+          localTrack.attach(videoElementRef.current)
+        }
+      }
+
+      // 2. Beritahukan room untuk switchActiveDevice jika ada targetDeviceId
+      if (
+        room &&
+        typeof room.switchActiveDevice === 'function' &&
+        targetDeviceId
+      ) {
+        await room
+          .switchActiveDevice('videoinput', targetDeviceId)
+          .catch(() => {})
+      }
+
+      setFacingMode(nextMode)
+      setIsMirrored(nextMirror)
+      setMirror(nextMirror)
+    } catch (err) {
+      console.warn(
+        'Gagal beralih kamera via restartTrack, mencoba fallback unpublish/republish:',
+        err
+      )
+      try {
+        const publication = localParticipant.getTrackPublication(
+          'camera' as any
+        )
+        if (publication?.track) {
+          await localParticipant.unpublishTrack(publication.track)
+          publication.track.stop()
+        }
+        await localParticipant.setCameraEnabled(true, {
+          facingMode: nextMode,
+        })
+        const newPub = localParticipant.getTrackPublication('camera' as any)
+        if (newPub?.track && videoElementRef.current) {
+          newPub.track.attach(videoElementRef.current)
+        }
+        setFacingMode(nextMode)
+        setIsMirrored(nextMirror)
+        setMirror(nextMirror)
+      } catch (fallbackErr) {
+        console.error('Fallback switch kamera gagal:', fallbackErr)
+      }
     }
   }
 
@@ -266,14 +369,20 @@ function LiveKitStudioControls({
     if (!stream.id || !cameraActive) return
     const interval = setInterval(() => {
       if (videoElementRef.current) {
-        const snap = captureVideoSnapshot(videoElementRef.current)
+        const snap = captureVideoSnapshot(
+          videoElementRef.current,
+          1280,
+          720,
+          0.85,
+          isMirrored
+        )
         if (snap) {
           uploadLiveSnapshot(stream.id, snap).catch(() => {})
         }
       }
     }, 30000)
     return () => clearInterval(interval)
-  }, [stream.id, cameraActive])
+  }, [stream.id, cameraActive, isMirrored])
 
   // Handle send host reply comment
   const handleSendHostComment = (e?: React.FormEvent) => {
@@ -287,7 +396,7 @@ function LiveKitStudioControls({
   // Handle share live stream with immediate snapshot capture
   const handleShare = async () => {
     const videoEl = videoElementRef.current
-    const snapshot = captureVideoSnapshot(videoEl)
+    const snapshot = captureVideoSnapshot(videoEl, 1280, 720, 0.85, isMirrored)
     if (snapshot && stream?.id) {
       uploadLiveSnapshot(stream.id, snapshot).catch(() => {})
     }
@@ -335,20 +444,13 @@ function LiveKitStudioControls({
               playsInline
               muted
               style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}
-              className={`h-full w-full transition-transform duration-300 ${
-                showGuides ? 'object-contain' : 'object-cover'
-              }`}
+              className="h-full w-full object-cover transition-transform duration-300"
             />
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 text-slate-500">
               <CameraOff className="h-16 w-16 stroke-1 text-slate-600" />
               <p className="text-sm font-medium">Kamera Dimatikan</p>
             </div>
-          )}
-
-          {/* Panduan Frame */}
-          {showGuides && cameraActive && (
-            <LiveFrameGuides videoRef={videoElementRef} />
           )}
 
           {/* Floating Hearts Animation */}
@@ -450,20 +552,6 @@ function LiveKitStudioControls({
           >
             <FlipHorizontal className="h-4 w-4" />
           </button>
-
-          {/* Frame Guides Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowGuides((v) => !v)}
-            className={`rounded-full border border-white/15 p-2 shadow-md backdrop-blur-md transition-all active:scale-90 ${
-              showGuides
-                ? 'bg-emerald-500 text-white ring-2 ring-emerald-400/50'
-                : 'bg-black/60 text-white/70'
-            }`}
-            title="Panduan Frame Kamera"
-          >
-            <Crop className="h-4 w-4" />
-          </button>
         </div>
 
         {/* Floating Comments Stream, Pinned Product & Bottom Action Bar */}
@@ -478,15 +566,19 @@ function LiveKitStudioControls({
                 : 'max(1.25rem, env(safe-area-inset-bottom, 16px))',
           }}
         >
-          {/* Floating Comments Stream (Overlay di atas video) */}
+          {/* Floating Comments Stream (Overlay di atas video, menempel di bawah / di atas barang sematan) */}
           <div
             ref={mobileChatScrollRef}
-            className="pointer-events-auto flex max-h-[46dvh] min-h-[160px] flex-col gap-1.5 overflow-y-auto pr-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="pointer-events-auto flex max-h-[46dvh] flex-col gap-1.5 overflow-y-auto pr-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               maskImage:
-                'linear-gradient(to bottom, transparent 0%, black 12%)',
+                messages.length > 3
+                  ? 'linear-gradient(to bottom, transparent 0%, black 12%)'
+                  : undefined,
               WebkitMaskImage:
-                'linear-gradient(to bottom, transparent 0%, black 12%)',
+                messages.length > 3
+                  ? 'linear-gradient(to bottom, transparent 0%, black 12%)'
+                  : undefined,
             }}
           >
             {messages.slice(-30).map((msg) => (

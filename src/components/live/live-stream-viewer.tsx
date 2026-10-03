@@ -440,7 +440,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   // Handle Share Live Stream with dynamic frame capture
   const handleShare = async () => {
     const videoEl = viewerVideoRef.current
-    const snapshot = captureVideoSnapshot(videoEl)
+    const snapshot = captureVideoSnapshot(videoEl, 1280, 720, 0.85, isMirrored)
     if (snapshot && stream?.id) {
       uploadLiveSnapshot(stream.id, snapshot).catch(() => {})
     }
@@ -743,15 +743,19 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             paddingBottom: keyboardInset > 0 ? 12 : undefined,
           }}
         >
-          {/* Floating Comments Stream (scrolling upwards over the video) */}
+          {/* Floating Comments Stream (scrolling upwards over the video, menempel di bawah / di atas barang sematan) */}
           <div
             ref={mobileChatScrollRef}
-            className="pointer-events-auto flex max-h-[46dvh] min-h-[160px] flex-col gap-1.5 overflow-y-auto pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="pointer-events-auto flex max-h-[46dvh] flex-col gap-1.5 overflow-y-auto pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               maskImage:
-                'linear-gradient(to bottom, transparent 0%, black 12%)',
+                messages.length > 3
+                  ? 'linear-gradient(to bottom, transparent 0%, black 12%)'
+                  : undefined,
               WebkitMaskImage:
-                'linear-gradient(to bottom, transparent 0%, black 12%)',
+                messages.length > 3
+                  ? 'linear-gradient(to bottom, transparent 0%, black 12%)'
+                  : undefined,
             }}
           >
             {messages.slice(-25).map((msg) => (

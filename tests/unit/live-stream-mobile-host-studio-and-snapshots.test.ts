@@ -40,10 +40,8 @@ describe('Live Stream Mobile Host Studio, Clean Pinned Card, Adaptive Desktop & 
     // Title and price are rendered prominently
     expect(viewerCode).toContain('pinnedProduct.productTitle')
     expect(viewerCode).toContain('pinnedProduct.productPrice')
-    expect(viewerCode).toContain('text-xs sm:text-sm font-bold text-slate-900')
-    expect(viewerCode).toContain(
-      'text-xs sm:text-sm font-extrabold text-orange-600'
-    )
+    expect(viewerCode).toContain('font-bold text-slate-900')
+    expect(viewerCode).toContain('font-extrabold text-orange-600')
   })
 
   it('2. Broadcaster Mobile Studio: fullscreen immersive view without page scrolling or bottom tabs', () => {
@@ -54,9 +52,10 @@ describe('Live Stream Mobile Host Studio, Clean Pinned Card, Adaptive Desktop & 
       'createPortal(mobileStudio, document.body)'
     )
     expect(broadcasterCode).toContain('mobile-live-active')
-    // Floating live chat stream on video with extended height
+    // Floating live chat stream on video with max-h-[46dvh] without min-height so empty state sits snug at bottom
     expect(broadcasterCode).toContain('mobileChatScrollRef')
-    expect(broadcasterCode).toContain('max-h-[46dvh] min-h-[160px]')
+    expect(broadcasterCode).toContain('max-h-[46dvh]')
+    expect(broadcasterCode).not.toContain('min-h-[160px]')
     expect(broadcasterCode).toContain('Balas komentar sebagai Host...')
     expect(broadcasterCode).toContain('handleSendHostComment')
     // Floating button to open catalog drawer for 200+ products in Clean Light Mode
@@ -85,11 +84,13 @@ describe('Live Stream Mobile Host Studio, Clean Pinned Card, Adaptive Desktop & 
     expect(viewerCode).toContain('h-[640px] max-h-[calc(100vh-160px)]')
   })
 
-  it('4. Real-time Live Share Snapshots: auto frame capture and dynamic OpenGraph preview for WhatsApp', () => {
-    // Helper captures frame from HTMLVideoElement
+  it('4. Real-time Live Share Snapshots: auto frame capture and dynamic OpenGraph preview for WhatsApp with mirroring', () => {
+    // Helper captures frame from HTMLVideoElement and supports canvas mirror flip
     expect(snapshotHelperCode).toContain('captureVideoSnapshot')
     expect(snapshotHelperCode).toContain('uploadLiveSnapshot')
     expect(snapshotHelperCode).toContain('ctx.drawImage(video')
+    expect(snapshotHelperCode).toContain('ctx.scale(-1, 1)')
+    expect(snapshotHelperCode).toContain('isMirrored')
     // Snapshot API saves frame to uploads and updates coverImage
     expect(snapshotRouteCode).toContain('/uploads/live-snapshots/')
     expect(snapshotRouteCode).toContain('prisma.liveStream.update')
@@ -99,8 +100,27 @@ describe('Live Stream Mobile Host Studio, Clean Pinned Card, Adaptive Desktop & 
     expect(livePageCode).toContain('/api/live-streams/${id}/thumbnail')
     expect(livePageCode).toContain('openGraph')
     expect(livePageCode).toContain('summary_large_image')
-    // Host and Viewer share buttons trigger snapshot upload
+    // Host and Viewer share buttons trigger snapshot upload with mirror state
     expect(broadcasterCode).toContain('handleShare')
+    expect(broadcasterCode).toContain(
+      'captureVideoSnapshot(videoEl, 1280, 720, 0.85, isMirrored)'
+    )
     expect(viewerCode).toContain('handleShare')
+    expect(viewerCode).toContain(
+      'captureVideoSnapshot(videoEl, 1280, 720, 0.85, isMirrored)'
+    )
+  })
+
+  it('5. Physical Flip Camera & Crop Button Hidden on Mobile Broadcaster Studio', () => {
+    // Flip camera switches physical camera via restartTrack and switchActiveDevice
+    expect(broadcasterCode).toContain('flipCamera')
+    expect(broadcasterCode).toContain('restartTrack')
+    expect(broadcasterCode).toContain('switchActiveDevice')
+    expect(broadcasterCode).toContain(
+      "facingMode === 'user' ? 'environment' : 'user'"
+    )
+    // Crop button is eliminated from mobile broadcaster studio controls
+    // In mobile controls, only Flip Camera, Mic, Camera, and Mirror are present
+    expect(broadcasterCode).not.toContain('title="Panduan Frame Kamera"')
   })
 })

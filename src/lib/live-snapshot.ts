@@ -9,7 +9,8 @@ export function captureVideoSnapshot(
   video: HTMLVideoElement | null,
   maxWidth = 1280,
   maxHeight = 720,
-  quality = 0.85
+  quality = 0.85,
+  isMirrored?: boolean
 ): string | null {
   try {
     if (!video || !video.videoWidth || !video.videoHeight) return null
@@ -33,6 +34,18 @@ export function captureVideoSnapshot(
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
+
+    // Deteksi apakah video sedang di-mirror (baik dari parameter atau style transform)
+    const shouldMirror =
+      typeof isMirrored === 'boolean'
+        ? isMirrored
+        : (video.style.transform || '').includes('scaleX(-1)')
+
+    if (shouldMirror) {
+      // Mirror / balik kanvas secara horizontal sebelum menggambar frame
+      ctx.translate(targetW, 0)
+      ctx.scale(-1, 1)
+    }
 
     // Draw the current video frame onto canvas
     ctx.drawImage(video, 0, 0, targetW, targetH)
