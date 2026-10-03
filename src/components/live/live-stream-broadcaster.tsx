@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -103,11 +104,27 @@ function LiveKitStudioControls({
   const [copied, setCopied] = useState(false)
   const [hostInputText, setHostInputText] = useState('')
   const [isProductDrawerOpen, setIsProductDrawerOpen] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
   const isMobile = useIsMobile()
   const { keyboardInset } = useKeyboardInset(isMobile)
   const mobileChatScrollRef = useRef<HTMLDivElement>(null)
   const videoElementRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (isMobile) {
+      document.body.classList.add('mobile-live-active')
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.classList.remove('mobile-live-active')
+        document.body.style.overflow = ''
+      }
+    }
+  }, [isMobile])
 
   // Attach local video track to DOM element
   useEffect(() => {
@@ -307,8 +324,8 @@ function LiveKitStudioControls({
   // 1. MOBILE VIEW: FULLSCREEN IMMERSIVE BROADCASTER STUDIO (Instagram/TikTok Host Style)
   // ===================================================================
   if (isMobile) {
-    return (
-      <div className="fixed inset-0 z-[100] flex h-[100dvh] w-full select-none flex-col overflow-hidden bg-black text-white">
+    const mobileStudio = (
+      <div className="fixed inset-0 z-[99999] flex h-[100dvh] w-screen select-none flex-col overflow-hidden bg-black text-white">
         {/* Fullscreen Video Camera Background */}
         <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden bg-black">
           {cameraActive ? (
@@ -339,7 +356,7 @@ function LiveKitStudioControls({
         </div>
 
         {/* Top Floating Status Bar & Quick Actions */}
-        <div className="pointer-events-auto absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2">
+        <div className="pointer-events-auto absolute left-3 right-3 top-[max(0.75rem,env(safe-area-inset-top,12px))] z-30 flex items-center justify-between gap-2">
           <LiveStreamStatusBar
             startedAt={stream.startedAt || new Date()}
             viewerCount={viewerCount}
@@ -373,7 +390,7 @@ function LiveKitStudioControls({
         </div>
 
         {/* Right Floating Quick Camera/Mic Controls */}
-        <div className="pointer-events-auto absolute right-3 top-16 z-30 flex flex-col items-center gap-2">
+        <div className="pointer-events-auto absolute right-3 top-[calc(max(0.75rem,env(safe-area-inset-top,12px))+3.25rem)] z-30 flex flex-col items-center gap-2">
           {/* Flip Camera */}
           <button
             type="button"
@@ -451,22 +468,25 @@ function LiveKitStudioControls({
 
         {/* Floating Comments Stream, Pinned Product & Bottom Action Bar */}
         <div
-          className="pointer-events-none relative z-30 mt-auto flex flex-col justify-end gap-2.5 p-3 pb-6"
+          className="pointer-events-none relative z-30 mt-auto flex flex-col justify-end gap-2.5 p-3"
           style={{
             transform: `translateY(-${keyboardInset}px)`,
             transition: 'transform 150ms ease-out',
-            paddingBottom: keyboardInset > 0 ? 12 : undefined,
+            paddingBottom:
+              keyboardInset > 0
+                ? 12
+                : 'max(1.25rem, env(safe-area-inset-bottom, 16px))',
           }}
         >
           {/* Floating Comments Stream (Overlay di atas video) */}
           <div
             ref={mobileChatScrollRef}
-            className="pointer-events-auto flex max-h-[170px] flex-col gap-1.5 overflow-y-auto pr-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="pointer-events-auto flex max-h-[46dvh] min-h-[160px] flex-col gap-1.5 overflow-y-auto pr-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               maskImage:
-                'linear-gradient(to bottom, transparent 0%, black 25%)',
+                'linear-gradient(to bottom, transparent 0%, black 12%)',
               WebkitMaskImage:
-                'linear-gradient(to bottom, transparent 0%, black 25%)',
+                'linear-gradient(to bottom, transparent 0%, black 12%)',
             }}
           >
             {messages.slice(-30).map((msg) => (
@@ -494,31 +514,29 @@ function LiveKitStudioControls({
             )}
           </div>
 
-          {/* Floating Pinned Product Card (Light Mode Bersih) */}
+          {/* Floating Pinned Product Card (Light Mode Bersih - Setengah Lebar) */}
           {pinnedProduct && (
-            <div className="pointer-events-auto relative flex items-center justify-between gap-3 rounded-2xl border border-orange-500/40 bg-white/95 p-3 text-slate-900 shadow-2xl shadow-black/20 backdrop-blur-md animate-in slide-in-from-bottom-2">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="shadow-xs relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+            <div className="pointer-events-auto relative flex max-w-[62%] items-center justify-between gap-2 self-start rounded-2xl border border-orange-500/40 bg-white/95 p-2 text-slate-900 shadow-2xl shadow-black/20 backdrop-blur-md animate-in slide-in-from-bottom-2 sm:max-w-[280px]">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                   {pinnedProduct.productImage ? (
-                    <Image
+                    <img
                       src={pinnedProduct.productImage}
                       alt={pinnedProduct.productTitle || 'Produk'}
-                      fill
-                      className="object-cover"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <ShoppingBag className="m-auto h-5 w-5 text-orange-500" />
+                    <ShoppingBag className="h-5 w-5 text-orange-500" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 text-[9px] font-bold text-orange-700">
-                    <Zap className="h-2.5 w-2.5 fill-orange-500 text-orange-500" />
-                    Disematkan
-                  </span>
-                  <p className="mt-0.5 line-clamp-1 truncate text-xs font-bold text-slate-900 sm:text-sm">
+                  <p
+                    className="truncate text-xs font-bold text-slate-900"
+                    title={pinnedProduct.productTitle}
+                  >
                     {pinnedProduct.productTitle}
                   </p>
-                  <p className="text-xs font-extrabold text-orange-600 sm:text-sm">
+                  <p className="text-xs font-extrabold text-orange-600">
                     Rp {pinnedProduct.productPrice?.toLocaleString('id-ID')}
                   </p>
                 </div>
@@ -526,10 +544,10 @@ function LiveKitStudioControls({
               <button
                 type="button"
                 onClick={unpinProduct}
-                className="shrink-0 rounded-xl bg-slate-100 p-2 text-slate-600 transition hover:bg-rose-50 hover:text-rose-600"
+                className="shrink-0 rounded-xl bg-slate-100 p-1.5 text-slate-600 transition hover:bg-rose-50 hover:text-rose-600"
                 title="Lepas Sematan Produk"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
@@ -574,23 +592,23 @@ function LiveKitStudioControls({
           </div>
         </div>
 
-        {/* Bottom Sheet Drawer: Pilih & Sematkan Barang (200+ Katalog Bebas) */}
+        {/* Bottom Sheet Drawer: Pilih & Sematkan Barang (Clean Light Mode) */}
         {isProductDrawerOpen && (
           <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-in fade-in">
             <div
               className="fixed inset-0"
               onClick={() => setIsProductDrawerOpen(false)}
             />
-            <div className="relative z-10 flex max-h-[80vh] w-full flex-col rounded-t-3xl border-t border-slate-700 bg-slate-900 p-4 text-white shadow-2xl duration-300 animate-in slide-in-from-bottom">
-              <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-slate-700" />
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="relative z-10 flex max-h-[80vh] w-full flex-col rounded-t-3xl border-t border-slate-200 bg-white p-4 text-slate-900 shadow-2xl duration-300 animate-in slide-in-from-bottom">
+              <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300" />
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <ShoppingBag className="h-5 w-5 text-orange-500" />
                   <div>
-                    <h4 className="text-sm font-bold text-white">
+                    <h4 className="text-sm font-bold text-slate-900">
                       Sematkan Barang Siaran
                     </h4>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500">
                       Pilih dari {products.length} katalog toko Anda
                     </p>
                   </div>
@@ -598,7 +616,7 @@ function LiveKitStudioControls({
                 <button
                   type="button"
                   onClick={() => setIsProductDrawerOpen(false)}
-                  className="rounded-full bg-slate-800 p-1.5 text-slate-400 hover:text-white"
+                  className="rounded-full bg-slate-100 p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -613,7 +631,7 @@ function LiveKitStudioControls({
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                     placeholder="Cari gadget (iPhone, Samsung, MacBook...)"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-2 pl-9 pr-3 text-xs text-white placeholder-slate-400 outline-none focus:border-orange-500"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white"
                   />
                 </div>
                 <div className="flex gap-2">
@@ -622,8 +640,8 @@ function LiveKitStudioControls({
                     onClick={() => setProductFilterMode('all')}
                     className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
                       productFilterMode === 'all'
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-slate-800 text-slate-400'
+                        ? 'shadow-xs bg-orange-500 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
                     Semua Katalog ({products.length})
@@ -633,8 +651,8 @@ function LiveKitStudioControls({
                     onClick={() => setProductFilterMode('featured')}
                     className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
                       productFilterMode === 'featured'
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-slate-800 text-slate-400'
+                        ? 'shadow-xs bg-orange-500 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
                     Pilihan Awal ({stream.featuredProductIds?.length || 0})
@@ -654,19 +672,20 @@ function LiveKitStudioControls({
                     return (
                       <div
                         key={p.id}
-                        className={`flex items-center justify-between rounded-2xl border p-2.5 transition-all ${
+                        className={`shadow-xs flex items-center justify-between rounded-2xl border p-2.5 transition-all ${
                           isCurrentlyPinned
-                            ? 'border-orange-500 bg-orange-500/10'
-                            : 'border-slate-800 bg-slate-800/60'
+                            ? 'border-orange-500 bg-orange-50/70'
+                            : 'border-slate-200/90 bg-white hover:bg-slate-50/80'
                         }`}
                       >
                         <div className="flex min-w-0 items-center gap-3 pr-2">
-                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                             {p.images[0] ? (
                               <Image
                                 src={p.images[0]}
                                 alt={p.name}
                                 fill
+                                unoptimized
                                 className="object-cover"
                               />
                             ) : (
@@ -674,13 +693,13 @@ function LiveKitStudioControls({
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-white">
+                            <p className="truncate text-xs font-semibold text-slate-900">
                               {p.name}
                             </p>
                             <p className="text-xs font-extrabold text-orange-600">
                               Rp {p.price.toLocaleString('id-ID')}
                             </p>
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[10px] text-slate-500">
                               Stok: {p.stock}
                             </span>
                           </div>
@@ -697,8 +716,8 @@ function LiveKitStudioControls({
                           }}
                           className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all active:scale-95 ${
                             isCurrentlyPinned
-                              ? 'bg-rose-500 text-white hover:bg-rose-600'
-                              : 'bg-orange-500 text-white hover:bg-orange-600'
+                              ? 'bg-rose-500 text-white shadow-sm shadow-rose-500/20 hover:bg-rose-600'
+                              : 'bg-orange-500 text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600'
                           }`}
                         >
                           {isCurrentlyPinned ? 'Lepas' : 'Sematkan'}
@@ -713,6 +732,11 @@ function LiveKitStudioControls({
         )}
       </div>
     )
+
+    if (isMounted && typeof document !== 'undefined') {
+      return createPortal(mobileStudio, document.body)
+    }
+    return mobileStudio
   }
 
   // ===================================================================

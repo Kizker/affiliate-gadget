@@ -47,18 +47,22 @@ describe('Live Stream Mobile Host Studio, Clean Pinned Card, Adaptive Desktop & 
   })
 
   it('2. Broadcaster Mobile Studio: fullscreen immersive view without page scrolling or bottom tabs', () => {
-    // Broadcaster has mobile detection and renders fullscreen 100dvh fixed layout
+    // Broadcaster has mobile detection and renders fullscreen 100dvh fixed layout portaled to body
     expect(broadcasterCode).toContain('useIsMobile')
+    expect(broadcasterCode).toContain('fixed inset-0 z-[99999] flex h-[100dvh]')
     expect(broadcasterCode).toContain(
-      'fixed inset-0 z-[100] flex h-[100dvh] w-full select-none flex-col'
+      'createPortal(mobileStudio, document.body)'
     )
-    // Floating live chat stream on video
+    expect(broadcasterCode).toContain('mobile-live-active')
+    // Floating live chat stream on video with extended height
     expect(broadcasterCode).toContain('mobileChatScrollRef')
+    expect(broadcasterCode).toContain('max-h-[46dvh] min-h-[160px]')
     expect(broadcasterCode).toContain('Balas komentar sebagai Host...')
     expect(broadcasterCode).toContain('handleSendHostComment')
-    // Floating button to open catalog drawer for 200+ products
+    // Floating button to open catalog drawer for 200+ products in Clean Light Mode
     expect(broadcasterCode).toContain('setIsProductDrawerOpen(true)')
     expect(broadcasterCode).toContain('Sematkan Barang Siaran')
+    expect(broadcasterCode).toContain('bg-white p-4 text-slate-900')
     // Keyboard avoidance
     expect(broadcasterCode).toContain('useKeyboardInset')
     expect(broadcasterCode).toContain(

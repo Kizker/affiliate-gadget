@@ -746,12 +746,12 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
           {/* Floating Comments Stream (scrolling upwards over the video) */}
           <div
             ref={mobileChatScrollRef}
-            className="pointer-events-auto flex max-h-[175px] flex-col gap-1.5 overflow-y-auto pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="pointer-events-auto flex max-h-[46dvh] min-h-[160px] flex-col gap-1.5 overflow-y-auto pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               maskImage:
-                'linear-gradient(to bottom, transparent 0%, black 20%)',
+                'linear-gradient(to bottom, transparent 0%, black 12%)',
               WebkitMaskImage:
-                'linear-gradient(to bottom, transparent 0%, black 20%)',
+                'linear-gradient(to bottom, transparent 0%, black 12%)',
             }}
           >
             {messages.slice(-25).map((msg) => (
@@ -776,22 +776,24 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
 
           {/* Pinned Product Floating Card on Mobile (Rekomendasi Barang di Bawah Layar - Light Mode Bersih Tanpa Badge) */}
           {pinnedProduct && (
-            <div className="pointer-events-auto relative flex items-center justify-between gap-3 rounded-2xl border border-orange-500/40 bg-white/95 p-3 text-slate-900 shadow-2xl shadow-black/20 backdrop-blur-md animate-in slide-in-from-bottom-2">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="h-13 w-13 shadow-xs relative shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+            <div className="pointer-events-auto relative flex max-w-[62%] items-center justify-between gap-2 self-start rounded-2xl border border-orange-500/40 bg-white/95 p-2 text-slate-900 shadow-2xl shadow-black/20 backdrop-blur-md animate-in slide-in-from-bottom-2 sm:max-w-[280px]">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                   {pinnedProduct.productImage ? (
-                    <Image
+                    <img
                       src={pinnedProduct.productImage}
                       alt={pinnedProduct.productTitle || 'Produk'}
-                      fill
-                      className="object-cover"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <ShoppingBag className="m-auto h-5 w-5 text-orange-500" />
+                    <ShoppingBag className="h-5 w-5 text-orange-500" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-1 truncate text-xs font-bold text-slate-900 sm:text-sm">
+                  <p
+                    className="truncate text-xs font-bold text-slate-900 sm:text-sm"
+                    title={pinnedProduct.productTitle}
+                  >
                     {pinnedProduct.productTitle}
                   </p>
                   <p className="mt-0.5 text-xs font-extrabold text-orange-600 sm:text-sm">
@@ -802,7 +804,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               <Link
                 href={`/gadget/${pinnedProduct.productId}`}
                 target="_blank"
-                className="shrink-0 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition-all hover:bg-orange-600 active:scale-95"
+                className="shrink-0 rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition-all hover:bg-orange-600 active:scale-95"
               >
                 Beli
               </Link>
@@ -874,29 +876,32 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
           </div>
         </div>
 
-        {/* Instagram Shopping Bottom Sheet Drawer (Mobile) */}
+        {/* Instagram Shopping Bottom Sheet Drawer (Mobile - Clean Light Mode) */}
         {isProductDrawerOpen && (
           <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-in fade-in">
             <div
               className="fixed inset-0"
               onClick={() => setIsProductDrawerOpen(false)}
             />
-            <div className="relative z-10 flex max-h-[70vh] w-full flex-col rounded-t-3xl border-t border-white/10 bg-slate-900 p-4 text-white shadow-2xl duration-300 animate-in slide-in-from-bottom">
-              <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-slate-700" />
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="relative z-10 flex max-h-[75vh] w-full flex-col rounded-t-3xl border-t border-slate-200 bg-white p-4 text-slate-900 shadow-2xl duration-300 animate-in slide-in-from-bottom">
+              <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300" />
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <ShoppingBag className="h-4 w-4 text-orange-400" />
-                  <h4 className="text-sm font-bold">Produk Siaran Langsung</h4>
+                  <ShoppingBag className="h-5 w-5 text-orange-500" />
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Produk Siaran Langsung
+                  </h4>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsProductDrawerOpen(false)}
-                  className="rounded-full bg-slate-800 p-1.5 text-slate-400 hover:text-white"
+                  className="rounded-full bg-slate-100 p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="scrollbar-thin mt-3 flex-1 space-y-2.5 overflow-y-auto">
+              <div className="scrollbar-thin mt-3 flex-1 space-y-2.5 overflow-y-auto pr-0.5">
                 {!stream.featuredProducts ||
                 stream.featuredProducts.length === 0 ? (
                   <div className="py-8 text-center text-xs text-slate-400">
@@ -906,15 +911,16 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                   stream.featuredProducts.map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-800/60 p-2.5 transition-all"
+                      className="shadow-xs flex items-center justify-between rounded-2xl border border-slate-200/90 bg-white p-2.5 transition-all hover:bg-slate-50/80"
                     >
                       <div className="flex min-w-0 items-center gap-3 pr-2">
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                           {p.images[0] ? (
                             <Image
                               src={p.images[0]}
                               alt={p.name}
                               fill
+                              unoptimized
                               className="object-cover"
                             />
                           ) : (
@@ -922,13 +928,13 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold text-white">
+                          <p className="truncate text-xs font-semibold text-slate-900">
                             {p.name}
                           </p>
-                          <p className="text-xs font-bold text-orange-400">
+                          <p className="text-xs font-extrabold text-orange-600">
                             Rp {p.price.toLocaleString('id-ID')}
                           </p>
-                          <span className="text-[9px] font-medium text-emerald-400">
+                          <span className="mt-0.5 inline-block rounded border border-emerald-200/60 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
                             Garansi 30 Hari
                           </span>
                         </div>
@@ -936,7 +942,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                       <Link
                         href={`/gadget/${p.id}`}
                         target="_blank"
-                        className="shrink-0 rounded-xl bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-md active:scale-95"
+                        className="shrink-0 rounded-xl bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition-all hover:bg-orange-600 active:scale-95"
                       >
                         Beli
                       </Link>
