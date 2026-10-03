@@ -717,11 +717,11 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             )}
           </div>
 
-          {/* Pinned Product Floating Card on Mobile (Rekomendasi Barang di Bawah Layar) */}
+          {/* Pinned Product Floating Card on Mobile (Rekomendasi Barang di Bawah Layar - Light Mode) */}
           {pinnedProduct && (
-            <div className="pointer-events-auto relative flex items-center justify-between gap-3 rounded-2xl border border-orange-500/50 bg-slate-950/90 p-2.5 text-white shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-2">
+            <div className="pointer-events-auto relative flex items-center justify-between gap-3 rounded-2xl border border-orange-500/40 bg-white/95 p-2.5 text-slate-900 shadow-2xl shadow-black/20 backdrop-blur-md animate-in slide-in-from-bottom-2">
               <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-orange-400/40 bg-white">
+                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                   {pinnedProduct.productImage ? (
                     <Image
                       src={pinnedProduct.productImage}
@@ -734,14 +734,14 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <span className="inline-flex items-center gap-0.5 rounded bg-orange-500 px-1 py-0.5 text-[8px] font-extrabold uppercase text-white">
+                  <span className="inline-flex items-center gap-0.5 rounded bg-gradient-to-r from-orange-500 to-amber-500 px-1.5 py-0.5 text-[8px] font-extrabold uppercase text-white shadow-sm">
                     <Zap className="h-2 w-2 fill-white" />
                     Disematkan Host
                   </span>
-                  <p className="mt-0.5 line-clamp-1 truncate text-xs font-bold text-white">
+                  <p className="mt-0.5 line-clamp-1 truncate text-xs font-bold text-slate-900">
                     {pinnedProduct.productTitle}
                   </p>
-                  <p className="text-xs font-extrabold text-orange-400">
+                  <p className="text-xs font-extrabold text-orange-600">
                     Rp {pinnedProduct.productPrice?.toLocaleString('id-ID')}
                   </p>
                 </div>
@@ -749,7 +749,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               <Link
                 href={`/gadget/${pinnedProduct.productId}`}
                 target="_blank"
-                className="shrink-0 rounded-xl bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-md transition-all hover:bg-orange-600 active:scale-95"
+                className="shrink-0 rounded-xl bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition-all hover:bg-orange-600 active:scale-95"
               >
                 Beli
               </Link>

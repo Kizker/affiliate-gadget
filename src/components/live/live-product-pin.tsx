@@ -32,7 +32,7 @@ export function LiveProductPin({
 
   return (
     <div
-      className={`group relative flex max-w-sm items-center gap-3 rounded-2xl border border-orange-500/40 bg-white/95 p-3 shadow-2xl shadow-orange-500/10 backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 dark:border-orange-500/40 dark:bg-slate-900/95 ${className}`}
+      className={`group relative flex max-w-sm items-center gap-3 rounded-2xl border border-orange-500/40 bg-white/95 p-3 text-slate-900 shadow-2xl shadow-orange-500/10 backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${className}`}
     >
       {/* Pinned Badge */}
       <div className="absolute -top-3 left-3 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-md">
@@ -41,7 +41,7 @@ export function LiveProductPin({
       </div>
 
       {/* Product Image Thumbnail */}
-      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-slate-100 dark:border-slate-800 dark:bg-slate-800">
+      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200/90 bg-slate-100">
         {product.productImage ? (
           <Image
             src={product.productImage}
@@ -58,14 +58,14 @@ export function LiveProductPin({
 
       {/* Info Content */}
       <div className="min-w-0 flex-1 pr-1">
-        <h4 className="line-clamp-1 truncate text-xs font-bold text-slate-900 dark:text-white">
+        <h4 className="line-clamp-1 truncate text-xs font-bold text-slate-900">
           {product.productTitle || 'Produk Pilihan'}
         </h4>
         <div className="mt-0.5 flex items-center gap-1.5">
-          <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400">
+          <span className="text-sm font-extrabold text-orange-600">
             {formatPrice(product.productPrice)}
           </span>
-          <span className="inline-flex items-center gap-0.5 rounded-md bg-orange-100 px-1.5 py-0.5 text-[9px] font-bold text-orange-700 dark:bg-orange-950/60 dark:text-orange-300">
+          <span className="inline-flex items-center gap-0.5 rounded-md bg-orange-100 px-1.5 py-0.5 text-[9px] font-bold text-orange-700">
             <Zap className="h-2.5 w-2.5 fill-orange-500 text-orange-500" />
             LIVE
           </span>
@@ -88,7 +88,7 @@ export function LiveProductPin({
           type="button"
           onClick={onUnpin}
           title="Lepas Sematan Produk"
-          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800"
+          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-500"
         >
           <X className="h-4 w-4" />
         </button>
