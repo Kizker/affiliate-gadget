@@ -108,6 +108,7 @@ function LiveKitSubscriberVideo({
   isMirrored?: boolean
   showControls?: boolean
 }) {
+  const isMobile = useIsMobile()
   const [isMuted, setIsMuted] = useState(false)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const videoRef = videoRefExternal || localVideoRef
@@ -168,6 +169,10 @@ function LiveKitSubscriberVideo({
           ? 'Koneksi terputus, mencoba lagi...'
           : 'Menghubungkan ke Host Toko...'
 
+  // Pada desktop: jika host live stream vertikal, gunakan object-contain dengan ambient blurred background agar tidak ter-crop 16:9
+  // Pada mobile smartphone: video selalu memenuhi layar penuh (object-cover) persis seperti di host live broadcaster
+  const isContainMode = !isMobile && isVertical
+
   return (
     <div
       onDoubleClick={onSendLike}
@@ -176,7 +181,7 @@ function LiveKitSubscriberVideo({
       {activeTrack ? (
         <>
           {/* Ambient blurred backdrop for vertical streams on widescreen displays */}
-          {isVertical && (
+          {isContainMode && (
             <video
               ref={ambientVideoRef}
               autoPlay
@@ -195,7 +200,7 @@ function LiveKitSubscriberVideo({
             playsInline
             muted={isMuted}
             className={`relative z-10 transition-transform duration-300 ${
-              isVertical
+              isContainMode
                 ? 'mx-auto h-full w-auto max-w-full object-contain'
                 : 'h-full w-full object-cover'
             }`}
@@ -666,8 +671,8 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
         <div className="absolute inset-0 z-0">{renderLiveVideo(false)}</div>
 
         {/* Top & Bottom Soft Vignette Gradient Overlays */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-gradient-to-b from-black/80 via-black/30 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-80 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-black/60 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-44 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
         {/* Floating Hearts Overlay Canvas */}
         <FloatingHeartsOverlay triggerCount={likeCount} />
@@ -702,10 +707,6 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               <div className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-white/80">
                 <span className="flex items-center gap-1 rounded-md bg-black/40 px-1.5 py-0.5 backdrop-blur-sm">
                   👁 {viewerCount}
-                </span>
-                <span className="text-white/60">•</span>
-                <span className="font-semibold text-emerald-400">
-                  Garansi 30 Hari
                 </span>
               </div>
             </div>
@@ -938,9 +939,6 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                           <p className="text-xs font-extrabold text-orange-600">
                             Rp {p.price.toLocaleString('id-ID')}
                           </p>
-                          <span className="mt-0.5 inline-block rounded border border-emerald-200/60 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-                            Garansi 30 Hari
-                          </span>
                         </div>
                       </div>
                       <Link
