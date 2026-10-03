@@ -115,8 +115,8 @@ describe('Live Streaming 6-Item Enhancements Suite', () => {
       '<LiveProductPin product={pinnedProduct} isBroadcaster={false} />'
     )
     // Has bottom-left positioning class
-    expect(broadcasterCode).toContain('absolute bottom-20 left-4 z-30')
-    expect(viewerCode).toContain('absolute bottom-16 left-4 z-30')
+    expect(broadcasterCode).toContain('sm:bottom-20 sm:left-4')
+    expect(viewerCode).toContain('sm:bottom-16 sm:left-4')
     // Has product thumbnail, title, price, and CTA link
     expect(productPinCode).toContain('product.productPrice')
     expect(productPinCode).toContain('product.productTitle')

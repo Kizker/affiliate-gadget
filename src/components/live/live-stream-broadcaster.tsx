@@ -25,6 +25,7 @@ import {
   Play,
   Share2,
   FlipHorizontal,
+  MessageSquare,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useLiveKitToken } from '@/hooks/use-livekit-token'
@@ -69,6 +70,7 @@ function LiveKitStudioControls({
   const [micActive, setMicActive] = useState(true)
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
   const [isMirrored, setIsMirrored] = useState(true)
+  const [mobileTab, setMobileTab] = useState<'chat' | 'products'>('chat')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(
     null
   )
@@ -170,11 +172,11 @@ function LiveKitStudioControls({
   }
 
   return (
-    <div className="grid h-[calc(100vh-140px)] min-h-[640px] grid-cols-1 gap-6 lg:grid-cols-3">
+    <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100vh-140px)] lg:min-h-[640px] lg:grid-cols-3 lg:gap-6">
       {/* Kolom Kiri & Tengah: Kamera Live View & Kontrol */}
-      <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 lg:col-span-2">
+      <div className="relative flex h-[54vh] max-h-[580px] min-h-[380px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 sm:h-[62vh] lg:col-span-2 lg:h-full lg:max-h-none">
         {/* Top Status Bar Floating Overlay */}
-        <div className="pointer-events-auto absolute left-4 right-4 top-4 z-20 flex items-center justify-between">
+        <div className="pointer-events-auto absolute left-2.5 right-2.5 top-2.5 z-20 flex items-center justify-between gap-1.5 sm:left-4 sm:right-4 sm:top-4 sm:gap-2">
           <LiveStreamStatusBar
             startedAt={stream.startedAt || new Date()}
             viewerCount={viewerCount}
@@ -182,30 +184,33 @@ function LiveKitStudioControls({
             isConnected={isWsConnected}
           />
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <button
               onClick={handleCopyLink}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-3.5 py-1.5 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 p-2 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800 sm:px-3.5 sm:py-1.5"
+              title="Bagikan Tautan Siaran"
             >
               {copied ? (
                 <>
                   <CheckCheck className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Tersalin!</span>
+                  <span className="hidden text-emerald-400 sm:inline">
+                    Tersalin!
+                  </span>
                 </>
               ) : (
                 <>
                   <Share2 className="h-3.5 w-3.5 text-slate-300" />
-                  <span>Bagikan</span>
+                  <span className="hidden sm:inline">Bagikan</span>
                 </>
               )}
             </button>
 
             <button
               onClick={handleEnd}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-rose-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-md transition-all hover:bg-rose-700 active:scale-95"
+              className="flex cursor-pointer items-center gap-1 rounded-full bg-rose-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-md transition-all hover:bg-rose-700 active:scale-95 sm:px-3.5 sm:py-1.5"
             >
-              <StopCircle className="h-4 w-4" />
-              <span>Akhiri Siaran</span>
+              <StopCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="text-[11px] sm:text-xs">Akhiri</span>
             </button>
           </div>
         </div>
@@ -233,7 +238,7 @@ function LiveKitStudioControls({
 
           {/* Floating Pinned Product Card on Video (Kiri Bawah Mengambang) */}
           {pinnedProduct && (
-            <div className="pointer-events-auto absolute bottom-20 left-4 z-30">
+            <div className="pointer-events-auto absolute bottom-16 left-2.5 right-2.5 z-30 max-w-[calc(100%-20px)] sm:bottom-20 sm:left-4 sm:right-auto sm:max-w-sm">
               <LiveProductPin
                 product={pinnedProduct}
                 isBroadcaster={true}
@@ -244,12 +249,12 @@ function LiveKitStudioControls({
         </div>
 
         {/* Bottom Hardware Controls Bar */}
-        <div className="pointer-events-auto absolute bottom-4 left-4 right-4 z-20 flex items-center justify-center gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/90 px-4 py-2 shadow-xl backdrop-blur-md">
+        <div className="pointer-events-auto absolute bottom-3 left-2.5 right-2.5 z-20 flex items-center justify-center sm:bottom-4 sm:left-4 sm:right-4">
+          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/90 px-3 py-1.5 shadow-xl backdrop-blur-md sm:gap-2 sm:px-4 sm:py-2">
             {/* Camera Toggle */}
             <button
               onClick={toggleCamera}
-              className={`cursor-pointer rounded-full p-2.5 transition-all ${
+              className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
                 cameraActive
                   ? 'bg-white/10 text-white hover:bg-white/20'
                   : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
@@ -257,16 +262,16 @@ function LiveKitStudioControls({
               title={cameraActive ? 'Matikan Kamera' : 'Nyalakan Kamera'}
             >
               {cameraActive ? (
-                <Camera className="h-5 w-5" />
+                <Camera className="h-4 w-4 sm:h-5 sm:w-5" />
               ) : (
-                <CameraOff className="h-5 w-5" />
+                <CameraOff className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </button>
 
             {/* Microphone Toggle */}
             <button
               onClick={toggleMic}
-              className={`cursor-pointer rounded-full p-2.5 transition-all ${
+              className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
                 micActive
                   ? 'bg-white/10 text-white hover:bg-white/20'
                   : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
@@ -274,25 +279,25 @@ function LiveKitStudioControls({
               title={micActive ? 'Matikan Suara' : 'Nyalakan Suara'}
             >
               {micActive ? (
-                <Mic className="h-5 w-5" />
+                <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
               ) : (
-                <MicOff className="h-5 w-5" />
+                <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </button>
 
             {/* Switch Camera */}
             <button
               onClick={flipCamera}
-              className="cursor-pointer rounded-full bg-white/10 p-2.5 text-white transition-all hover:bg-white/20"
+              className="cursor-pointer rounded-full bg-white/10 p-2 text-white transition-all hover:bg-white/20 sm:p-2.5"
               title="Ganti Kamera Depan/Belakang"
             >
-              <RefreshCw className="h-5 w-5" />
+              <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
 
             {/* Mirror View Toggle (Instagram Style) */}
             <button
               onClick={() => setIsMirrored(!isMirrored)}
-              className={`cursor-pointer rounded-full p-2.5 transition-all ${
+              className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
                 isMirrored
                   ? 'bg-orange-500/30 text-orange-300 ring-2 ring-orange-400/50 hover:bg-orange-500/40'
                   : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
@@ -303,16 +308,48 @@ function LiveKitStudioControls({
                   : 'Cermin Nonaktif (Klik untuk Mirror View)'
               }
             >
-              <FlipHorizontal className="h-5 w-5" />
+              <FlipHorizontal className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
           </div>
         </div>
       </div>
 
+      {/* Mobile Tab Switcher: Chat vs Sematan Produk */}
+      <div className="shadow-2xs flex rounded-2xl border border-slate-200/80 bg-white p-1 dark:border-slate-800 dark:bg-slate-900 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileTab('chat')}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
+            mobileTab === 'chat'
+              ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+          }`}
+        >
+          <MessageSquare className="h-4 w-4" />
+          <span>Live Chat ({messages.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('products')}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
+            mobileTab === 'products'
+              ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+          }`}
+        >
+          <ShoppingBag className="h-4 w-4 text-orange-500" />
+          <span>Sematan Produk ({products.length})</span>
+        </button>
+      </div>
+
       {/* Kolom Kanan: Live Chat & Daftar Produk untuk Disematkan */}
-      <div className="flex h-full flex-col gap-4 overflow-hidden">
+      <div className="flex flex-col gap-4 overflow-hidden lg:h-full">
         {/* Tab Chat */}
-        <div className="h-3/5 min-h-[300px] flex-1">
+        <div
+          className={`h-[440px] sm:h-[480px] lg:h-3/5 lg:min-h-[300px] lg:flex-1 ${
+            mobileTab === 'chat' ? 'block' : 'hidden lg:block'
+          }`}
+        >
           <LiveChatPanel
             messages={messages}
             onSendMessage={sendMessage}
@@ -325,7 +362,11 @@ function LiveKitStudioControls({
         </div>
 
         {/* Tab Featured Products (Pin Management) - Clean White Theme */}
-        <div className="flex h-2/5 min-h-[220px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div
+          className={`h-[440px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:h-[480px] lg:h-2/5 lg:min-h-[220px] ${
+            mobileTab === 'products' ? 'flex' : 'hidden lg:flex'
+          }`}
+        >
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
               <ShoppingBag className="h-4 w-4 text-orange-500" />

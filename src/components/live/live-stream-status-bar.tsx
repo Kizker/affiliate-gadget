@@ -42,12 +42,12 @@ export function LiveStreamStatusBar({
   }, [isLive, startedAt])
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs text-white shadow-lg backdrop-blur-md">
+    <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-2.5 py-1 text-[11px] text-white shadow-lg backdrop-blur-md sm:gap-2 sm:px-3 sm:py-1.5 sm:text-xs">
       {/* Live Badge */}
       {isLive ? (
-        <span className="flex animate-pulse items-center gap-1.5 rounded-full bg-rose-500/20 px-2.5 py-0.5 font-bold uppercase tracking-wider text-rose-400">
-          <span className="h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
-          <Radio className="h-3.5 w-3.5" />
+        <span className="flex animate-pulse items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 font-bold uppercase tracking-wider text-rose-400 sm:gap-1.5 sm:px-2.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] sm:h-2 sm:w-2" />
+          <Radio className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           LIVE
         </span>
       ) : (
@@ -57,17 +57,17 @@ export function LiveStreamStatusBar({
       )}
 
       {/* Online Viewers */}
-      <span className="flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 font-medium">
-        <Eye className="h-3.5 w-3.5 text-blue-400" />
+      <span className="flex items-center gap-1 rounded-full bg-white/5 px-1.5 py-0.5 font-medium sm:gap-1.5 sm:px-2">
+        <Eye className="h-3 w-3 text-blue-400 sm:h-3.5 sm:w-3.5" />
         <span className="font-mono font-bold text-white">
           {viewerCount.toLocaleString()}
         </span>
         <span className="hidden text-slate-400 sm:inline">penonton</span>
       </span>
 
-      {/* Duration Timer */}
+      {/* Duration Timer (Desktop & Tablet) */}
       {isLive && (
-        <span className="flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 font-medium">
+        <span className="hidden items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 font-medium sm:flex">
           <Clock className="h-3.5 w-3.5 text-amber-400" />
           <span className="font-mono text-slate-200">{elapsed}</span>
         </span>
@@ -78,10 +78,10 @@ export function LiveStreamStatusBar({
         title={
           isConnected ? 'Koneksi real-time stabil' : 'Menghubungkan ulang...'
         }
-        className="ml-auto flex items-center pl-1"
+        className="flex items-center pl-0.5"
       >
         <Wifi
-          className={`h-3.5 w-3.5 transition-colors ${
+          className={`h-3 w-3 transition-colors sm:h-3.5 sm:w-3.5 ${
             isConnected ? 'text-emerald-400' : 'animate-pulse text-amber-500'
           }`}
         />

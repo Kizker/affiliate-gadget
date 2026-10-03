@@ -23,6 +23,7 @@ import {
   Sparkles,
   Zap,
   Heart,
+  MessageSquare,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useLiveKitToken } from '@/hooks/use-livekit-token'
@@ -178,6 +179,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   const [stream, setStream] = useState<LiveStreamDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [mobileTab, setMobileTab] = useState<'chat' | 'catalog'>('chat')
   const playerContainerRef = useRef<HTMLDivElement>(null)
 
   // 1. Fetch Stream Metadata
@@ -269,14 +271,14 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
       {/* Main Stream & Chat Grid */}
-      <div className="grid h-[calc(100vh-160px)] min-h-[640px] grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100vh-160px)] lg:min-h-[640px] lg:grid-cols-3 lg:gap-6">
         {/* Kolom Kiri & Tengah: Video Player */}
         <div
           ref={playerContainerRef}
-          className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 lg:col-span-2"
+          className="relative flex h-[54vh] max-h-[580px] min-h-[360px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 sm:h-[62vh] lg:col-span-2 lg:h-full lg:max-h-none"
         >
           {/* Top Status Bar Overlay */}
-          <div className="pointer-events-auto absolute left-4 right-4 top-4 z-20 flex items-center justify-between">
+          <div className="pointer-events-auto absolute left-2.5 right-2.5 top-2.5 z-20 flex items-center justify-between gap-1.5 sm:left-4 sm:right-4 sm:top-4 sm:gap-2">
             <LiveStreamStatusBar
               startedAt={stream.startedAt}
               viewerCount={viewerCount}
@@ -289,10 +291,10 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               <Link
                 href={`/toko/${stream.store.slug}`}
                 target="_blank"
-                className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3.5 py-1.5 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800"
+                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-2.5 py-1 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800 sm:px-3.5 sm:py-1.5"
               >
                 <Store className="h-3.5 w-3.5 text-orange-400" />
-                <span className="max-w-[120px] truncate font-medium">
+                <span className="max-w-[100px] truncate font-medium sm:max-w-[120px]">
                   {stream.store.name}
                 </span>
               </Link>
@@ -359,17 +361,49 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
 
             {/* Pinned Product Floating Card (Kiri Bawah Mengambang) */}
             {pinnedProduct && (
-              <div className="pointer-events-auto absolute bottom-16 left-4 z-30">
+              <div className="pointer-events-auto absolute bottom-16 left-2.5 right-2.5 z-30 max-w-[calc(100%-20px)] sm:bottom-16 sm:left-4 sm:right-auto sm:max-w-sm">
                 <LiveProductPin product={pinnedProduct} isBroadcaster={false} />
               </div>
             )}
           </div>
         </div>
 
+        {/* Mobile Tab Switcher (Chat vs Katalog Produk) */}
+        <div className="shadow-2xs flex rounded-2xl border border-slate-200/80 bg-white p-1 dark:border-slate-800 dark:bg-slate-900 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileTab('chat')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
+              mobileTab === 'chat'
+                ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>Live Chat ({messages.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('catalog')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
+              mobileTab === 'catalog'
+                ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <ShoppingBag className="h-4 w-4 text-orange-500" />
+            <span>Produk ({stream.featuredProducts?.length || 0})</span>
+          </button>
+        </div>
+
         {/* Kolom Kanan: Live Chat & Featured Products Showcase */}
-        <div className="flex h-full flex-col gap-4 overflow-hidden">
+        <div className="flex flex-col gap-4 overflow-hidden lg:h-full">
           {/* Real-time Live Chat Panel */}
-          <div className="h-3/5 min-h-[300px] flex-1">
+          <div
+            className={`h-[440px] sm:h-[480px] lg:h-3/5 lg:min-h-[300px] lg:flex-1 ${
+              mobileTab === 'chat' ? 'block' : 'hidden lg:block'
+            }`}
+          >
             <LiveChatPanel
               messages={messages}
               onSendMessage={sendMessage}
@@ -382,7 +416,11 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
           </div>
 
           {/* Featured Products Mini Catalog - Clean White Theme */}
-          <div className="flex h-2/5 min-h-[220px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div
+            className={`h-[440px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:h-[480px] lg:h-2/5 lg:min-h-[220px] ${
+              mobileTab === 'catalog' ? 'flex' : 'hidden lg:flex'
+            }`}
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
                 <ShoppingBag className="h-4 w-4 text-orange-500" />
