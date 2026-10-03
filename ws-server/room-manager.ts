@@ -68,9 +68,27 @@ class WsRoomManager {
 
   /**
    * Calculates current online viewers in a stream
+   * Deduplicates by unique user account or client viewerId, excluding broadcasters.
    */
   getViewerCount(streamId: string): number {
-    return this.rooms.get(streamId)?.size ?? 0
+    const room = this.rooms.get(streamId)
+    if (!room || room.size === 0) return 0
+
+    const uniqueViewers = new Set<string>()
+    for (const session of room) {
+      // Broadcasters / hosts are excluded from viewer count
+      if (session.isBroadcaster) continue
+
+      const key = session.userId
+        ? `user:${session.userId}`
+        : session.viewerId
+          ? `guest:${session.viewerId}`
+          : `sock:${session.userName}`
+
+      uniqueViewers.add(key)
+    }
+
+    return uniqueViewers.size
   }
 
   /**
@@ -166,8 +184,8 @@ class WsRoomManager {
     this.syncInterval = setInterval(async () => {
       if (this.rooms.size === 0) return
 
-      for (const [streamId, room] of this.rooms.entries()) {
-        const viewerCount = room.size
+      for (const [streamId] of this.rooms.entries()) {
+        const viewerCount = this.getViewerCount(streamId)
         try {
           await prisma.liveStream.update({
             where: { id: streamId },

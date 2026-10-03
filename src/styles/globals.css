@@ -284,4 +284,31 @@
   video.clean-video-player::-webkit-media-controls-picture-in-picture-button {
     display: none !important;
   }
+
+  /* Instagram/TikTok Live Floating Hearts Animation */
+  @keyframes float-heart {
+    0% {
+      opacity: 0;
+      transform: translateY(0) scale(0.6) rotate(0deg);
+    }
+    15% {
+      opacity: 1;
+      transform: translateY(-20px) scale(1.1) rotate(-8deg);
+    }
+    40% {
+      transform: translateY(-80px) scale(1) rotate(10deg);
+    }
+    70% {
+      opacity: 0.9;
+      transform: translateY(-160px) scale(0.95) rotate(-6deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-260px) scale(0.8) rotate(12deg);
+    }
+  }
+
+  .animate-float-heart {
+    animation: float-heart 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
 }

@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Sparkles,
   Zap,
+  Heart,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useLiveKitToken } from '@/hooks/use-livekit-token'
@@ -29,6 +30,7 @@ import { useLiveChat } from '@/hooks/use-live-chat'
 import { LiveStreamStatusBar } from './live-stream-status-bar'
 import { LiveChatPanel } from './live-chat-panel'
 import { LiveProductPin } from './live-product-pin'
+import { FloatingHeartsOverlay } from './floating-hearts'
 
 interface StoreInfo {
   id: string
@@ -70,9 +72,13 @@ interface LiveStreamDetail {
 function LiveKitSubscriberVideo({
   stream,
   onFullscreen,
+  likeCount = 0,
+  onSendLike,
 }: {
   stream: LiveStreamDetail
   onFullscreen: () => void
+  likeCount?: number
+  onSendLike?: () => void
 }) {
   const [isMuted, setIsMuted] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -97,7 +103,10 @@ function LiveKitSubscriberVideo({
   }, [hostCameraTrack])
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-slate-950">
+    <div
+      onDoubleClick={onSendLike}
+      className="relative flex h-full w-full items-center justify-center overflow-hidden bg-slate-950"
+    >
       {hostCameraTrack ? (
         <video
           ref={videoRef}
@@ -122,8 +131,24 @@ function LiveKitSubscriberVideo({
         </div>
       )}
 
+      {/* Floating Hearts Animation on Video Canvas */}
+      <FloatingHeartsOverlay
+        triggerCount={likeCount}
+        onHeartClick={onSendLike}
+      />
+
       {/* Video Overlay Action Controls */}
       <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
+        {onSendLike && (
+          <button
+            onClick={onSendLike}
+            className="cursor-pointer rounded-full border border-rose-500/40 bg-rose-500/20 p-2.5 text-rose-400 shadow-lg backdrop-blur-md transition-all hover:bg-rose-500/30 active:scale-75"
+            title="Kirim Suka (Double Tap Video)"
+          >
+            <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
+          </button>
+        )}
+
         <button
           onClick={() => setIsMuted(!isMuted)}
           className="cursor-pointer rounded-full border border-white/10 bg-slate-900/80 p-2.5 text-white shadow-lg backdrop-blur-md transition-all hover:bg-slate-800 active:scale-90"
@@ -248,7 +273,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
         {/* Kolom Kiri & Tengah: Video Player */}
         <div
           ref={playerContainerRef}
-          className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-950 shadow-2xl lg:col-span-2"
+          className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 lg:col-span-2"
         >
           {/* Top Status Bar Overlay */}
           <div className="pointer-events-auto absolute left-4 right-4 top-4 z-20 flex items-center justify-between">
@@ -264,7 +289,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               <Link
                 href={`/toko/${stream.store.slug}`}
                 target="_blank"
-                className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800"
+                className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3.5 py-1.5 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800"
               >
                 <Store className="h-3.5 w-3.5 text-orange-400" />
                 <span className="max-w-[120px] truncate font-medium">
@@ -297,6 +322,8 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                   <LiveKitSubscriberVideo
                     stream={stream}
                     onFullscreen={handleFullscreen}
+                    likeCount={likeCount}
+                    onSendLike={() => sendLike(1)}
                   />
                 </LiveKitRoom>
               )
@@ -327,9 +354,12 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               </div>
             )}
 
-            {/* Pinned Product Floating Card */}
+            {/* Floating Hearts Animation Overlay on Viewer Video Canvas */}
+            <FloatingHeartsOverlay triggerCount={likeCount} />
+
+            {/* Pinned Product Floating Card (Kiri Bawah Mengambang) */}
             {pinnedProduct && (
-              <div className="absolute bottom-16 left-4 z-20">
+              <div className="pointer-events-auto absolute bottom-16 left-4 z-30">
                 <LiveProductPin product={pinnedProduct} isBroadcaster={false} />
               </div>
             )}
@@ -351,34 +381,34 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             />
           </div>
 
-          {/* Featured Products Mini Catalog */}
-          <div className="flex h-2/5 min-h-[220px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/90 p-4 shadow-xl backdrop-blur-md">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
-                <ShoppingBag className="h-4 w-4 text-orange-400" />
+          {/* Featured Products Mini Catalog - Clean White Theme */}
+          <div className="flex h-2/5 min-h-[220px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                <ShoppingBag className="h-4 w-4 text-orange-500" />
                 <span>
                   Produk Ditampilkan ({stream.featuredProducts?.length || 0})
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-orange-400">
+              <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">
                 GARANSI 30 HARI
               </span>
             </div>
 
-            <div className="scrollbar-thin scrollbar-thumb-slate-700 mt-2 flex-1 space-y-2 overflow-y-auto">
+            <div className="scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 mt-2 flex-1 space-y-2 overflow-y-auto">
               {!stream.featuredProducts ||
               stream.featuredProducts.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-500">
+                <div className="py-6 text-center text-xs text-slate-400">
                   Belum ada produk yang disorot pada siaran ini.
                 </div>
               ) : (
                 stream.featuredProducts.map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-2 text-xs transition-all hover:bg-white/10"
+                    className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-2.5 text-xs transition-all hover:bg-slate-100/80 dark:border-slate-800 dark:bg-slate-800/40"
                   >
                     <div className="flex min-w-0 items-center gap-2.5 pr-2">
-                      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-slate-800">
+                      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-700">
                         {p.images[0] ? (
                           <Image
                             src={p.images[0]}
@@ -387,14 +417,14 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                             className="object-cover"
                           />
                         ) : (
-                          <ShoppingBag className="m-auto h-4 w-4 text-slate-500" />
+                          <ShoppingBag className="m-auto h-4 w-4 text-slate-400" />
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="max-w-[130px] truncate font-semibold text-white">
+                        <p className="max-w-[130px] truncate font-semibold text-slate-800 dark:text-slate-100">
                           {p.name}
                         </p>
-                        <p className="text-[11px] font-bold text-orange-400">
+                        <p className="text-[11px] font-bold text-orange-600 dark:text-orange-400">
                           Rp {p.price.toLocaleString('id-ID')}
                         </p>
                       </div>
@@ -403,7 +433,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                     <Link
                       href={`/gadget/${p.id}`}
                       target="_blank"
-                      className="shrink-0 rounded-lg bg-orange-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition-all hover:bg-orange-600"
+                      className="shadow-xs shrink-0 rounded-xl bg-orange-500 px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:bg-orange-600 active:scale-95"
                     >
                       Beli
                     </Link>
@@ -415,11 +445,11 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
         </div>
       </div>
 
-      {/* Store Profile Bar Below Player */}
+      {/* Store Profile Bar Below Player - Clean White Theme */}
       {stream.store && (
-        <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900 p-4 sm:flex-row sm:items-center">
+        <div className="p-4.5 flex flex-col items-start justify-between gap-4 rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-slate-800">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
               {stream.store.logo ? (
                 <Image
                   src={stream.store.logo}
@@ -429,12 +459,12 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                   className="object-cover"
                 />
               ) : (
-                <Store className="h-6 w-6 text-orange-400" />
+                <Store className="h-6 w-6 text-orange-500" />
               )}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-white">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                   {stream.store.name}
                 </h3>
                 <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-400">

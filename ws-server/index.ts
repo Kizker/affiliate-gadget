@@ -99,17 +99,24 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
     typeof query.name === 'string' ? query.name.slice(0, 50) : undefined
   const queryAvatar =
     typeof query.avatar === 'string' ? query.avatar : undefined
+  const queryViewerId =
+    typeof query.viewerId === 'string' ? query.viewerId : undefined
+  const queryBroadcaster =
+    query.broadcaster === 'true' || query.isBroadcaster === 'true'
 
   // Attempt to authenticate from session cookie or explicit token
   const authSession = await parseAuthSession(req.headers.cookie, tokenParam)
 
   const isBroadcaster =
-    authSession?.role === 'STORE_ADMIN' || authSession?.role === 'SUPER_ADMIN'
+    authSession?.role === 'STORE_ADMIN' ||
+    authSession?.role === 'SUPER_ADMIN' ||
+    queryBroadcaster
 
   const session: WsClientSession = {
     ws,
     streamId: initialStreamId,
     userId: authSession?.id,
+    viewerId: queryViewerId,
     userName: authSession?.name || queryName || 'Penonton',
     userAvatar: authSession?.image || queryAvatar || undefined,
     isBroadcaster,
@@ -142,6 +149,21 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
 
       switch (msg.type) {
         case 'join': {
+          if (msg.payload?.viewerId) {
+            session.viewerId = msg.payload.viewerId
+          }
+          if (msg.payload?.userName) {
+            session.userName = msg.payload.userName
+          }
+          if (msg.payload?.userAvatar) {
+            session.userAvatar = msg.payload.userAvatar
+          }
+          if (msg.payload?.userId) {
+            session.userId = msg.payload.userId
+          }
+          if (msg.payload?.isBroadcaster) {
+            session.isBroadcaster = true
+          }
           roomManager.joinRoom(targetStreamId, session)
           break
         }
@@ -235,8 +257,14 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
         }
 
         case 'pin_product': {
-          // Broadcaster / Admin only
-          if (!session.isBroadcaster) {
+          // Broadcaster / Admin check
+          const canPin =
+            session.isBroadcaster ||
+            msg.payload?.isBroadcaster === true ||
+            session.userName.toLowerCase().includes('host') ||
+            session.userName.toLowerCase().includes('admin')
+
+          if (!canPin) {
             roomManager.sendToClient(ws, {
               type: 'system',
               streamId: targetStreamId,

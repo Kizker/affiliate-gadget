@@ -49,6 +49,24 @@ export function useLiveChat({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Persistent client viewer ID (deduplicates device/browser sessions)
+  const getViewerId = useCallback(() => {
+    if (typeof window === 'undefined') return 'guest-ssr'
+    try {
+      let vid = localStorage.getItem('affiliate_gadget_viewer_id')
+      if (!vid) {
+        vid =
+          'v_' +
+          Math.random().toString(36).substring(2, 9) +
+          Date.now().toString(36)
+        localStorage.setItem('affiliate_gadget_viewer_id', vid)
+      }
+      return vid
+    } catch {
+      return 'guest-anon'
+    }
+  }, [])
+
   // 1. Fetch initial chat history from REST API
   useEffect(() => {
     if (!streamId) return
@@ -75,6 +93,7 @@ export function useLiveChat({
   // 2. Resolve WebSocket Server URL
   const getWsUrl = useCallback(() => {
     const configuredUrl = process.env.NEXT_PUBLIC_WS_URL
+    const viewerId = getViewerId()
 
     let base = configuredUrl
     if (typeof window !== 'undefined') {
@@ -97,9 +116,11 @@ export function useLiveChat({
     if (userName) params.set('name', userName)
     if (userAvatar) params.set('avatar', userAvatar)
     if (token) params.set('token', token)
+    if (viewerId) params.set('viewerId', viewerId)
+    if (isBroadcaster) params.set('isBroadcaster', 'true')
 
     return `${base}?${params.toString()}`
-  }, [streamId, userName, userAvatar, token])
+  }, [streamId, userName, userAvatar, token, isBroadcaster, getViewerId])
 
   // 3. Connect to WebSocket
   const connectWs = useCallback(() => {
@@ -107,6 +128,7 @@ export function useLiveChat({
 
     try {
       const wsUrl = getWsUrl()
+      const viewerId = getViewerId()
       const ws = new WebSocket(wsUrl)
       socketRef.current = ws
 
@@ -119,7 +141,7 @@ export function useLiveChat({
           JSON.stringify({
             type: 'join',
             streamId,
-            payload: { userName, userAvatar, isBroadcaster },
+            payload: { userName, userAvatar, isBroadcaster, viewerId },
           })
         )
 
@@ -227,7 +249,7 @@ export function useLiveChat({
 
   // 4. Send Message function
   const sendMessage = useCallback(
-    (msgText: string) => {
+    (msgText: string, customUserName?: string) => {
       const trimmed = msgText.trim()
       if (
         !trimmed ||
@@ -237,13 +259,15 @@ export function useLiveChat({
         return false
       }
 
+      const activeSender = customUserName || userName || 'Penonton'
+
       socketRef.current.send(
         JSON.stringify({
           type: 'chat',
           streamId,
           payload: {
             message: trimmed,
-            userName,
+            userName: activeSender,
             userAvatar,
           },
         })
@@ -273,12 +297,13 @@ export function useLiveChat({
   // 6. Pin / Unpin Product (Broadcaster)
   const pinProduct = useCallback(
     (product: PinnedProduct) => {
+      const payload = { ...product, isBroadcaster: true }
       if (socketRef.current?.readyState === WebSocket.OPEN) {
         socketRef.current.send(
           JSON.stringify({
             type: 'pin_product',
             streamId,
-            payload: product,
+            payload,
           })
         )
       }

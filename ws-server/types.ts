@@ -51,6 +51,7 @@ export interface WsClientSession {
   ws: WebSocket
   streamId?: string
   userId?: string
+  viewerId?: string
   userName: string
   userAvatar?: string
   isBroadcaster: boolean

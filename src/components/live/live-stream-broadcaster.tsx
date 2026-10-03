@@ -24,6 +24,7 @@ import {
   Pin,
   Play,
   Share2,
+  FlipHorizontal,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useLiveKitToken } from '@/hooks/use-livekit-token'
@@ -31,6 +32,7 @@ import { useLiveChat } from '@/hooks/use-live-chat'
 import { LiveStreamStatusBar } from './live-stream-status-bar'
 import { LiveChatPanel } from './live-chat-panel'
 import { LiveProductPin } from './live-product-pin'
+import { FloatingHeartsOverlay } from './floating-hearts'
 
 interface StoreProduct {
   id: string
@@ -66,6 +68,7 @@ function LiveKitStudioControls({
   const [cameraActive, setCameraActive] = useState(true)
   const [micActive, setMicActive] = useState(true)
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
+  const [isMirrored, setIsMirrored] = useState(true)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(
     null
   )
@@ -128,6 +131,8 @@ function LiveKitStudioControls({
     if (!localParticipant) return
     const nextMode = facingMode === 'user' ? 'environment' : 'user'
     setFacingMode(nextMode)
+    // Front camera is mirrored by default, rear camera is normal
+    setIsMirrored(nextMode === 'user')
     try {
       await localParticipant.setCameraEnabled(false)
       await localParticipant.setCameraEnabled(true, {
@@ -167,7 +172,7 @@ function LiveKitStudioControls({
   return (
     <div className="grid h-[calc(100vh-140px)] min-h-[640px] grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Kolom Kiri & Tengah: Kamera Live View & Kontrol */}
-      <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-950 shadow-2xl lg:col-span-2">
+      <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 lg:col-span-2">
         {/* Top Status Bar Floating Overlay */}
         <div className="pointer-events-auto absolute left-4 right-4 top-4 z-20 flex items-center justify-between">
           <LiveStreamStatusBar
@@ -180,7 +185,7 @@ function LiveKitStudioControls({
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopyLink}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-3.5 py-1.5 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800"
             >
               {copied ? (
                 <>
@@ -213,7 +218,8 @@ function LiveKitStudioControls({
               autoPlay
               playsInline
               muted
-              className="h-full w-full object-cover"
+              style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}
+              className="h-full w-full object-cover transition-transform duration-300"
             />
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 text-slate-500">
@@ -222,9 +228,12 @@ function LiveKitStudioControls({
             </div>
           )}
 
-          {/* Floating Pinned Product Card on Video */}
+          {/* Floating Hearts Animation Overlay on Video Canvas */}
+          <FloatingHeartsOverlay triggerCount={likeCount} />
+
+          {/* Floating Pinned Product Card on Video (Kiri Bawah Mengambang) */}
           {pinnedProduct && (
-            <div className="absolute bottom-20 left-4 z-20">
+            <div className="pointer-events-auto absolute bottom-20 left-4 z-30">
               <LiveProductPin
                 product={pinnedProduct}
                 isBroadcaster={true}
@@ -279,6 +288,23 @@ function LiveKitStudioControls({
             >
               <RefreshCw className="h-5 w-5" />
             </button>
+
+            {/* Mirror View Toggle (Instagram Style) */}
+            <button
+              onClick={() => setIsMirrored(!isMirrored)}
+              className={`cursor-pointer rounded-full p-2.5 transition-all ${
+                isMirrored
+                  ? 'bg-orange-500/30 text-orange-300 ring-2 ring-orange-400/50 hover:bg-orange-500/40'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+              }`}
+              title={
+                isMirrored
+                  ? 'Cermin Aktif (Mode Selfie/Instagram - Klik untuk Normal)'
+                  : 'Cermin Nonaktif (Klik untuk Mirror View)'
+              }
+            >
+              <FlipHorizontal className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>
@@ -298,26 +324,26 @@ function LiveKitStudioControls({
           />
         </div>
 
-        {/* Tab Featured Products (Pin Management) */}
-        <div className="flex h-2/5 min-h-[220px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/90 p-4 shadow-xl backdrop-blur-md">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
-              <ShoppingBag className="h-4 w-4 text-slate-300" />
+        {/* Tab Featured Products (Pin Management) - Clean White Theme */}
+        <div className="flex h-2/5 min-h-[220px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+              <ShoppingBag className="h-4 w-4 text-orange-500" />
               <span>Sematan Produk ({products.length})</span>
             </div>
             {pinnedProduct && (
               <button
                 onClick={unpinProduct}
-                className="cursor-pointer text-[11px] text-rose-400 hover:underline"
+                className="cursor-pointer text-[11px] font-semibold text-rose-500 hover:underline"
               >
                 Lepas Sematan
               </button>
             )}
           </div>
 
-          <div className="scrollbar-thin scrollbar-thumb-slate-700 mt-2 flex-1 space-y-2 overflow-y-auto">
+          <div className="scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 mt-2 flex-1 space-y-2 overflow-y-auto">
             {products.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-500">
+              <div className="py-6 text-center text-xs text-slate-400">
                 Tidak ada produk yang dipilih untuk siaran ini.
               </div>
             ) : (
@@ -326,14 +352,14 @@ function LiveKitStudioControls({
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center justify-between rounded-xl border p-2 text-xs transition-all ${
+                    className={`flex items-center justify-between rounded-2xl border p-2.5 text-xs transition-all ${
                       isPinned
-                        ? 'border-white/30 bg-white/10 text-white'
-                        : 'border-white/5 bg-white/5 text-slate-300 hover:bg-white/10'
+                        ? 'shadow-xs border-orange-400 bg-orange-50/70 dark:border-orange-500/40 dark:bg-orange-950/20'
+                        : 'border-slate-200/70 bg-slate-50/80 hover:bg-slate-100/80 dark:border-slate-800 dark:bg-slate-800/40'
                     }`}
                   >
-                    <div className="flex min-w-0 items-center gap-2 pr-2">
-                      <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-slate-800">
+                    <div className="flex min-w-0 items-center gap-2.5 pr-2">
+                      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-700">
                         {p.images[0] ? (
                           <Image
                             src={p.images[0]}
@@ -342,14 +368,14 @@ function LiveKitStudioControls({
                             className="object-cover"
                           />
                         ) : (
-                          <ShoppingBag className="m-auto h-4 w-4 text-slate-500" />
+                          <ShoppingBag className="m-auto h-4 w-4 text-slate-400" />
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="max-w-[130px] truncate font-medium">
+                        <p className="max-w-[130px] truncate font-semibold text-slate-800 dark:text-slate-100">
                           {p.name}
                         </p>
-                        <p className="text-[11px] font-bold text-slate-300">
+                        <p className="text-[11px] font-bold text-orange-600 dark:text-orange-500">
                           Rp {p.price.toLocaleString('id-ID')}
                         </p>
                       </div>
@@ -358,10 +384,10 @@ function LiveKitStudioControls({
                     <button
                       onClick={() => handlePinProduct(p)}
                       disabled={isPinned}
-                      className={`flex cursor-pointer items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
+                      className={`flex cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-all ${
                         isPinned
-                          ? 'cursor-default bg-white font-bold text-slate-950'
-                          : 'bg-white/10 text-slate-300 hover:bg-white hover:text-slate-950'
+                          ? 'shadow-xs cursor-default bg-orange-500 text-white'
+                          : 'shadow-2xs border border-slate-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
                       }`}
                     >
                       <Pin className="h-3 w-3" />
