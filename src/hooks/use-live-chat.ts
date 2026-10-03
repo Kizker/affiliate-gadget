@@ -18,6 +18,9 @@ export interface PinnedProduct {
   productPrice?: number
   productImage?: string
   productSlug?: string
+  originalPrice?: number
+  discountPrice?: number
+  dealToken?: string
 }
 
 export interface UseLiveChatOptions {

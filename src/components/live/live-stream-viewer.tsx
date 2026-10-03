@@ -99,6 +99,7 @@ function LiveKitSubscriberVideo({
   onSendLike,
   isMirrored = false,
   showControls = true,
+  isStreamEnded = false,
 }: {
   videoRefExternal?: React.RefObject<HTMLVideoElement | null>
   onOrientationChange?: (isVertical: boolean) => void
@@ -107,6 +108,7 @@ function LiveKitSubscriberVideo({
   onSendLike?: () => void
   isMirrored?: boolean
   showControls?: boolean
+  isStreamEnded?: boolean
 }) {
   const isMobile = useIsMobile()
   const [isMuted, setIsMuted] = useState(false)
@@ -172,6 +174,31 @@ function LiveKitSubscriberVideo({
   // Pada desktop: jika host live stream vertikal, gunakan object-contain dengan ambient blurred background agar tidak ter-crop 16:9
   // Pada mobile smartphone: video selalu memenuhi layar penuh (object-cover) persis seperti di host live broadcaster
   const isContainMode = !isMobile && isVertical
+
+  // Jika siaran telah diakhiri oleh host, tampilkan layar berakhir yang elegan dan informatif
+  if (isStreamEnded) {
+    return (
+      <div className="relative flex h-full w-full select-none flex-col items-center justify-center bg-slate-950 p-6 text-center text-white">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-500 shadow-xl shadow-orange-500/10">
+          <Radio className="h-8 w-8 text-orange-500 opacity-60" />
+        </div>
+        <h4 className="text-lg font-bold text-white sm:text-xl">
+          Siaran Langsung Telah Berakhir
+        </h4>
+        <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-slate-400">
+          Host toko cabang telah menyelesaikan sesi siaran langsung ini. Terima
+          kasih telah menonton dan berbelanja!
+        </p>
+        <Link
+          href="/gadget"
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95"
+        >
+          <ShoppingBag className="h-4 w-4" />
+          <span>Jelajahi Katalog Gadget Toko</span>
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -336,20 +363,13 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
     }
   }, [streamId])
 
-  // 2. LiveKit Viewer Token
-  const isLive = stream?.status === 'LIVE'
-  const {
-    token: livekitToken,
-    wsUrl: livekitWsUrl,
-    loading: isTokenLoading,
-  } = useLiveKitToken(streamId, 'viewer')
-
   // 3. WebSocket Real-time Chat, Mirror & Pin Hook
   const {
     messages,
     viewerCount,
     pinnedProduct,
     isConnected: isWsConnected,
+    isStreamEnded,
     likeCount,
     isMirrored,
     sendMessage,
@@ -361,6 +381,17 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
     initialViewerCount: stream?.viewerCount || 0,
     isBroadcaster: false,
   })
+
+  // Status siaran berakhir (baik dari event WebSocket real-time maupun status record)
+  const isEnded = isStreamEnded || stream?.status === 'ENDED'
+  const isLive = stream?.status === 'LIVE' && !isEnded
+
+  // 2. LiveKit Viewer Token
+  const {
+    token: livekitToken,
+    wsUrl: livekitWsUrl,
+    loading: isTokenLoading,
+  } = useLiveKitToken(streamId, 'viewer')
 
   const { keyboardInset, offsetTop } = useKeyboardInset(isMobile)
 
@@ -550,6 +581,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
           onSendLike={() => sendLike(1)}
           isMirrored={isMirrored}
           showControls={showOverlayControls}
+          isStreamEnded={isEnded}
         />
       </LiveKitRoom>
     )
@@ -699,10 +731,16 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 <span className="max-w-[130px] truncate text-xs font-bold text-white drop-shadow-sm">
                   {stream.store?.name || 'Toko Cabang'}
                 </span>
-                <span className="flex items-center gap-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white shadow-md">
-                  <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white" />
-                  LIVE
-                </span>
+                {isEnded ? (
+                  <span className="flex items-center gap-1 rounded-md bg-slate-700 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-200">
+                    SELESAI
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white shadow-md">
+                    <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white" />
+                    LIVE
+                  </span>
+                )}
               </div>
               <div className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-white/80">
                 <span className="flex items-center gap-1 rounded-md bg-black/40 px-1.5 py-0.5 backdrop-blur-sm">
@@ -779,8 +817,8 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             )}
           </div>
 
-          {/* Pinned Product Floating Card on Mobile (Rekomendasi Barang di Bawah Layar - Light Mode Bersih Tanpa Badge) */}
-          {pinnedProduct && (
+          {/* Pinned Product Floating Card on Mobile (Rekomendasi Barang di Bawah Layar - Light Mode Bersih) */}
+          {pinnedProduct && !isEnded && (
             <div className="pointer-events-auto relative flex max-w-[62%] items-center justify-between gap-2 self-start rounded-2xl border border-orange-500/40 bg-white/95 p-2 text-slate-900 shadow-2xl shadow-black/20 backdrop-blur-md animate-in slide-in-from-bottom-2 sm:max-w-[280px]">
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
@@ -801,13 +839,36 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                   >
                     {pinnedProduct.productTitle}
                   </p>
-                  <p className="mt-0.5 text-xs font-extrabold text-orange-600 sm:text-sm">
-                    Rp {pinnedProduct.productPrice?.toLocaleString('id-ID')}
-                  </p>
+                  {pinnedProduct.discountPrice &&
+                  pinnedProduct.discountPrice <
+                    (pinnedProduct.originalPrice ||
+                      pinnedProduct.productPrice ||
+                      0) ? (
+                    <div className="flex flex-wrap items-baseline gap-1">
+                      <p className="text-xs font-extrabold text-orange-600 sm:text-sm">
+                        Rp {pinnedProduct.discountPrice.toLocaleString('id-ID')}
+                      </p>
+                      <p className="text-[10px] text-slate-400 line-through">
+                        Rp{' '}
+                        {(
+                          pinnedProduct.originalPrice ||
+                          pinnedProduct.productPrice
+                        )?.toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-0.5 text-xs font-extrabold text-orange-600 sm:text-sm">
+                      Rp {pinnedProduct.productPrice?.toLocaleString('id-ID')}
+                    </p>
+                  )}
                 </div>
               </div>
               <Link
-                href={`/gadget/${pinnedProduct.productId}`}
+                href={
+                  pinnedProduct.dealToken
+                    ? `/gadget/${pinnedProduct.productId}?dealToken=${pinnedProduct.dealToken}`
+                    : `/gadget/${pinnedProduct.productId}`
+                }
                 target="_blank"
                 className="shrink-0 rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition-all hover:bg-orange-600 active:scale-95"
               >
@@ -1028,7 +1089,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             </div>
 
             {/* Floating Pinned Product on Desktop Video Player (Kiri Layar Mengambang seperti sisi Host) */}
-            {pinnedProduct && (
+            {pinnedProduct && !isEnded && (
               <div className="pointer-events-auto absolute bottom-4 left-4 z-30 max-w-[calc(100%-2rem)] animate-in fade-in slide-in-from-bottom-2 sm:max-w-xs md:max-w-sm">
                 <LiveProductPin product={pinnedProduct} isBroadcaster={false} />
               </div>

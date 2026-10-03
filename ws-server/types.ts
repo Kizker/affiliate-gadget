@@ -42,6 +42,9 @@ export interface WsPinProductPayload {
   productPrice?: number
   productImage?: string
   productSlug?: string
+  originalPrice?: number
+  discountPrice?: number
+  dealToken?: string
 }
 
 export interface WsViewerCountPayload {

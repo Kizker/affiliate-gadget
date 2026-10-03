@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Script from 'next/script'
@@ -73,6 +73,8 @@ interface CheckoutOrderResponseItem {
 export default function CheckoutPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const dealToken = searchParams?.get('dealToken')
 
   const items = useCartStore((state) => state.items)
   const selectedItemIds = useCartStore((state) => state.selectedItems)
@@ -544,6 +546,7 @@ export default function CheckoutPage() {
           recipientName: selectedAddress?.recipientName || '',
           recipientPhone: selectedAddress?.phone || '',
           voucherCode: appliedVoucher?.code || null,
+          dealToken: dealToken || null,
           notes: notes,
         }),
       })

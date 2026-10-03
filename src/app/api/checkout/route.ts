@@ -24,6 +24,7 @@ import {
 import { verifyServerShippingCost } from '@/lib/shipping/shipping-engine'
 import { calculateVoucherDiscountAmount } from '@/lib/constants/voucher'
 import { calculateOrderVat } from '@/lib/tax/tax-engine'
+import { verifyDealToken, consumeDealToken } from '@/lib/live-deals'
 
 interface CartItem {
   type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
@@ -220,6 +221,7 @@ export async function POST(request: NextRequest) {
       recipientName,
       recipientPhone,
       voucherCode,
+      dealToken,
       addressId,
     } = parseResult.data
 
@@ -628,6 +630,40 @@ export async function POST(request: NextRequest) {
               let appliedVoucherCode: string | null = null
               let appliedDiscountAmount = 0
 
+              // Verifikasi Diskon Khusus Live Deal (Single-Use)
+              let appliedLiveDealToken: string | null = null
+              if (orderType === 'PRODUCT' && dealToken) {
+                const dealCheck = verifyDealToken(dealToken)
+                if (!dealCheck.valid) {
+                  if (dealCheck.reason === 'USED') {
+                    throw new CheckoutError(
+                      'Diskon khusus live deal ini telah digunakan untuk transaksi sebelumnya.',
+                      CHECKOUT_ERROR_CODES.PRODUK_TIDAK_AKTIF,
+                      400
+                    )
+                  }
+                  throw new CheckoutError(
+                    'Diskon khusus live deal ini sudah berakhir atau tidak valid.',
+                    CHECKOUT_ERROR_CODES.PRODUK_TIDAK_AKTIF,
+                    400
+                  )
+                }
+
+                const deal = dealCheck.deal!
+                const matchedItem = verifiedItems.find(
+                  (vi) => vi.raw.productId === deal.productId
+                )
+
+                if (matchedItem) {
+                  const dealDiff = Math.max(
+                    0,
+                    deal.originalPrice - deal.discountPrice
+                  )
+                  appliedDiscountAmount += dealDiff
+                  appliedLiveDealToken = deal.dealToken
+                }
+              }
+
               if (orderType === 'PRODUCT' && voucherCode) {
                 const cleanCode = voucherCode.trim().toUpperCase()
                 const dbVoucher = await tx.voucher.findUnique({
@@ -827,6 +863,15 @@ export async function POST(request: NextRequest) {
                     notes: null,
                   },
                 })
+              }
+
+              // Tandai token live deal sebagai terpakai (Single-Use Protection)
+              if (appliedLiveDealToken) {
+                consumeDealToken(
+                  appliedLiveDealToken,
+                  newOrder.id,
+                  session.user.id
+                )
               }
 
               // Create Payment record

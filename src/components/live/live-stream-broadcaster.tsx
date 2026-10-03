@@ -108,6 +108,9 @@ function LiveKitStudioControls({
   const [hostInputText, setHostInputText] = useState('')
   const [isProductDrawerOpen, setIsProductDrawerOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [discountInputs, setDiscountInputs] = useState<Record<string, string>>(
+    {}
+  )
 
   const isMobile = useIsMobile()
   const { keyboardInset } = useKeyboardInset(isMobile)
@@ -120,11 +123,21 @@ function LiveKitStudioControls({
 
   useEffect(() => {
     if (isMobile) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      document.documentElement.classList.add('mobile-live-active')
       document.body.classList.add('mobile-live-active')
-      document.body.style.overflow = 'hidden'
+
+      const handleViewportReset = () => {
+        window.scrollTo(0, 0)
+      }
+      window.addEventListener('resize', handleViewportReset)
+      window.addEventListener('orientationchange', handleViewportReset)
+
       return () => {
+        document.documentElement.classList.remove('mobile-live-active')
         document.body.classList.remove('mobile-live-active')
-        document.body.style.overflow = ''
+        window.removeEventListener('resize', handleViewportReset)
+        window.removeEventListener('orientationchange', handleViewportReset)
       }
     }
   }, [isMobile])
@@ -313,14 +326,44 @@ function LiveKitStudioControls({
     setMirror(nextMirror)
   }
 
-  // Handle Pin Product (dari katalog manapun)
-  const handlePinProduct = async (prod: StoreProduct) => {
+  // Handle Pin Product (dari katalog manapun dengan harga diskon live opsional)
+  const handlePinProduct = async (
+    prod: StoreProduct,
+    customDiscount?: number
+  ) => {
+    let dealToken: string | undefined
+    if (customDiscount && customDiscount > 0 && customDiscount < prod.price) {
+      try {
+        const res = await fetch(`/api/live-streams/${stream.id}/deals`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: prod.id,
+            productTitle: prod.name,
+            productImage: prod.images[0] || '',
+            productSlug: prod.id,
+            originalPrice: prod.price,
+            discountPrice: customDiscount,
+          }),
+        })
+        const json = await res.json()
+        if (json.success && json.data?.dealToken) {
+          dealToken = json.data.dealToken
+        }
+      } catch (err) {
+        console.error('Error creating live deal:', err)
+      }
+    }
+
     pinProduct({
       productId: prod.id,
       productTitle: prod.name,
       productPrice: prod.price,
       productImage: prod.images[0] || '',
       productSlug: prod.id,
+      originalPrice: prod.price,
+      discountPrice: dealToken ? customDiscount : undefined,
+      dealToken,
     })
     setSelectedProductId(prod.id)
 
@@ -339,6 +382,15 @@ function LiveKitStudioControls({
       } catch {
         // Abaikan kegagalan patch non-kritis
       }
+    }
+  }
+
+  const handleUnpinProduct = async () => {
+    unpinProduct()
+    if (stream.id) {
+      fetch(`/api/live-streams/${stream.id}/deals`, {
+        method: 'DELETE',
+      }).catch(() => {})
     }
   }
 
@@ -434,7 +486,20 @@ function LiveKitStudioControls({
   // ===================================================================
   if (isMobile) {
     const mobileStudio = (
-      <div className="fixed inset-0 z-[99999] flex h-[100dvh] w-screen select-none flex-col overflow-hidden bg-black text-white">
+      <div
+        className="fixed inset-0 z-[99999] flex h-[100dvh] h-full w-full select-none flex-col overflow-hidden bg-black text-white"
+        style={{
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: '100dvh',
+          width: '100%',
+          position: 'fixed',
+          overflow: 'hidden',
+          touchAction: 'none',
+        }}
+      >
         {/* Fullscreen Video Camera Background */}
         <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden bg-black">
           {cameraActive ? (
@@ -628,14 +693,33 @@ function LiveKitStudioControls({
                   >
                     {pinnedProduct.productTitle}
                   </p>
-                  <p className="text-xs font-extrabold text-orange-600">
-                    Rp {pinnedProduct.productPrice?.toLocaleString('id-ID')}
-                  </p>
+                  {pinnedProduct.discountPrice &&
+                  pinnedProduct.discountPrice <
+                    (pinnedProduct.originalPrice ||
+                      pinnedProduct.productPrice ||
+                      0) ? (
+                    <div className="flex flex-wrap items-baseline gap-1">
+                      <p className="text-xs font-extrabold text-orange-600">
+                        Rp {pinnedProduct.discountPrice.toLocaleString('id-ID')}
+                      </p>
+                      <p className="text-[10px] text-slate-400 line-through">
+                        Rp{' '}
+                        {(
+                          pinnedProduct.originalPrice ||
+                          pinnedProduct.productPrice
+                        )?.toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs font-extrabold text-orange-600">
+                      Rp {pinnedProduct.productPrice?.toLocaleString('id-ID')}
+                    </p>
+                  )}
                 </div>
               </div>
               <button
                 type="button"
-                onClick={unpinProduct}
+                onClick={handleUnpinProduct}
                 className="shrink-0 rounded-xl bg-slate-100 p-1.5 text-slate-600 transition hover:bg-rose-50 hover:text-rose-600"
                 title="Lepas Sematan Produk"
               >
@@ -764,56 +848,86 @@ function LiveKitStudioControls({
                     return (
                       <div
                         key={p.id}
-                        className={`shadow-xs flex items-center justify-between rounded-2xl border p-2.5 transition-all ${
+                        className={`shadow-xs flex flex-col rounded-2xl border p-2.5 transition-all ${
                           isCurrentlyPinned
                             ? 'border-orange-500 bg-orange-50/70'
                             : 'border-slate-200/90 bg-white hover:bg-slate-50/80'
                         }`}
                       >
-                        <div className="flex min-w-0 items-center gap-3 pr-2">
-                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                            {p.images[0] ? (
-                              <Image
-                                src={p.images[0]}
-                                alt={p.name}
-                                fill
-                                unoptimized
-                                className="object-cover"
-                              />
-                            ) : (
-                              <ShoppingBag className="m-auto h-5 w-5 text-slate-400" />
-                            )}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-3 pr-2">
+                            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                              {p.images[0] ? (
+                                <Image
+                                  src={p.images[0]}
+                                  alt={p.name}
+                                  fill
+                                  unoptimized
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <ShoppingBag className="m-auto h-5 w-5 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-semibold text-slate-900">
+                                {p.name}
+                              </p>
+                              <p className="text-xs font-extrabold text-orange-600">
+                                Rp {p.price.toLocaleString('id-ID')}
+                              </p>
+                              <span className="text-[10px] text-slate-500">
+                                Stok: {p.stock}
+                              </span>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-slate-900">
-                              {p.name}
-                            </p>
-                            <p className="text-xs font-extrabold text-orange-600">
-                              Rp {p.price.toLocaleString('id-ID')}
-                            </p>
-                            <span className="text-[10px] text-slate-500">
-                              Stok: {p.stock}
-                            </span>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isCurrentlyPinned) {
+                                handleUnpinProduct()
+                              } else {
+                                const rawVal = discountInputs[p.id]?.replace(
+                                  /\D/g,
+                                  ''
+                                )
+                                const discountPrice = rawVal
+                                  ? parseInt(rawVal, 10)
+                                  : undefined
+                                handlePinProduct(p, discountPrice)
+                                setIsProductDrawerOpen(false)
+                              }
+                            }}
+                            className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all active:scale-95 ${
+                              isCurrentlyPinned
+                                ? 'bg-rose-500 text-white shadow-sm shadow-rose-500/20 hover:bg-rose-600'
+                                : 'bg-orange-500 text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600'
+                            }`}
+                          >
+                            {isCurrentlyPinned ? 'Lepas' : 'Sematkan'}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isCurrentlyPinned) {
-                              unpinProduct()
-                            } else {
-                              handlePinProduct(p)
-                              setIsProductDrawerOpen(false)
-                            }
-                          }}
-                          className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all active:scale-95 ${
-                            isCurrentlyPinned
-                              ? 'bg-rose-500 text-white shadow-sm shadow-rose-500/20 hover:bg-rose-600'
-                              : 'bg-orange-500 text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600'
-                          }`}
-                        >
-                          {isCurrentlyPinned ? 'Lepas' : 'Sematkan'}
-                        </button>
+
+                        {/* Input Opsional Diskon Khusus Live Deal */}
+                        {!isCurrentlyPinned && (
+                          <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
+                            <span className="whitespace-nowrap text-[10px] font-semibold text-slate-500">
+                              Diskon Live (Rp):
+                            </span>
+                            <input
+                              type="number"
+                              value={discountInputs[p.id] || ''}
+                              onChange={(e) =>
+                                setDiscountInputs((prev) => ({
+                                  ...prev,
+                                  [p.id]: e.target.value,
+                                }))
+                              }
+                              placeholder="Kosongkan jika harga normal"
+                              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white"
+                            />
+                          </div>
+                        )}
                       </div>
                     )
                   })
@@ -912,7 +1026,7 @@ function LiveKitStudioControls({
               <LiveProductPin
                 product={pinnedProduct}
                 isBroadcaster={true}
-                onUnpin={unpinProduct}
+                onUnpin={handleUnpinProduct}
               />
             </div>
           )}
@@ -1162,7 +1276,13 @@ function LiveKitStudioControls({
                     </div>
 
                     <button
-                      onClick={() => handlePinProduct(p)}
+                      onClick={() => {
+                        const rawVal = discountInputs[p.id]?.replace(/\D/g, '')
+                        const discountPrice = rawVal
+                          ? parseInt(rawVal, 10)
+                          : undefined
+                        handlePinProduct(p, discountPrice)
+                      }}
                       disabled={isPinned}
                       className={`flex cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-all ${
                         isPinned

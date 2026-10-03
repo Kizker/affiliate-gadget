@@ -61,20 +61,43 @@ export function LiveProductPin({
         <h4 className="line-clamp-1 truncate text-xs font-bold text-slate-900">
           {product.productTitle || 'Produk Pilihan'}
         </h4>
-        <div className="mt-0.5 flex items-center gap-1.5">
-          <span className="text-sm font-extrabold text-orange-600">
-            {formatPrice(product.productPrice)}
-          </span>
-          <span className="inline-flex items-center gap-0.5 rounded-md bg-orange-100 px-1.5 py-0.5 text-[9px] font-bold text-orange-700">
-            <Zap className="h-2.5 w-2.5 fill-orange-500 text-orange-500" />
-            LIVE
-          </span>
+        <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
+          {product.discountPrice &&
+          product.discountPrice <
+            (product.originalPrice || product.productPrice || 0) ? (
+            <>
+              <span className="text-sm font-extrabold text-orange-600">
+                {formatPrice(product.discountPrice)}
+              </span>
+              <span className="text-[10px] text-slate-400 line-through">
+                {formatPrice(product.originalPrice || product.productPrice)}
+              </span>
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-rose-100 px-1.5 py-0.5 text-[9px] font-extrabold text-rose-700">
+                <Zap className="h-2.5 w-2.5 fill-rose-500 text-rose-500" />
+                DISKON LIVE
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-sm font-extrabold text-orange-600">
+                {formatPrice(product.productPrice)}
+              </span>
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-orange-100 px-1.5 py-0.5 text-[9px] font-bold text-orange-700">
+                <Zap className="h-2.5 w-2.5 fill-orange-500 text-orange-500" />
+                LIVE
+              </span>
+            </>
+          )}
         </div>
       </div>
 
       {/* Buy Button */}
       <Link
-        href={`/gadget/${product.productId}`}
+        href={
+          product.dealToken
+            ? `/gadget/${product.productId}?dealToken=${product.dealToken}`
+            : `/gadget/${product.productId}`
+        }
         target="_blank"
         className="flex shrink-0 items-center gap-1 rounded-xl bg-orange-500 px-3 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-orange-600 active:scale-95"
       >

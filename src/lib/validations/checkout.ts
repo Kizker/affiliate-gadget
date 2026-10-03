@@ -115,6 +115,12 @@ export const checkoutSchema = z.object({
     .max(50, 'Kode voucher maksimal 50 karakter')
     .optional()
     .nullable(),
+  dealToken: z
+    .string()
+    .trim()
+    .max(100, 'Token live deal tidak valid')
+    .optional()
+    .nullable(),
 })
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>

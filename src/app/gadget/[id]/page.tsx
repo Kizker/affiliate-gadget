@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -73,6 +73,8 @@ function getDesktopConditionBadge(item: any) {
 export default function GadgetDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const dealToken = searchParams?.get('dealToken')
   const { status } = useSession()
   const id = params?.id as string
 
@@ -83,6 +85,8 @@ export default function GadgetDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [isAddedToCart, setIsAddedToCart] = useState(false)
   const [isDesktopDescExpanded, setIsDesktopDescExpanded] = useState(false)
+  const [activeDeal, setActiveDeal] = useState<any>(null)
+  const [dealError, setDealError] = useState<string | null>(null)
 
   // Desktop Recommendations Lazy Loading
   const [desktopRecsVisible, setDesktopRecsVisible] = useState(8)
@@ -209,6 +213,38 @@ export default function GadgetDetailPage() {
     }
   }
 
+  // Verifikasi dealToken live streaming
+  useEffect(() => {
+    if (!dealToken) return
+    const verifyDeal = async () => {
+      try {
+        const res = await fetch(`/api/live-deals/verify?token=${dealToken}`)
+        const json = await res.json()
+        if (json.valid && json.deal) {
+          setActiveDeal(json.deal)
+          toast.success('Diskon Spesial Siaran Langsung Diterapkan!', {
+            description: `Harga live deal Rp ${json.deal.discountPrice.toLocaleString('id-ID')} (berlaku 1x checkout).`,
+          })
+        } else {
+          setActiveDeal(null)
+          if (json.reason === 'USED') {
+            setDealError(
+              'Diskon live deal ini telah digunakan untuk pesanan sebelumnya. Harga kembali ke normal.'
+            )
+            toast.error('Diskon live deal telah digunakan sebelumnya.')
+          } else {
+            setDealError(
+              'Diskon live deal ini sudah berakhir. Harga kembali ke normal.'
+            )
+          }
+        }
+      } catch (err) {
+        console.error('Error verifying deal:', err)
+      }
+    }
+    verifyDeal()
+  }, [dealToken])
+
   const handleAddToCart = () => {
     if (!product) return
 
@@ -252,7 +288,9 @@ export default function GadgetDetailPage() {
   const handleBuyNow = () => {
     if (!product) return
 
-    const priceToUse = selectedVariant ? selectedVariant.price : product.price
+    const hasLiveDeal = activeDeal && activeDeal.productId === product.id
+    const basePrice = selectedVariant ? selectedVariant.price : product.price
+    const priceToUse = hasLiveDeal ? activeDeal.discountPrice : basePrice
     const variantName = selectedVariant ? selectedVariant.name : undefined
     const variantId = selectedVariant ? selectedVariant.id : undefined
     const imageToUse =
@@ -292,14 +330,19 @@ export default function GadgetDetailPage() {
       toast.info(
         'Silakan masuk terlebih dahulu untuk melanjutkan pembelian langsung.'
       )
-      router.push(
-        `/login?callbackUrl=${encodeURIComponent('/checkout?buyNow=1')}`
-      )
+      const targetUrl = dealToken
+        ? `/checkout?buyNow=1&dealToken=${dealToken}`
+        : '/checkout?buyNow=1'
+      router.push(`/login?callbackUrl=${encodeURIComponent(targetUrl)}`)
       return
     }
 
-    // Langsung menuju ke checkout khusus item ini!
-    router.push('/checkout?buyNow=1')
+    // Langsung menuju ke checkout khusus item ini
+    router.push(
+      dealToken
+        ? `/checkout?buyNow=1&dealToken=${dealToken}`
+        : '/checkout?buyNow=1'
+    )
   }
 
   if (loading) {
@@ -420,11 +463,17 @@ export default function GadgetDetailPage() {
     }
   }
 
-  const currentPrice = selectedVariant ? selectedVariant.price : product.price
+  const rawCurrentPrice = selectedVariant
+    ? selectedVariant.price
+    : product.price
+  const hasLiveDeal = activeDeal && activeDeal.productId === product.id
+  const currentPrice = hasLiveDeal ? activeDeal.discountPrice : rawCurrentPrice
   const discountAmount =
     product.originalPrice && product.originalPrice > currentPrice
       ? product.originalPrice - currentPrice
-      : 0
+      : hasLiveDeal && rawCurrentPrice > currentPrice
+        ? rawCurrentPrice - currentPrice
+        : 0
 
   const handleChatStore = () => {
     if (!product?.store?.id) return
@@ -720,6 +769,35 @@ export default function GadgetDetailPage() {
 
               {/* Right Column: Unified Showcase Bento (7 cols) */}
               <div className="space-y-4 lg:col-span-7">
+                {/* Live Deal Special Banner */}
+                {hasLiveDeal && (
+                  <div className="flex items-center justify-between rounded-3xl border border-orange-500/40 bg-orange-50/90 p-4 text-xs text-orange-950 shadow-sm backdrop-blur-sm animate-in fade-in dark:bg-orange-950/40 dark:text-orange-200">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-6 w-6 shrink-0 text-orange-600" />
+                      <div>
+                        <p className="text-sm font-extrabold text-orange-700 dark:text-orange-300">
+                          Diskon Khusus Siaran Langsung Toko!
+                        </p>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                          Harga spesial Rp{' '}
+                          {activeDeal.discountPrice.toLocaleString('id-ID')}{' '}
+                          (Normal: Rp {rawCurrentPrice.toLocaleString('id-ID')}
+                          ). Diskon link ini hanya berlaku 1x checkout.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rounded-xl bg-orange-600 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+                      LIVE DEAL
+                    </span>
+                  </div>
+                )}
+
+                {dealError && (
+                  <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    ⚠️ {dealError}
+                  </div>
+                )}
+
                 {/* Primary Bento Panel: Product Info, Variants, Bonus & Actions */}
                 <div className="shadow-xs space-y-6 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
                   {/* 1. Header & Price */}
