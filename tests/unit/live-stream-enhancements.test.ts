@@ -62,20 +62,18 @@ describe('Live Streaming Enhancements Suite (Mirror Sync, Instagram Mobile & You
     )
     // Desktop layout has 16:9 cinematic player box and YouTube-style channel bar
     expect(viewerCode).toContain('aspect-video w-full')
-    expect(viewerCode).toContain('hidden md:block')
+    expect(viewerCode).toContain('useIsMobile')
     // Mobile layout has Instagram Live style full-bleed 9:16 portrait
     expect(viewerCode).toContain('h-[100dvh] w-full')
-    expect(viewerCode).toContain('md:hidden')
     expect(viewerCode).toContain('Instagram Live')
   })
 
-  it('3. Accurate viewer count: Deduplicates by account (userId) or client visitor ID and excludes broadcasters', () => {
+  it('3. Accurate viewer count: Counts unique devices (including unauthenticated guests) and excludes broadcasters', () => {
     // Room manager excludes broadcasters
     expect(roomManagerCode).toContain('if (session.isBroadcaster) continue')
-    // Room manager deduplicates viewers by userId or viewerId
-    expect(roomManagerCode).toContain('user:${session.userId}')
-    expect(roomManagerCode).toContain('guest:${session.viewerId}')
-    expect(roomManagerCode).toContain('uniqueViewers.size')
+    // Room manager counts active devices by viewerId
+    expect(roomManagerCode).toContain('dev:${session.viewerId}')
+    expect(roomManagerCode).toContain('activeDevices.size')
   })
 
   it('4. Viewer chat & like: Guest users can immediately chat and like without blocking modal gates', () => {

@@ -94,27 +94,30 @@ class WsRoomManager {
 
   /**
    * Calculates current online viewers in a stream
-   * Deduplicates by unique user account or client viewerId, excluding broadcasters.
+   * Counts each unique device (both guest and authenticated users).
+   * Broadcasters/hosts are strictly excluded.
    */
   getViewerCount(streamId: string): number {
     const room = this.rooms.get(streamId)
     if (!room || room.size === 0) return 0
 
-    const uniqueViewers = new Set<string>()
+    const activeDevices = new Set<string>()
     for (const session of room) {
       // Broadcasters / hosts are excluded from viewer count
       if (session.isBroadcaster) continue
+      // Only count active open WebSocket connections
+      if (session.ws.readyState !== 1 /* OPEN */) continue
 
-      const key = session.userId
-        ? `user:${session.userId}`
-        : session.viewerId
-          ? `guest:${session.viewerId}`
-          : `sock:${session.userName}`
+      // Unique device key: prioritizes viewerId (generated per device browser)
+      // If viewerId not present, fallback to socket identity
+      const deviceKey = session.viewerId
+        ? `dev:${session.viewerId}`
+        : `sock:${session.userName}_${session.joinedAt}`
 
-      uniqueViewers.add(key)
+      activeDevices.add(deviceKey)
     }
 
-    return uniqueViewers.size
+    return activeDevices.size
   }
 
   /**

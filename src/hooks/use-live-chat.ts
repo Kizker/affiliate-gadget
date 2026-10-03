@@ -250,6 +250,13 @@ export function useLiveChat({
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current)
       if (socketRef.current) {
+        try {
+          if (socketRef.current.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({ type: 'leave', streamId }))
+          }
+        } catch {
+          // Ignore
+        }
         socketRef.current.close()
       }
     }
