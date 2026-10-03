@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+import prisma from '@/lib/db'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import { LiveStreamViewer } from '@/components/live/live-stream-viewer'
@@ -11,27 +12,60 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const res = await fetch(`${baseUrl}/api/live-streams/${id}`, {
-      next: { revalidate: 10 },
+    const stream = await prisma.liveStream.findUnique({
+      where: { id },
+      include: {
+        store: { select: { name: true, city: true } },
+      },
     })
-    const data = await res.json()
-    if (data.success && data.data) {
-      const stream = data.data
+
+    if (stream) {
       const storeName =
-        stream.store?.name?.replace('Affiliate Gadget - ', '') || 'Toko Cabang'
+        stream.store?.name?.replace('Affiliate Gadget - ', '') || 'Toko Resmi'
+      const title = `🔴 [LIVE] ${stream.title} — ${storeName}`
+      const description =
+        stream.description ||
+        `Tonton siaran langsung demo & promo gadget original dari ${storeName}. Garansi 30 Hari Ganti Baru!`
+
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.tech'
+      const timestamp = stream.updatedAt
+        ? new Date(stream.updatedAt).getTime()
+        : Date.now()
+      const imageUrl = `${baseUrl}/api/live-streams/${id}/thumbnail?t=${timestamp}`
+
       return {
-        title: `${stream.title} — ${storeName} | Affiliate Gadget Live`,
-        description:
-          stream.description ||
-          `Tonton siaran langsung toko cabang ${storeName} di platform resmi Affiliate Gadget`,
+        title,
+        description,
+        openGraph: {
+          title,
+          description,
+          url: `${baseUrl}/live/${id}`,
+          siteName: 'Affiliate Gadget Live',
+          images: [
+            {
+              url: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: stream.title,
+            },
+          ],
+          type: 'video.other',
+        },
+        twitter: {
+          card: 'summary_large_image',
+          title,
+          description,
+          images: [imageUrl],
+        },
       }
     }
-  } catch {
-    /* ignore */
+  } catch (err) {
+    console.error('Error generating live metadata:', err)
   }
   return {
     title: 'Siaran Langsung Toko | Affiliate Gadget',
+    description: 'Tonton siaran langsung penjualan gadget bergaransi resmi.',
   }
 }
 

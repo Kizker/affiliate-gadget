@@ -26,10 +26,14 @@ import {
   Heart,
   X,
   Send,
+  Share2,
+  CheckCheck,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useLiveKitToken } from '@/hooks/use-livekit-token'
 import { useLiveChat } from '@/hooks/use-live-chat'
+import { useKeyboardInset } from '@/hooks/use-keyboard-inset'
+import { captureVideoSnapshot, uploadLiveSnapshot } from '@/lib/live-snapshot'
 import { LiveStreamStatusBar } from './live-stream-status-bar'
 import { LiveChatPanel } from './live-chat-panel'
 import { LiveProductPin } from './live-product-pin'
@@ -86,52 +90,18 @@ function useIsMobile() {
   return isMobile
 }
 
-/**
- * Melacak keyboard virtual pada layar HP dengan VisualViewport API.
- * - keyboardInset: tinggi keyboard yang menutupi layout viewport (px)
- * - offsetTop: pergeseran visual viewport (iOS Safari scroll saat fokus input)
- * Dipakai agar bar komentar "melayang" naik di atas keyboard tanpa tertutup.
- */
-function useKeyboardInset(enabled: boolean) {
-  const [state, setState] = useState({ keyboardInset: 0, offsetTop: 0 })
-
-  useEffect(() => {
-    if (!enabled || typeof window === 'undefined' || !window.visualViewport) {
-      setState({ keyboardInset: 0, offsetTop: 0 })
-      return
-    }
-    const vv = window.visualViewport
-    const update = () => {
-      const inset = Math.max(
-        0,
-        Math.round(window.innerHeight - vv.height - vv.offsetTop)
-      )
-      setState({
-        // Abaikan perubahan kecil (toolbar browser) agar tidak "goyang"
-        keyboardInset: inset > 80 ? inset : 0,
-        offsetTop: Math.max(0, Math.round(vv.offsetTop)),
-      })
-    }
-    update()
-    vv.addEventListener('resize', update)
-    vv.addEventListener('scroll', update)
-    return () => {
-      vv.removeEventListener('resize', update)
-      vv.removeEventListener('scroll', update)
-    }
-  }, [enabled])
-
-  return state
-}
-
 // Sub-component for rendering video within LiveKit context
 function LiveKitSubscriberVideo({
+  videoRefExternal,
+  onOrientationChange,
   onFullscreen,
   likeCount = 0,
   onSendLike,
   isMirrored = false,
   showControls = true,
 }: {
+  videoRefExternal?: React.RefObject<HTMLVideoElement | null>
+  onOrientationChange?: (isVertical: boolean) => void
   onFullscreen?: () => void
   likeCount?: number
   onSendLike?: () => void
@@ -139,7 +109,10 @@ function LiveKitSubscriberVideo({
   showControls?: boolean
 }) {
   const [isMuted, setIsMuted] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const localVideoRef = useRef<HTMLVideoElement>(null)
+  const videoRef = videoRefExternal || localVideoRef
+  const ambientVideoRef = useRef<HTMLVideoElement>(null)
+  const [isVertical, setIsVertical] = useState(false)
 
   // Track camera publications from remote host
   const connectionState = useConnectionState()
@@ -151,9 +124,25 @@ function LiveKitSubscriberVideo({
 
   useEffect(() => {
     const el = videoRef.current
+    const ambientEl = ambientVideoRef.current
     if (!activeTrack || !el) return
 
     activeTrack.attach(el)
+    if (ambientEl) {
+      activeTrack.attach(ambientEl)
+    }
+
+    const checkOrientation = () => {
+      if (el.videoWidth > 0 && el.videoHeight > 0) {
+        const vertical = el.videoHeight > el.videoWidth
+        setIsVertical(vertical)
+        onOrientationChange?.(vertical)
+      }
+    }
+
+    el.addEventListener('loadedmetadata', checkOrientation)
+    el.addEventListener('resize', checkOrientation)
+    checkOrientation()
 
     // Ensure playback starts smoothly; fallback to muted if mobile autoplay policy blocks unmuted audio
     el.play().catch(() => {
@@ -164,8 +153,11 @@ function LiveKitSubscriberVideo({
 
     return () => {
       activeTrack.detach(el)
+      if (ambientEl) activeTrack.detach(ambientEl)
+      el.removeEventListener('loadedmetadata', checkOrientation)
+      el.removeEventListener('resize', checkOrientation)
     }
-  }, [activeTrack])
+  }, [activeTrack, onOrientationChange, videoRef])
 
   const statusTitle =
     connectionState === ConnectionState.Connected
@@ -182,14 +174,34 @@ function LiveKitSubscriberVideo({
       className="relative flex h-full w-full items-center justify-center overflow-hidden bg-slate-950"
     >
       {activeTrack ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={isMuted}
-          className="h-full w-full object-cover transition-transform duration-300"
-          style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}
-        />
+        <>
+          {/* Ambient blurred backdrop for vertical streams on widescreen displays */}
+          {isVertical && (
+            <video
+              ref={ambientVideoRef}
+              autoPlay
+              playsInline
+              muted
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl transition-all duration-500"
+              style={{
+                transform: isMirrored ? 'scaleX(-1) scale(1.1)' : 'scale(1.1)',
+              }}
+            />
+          )}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted={isMuted}
+            className={`relative z-10 transition-transform duration-300 ${
+              isVertical
+                ? 'mx-auto h-full w-auto max-w-full object-contain'
+                : 'h-full w-full object-cover'
+            }`}
+            style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}
+          />
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center gap-3 p-6 text-center text-slate-400">
           <div className="relative">
@@ -263,6 +275,8 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   const mobileChatScrollRef = useRef<HTMLDivElement>(null)
   const playerContainerRef = useRef<HTMLDivElement>(null)
   const mobileRootRef = useRef<HTMLDivElement>(null)
+  const viewerVideoRef = useRef<HTMLVideoElement>(null)
+  const [isVerticalStream, setIsVerticalStream] = useState(false)
 
   // Fullscreen & Orientation states
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -423,6 +437,35 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
     setMobileInputText('')
   }
 
+  // Handle Share Live Stream with dynamic frame capture
+  const handleShare = async () => {
+    const videoEl = viewerVideoRef.current
+    const snapshot = captureVideoSnapshot(videoEl)
+    if (snapshot && stream?.id) {
+      uploadLiveSnapshot(stream.id, snapshot).catch(() => {})
+    }
+    const shareUrl = `${window.location.origin}/live/${stream?.id}`
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: stream?.title || 'Live Streaming Toko',
+          text: `Tonton live streaming ${stream?.title || ''} di Affiliate Gadget!`,
+          url: shareUrl,
+        })
+        return
+      } catch {
+        // Fallback to clipboard jika modal ditutup atau error
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Ignore
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[500px] flex-col items-center justify-center text-white">
@@ -495,6 +538,8 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
       >
         <RoomAudioRenderer />
         <LiveKitSubscriberVideo
+          videoRefExternal={viewerVideoRef}
+          onOrientationChange={setIsVerticalStream}
           onFullscreen={handleFullscreen}
           likeCount={likeCount}
           onSendLike={() => sendLike(1)}
@@ -666,7 +711,19 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleShare}
+              className="flex items-center gap-1 rounded-full border border-white/10 bg-black/50 p-2 text-white/90 backdrop-blur-md transition-all hover:bg-black/70 active:scale-90"
+              title="Bagikan Siaran"
+            >
+              {copied ? (
+                <CheckCheck className="h-4 w-4 text-emerald-400" />
+              ) : (
+                <Share2 className="h-4 w-4 text-white" />
+              )}
+            </button>
             <Link
               href="/live"
               className="rounded-full border border-white/10 bg-black/50 p-2 text-white/90 backdrop-blur-md transition-all hover:bg-black/70 active:scale-90"
@@ -717,11 +774,11 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             )}
           </div>
 
-          {/* Pinned Product Floating Card on Mobile (Rekomendasi Barang di Bawah Layar - Light Mode) */}
+          {/* Pinned Product Floating Card on Mobile (Rekomendasi Barang di Bawah Layar - Light Mode Bersih Tanpa Badge) */}
           {pinnedProduct && (
-            <div className="pointer-events-auto relative flex items-center justify-between gap-3 rounded-2xl border border-orange-500/40 bg-white/95 p-2.5 text-slate-900 shadow-2xl shadow-black/20 backdrop-blur-md animate-in slide-in-from-bottom-2">
-              <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+            <div className="pointer-events-auto relative flex items-center justify-between gap-3 rounded-2xl border border-orange-500/40 bg-white/95 p-3 text-slate-900 shadow-2xl shadow-black/20 backdrop-blur-md animate-in slide-in-from-bottom-2">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="h-13 w-13 shadow-xs relative shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                   {pinnedProduct.productImage ? (
                     <Image
                       src={pinnedProduct.productImage}
@@ -733,15 +790,11 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                     <ShoppingBag className="m-auto h-5 w-5 text-orange-500" />
                   )}
                 </div>
-                <div className="min-w-0">
-                  <span className="inline-flex items-center gap-0.5 rounded bg-gradient-to-r from-orange-500 to-amber-500 px-1.5 py-0.5 text-[8px] font-extrabold uppercase text-white shadow-sm">
-                    <Zap className="h-2 w-2 fill-white" />
-                    Disematkan Host
-                  </span>
-                  <p className="mt-0.5 line-clamp-1 truncate text-xs font-bold text-slate-900">
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-1 truncate text-xs font-bold text-slate-900 sm:text-sm">
                     {pinnedProduct.productTitle}
                   </p>
-                  <p className="text-xs font-extrabold text-orange-600">
+                  <p className="mt-0.5 text-xs font-extrabold text-orange-600 sm:text-sm">
                     Rp {pinnedProduct.productPrice?.toLocaleString('id-ID')}
                   </p>
                 </div>
@@ -749,7 +802,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               <Link
                 href={`/gadget/${pinnedProduct.productId}`}
                 target="_blank"
-                className="shrink-0 rounded-xl bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition-all hover:bg-orange-600 active:scale-95"
+                className="shrink-0 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition-all hover:bg-orange-600 active:scale-95"
               >
                 Beli
               </Link>
@@ -906,10 +959,14 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {/* Kolom Kiri: Player 16:9 + Info Toko + Deskripsi + Rekomendasi Produk */}
         <div className="space-y-4 lg:col-span-3">
-          {/* 16:9 Cinematic Video Player Box (Single LiveKit Mount) */}
+          {/* Cinematic Video Player Box (Adapts to vertical stream or 16:9 widescreen) */}
           <div
             ref={playerContainerRef}
-            className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-black shadow-2xl dark:border-slate-800"
+            className={`relative w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-black shadow-2xl transition-all duration-300 dark:border-slate-800 ${
+              isVerticalStream
+                ? 'flex h-[640px] max-h-[calc(100vh-160px)] items-center justify-center'
+                : 'aspect-video w-full'
+            }`}
           >
             {/* Top Status Bar Overlay on Player */}
             <div className="pointer-events-auto absolute left-4 right-4 top-4 z-20 flex items-center justify-between gap-2">
@@ -920,18 +977,41 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 isConnected={isWsConnected}
               />
 
-              {stream.store && (
-                <Link
-                  href={`/toko/${stream.store.slug}`}
-                  target="_blank"
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleShare}
                   className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-3.5 py-1.5 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800"
+                  title="Bagikan Tautan Siaran"
                 >
-                  <Store className="h-3.5 w-3.5 text-orange-400" />
-                  <span className="max-w-[130px] truncate font-medium">
-                    {stream.store.name}
-                  </span>
-                </Link>
-              )}
+                  {copied ? (
+                    <>
+                      <CheckCheck className="h-3.5 w-3.5 text-emerald-400" />
+                      <span className="font-semibold text-emerald-400">
+                        Tersalin!
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="h-3.5 w-3.5 text-slate-300" />
+                      <span>Bagikan</span>
+                    </>
+                  )}
+                </button>
+
+                {stream.store && (
+                  <Link
+                    href={`/toko/${stream.store.slug}`}
+                    target="_blank"
+                    className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-3.5 py-1.5 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800"
+                  >
+                    <Store className="h-3.5 w-3.5 text-orange-400" />
+                    <span className="max-w-[130px] truncate font-medium">
+                      {stream.store.name}
+                    </span>
+                  </Link>
+                )}
+              </div>
             </div>
 
             {/* Video Area (Single LiveKit Player) */}

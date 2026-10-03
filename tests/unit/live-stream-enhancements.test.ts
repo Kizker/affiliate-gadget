@@ -111,7 +111,8 @@ describe('Live Streaming Enhancements Suite (Mirror Sync, Instagram Mobile & You
     expect(broadcasterCode).toContain('isBroadcaster={true}')
     // Viewer renders pinned product at the bottom of the screen on mobile
     expect(viewerCode).toContain('{pinnedProduct && (')
-    expect(viewerCode).toContain('Disematkan Host')
+    expect(viewerCode).toContain('pinnedProduct.productTitle')
+    expect(viewerCode).toContain('pinnedProduct.productPrice')
     // Has product thumbnail, title, price, and CTA link
     expect(productPinCode).toContain('product.productPrice')
     expect(productPinCode).toContain('product.productTitle')
