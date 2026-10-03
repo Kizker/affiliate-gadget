@@ -45,10 +45,13 @@ async function main() {
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose build app ws-server')
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose up -d app ws-server')
 
-      // 3. Inspect container status
+      // 3. Restart nginx to refresh upstream IPs
+      await runRemoteCommand('cd /opt/affiliate-gadget && docker compose restart nginx')
+
+      // 4. Inspect container status
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose ps')
 
-      // 4. Test HTTP response
+      // 5. Test HTTP response
       await runRemoteCommand('curl -s -o /dev/null -w "%{http_code}" http://localhost:3000')
 
       console.log('\nDeployment completed successfully!')

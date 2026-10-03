@@ -5,6 +5,7 @@ export type WsEventType =
   | 'leave'
   | 'chat'
   | 'like'
+  | 'mirror'
   | 'pin_product'
   | 'unpin_product'
   | 'viewer_count'

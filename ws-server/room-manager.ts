@@ -9,6 +9,8 @@ class WsRoomManager {
   private rooms = new Map<string, Set<WsClientSession>>()
   // streamId -> currently pinned product
   private pinnedProducts = new Map<string, WsPinProductPayload | null>()
+  // streamId -> mirror view status (camera front mirror broadcast)
+  private mirrorStates = new Map<string, boolean>()
   // streamId -> accumulator for burst likes
   private likeAccumulators = new Map<string, number>()
   // Timer for batch sync to database
@@ -42,6 +44,30 @@ class WsRoomManager {
         timestamp: Date.now(),
       })
     }
+
+    // If there is an active mirror state, send it to the newly joined client
+    const isMirrored = this.mirrorStates.get(streamId)
+    if (typeof isMirrored === 'boolean') {
+      this.sendToClient(session.ws, {
+        type: 'mirror',
+        streamId,
+        payload: { isMirrored },
+        timestamp: Date.now(),
+      })
+    }
+  }
+
+  /**
+   * Updates and broadcasts camera mirror state for a stream
+   */
+  setMirrorState(streamId: string, isMirrored: boolean) {
+    this.mirrorStates.set(streamId, isMirrored)
+    this.broadcastToRoom(streamId, {
+      type: 'mirror',
+      streamId,
+      payload: { isMirrored },
+      timestamp: Date.now(),
+    })
   }
 
   /**

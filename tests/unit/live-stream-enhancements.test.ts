@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 
-describe('Live Streaming 6-Item Enhancements Suite', () => {
+describe('Live Streaming Enhancements Suite (Mirror Sync, Instagram Mobile & YouTube Desktop)', () => {
   const broadcasterPath = path.join(
     process.cwd(),
     'src/components/live/live-stream-broadcaster.tsx'
@@ -34,38 +34,39 @@ describe('Live Streaming 6-Item Enhancements Suite', () => {
   const roomManagerCode = fs.readFileSync(roomManagerPath, 'utf-8')
   const globalsCssCode = fs.readFileSync(globalsCssPath, 'utf-8')
 
-  it('1. Mirror view toggle: Host has toggleable selfie mirror view with scaleX(-1)', () => {
-    // Has state isMirrored, default true for front-facing camera
+  it('1. Mirror view synchronization: Host toggles mirror & broadcasts to viewers with scaleX(-1)', () => {
+    // Broadcaster has state isMirrored and syncs via setMirror
     expect(broadcasterCode).toContain(
       'const [isMirrored, setIsMirrored] = useState(true)'
     )
-    // Has style transform scaleX(-1) when active
+    expect(broadcasterCode).toContain('setMirror')
+    expect(broadcasterCode).toContain('toggleMirror')
+    // Broadcaster has style transform scaleX(-1) when active
     expect(broadcasterCode).toContain(
       "style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}"
     )
-    // Has interactive toggle button with FlipHorizontal icon
-    expect(broadcasterCode).toContain('FlipHorizontal')
-    expect(broadcasterCode).toContain('setIsMirrored(!isMirrored)')
-    expect(broadcasterCode).toContain('Mirror View')
+    // Viewer receives isMirrored from WebSocket and mirrors subscriber video
+    expect(viewerCode).toContain('isMirrored')
+    expect(viewerCode).toContain(
+      "style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}"
+    )
+    // Room manager broadcasts mirror state
+    expect(roomManagerCode).toContain('setMirrorState')
+    expect(roomManagerCode).toContain("type: 'mirror'")
   })
 
-  it('2. Clean White Theme: Studio, chat panel, pinned products, and viewer match white dashboard canvas', () => {
-    // Chat panel uses clean white container styling instead of pitch-black
+  it('2. Dual Platform Layout: Instagram Live on mobile and YouTube Live on desktop', () => {
+    // Chat panel uses clean white container styling on desktop
     expect(chatPanelCode).toContain(
       'rounded-3xl border border-slate-200/80 bg-white shadow-sm'
     )
-    expect(chatPanelCode).toContain('border-b border-slate-100 bg-slate-50/80')
-    // Broadcaster pinned list uses clean white card styling
-    expect(broadcasterCode).toContain(
-      'rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm'
-    )
-    // Product pin uses white glassmorphism card
-    expect(productPinCode).toContain('bg-white/95')
-    expect(productPinCode).toContain('text-slate-900')
-    // Viewer layout uses clean white card background
-    expect(viewerCode).toContain(
-      'rounded-3xl border border-slate-200/80 bg-white'
-    )
+    // Desktop layout has 16:9 cinematic player box and YouTube-style channel bar
+    expect(viewerCode).toContain('aspect-video w-full')
+    expect(viewerCode).toContain('hidden md:block')
+    // Mobile layout has Instagram Live style full-bleed 9:16 portrait
+    expect(viewerCode).toContain('h-[100dvh] w-full')
+    expect(viewerCode).toContain('md:hidden')
+    expect(viewerCode).toContain('Instagram Live')
   })
 
   it('3. Accurate viewer count: Deduplicates by account (userId) or client visitor ID and excludes broadcasters', () => {
@@ -105,18 +106,14 @@ describe('Live Streaming 6-Item Enhancements Suite', () => {
     expect(globalsCssCode).toContain('.animate-float-heart')
   })
 
-  it('6. Floating Pinned Product: Pinned item floats at bottom-left of live video with direct checkout', () => {
-    // LiveProductPin mounted on bottom-left of broadcaster canvas
+  it('6. Floating Pinned Product: Pinned item appears at bottom on mobile and horizontal banner on desktop', () => {
+    // LiveProductPin mounted on broadcaster canvas
     expect(broadcasterCode).toContain('<LiveProductPin')
     expect(broadcasterCode).toContain('product={pinnedProduct}')
     expect(broadcasterCode).toContain('isBroadcaster={true}')
-    // LiveProductPin mounted on bottom-left of viewer canvas
-    expect(viewerCode).toContain(
-      '<LiveProductPin product={pinnedProduct} isBroadcaster={false} />'
-    )
-    // Has bottom-left positioning class
-    expect(broadcasterCode).toContain('sm:bottom-20 sm:left-4')
-    expect(viewerCode).toContain('sm:bottom-16 sm:left-4')
+    // Viewer renders pinned product at the bottom of the screen on mobile
+    expect(viewerCode).toContain('{pinnedProduct && (')
+    expect(viewerCode).toContain('Disematkan Host')
     // Has product thumbnail, title, price, and CTA link
     expect(productPinCode).toContain('product.productPrice')
     expect(productPinCode).toContain('product.productTitle')

@@ -256,6 +256,12 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
           break
         }
 
+        case 'mirror': {
+          const isMirrored = Boolean(msg.payload?.isMirrored)
+          roomManager.setMirrorState(targetStreamId, isMirrored)
+          break
+        }
+
         case 'pin_product': {
           // Broadcaster / Admin check
           const canPin =

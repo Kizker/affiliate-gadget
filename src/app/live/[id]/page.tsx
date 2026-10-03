@@ -38,15 +38,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function LiveStreamPage({ params }: Props) {
   const { id } = await params
   return (
-    <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
-      <Navbar variant="light" />
+    <div className="flex min-h-screen flex-col justify-between bg-black text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100 md:bg-slate-50">
+      {/* Desktop Only Navigation Bar */}
+      <div className="hidden md:block">
+        <Navbar variant="light" />
+      </div>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-3 pb-16 pt-20 sm:px-6 sm:pt-28 lg:px-8">
+      {/* Main Content Area */}
+      <main className="h-[100dvh] w-full overflow-hidden md:mx-auto md:h-auto md:max-w-7xl md:flex-1 md:overflow-visible md:px-6 md:pb-16 md:pt-24 lg:px-8">
         <LiveStreamViewer streamId={id} />
       </main>
 
-      <Footer />
-      <div className="block md:hidden">
+      {/* Desktop Only Footer */}
+      <div className="hidden md:block">
+        <Footer />
+      </div>
+
+      {/* Mobile Bottom Nav Hidden during Live Streaming */}
+      <div className="hidden">
         <MobileBottomNav activeTab="none" />
       </div>
     </div>

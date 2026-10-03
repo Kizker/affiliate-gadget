@@ -43,6 +43,7 @@ export function useLiveChat({
   const [isConnected, setIsConnected] = useState<boolean>(false)
   const [isStreamEnded, setIsStreamEnded] = useState<boolean>(false)
   const [likeCount, setLikeCount] = useState<number>(0)
+  const [isMirrored, setIsMirrored] = useState<boolean>(false)
 
   const socketRef = useRef<WebSocket | null>(null)
   const reconnectAttemptsRef = useRef<number>(0)
@@ -202,6 +203,13 @@ export function useLiveChat({
               break
             }
 
+            case 'mirror': {
+              if (typeof data.payload?.isMirrored === 'boolean') {
+                setIsMirrored(data.payload.isMirrored)
+              }
+              break
+            }
+
             default:
               break
           }
@@ -337,6 +345,23 @@ export function useLiveChat({
     setIsStreamEnded(true)
   }, [streamId])
 
+  // 8. Mirror state sync (Broadcaster broadcasts mirror state to all viewers)
+  const setMirror = useCallback(
+    (mirrored: boolean) => {
+      setIsMirrored(mirrored)
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(
+          JSON.stringify({
+            type: 'mirror',
+            streamId,
+            payload: { isMirrored: mirrored },
+          })
+        )
+      }
+    },
+    [streamId]
+  )
+
   return {
     messages,
     viewerCount,
@@ -344,10 +369,12 @@ export function useLiveChat({
     isConnected,
     isStreamEnded,
     likeCount,
+    isMirrored,
     sendMessage,
     sendLike,
     pinProduct,
     unpinProduct,
     endStream,
+    setMirror,
   }
 }

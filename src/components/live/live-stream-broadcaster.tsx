@@ -106,11 +106,19 @@ function LiveKitStudioControls({
     pinProduct,
     unpinProduct,
     endStream: wsEndStream,
+    setMirror,
   } = useLiveChat({
     streamId: stream.id,
     userName: 'Host Toko',
     isBroadcaster: true,
   })
+
+  // Sync initial mirror state when WebSocket connects
+  useEffect(() => {
+    if (isWsConnected) {
+      setMirror(isMirrored)
+    }
+  }, [isWsConnected, isMirrored, setMirror])
 
   // Toggle Camera
   const toggleCamera = async () => {
@@ -134,7 +142,9 @@ function LiveKitStudioControls({
     const nextMode = facingMode === 'user' ? 'environment' : 'user'
     setFacingMode(nextMode)
     // Front camera is mirrored by default, rear camera is normal
-    setIsMirrored(nextMode === 'user')
+    const nextMirror = nextMode === 'user'
+    setIsMirrored(nextMirror)
+    setMirror(nextMirror)
     try {
       await localParticipant.setCameraEnabled(false)
       await localParticipant.setCameraEnabled(true, {
@@ -143,6 +153,13 @@ function LiveKitStudioControls({
     } catch {
       // Ignore if device has only one camera
     }
+  }
+
+  // Toggle Mirror View manually
+  const toggleMirror = () => {
+    const nextMirror = !isMirrored
+    setIsMirrored(nextMirror)
+    setMirror(nextMirror)
   }
 
   // Handle Pin Product
@@ -296,7 +313,7 @@ function LiveKitStudioControls({
 
             {/* Mirror View Toggle (Instagram Style) */}
             <button
-              onClick={() => setIsMirrored(!isMirrored)}
+              onClick={toggleMirror}
               className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
                 isMirrored
                   ? 'bg-orange-500/30 text-orange-300 ring-2 ring-orange-400/50 hover:bg-orange-500/40'
