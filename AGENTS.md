@@ -54,6 +54,13 @@
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
 - **Unit Tests:** 94 test files, 718 tests lulus 100% (`pnpm test:unit` pass)
 
+- **2026-10-03 (Performa Live Adaptif, Bar Komentar Anti-Keyboard, Fix Chat Ganda, Panduan Frame Host):**
+  - **1. Performa:** [`src/lib/livekit-options.ts`](file:///src/lib/livekit-options.ts) — host simulcast 720p (layer 360/540), dynacast, `maintain-resolution`; viewer `adaptiveStream` sehingga kualitas turun otomatis hanya saat lag. Identity viewer unik per koneksi di [`livekit-token/route.ts`](file:///src/app/api/live-streams/[id]/livekit-token/route.ts) (cegah duplicate-identity disconnect).
+  - **2. Input Komentar Mobile:** outline biru dihapus (class Tailwind v4 `outline-hidden` tidak valid di v3.4), font 16px (anti-zoom iOS), hook `useKeyboardInset` (VisualViewport) membuat bar komentar melayang di atas keyboard.
+  - **3. Chat Ganda:** [`src/hooks/use-live-chat.ts`](file:///src/hooks/use-live-chat.ts) — abaikan event socket lama (`socketRef.current !== ws`) + dedupe pesan by `id`.
+  - **4. Panduan Frame Host:** [`src/components/live/live-frame-guides.tsx`](file:///src/components/live/live-frame-guides.tsx) — overlay area Desktop 16:9, area HP 9:16, zona tertutup UI, zona aman barang; toggle ikon Crop di kontrol broadcaster.
+  - **5. Health:** `pnpm tsc --noEmit` 0 error, 94 files / 718 tests lulus.
+
 - **2026-10-03 (Eliminasi Konflik Token LiveKit Ganda via Single LiveKitRoom Provider & Penghitungan Akurat Penonton per Device):**
   - **1. Single LiveKitRoom Provider ([`src/components/live/live-stream-viewer.tsx`](file:///src/components/live/live-stream-viewer.tsx)):** Menghilangkan duplikasi mount `<LiveKitRoom>` yang sebelumnya terjadi secara bersamaan di DOM (satu di blok mobile `md:hidden` dan satu di blok desktop `hidden md:block`). Duplikasi tersebut memicu bentrok koneksi LiveKit Cloud (duplicate identity disconnect loop) yang menyebabkan video mobile stuck di "Menghubungkan ke Host Toko..." dan desktop tidak stabil. Digantikan dengan Provider tunggal terpadu (`renderLiveVideo`) yang dikontrol hook viewport `useIsMobile`, sehingga hanya 1 koneksi WebRTC yang aktif tanpa race condition.
   - **2. Fallback Autoplay Audio Mobile:** Menambahkan penanganan otomatis saat browser smartphone memblokir unmuted autoplay; sistem secara mulus beralih ke `muted = true` dan langsung memutar video kamera host seketika tanpa tertahan.
