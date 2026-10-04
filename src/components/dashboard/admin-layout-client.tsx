@@ -6,6 +6,7 @@ import { AdminNotificationsProvider } from '@/context/admin-notifications-contex
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { AdminNotificationBell } from '@/components/dashboard/admin-notification-bell'
 import { PanelLeft, ExternalLink, Store } from 'lucide-react'
+import { AdminFooter } from '@/components/dashboard/admin-footer'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -82,13 +83,7 @@ function AdminLayoutInner({
           </div>
         </main>
 
-        <footer
-          className={`shrink-0 border-t border-slate-200/60 text-center text-[11px] font-medium text-slate-400 dark:border-slate-800 dark:text-slate-500 ${
-            isChatPage ? 'py-2.5' : 'py-4'
-          }`}
-        >
-          <p>© 2026 Affiliate Gadget • Platform Toko Resmi Indonesia</p>
-        </footer>
+        <AdminFooter isChatPage={isChatPage} />
       </div>
     </div>
   )

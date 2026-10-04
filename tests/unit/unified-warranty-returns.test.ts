@@ -44,7 +44,19 @@ describe('Unified Warranty Claim & Returns Suite (Phase 9)', () => {
       process.cwd(),
       'src/app/dashboard/admin/returns/page.tsx'
     )
-    const content = fs.readFileSync(returnsPagePath, 'utf-8')
+    const returnsDir = path.join(process.cwd(), 'src/components/admin/returns')
+    const componentContents = fs.existsSync(returnsDir)
+      ? fs
+          .readdirSync(returnsDir, { recursive: true })
+          .filter(
+            (f): f is string =>
+              typeof f === 'string' && (f.endsWith('.tsx') || f.endsWith('.ts'))
+          )
+          .map((f) => fs.readFileSync(path.join(returnsDir, f), 'utf-8'))
+          .join('\n')
+      : ''
+    const content =
+      fs.readFileSync(returnsPagePath, 'utf-8') + '\n' + componentContents
 
     // Unified Header
     expect(content).toContain('Pengembalian & Klaim Garansi')
@@ -147,7 +159,19 @@ describe('Unified Warranty Claim & Returns Suite (Phase 9)', () => {
       process.cwd(),
       'src/app/dashboard/admin/returns/page.tsx'
     )
-    const content = fs.readFileSync(returnsPagePath, 'utf-8')
+    const returnsDir = path.join(process.cwd(), 'src/components/admin/returns')
+    const componentContents = fs.existsSync(returnsDir)
+      ? fs
+          .readdirSync(returnsDir, { recursive: true })
+          .filter(
+            (f): f is string =>
+              typeof f === 'string' && (f.endsWith('.tsx') || f.endsWith('.ts'))
+          )
+          .map((f) => fs.readFileSync(path.join(returnsDir, f), 'utf-8'))
+          .join('\n')
+      : ''
+    const content =
+      fs.readFileSync(returnsPagePath, 'utf-8') + '\n' + componentContents
 
     // Must provide Biteship options & ThermalShippingLabel modal
     expect(content).toContain('JNE Express')
@@ -165,7 +189,19 @@ describe('Unified Warranty Claim & Returns Suite (Phase 9)', () => {
       process.cwd(),
       'src/app/dashboard/admin/returns/page.tsx'
     )
-    const pageContent = fs.readFileSync(returnsPagePath, 'utf-8')
+    const returnsDir = path.join(process.cwd(), 'src/components/admin/returns')
+    const componentContents = fs.existsSync(returnsDir)
+      ? fs
+          .readdirSync(returnsDir, { recursive: true })
+          .filter(
+            (f): f is string =>
+              typeof f === 'string' && (f.endsWith('.tsx') || f.endsWith('.ts'))
+          )
+          .map((f) => fs.readFileSync(path.join(returnsDir, f), 'utf-8'))
+          .join('\n')
+      : ''
+    const pageContent =
+      fs.readFileSync(returnsPagePath, 'utf-8') + '\n' + componentContents
 
     // Must show AWB modal immediately upon dispatch
     expect(pageContent).toContain('awbModalData')

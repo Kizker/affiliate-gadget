@@ -35,7 +35,18 @@ describe('Unified Finance & Financial Reports Suite', () => {
       process.cwd(),
       'src/app/dashboard/admin/finance/page.tsx'
     )
-    const content = fs.readFileSync(financePagePath, 'utf-8')
+    const financeDir = path.join(process.cwd(), 'src/components/admin/finance')
+    const componentContents = fs.existsSync(financeDir)
+      ? fs
+          .readdirSync(financeDir, { recursive: true })
+          .filter(
+            (f): f is string => typeof f === 'string' && f.endsWith('.tsx')
+          )
+          .map((f) => fs.readFileSync(path.join(financeDir, f), 'utf-8'))
+          .join('\n')
+      : ''
+    const content =
+      fs.readFileSync(financePagePath, 'utf-8') + '\n' + componentContents
 
     // Check main view tabs
     expect(content).toContain('Laporan Laba Rugi & Analitik')
@@ -63,7 +74,18 @@ describe('Unified Finance & Financial Reports Suite', () => {
       process.cwd(),
       'src/app/dashboard/admin/finance/page.tsx'
     )
-    const content = fs.readFileSync(financePagePath, 'utf-8')
+    const financeDir = path.join(process.cwd(), 'src/components/admin/finance')
+    const componentContents = fs.existsSync(financeDir)
+      ? fs
+          .readdirSync(financeDir, { recursive: true })
+          .filter(
+            (f): f is string => typeof f === 'string' && f.endsWith('.tsx')
+          )
+          .map((f) => fs.readFileSync(path.join(financeDir, f), 'utf-8'))
+          .join('\n')
+      : ''
+    const content =
+      fs.readFileSync(financePagePath, 'utf-8') + '\n' + componentContents
 
     // Must safely access reportData.orders with optional chaining or fallback
     expect(content).toContain('reportData.orders?.total ?? 0')
