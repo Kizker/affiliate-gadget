@@ -92,73 +92,40 @@ export function MobileCatalogView({
   const displayedGadgets = gadgets.slice(0, visibleCount)
 
   // Distribute all active promoted ads dynamically & randomly across the 2-column masonry grid
-  const { leftColumnItems, rightColumnItems } = useMemo(() => {
+  const gridItems = useMemo(() => {
     const allAdsList = [...(promotedAds || [])]
     if (promotedAd && !allAdsList.some((a) => a.id === promotedAd.id)) {
       allAdsList.unshift(promotedAd)
     }
 
-    const left: Array<
-      { type: 'product'; data: any } | { type: 'ad'; data: InFeedAdData }
-    > = []
-    const right: Array<
-      { type: 'product'; data: any } | { type: 'ad'; data: InFeedAdData }
-    > = []
+    type GridItem =
+      | { type: 'product'; data: any }
+      | { type: 'ad'; data: InFeedAdData }
+    const result: GridItem[] = []
 
-    const leftProds = displayedGadgets.filter((_, idx) => idx % 2 === 0)
-    const rightProds = displayedGadgets.filter((_, idx) => idx % 2 === 1)
-
-    // Partition ads between left and right columns
-    const leftAds: InFeedAdData[] = []
-    const rightAds: InFeedAdData[] = []
-
-    allAdsList.forEach((ad, i) => {
-      if (i % 2 === 0) {
-        leftAds.push(ad)
-      } else {
-        rightAds.push(ad)
-      }
-    })
-
-    // Interleave left column:
-    // Place first ad after 2 products (at pIdx === 1, after prod 0 & 2)
-    // ensuring top 2 rows of products are neatly aligned
-    let lAdIdx = 0
-    leftProds.forEach((prod, pIdx) => {
-      left.push({ type: 'product', data: prod })
-      if (
-        (pIdx === 1 || (pIdx > 1 && (pIdx - 1) % 3 === 0)) &&
-        lAdIdx < leftAds.length
-      ) {
-        left.push({ type: 'ad', data: leftAds[lAdIdx++] })
+    // Satu grid 2 kolom: baris kiri-kanan otomatis sejajar.
+    // Iklan pertama setelah 2 produk, lalu tiap 4 produk (jarak 5 sel)
+    // sehingga iklan berganti kolom & tidak pernah berdampingan.
+    let adIdx = 0
+    let sinceAd = 0
+    let nextGap = 2
+    displayedGadgets.forEach((prod) => {
+      result.push({ type: 'product', data: prod })
+      sinceAd++
+      if (sinceAd === nextGap && adIdx < allAdsList.length) {
+        result.push({ type: 'ad', data: allAdsList[adIdx++] })
+        sinceAd = 0
+        nextGap = 4
       }
     })
     if (!hasMore) {
-      while (lAdIdx < leftAds.length) {
-        left.push({ type: 'ad', data: leftAds[lAdIdx++] })
+      while (adIdx < allAdsList.length) {
+        if (result[result.length - 1]?.type === 'ad') break
+        result.push({ type: 'ad', data: allAdsList[adIdx++] })
       }
     }
 
-    // Interleave right column:
-    // Place right ad after 3 products (at pIdx === 2, after prod 1, 3, 5)
-    // ensuring ads alternate seamlessly between left and right without horizontal collision
-    let rAdIdx = 0
-    rightProds.forEach((prod, pIdx) => {
-      right.push({ type: 'product', data: prod })
-      if (
-        (pIdx === 2 || (pIdx > 2 && (pIdx - 2) % 3 === 0)) &&
-        rAdIdx < rightAds.length
-      ) {
-        right.push({ type: 'ad', data: rightAds[rAdIdx++] })
-      }
-    })
-    if (!hasMore) {
-      while (rAdIdx < rightAds.length) {
-        right.push({ type: 'ad', data: rightAds[rAdIdx++] })
-      }
-    }
-
-    return { leftColumnItems: left, rightColumnItems: right }
+    return result
   }, [displayedGadgets, promotedAds, promotedAd, hasMore])
 
   const loadMore = useCallback(() => {
@@ -284,11 +251,11 @@ export function MobileCatalogView({
     return (
       <div
         key={item.id}
-        className="shadow-xs relative flex h-[305px] min-h-[305px] flex-col justify-between rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+        className="shadow-xs relative flex h-full flex-col rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
       >
         <Link
           href={`/gadget/${item.id}`}
-          className="flex h-full flex-col justify-between"
+          className="flex h-full flex-col justify-between gap-1.5"
         >
           <div>
             {/* Aspect-Square Image Box (E-Commerce Standard 1:1, Uniform Height) */}
@@ -541,38 +508,18 @@ export function MobileCatalogView({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 items-start gap-2.5">
-              {/* Kolom Kiri */}
-              <div className="flex min-w-0 flex-col gap-2.5">
-                {leftColumnItems.map((item, idx) =>
-                  item.type === 'product' ? (
-                    <div key={item.data.id || `left-p-${idx}`}>
-                      {renderProductCard(item.data)}
-                    </div>
-                  ) : (
-                    <InFeedStoreAdCard
-                      key={item.data.id || `left-ad-${idx}`}
-                      ad={item.data}
-                    />
-                  )
-                )}
-              </div>
-
-              {/* Kolom Kanan */}
-              <div className="flex min-w-0 flex-col gap-2.5">
-                {rightColumnItems.map((item, idx) =>
-                  item.type === 'product' ? (
-                    <div key={item.data.id || `right-p-${idx}`}>
-                      {renderProductCard(item.data)}
-                    </div>
-                  ) : (
-                    <InFeedStoreAdCard
-                      key={item.data.id || `right-ad-${idx}`}
-                      ad={item.data}
-                    />
-                  )
-                )}
-              </div>
+            <div className="grid grid-cols-2 items-stretch gap-2.5">
+              {gridItems.map((item, idx) =>
+                item.type === 'product' ? (
+                  <div key={item.data.id || `p-${idx}`} className="min-w-0">
+                    {renderProductCard(item.data)}
+                  </div>
+                ) : (
+                  <div key={item.data.id || `ad-${idx}`} className="min-w-0">
+                    <InFeedStoreAdCard ad={item.data} />
+                  </div>
+                )
+              )}
             </div>
 
             {/* Mobile Lazy Loading Sentinel & Load More Indicator */}

@@ -48,13 +48,15 @@ describe('iPhone Safari Fixes Suite (Bottom Nav, Auto-Zoom, Uniform Grid)', () =
     const catalog = fs.readFileSync(mobileCatalogViewPath, 'utf-8')
     expect(catalog).toContain('aspect-square w-full')
     expect(catalog).toContain('object-contain')
-    expect(catalog).toContain('h-[305px] min-h-[305px]')
+    expect(catalog).toContain('grid grid-cols-2 items-stretch')
+    expect(catalog).not.toContain('h-[305px]')
     expect(catalog).toContain('h-8 text-xs font-bold leading-4')
   })
 
-  it('5. should synchronize in-feed ad card height with product cards to maintain masonry symmetry', () => {
+  it('5. should let in-feed ad card stretch to the grid row height', () => {
     const adCard = fs.readFileSync(inFeedAdCardPath, 'utf-8')
-    expect(adCard).toContain('h-[305px] min-h-[305px]')
+    expect(adCard).toContain('h-full min-h-[300px]')
+    expect(adCard).not.toContain('h-[305px]')
   })
 
   it('6. should ensure login inputs use non-zooming text-base font size on mobile', () => {
