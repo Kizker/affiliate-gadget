@@ -28,31 +28,29 @@ export function AdsLevelTabs({
   return (
     <>
       {/* 2.2 TAB SWITCHER UTAMA: Level 1 (Hero Carousel) vs Level 2 (In-Feed Grid) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
         {/* Tab 1: Level 1 (Hero Carousel) */}
         <button
           type="button"
           onClick={() => onSelectLevel('LEVEL_1')}
-          className={`flex cursor-pointer items-start gap-3.5 rounded-3xl border-2 p-4 text-left transition-all duration-200 ${
+          className={`flex cursor-pointer flex-col justify-between rounded-2xl border-2 p-3 text-left transition-all duration-200 sm:rounded-3xl sm:p-4 ${
             levelFilter === 'LEVEL_1'
               ? 'border-blue-500 bg-blue-50/50 shadow-md shadow-blue-500/10 dark:border-blue-500 dark:bg-blue-950/20'
               : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'
           }`}
         >
-          <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-              levelFilter === 'LEVEL_1'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-            }`}
-          >
-            <Video className="h-6 w-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="min-w-0 text-sm font-black text-slate-950 dark:text-white sm:text-base">
-                Tab Level 1: Hero Carousel
-              </h3>
+          <div>
+            {/* Top row: Icon & Count Badge */}
+            <div className="flex items-center justify-between gap-1.5">
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11 sm:rounded-2xl ${
+                  levelFilter === 'LEVEL_1'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                }`}
+              >
+                <Video className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
               <span
                 className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-extrabold sm:px-2.5 sm:text-[11px] ${
                   levelFilter === 'LEVEL_1'
@@ -63,26 +61,46 @@ export function AdsLevelTabs({
                 {allLevel1Count} Iklan
               </span>
             </div>
-            <p className="mt-1 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
-              Slot eksklusif teratas • Maksimal 1 iklan saja di seluruh platform
-            </p>
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              {level1Slot.isOccupied ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600" />
-                  1 Video Sedang Tayang
+
+            {/* Title & Subtitle */}
+            <div className="mt-2.5">
+              <h3 className="truncate text-xs font-black text-slate-950 dark:text-white sm:text-base">
+                <span className="sm:hidden">Level 1: Hero</span>
+                <span className="hidden sm:inline">
+                  Tab Level 1: Hero Carousel
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                  Slot Tersedia
+              </h3>
+              <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400 sm:text-xs">
+                <span className="sm:hidden">Slot eksklusif teratas</span>
+                <span className="hidden sm:inline">
+                  Slot eksklusif teratas • Maksimal 1 iklan saja di seluruh
+                  platform
                 </span>
-              )}
-              {pendingLevel1Count > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+              </p>
+            </div>
+          </div>
+
+          {/* Status Pills */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            {level1Slot.isOccupied ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 sm:text-[10px]">
+                <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-emerald-600" />
+                <span className="sm:hidden">1 Tayang</span>
+                <span className="hidden sm:inline">1 Video Sedang Tayang</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400 sm:text-[10px]">
+                Slot Tersedia
+              </span>
+            )}
+            {pendingLevel1Count > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 sm:text-[10px]">
+                <span className="sm:hidden">{pendingLevel1Count} Antrean</span>
+                <span className="hidden sm:inline">
                   {pendingLevel1Count} Menunggu Antrean
                 </span>
-              )}
-            </div>
+              </span>
+            )}
           </div>
         </button>
 
@@ -90,26 +108,24 @@ export function AdsLevelTabs({
         <button
           type="button"
           onClick={() => onSelectLevel('LEVEL_2')}
-          className={`flex cursor-pointer items-start gap-3.5 rounded-3xl border-2 p-4 text-left transition-all duration-200 ${
+          className={`flex cursor-pointer flex-col justify-between rounded-2xl border-2 p-3 text-left transition-all duration-200 sm:rounded-3xl sm:p-4 ${
             levelFilter === 'LEVEL_2'
               ? 'border-orange-500 bg-orange-50/50 shadow-md shadow-orange-500/10 dark:border-orange-500 dark:bg-orange-950/20'
               : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'
           }`}
         >
-          <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-              levelFilter === 'LEVEL_2'
-                ? 'bg-orange-500 text-white shadow-sm'
-                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-            }`}
-          >
-            <LayoutGrid className="h-6 w-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="min-w-0 text-sm font-black text-slate-950 dark:text-white sm:text-base">
-                Tab Level 2: In-Feed Grid Produk
-              </h3>
+          <div>
+            {/* Top row: Icon & Count Badge */}
+            <div className="flex items-center justify-between gap-1.5">
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11 sm:rounded-2xl ${
+                  levelFilter === 'LEVEL_2'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                }`}
+              >
+                <LayoutGrid className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
               <span
                 className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-extrabold sm:px-2.5 sm:text-[11px] ${
                   levelFilter === 'LEVEL_2'
@@ -120,22 +136,43 @@ export function AdsLevelTabs({
                 {allLevel2Count} Iklan
               </span>
             </div>
-            <p className="mt-1 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
-              Diselipkan di antara katalog • Boleh ada banyak iklan dari seluruh
-              toko cabang
-            </p>
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              {urgentLevel2Count > 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800 dark:bg-rose-950/50 dark:text-rose-300">
-                  <AlertTriangle className="h-3 w-3" />
+
+            {/* Title & Subtitle */}
+            <div className="mt-2.5">
+              <h3 className="truncate text-xs font-black text-slate-950 dark:text-white sm:text-base">
+                <span className="sm:hidden">Level 2: In-Feed</span>
+                <span className="hidden sm:inline">
+                  Tab Level 2: In-Feed Grid Produk
+                </span>
+              </h3>
+              <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-500 dark:text-slate-400 sm:text-xs">
+                <span className="sm:hidden">Di antara katalog</span>
+                <span className="hidden sm:inline">
+                  Diselipkan di antara katalog • Boleh ada banyak iklan dari
+                  seluruh toko cabang
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* Status Pills */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            {urgentLevel2Count > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 sm:text-[10px]">
+                <AlertTriangle className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
+                <span className="sm:hidden">{urgentLevel2Count} Berakhir</span>
+                <span className="hidden sm:inline">
                   {urgentLevel2Count} Segera Berakhir (&lt; 3 Hari)
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 sm:text-[10px]">
+                <span className="sm:hidden">{activeLevel2Count} Aktif</span>
+                <span className="hidden sm:inline">
                   {activeLevel2Count} Iklan Aktif
                 </span>
-              )}
-            </div>
+              </span>
+            )}
           </div>
         </button>
       </div>
