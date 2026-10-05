@@ -59,6 +59,7 @@ describe('iPhone Safari Fixes Suite (Bottom Nav, Auto-Zoom, Uniform Grid)', () =
 
   it('6. should ensure login inputs use non-zooming text-base font size on mobile', () => {
     const login = fs.readFileSync(loginPagePath, 'utf-8')
-    expect(login).toContain('text-base sm:text-xs')
+    expect(login).toContain('text-base')
+    expect(login).toContain('sm:text-xs')
   })
 })

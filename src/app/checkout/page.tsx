@@ -1,6 +1,13 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  Suspense,
+} from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
@@ -70,7 +77,7 @@ interface CheckoutOrderResponseItem {
   id?: string
 }
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1479,5 +1486,24 @@ export default function CheckoutPage() {
         }}
       />
     </>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <div className="flex items-center gap-2 text-slate-500">
+            <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+            <span className="text-sm font-medium">
+              Memuat proses checkout...
+            </span>
+          </div>
+        </div>
+      }
+    >
+      <CheckoutContent />
+    </Suspense>
   )
 }
