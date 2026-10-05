@@ -261,27 +261,27 @@ export function ReturnCard({
                 </div>
 
                 <div className="space-y-1.5 rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                     <span className="text-slate-400">Bank & No. Rekening:</span>
                     <button
                       onClick={() =>
                         onCopy(item.bankAccountNumber || '', `bank-${item.id}`)
                       }
-                      className="inline-flex items-center gap-1 font-mono font-bold text-slate-900 transition hover:text-orange-500 dark:text-white"
+                      className="inline-flex max-w-full items-center gap-1 font-mono font-bold text-slate-900 transition hover:text-orange-500 dark:text-white"
                     >
-                      <span>
+                      <span className="max-w-[180px] truncate sm:max-w-none">
                         {item.bankName} - {item.bankAccountNumber || '-'}
                       </span>
                       {copiedId === `bank-${item.id}` ? (
-                        <Check className="h-3 w-3 text-emerald-500" />
+                        <Check className="h-3 w-3 shrink-0 text-emerald-500" />
                       ) : (
-                        <Copy className="h-3 w-3 text-slate-400" />
+                        <Copy className="h-3 w-3 shrink-0 text-slate-400" />
                       )}
                     </button>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                     <span className="text-slate-400">Atas Nama:</span>
-                    <span className="font-bold text-slate-900 dark:text-white">
+                    <span className="max-w-[180px] truncate font-bold text-slate-900 dark:text-white sm:max-w-none">
                       {item.bankAccountName || '-'}
                     </span>
                   </div>
@@ -322,12 +322,12 @@ export function ReturnCard({
 
             {/* Resi Kirim Balik / Pengiriman */}
             {item.returnTrackingNumber && (
-              <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
-                <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
-                  <Truck className="h-3.5 w-3.5 text-orange-500" /> Resi
-                  Pengiriman:
+              <div className="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                <span className="flex shrink-0 items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
+                  <Truck className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+                  <span>Resi Pengiriman:</span>
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:justify-end">
                   <button
                     type="button"
                     onClick={() =>
@@ -336,23 +336,23 @@ export function ReturnCard({
                         item.returnCourier || 'JNE'
                       )
                     }
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-xs font-bold text-slate-900 transition hover:border-orange-500 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    className="inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs font-bold text-slate-900 transition hover:border-orange-500 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     title="Lacak Paket Real-Time via Biteship"
                   >
-                    <span>
+                    <span className="truncate">
                       {item.returnCourier || 'JNE'} -{' '}
                       {item.returnTrackingNumber}
                     </span>
-                    <ArrowUpRight className="h-3 w-3 text-slate-400" />
+                    <ArrowUpRight className="h-3 w-3 shrink-0 text-slate-400" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onPrintThermalLabel(item.orderId)}
                     disabled={isPrintingThermal}
-                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
                     title="Cetak Label Thermal Biteship"
                   >
-                    <Printer className="h-3 w-3" />
+                    <Printer className="h-3 w-3 shrink-0" />
                     <span>Label Thermal</span>
                   </button>
                 </div>
@@ -371,13 +371,13 @@ export function ReturnCard({
       </div>
 
       {/* Action Bar (Operational Controls with High Contrast Action Orange Pill) */}
-      <div className="flex flex-wrap items-center justify-end gap-2.5 border-t border-slate-100 pt-3.5 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3.5 dark:border-slate-800">
         {/* Setujui & Tolak for PENDING */}
         {item.status === 'PENDING' && (
           <>
             <button
               onClick={() => onOpenActionModal(item, 'APPROVE')}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95"
+              className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95 sm:w-auto"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>Setujui & Pilih Tindakan</span>
@@ -385,7 +385,7 @@ export function ReturnCard({
 
             <button
               onClick={() => onOpenActionModal(item, 'REJECT')}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:w-auto"
             >
               <XCircle className="h-3.5 w-3.5 text-rose-500" />
               <span>Tolak</span>
@@ -403,7 +403,7 @@ export function ReturnCard({
                 'Unit telah tiba di toko dan sedang dalam proses pengujian fisik teknisi.'
               )
             }
-            className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950"
+            className="shadow-xs inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950 sm:w-auto"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Mulai Pemeriksaan Unit</span>
@@ -414,7 +414,7 @@ export function ReturnCard({
         {(item.status === 'IN_REVIEW' || item.status === 'APPROVED') && (
           <button
             onClick={() => onOpenActionModal(item, 'COMPLETE')}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95"
+            className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95 sm:w-auto"
           >
             {item.storeResponse?.includes('[SEDANG_DIPERBAIKI]') ? (
               <>
@@ -433,7 +433,7 @@ export function ReturnCard({
         {/* Beri Tanggapan */}
         <button
           onClick={() => onOpenActionModal(item, 'RESPONSE')}
-          className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/90 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
+          className="shadow-2xs inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200 sm:w-auto"
         >
           <MessageSquare className="h-3.5 w-3.5 text-orange-500" />
           <span>Beri Tanggapan</span>

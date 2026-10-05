@@ -92,63 +92,67 @@ export function ReturnsToolbar({
       </div>
 
       {/* Right: Solution Filter, Store Selector, Search, & Refresh */}
-      <div className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap xl:w-auto">
-        {/* Solution Selector Dropdown */}
-        <CustomSelect
-          value={typeFilter}
-          onChange={(val) => setTypeFilter(val as any)}
-          size="sm"
-          options={[
-            { value: 'ALL', label: 'Semua Solusi' },
-            { value: 'REFUND', label: 'Refund Dana' },
-            { value: 'REPLACEMENT', label: 'Tukar Unit' },
-          ]}
-        />
-
-        {/* Store Filter (for Superadmin & Admin Platform) */}
-        {(isSuperAdmin || isAdminPlatform) && storeOptions.length > 0 && (
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center xl:w-auto xl:flex-nowrap">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Solution Selector Dropdown */}
           <CustomSelect
-            value={selectedStore}
-            onChange={(val) => setSelectedStore(val)}
+            value={typeFilter}
+            onChange={(val) => setTypeFilter(val as any)}
             size="sm"
             options={[
-              { value: 'ALL', label: 'Semua Toko' },
-              ...storeOptions.map((s) => ({ value: s.id, label: s.name })),
+              { value: 'ALL', label: 'Semua Solusi' },
+              { value: 'REFUND', label: 'Refund Dana' },
+              { value: 'REPLACEMENT', label: 'Tukar Unit' },
             ]}
           />
-        )}
 
-        {/* Search Bar */}
-        <div className="relative flex-1 xl:w-72">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nomor pesanan, nama pembeli..."
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-          />
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+          {/* Store Filter (for Superadmin & Admin Platform) */}
+          {(isSuperAdmin || isAdminPlatform) && storeOptions.length > 0 && (
+            <CustomSelect
+              value={selectedStore}
+              onChange={(val) => setSelectedStore(val)}
+              size="sm"
+              options={[
+                { value: 'ALL', label: 'Semua Toko' },
+                ...storeOptions.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
           )}
         </div>
 
-        {/* Refresh Button */}
-        <button
-          onClick={onRefresh}
-          title="Refresh Data"
-          disabled={loading}
-          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-        >
-          <RefreshCw
-            className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`}
-          />
-        </button>
+        {/* Search Bar & Refresh */}
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:flex-1 xl:w-72 xl:flex-initial">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nomor pesanan, nama pembeli..."
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            />
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            onClick={onRefresh}
+            title="Refresh Data"
+            disabled={loading}
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`}
+            />
+          </button>
+        </div>
       </div>
     </div>
   )

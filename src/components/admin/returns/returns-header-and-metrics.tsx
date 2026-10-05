@@ -16,7 +16,7 @@ export function ReturnsHeaderAndMetrics({
       {/* 0. Header Title & Context */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-2xl">
               Pengembalian & Klaim Garansi
             </h1>

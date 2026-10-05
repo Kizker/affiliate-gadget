@@ -79,4 +79,28 @@ describe('Admin Returns Modular Subcomponents & Architecture', () => {
       expect(fs.existsSync(fullPath)).toBe(true)
     }
   })
+
+  it('verifies mobile responsive layout in return-card.tsx prevents button overflow', () => {
+    const cardPath = path.join(
+      process.cwd(),
+      'src/components/admin/returns/return-card.tsx'
+    )
+    const content = fs.readFileSync(cardPath, 'utf-8')
+
+    // 1. Resi container must stack vertically on mobile (flex-col) and row on desktop (sm:flex-row)
+    expect(content).toContain('flex flex-col gap-2')
+    expect(content).toContain('sm:flex-row sm:items-center sm:justify-between')
+
+    // 2. Resi button and Label Thermal button must have flex-wrap and shrink protection
+    expect(content).toContain('flex min-w-0 flex-wrap items-center gap-1.5')
+    expect(content).toContain('max-w-full')
+    expect(content).toContain('truncate')
+    expect(content).toContain('Printer className="h-3 w-3 shrink-0"')
+
+    // 3. Action bar buttons must expand to full width on mobile (w-full sm:w-auto)
+    expect(content).toContain(
+      'w-full cursor-pointer items-center justify-center'
+    )
+    expect(content).toContain('sm:w-auto')
+  })
 })

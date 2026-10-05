@@ -704,11 +704,11 @@ export function ResolutionActionModal({
           </div>
 
           {/* Actions Footer */}
-          <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-end sm:gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="cursor-pointer rounded-full px-5 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="w-full cursor-pointer rounded-full px-5 py-2.5 text-center text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:w-auto"
             >
               Batal
             </button>
@@ -717,7 +717,7 @@ export function ResolutionActionModal({
               type="button"
               disabled={isProcessing}
               onClick={onExecuteResolution}
-              className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-2.5 text-xs font-bold text-white shadow-sm transition active:scale-95 disabled:opacity-50 ${
+              className={`inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full px-6 py-2.5 text-xs font-bold text-white shadow-sm transition active:scale-95 disabled:opacity-50 sm:w-auto ${
                 actionModalType === 'REJECT'
                   ? 'bg-rose-600 hover:bg-rose-700'
                   : resolutionAction === 'REPLACEMENT'
