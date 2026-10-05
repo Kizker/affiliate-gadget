@@ -1,6 +1,7 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ImageIcon,
   X,
@@ -67,28 +68,35 @@ export function ChangeMediaModal({
   savingImage,
   onSave,
 }: ChangeMediaModalProps) {
-  if (!isOpen || !editingAd) return null
+  const [mounted, setMounted] = useState(false)
 
-  return (
-    <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
-      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl [scrollbar-width:thin] dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
-              <ImageIcon className="h-4 w-4" />
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!isOpen || !editingAd || !mounted || typeof document === 'undefined')
+    return null
+
+  return createPortal(
+    <div className="backdrop-blur-xs fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-black/70 p-3 duration-200 animate-in fade-in sm:p-4">
+      <div className="relative my-auto max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl [scrollbar-width:thin] dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh] sm:p-6">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800 sm:pb-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 sm:h-8 sm:w-8">
+              <ImageIcon className="h-4 w-4 shrink-0" />
             </span>
-            <div>
-              <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
-                Ganti Media Banner / Video Iklan
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-sm font-extrabold text-slate-950 dark:text-white sm:text-base">
+                Ganti Media Banner / Video
               </h3>
-              <p className="line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                 {editingAd.title}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+            className="shrink-0 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
           >
             <X className="h-4 w-4" />
           </button>
@@ -122,67 +130,71 @@ export function ChangeMediaModal({
                 <button
                   type="button"
                   onClick={() => setChangeImageTab('STORE_BANNER')}
-                  className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
+                  className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
                     changeImageTab === 'STORE_BANNER'
                       ? 'shadow-xs bg-orange-500 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
                   }`}
                 >
-                  <Store className="h-3 w-3" />
-                  <span>Banner Toko</span>
+                  <Store className="h-3 w-3 shrink-0" />
+                  <span className="whitespace-nowrap">Banner Toko</span>
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={() => setChangeImageTab('PRODUCTS')}
-                className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
+                className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
                   changeImageTab === 'PRODUCTS'
                     ? 'shadow-xs bg-orange-500 text-white'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
                 }`}
               >
-                <Package className="h-3 w-3" />
-                <span>Foto Produk Toko ({storeProducts.length})</span>
+                <Package className="h-3 w-3 shrink-0" />
+                <span className="whitespace-nowrap">
+                  Foto Produk Toko ({storeProducts.length})
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setChangeImageTab('PRESETS')}
-                className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
+                className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
                   changeImageTab === 'PRESETS'
                     ? 'shadow-xs bg-orange-500 text-white'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
                 }`}
               >
-                <Sparkles className="h-3 w-3" />
-                <span>Preset Promo</span>
+                <Sparkles className="h-3 w-3 shrink-0" />
+                <span className="whitespace-nowrap">Preset Promo</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setChangeImageTab('UPLOAD')}
-                className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
+                className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
                   changeImageTab === 'UPLOAD'
                     ? 'shadow-xs bg-orange-500 text-white'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
                 }`}
               >
-                <Upload className="h-3 w-3" />
-                <span>Upload File (Foto/Video)</span>
+                <Upload className="h-3 w-3 shrink-0" />
+                <span className="whitespace-nowrap">
+                  Upload File (Foto/Video)
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setChangeImageTab('URL')}
-                className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
+                className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
                   changeImageTab === 'URL'
                     ? 'shadow-xs bg-orange-500 text-white'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
                 }`}
               >
-                <ImageIcon className="h-3 w-3" />
-                <span>Input URL Media</span>
+                <ImageIcon className="h-3 w-3 shrink-0" />
+                <span className="whitespace-nowrap">Input URL Media</span>
               </button>
             </div>
           </div>
@@ -402,15 +414,18 @@ export function ChangeMediaModal({
           {/* Pratinjau Media Banner Baru yang Dipilih */}
           {newImageUrl && (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
-              <div className="flex items-center justify-between pb-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                <span>
-                  Pratinjau Media Baru:{' '}
-                  <strong className="text-orange-600 dark:text-orange-400">
-                    {newImageLabel ||
-                      (isVideoMedia(newImageUrl)
-                        ? 'Video Pengganti'
-                        : 'Foto Pengganti')}
-                  </strong>
+              <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <Play className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+                  <span className="truncate whitespace-nowrap">
+                    Pratinjau Media Baru:
+                  </span>
+                </span>
+                <span className="max-w-[180px] shrink-0 truncate whitespace-nowrap rounded-lg bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-950/60 dark:text-orange-300">
+                  {newImageLabel ||
+                    (isVideoMedia(newImageUrl)
+                      ? 'Video Pengganti'
+                      : 'Foto Pengganti')}
                 </span>
               </div>
               <div className="relative aspect-[21/9] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-800">
@@ -435,15 +450,15 @@ export function ChangeMediaModal({
                 {isVideoMedia(newImageUrl) && (
                   <div className="backdrop-blur-xs shadow-xs absolute left-2.5 top-2.5 z-10 flex items-center gap-1 rounded-md bg-orange-600/90 px-2 py-0.5 text-[9px] font-black text-white">
                     <Play className="h-2.5 w-2.5 fill-white text-white" />
-                    <span>VIDEO PROMO</span>
+                    <span className="whitespace-nowrap">VIDEO PROMO</span>
                   </div>
                 )}
 
                 <div className="pointer-events-none absolute bottom-2 left-3 right-3 text-white">
-                  <p className="text-xs font-bold leading-tight drop-shadow-md">
+                  <p className="line-clamp-1 text-xs font-bold leading-tight drop-shadow-md">
                     {editTitle || editingAd.title}
                   </p>
-                  <p className="text-[10px] text-white/80">
+                  <p className="truncate text-[10px] text-white/80">
                     {editingAd.store?.name || 'Toko Resmi PT'}
                   </p>
                 </div>
@@ -454,8 +469,8 @@ export function ChangeMediaModal({
           {/* Judul Promosi Iklan */}
           <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-950/40">
             <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-              <Sparkles className="h-4 w-4 text-orange-500" />
-              <span>Judul Promosi Iklan:</span>
+              <Sparkles className="h-4 w-4 shrink-0 text-orange-500" />
+              <span className="whitespace-nowrap">Judul Promosi Iklan:</span>
             </label>
             <input
               type="text"
@@ -468,20 +483,22 @@ export function ChangeMediaModal({
 
           {/* Target Link Editing */}
           <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-950/40">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                <Link2 className="h-4 w-4 text-orange-500" />
-                <span>Target Link Navigasi (URL Tujuan):</span>
+            <div className="flex items-center justify-between gap-2">
+              <label className="flex min-w-0 flex-1 items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <Link2 className="h-4 w-4 shrink-0 text-orange-500" />
+                <span className="truncate whitespace-nowrap">
+                  Target Link (URL Tujuan):
+                </span>
               </label>
               {editTargetUrl && (
                 <a
                   href={editTargetUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:underline dark:text-orange-400"
+                  className="shadow-2xs inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-orange-200/80 bg-orange-50/80 px-2 py-0.5 text-[11px] font-bold text-orange-600 transition hover:bg-orange-100 hover:underline dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-400"
                 >
-                  <ExternalLink className="h-3 w-3" />
-                  <span>Cek Link</span>
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  <span className="whitespace-nowrap">Cek Link</span>
                 </a>
               )}
             </div>
@@ -499,7 +516,7 @@ export function ChangeMediaModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400"
+              className="shrink-0 whitespace-nowrap rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400"
             >
               Batal
             </button>
@@ -507,15 +524,15 @@ export function ChangeMediaModal({
               type="button"
               onClick={onSave}
               disabled={savingImage || !newImageUrl.trim()}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600 active:scale-95 disabled:opacity-50 sm:px-5"
             >
               {savingImage ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Menyimpan Media...</span>
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                  <span className="whitespace-nowrap">Menyimpan Media...</span>
                 </>
               ) : (
-                <span>
+                <span className="whitespace-nowrap">
                   {isSuperAdmin
                     ? 'Simpan Media Banner'
                     : 'Ajukan Perubahan ke Superadmin'}
@@ -525,6 +542,7 @@ export function ChangeMediaModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

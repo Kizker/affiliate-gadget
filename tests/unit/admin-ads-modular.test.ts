@@ -223,5 +223,50 @@ describe('Admin Ads Modular Decomposition', () => {
       expect(content).toContain('{ad.impressions} Views')
       expect(content).toContain('{ad.clicks} Clicks')
     })
+
+    it('verifies change-media-modal uses createPortal with z-[9999], 1-line header, and whitespace-nowrap on Cek Link', async () => {
+      const fs = await import('fs')
+      const path = await import('path')
+      const filePath = path.join(
+        process.cwd(),
+        'src/components/admin/ads/modals/change-media-modal.tsx'
+      )
+      const content = fs.readFileSync(filePath, 'utf-8')
+
+      // 1. Stacking Context & Portal verification (prevents header overlap)
+      expect(content).toContain("import { createPortal } from 'react-dom'")
+      expect(content).toContain('createPortal(')
+      expect(content).toContain('z-[9999]')
+      expect(content).toContain('document.body')
+
+      // 2. Anti-stacking 1-line header & Cek Link button
+      expect(content).toContain(
+        'truncate text-sm sm:text-base font-extrabold text-slate-950'
+      )
+      expect(content).toContain(
+        'whitespace-nowrap rounded-lg border border-orange-200/80'
+      )
+      expect(content).toContain(
+        '<span className="whitespace-nowrap">Cek Link</span>'
+      )
+    })
+
+    it('verifies create-ad-modal uses createPortal with z-[9999] and whitespace-nowrap on Cek Link', async () => {
+      const fs = await import('fs')
+      const path = await import('path')
+      const filePath = path.join(
+        process.cwd(),
+        'src/components/admin/ads/modals/create-ad-modal.tsx'
+      )
+      const content = fs.readFileSync(filePath, 'utf-8')
+
+      expect(content).toContain("import { createPortal } from 'react-dom'")
+      expect(content).toContain('createPortal(')
+      expect(content).toContain('z-[9999]')
+      expect(content).toContain('document.body')
+      expect(content).toContain(
+        '<span className="whitespace-nowrap">Cek Link</span>'
+      )
+    })
   })
 })
