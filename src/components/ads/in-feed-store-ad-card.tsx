@@ -162,7 +162,7 @@ export function InFeedStoreAdCard({
 
   return (
     <div
-      className={`shadow-xs group relative col-span-1 flex aspect-[4/5] min-h-[260px] flex-col justify-between overflow-hidden rounded-2xl border-2 border-orange-200/90 bg-slate-950 p-0 transition-all duration-300 hover:-translate-y-1 hover:border-orange-400 hover:shadow-xl dark:border-slate-800 sm:col-span-2 sm:aspect-auto sm:h-full sm:min-h-[220px] sm:rounded-3xl ${className}`}
+      className={`shadow-xs group relative col-span-1 flex aspect-[4/5] w-full min-w-0 max-w-full flex-col justify-between overflow-hidden rounded-2xl border-2 border-orange-200/90 bg-slate-950 p-0 transition-all duration-300 hover:-translate-y-1 hover:border-orange-400 hover:shadow-xl dark:border-slate-800 sm:col-span-2 sm:aspect-auto sm:h-full sm:min-h-[220px] sm:rounded-3xl ${className}`}
       onClick={handleClick}
     >
       <Link

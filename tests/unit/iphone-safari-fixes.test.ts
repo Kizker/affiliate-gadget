@@ -53,9 +53,9 @@ describe('iPhone Safari Fixes Suite (Bottom Nav, Auto-Zoom, Uniform Grid)', () =
     expect(catalog).toContain('rightColumnItems')
   })
 
-  it('5. should use natural aspect-[4/5] min-h-[260px] for in-feed ad card in masonry layout', () => {
+  it('5. should use natural aspect-[4/5] with constrained width for in-feed ad card in masonry layout', () => {
     const adCard = fs.readFileSync(inFeedAdCardPath, 'utf-8')
-    expect(adCard).toContain('aspect-[4/5] min-h-[260px]')
+    expect(adCard).toContain('aspect-[4/5] w-full min-w-0 max-w-full')
   })
 
   it('6. should ensure login inputs use non-zooming text-base font size on mobile', () => {

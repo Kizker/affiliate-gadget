@@ -283,11 +283,11 @@ export function MobileCatalogView({
     return (
       <div
         key={item.id}
-        className="shadow-xs relative flex h-full flex-col rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+        className="shadow-xs relative flex w-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
       >
         <Link
           href={`/gadget/${item.id}`}
-          className="flex h-full flex-col justify-between gap-1.5"
+          className="flex w-full flex-col justify-between gap-1.5"
         >
           <div>
             {/* Aspect-Square Image Box (E-Commerce Standard 1:1, Uniform Height) */}
@@ -543,34 +543,42 @@ export function MobileCatalogView({
             <div className="grid grid-cols-2 items-start gap-2.5">
               {/* Kolom Kiri */}
               <div className="flex min-w-0 flex-col gap-2.5">
-                {leftColumnItems.map((item, idx) =>
-                  item.type === 'product' ? (
-                    <div key={item.data.id || `left-p-${idx}`}>
-                      {renderProductCard(item.data)}
-                    </div>
-                  ) : (
-                    <InFeedStoreAdCard
-                      key={item.data.id || `left-ad-${idx}`}
-                      ad={item.data}
-                    />
-                  )
-                )}
+                {leftColumnItems.map((item, idx) => (
+                  <div
+                    key={
+                      item.type === 'product'
+                        ? item.data.id || `left-p-${idx}`
+                        : item.data.id || `left-ad-${idx}`
+                    }
+                    className="w-full min-w-0"
+                  >
+                    {item.type === 'product' ? (
+                      renderProductCard(item.data)
+                    ) : (
+                      <InFeedStoreAdCard ad={item.data} />
+                    )}
+                  </div>
+                ))}
               </div>
 
               {/* Kolom Kanan */}
               <div className="flex min-w-0 flex-col gap-2.5">
-                {rightColumnItems.map((item, idx) =>
-                  item.type === 'product' ? (
-                    <div key={item.data.id || `right-p-${idx}`}>
-                      {renderProductCard(item.data)}
-                    </div>
-                  ) : (
-                    <InFeedStoreAdCard
-                      key={item.data.id || `right-ad-${idx}`}
-                      ad={item.data}
-                    />
-                  )
-                )}
+                {rightColumnItems.map((item, idx) => (
+                  <div
+                    key={
+                      item.type === 'product'
+                        ? item.data.id || `right-p-${idx}`
+                        : item.data.id || `right-ad-${idx}`
+                    }
+                    className="w-full min-w-0"
+                  >
+                    {item.type === 'product' ? (
+                      renderProductCard(item.data)
+                    ) : (
+                      <InFeedStoreAdCard ad={item.data} />
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
