@@ -52,7 +52,13 @@
 - **Port Tersedia:** Port 3000 (Next.js Web App) & Port 3001 (Standalone WebSocket Server)
 - **Mode Eksekusi:** `pnpm dev` (menjalankan Next.js port 3000 dan WS Server port 3001 secara paralel via `concurrently`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
-- **Unit Tests:** 104 test files, 798 tests lulus 100% (`pnpm test:unit` pass)
+- **Unit Tests:** 104 test files, 800 tests lulus 100% (`pnpm test:unit` pass)
+
+- **2026-10-05 (Perbaikan Layout Mobile Iklan Toko: Eliminasi Emoji Header & Statistik Berdampingan):**
+  - **1. Eliminasi Box Emoji/Icon Header ([`src/app/dashboard/admin/ads/page.tsx`](file:///src/app/dashboard/admin/ads/page.tsx)):** Menghapus badge icon emoji (`Sparkles` dalam box rounded-xl) di samping judul "Pengajuan & Manajemen Iklan Toko", memberikan ruang horizontal yang luas bagi teks judul di viewport mobile smartphone.
+  - **2. Penataan Badge Level Tab Berdampingan ([`src/components/admin/ads/ads-level-tabs.tsx`](file:///src/components/admin/ads/ads-level-tabs.tsx)):** Menambahkan `shrink-0 whitespace-nowrap` dan penyesuaian font size adaptif `text-[10px] sm:text-[11px]` pada badge jumlah iklan Tab Level 1 dan Tab Level 2, mencegah angka dan teks ("2 Iklan") menumpuk secara vertikal.
+  - **3. Penataan Statistik Views & Clicks Berdampingan ([`src/components/admin/ads/ad-card.tsx`](file:///src/components/admin/ads/ad-card.tsx)):** Mengunci format metrik impresi dan klik (`0 Views • 5 Clicks`) dengan `shrink-0 whitespace-nowrap` dan `text-[10px] sm:text-[11px]`, serta memproteksi nama toko dengan `min-w-0 flex-1 truncate`, sehingga angka statistik tidak pernah terlipat ke atas/bawah.
+  - **4. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 104 test files dengan 800 unit tests lulus 100% (`pnpm test:unit` pass) mencakup pengujian anti-stacking baru ([`tests/unit/admin-ads-modular.test.ts`](file:///tests/unit/admin-ads-modular.test.ts)).
 
 - **2026-10-05 (Perbaikan Responsivitas Mobile Anti-Overflow Halaman Returns & Order Details):**
   - **1. Pencegahan Overflow Resi & Tombol Thermal Label ([`src/components/admin/returns/return-card.tsx`](file:///src/components/admin/returns/return-card.tsx)):** Mengubah layout container resi pengiriman dari `flex items-center justify-between` satu baris menjadi responsif `flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between`. Menambahkan proteksi `truncate` dan `max-w-full` pada tombol tracking nomor resi, serta `shrink-0` dan `gap-1.5 flex-wrap` pada tombol "Label Thermal", sehingga tombol tidak pernah keluar batas atau menabrak tepi kanan kartu pada mode mobile (iPhone/Android).

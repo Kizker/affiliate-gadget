@@ -296,22 +296,22 @@ export function AdCard({
 
         {/* Store & Metadata info */}
         <div className="space-y-1.5 text-xs">
-          <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-            <div className="flex items-center gap-1.5 truncate">
+          <div className="flex items-center justify-between gap-2 text-slate-600 dark:text-slate-400">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <Store className="h-3.5 w-3.5 shrink-0 text-slate-400" />
               <span className="truncate font-semibold text-slate-900 dark:text-white">
                 {ad.store?.name || 'Semua Toko'}
               </span>
               {ad.store?.city && (
-                <span className="text-[11px] text-slate-400">
+                <span className="shrink-0 text-[10px] text-slate-400 sm:text-[11px]">
                   ({ad.store.city})
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span>{ad.impressions} Views</span>
-              <span>•</span>
-              <span>{ad.clicks} Clicks</span>
+            <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[10px] font-medium text-slate-500 sm:text-[11px]">
+              <span className="whitespace-nowrap">{ad.impressions} Views</span>
+              <span className="text-slate-300 dark:text-slate-600">•</span>
+              <span className="whitespace-nowrap">{ad.clicks} Clicks</span>
             </div>
           </div>
 

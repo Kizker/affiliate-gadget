@@ -50,11 +50,11 @@ export function AdsLevelTabs({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-black text-slate-950 dark:text-white sm:text-base">
+              <h3 className="min-w-0 text-sm font-black text-slate-950 dark:text-white sm:text-base">
                 Tab Level 1: Hero Carousel
               </h3>
               <span
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-extrabold sm:px-2.5 sm:text-[11px] ${
                   levelFilter === 'LEVEL_1'
                     ? 'bg-blue-600 text-white'
                     : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
@@ -107,11 +107,11 @@ export function AdsLevelTabs({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-black text-slate-950 dark:text-white sm:text-base">
+              <h3 className="min-w-0 text-sm font-black text-slate-950 dark:text-white sm:text-base">
                 Tab Level 2: In-Feed Grid Produk
               </h3>
               <span
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-extrabold sm:px-2.5 sm:text-[11px] ${
                   levelFilter === 'LEVEL_2'
                     ? 'bg-orange-500 text-white'
                     : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'

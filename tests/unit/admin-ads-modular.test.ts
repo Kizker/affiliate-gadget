@@ -192,4 +192,36 @@ describe('Admin Ads Modular Decomposition', () => {
       expect(timing.remainingText).toBe('Aktif Tanpa Batas Waktu')
     })
   })
+
+  describe('Mobile Side-by-Side (Anti-Stacking) Layout Verification', () => {
+    it('verifies ads-level-tabs badges are side-by-side with shrink-0 and whitespace-nowrap', async () => {
+      const fs = await import('fs')
+      const path = await import('path')
+      const filePath = path.join(
+        process.cwd(),
+        'src/components/admin/ads/ads-level-tabs.tsx'
+      )
+      const content = fs.readFileSync(filePath, 'utf-8')
+
+      expect(content).toContain('shrink-0 whitespace-nowrap rounded-full')
+      expect(content).toContain('{allLevel1Count} Iklan')
+      expect(content).toContain('{allLevel2Count} Iklan')
+    })
+
+    it('verifies ad-card views and clicks stats are side-by-side with shrink-0 and whitespace-nowrap', async () => {
+      const fs = await import('fs')
+      const path = await import('path')
+      const filePath = path.join(
+        process.cwd(),
+        'src/components/admin/ads/ad-card.tsx'
+      )
+      const content = fs.readFileSync(filePath, 'utf-8')
+
+      expect(content).toContain(
+        'shrink-0 items-center gap-1.5 whitespace-nowrap'
+      )
+      expect(content).toContain('{ad.impressions} Views')
+      expect(content).toContain('{ad.clicks} Clicks')
+    })
+  })
 })

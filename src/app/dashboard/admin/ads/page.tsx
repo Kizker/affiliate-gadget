@@ -762,16 +762,11 @@ export default function AdsManagementPage() {
       {/* 1. Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-2xl">
-              {isSuperAdmin
-                ? 'Manajemen & Moderasi Iklan Toko'
-                : 'Pengajuan & Manajemen Iklan Toko'}
-            </h1>
-          </div>
+          <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+            {isSuperAdmin
+              ? 'Manajemen & Moderasi Iklan Toko'
+              : 'Pengajuan & Manajemen Iklan Toko'}
+          </h1>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
             {isSuperAdmin
               ? 'Tinjau, setujui, dan kelola slot tayang banner promosi toko cabang di Beranda Mobile & Grid Produk.'
