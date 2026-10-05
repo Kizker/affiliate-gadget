@@ -67,9 +67,43 @@
     @apply border-border;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   html,
   body {
     font-family: var(--font-poppins), 'Poppins', sans-serif;
+  }
+
+  /* Prevent iOS Safari auto-zoom on input focus across all mobile devices */
+  @media screen and (max-width: 768px) {
+    input,
+    select,
+    textarea,
+    input[type='text'],
+    input[type='password'],
+    input[type='email'],
+    input[type='number'],
+    input[type='tel'],
+    input[type='search'],
+    input[type='url'] {
+      font-size: 16px !important;
+    }
+  }
+
+  /* iOS Safari Fixed Bottom Nav Compositor Layer (Stick to absolute bottom on scroll) */
+  .mobile-bottom-nav-fixed {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: transform;
   }
 
   body {

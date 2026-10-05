@@ -465,7 +465,7 @@ function LoginForm() {
                           setFormData({ ...formData, email: e.target.value })
                         }
                         placeholder="nama@email.com"
-                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-4 text-base font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:text-xs"
                       />
                       <Mail className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                     </div>
@@ -503,7 +503,7 @@ function LoginForm() {
                           setFormData({ ...formData, password: e.target.value })
                         }
                         placeholder="••••••••"
-                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-11 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-11 text-base font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:text-xs"
                       />
                       <Lock className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                       <button

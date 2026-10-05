@@ -79,9 +79,11 @@ export function MobileBottomNav({
   return (
     <nav
       aria-label="Mobile Navigation Bar"
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/80 bg-white/95 px-4 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.04)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 md:hidden"
+      className="mobile-bottom-nav-fixed fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/80 bg-white/95 px-4 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] shadow-[0_-4px_16px_rgba(0,0,0,0.04)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 md:hidden"
     >
-      <div className="mx-auto flex max-w-md items-center justify-around">
+      {/* iOS Safari Home Indicator & Overscroll Bottom Bleed */}
+      <div className="pointer-events-none absolute -bottom-24 left-0 right-0 h-24 bg-white/95 dark:bg-slate-950/95" />
+      <div className="relative z-10 mx-auto flex max-w-md items-center justify-around">
         {/* 1. Beranda (Katalog Gadget yang kini berfungsi sebagai Beranda utama di mode mobile) */}
         <Link
           href="/gadget"

@@ -121,12 +121,15 @@ export function MobileCatalogView({
     })
 
     // Interleave left column:
-    // Place ads at staggered even product intervals (after product 0, 2, 4, 6...)
-    // Each ad is separated by 2 products, ensuring no adjacent stacking
+    // Place first ad after 2 products (at pIdx === 1, after prod 0 & 2)
+    // ensuring top 2 rows of products are neatly aligned
     let lAdIdx = 0
     leftProds.forEach((prod, pIdx) => {
       left.push({ type: 'product', data: prod })
-      if (pIdx % 2 === 0 && lAdIdx < leftAds.length) {
+      if (
+        (pIdx === 1 || (pIdx > 1 && (pIdx - 1) % 3 === 0)) &&
+        lAdIdx < leftAds.length
+      ) {
         left.push({ type: 'ad', data: leftAds[lAdIdx++] })
       }
     })
@@ -137,12 +140,15 @@ export function MobileCatalogView({
     }
 
     // Interleave right column:
-    // Place ads at staggered odd product intervals (after product 1, 3, 5, 7...)
-    // Perfectly alternates with left column, ensuring ads are NEVER horizontally side-by-side
+    // Place right ad after 3 products (at pIdx === 2, after prod 1, 3, 5)
+    // ensuring ads alternate seamlessly between left and right without horizontal collision
     let rAdIdx = 0
     rightProds.forEach((prod, pIdx) => {
       right.push({ type: 'product', data: prod })
-      if (pIdx % 2 === 1 && rAdIdx < rightAds.length) {
+      if (
+        (pIdx === 2 || (pIdx > 2 && (pIdx - 2) % 3 === 0)) &&
+        rAdIdx < rightAds.length
+      ) {
         right.push({ type: 'ad', data: rightAds[rAdIdx++] })
       }
     })
@@ -278,92 +284,96 @@ export function MobileCatalogView({
     return (
       <div
         key={item.id}
-        className="shadow-xs relative flex flex-col justify-between rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+        className="shadow-xs relative flex h-[305px] min-h-[305px] flex-col justify-between rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
       >
-        <Link href={`/gadget/${item.id}`} className="block">
-          {/* Dynamic Resolution Image Box (No Cropping, Natural Height) */}
-          <div className="relative w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800">
-            <img
-              src={imgSrc}
-              alt={item.name}
-              loading="lazy"
-              onError={(e) => {
-                ;(e.currentTarget as HTMLImageElement).src =
-                  'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
-              }}
-              className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
-            />
-
-            {/* Condition Badge (Top Left) */}
-            <span
-              className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
-            >
-              <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
-              <span>{badge.label}</span>
-            </span>
-
-            {/* Wishlist Button (Top Right) */}
-            <button
-              type="button"
-              onClick={(e) => toggleWishlist(item, e)}
-              className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
-              aria-label="Wishlist"
-            >
-              <Heart
-                className={`h-3.5 w-3.5 transition-colors ${
-                  isWishlisted
-                    ? 'fill-rose-500 text-rose-500'
-                    : 'text-slate-400'
-                }`}
+        <Link
+          href={`/gadget/${item.id}`}
+          className="flex h-full flex-col justify-between"
+        >
+          <div>
+            {/* Aspect-Square Image Box (E-Commerce Standard 1:1, Uniform Height) */}
+            <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 p-2 dark:border-slate-800/80 dark:bg-slate-800/60">
+              <img
+                src={imgSrc}
+                alt={item.name}
+                loading="lazy"
+                onError={(e) => {
+                  ;(e.currentTarget as HTMLImageElement).src =
+                    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+                }}
+                className="h-full w-full object-contain transition-transform duration-300 hover:scale-105"
               />
-            </button>
-          </div>
 
-          {/* Meta Section */}
-          <div className="mt-2 space-y-1">
-            {/* Rating & Review Count */}
-            <div className="flex items-center gap-1">
-              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-              <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
-                {(item.rating || 5.0).toFixed(1)}
+              {/* Condition Badge (Top Left) */}
+              <span
+                className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
+              >
+                <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
+                <span>{badge.label}</span>
               </span>
-              <span className="text-[10px] font-medium text-slate-400">
-                ({item.totalReview ?? 0})
-              </span>
+
+              {/* Wishlist Button (Top Right) */}
+              <button
+                type="button"
+                onClick={(e) => toggleWishlist(item, e)}
+                className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
+                aria-label="Wishlist"
+              >
+                <Heart
+                  className={`h-3.5 w-3.5 transition-colors ${
+                    isWishlisted
+                      ? 'fill-rose-500 text-rose-500'
+                      : 'text-slate-400'
+                  }`}
+                />
+              </button>
             </div>
 
-            {/* Product Name */}
-            <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
-              {item.name}
-            </h3>
-
-            {/* Feature Perks Pills */}
-            <div className="flex flex-wrap items-center gap-1 pt-0.5">
-              <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                Garansi 30 Hari
-              </span>
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                Bonus 3-in-1
-              </span>
-            </div>
-
-            {/* Price Row & Sold Count */}
-            <div className="pt-1">
-              <span className="block text-sm font-black leading-tight text-orange-500">
-                Rp {item.price.toLocaleString('id-ID')}
-              </span>
-              <div className="mt-0.5 flex items-center justify-between text-[10px]">
-                <span className="leading-none text-slate-400 line-through">
-                  Rp {strikePrice.toLocaleString('id-ID')}
+            {/* Meta Section */}
+            <div className="mt-2 space-y-1">
+              {/* Rating & Review Count */}
+              <div className="flex items-center gap-1">
+                <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
+                  {(item.rating || 5.0).toFixed(1)}
                 </span>
-                <span className="font-medium text-slate-500 dark:text-slate-400">
-                  Terjual {item.soldCount ?? 0}
+                <span className="text-[10px] font-medium text-slate-400">
+                  ({item.totalReview ?? 0})
+                </span>
+              </div>
+
+              {/* Product Name (Consistent 2-Line Height) */}
+              <h3 className="line-clamp-2 h-8 text-xs font-bold leading-4 text-slate-950 dark:text-white">
+                {item.name}
+              </h3>
+
+              {/* Feature Perks Pills */}
+              <div className="flex min-h-[20px] flex-wrap items-center gap-1 pt-0.5">
+                <span className="shrink-0 whitespace-nowrap rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                  Garansi 30 Hari
+                </span>
+                <span className="shrink-0 whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  Bonus 3-in-1
                 </span>
               </div>
             </div>
+          </div>
 
+          {/* Price Row & Sold Count */}
+          <div className="pt-1.5">
+            <span className="block text-sm font-black leading-tight text-orange-500">
+              Rp {item.price.toLocaleString('id-ID')}
+            </span>
+            <div className="mt-0.5 flex items-center justify-between text-[10px]">
+              <span className="leading-none text-slate-400 line-through">
+                Rp {strikePrice.toLocaleString('id-ID')}
+              </span>
+              <span className="shrink-0 whitespace-nowrap font-medium text-slate-500 dark:text-slate-400">
+                Terjual {item.soldCount ?? 0}
+              </span>
+            </div>
             {/* Store Location */}
-            <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-1 truncate pt-1 text-[10px] text-slate-500 dark:text-slate-400">
               <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
               <span className="truncate">{storeCleanName}</span>
             </div>
@@ -413,7 +423,7 @@ export function MobileCatalogView({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari tipe iPhone, Galaxy, Xiaomi..."
-              className="shadow-2xs w-full rounded-2xl border border-slate-200/80 bg-slate-50/90 py-2.5 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:bg-slate-900"
+              className="shadow-2xs w-full rounded-2xl border border-slate-200/80 bg-slate-50/90 py-2.5 pl-9 pr-8 text-base font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:bg-slate-900 sm:text-xs"
             />
             {search && (
               <button
