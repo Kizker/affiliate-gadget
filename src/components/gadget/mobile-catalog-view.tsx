@@ -91,41 +91,73 @@ export function MobileCatalogView({
   const hasMore = visibleCount < gadgets.length
   const displayedGadgets = gadgets.slice(0, visibleCount)
 
-  // Distribute all active promoted ads dynamically & randomly across the 2-column masonry grid
-  const gridItems = useMemo(() => {
+  // Distribute items across the 2-column masonry waterfall
+  const { leftColumnItems, rightColumnItems } = useMemo(() => {
     const allAdsList = [...(promotedAds || [])]
     if (promotedAd && !allAdsList.some((a) => a.id === promotedAd.id)) {
       allAdsList.unshift(promotedAd)
     }
 
-    type GridItem =
-      | { type: 'product'; data: any }
-      | { type: 'ad'; data: InFeedAdData }
-    const result: GridItem[] = []
+    const left: Array<
+      { type: 'product'; data: any } | { type: 'ad'; data: InFeedAdData }
+    > = []
+    const right: Array<
+      { type: 'product'; data: any } | { type: 'ad'; data: InFeedAdData }
+    > = []
 
-    // Satu grid 2 kolom: baris kiri-kanan otomatis sejajar.
-    // Iklan pertama setelah 2 produk, lalu tiap 4 produk (jarak 5 sel)
-    // sehingga iklan berganti kolom & tidak pernah berdampingan.
-    let adIdx = 0
-    let sinceAd = 0
-    let nextGap = 2
-    displayedGadgets.forEach((prod) => {
-      result.push({ type: 'product', data: prod })
-      sinceAd++
-      if (sinceAd === nextGap && adIdx < allAdsList.length) {
-        result.push({ type: 'ad', data: allAdsList[adIdx++] })
-        sinceAd = 0
-        nextGap = 4
+    const leftProds = displayedGadgets.filter((_, idx) => idx % 2 === 0)
+    const rightProds = displayedGadgets.filter((_, idx) => idx % 2 === 1)
+
+    // Partition ads between left and right columns
+    const leftAds: InFeedAdData[] = []
+    const rightAds: InFeedAdData[] = []
+
+    allAdsList.forEach((ad, i) => {
+      if (i % 2 === 0) {
+        leftAds.push(ad)
+      } else {
+        rightAds.push(ad)
+      }
+    })
+
+    // Interleave left column:
+    // Place first ad after 2 products (at pIdx === 1, after prod 0 & 2)
+    let lAdIdx = 0
+    leftProds.forEach((prod, pIdx) => {
+      left.push({ type: 'product', data: prod })
+      if (
+        (pIdx === 1 || (pIdx > 1 && (pIdx - 1) % 3 === 0)) &&
+        lAdIdx < leftAds.length
+      ) {
+        left.push({ type: 'ad', data: leftAds[lAdIdx++] })
       }
     })
     if (!hasMore) {
-      while (adIdx < allAdsList.length) {
-        if (result[result.length - 1]?.type === 'ad') break
-        result.push({ type: 'ad', data: allAdsList[adIdx++] })
+      while (lAdIdx < leftAds.length) {
+        left.push({ type: 'ad', data: leftAds[lAdIdx++] })
       }
     }
 
-    return result
+    // Interleave right column:
+    // Place right ad after 3 products (at pIdx === 2, after prod 1, 3, 5)
+    // ensuring ads alternate seamlessly between left and right in the masonry flow
+    let rAdIdx = 0
+    rightProds.forEach((prod, pIdx) => {
+      right.push({ type: 'product', data: prod })
+      if (
+        (pIdx === 2 || (pIdx > 2 && (pIdx - 2) % 3 === 0)) &&
+        rAdIdx < rightAds.length
+      ) {
+        right.push({ type: 'ad', data: rightAds[rAdIdx++] })
+      }
+    })
+    if (!hasMore) {
+      while (rAdIdx < rightAds.length) {
+        right.push({ type: 'ad', data: rightAds[rAdIdx++] })
+      }
+    }
+
+    return { leftColumnItems: left, rightColumnItems: right }
   }, [displayedGadgets, promotedAds, promotedAd, hasMore])
 
   const loadMore = useCallback(() => {
@@ -508,18 +540,38 @@ export function MobileCatalogView({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 items-stretch gap-2.5">
-              {gridItems.map((item, idx) =>
-                item.type === 'product' ? (
-                  <div key={item.data.id || `p-${idx}`} className="min-w-0">
-                    {renderProductCard(item.data)}
-                  </div>
-                ) : (
-                  <div key={item.data.id || `ad-${idx}`} className="min-w-0">
-                    <InFeedStoreAdCard ad={item.data} />
-                  </div>
-                )
-              )}
+            <div className="grid grid-cols-2 items-start gap-2.5">
+              {/* Kolom Kiri */}
+              <div className="flex min-w-0 flex-col gap-2.5">
+                {leftColumnItems.map((item, idx) =>
+                  item.type === 'product' ? (
+                    <div key={item.data.id || `left-p-${idx}`}>
+                      {renderProductCard(item.data)}
+                    </div>
+                  ) : (
+                    <InFeedStoreAdCard
+                      key={item.data.id || `left-ad-${idx}`}
+                      ad={item.data}
+                    />
+                  )
+                )}
+              </div>
+
+              {/* Kolom Kanan */}
+              <div className="flex min-w-0 flex-col gap-2.5">
+                {rightColumnItems.map((item, idx) =>
+                  item.type === 'product' ? (
+                    <div key={item.data.id || `right-p-${idx}`}>
+                      {renderProductCard(item.data)}
+                    </div>
+                  ) : (
+                    <InFeedStoreAdCard
+                      key={item.data.id || `right-ad-${idx}`}
+                      ad={item.data}
+                    />
+                  )
+                )}
+              </div>
             </div>
 
             {/* Mobile Lazy Loading Sentinel & Load More Indicator */}
