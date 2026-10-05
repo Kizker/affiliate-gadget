@@ -44,10 +44,11 @@ describe('iPhone Safari Fixes Suite (Bottom Nav, Auto-Zoom, Uniform Grid)', () =
     expect(navContent).toContain('-bottom-24')
   })
 
-  it('4. should use uniform 1:1 aspect-square image boxes and 2-column masonry waterfall in mobile catalog', () => {
+  it('4. should use natural height image boxes and 2-column masonry waterfall without warranty badges in mobile catalog', () => {
     const catalog = fs.readFileSync(mobileCatalogViewPath, 'utf-8')
-    expect(catalog).toContain('aspect-square w-full')
-    expect(catalog).toContain('object-contain')
+    expect(catalog).toContain('h-auto w-full max-w-full')
+    expect(catalog).not.toContain('Garansi 30 Hari')
+    expect(catalog).not.toContain('Bonus 3-in-1')
     expect(catalog).toContain('grid grid-cols-2 items-start')
     expect(catalog).toContain('leftColumnItems')
     expect(catalog).toContain('rightColumnItems')

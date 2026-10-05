@@ -120,11 +120,7 @@ export function InFeedStoreAdCard({
               <p className="line-clamp-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 sm:text-xs">
                 {ad.subtitle}
               </p>
-            ) : (
-              <p className="line-clamp-1 text-[10px] font-medium text-slate-400 sm:text-xs">
-                Garansi toko 30 hari tukar unit baru
-              </p>
-            )}
+            ) : null}
 
             {/* Price Row */}
             <div className="flex items-baseline justify-between gap-1 pt-0.5">

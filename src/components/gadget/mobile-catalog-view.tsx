@@ -283,15 +283,15 @@ export function MobileCatalogView({
     return (
       <div
         key={item.id}
-        className="shadow-xs relative flex w-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+        className="shadow-xs relative flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
       >
         <Link
           href={`/gadget/${item.id}`}
-          className="flex w-full flex-col justify-between gap-1.5"
+          className="flex w-full flex-col gap-1.5"
         >
           <div>
-            {/* Aspect-Square Image Box (E-Commerce Standard 1:1, Uniform Height) */}
-            <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 p-2 dark:border-slate-800/80 dark:bg-slate-800/60">
+            {/* Natural Aspect Ratio Image Box (Dynamic height based on uploaded photo) */}
+            <div className="relative w-full max-w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800/60">
               <img
                 src={imgSrc}
                 alt={item.name}
@@ -300,7 +300,7 @@ export function MobileCatalogView({
                   ;(e.currentTarget as HTMLImageElement).src =
                     'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
                 }}
-                className="h-full w-full object-contain transition-transform duration-300 hover:scale-105"
+                className="h-auto w-full max-w-full object-cover transition-transform duration-300 hover:scale-105"
               />
 
               {/* Condition Badge (Top Left) */}
@@ -341,20 +341,10 @@ export function MobileCatalogView({
                 </span>
               </div>
 
-              {/* Product Name (Consistent 2-Line Height) */}
-              <h3 className="line-clamp-2 h-8 text-xs font-bold leading-4 text-slate-950 dark:text-white">
+              {/* Product Name (Natural Height, not forced) */}
+              <h3 className="line-clamp-2 text-xs font-bold leading-4 text-slate-950 dark:text-white">
                 {item.name}
               </h3>
-
-              {/* Feature Perks Pills */}
-              <div className="flex min-h-[20px] flex-wrap items-center gap-1 pt-0.5">
-                <span className="shrink-0 whitespace-nowrap rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                  Garansi 30 Hari
-                </span>
-                <span className="shrink-0 whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  Bonus 3-in-1
-                </span>
-              </div>
             </div>
           </div>
 
