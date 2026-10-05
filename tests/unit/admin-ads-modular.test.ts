@@ -241,8 +241,9 @@ describe('Admin Ads Modular Decomposition', () => {
 
       // 2. Anti-stacking 1-line header & Cek Link button
       expect(content).toContain(
-        'truncate text-sm sm:text-base font-extrabold text-slate-950'
+        'truncate text-sm font-extrabold text-slate-950'
       )
+      expect(content).toContain('Ganti Media Banner / Video')
       expect(content).toContain(
         'whitespace-nowrap rounded-lg border border-orange-200/80'
       )
