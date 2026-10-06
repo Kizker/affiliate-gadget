@@ -52,7 +52,12 @@
 - **Port Tersedia:** Port 3000 (Next.js Web App) & Port 3001 (Standalone WebSocket Server)
 - **Mode Eksekusi:** `pnpm dev` (menjalankan Next.js port 3000 dan WS Server port 3001 secara paralel via `concurrently`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
-- **Unit Tests:** 105 test files, 809 tests lulus 100% (`pnpm test:unit` pass)
+- **Unit Tests:** 106 test files, 811 tests lulus 100% (`pnpm test:unit` pass)
+
+- **2026-10-06 (Konfigurasi Global Anti-Tumpuk Toaster Sonner: Limit 1 Toast & Eliminasi Card Stacking):**
+  - **1. Konfigurasi Global SonnerToaster ([`src/app/layout.tsx`](file:///src/app/layout.tsx)):** Menetapkan atribut `visibleToasts={1}` dan `expand={false}` pada `<SonnerToaster />` di root App Router. Mencegah efek tumpukan kartu (_stacked cards deck_) saat customer memicu notifikasi berturut-turut (tambah keranjang, wishlist, salin resi/pesanan, kupon checkout, ulasan bintang, dll.), sehingga notifikasi lama langsung digantikan notifikasi baru secara bersih tanpa menumpuk di desktop maupun mobile.
+  - **2. Unit Testing Suite ([`tests/unit/toaster-single-notification.test.ts`](file:///tests/unit/toaster-single-notification.test.ts)):** Memverifikasi konfigurasi global `visibleToasts={1}`, `expand={false}`, dan batasan single-toast pada seluruh ekosistem aplikasi.
+  - **3. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 106 test files dengan 811 tests lulus 100% (`pnpm test:unit` pass).
 
 - **2026-10-05 (Perbaikan Kompatibilitas iPhone Safari Asli: Eliminasi Tumpang Tindih Kartu Masonry 2 Kolom):**
   - **1. Eliminasi Safari Flex Height Collapse ([`src/components/gadget/mobile-catalog-view.tsx`](file:///src/components/gadget/mobile-catalog-view.tsx)):** Menghapus kelas `h-full` pada container kartu produk (`renderProductCard`) dan elemen `<Link>`. Di WebKit Safari iOS, `height: 100%` di dalam item flex tanpa tinggi induk definitif menyebabkan container mengecil (collapse) sehingga baris harga meluap keluar dari batas kartu dan menimpa kartu di bawahnya.

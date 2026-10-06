@@ -59,7 +59,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <SessionProvider>{children}</SessionProvider>
         <Toaster />
-        <SonnerToaster position="top-right" />
+        <SonnerToaster position="top-right" visibleToasts={1} expand={false} />
       </body>
     </html>
   )
