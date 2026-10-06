@@ -512,9 +512,9 @@ export function MobileShopeeCheckoutView({
               }`}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-start gap-2">
                   <div
-                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
                       courier === 'GOJEK' && isGojekAvailable
                         ? 'border-emerald-600 bg-emerald-600 text-white'
                         : 'border-slate-300 dark:border-slate-600'
@@ -524,23 +524,29 @@ export function MobileShopeeCheckoutView({
                       <Check className="h-2.5 w-2.5 stroke-[3]" />
                     )}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">
                         Gojek Instant Kurir
                       </span>
                       {shippingDistanceKm !== null && (
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        <span
+                          className={`inline-flex shrink-0 items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[9.5px] font-bold leading-none ${
+                            isGojekAvailable
+                              ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                          }`}
+                        >
                           {shippingDistanceKm.toFixed(1)} km
                         </span>
                       )}
                       {!isGojekAvailable && (
-                        <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                        <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded bg-rose-100 px-1.5 py-0.5 text-[9.5px] font-bold leading-none text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
                           &gt; 40 km
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
                       {isGojekAvailable
                         ? 'Langsung Sampai (Maks 1-2 Jam)'
                         : 'Di luar jangkauan (maks 40 km). Gunakan JNE.'}
@@ -548,7 +554,7 @@ export function MobileShopeeCheckoutView({
                   </div>
                 </div>
                 <span
-                  className={`text-xs font-bold ${
+                  className={`shrink-0 text-right text-xs font-bold ${
                     isGojekAvailable
                       ? 'text-slate-900 dark:text-white'
                       : 'text-slate-400 line-through'

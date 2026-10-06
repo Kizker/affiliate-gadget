@@ -900,16 +900,6 @@ function CustomerChatContent() {
       (paramMitraId && sentContextsRef.current.has(paramMitraId))
 
     if (!isAlreadySent) {
-      if (paramProductId || resolvedProductName) {
-        setActiveProductContext({
-          productId: paramProductId || undefined,
-          productName: resolvedProductName,
-          productPrice: resolvedProductPrice,
-          productImage: resolvedProductImage,
-          variantName: resolvedVariantName,
-        })
-      }
-
       if (paramOrderId) {
         setActiveOrderContext({
           orderId: paramOrderId,
@@ -925,15 +915,27 @@ function CustomerChatContent() {
               }
             : null,
         })
-      }
-
-      if (paramMitraId || resolvedMitraName) {
+        setActiveProductContext(null)
+        setActiveServiceContext(null)
+      } else if (paramMitraId || resolvedMitraName) {
         setActiveServiceContext({
           mitraId: paramMitraId || '',
           mitraName: resolvedMitraName || 'Mitra Servis',
           mitraCity: resolvedMitraCity,
           mitraImage: resolvedMitraImage,
         })
+        setActiveOrderContext(null)
+        setActiveProductContext(null)
+      } else if (paramProductId || resolvedProductName) {
+        setActiveProductContext({
+          productId: paramProductId || undefined,
+          productName: resolvedProductName,
+          productPrice: resolvedProductPrice,
+          productImage: resolvedProductImage,
+          variantName: resolvedVariantName,
+        })
+        setActiveOrderContext(null)
+        setActiveServiceContext(null)
       }
     }
 
@@ -2599,204 +2601,8 @@ function CustomerChatContent() {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* Contextual Pinned Product Bar if customer entered from a product or room has active product context */}
-                  {activeProductContext && (
-                    <div className="flex items-center justify-between gap-3 border-t border-orange-100 bg-orange-50/80 px-4 py-2.5 dark:border-orange-900/40 dark:bg-orange-950/30">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        {activeProductContext.productImage ? (
-                          <img
-                            src={activeProductContext.productImage}
-                            alt=""
-                            className="h-10 w-10 shrink-0 rounded-xl border border-orange-200/80 bg-white object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/50">
-                            <Package className="h-5 w-5 text-orange-600" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-black uppercase text-orange-600 dark:text-orange-400">
-                              Membahas:
-                            </span>
-                            <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
-                              {activeProductContext.productName}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px]">
-                            {activeProductContext.variantName && (
-                              <span className="truncate text-slate-500 dark:text-slate-400">
-                                Varian: {activeProductContext.variantName}
-                              </span>
-                            )}
-                            {activeProductContext.productPrice !==
-                              undefined && (
-                              <span className="font-mono font-bold text-orange-600 dark:text-orange-400">
-                                Rp{' '}
-                                {activeProductContext.productPrice.toLocaleString(
-                                  'id-ID'
-                                )}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMessageInput(
-                              `Halo admin, apakah unit ${activeProductContext.productName}${activeProductContext.variantName ? ` (${activeProductContext.variantName})` : ''} ini masih ready stok?`
-                            )
-                          }}
-                          className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-orange-200 bg-white px-3 py-1 text-[10.5px] font-bold text-orange-600 transition hover:bg-orange-50 dark:border-orange-900 dark:bg-slate-900 dark:text-orange-300 sm:inline-flex"
-                        >
-                          <span>Tanya Stok</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveProductContext(null)}
-                          className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
-                          title="Tutup ringkasan"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Contextual Pinned Order Bar if customer entered from an order */}
-                  {activeOrderContext && (
-                    <div className="flex items-center justify-between gap-3 border-t border-blue-100 bg-blue-50/80 px-4 py-2.5 dark:border-blue-900/40 dark:bg-blue-950/30">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        {activeOrderContext.productImage ? (
-                          <img
-                            src={activeOrderContext.productImage}
-                            alt=""
-                            className="h-10 w-10 shrink-0 rounded-xl border border-blue-200/80 bg-white object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/50">
-                            <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400">
-                              Membahas Pesanan:
-                            </span>
-                            <span className="truncate font-mono text-xs font-bold text-slate-900 dark:text-white">
-                              #{activeOrderContext.orderNumber}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px]">
-                            {activeOrderContext.productName && (
-                              <span className="truncate text-slate-500 dark:text-slate-400">
-                                {activeOrderContext.productName}
-                              </span>
-                            )}
-                            {activeOrderContext.total !== undefined && (
-                              <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
-                                Rp{' '}
-                                {activeOrderContext.total.toLocaleString(
-                                  'id-ID'
-                                )}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMessageInput(
-                              `Halo admin, saya ingin menanyakan tentang pesanan saya #${activeOrderContext.orderNumber}`
-                            )
-                          }}
-                          className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-blue-200 bg-white px-3 py-1 text-[10.5px] font-bold text-blue-600 transition hover:bg-blue-50 dark:border-blue-900 dark:bg-slate-900 dark:text-blue-300 sm:inline-flex"
-                        >
-                          <Send className="h-3 w-3" />
-                          <span>Tanyakan Pesanan</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveOrderContext(null)}
-                          className="rounded-full p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
-                          title="Tutup Konteks"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Contextual Pinned Service / Mitra Booking Bar */}
-                  {activeServiceContext && (
-                    <div className="flex items-center justify-between gap-3 border-t border-emerald-100 bg-emerald-50/80 px-4 py-2.5 dark:border-emerald-900/40 dark:bg-emerald-950/30">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        {activeServiceContext.mitraImage ? (
-                          <img
-                            src={activeServiceContext.mitraImage}
-                            alt=""
-                            className="h-10 w-10 shrink-0 rounded-xl border border-emerald-200/80 bg-white object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
-                            <Wrench className="h-5 w-5 text-emerald-600" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400">
-                              Konsultasi Servis:
-                            </span>
-                            <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
-                              {activeServiceContext.mitraName}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px]">
-                            {activeServiceContext.mitraCity && (
-                              <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                                <MapPin className="h-3 w-3 text-slate-400" />
-                                {activeServiceContext.mitraCity}
-                              </span>
-                            )}
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                              • Booking & Estimasi Servis
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMessageInput(
-                              `Halo teknisi ${activeServiceContext.mitraName}, saya ingin konsultasi dan tanya estimasi pengerjaan servis gadget saya.`
-                            )
-                          }}
-                          className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10.5px] font-bold text-emerald-600 transition hover:bg-emerald-50 dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-300 sm:inline-flex"
-                        >
-                          <span>Template Tanya</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveServiceContext(null)}
-                          className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
-                          title="Tutup ringkasan"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Contextual Pinned Order / Return Bar if customer entered from an order/return */}
-                  {activeOrderContext && (
+                  {/* Single Mutually Exclusive Context Bar above message input (Order > Service > Product) */}
+                  {activeOrderContext ? (
                     <div
                       className={`flex items-center justify-between gap-3 border-t px-4 py-2.5 ${
                         activeOrderContext.returnRequest
@@ -2929,7 +2735,130 @@ function CustomerChatContent() {
                         </button>
                       </div>
                     </div>
-                  )}
+                  ) : activeServiceContext ? (
+                    <div className="flex items-center justify-between gap-3 border-t border-emerald-100 bg-emerald-50/80 px-4 py-2.5 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        {activeServiceContext.mitraImage ? (
+                          <img
+                            src={activeServiceContext.mitraImage}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-xl border border-emerald-200/80 bg-white object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
+                            <Wrench className="h-5 w-5 text-emerald-600" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400">
+                              Konsultasi Servis:
+                            </span>
+                            <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                              {activeServiceContext.mitraName}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px]">
+                            {activeServiceContext.mitraCity && (
+                              <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                                <MapPin className="h-3 w-3 text-slate-400" />
+                                {activeServiceContext.mitraCity}
+                              </span>
+                            )}
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                              • Booking & Estimasi Servis
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMessageInput(
+                              `Halo teknisi ${activeServiceContext.mitraName}, saya ingin konsultasi dan tanya estimasi pengerjaan servis gadget saya.`
+                            )
+                          }}
+                          className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10.5px] font-bold text-emerald-600 transition hover:bg-emerald-50 dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-300 sm:inline-flex"
+                        >
+                          <span>Template Tanya</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveServiceContext(null)}
+                          className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+                          title="Tutup ringkasan"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : activeProductContext ? (
+                    <div className="flex items-center justify-between gap-3 border-t border-orange-100 bg-orange-50/80 px-4 py-2.5 dark:border-orange-900/40 dark:bg-orange-950/30">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        {activeProductContext.productImage ? (
+                          <img
+                            src={activeProductContext.productImage}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-xl border border-orange-200/80 bg-white object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/50">
+                            <Package className="h-5 w-5 text-orange-600" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black uppercase text-orange-600 dark:text-orange-400">
+                              Membahas:
+                            </span>
+                            <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                              {activeProductContext.productName}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px]">
+                            {activeProductContext.variantName && (
+                              <span className="truncate text-slate-500 dark:text-slate-400">
+                                Varian: {activeProductContext.variantName}
+                              </span>
+                            )}
+                            {activeProductContext.productPrice !==
+                              undefined && (
+                              <span className="font-mono font-bold text-orange-600 dark:text-orange-400">
+                                Rp{' '}
+                                {activeProductContext.productPrice.toLocaleString(
+                                  'id-ID'
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMessageInput(
+                              `Halo admin, apakah unit ${activeProductContext.productName}${activeProductContext.variantName ? ` (${activeProductContext.variantName})` : ''} ini masih ready stok?`
+                            )
+                          }}
+                          className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-orange-200 bg-white px-3 py-1 text-[10.5px] font-bold text-orange-600 transition hover:bg-orange-50 dark:border-orange-900 dark:bg-slate-900 dark:text-orange-300 sm:inline-flex"
+                        >
+                          <span>Tanya Stok</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveProductContext(null)}
+                          className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+                          title="Tutup ringkasan"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
 
                   {/* Bottom Message Input Bar */}
                   <div className="shrink-0 border-t border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-3.5">

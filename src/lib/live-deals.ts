@@ -81,9 +81,13 @@ export function createLiveDeal(params: {
 }): LiveDeal {
   const deals = loadDeals()
 
-  // Nonaktifkan deal sebelumnya pada stream ini jika ada
+  // Nonaktifkan deal sebelumnya untuk produk yang sama pada stream ini jika ada
   for (const existing of deals.values()) {
-    if (existing.streamId === params.streamId && existing.isActive) {
+    if (
+      existing.streamId === params.streamId &&
+      existing.productId === params.productId &&
+      existing.isActive
+    ) {
       existing.isActive = false
     }
   }
@@ -189,12 +193,34 @@ export function consumeDealToken(
 }
 
 /**
- * Dapatkan deal aktif saat ini untuk live stream tertentu
+ * Dapatkan semua deal aktif saat ini untuk live stream tertentu
  */
-export function getActiveDealForStream(streamId: string): LiveDeal | null {
+export function getActiveDealsForStream(streamId: string): LiveDeal[] {
   const deals = loadDeals()
+  const list: LiveDeal[] = []
   for (const deal of deals.values()) {
     if (deal.streamId === streamId && deal.isActive && !deal.isUsed) {
+      list.push(deal)
+    }
+  }
+  return list
+}
+
+/**
+ * Dapatkan deal aktif saat ini untuk live stream tertentu (opsional berdasarkan productId)
+ */
+export function getActiveDealForStream(
+  streamId: string,
+  productId?: string
+): LiveDeal | null {
+  const deals = loadDeals()
+  for (const deal of deals.values()) {
+    if (
+      deal.streamId === streamId &&
+      deal.isActive &&
+      !deal.isUsed &&
+      (!productId || deal.productId === productId)
+    ) {
       return deal
     }
   }

@@ -519,10 +519,10 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
           {error || 'Tautan siaran tidak valid atau sudah kadaluarsa'}
         </p>
         <Link
-          href="/live"
+          href="/"
           className="inline-flex rounded-xl bg-orange-500 px-6 py-2.5 text-xs font-bold text-white transition-all hover:bg-orange-600"
         >
-          Lihat Semua Live Streaming
+          Kembali ke Beranda
         </Link>
       </div>
     )
@@ -544,10 +544,10 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             segera.
           </p>
           <Link
-            href="/gadget"
+            href="/"
             className="mt-4 rounded-xl bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-orange-600"
           >
-            Kunjungi Katalog Toko
+            Kembali ke Beranda
           </Link>
         </div>
       )
@@ -763,7 +763,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               )}
             </button>
             <Link
-              href="/live"
+              href="/"
               className="rounded-full border border-white/10 bg-black/50 p-2 text-white/90 backdrop-blur-md transition-all hover:bg-black/70 active:scale-90"
               title="Tutup Siaran"
             >

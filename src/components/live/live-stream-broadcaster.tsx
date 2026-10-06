@@ -405,6 +405,23 @@ function LiveKitStudioControls({
       } catch (err) {
         console.error('Error creating live deal:', err)
       }
+    } else {
+      // Periksa apakah produk ini sudah memiliki diskon khusus live yang dibuat saat persiapan setup
+      try {
+        const res = await fetch(`/api/live-streams/${stream.id}/deals`)
+        const json = await res.json()
+        const deals: any[] =
+          json.activeDeals || (json.activeDeal ? [json.activeDeal] : [])
+        const existing = deals.find(
+          (d: any) => d.productId === prod.id && d.isActive && !d.isUsed
+        )
+        if (existing) {
+          dealToken = existing.dealToken
+          customDiscount = existing.discountPrice
+        }
+      } catch (err) {
+        console.error('Error fetching existing setup deals:', err)
+      }
     }
 
     pinProduct({
@@ -1305,53 +1322,78 @@ function LiveKitStudioControls({
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center justify-between rounded-2xl border p-2 text-xs transition-all ${
+                    className={`flex flex-col rounded-2xl border p-2 text-xs transition-all ${
                       isPinned
                         ? 'border-orange-400 bg-orange-50/70 shadow-sm dark:border-orange-500/40 dark:bg-orange-950/20'
                         : 'border-slate-200/70 bg-slate-50/80 hover:bg-slate-100/80 dark:border-slate-800 dark:bg-slate-800/40'
                     }`}
                   >
-                    <div className="flex min-w-0 items-center gap-2 pr-2">
-                      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-700">
-                        {p.images[0] ? (
-                          <Image
-                            src={p.images[0]}
-                            alt={p.name}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <ShoppingBag className="m-auto h-4 w-4 text-slate-400" />
-                        )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex min-w-0 items-center gap-2 pr-2">
+                        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-700">
+                          {p.images[0] ? (
+                            <Image
+                              src={p.images[0]}
+                              alt={p.name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <ShoppingBag className="m-auto h-4 w-4 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="max-w-[130px] truncate font-semibold text-slate-800 dark:text-slate-100">
+                            {p.name}
+                          </p>
+                          <p className="text-[11px] font-bold text-orange-600 dark:text-orange-500">
+                            Rp {p.price.toLocaleString('id-ID')}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="max-w-[130px] truncate font-semibold text-slate-800 dark:text-slate-100">
-                          {p.name}
-                        </p>
-                        <p className="text-[11px] font-bold text-orange-600 dark:text-orange-500">
-                          Rp {p.price.toLocaleString('id-ID')}
-                        </p>
-                      </div>
+
+                      <button
+                        onClick={() => {
+                          const rawVal = discountInputs[p.id]?.replace(
+                            /\D/g,
+                            ''
+                          )
+                          const discountPrice = rawVal
+                            ? parseInt(rawVal, 10)
+                            : undefined
+                          handlePinProduct(p, discountPrice)
+                        }}
+                        disabled={isPinned}
+                        className={`flex cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-all ${
+                          isPinned
+                            ? 'cursor-default bg-orange-500 text-white shadow-sm'
+                            : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                        }`}
+                      >
+                        <Pin className="h-3 w-3" />
+                        {isPinned ? 'Tersemat' : 'Sematkan'}
+                      </button>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        const rawVal = discountInputs[p.id]?.replace(/\D/g, '')
-                        const discountPrice = rawVal
-                          ? parseInt(rawVal, 10)
-                          : undefined
-                        handlePinProduct(p, discountPrice)
-                      }}
-                      disabled={isPinned}
-                      className={`flex cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-all ${
-                        isPinned
-                          ? 'cursor-default bg-orange-500 text-white shadow-sm'
-                          : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                      }`}
-                    >
-                      <Pin className="h-3 w-3" />
-                      {isPinned ? 'Tersemat' : 'Sematkan'}
-                    </button>
+                    {!isPinned && (
+                      <div className="mt-1.5 flex items-center gap-1.5 border-t border-slate-200/60 pt-1.5 dark:border-slate-700/60">
+                        <span className="shrink-0 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                          Diskon (Rp):
+                        </span>
+                        <input
+                          type="number"
+                          value={discountInputs[p.id] || ''}
+                          onChange={(e) =>
+                            setDiscountInputs((prev) => ({
+                              ...prev,
+                              [p.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="Opsional diskon live"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[10.5px] text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        />
+                      </div>
+                    )}
                   </div>
                 )
               })
@@ -1371,6 +1413,9 @@ export function LiveStreamBroadcaster() {
   const [activeStream, setActiveStream] = useState<LiveStreamData | null>(null)
   const [products, setProducts] = useState<StoreProduct[]>([])
   const [featuredProductIds, setFeaturedProductIds] = useState<string[]>([])
+  const [setupDiscounts, setSetupDiscounts] = useState<Record<string, string>>(
+    {}
+  )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -1444,6 +1489,33 @@ export function LiveStreamBroadcaster() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ featuredProductIds }),
         })
+
+        // Buat diskon khusus live untuk produk yang diberikan diskon spesial saat persiapan setup
+        for (const prodId of featuredProductIds) {
+          const discountRaw = setupDiscounts[prodId]?.replace(/\D/g, '')
+          const prodObj = products.find((p) => p.id === prodId)
+          if (discountRaw && prodObj) {
+            const discPrice = parseInt(discountRaw, 10)
+            if (discPrice > 0 && discPrice < prodObj.price) {
+              try {
+                await fetch(`/api/live-streams/${json.data.id}/deals`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    productId: prodObj.id,
+                    productTitle: prodObj.name,
+                    productImage: prodObj.images[0] || '',
+                    productSlug: prodObj.id,
+                    originalPrice: prodObj.price,
+                    discountPrice: discPrice,
+                  }),
+                })
+              } catch (dealErr) {
+                console.error('Error creating setup deal:', dealErr)
+              }
+            }
+          }
+        }
       }
 
       // Activate stream to LIVE status
@@ -1644,50 +1716,78 @@ export function LiveStreamBroadcaster() {
                 return (
                   <div
                     key={p.id}
-                    onClick={() => {
-                      if (isSelected) {
-                        setFeaturedProductIds(
-                          featuredProductIds.filter((id) => id !== p.id)
-                        )
-                      } else if (featuredProductIds.length < 5) {
-                        setFeaturedProductIds([...featuredProductIds, p.id])
-                      }
-                    }}
-                    className={`flex cursor-pointer items-center justify-between rounded-xl p-2.5 transition-all ${
+                    className={`flex flex-col rounded-xl p-2.5 transition-all ${
                       isSelected
                         ? 'shadow-2xs border border-slate-900 bg-white text-slate-900 dark:border-white dark:bg-slate-800 dark:text-white'
                         : 'border border-transparent bg-white/70 text-slate-700 hover:bg-white dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-900'
                     }`}
                   >
-                    <div className="flex min-w-0 items-center gap-3 pr-2">
-                      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                        {p.images[0] && (
-                          <Image
-                            src={p.images[0]}
-                            alt={p.name}
-                            fill
-                            className="object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
-                          {p.name}
-                        </p>
-                        <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                          Rp {p.price.toLocaleString('id-ID')}
-                        </p>
-                      </div>
-                    </div>
                     <div
-                      className={`flex h-5 w-5 items-center justify-center rounded-md border text-xs transition-colors ${
-                        isSelected
-                          ? 'border-slate-900 bg-slate-900 font-bold text-white dark:border-white dark:bg-white dark:text-slate-950'
-                          : 'border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-800'
-                      }`}
+                      onClick={() => {
+                        if (isSelected) {
+                          setFeaturedProductIds(
+                            featuredProductIds.filter((id) => id !== p.id)
+                          )
+                        } else if (featuredProductIds.length < 5) {
+                          setFeaturedProductIds([...featuredProductIds, p.id])
+                        }
+                      }}
+                      className="flex cursor-pointer items-center justify-between"
                     >
-                      {isSelected ? '✓' : ''}
+                      <div className="flex min-w-0 items-center gap-3 pr-2">
+                        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+                          {p.images[0] && (
+                            <Image
+                              src={p.images[0]}
+                              alt={p.name}
+                              fill
+                              className="object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
+                            {p.name}
+                          </p>
+                          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                            Rp {p.price.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className={`flex h-5 w-5 items-center justify-center rounded-md border text-xs transition-colors ${
+                          isSelected
+                            ? 'border-slate-900 bg-slate-900 font-bold text-white dark:border-white dark:bg-white dark:text-slate-950'
+                            : 'border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-800'
+                        }`}
+                      >
+                        {isSelected ? '✓' : ''}
+                      </div>
                     </div>
+
+                    {/* Kolom Diskon Spesial Live untuk produk yang dipilih */}
+                    {isSelected && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-2.5 flex items-center gap-2 border-t border-slate-100 pt-2 dark:border-slate-700/60"
+                      >
+                        <span className="shrink-0 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                          Diskon Live (Rp):
+                        </span>
+                        <input
+                          type="number"
+                          value={setupDiscounts[p.id] || ''}
+                          onChange={(e) =>
+                            setSetupDiscounts((prev) => ({
+                              ...prev,
+                              [p.id]: e.target.value,
+                            }))
+                          }
+                          placeholder={`Kosongkan jika harga normal (Rp ${p.price.toLocaleString('id-ID')})`}
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        />
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -1736,12 +1836,12 @@ export function LiveStreamBroadcaster() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
-              href="/live"
+              href="/"
               target="_blank"
               className="shadow-2xs active:scale-98 dark:hover:bg-slate-750 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-              <span>Halaman Live Publik</span>
+              <span>Katalog Beranda Publik</span>
             </Link>
             <button
               onClick={() => setStep('setup')}

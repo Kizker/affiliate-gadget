@@ -1068,7 +1068,7 @@ function CheckoutContent() {
                             </span>
                             {shippingDistanceKm !== null && (
                               <span
-                                className={`rounded px-1.5 py-0.5 font-semibold ${
+                                className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 font-semibold leading-none ${
                                   isGojekAvailable
                                     ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                                     : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'

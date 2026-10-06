@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
-import { getActiveDealForStream } from '@/lib/live-deals'
+import {
+  getActiveDealForStream,
+  getActiveDealsForStream,
+} from '@/lib/live-deals'
 
 // GET /api/live-streams/[id] — Get single live stream detail with featured products
 export async function GET(
@@ -60,11 +63,32 @@ export async function GET(
       })
     }
 
+    const activeDeals = getActiveDealsForStream(id)
     const activeDeal = getActiveDealForStream(id)
+
+    const enrichedFeaturedProducts = featuredProducts.map((p) => {
+      const dealForProd = activeDeals.find((d) => d.productId === p.id)
+      if (dealForProd) {
+        return {
+          ...p,
+          liveDeal: {
+            dealToken: dealForProd.dealToken,
+            discountPrice: dealForProd.discountPrice,
+            originalPrice: dealForProd.originalPrice,
+          },
+        }
+      }
+      return p
+    })
 
     return NextResponse.json({
       success: true,
-      data: { ...stream, featuredProducts, activeDeal },
+      data: {
+        ...stream,
+        featuredProducts: enrichedFeaturedProducts,
+        activeDeal,
+        activeDeals,
+      },
     })
   } catch (error) {
     console.error('Error fetching live stream:', error)

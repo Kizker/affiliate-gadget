@@ -6,6 +6,7 @@ import {
   deactivateStreamDeals,
   verifyDealToken,
   getActiveDealForStream,
+  getActiveDealsForStream,
 } from '@/lib/live-deals'
 
 /**
@@ -32,9 +33,11 @@ export async function GET(
 
   // Jika tanpa token, ambil deal yang sedang aktif di stream ini
   const activeDeal = getActiveDealForStream(streamId)
+  const activeDeals = getActiveDealsForStream(streamId)
   return NextResponse.json({
     success: true,
     activeDeal,
+    activeDeals,
   })
 }
 
