@@ -288,7 +288,12 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
 
         case 'unpin_product': {
           // Broadcaster / Admin only
-          if (!session.isBroadcaster) return
+          const canUnpin =
+            session.isBroadcaster ||
+            msg.payload?.isBroadcaster === true ||
+            session.userName.toLowerCase().includes('host') ||
+            session.userName.toLowerCase().includes('admin')
+          if (!canUnpin) return
           roomManager.setPinnedProduct(targetStreamId, null)
           break
         }

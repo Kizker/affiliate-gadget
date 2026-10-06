@@ -131,9 +131,6 @@ export function MobileShopeeCheckoutView({
   const handleBuatPesanan = () => {
     if (!termsAccepted) {
       setTermsWarning(true)
-      toast.error(
-        'Harap centang persetujuan syarat garansi 30 hari & asuransi!'
-      )
       termsRef.current?.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
@@ -276,9 +273,7 @@ export function MobileShopeeCheckoutView({
         <div className="shadow-2xs space-y-3 rounded-2xl border border-slate-200/70 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900">
           {/* Header Toko Cabang PT */}
           <div className="flex items-center gap-1.5 border-b border-slate-100 pb-2.5 dark:border-slate-800">
-            <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-white">
-              Official
-            </span>
+            <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
             <span className="truncate text-xs font-bold text-slate-950 dark:text-white">
               {firstItemStore}
             </span>

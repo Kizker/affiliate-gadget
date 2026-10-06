@@ -905,7 +905,7 @@ export default function GadgetDetailPage() {
                                       fill
                                       sizes="44px"
                                       unoptimized
-                                      className="object-contain p-0.5"
+                                      className="object-cover"
                                     />
                                   </div>
                                 )}

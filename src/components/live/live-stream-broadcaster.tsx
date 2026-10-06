@@ -142,21 +142,73 @@ function LiveKitStudioControls({
     }
   }, [isMobile])
 
-  // Attach local video track to DOM element
+  // Attach local video track to DOM element otomatis saat track siap
   useEffect(() => {
-    if (!localParticipant || !videoElementRef.current) return
+    if (!localParticipant || !videoElementRef.current || !cameraActive) return
+    const videoEl = videoElementRef.current
 
-    const publication = localParticipant.getTrackPublication('camera' as any)
-    if (publication && publication.track) {
-      publication.track.attach(videoElementRef.current)
+    const tryAttach = () => {
+      if (!videoEl) return false
+      const publication =
+        localParticipant.getTrackPublication('camera' as any) ||
+        Array.from(localParticipant.trackPublications.values()).find(
+          (p) => p.source === 'camera' || p.kind === 'video'
+        )
+
+      if (publication && publication.track) {
+        try {
+          publication.track.attach(videoEl)
+          return true
+        } catch {
+          return false
+        }
+      }
+      return false
     }
+
+    // Coba pasang langsung
+    if (tryAttach()) return
+
+    // Pasang listener jika track sedang dipersiapkan/dipublikasikan
+    const onTrackPublished = () => {
+      tryAttach()
+    }
+
+    localParticipant.on('localTrackPublished' as any, onTrackPublished)
+    localParticipant.on('trackPublished' as any, onTrackPublished)
+    if (room) {
+      room.on('localTrackPublished' as any, onTrackPublished)
+    }
+
+    // Polling fallback singkat (setiap 150ms maks 5 detik)
+    const interval = setInterval(() => {
+      if (tryAttach()) {
+        clearInterval(interval)
+      }
+    }, 150)
+
+    const timeout = setTimeout(() => {
+      clearInterval(interval)
+    }, 5000)
 
     return () => {
-      if (publication && publication.track && videoElementRef.current) {
-        publication.track.detach(videoElementRef.current)
+      clearInterval(interval)
+      clearTimeout(timeout)
+      localParticipant.off('localTrackPublished' as any, onTrackPublished)
+      localParticipant.off('trackPublished' as any, onTrackPublished)
+      if (room) {
+        room.off('localTrackPublished' as any, onTrackPublished)
+      }
+      const publication = localParticipant.getTrackPublication('camera' as any)
+      if (publication && publication.track && videoEl) {
+        try {
+          publication.track.detach(videoEl)
+        } catch {
+          // Ignore detach error on unmount
+        }
       }
     }
-  }, [localParticipant, cameraActive, facingMode])
+  }, [localParticipant, room, cameraActive, facingMode])
 
   // WebSocket Chat & Interactions Hook for Host
   const {
@@ -362,7 +414,7 @@ function LiveKitStudioControls({
       productImage: prod.images[0] || '',
       productSlug: prod.id,
       originalPrice: prod.price,
-      discountPrice: dealToken ? customDiscount : undefined,
+      discountPrice: customDiscount || (dealToken ? customDiscount : undefined),
       dealToken,
     })
     setSelectedProductId(prod.id)
@@ -624,10 +676,9 @@ function LiveKitStudioControls({
           className="pointer-events-none relative z-30 mt-auto flex flex-col justify-end gap-2.5 p-3"
           style={{
             transform: `translateY(-${keyboardInset}px)`,
-            transition: 'transform 150ms ease-out',
             paddingBottom:
               keyboardInset > 0
-                ? 12
+                ? 10
                 : 'max(1.25rem, env(safe-area-inset-bottom, 16px))',
           }}
         >
@@ -752,8 +803,16 @@ function LiveKitStudioControls({
                 type="text"
                 value={hostInputText}
                 onChange={(e) => setHostInputText(e.target.value)}
+                onFocus={() => {
+                  if (typeof window !== 'undefined') {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+                  }
+                }}
                 placeholder="Balas komentar sebagai Host..."
                 enterKeyHint="send"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="sentences"
                 style={{ fontSize: 16 }}
                 className="w-full bg-transparent text-xs text-white placeholder-white/50 outline-none"
               />

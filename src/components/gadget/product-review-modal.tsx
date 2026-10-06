@@ -10,7 +10,6 @@ import {
   Loader2,
   Image as ImageIcon,
   Video,
-  UploadCloud,
   Trash2,
   Play,
   ShieldCheck,
@@ -68,16 +67,6 @@ const RATING_FEEDBACK: Record<
   },
 }
 
-const QUICK_TAGS = [
-  '⚡ Pengiriman Kilat',
-  '📦 Packing Kayu & Bubble Tebal',
-  '📱 Unit 100% Original Segel',
-  '🎁 Bonus 3-in-1 Lengkap',
-  '🔋 Baterai Health 100%',
-  '🛡️ Garansi Toko 30 Hari Aktif',
-  '💬 Respon CS Sangat Ramah',
-]
-
 export function ProductReviewModal({
   isOpen,
   onClose,
@@ -124,21 +113,6 @@ export function ProductReviewModal({
 
   const activeRating = hoveredRating || rating
   const currentFeedback = RATING_FEEDBACK[activeRating] || RATING_FEEDBACK[5]
-
-  const handleToggleTag = (tag: string) => {
-    if (comment.includes(tag)) {
-      setComment((prev) =>
-        prev
-          .replace(tag, '')
-          .replace(/,\s*,/g, ',')
-          .replace(/^,\s*/, '')
-          .replace(/,\s*$/, '')
-          .trim()
-      )
-    } else {
-      setComment((prev) => (prev ? `${prev}, ${tag}` : tag))
-    }
-  }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -348,32 +322,6 @@ export function ProductReviewModal({
             </div>
           </div>
 
-          {/* Quick Satisfaction Tags */}
-          <div>
-            <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Poin Kepuasan Produk (Pilih Cepat):
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {QUICK_TAGS.map((tag) => {
-                const isSelected = comment.includes(tag)
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => handleToggleTag(tag)}
-                    className={`cursor-pointer rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
-                      isSelected
-                        ? 'shadow-xs border-orange-500 bg-orange-500 text-white'
-                        : 'border-slate-200/80 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
           {/* Detailed Comment Input */}
           <div>
             <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -390,25 +338,13 @@ export function ProductReviewModal({
 
           {/* Photo & Video Attachment Section */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+            <div className="flex items-center">
+              <label className="flex items-center gap-1.5 whitespace-nowrap text-xs font-bold text-slate-700 dark:text-slate-300">
                 <span>Lampirkan Foto & Video Unit</span>
                 <span className="text-[11px] font-normal text-slate-400">
                   ({images.length}/5 foto, {videos.length}/2 video)
                 </span>
               </label>
-
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={
-                  uploading || (images.length >= 5 && videos.length >= 2)
-                }
-                className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <UploadCloud className="h-3.5 w-3.5" />
-                <span>+ Unggah Media</span>
-              </button>
             </div>
 
             <input

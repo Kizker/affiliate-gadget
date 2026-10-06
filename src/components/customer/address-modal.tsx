@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useSession } from 'next-auth/react'
 import {
   X,
   Home,
@@ -16,7 +17,9 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import GoogleMapsProvider from '@/components/maps/google-maps-provider'
-import AddressMapPicker from '@/components/maps/address-map-picker'
+import AddressMapPicker, {
+  GeocodeAddressData,
+} from '@/components/maps/address-map-picker'
 import {
   SearchableCombobox,
   ComboboxOption,
@@ -46,6 +49,8 @@ interface AddressModalProps {
   onClose: () => void
   onSuccess: () => void
   addressToEdit?: UserAddressItem | null
+  defaultRecipientName?: string
+  defaultPhone?: string
 }
 
 export function AddressModal({
@@ -53,10 +58,14 @@ export function AddressModal({
   onClose,
   onSuccess,
   addressToEdit,
+  defaultRecipientName,
+  defaultPhone,
 }: AddressModalProps) {
+  const { data: session } = useSession()
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const formContainerRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -302,8 +311,8 @@ export function AddressModal({
       setLongitude(addressToEdit.longitude || null)
       setIsDefault(addressToEdit.isDefault || false)
     } else {
-      setRecipientName('')
-      setPhone('')
+      setRecipientName(defaultRecipientName || session?.user?.name || '')
+      setPhone(defaultPhone || (session?.user as any)?.phone || '')
       setLabel('Rumah')
       setFullAddress('')
       setProvince('')
@@ -318,15 +327,92 @@ export function AddressModal({
       setSelectedCityId('')
       setSelectedDistrictId('')
     }
-  }, [addressToEdit, isOpen])
+  }, [addressToEdit, isOpen, defaultRecipientName, defaultPhone, session])
 
-  const handleLocationSelect = (lat: number, lng: number, addr?: string) => {
+  const handleLocationSelect = (
+    lat: number,
+    lng: number,
+    addrData?: string | GeocodeAddressData
+  ) => {
     setLatitude(lat)
     setLongitude(lng)
 
-    if (addr && !fullAddress) {
-      setFullAddress(addr)
+    // Pastikan Nama Penerima dan Telepon terisi jika masih kosong
+    if (!recipientName.trim()) {
+      const fallbackName = defaultRecipientName || session?.user?.name || ''
+      if (fallbackName) setRecipientName(fallbackName)
     }
+    if (!phone.trim()) {
+      const fallbackPhone = defaultPhone || (session?.user as any)?.phone || ''
+      if (fallbackPhone) setPhone(fallbackPhone)
+    }
+
+    if (!addrData) return
+
+    if (typeof addrData === 'string') {
+      setFullAddress(addrData)
+      return
+    }
+
+    // Otomatis isi kolom alamat di atas
+    if (addrData.fullAddress) {
+      setFullAddress(addrData.fullAddress)
+    }
+
+    if (addrData.province) {
+      const provQuery = addrData.province.toLowerCase().trim()
+      const matched =
+        provinceList.find((p) => p.name.toLowerCase() === provQuery) ||
+        provinceList.find(
+          (p) =>
+            p.name.toLowerCase().includes(provQuery) ||
+            provQuery.includes(p.name.toLowerCase())
+        )
+
+      if (matched) {
+        setProvince(matched.name)
+        if (matched.id) {
+          setSelectedProvinceId(matched.id)
+          fetchCities(matched.id)
+        }
+      } else {
+        setProvince(addrData.province)
+      }
+    }
+
+    if (addrData.city) {
+      setCity(addrData.city)
+    }
+
+    if (addrData.district) {
+      setDistrict(addrData.district)
+    }
+
+    if (addrData.village) {
+      setVillage(addrData.village)
+    }
+
+    if (addrData.postalCode) {
+      setPostalCode(addrData.postalCode)
+    } else if (addrData.city) {
+      for (const prov of INDONESIA_PROVINCES) {
+        const foundCity = prov.cities.find(
+          (c) =>
+            c.name.toLowerCase().includes(addrData.city!.toLowerCase()) ||
+            addrData.city!.toLowerCase().includes(c.name.toLowerCase())
+        )
+        if (foundCity?.postalCode) {
+          setPostalCode(foundCity.postalCode)
+          break
+        }
+      }
+    }
+
+    toast({
+      title: 'Lokasi & Alamat Terdeteksi!',
+      description:
+        addrData.fullAddress || 'Kolom alamat berhasil terisi otomatis.',
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -337,13 +423,15 @@ export function AddressModal({
         title: 'Nama penerima wajib diisi',
         variant: 'destructive',
       })
+      formContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     if (!phone.trim()) {
       toast({
-        title: 'Nomor telepon wajib diisi',
+        title: 'Nomor WhatsApp / telepon wajib diisi',
         variant: 'destructive',
       })
+      formContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     if (!fullAddress.trim()) {
@@ -351,6 +439,7 @@ export function AddressModal({
         title: 'Detail alamat wajib diisi',
         variant: 'destructive',
       })
+      formContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     if (!province.trim()) {
@@ -533,7 +622,9 @@ export function AddressModal({
 
           {/* 2. Scrollable Body: Balanced 2-Column Grid on Desktop */}
           <form
+            ref={formContainerRef}
             id="address-form"
+            noValidate
             onSubmit={handleSubmit}
             className="flex-1 overflow-y-auto p-5 sm:p-6"
           >
@@ -554,7 +645,6 @@ export function AddressModal({
                           value={recipientName}
                           onChange={(e) => setRecipientName(e.target.value)}
                           placeholder="Nama lengkap penerima"
-                          required
                           className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2 pl-9 pr-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                       </div>
@@ -571,7 +661,6 @@ export function AddressModal({
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="081234567890"
-                          required
                           className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2 pl-9 pr-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                         />
                       </div>
@@ -588,7 +677,6 @@ export function AddressModal({
                       value={fullAddress}
                       onChange={(e) => setFullAddress(e.target.value)}
                       rows={2}
-                      required
                       placeholder="Nama jalan, nomor rumah/gedung, blok/unit, RT/RW, patokan lokasi..."
                       className="focus:shadow-xs w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                     />
@@ -667,7 +755,6 @@ export function AddressModal({
                         onChange={(e) => setPostalCode(e.target.value)}
                         placeholder="Contoh: 12810"
                         maxLength={5}
-                        required
                         className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 px-3.5 py-2 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                       />
                     </div>

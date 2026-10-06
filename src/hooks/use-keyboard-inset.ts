@@ -16,15 +16,20 @@ export function useKeyboardInset(enabled = true) {
     }
 
     const vv = window.visualViewport
+    let rafId: number | null = null
+
     const update = () => {
-      const inset = Math.max(
-        0,
-        Math.round(window.innerHeight - vv.height - vv.offsetTop)
-      )
-      setState({
-        // Abaikan perubahan kecil (toolbar browser) agar tidak goyang
-        keyboardInset: inset > 80 ? inset : 0,
-        offsetTop: Math.max(0, Math.round(vv.offsetTop)),
+      if (rafId) cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        // Penurunan tinggi visual viewport menandakan adanya virtual keyboard
+        const rawDelta = window.innerHeight - vv.height
+        const hasKeyboard = rawDelta > 100
+        const inset = hasKeyboard ? Math.round(rawDelta) : 0
+
+        setState({
+          keyboardInset: inset,
+          offsetTop: Math.max(0, Math.round(vv.offsetTop)),
+        })
       })
     }
 
@@ -33,6 +38,7 @@ export function useKeyboardInset(enabled = true) {
     vv.addEventListener('scroll', update)
 
     return () => {
+      if (rafId) cancelAnimationFrame(rafId)
       vv.removeEventListener('resize', update)
       vv.removeEventListener('scroll', update)
     }

@@ -754,9 +754,69 @@ function CheckoutContent() {
             </div>
 
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
-              {/* Left Column: Logistics, Payment & Items (7 cols) */}
+              {/* Left Column: Items, Logistics & Payment (7 cols) */}
               <div className="space-y-4 lg:col-span-7">
-                {/* 1. Delivery Address & Courier Logistics */}
+                {/* 1. Items Preview (Produk yang Dipesan) */}
+                <div className="shadow-xs space-y-3 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+                    <h2 className="text-sm font-bold text-slate-950 dark:text-white">
+                      Produk yang Dipesan ({selectedItems.length})
+                    </h2>
+                    <Link
+                      href={isDirectBuy ? backHref : '/cart'}
+                      className="text-[11px] font-semibold text-orange-600 hover:underline"
+                    >
+                      {isDirectBuy ? 'Ubah Varian' : 'Ubah Keranjang'}
+                    </Link>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {selectedItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800">
+                          <Image
+                            src={item.image || '/placeholder.png'}
+                            alt={item.name}
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
+                            {item.name}
+                          </h3>
+                          <p className="text-[11px] text-slate-400">
+                            {item.quantity} unit × Rp{' '}
+                            {item.price.toLocaleString('id-ID')}
+                            {item.weightGram ? (
+                              <span className="ml-1.5 font-medium text-slate-500 dark:text-slate-400">
+                                •{' '}
+                                {item.weightGram >= 1000
+                                  ? `${(item.weightGram / 1000).toLocaleString('id-ID')} kg`
+                                  : `${item.weightGram}g`}{' '}
+                                / unit
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="text-xs font-bold tabular-nums text-slate-950 dark:text-white">
+                            Rp{' '}
+                            {(item.price * item.quantity).toLocaleString(
+                              'id-ID'
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Delivery Address & Courier Logistics */}
                 <div className="shadow-xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
                     <h2 className="flex items-center gap-2 text-sm font-bold text-slate-950 dark:text-white">
@@ -901,15 +961,6 @@ function CheckoutContent() {
                         <ChevronRight className="h-3 w-3" />
                       </Link>
                     </div>
-
-                    {/* AddressModal */}
-                    <AddressModal
-                      isOpen={isAddressModalOpen}
-                      onClose={() => setIsAddressModalOpen(false)}
-                      onSuccess={async () => {
-                        await fetchAddresses(true)
-                      }}
-                    />
 
                     <div>
                       <div className="mb-1.5 flex items-center justify-between">
@@ -1137,66 +1188,6 @@ function CheckoutContent() {
                         Otomatis & Terverifikasi
                       </span>
                     </div>
-                  </div>
-                </div>
-
-                {/* 3. Items Preview */}
-                <div className="shadow-xs space-y-3 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-                    <h2 className="text-sm font-bold text-slate-950 dark:text-white">
-                      Produk yang Dipesan ({selectedItems.length})
-                    </h2>
-                    <Link
-                      href="/cart"
-                      className="text-[11px] font-semibold text-orange-600 hover:underline"
-                    >
-                      Ubah Keranjang
-                    </Link>
-                  </div>
-
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {selectedItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
-                      >
-                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800">
-                          <Image
-                            src={item.image || '/placeholder.png'}
-                            alt={item.name}
-                            fill
-                            sizes="56px"
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
-                            {item.name}
-                          </h3>
-                          <p className="text-[11px] text-slate-400">
-                            {item.quantity} unit × Rp{' '}
-                            {item.price.toLocaleString('id-ID')}
-                            {item.weightGram ? (
-                              <span className="ml-1.5 font-medium text-slate-500 dark:text-slate-400">
-                                •{' '}
-                                {item.weightGram >= 1000
-                                  ? `${(item.weightGram / 1000).toLocaleString('id-ID')} kg`
-                                  : `${item.weightGram}g`}{' '}
-                                / unit
-                              </span>
-                            ) : null}
-                          </p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <span className="text-xs font-bold tabular-nums text-slate-950 dark:text-white">
-                            Rp{' '}
-                            {(item.price * item.quantity).toLocaleString(
-                              'id-ID'
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
               </div>
@@ -1484,6 +1475,18 @@ function CheckoutContent() {
         onSuccess={async () => {
           await fetchAddresses(true)
         }}
+        defaultRecipientName={
+          addresses.find((a) => a.id === selectedAddressId)?.recipientName ||
+          addresses[0]?.recipientName ||
+          session?.user?.name ||
+          ''
+        }
+        defaultPhone={
+          addresses.find((a) => a.id === selectedAddressId)?.phone ||
+          addresses[0]?.phone ||
+          (session?.user as any)?.phone ||
+          ''
+        }
       />
     </>
   )

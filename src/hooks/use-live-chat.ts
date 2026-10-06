@@ -89,6 +89,32 @@ export function useLiveChat({
     }
 
     loadHistory()
+
+    // 1b. Fetch active deal / pinned product from REST API
+    async function loadActiveDeal() {
+      try {
+        const res = await fetch(`/api/live-streams/${streamId}/deals`)
+        const json = await res.json()
+        if (!cancelled && json.success && json.activeDeal) {
+          const deal = json.activeDeal
+          setPinnedProduct({
+            productId: deal.productId,
+            productTitle: deal.productTitle,
+            productPrice: deal.originalPrice,
+            productImage: deal.productImage,
+            productSlug: deal.productSlug,
+            originalPrice: deal.originalPrice,
+            discountPrice: deal.discountPrice,
+            dealToken: deal.dealToken,
+          })
+        }
+      } catch {
+        // Fallback silently if active deal fetch fails
+      }
+    }
+
+    loadActiveDeal()
+
     return () => {
       cancelled = true
     }

@@ -607,7 +607,7 @@ export function ShopeeMobileProductDetail({
               return (
                 <div
                   key={imgUrl + idx}
-                  className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-2.5 sm:p-3"
+                  className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center overflow-hidden"
                 >
                   {isVid ? (
                     <div className="relative flex h-full w-full items-center justify-center bg-black/5 dark:bg-black/20">
@@ -632,14 +632,14 @@ export function ShopeeMobileProductDetail({
                       fill
                       priority={idx === 0}
                       unoptimized
-                      className="object-contain p-2 transition-all duration-300"
+                      className="object-cover transition-all duration-300"
                     />
                   )}
                 </div>
               )
             })
           ) : (
-            <div className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center p-2.5 sm:p-3">
+            <div className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center overflow-hidden">
               {isVideoMedia(selectedImage || product.images?.[0]) ? (
                 <div className="relative flex h-full w-full items-center justify-center bg-black/5 dark:bg-black/20">
                   <video
@@ -667,7 +667,7 @@ export function ShopeeMobileProductDetail({
                   fill
                   priority
                   unoptimized
-                  className="object-contain p-2"
+                  className="object-cover"
                 />
               )}
             </div>
@@ -701,12 +701,6 @@ export function ShopeeMobileProductDetail({
             </button>
           </>
         )}
-
-        {/* Subtle Warranty Badge on bottom-left */}
-        <div className="shadow-xs backdrop-blur-xs pointer-events-none absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-full border border-slate-200/80 bg-white/95 px-2.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
-          <ShieldCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-          <span>Garansi 30 Hari Tukar Unit</span>
-        </div>
 
         {/* Clean Slide Counter on bottom-right */}
         <div className="shadow-xs backdrop-blur-xs pointer-events-none absolute bottom-2 right-2 z-10 rounded-full border border-slate-200/60 bg-white/90 px-2 py-0.5 text-[9px] font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300">
@@ -830,7 +824,7 @@ export function ShopeeMobileProductDetail({
                       fill
                       sizes="32px"
                       unoptimized
-                      className="object-contain p-0.5"
+                      className="object-cover"
                     />
                   </div>
                   <div className="min-w-0 flex-1 pr-0.5">
@@ -1107,42 +1101,54 @@ export function ShopeeMobileProductDetail({
       </div>
 
       {/* 11. Deskripsi Produk */}
-      <div className="mt-1.5 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
-          Deskripsi & Catatan Unit
-        </h3>
-        <div
-          className={`text-xs leading-relaxed text-slate-600 dark:text-slate-300 ${
-            !isDescExpanded ? 'line-clamp-4' : ''
-          }`}
-        >
-          <p className="whitespace-pre-line">
-            {product.description ||
-              'Unit smartphone second original bergaransi toko fisik 30 hari tukar unit. Seluruh unit telah melalui uji fungsi komprehensif teknisi (layar, kamera, baterai, sinyal & IMEI bebas blokir), dan dilengkapi bonus aksesoris 3-in-1.'}
-          </p>
-        </div>
+      {(() => {
+        const descContent =
+          product.description ||
+          'Unit smartphone second original bergaransi toko fisik 30 hari tukar unit. Seluruh unit telah melalui uji fungsi komprehensif teknisi (layar, kamera, baterai, sinyal & IMEI bebas blokir), dan dilengkapi bonus aksesoris 3-in-1.'
+        const isDescLong =
+          descContent.length > 180 || descContent.split('\n').length > 4
 
-        <button
-          type="button"
-          onClick={() => setIsDescExpanded(!isDescExpanded)}
-          className="mt-2 flex w-full items-center justify-center gap-1 border-t border-slate-100 pt-1.5 text-xs font-bold text-blue-600 dark:border-slate-800 dark:text-blue-400"
-        >
-          <span>{isDescExpanded ? 'Lebih Sedikit' : 'Baca Selengkapnya'}</span>
-          {isDescExpanded ? (
-            <ChevronUp className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronDown className="h-3.5 w-3.5" />
-          )}
-        </button>
-      </div>
+        return (
+          <div className="mt-1.5 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+            <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
+              Deskripsi & Catatan Unit
+            </h3>
+            <div
+              className={`text-xs leading-relaxed text-slate-600 dark:text-slate-300 ${
+                isDescLong && !isDescExpanded ? 'line-clamp-4' : ''
+              }`}
+            >
+              <p className="whitespace-pre-line">{descContent}</p>
+            </div>
+
+            {isDescLong && (
+              <button
+                type="button"
+                onClick={() => setIsDescExpanded(!isDescExpanded)}
+                className="mt-2 flex w-full items-center justify-center gap-1 border-t border-slate-100 pt-1.5 text-xs font-bold text-blue-600 dark:border-slate-800 dark:text-blue-400"
+              >
+                <span>
+                  {isDescExpanded ? 'Lebih Sedikit' : 'Baca Selengkapnya'}
+                </span>
+                {isDescExpanded ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
+            )}
+          </div>
+        )
+      })()}
 
       {/* 12. Ulasan Pembeli */}
-      <div className="mt-1.5 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+      <div className="mt-1.5 px-3">
         <ProductReviewsSection
           productId={product.id}
           productName={product.name}
           storeName={product.store?.name}
           onReviewModalChange={setIsReviewModalOpen}
+          className="mt-0 border-t-0 pt-0"
         />
       </div>
 

@@ -696,8 +696,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
     return (
       <div
         ref={mobileRootRef}
-        className="fixed inset-x-0 top-0 flex h-[100dvh] w-full select-none flex-col justify-between overflow-hidden bg-black text-white"
-        style={{ transform: `translateY(${offsetTop}px)` }}
+        className="fixed inset-0 flex h-[100dvh] w-full select-none flex-col justify-between overflow-hidden bg-black text-white"
       >
         {/* Fullscreen Video Stream Background (Single LiveKit Mount) */}
         <div className="absolute inset-0 z-0">{renderLiveVideo(false)}</div>
@@ -777,9 +776,12 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
         <div
           className="pointer-events-none relative z-30 flex flex-col justify-end gap-2.5 p-3 pb-6"
           style={{
-            transform: `translateY(-${keyboardInset}px)`,
-            transition: 'transform 150ms ease-out',
-            paddingBottom: keyboardInset > 0 ? 12 : undefined,
+            transform:
+              keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : undefined,
+            paddingBottom:
+              keyboardInset > 0
+                ? 10
+                : 'max(1.25rem, env(safe-area-inset-bottom, 16px))',
           }}
         >
           {/* Floating Comments Stream (scrolling upwards over the video, menempel di bawah / di atas barang sematan) */}
@@ -904,9 +906,16 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 type="text"
                 value={mobileInputText}
                 onChange={(e) => setMobileInputText(e.target.value)}
+                onFocus={() => {
+                  if (typeof window !== 'undefined') {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+                  }
+                }}
                 placeholder="Tambahkan komentar..."
                 enterKeyHint="send"
                 autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="sentences"
                 style={{ fontSize: 16, outline: 'none', boxShadow: 'none' }}
                 className="w-full bg-transparent text-white placeholder-white/60 outline-none focus:outline-none focus:ring-0"
               />
@@ -1024,10 +1033,10 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   // 2. DESKTOP VIEW: YOUTUBE LIVE STYLE (Widescreen 16:9 + Chat Sidebar)
   // ===================================================================
   return (
-    <div className="mx-auto max-w-7xl">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+    <div className="mx-auto w-full max-w-[1440px] xl:max-w-[1536px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Kolom Kiri: Player 16:9 + Info Toko + Deskripsi + Rekomendasi Produk */}
-        <div className="space-y-4 lg:col-span-3">
+        <div className="space-y-4 lg:col-span-8 xl:col-span-8">
           {/* Cinematic Video Player Box (Adapts to vertical stream or 16:9 widescreen) */}
           <div
             ref={playerContainerRef}
@@ -1402,7 +1411,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
         </div>
 
         {/* Kolom Kanan: YouTube Live Chat Sidebar */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-4 xl:col-span-4">
           <div className="sticky top-24 h-[calc(100vh-130px)] max-h-[740px] min-h-[580px]">
             <LiveChatPanel
               messages={messages}

@@ -32,6 +32,7 @@ interface ProductReviewsSectionProps {
   productName: string
   storeName?: string
   onReviewModalChange?: (isOpen: boolean) => void
+  className?: string
 }
 
 interface ReviewItem {
@@ -81,6 +82,7 @@ export function ProductReviewsSection({
   productName,
   storeName,
   onReviewModalChange,
+  className,
 }: ProductReviewsSectionProps) {
   const [reviews, setReviews] = useState<ReviewItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -263,7 +265,11 @@ export function ProductReviewsSection({
 
   return (
     <section
-      className="mt-12 border-t border-slate-200/80 pt-10 dark:border-slate-800"
+      className={
+        className !== undefined
+          ? className
+          : 'mt-12 border-t border-slate-200/80 pt-10 dark:border-slate-800'
+      }
       aria-label="Ulasan Pembeli"
     >
       {/* 1. Header & Rating Overview Card */}

@@ -79,7 +79,7 @@ export default async function LiveStreamPage({ params }: Props) {
       </div>
 
       {/* Main Content Area */}
-      <main className="h-[100dvh] w-full overflow-hidden md:mx-auto md:h-auto md:max-w-7xl md:flex-1 md:overflow-visible md:px-6 md:pb-16 md:pt-24 lg:px-8">
+      <main className="h-[100dvh] w-full overflow-hidden md:mx-auto md:h-auto md:max-w-[1440px] md:flex-1 md:overflow-visible md:px-6 md:pb-16 md:pt-24 lg:px-8 xl:max-w-[1536px]">
         <LiveStreamViewer streamId={id} />
       </main>
 

@@ -27,10 +27,8 @@ describe('iPhone Safari Fixes Suite (Bottom Nav, Auto-Zoom, Uniform Grid)', () =
     expect(content).toContain("width: 'device-width'")
   })
 
-  it('2. should enforce 16px font-size on mobile inputs in globals.css to eliminate iOS auto-zoom', () => {
+  it('2. should maintain iOS bottom nav compositor layer and text size adjustment in globals.css', () => {
     const css = fs.readFileSync(globalsCssPath, 'utf-8')
-    expect(css).toContain('@media screen and (max-width: 768px)')
-    expect(css).toContain('font-size: 16px !important;')
     expect(css).toContain('.mobile-bottom-nav-fixed')
     expect(css).toContain('-webkit-text-size-adjust: 100%')
   })
@@ -59,9 +57,9 @@ describe('iPhone Safari Fixes Suite (Bottom Nav, Auto-Zoom, Uniform Grid)', () =
     expect(adCard).toContain('aspect-[4/5] w-full min-w-0 max-w-full')
   })
 
-  it('6. should ensure login inputs use non-zooming text-base font size on mobile', () => {
+  it('6. should ensure login inputs use balanced medium text-sm font size on mobile', () => {
     const login = fs.readFileSync(loginPagePath, 'utf-8')
-    expect(login).toContain('text-base')
-    expect(login).toContain('sm:text-xs')
+    expect(login).toContain('text-sm font-medium')
+    expect(login).not.toContain('text-base font-medium')
   })
 })

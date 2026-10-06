@@ -91,7 +91,7 @@ export function MobileCatalogView({
   const hasMore = visibleCount < gadgets.length
   const displayedGadgets = gadgets.slice(0, visibleCount)
 
-  // Distribute items across the 2-column masonry waterfall
+  // Distribute items across the 2-column masonry waterfall (Products, Ads, and Live Streams)
   const { leftColumnItems, rightColumnItems } = useMemo(() => {
     const allAdsList = [...(promotedAds || [])]
     if (promotedAd && !allAdsList.some((a) => a.id === promotedAd.id)) {
@@ -99,14 +99,29 @@ export function MobileCatalogView({
     }
 
     const left: Array<
-      { type: 'product'; data: any } | { type: 'ad'; data: InFeedAdData }
+      | { type: 'product'; data: any }
+      | { type: 'ad'; data: InFeedAdData }
+      | { type: 'live'; data: LiveBannerData }
     > = []
     const right: Array<
-      { type: 'product'; data: any } | { type: 'ad'; data: InFeedAdData }
+      | { type: 'product'; data: any }
+      | { type: 'ad'; data: InFeedAdData }
+      | { type: 'live'; data: LiveBannerData }
     > = []
 
     const leftProds = displayedGadgets.filter((_, idx) => idx % 2 === 0)
     const rightProds = displayedGadgets.filter((_, idx) => idx % 2 === 1)
+
+    // Partition live streams between left and right columns
+    const leftLive: LiveBannerData[] = []
+    const rightLive: LiveBannerData[] = []
+    ;(liveStreams || []).forEach((ls, i) => {
+      if (i % 2 === 0) {
+        leftLive.push(ls)
+      } else {
+        rightLive.push(ls)
+      }
+    })
 
     // Partition ads between left and right columns
     const leftAds: InFeedAdData[] = []
@@ -121,10 +136,19 @@ export function MobileCatalogView({
     })
 
     // Interleave left column:
-    // Place first ad after 2 products (at pIdx === 1, after prod 0 & 2)
+    // Place live stream early (after first product) or ads periodically
+    let lLiveIdx = 0
     let lAdIdx = 0
     leftProds.forEach((prod, pIdx) => {
       left.push({ type: 'product', data: prod })
+      // Live stream appears at pIdx === 0 (after 1st product) or every 3 products
+      if (
+        (pIdx === 0 || (pIdx > 0 && pIdx % 3 === 0)) &&
+        lLiveIdx < leftLive.length
+      ) {
+        left.push({ type: 'live', data: leftLive[lLiveIdx++] })
+      }
+      // In-feed ad appears at pIdx === 1 or every 3 products
       if (
         (pIdx === 1 || (pIdx > 1 && (pIdx - 1) % 3 === 0)) &&
         lAdIdx < leftAds.length
@@ -133,17 +157,27 @@ export function MobileCatalogView({
       }
     })
     if (!hasMore) {
+      while (lLiveIdx < leftLive.length) {
+        left.push({ type: 'live', data: leftLive[lLiveIdx++] })
+      }
       while (lAdIdx < leftAds.length) {
         left.push({ type: 'ad', data: leftAds[lAdIdx++] })
       }
     }
 
     // Interleave right column:
-    // Place right ad after 3 products (at pIdx === 2, after prod 1, 3, 5)
-    // ensuring ads alternate seamlessly between left and right in the masonry flow
+    let rLiveIdx = 0
     let rAdIdx = 0
     rightProds.forEach((prod, pIdx) => {
       right.push({ type: 'product', data: prod })
+      // Live stream appears at pIdx === 0 or every 3 products
+      if (
+        (pIdx === 0 || (pIdx > 0 && pIdx % 3 === 0)) &&
+        rLiveIdx < rightLive.length
+      ) {
+        right.push({ type: 'live', data: rightLive[rLiveIdx++] })
+      }
+      // In-feed ad appears at pIdx === 2 or every 3 products
       if (
         (pIdx === 2 || (pIdx > 2 && (pIdx - 2) % 3 === 0)) &&
         rAdIdx < rightAds.length
@@ -152,13 +186,16 @@ export function MobileCatalogView({
       }
     })
     if (!hasMore) {
+      while (rLiveIdx < rightLive.length) {
+        right.push({ type: 'live', data: rightLive[rLiveIdx++] })
+      }
       while (rAdIdx < rightAds.length) {
         right.push({ type: 'ad', data: rightAds[rAdIdx++] })
       }
     }
 
     return { leftColumnItems: left, rightColumnItems: right }
-  }, [displayedGadgets, promotedAds, promotedAd, hasMore])
+  }, [displayedGadgets, promotedAds, promotedAd, liveStreams, hasMore])
 
   const loadMore = useCallback(() => {
     if (isLoadingMore || visibleCount >= gadgets.length) return
@@ -382,25 +419,6 @@ export function MobileCatalogView({
         <MobileTopHeroBanner />
       </section>
 
-      {/* 2b. LIVE STREAM STRIP — horizontal scroll if any store is LIVE */}
-      {liveStreams.length > 0 && (
-        <section className="px-3.5 pb-2">
-          <div className="mb-1.5 flex items-center gap-1.5">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-            <span className="text-[10px] font-bold text-red-500">
-              SEDANG LIVE
-            </span>
-          </div>
-          <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
-            {liveStreams.map((ls) => (
-              <div key={ls.id} className="w-36 shrink-0">
-                <LiveBannerCard stream={ls} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* 3. SEARCH BAR & FILTER ICON ROW */}
       <section className="px-4 pt-2">
         <div className="flex items-center gap-2">
@@ -412,7 +430,7 @@ export function MobileCatalogView({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari tipe iPhone, Galaxy, Xiaomi..."
-              className="shadow-2xs w-full rounded-2xl border border-slate-200/80 bg-slate-50/90 py-2.5 pl-9 pr-8 text-base font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:bg-slate-900 sm:text-xs"
+              className="shadow-2xs w-full rounded-2xl border border-slate-200/80 bg-slate-50/90 py-2.5 pl-9 pr-8 text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:bg-slate-900"
             />
             {search && (
               <button
@@ -538,14 +556,18 @@ export function MobileCatalogView({
                     key={
                       item.type === 'product'
                         ? item.data.id || `left-p-${idx}`
-                        : item.data.id || `left-ad-${idx}`
+                        : item.type === 'ad'
+                          ? item.data.id || `left-ad-${idx}`
+                          : item.data.id || `left-live-${idx}`
                     }
                     className="w-full min-w-0"
                   >
                     {item.type === 'product' ? (
                       renderProductCard(item.data)
-                    ) : (
+                    ) : item.type === 'ad' ? (
                       <InFeedStoreAdCard ad={item.data} />
+                    ) : (
+                      <LiveBannerCard stream={item.data} className="w-full" />
                     )}
                   </div>
                 ))}
@@ -558,14 +580,18 @@ export function MobileCatalogView({
                     key={
                       item.type === 'product'
                         ? item.data.id || `right-p-${idx}`
-                        : item.data.id || `right-ad-${idx}`
+                        : item.type === 'ad'
+                          ? item.data.id || `right-ad-${idx}`
+                          : item.data.id || `right-live-${idx}`
                     }
                     className="w-full min-w-0"
                   >
                     {item.type === 'product' ? (
                       renderProductCard(item.data)
-                    ) : (
+                    ) : item.type === 'ad' ? (
                       <InFeedStoreAdCard ad={item.data} />
+                    ) : (
+                      <LiveBannerCard stream={item.data} className="w-full" />
                     )}
                   </div>
                 ))}
