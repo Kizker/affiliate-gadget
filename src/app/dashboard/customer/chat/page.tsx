@@ -677,17 +677,9 @@ function CustomerChatContent() {
       })
       fetchMessages(room, false)
 
-      // Sync URL
+      // Sync URL - keep clean without polluting with orderId
       if (typeof window !== 'undefined') {
-        if (room.orderId || room.order?.id) {
-          window.history.replaceState(
-            null,
-            '',
-            `/dashboard/customer/chat?orderId=${room.orderId || room.order?.id}`
-          )
-        } else {
-          window.history.replaceState(null, '', '/dashboard/customer/chat')
-        }
+        window.history.replaceState(null, '', '/dashboard/customer/chat')
       }
     },
     [fetchMessages]
@@ -769,20 +761,6 @@ function CustomerChatContent() {
         isReturn: Boolean(activeOrderContext.returnRequest),
         returnReason: activeOrderContext.returnRequest?.reason,
         returnStatus: activeOrderContext.returnRequest?.status,
-      })
-    }
-
-    // Include selectedRoom.order if not yet in list
-    if (
-      selectedRoom.order &&
-      !seenOrderNumbers.has(selectedRoom.order.orderNumber)
-    ) {
-      seenOrderNumbers.add(selectedRoom.order.orderNumber)
-      list.unshift({
-        orderId: selectedRoom.order.id,
-        orderNumber: selectedRoom.order.orderNumber,
-        total: selectedRoom.order.total,
-        status: selectedRoom.order.status,
       })
     }
 
@@ -936,7 +914,16 @@ function CustomerChatContent() {
         })
         setActiveOrderContext(null)
         setActiveServiceContext(null)
+      } else {
+        // Direct store chat or plain chat: strictly empty context!
+        setActiveOrderContext(null)
+        setActiveProductContext(null)
+        setActiveServiceContext(null)
       }
+    } else {
+      setActiveOrderContext(null)
+      setActiveProductContext(null)
+      setActiveServiceContext(null)
     }
 
     async function initStoreRoom() {
@@ -985,11 +972,11 @@ function CustomerChatContent() {
             storeId: data.store?.id || paramStoreId || null,
             claimedById: data.claimedBy?.id || null,
             claimedBy: data.claimedBy || null,
-            orderId: data.orderId || null,
+            orderId: paramOrderId ? data.orderId || null : null,
             lastMessageAt: new Date().toISOString(),
             type: 'admin',
             store: data.store,
-            order: data.order || null,
+            order: paramOrderId ? data.order || null : null,
             messages:
               data.messages && data.messages.length > 0
                 ? [data.messages[data.messages.length - 1]]
@@ -1032,18 +1019,19 @@ function CustomerChatContent() {
               (data.order?.id && m.content?.includes(data.order.id))
           )
 
-          if (data.order) {
+          // STRICT RULE: Only set activeOrderContext if paramOrderId was explicitly provided in URL (navigated from order detail)
+          if (paramOrderId && data.order) {
             const firstItem = data.order.items?.[0]
             const prod = firstItem?.product
             const ret = data.order.returnRequests?.[0]
-            setActiveOrderContext((prev) => ({
+            setActiveOrderContext({
               orderId: data.order.id,
-              orderNumber: data.order.orderNumber || prev?.orderNumber,
+              orderNumber: data.order.orderNumber || resolvedOrderNumber,
               status: data.order.status,
               total: data.order.total,
-              productName: prod?.name || prev?.productName,
-              productImage: prod?.images?.[0] || prev?.productImage,
-              productPrice: firstItem?.price || prev?.productPrice,
+              productName: prod?.name || resolvedProductName,
+              productImage: prod?.images?.[0] || resolvedProductImage,
+              productPrice: firstItem?.price || resolvedProductPrice,
               returnRequest: ret
                 ? {
                     id: ret.id,
@@ -1051,42 +1039,25 @@ function CustomerChatContent() {
                     reason: ret.reasonLabel || ret.reason,
                     type: ret.type,
                   }
-                : prev?.returnRequest || null,
-            }))
-
-            setMessageInput((currentInput) => {
-              if (!currentInput.trim()) {
-                if (ret) {
-                  return `Halo admin, saya ingin menanyakan perkembangan pengajuan retur untuk pesanan #${data.order.orderNumber} (${prod?.name || 'unit'}, Kendala: ${ret.reasonLabel || ret.reason || '-'}). Mohon bantuannya.`
-                } else {
-                  return `Halo admin, saya ingin menanyakan pesanan saya #${data.order.orderNumber} (${prod?.name || 'unit'}).`
-                }
-              }
-              return currentInput
+                : null,
             })
-          } else if (resolvedServiceContext) {
-            setMessageInput((currentInput) => {
-              if (!currentInput.trim()) {
-                return resolvedServiceContext
-              }
-              return currentInput
-            })
+          } else if (!paramOrderId) {
+            // Direct store chat: NEVER show order context even if store room has past orders
+            setActiveOrderContext(null)
           }
 
           // Refresh rooms list in background
           fetchRooms(true)
 
           // Clean URL params via window.history and router.replace
-          // Preserve ?orderId= in URL if it was opened via order
           if (typeof window !== 'undefined') {
-            if (paramOrderId) {
-              window.history.replaceState(
-                null,
-                '',
-                `/dashboard/customer/chat?orderId=${paramOrderId}`
-              )
-            } else {
-              window.history.replaceState(null, '', '/dashboard/customer/chat')
+            window.history.replaceState(null, '', '/dashboard/customer/chat')
+            if (
+              !paramOrderId &&
+              !paramStoreId &&
+              !paramMitraId &&
+              !paramProductId
+            ) {
               router.replace('/dashboard/customer/chat', { scroll: false })
             }
           }
@@ -1907,8 +1878,8 @@ function CustomerChatContent() {
                           )}
                         </div>
                         <p className="truncate text-[11px] text-slate-400">
-                          {selectedRoom.order ? (
-                            `Pesanan #${selectedRoom.order.orderNumber}`
+                          {activeOrderContext?.orderNumber ? (
+                            `Pesanan #${activeOrderContext.orderNumber}`
                           ) : (selectedRoom.claimedBy as any)?.role ===
                             'MITRA' ? (
                             <span className="font-semibold text-emerald-600 dark:text-emerald-400">
@@ -2691,8 +2662,8 @@ function CustomerChatContent() {
                           type="button"
                           onClick={() => {
                             const defaultMsg = activeOrderContext.returnRequest
-                              ? `Halo admin, mohon bantuannya untuk mengecek perkembangan pengajuan retur untuk pesanan #${activeOrderContext.orderNumber || ''} ya, terima kasih.`
-                              : `Halo admin, mohon bantuannya untuk mengecek status pesanan #${activeOrderContext.orderNumber || ''} ya, terima kasih.`
+                              ? `Tanya Status Retur #${activeOrderContext.orderNumber || ''}`
+                              : `Tanya Pesanan #${activeOrderContext.orderNumber || ''}`
                             const msgToSend = messageInput.trim() || defaultMsg
                             handleSendMessage(msgToSend)
                           }}
@@ -2776,13 +2747,13 @@ function CustomerChatContent() {
                         <button
                           type="button"
                           onClick={() => {
-                            setMessageInput(
-                              `Halo teknisi ${activeServiceContext.mitraName}, saya ingin konsultasi dan tanya estimasi pengerjaan servis gadget saya.`
-                            )
+                            const defaultMsg = `Konsultasi Servis: ${activeServiceContext.mitraName}`
+                            const msgToSend = messageInput.trim() || defaultMsg
+                            handleSendMessage(msgToSend)
                           }}
                           className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10.5px] font-bold text-emerald-600 transition hover:bg-emerald-50 dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-300 sm:inline-flex"
                         >
-                          <span>Template Tanya</span>
+                          <span>Tanya Servis</span>
                         </button>
                         <button
                           type="button"
@@ -2840,13 +2811,13 @@ function CustomerChatContent() {
                         <button
                           type="button"
                           onClick={() => {
-                            setMessageInput(
-                              `Halo admin, apakah unit ${activeProductContext.productName}${activeProductContext.variantName ? ` (${activeProductContext.variantName})` : ''} ini masih ready stok?`
-                            )
+                            const defaultMsg = `Tanya Unit: ${activeProductContext.productName}${activeProductContext.variantName ? ` (${activeProductContext.variantName})` : ''}`
+                            const msgToSend = messageInput.trim() || defaultMsg
+                            handleSendMessage(msgToSend)
                           }}
                           className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-orange-200 bg-white px-3 py-1 text-[10.5px] font-bold text-orange-600 transition hover:bg-orange-50 dark:border-orange-900 dark:bg-slate-900 dark:text-orange-300 sm:inline-flex"
                         >
-                          <span>Tanya Stok</span>
+                          <span>Tanya Unit</span>
                         </button>
                         <button
                           type="button"
