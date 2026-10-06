@@ -7,6 +7,9 @@ const config = {
   port: 22,
   username: 'root',
   password: '@Dea20031802',
+  keepaliveInterval: 10000,
+  keepaliveCountMax: 20,
+  readyTimeout: 60000,
 }
 
 function runRemoteCommand(command) {
@@ -41,8 +44,8 @@ async function main() {
       // 1. Pull latest code from GitHub
       await runRemoteCommand('cd /opt/affiliate-gadget && git fetch origin main && git reset --hard origin/main')
 
-      // 2. Build and restart app and ws-server containers
-      await runRemoteCommand('cd /opt/affiliate-gadget && docker compose build app ws-server')
+      // 2. Build app container (and ws-server if needed)
+      await runRemoteCommand('cd /opt/affiliate-gadget && docker compose build app')
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose up -d app ws-server')
 
       // 3. Restart nginx to refresh upstream IPs
@@ -52,7 +55,8 @@ async function main() {
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose ps')
 
       // 5. Test HTTP response
-      await runRemoteCommand('curl -s -o /dev/null -w "%{http_code}" http://localhost:3000')
+      const httpCode = await runRemoteCommand('curl -s -o /dev/null -w "%{http_code}" http://localhost:3000')
+      console.log(`\nLocal HTTP Response Code: ${httpCode.trim()}`)
 
       console.log('\nDeployment completed successfully!')
       conn.end()
