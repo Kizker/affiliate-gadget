@@ -30,6 +30,8 @@ export async function GET() {
             name: true,
             slug: true,
             companyName: true,
+            tagline: true,
+            description: true,
             logo: true,
             banner: true,
             taxId: true,
@@ -40,7 +42,8 @@ export async function GET() {
             phone: true,
             whatsapp: true,
             bankAccounts: true,
-          },
+            schedules: true,
+          } as any,
         },
       },
     })
@@ -49,15 +52,34 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const enrichedStore = user.store
+    const userStore = (user as any).store
+    const enrichedStore = userStore
       ? {
-          ...user.store,
-          isPkp: (user.store as any).isPkp ?? true,
-          vatRate: (user.store as any).vatRate ?? 11.0,
-          kppName: (user.store as any).kppName ?? 'KPP Pratama Terdaftar',
-          taxType: (user.store as any).taxType ?? 'INCLUSIVE',
+          ...userStore,
+          isPkp: userStore.isPkp ?? true,
+          vatRate: userStore.vatRate ?? 11.0,
+          kppName: userStore.kppName ?? 'KPP Pratama Terdaftar',
+          taxType: userStore.taxType ?? 'INCLUSIVE',
         }
       : null
+
+    if (
+      enrichedStore &&
+      user.storeId &&
+      typeof (prisma as any).$queryRawUnsafe === 'function'
+    ) {
+      try {
+        const rawStoreCols: any[] = await prisma.$queryRawUnsafe(
+          `SELECT "heroImage", "heroMobileImage", "heroTitle", "heroSubtitle", "heroDescription", "campaignKicker", "campaignTitle", "campaignSubtitle", "campaignDescription", "secondaryBanner", "secondaryBannerTitle", "secondaryBannerDesc" FROM stores WHERE id = $1`,
+          user.storeId
+        )
+        if (rawStoreCols?.[0]) {
+          Object.assign(enrichedStore, rawStoreCols[0])
+        }
+      } catch (rawErr) {
+        console.warn('Raw visual fields query warning:', rawErr)
+      }
+    }
 
     return NextResponse.json({ user, store: enrichedStore })
   } catch (error) {
@@ -186,13 +208,27 @@ export async function PATCH(request: NextRequest) {
         },
       })
 
-      let updatedStore = null
+      let updatedStore: any = null
       if (storeData && user.storeId) {
         const {
           storeName,
           companyName,
+          tagline,
+          description,
           logo,
           banner,
+          heroImage,
+          heroMobileImage,
+          heroTitle,
+          heroSubtitle,
+          heroDescription,
+          campaignKicker,
+          campaignTitle,
+          campaignSubtitle,
+          campaignDescription,
+          secondaryBanner,
+          secondaryBannerTitle,
+          secondaryBannerDesc,
           taxId,
           address,
           city,
@@ -206,22 +242,41 @@ export async function PATCH(request: NextRequest) {
           isPkp,
           vatRate,
           kppName,
+          schedules,
         } = storeData
 
-        updatedStore = await tx.store.update({
+        updatedStore = await (tx.store.update as any)({
           where: { id: user.storeId },
           data: {
             ...(storeName && { name: storeName }),
             ...(companyName && { companyName }),
-            ...(logo !== undefined && { logo }),
-            ...(banner !== undefined && { banner }),
-            ...(taxId !== undefined && { taxId }),
+            ...(tagline !== undefined && {
+              tagline: tagline ? String(tagline).trim().slice(0, 150) : null,
+            }),
+            ...(description !== undefined && {
+              description: description
+                ? String(description).trim().slice(0, 1000)
+                : null,
+            }),
+            ...(logo !== undefined && {
+              logo: logo ? String(logo).trim() : null,
+            }),
+            ...(banner !== undefined && {
+              banner: banner ? String(banner).trim() : null,
+            }),
+            ...(taxId !== undefined && {
+              taxId: taxId ? String(taxId).trim() : null,
+            }),
             ...(address && { address }),
             ...(city && { city }),
             ...(province && { province }),
-            ...(postalCode !== undefined && { postalCode }),
+            ...(postalCode !== undefined && {
+              postalCode: postalCode ? String(postalCode).trim() : null,
+            }),
             ...(storePhone && { phone: storePhone }),
-            ...(whatsapp && { whatsapp }),
+            ...(whatsapp !== undefined && {
+              whatsapp: whatsapp ? String(whatsapp).trim() : null,
+            }),
             ...(isPkp !== undefined && { isPkp: Boolean(isPkp) }),
             ...(vatRate !== undefined && {
               vatRate: Math.max(
@@ -239,6 +294,8 @@ export async function PATCH(request: NextRequest) {
             name: true,
             slug: true,
             companyName: true,
+            tagline: true,
+            description: true,
             logo: true,
             banner: true,
             taxId: true,
@@ -252,8 +309,73 @@ export async function PATCH(request: NextRequest) {
             phone: true,
             whatsapp: true,
             bankAccounts: true,
+            schedules: true,
           },
         })
+
+        // Robustly update visual customization fields via raw SQL directly on PostgreSQL
+        // This guarantees execution succeeds even if Next.js dev server has not been restarted
+        const visualUpdates: string[] = []
+        const visualParams: any[] = []
+        let paramIdx = 1
+
+        const addVisualField = (colName: string, val: any, maxLen?: number) => {
+          if (val !== undefined) {
+            visualUpdates.push(`"${colName}" = $${paramIdx++}`)
+            if (val === null || val === '') {
+              visualParams.push(null)
+            } else {
+              const strVal = String(val).trim()
+              visualParams.push(maxLen ? strVal.slice(0, maxLen) : strVal)
+            }
+          }
+        }
+
+        addVisualField('heroImage', heroImage)
+        addVisualField('heroMobileImage', heroMobileImage)
+        addVisualField('heroTitle', heroTitle, 100)
+        addVisualField('heroSubtitle', heroSubtitle, 100)
+        addVisualField('heroDescription', heroDescription, 500)
+        addVisualField('campaignKicker', campaignKicker, 100)
+        addVisualField('campaignTitle', campaignTitle, 100)
+        addVisualField('campaignSubtitle', campaignSubtitle, 100)
+        addVisualField('campaignDescription', campaignDescription, 500)
+        addVisualField('secondaryBanner', secondaryBanner)
+        addVisualField('secondaryBannerTitle', secondaryBannerTitle, 100)
+        addVisualField('secondaryBannerDesc', secondaryBannerDesc, 500)
+
+        if (visualUpdates.length > 0) {
+          visualParams.push(user.storeId)
+          const sql = `UPDATE stores SET ${visualUpdates.join(', ')}, "updatedAt" = NOW() WHERE id = $${paramIdx}`
+          await tx.$executeRawUnsafe(sql, ...visualParams)
+
+          if (updatedStore) {
+            visualUpdates.forEach((item, idx) => {
+              const col = item.split('"')[1]
+              updatedStore[col] = visualParams[idx]
+            })
+          }
+        }
+
+        if (Array.isArray(schedules)) {
+          await tx.storeSchedule.deleteMany({
+            where: { storeId: user.storeId },
+          })
+          const validSchedules = schedules
+            .filter((s: any) => s.day && typeof s.day === 'string')
+            .map((s: any) => ({
+              storeId: user.storeId as string,
+              day: s.day,
+              openTime: String(s.openTime || '09:00').slice(0, 5),
+              closeTime: String(s.closeTime || '21:00').slice(0, 5),
+              isClosed: Boolean(s.isClosed),
+            }))
+          if (validSchedules.length > 0) {
+            await tx.storeSchedule.createMany({
+              data: validSchedules,
+            })
+          }
+        }
 
         // Jika foto logo toko diupdate dan foto pengelola belum ada, sinkronkan ke akun user
         if (logo && !updateData.image) {
@@ -317,7 +439,9 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     console.error('Error updating admin profile:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: error instanceof Error ? error.message : 'Internal server error',
+      },
       { status: 500 }
     )
   }

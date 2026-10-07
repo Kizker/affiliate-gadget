@@ -26,6 +26,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
+import { StorePublicProfile } from '@/types/store-public'
+import { resolveStorePageContent } from '@/lib/store-page-content'
 
 function ProductCardImage({ src, alt }: { src: string; alt: string }) {
   const [imgSrc, setImgSrc] = useState(src)
@@ -60,7 +62,7 @@ export default function StoreDetailPage() {
   const slug = params?.slug as string
   const { data: session } = useSession()
 
-  const [store, setStore] = useState<any>(null)
+  const [store, setStore] = useState<StorePublicProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState<string>('ALL')
   const [showChatPopup, setShowChatPopup] = useState<boolean>(true)
@@ -108,18 +110,9 @@ export default function StoreDetailPage() {
     }
   }
 
-  // Find top flagship product for hero context
-  const topFlagship = useMemo(() => {
-    if (!store?.products || store.products.length === 0) return null
-    return (
-      store.products.find(
-        (p: any) =>
-          p.name?.toLowerCase().includes('fold') ||
-          p.name?.toLowerCase().includes('pro max') ||
-          p.name?.toLowerCase().includes('ultra')
-      ) || store.products[0]
-    )
-  }, [store])
+  // Resolve dynamic store content with graceful fallback
+  const content = useMemo(() => resolveStorePageContent(store), [store])
+  const topFlagship = content.topFlagship
 
   // Filter products cleanly by category
   const filteredProducts = useMemo(() => {
@@ -236,8 +229,8 @@ export default function StoreDetailPage() {
         {/* Left Column (58%): Flagship Cutout Phones Artwork, Scaled Up to Fill Vertically */}
         <div className="relative flex h-full w-[58%] items-center justify-start overflow-hidden pl-4 lg:pl-8">
           <Image
-            src="/images/banners/samsung-hero-flagship.jpg"
-            alt="Galaxy Z Fold & Flip Flagship"
+            src={content.hero.desktopImage}
+            alt={content.hero.title}
             fill
             priority
             sizes="60vw"
@@ -248,23 +241,20 @@ export default function StoreDetailPage() {
         {/* Right Column (42%): Sleek Typography & Actions in Clean Studio Whitespace */}
         <div className="z-10 flex h-full w-[42%] flex-col items-start justify-center space-y-5 pl-2 pr-8 lg:pl-6 lg:pr-16">
           <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400 sm:text-sm">
-            Available now
+            {content.hero.kicker}
           </span>
 
           <h1 className="text-4xl font-black leading-[1.06] tracking-tight text-neutral-950 dark:text-white lg:text-5xl xl:text-6xl">
-            Galaxy Z Fold8 | Fold8 | Flip8
+            {content.hero.title}
           </h1>
 
           <p className="max-w-lg text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 lg:text-base">
-            Eksplorasi kemewahan smartphone lipat generasi terdepan di gerai
-            resmi {store.name}. Jaminan garansi 30 hari tukar unit baru & paket
-            proteksi penuh kurir.
+            {content.hero.desktopDesc}
           </p>
 
-          {topFlagship && (
+          {content.hero.priceText && (
             <p className="text-xl font-black tabular-nums text-neutral-900 dark:text-white lg:text-2xl">
-              Mulai Rp{' '}
-              {Number(topFlagship.price || 26499000).toLocaleString('id-ID')}
+              {content.hero.priceText}
             </p>
           )}
 
@@ -304,25 +294,23 @@ export default function StoreDetailPage() {
         <div className="z-10 shrink-0 space-y-2 px-5 text-center">
           {/* Kicker Tag */}
           <div className="inline-flex items-center gap-1 pt-1 text-[11px] font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400">
-            <span>Galaxy AI is here</span>
+            <span>{content.hero.mobileKicker}</span>
             <Sparkles className="h-3 w-3" />
           </div>
 
           {/* Main Flagship Title */}
           <h1 className="text-3xl font-black leading-[1.08] tracking-tight text-neutral-950 dark:text-white">
-            Galaxy Z Fold8 | Flip8
+            {content.hero.title}
           </h1>
 
           <p className="mx-auto line-clamp-2 max-w-sm px-3 text-xs text-neutral-500 dark:text-neutral-400">
-            Generasi smartphone lipat paling canggih di gerai resmi {store.name}
-            . Jaminan garansi 30 hari tukar unit baru.
+            {content.hero.mobileDesc}
           </p>
 
-          {topFlagship && (
+          {content.hero.priceText && (
             <div className="flex items-center justify-center gap-2 pt-0.5">
               <span className="text-base font-black tabular-nums text-neutral-950 dark:text-white">
-                Mulai Rp{' '}
-                {Number(topFlagship.price || 26499000).toLocaleString('id-ID')}
+                {content.hero.priceText}
               </span>
               <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[10px] font-bold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
                 Garansi 30 Hari
@@ -356,8 +344,8 @@ export default function StoreDetailPage() {
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-[#FAFBFD] via-[#FAFBFD]/70 to-transparent dark:from-neutral-950 dark:via-neutral-950/70 sm:h-32" />
 
           <Image
-            src="/images/banners/samsung-mobile-hero.jpg"
-            alt="Galaxy Z Fold & Flip Mobile"
+            src={content.hero.mobileImage}
+            alt={content.hero.title}
             fill
             priority
             sizes="100vw"
@@ -449,42 +437,45 @@ export default function StoreDetailPage() {
         <div className="mx-auto max-w-7xl">
           <div className="relative overflow-hidden rounded-3xl bg-[#E2ECE6] shadow-sm transition-colors dark:bg-neutral-900">
             {/* If store admin uploaded a custom banner, display the custom banner */}
-            {store.banner &&
-            !store.banner.includes('placeholder') &&
-            !store.banner.includes('unsplash.com/photo-1555529669') ? (
-              <div className="relative aspect-[16/9] w-full overflow-hidden md:aspect-[21/9]">
+            {content.editorial1.hasCustomBanner ? (
+              <div className="relative min-h-[300px] w-full overflow-hidden sm:aspect-[16/9] sm:min-h-0 md:aspect-[21/9]">
                 <Image
-                  src={store.banner}
+                  src={content.editorial1.imageUrl}
                   alt={store.name}
                   fill
                   priority
-                  unoptimized={!!store.banner?.startsWith('/')}
+                  unoptimized={!!content.editorial1.imageUrl?.startsWith('/')}
                   className="object-cover object-center"
                 />
-                <div className="absolute inset-0 flex items-center bg-gradient-to-r from-black/85 via-black/45 to-transparent">
-                  <div className="max-w-xl space-y-4 p-6 text-white sm:p-14">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-sky-400">
-                      <Sparkles className="h-3.5 w-3.5" /> Penawaran Eksklusif
-                      Cabang
+                <div className="absolute inset-0 flex items-center bg-gradient-to-t from-black/95 via-black/80 to-black/40 sm:bg-gradient-to-r sm:from-black/90 sm:via-black/55 sm:to-transparent">
+                  <div className="max-w-xl space-y-2.5 p-5 text-white sm:space-y-4 sm:p-12 lg:p-14">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-sky-300 drop-shadow-sm sm:text-xs">
+                      <Sparkles className="h-3.5 w-3.5" />{' '}
+                      {content.editorial1.kicker}
                     </span>
-                    <h2 className="text-2xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-                      Koleksi Pilihan Resmi {store.name}
-                    </h2>
-                    <p className="max-w-md text-xs leading-relaxed text-neutral-200 sm:text-sm">
-                      Dapatkan keuntungan langsung belanja di toko resmi: Paket
-                      bonus Rp 0, asuransi penuh kurir JNE/Gojek, dan garansi
-                      ganti unit 30 hari.
+                    <div className="space-y-1">
+                      <h2 className="line-clamp-2 text-xl font-black leading-tight tracking-tight drop-shadow-sm sm:line-clamp-none sm:text-3xl lg:text-5xl">
+                        {content.editorial1.title}
+                      </h2>
+                      {content.editorial1.subtitle && (
+                        <p className="text-xs font-bold text-sky-300 drop-shadow-sm sm:text-sm">
+                          {content.editorial1.subtitle}
+                        </p>
+                      )}
+                    </div>
+                    <p className="drop-shadow-xs line-clamp-2 max-w-md text-xs leading-relaxed text-neutral-200 sm:line-clamp-none sm:text-sm">
+                      {content.editorial1.description}
                     </p>
-                    <div className="flex items-center gap-4 pt-2 sm:gap-5">
+                    <div className="flex flex-wrap items-center gap-2.5 pt-1.5 sm:gap-5 sm:pt-2">
                       <a
                         href="#katalog-produk"
-                        className="rounded-full bg-white px-7 py-3 text-xs font-bold text-black shadow-md transition hover:bg-neutral-200"
+                        className="rounded-full bg-white px-5 py-2.5 text-xs font-bold text-black shadow-md transition hover:bg-neutral-200 active:scale-95 sm:px-7 sm:py-3"
                       >
                         Beli Sekarang
                       </a>
                       <Link
                         href="/garansi"
-                        className="text-xs font-bold text-white underline underline-offset-4 hover:text-neutral-200"
+                        className="shadow-xs backdrop-blur-xs inline-flex items-center rounded-full border border-white/30 bg-black/40 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-black/60 sm:border-0 sm:bg-transparent sm:p-0 sm:font-bold sm:underline sm:underline-offset-4 sm:backdrop-blur-none"
                       >
                         Pelajari Garansi 30 Hari
                       </Link>
@@ -493,28 +484,28 @@ export default function StoreDetailPage() {
                 </div>
               </div>
             ) : (
-              /* Samsung Default Editorial Campaign Banner (Screenshot 3 Match) */
+              /* Editorial Campaign Banner */
               <div className="flex min-h-[380px] flex-col items-center gap-6 sm:min-h-[460px] lg:grid lg:min-h-[500px] lg:grid-cols-12">
                 {/* Left Editorial Copy */}
                 <div className="z-10 order-1 w-full space-y-4 p-7 text-center sm:p-12 lg:col-span-5 lg:pl-16 lg:text-left">
                   <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 sm:text-sm">
-                    Welcome the newest member to
+                    {content.editorial1.kicker}
                   </p>
 
                   <div className="space-y-1">
                     <h2 className="text-2xl font-black leading-[1.08] tracking-tight text-neutral-950 dark:text-white sm:text-4xl lg:text-5xl">
-                      Galaxy S26 Series
+                      {content.editorial1.title}
                     </h2>
-                    <div className="inline-flex items-center gap-1.5 text-sm font-bold text-sky-600 dark:text-sky-400 sm:text-base">
-                      <span>Galaxy AI</span>
-                      <Sparkles className="h-4 w-4" />
-                    </div>
+                    {content.editorial1.subtitle && (
+                      <div className="inline-flex items-center gap-1.5 text-sm font-bold text-sky-600 dark:text-sky-400 sm:text-base">
+                        <span>{content.editorial1.subtitle}</span>
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                    )}
                   </div>
 
                   <p className="mx-auto max-w-md text-xs leading-relaxed text-neutral-600 dark:text-neutral-300 sm:text-sm lg:mx-0">
-                    Didukung prosesor AI cerdas, kamera ultra-presisi, dan
-                    baterai tahan seharian. Tersedia di gerai {store.name}{' '}
-                    dengan jaminan ganti unit 30 hari.
+                    {content.editorial1.description}
                   </p>
 
                   <div className="flex flex-wrap items-center justify-center gap-4 pt-2 sm:gap-5 lg:justify-start">
@@ -536,8 +527,8 @@ export default function StoreDetailPage() {
                 {/* Right Image Container (High-Res Commercial Cutout) */}
                 <div className="relative order-2 h-64 min-h-[260px] w-full sm:h-80 sm:min-h-[350px] lg:col-span-7 lg:h-full lg:min-h-[500px]">
                   <Image
-                    src="/images/banners/samsung-campaign-banner.jpg"
-                    alt="Galaxy S26 Series Campaign"
+                    src={content.editorial1.imageUrl}
+                    alt={content.editorial1.title}
                     fill
                     priority
                     className="object-contain object-center lg:object-right"
@@ -678,18 +669,16 @@ export default function StoreDetailPage() {
               {/* Left Editorial Copy */}
               <div className="z-10 w-full space-y-4 text-center lg:col-span-5 lg:text-left">
                 <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 sm:text-sm">
-                  <span>Samsung Vision AI</span>
+                  <span>{content.editorial2.kicker}</span>
                   <Sparkles className="h-3.5 w-3.5" />
                 </div>
 
                 <h2 className="text-2xl font-black leading-[1.08] tracking-tight text-neutral-950 dark:text-white sm:text-4xl lg:text-5xl">
-                  Answering your passions
+                  {content.editorial2.title}
                 </h2>
 
                 <p className="mx-auto max-w-md text-xs leading-relaxed text-neutral-600 dark:text-neutral-400 sm:text-sm lg:mx-0">
-                  Integrasi visual tanpa batas dan ekosistem tampilan pintar.
-                  Gerai {store.name} juga melayani Servis Kilat LCD 2 Jam oleh
-                  teknisi tersertifikasi resmi.
+                  {content.editorial2.description}
                 </p>
 
                 <div className="flex flex-wrap items-center justify-center gap-4 pt-2 sm:gap-5 lg:justify-start">
@@ -711,8 +700,8 @@ export default function StoreDetailPage() {
               {/* Right Image Container (High-Res Vision AI Studio Display Artwork) */}
               <div className="relative h-60 min-h-[240px] w-full sm:h-80 sm:min-h-[320px] lg:col-span-7 lg:h-full lg:min-h-[400px]">
                 <Image
-                  src="/images/banners/samsung-vision-ai.jpg"
-                  alt="Samsung Vision AI Displays"
+                  src={content.editorial2.imageUrl}
+                  alt={content.editorial2.title}
                   fill
                   priority
                   className="object-contain object-center lg:object-right"
@@ -758,6 +747,7 @@ export default function StoreDetailPage() {
                 </h3>
                 <p className="text-[11px] text-neutral-500">
                   NPWP: {store.taxId || 'Terdaftar di KPP Pratama'}
+                  {content.info.tagline ? ` • ${content.info.tagline}` : ''}
                 </p>
               </div>
             </div>
@@ -775,9 +765,9 @@ export default function StoreDetailPage() {
                   </p>
                 </div>
               </div>
-              {store.mapsUrl && (
+              {content.info.mapsUrl && (
                 <a
-                  href={store.mapsUrl}
+                  href={content.info.mapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="shadow-2xs flex w-full items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-xs font-bold text-neutral-900 transition-all active:scale-95 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
@@ -794,7 +784,7 @@ export default function StoreDetailPage() {
               <div className="flex items-center gap-2 text-xs">
                 <Clock className="h-3.5 w-3.5 text-neutral-500" />
                 <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-                  09:00 - 21:00 WIB
+                  {content.info.operatingHoursText}
                 </span>
               </div>
               <Link
@@ -821,6 +811,11 @@ export default function StoreDetailPage() {
                   {store.companyName || 'PT Terverifikasi'}
                 </p>
                 <p>NPWP: {store.taxId || 'Terdaftar di KPP Pratama'}</p>
+                {content.info.tagline && (
+                  <p className="text-[11px] italic text-neutral-500 dark:text-neutral-400">
+                    "{content.info.tagline}"
+                  </p>
+                )}
                 <p className="pt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                   ✓ Pengusaha Kena Pajak (Faktur Resmi)
                 </p>
@@ -840,10 +835,10 @@ export default function StoreDetailPage() {
                 <p className="font-medium">
                   {store.city}, {store.province}
                 </p>
-                {store.mapsUrl && (
+                {content.info.mapsUrl && (
                   <div className="pt-2">
                     <a
-                      href={store.mapsUrl}
+                      href={content.info.mapsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 font-semibold text-black underline underline-offset-4 hover:opacity-75 dark:text-white"
@@ -865,9 +860,12 @@ export default function StoreDetailPage() {
               </h3>
               <div className="space-y-1 text-xs text-neutral-600 dark:text-neutral-400">
                 <p className="font-medium text-neutral-900 dark:text-neutral-200">
-                  Buka Setiap Hari: 09:00 - 21:00 WIB
+                  {content.info.operatingHoursText}
                 </p>
-                <p>Melayani beli di tempat, tes unit, & kirim instan</p>
+                <p>
+                  {content.info.description ||
+                    'Melayani beli di tempat, tes unit, & kirim instan'}
+                </p>
                 <div className="flex items-center gap-2 pt-2">
                   <Link
                     href={`/dashboard/customer/chat?storeId=${store.id}`}

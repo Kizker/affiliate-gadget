@@ -120,6 +120,18 @@ model Store {
   description    String?
   logo           String?
   banner         String?
+  heroImage           String?            // Banner Hero Desktop
+  heroMobileImage     String?            // Banner Hero Mobile
+  heroTitle           String?            // Custom Headline Hero
+  heroSubtitle        String?            // Custom Kicker/Subtitle Hero
+  heroDescription     String?            // Custom Deskripsi Hero
+  campaignKicker      String?            // Custom Kicker Editorial 1
+  campaignTitle       String?            // Custom Judul Editorial 1
+  campaignSubtitle    String?            // Custom Subtitle Editorial 1
+  campaignDescription String?            // Custom Deskripsi Editorial 1
+  secondaryBanner     String?            // Banner Editorial 2 (Layanan & Garansi)
+  secondaryBannerTitle String?           // Custom Judul Editorial 2
+  secondaryBannerDesc String?            // Custom Deskripsi Editorial 2
   address        String
   city           String
   province       String

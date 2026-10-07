@@ -23,11 +23,17 @@ const prismaClientSingleton = () => {
 
 declare const globalThis: {
   prismaGlobal: ReturnType<typeof prismaClientSingleton>
+  prismaSchemaVersion: number
 } & typeof global
 
-// Ensure the cached singleton is refreshed if models added dynamically (e.g. storeWithdrawal) are missing
+const CURRENT_SCHEMA_VERSION = 5
+
+// Ensure the cached singleton is refreshed if models or fields are missing/outdated
 const isOutdatedSingleton =
-  globalThis.prismaGlobal && !(globalThis.prismaGlobal as any).storeWithdrawal
+  globalThis.prismaGlobal &&
+  (globalThis.prismaSchemaVersion !== CURRENT_SCHEMA_VERSION ||
+    !(globalThis.prismaGlobal as any).storeWithdrawal ||
+    !('heroImage' in ((globalThis.prismaGlobal as any).store?.fields || {})))
 
 const prisma =
   !globalThis.prismaGlobal || isOutdatedSingleton
@@ -37,4 +43,7 @@ const prisma =
 export const db = prisma
 export default prisma
 
-if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma
+if (process.env.NODE_ENV !== 'production') {
+  globalThis.prismaGlobal = prisma
+  globalThis.prismaSchemaVersion = CURRENT_SCHEMA_VERSION
+}

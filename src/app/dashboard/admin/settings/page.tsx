@@ -30,6 +30,11 @@ import {
   Trash2,
   Receipt,
   Percent,
+  ExternalLink,
+  Eye,
+  Palette,
+  Monitor,
+  LayoutTemplate,
 } from 'lucide-react'
 
 export default function AdminSettingsPage() {
@@ -39,14 +44,19 @@ export default function AdminSettingsPage() {
   const { data: session, update: updateSession } = useSession()
   const sessionRole = (session?.user as { role?: string })?.role || ''
   const [userRole, setUserRole] = useState(sessionRole)
-  const [activeTab, setActiveTab] = useState<'STORE' | 'ADMIN' | 'SECURITY'>(
-    sessionRole === 'STORE_ADMIN' ? 'STORE' : 'ADMIN'
-  )
+  const [activeTab, setActiveTab] = useState<
+    'STORE' | 'STORE_PAGE' | 'ADMIN' | 'SECURITY'
+  >(sessionRole === 'STORE_ADMIN' ? 'STORE' : 'ADMIN')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [uploadingHeroDesktop, setUploadingHeroDesktop] = useState(false)
+  const [uploadingHeroMobile, setUploadingHeroMobile] = useState(false)
+  const [uploadingSecondaryBanner, setUploadingSecondaryBanner] =
+    useState(false)
   const [uploadingUserImage, setUploadingUserImage] = useState(false)
+  const [storeSlug, setStoreSlug] = useState('')
 
   useEffect(() => {
     if (sessionRole && !userRole) {
@@ -74,6 +84,20 @@ export default function AdminSettingsPage() {
     companyName: '',
     logo: '',
     banner: '',
+    heroImage: '',
+    heroMobileImage: '',
+    heroTitle: '',
+    heroSubtitle: '',
+    heroDescription: '',
+    campaignKicker: '',
+    campaignTitle: '',
+    campaignSubtitle: '',
+    campaignDescription: '',
+    secondaryBanner: '',
+    secondaryBannerTitle: '',
+    secondaryBannerDesc: '',
+    tagline: '',
+    description: '',
     taxId: '',
     isPkp: true,
     vatRate: 11.0,
@@ -134,11 +158,27 @@ export default function AdminSettingsPage() {
             accountName: store.companyName || '',
           }
 
+          setStoreSlug(store.slug || '')
+
           setStoreForm({
             storeName: store.name || '',
             companyName: store.companyName || '',
             logo: store.logo || '',
             banner: store.banner || '',
+            heroImage: store.heroImage || '',
+            heroMobileImage: store.heroMobileImage || '',
+            heroTitle: store.heroTitle || '',
+            heroSubtitle: store.heroSubtitle || '',
+            heroDescription: store.heroDescription || '',
+            campaignKicker: store.campaignKicker || '',
+            campaignTitle: store.campaignTitle || '',
+            campaignSubtitle: store.campaignSubtitle || '',
+            campaignDescription: store.campaignDescription || '',
+            secondaryBanner: store.secondaryBanner || '',
+            secondaryBannerTitle: store.secondaryBannerTitle || '',
+            secondaryBannerDesc: store.secondaryBannerDesc || '',
+            tagline: store.tagline || '',
+            description: store.description || '',
             taxId: store.taxId || '',
             isPkp: true,
             vatRate: store.vatRate ?? 11.0,
@@ -355,6 +395,59 @@ export default function AdminSettingsPage() {
     }
   }
 
+  // Upload Generic Banner (Hero Desktop, Hero Mobile, Banner Kampanye, Secondary Banner)
+  const handleGenericBannerUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: 'heroImage' | 'heroMobileImage' | 'banner' | 'secondaryBanner',
+    label: string,
+    setLoadingState: (loading: boolean) => void
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Hanya file foto (JPG, PNG, WebP) yang diperbolehkan')
+      return
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error(`Ukuran ${label} maksimal 15MB`)
+      return
+    }
+
+    setLoadingState(true)
+    const toastId = toast.loading(`Mengunggah ${label}...`)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'banners')
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setStoreForm((prev) => ({ ...prev, [field]: data.url }))
+        toast.success(
+          `${label} berhasil diunggah! Klik "Simpan Perubahan" untuk menerapkan.`,
+          { id: toastId }
+        )
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        toast.error(errData.error || `Gagal mengunggah ${label}`, {
+          id: toastId,
+        })
+      }
+    } catch (error) {
+      console.error(`Error uploading ${label}:`, error)
+      toast.error(`Terjadi kesalahan saat upload ${label}`, { id: toastId })
+    } finally {
+      setLoadingState(false)
+    }
+  }
+
   // Upload Foto Profil Pengelola (User Avatar)
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -438,6 +531,18 @@ export default function AdminSettingsPage() {
               >
                 <Store className="h-3.5 w-3.5 text-orange-500" />
                 <span>Profil Toko & PT Cabang</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('STORE_PAGE')}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all duration-200 ${
+                  activeTab === 'STORE_PAGE'
+                    ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
+                    : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-orange-500" />
+                <span>Halaman Detail Toko</span>
               </button>
               <button
                 type="button"
@@ -582,97 +687,30 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            {/* Banner Kampanye & Profil Toko (Gaya Samsung) */}
-            <div className="shadow-2xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-              <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/50">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-950 dark:text-white">
-                      Banner Promosi & Kampanye Toko (Gaya Samsung)
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      Banner besar editorial yang muncul saat calon pembeli
-                      melakukan scroll di halaman detail toko.
-                    </p>
-                  </div>
+            {/* Link Callout ke Tab Halaman Detail Toko */}
+            <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-sky-200/80 bg-sky-50/50 p-4 dark:border-sky-900/60 dark:bg-sky-950/20 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-3">
+                <div className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white">
+                  <Sparkles className="h-4 w-4" />
                 </div>
-                <label
-                  htmlFor="store-banner-upload"
-                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                >
-                  {uploadingBanner ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Upload className="h-3.5 w-3.5" />
-                  )}
-                  <span>
-                    {storeForm.banner ? 'Ganti Banner' : 'Upload Banner Baru'}
-                  </span>
-                  <input
-                    id="store-banner-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={uploadingBanner}
-                    onChange={handleStoreBannerUpload}
-                  />
-                </label>
-              </div>
-
-              {/* Banner Preview or Input */}
-              {storeForm.banner ? (
-                <div className="relative aspect-[21/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
-                  <img
-                    src={storeForm.banner}
-                    alt="Banner Toko"
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/60 via-transparent to-transparent p-4">
-                    <span className="text-xs font-semibold text-white/90">
-                      Banner Aktif Halaman Detail Toko
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setStoreForm((prev) => ({ ...prev, banner: '' }))
-                      }
-                      className="backdrop-blur-xs inline-flex items-center gap-1 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-red-600"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      <span>Hapus</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-8 text-center dark:border-slate-800 dark:bg-slate-950/40">
-                  <Sparkles className="mb-2 h-7 w-7 text-slate-300" />
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                    Belum ada banner promosi khusus yang diunggah
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-slate-400">
-                    Halaman toko akan menampilkan banner editorial standar
-                    Samsung secara otomatis.
+                <div>
+                  <h4 className="text-xs font-bold text-sky-950 dark:text-sky-200">
+                    Kustomisasi Banner & Tampilan Publik Toko
+                  </h4>
+                  <p className="text-[11px] text-sky-800/80 dark:text-sky-300/80">
+                    Pengaturan banner hero, kampanye editorial, dan layanan
+                    gerai telah dipisahkan ke tab khusus.
                   </p>
                 </div>
-              )}
-
-              <div className="space-y-1.5 pt-1">
-                <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  Atau masukkan URL Banner langsung (opsional):
-                </label>
-                <input
-                  type="url"
-                  value={storeForm.banner}
-                  onChange={(e) =>
-                    setStoreForm({ ...storeForm, banner: e.target.value })
-                  }
-                  placeholder="https://images.unsplash.com/... atau URL banner promosi"
-                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2 text-xs font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
               </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('STORE_PAGE')}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-sky-700 active:scale-95"
+              >
+                <span>Buka Tab Halaman Detail Toko</span>
+                <Sparkles className="h-3.5 w-3.5" />
+              </button>
             </div>
 
             {/* Grid 2 Bento Columns for Store Admin */}
@@ -737,16 +775,19 @@ export default function AdminSettingsPage() {
 
                     <div className="space-y-1.5">
                       <label className="font-bold text-slate-700 dark:text-slate-300">
-                        NPWP Badan Usaha (PT)
+                        Slogan / Tagline Toko
                       </label>
                       <input
                         type="text"
-                        value={storeForm.taxId}
+                        value={storeForm.tagline}
                         onChange={(e) =>
-                          setStoreForm({ ...storeForm, taxId: e.target.value })
+                          setStoreForm({
+                            ...storeForm,
+                            tagline: e.target.value,
+                          })
                         }
-                        placeholder="misal: 01.428.910.4-015.000"
-                        className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-mono font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        placeholder="misal: Pusat Gadget Resmi & Servis Kilat Roxy Mas"
+                        className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
 
@@ -766,6 +807,39 @@ export default function AdminSettingsPage() {
                         placeholder="misal: 6281288997701"
                         className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        Deskripsi Profil Toko
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={storeForm.description}
+                        onChange={(e) =>
+                          setStoreForm({
+                            ...storeForm,
+                            description: e.target.value,
+                          })
+                        }
+                        placeholder="misal: Melayani penjualan gadget original resmi bergaransi 30 hari tukar unit baru dan servis layar kilat langsung di tempat."
+                        className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium leading-relaxed outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        NPWP Badan Usaha (PT)
+                      </label>
+                      <input
+                        type="text"
+                        value={storeForm.taxId}
+                        onChange={(e) =>
+                          setStoreForm({ ...storeForm, taxId: e.target.value })
+                        }
+                        placeholder="misal: 01.428.910.4-015.000"
+                        className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-mono font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
                   </div>
@@ -1181,6 +1255,675 @@ export default function AdminSettingsPage() {
                       />
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 1B: STORE ADMIN ONLY (Kustomisasi Halaman Detail Toko Publik)         */}
+        {/* ========================================================================= */}
+        {isStoreAdmin && activeTab === 'STORE_PAGE' && (
+          <div className="space-y-6">
+            {/* Top Bar Summary & Direct Link */}
+            <div className="shadow-2xs flex flex-col items-start justify-between gap-4 rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-orange-50/30 p-6 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:p-7">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-md shadow-orange-500/20">
+                  <LayoutTemplate className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-950 dark:text-white sm:text-lg">
+                      Kustomisasi Halaman Detail Toko
+                    </h2>
+                    <span className="rounded-full border border-sky-200/60 bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+                      Tampilan Publik Dinamis
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Atur visual hero banner, kampanye promosi, dan banner servis
+                    toko Anda di halaman profil publik{' '}
+                    <span className="font-mono text-[11px] text-slate-700 dark:text-slate-300">
+                      /toko/{storeSlug || '...'}
+                    </span>
+                    .
+                  </p>
+                </div>
+              </div>
+
+              {storeSlug && (
+                <a
+                  href={`/toko/${storeSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shadow-2xs inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-800 transition hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  <Eye className="h-3.5 w-3.5 text-orange-500" />
+                  <span>Lihat Halaman Toko</span>
+                  <ExternalLink className="h-3 w-3 text-slate-400" />
+                </a>
+              )}
+            </div>
+
+            {/* 1. Hero Banner Utama (Desktop & Mobile) */}
+            <div className="shadow-2xs space-y-5 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950/50">
+                  <Monitor className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-950 dark:text-white">
+                    1. Hero Banner Utama (Bagian Teratas Halaman Toko)
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Banner flagship layar penuh (100vh) yang tampil di bagian
+                    paling atas saat pembeli membuka halaman toko.
+                  </p>
+                </div>
+              </div>
+
+              {/* Grid 2 Slot: Desktop Hero & Mobile Hero */}
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                {/* Desktop Hero Image */}
+                <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        Banner Hero Desktop (16:9 / Full Viewport)
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Ditampilkan di laptop & komputer desktop.
+                      </p>
+                    </div>
+                    <label
+                      htmlFor="hero-desktop-upload"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    >
+                      {uploadingHeroDesktop ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Upload className="h-3 w-3" />
+                      )}
+                      <span>{storeForm.heroImage ? 'Ganti' : 'Upload'}</span>
+                      <input
+                        id="hero-desktop-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingHeroDesktop}
+                        onChange={(e) =>
+                          handleGenericBannerUpload(
+                            e,
+                            'heroImage',
+                            'Hero Banner Desktop',
+                            setUploadingHeroDesktop
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+
+                  {storeForm.heroImage ? (
+                    <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
+                      <img
+                        src={storeForm.heroImage}
+                        alt="Hero Desktop"
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStoreForm((prev) => ({ ...prev, heroImage: '' }))
+                        }
+                        className="backdrop-blur-xs absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-red-600/80 px-2 py-1 text-[10px] font-semibold text-white transition hover:bg-red-600"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>Hapus</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex aspect-[16/9] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-center dark:border-slate-800 dark:bg-slate-900/50">
+                      <Monitor className="mb-1.5 h-6 w-6 text-slate-300" />
+                      <p className="text-[11px] font-medium text-slate-500">
+                        Default: Foto Flagship Galaxy Fold & Flip
+                      </p>
+                    </div>
+                  )}
+
+                  <input
+                    type="url"
+                    value={storeForm.heroImage}
+                    onChange={(e) =>
+                      setStoreForm({ ...storeForm, heroImage: e.target.value })
+                    }
+                    placeholder="Atau URL gambar desktop (misal: https://...)"
+                    className="w-full rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-medium outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+
+                {/* Mobile Hero Image */}
+                <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        Banner Hero Mobile (Portrait / Square)
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Ditampilkan di smartphone iOS & Android.
+                      </p>
+                    </div>
+                    <label
+                      htmlFor="hero-mobile-upload"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    >
+                      {uploadingHeroMobile ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Upload className="h-3 w-3" />
+                      )}
+                      <span>
+                        {storeForm.heroMobileImage ? 'Ganti' : 'Upload'}
+                      </span>
+                      <input
+                        id="hero-mobile-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingHeroMobile}
+                        onChange={(e) =>
+                          handleGenericBannerUpload(
+                            e,
+                            'heroMobileImage',
+                            'Hero Banner Mobile',
+                            setUploadingHeroMobile
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+
+                  {storeForm.heroMobileImage ? (
+                    <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
+                      <img
+                        src={storeForm.heroMobileImage}
+                        alt="Hero Mobile"
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStoreForm((prev) => ({
+                            ...prev,
+                            heroMobileImage: '',
+                          }))
+                        }
+                        className="backdrop-blur-xs absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-red-600/80 px-2 py-1 text-[10px] font-semibold text-white transition hover:bg-red-600"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>Hapus</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex aspect-[16/9] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-center dark:border-slate-800 dark:bg-slate-900/50">
+                      <Smartphone className="mb-1.5 h-6 w-6 text-slate-300" />
+                      <p className="text-[11px] font-medium text-slate-500">
+                        Default: Foto Mobile Galaxy Fold & Flip
+                      </p>
+                    </div>
+                  )}
+
+                  <input
+                    type="url"
+                    value={storeForm.heroMobileImage}
+                    onChange={(e) =>
+                      setStoreForm({
+                        ...storeForm,
+                        heroMobileImage: e.target.value,
+                      })
+                    }
+                    placeholder="Atau URL gambar mobile (misal: https://...)"
+                    className="w-full rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-medium outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Copywriting Hero Form */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Teks Headline & Deskripsi Hero (Opsional — Otomatis membaca
+                  produk unggulan jika dikosongkan)
+                </h4>
+                <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Kicker / Kategori Hero
+                    </label>
+                    <input
+                      type="text"
+                      value={storeForm.heroSubtitle}
+                      onChange={(e) =>
+                        setStoreForm({
+                          ...storeForm,
+                          heroSubtitle: e.target.value,
+                        })
+                      }
+                      placeholder="misal: SAMSUNG OFFICIAL / GALAXY AI IS HERE"
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Headline / Judul Produk Hero
+                    </label>
+                    <input
+                      type="text"
+                      value={storeForm.heroTitle}
+                      onChange={(e) =>
+                        setStoreForm({
+                          ...storeForm,
+                          heroTitle: e.target.value,
+                        })
+                      }
+                      placeholder="misal: Galaxy Z Fold8 | Fold8 | Flip8"
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Deskripsi Promosi Hero
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={storeForm.heroDescription}
+                      onChange={(e) =>
+                        setStoreForm({
+                          ...storeForm,
+                          heroDescription: e.target.value,
+                        })
+                      }
+                      placeholder="misal: Eksplorasi kemewahan smartphone lipat generasi terdepan di gerai resmi kami dengan jaminan garansi 30 hari ganti unit baru."
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium leading-relaxed outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Banner Kampanye Promosi (Editorial 1 - Tengah) */}
+            <div className="shadow-2xs space-y-5 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+              <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/50">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-950 dark:text-white">
+                      2. Banner Kampanye Promosi (Editorial 1 - Bagian Tengah)
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Banner besar editorial yang muncul saat pembeli menelusuri
+                      bagian tengah halaman toko.
+                    </p>
+                  </div>
+                </div>
+                <label
+                  htmlFor="store-campaign-banner-upload"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                >
+                  {uploadingBanner ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" />
+                  )}
+                  <span>
+                    {storeForm.banner ? 'Ganti Banner' : 'Upload Banner Baru'}
+                  </span>
+                  <input
+                    id="store-campaign-banner-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingBanner}
+                    onChange={(e) =>
+                      handleGenericBannerUpload(
+                        e,
+                        'banner',
+                        'Banner Kampanye Toko',
+                        setUploadingBanner
+                      )
+                    }
+                  />
+                </label>
+              </div>
+
+              {/* Banner Preview or Empty State */}
+              {storeForm.banner ? (
+                <div className="relative aspect-[21/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
+                  <img
+                    src={storeForm.banner}
+                    alt="Banner Kampanye"
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/60 via-transparent to-transparent p-4">
+                    <span className="text-xs font-semibold text-white/90">
+                      Banner Aktif Kampanye Toko
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setStoreForm((prev) => ({ ...prev, banner: '' }))
+                      }
+                      className="backdrop-blur-xs inline-flex items-center gap-1 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-red-600"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      <span>Hapus</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-8 text-center dark:border-slate-800 dark:bg-slate-950/40">
+                  <Sparkles className="mb-2 h-7 w-7 text-slate-300" />
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                    Belum ada banner promosi khusus yang diunggah
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    Halaman toko akan menampilkan banner editorial Galaxy S26
+                    Series secara otomatis.
+                  </p>
+                </div>
+              )}
+
+              <input
+                type="url"
+                value={storeForm.banner}
+                onChange={(e) =>
+                  setStoreForm({ ...storeForm, banner: e.target.value })
+                }
+                placeholder="Atau masukkan URL Banner langsung (opsional)"
+                className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 text-xs font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+
+              {/* Copywriting Kampanye Form */}
+              <div className="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Teks Kampanye Promosi (Opsional)
+                </h4>
+                <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Kicker Kampanye
+                    </label>
+                    <input
+                      type="text"
+                      value={storeForm.campaignKicker}
+                      onChange={(e) =>
+                        setStoreForm({
+                          ...storeForm,
+                          campaignKicker: e.target.value,
+                        })
+                      }
+                      placeholder="misal: Penawaran Eksklusif Cabang"
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Judul Kampanye
+                    </label>
+                    <input
+                      type="text"
+                      value={storeForm.campaignTitle}
+                      onChange={(e) =>
+                        setStoreForm({
+                          ...storeForm,
+                          campaignTitle: e.target.value,
+                        })
+                      }
+                      placeholder="misal: Koleksi Pilihan Resmi Cabang"
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Subtitle / Highlight
+                    </label>
+                    <input
+                      type="text"
+                      value={storeForm.campaignSubtitle}
+                      onChange={(e) =>
+                        setStoreForm({
+                          ...storeForm,
+                          campaignSubtitle: e.target.value,
+                        })
+                      }
+                      placeholder="misal: Paket Bonus 3-in-1 Rp 0"
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-3">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Deskripsi Kampanye
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={storeForm.campaignDescription}
+                      onChange={(e) =>
+                        setStoreForm({
+                          ...storeForm,
+                          campaignDescription: e.target.value,
+                        })
+                      }
+                      placeholder="misal: Dapatkan keuntungan langsung belanja di toko resmi: Paket bonus Rp 0, asuransi penuh kurir JNE/Gojek, dan garansi ganti unit 30 hari."
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium leading-relaxed outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Banner Layanan & Garansi (Editorial 2 - Bagian Bawah) */}
+            <div className="shadow-2xs space-y-5 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+              <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50">
+                    <ShieldCheck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-950 dark:text-white">
+                      3. Banner Layanan & Garansi (Editorial 2 - Bagian Servis
+                      LCD & Klaim)
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Banner showcase layanan purna jual dan servis kilat LCD 2
+                      jam di gerai Anda.
+                    </p>
+                  </div>
+                </div>
+                <label
+                  htmlFor="store-secondary-banner-upload"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                >
+                  {uploadingSecondaryBanner ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" />
+                  )}
+                  <span>
+                    {storeForm.secondaryBanner
+                      ? 'Ganti Banner'
+                      : 'Upload Banner Baru'}
+                  </span>
+                  <input
+                    id="store-secondary-banner-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingSecondaryBanner}
+                    onChange={(e) =>
+                      handleGenericBannerUpload(
+                        e,
+                        'secondaryBanner',
+                        'Banner Layanan & Garansi',
+                        setUploadingSecondaryBanner
+                      )
+                    }
+                  />
+                </label>
+              </div>
+
+              {/* Secondary Banner Preview or Empty State */}
+              {storeForm.secondaryBanner ? (
+                <div className="relative aspect-[21/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
+                  <img
+                    src={storeForm.secondaryBanner}
+                    alt="Banner Layanan"
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/60 via-transparent to-transparent p-4">
+                    <span className="text-xs font-semibold text-white/90">
+                      Banner Aktif Layanan & Servis
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setStoreForm((prev) => ({
+                          ...prev,
+                          secondaryBanner: '',
+                        }))
+                      }
+                      className="backdrop-blur-xs inline-flex items-center gap-1 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-red-600"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      <span>Hapus</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-8 text-center dark:border-slate-800 dark:bg-slate-950/40">
+                  <ShieldCheck className="mb-2 h-7 w-7 text-slate-300" />
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                    Belum ada banner layanan khusus yang diunggah
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    Halaman toko akan menampilkan artwork resmi Samsung Vision
+                    AI / Servis Kilat LCD secara otomatis.
+                  </p>
+                </div>
+              )}
+
+              <input
+                type="url"
+                value={storeForm.secondaryBanner}
+                onChange={(e) =>
+                  setStoreForm({
+                    ...storeForm,
+                    secondaryBanner: e.target.value,
+                  })
+                }
+                placeholder="Atau masukkan URL Banner Layanan (opsional)"
+                className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 text-xs font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+
+              {/* Copywriting Layanan Form */}
+              <div className="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Teks Layanan & Garansi (Opsional)
+                </h4>
+                <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Judul Layanan Cabang
+                    </label>
+                    <input
+                      type="text"
+                      value={storeForm.secondaryBannerTitle}
+                      onChange={(e) =>
+                        setStoreForm({
+                          ...storeForm,
+                          secondaryBannerTitle: e.target.value,
+                        })
+                      }
+                      placeholder="misal: Servis Kilat LCD 2 Jam • Hub Jakarta Pusat"
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Deskripsi Layanan & Garansi Cabang
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={storeForm.secondaryBannerDesc}
+                      onChange={(e) =>
+                        setStoreForm({
+                          ...storeForm,
+                          secondaryBannerDesc: e.target.value,
+                        })
+                      }
+                      placeholder="misal: Layanan reparasi layar kilat bergaransi 30 hari di gerai resmi kami. Dikerjakan teknisi berpengalaman dengan suku cadang teruji."
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium leading-relaxed outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Slogan & Deskripsi Profil Toko (Informasi Gerai) */}
+            <div className="shadow-2xs space-y-5 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50">
+                  <Building2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-950 dark:text-white">
+                    4. Slogan & Deskripsi Profil Toko (Informasi Gerai)
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Slogan dan deskripsi gerai yang tampil pada bento grid
+                    kredibilitas toko di bagian bawah.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Slogan / Tagline Toko
+                  </label>
+                  <input
+                    type="text"
+                    value={storeForm.tagline}
+                    onChange={(e) =>
+                      setStoreForm({ ...storeForm, tagline: e.target.value })
+                    }
+                    placeholder="misal: Pusat Gadget Resmi & Servis Layar Kilat Roxy Mas"
+                    className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Deskripsi Profil Toko
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={storeForm.description}
+                    onChange={(e) =>
+                      setStoreForm({
+                        ...storeForm,
+                        description: e.target.value,
+                      })
+                    }
+                    placeholder="misal: Melayani penjualan gadget original resmi bergaransi 30 hari tukar unit baru dan servis layar kilat langsung di tempat oleh teknisi berpengalaman."
+                    className="w-full rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-2.5 font-medium leading-relaxed outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
                 </div>
               </div>
             </div>
