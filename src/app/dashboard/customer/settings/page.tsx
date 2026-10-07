@@ -171,8 +171,7 @@ export default function CustomerSettingsPage() {
     } catch (error) {
       console.error('Error fetching profile:', error)
       toast({
-        title: 'Gagal Memuat',
-        description: 'Terjadi kendala saat mengambil data profil.',
+        title: 'Gagal memuat data profil',
         variant: 'destructive',
       })
     } finally {
@@ -402,10 +401,7 @@ export default function CustomerSettingsPage() {
           setOtpCode('')
           setIsOtpModalOpen(true)
           toast({
-            title: 'Verifikasi Diperlukan',
-            description:
-              data.message ||
-              'Masukkan kode OTP WhatsApp untuk konfirmasi perubahan data profil Anda.',
+            title: 'Kode OTP WhatsApp dikirim',
           })
           return
         }
@@ -443,24 +439,20 @@ export default function CustomerSettingsPage() {
 
       if (res.ok) {
         toast({
-          title: 'Alamat Utama Diperbarui',
-          description:
-            'Alamat ini akan otomatis digunakan saat checkout pesanan.',
+          title: 'Alamat utama berhasil diperbarui',
         })
         await fetchAddresses()
       } else {
         const err = await res.json()
         toast({
-          title: 'Gagal',
-          description: err.error || 'Gagal mengubah alamat utama.',
+          title: err.error || 'Gagal mengubah alamat utama',
           variant: 'destructive',
         })
       }
     } catch (error) {
       console.error('Error setting default address:', error)
       toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan saat mengatur alamat utama.',
+        title: 'Gagal mengatur alamat utama',
         variant: 'destructive',
       })
     } finally {
@@ -480,23 +472,20 @@ export default function CustomerSettingsPage() {
 
       if (res.ok) {
         toast({
-          title: 'Alamat Dihapus',
-          description: 'Alamat telah dihapus dari daftar buku alamat Anda.',
+          title: 'Alamat berhasil dihapus',
         })
         await fetchAddresses()
       } else {
         const err = await res.json()
         toast({
-          title: 'Gagal Menghapus',
-          description: err.error || 'Gagal menghapus alamat.',
+          title: err.error || 'Gagal menghapus alamat',
           variant: 'destructive',
         })
       }
     } catch (error) {
       console.error('Error deleting address:', error)
       toast({
-        title: 'Error',
-        description: 'Terjadi kesalahan saat menghapus alamat.',
+        title: 'Gagal menghapus alamat',
         variant: 'destructive',
       })
     } finally {
@@ -552,9 +541,7 @@ export default function CustomerSettingsPage() {
           setOtpCode('')
           setIsOtpModalOpen(true)
           toast({
-            title: 'Verifikasi Diperlukan',
-            description:
-              'Masukkan kode OTP WhatsApp untuk konfirmasi penggantian kata sandi.',
+            title: 'Kode OTP WhatsApp dikirim',
           })
           return
         }

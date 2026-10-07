@@ -27,4 +27,38 @@ describe('Toaster Non-Stacking Configuration', () => {
     // Verify TOAST_LIMIT is 1
     expect(useToastContent).toContain('const TOAST_LIMIT = 1')
   })
+  it('should enforce single-line row layout without flex-col in Toaster component', () => {
+    const toasterPath = path.join(
+      process.cwd(),
+      'src',
+      'components',
+      'ui',
+      'toaster.tsx'
+    )
+    const toasterContent = fs.readFileSync(toasterPath, 'utf-8')
+
+    // Verify absence of vertical stacking flex-col
+    expect(toasterContent).not.toContain('flex flex-col')
+    // Verify single-line row flex container
+    expect(toasterContent).toContain(
+      'flex items-center gap-1.5 min-w-0 text-xs'
+    )
+  })
+
+  it('should format customer settings OTP verification toast as clean 1-line notification', () => {
+    const settingsPath = path.join(
+      process.cwd(),
+      'src',
+      'app',
+      'dashboard',
+      'customer',
+      'settings',
+      'page.tsx'
+    )
+    const settingsContent = fs.readFileSync(settingsPath, 'utf-8')
+
+    // Verify OTP toasts use clean single-line title and no bulky description
+    expect(settingsContent).toContain("title: 'Kode OTP WhatsApp dikirim'")
+    expect(settingsContent).not.toContain("title: 'Verifikasi Diperlukan'")
+  })
 })

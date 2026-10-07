@@ -52,7 +52,13 @@
 - **Port Tersedia:** Port 3000 (Next.js Web App) & Port 3001 (Standalone WebSocket Server)
 - **Mode Eksekusi:** `pnpm dev` (menjalankan Next.js port 3000 dan WS Server port 3001 secara paralel via `concurrently`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
-- **Unit Tests:** 114 test files, 844 tests lulus 100% (`pnpm test:unit` pass)
+- **Unit Tests:** 114 test files, 846 tests lulus 100% (`pnpm test:unit` pass)
+
+- **2026-10-07 (Refinement Notifikasi Toast: Desain 1 Baris Minimalis & Sederhana):**
+  - **1. Layout Baris Tunggal Global ([`src/components/ui/toaster.tsx`](file:///src/components/ui/toaster.tsx), [`src/components/ui/toast.tsx`](file:///src/components/ui/toast.tsx)):** Mengeliminasi `flex flex-col` yang sebelumnya menumpuk judul dan deskripsi secara vertikal dan membentuk balon oval besar di mobile. Mengubah struktur menjadi `flex items-center gap-2 min-w-0 max-w-full` 1 baris ramping (pill chip) dengan `truncate whitespace-nowrap`. Di mobile, judul tampil ringkas; di desktop, deskripsi disambung inline `· {description}`.
+  - **2. Penyeragaman Notifikasi OTP Pengaturan Customer ([`src/app/dashboard/customer/settings/page.tsx`](file:///src/app/dashboard/customer/settings/page.tsx)):** Menghapus judul redundan "Verifikasi Diperlukan" dan deskripsi panjang yang membungkus 5 baris. Menggantinya menjadi notifikasi 1 baris yang padat dan informatif: `toast({ title: 'Kode OTP WhatsApp dikirim' })`. Begitu juga untuk notifikasi update dan hapus alamat disederhanakan menjadi 1 baris bersih.
+  - **3. Unit Testing Suite ([`tests/unit/toaster-single-notification.test.ts`](file:///tests/unit/toaster-single-notification.test.ts)):** Menambahkan pengujian struktur row 1 baris tanpa `flex-col` pada Toaster serta verifikasi format teks 1 baris OTP pada pengaturan profil.
+  - **4. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 114 test files dengan 846 tests lulus 100% (`pnpm test:unit` pass).
 
 - **2026-10-06 (Eliminasi Burger Menu Publik & Konsolidasi Navigasi Mobile Customer):**
   - **1. Eliminasi Total Burger Menu Publik ([`src/components/layouts/navbar.tsx`](file:///src/components/layouts/navbar.tsx)):** Menghapus tombol toggle burger menu (`<Menu />` / `<X />`), state `mobileMenuOpen`, dan container `Mobile Navigation Drawer` dari komponen `Navbar`.
