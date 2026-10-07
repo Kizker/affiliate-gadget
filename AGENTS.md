@@ -52,7 +52,13 @@
 - **Port Tersedia:** Port 3000 (Next.js Web App) & Port 3001 (Standalone WebSocket Server)
 - **Mode Eksekusi:** `pnpm dev` (menjalankan Next.js port 3000 dan WS Server port 3001 secara paralel via `concurrently`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
-- **Unit Tests:** 116 test files, 856 tests lulus 100% (`pnpm test:unit` pass)
+- **Unit Tests:** 117 test files, 858 tests lulus 100% (`pnpm test:unit` pass)
+
+- **2026-10-07 (Eliminasi Hero Banner Servis Mobile & Direct Search Bar):**
+  - **1. Sembunyikan Hero Banner Servis di Mobile ([`src/components/service/integrated-service-view.tsx`](file:///src/components/service/integrated-service-view.tsx)):** Menambahkan `hidden md:block` pada section hero banner servis (`LAYANAN SERVIS RESMI & TERSTANDARISASI LAB` dan judulnya), sehingga di perangkat mobile pengguna langsung disajikan input bilah pencarian mitra/layanan/kota tanpa harus terhalang kartu promosi hero.
+  - **2. Penyesuaian Spacing Search Section Mobile:** Menata padding atas section pencarian di mobile (`pt-20 sm:pt-22 md:pt-0 md:mt-5`) agar berada tepat di bawah navbar dengan spasi proporsional.
+  - **3. Unit Testing Suite ([`tests/unit/service-mobile-hero-removal.test.ts`](file:///tests/unit/service-mobile-hero-removal.test.ts)):** 2 unit tests memvalidasi isolasi banner hero hanya untuk desktop (`hidden md:block`) dan posisi pencarian langsung di mobile.
+  - **4. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 117 test files dengan 858 tests lulus 100% (`pnpm test:unit` pass).
 
 - **2026-10-07 (Perbaikan Scroll Subview Profil Mobile, Tombol Simpan Terlihat & Sinkronisasi DB Live VPS):**
   - **1. Perbaikan Scroll Subview Profil Mobile ([`src/components/customer/mobile-customer-account-view.tsx`](file:///src/components/customer/mobile-customer-account-view.tsx)):** Mengunci container subview menggunakan `fixed inset-0 z-40 flex h-full w-full flex-col` sehingga header tidak terdorong ke atas oleh window-scroll iOS Safari. Mengeliminasi `scrollIntoView` agresif yang menggeser viewport browser. Memangkas padding bawah `main` dari `pb-80` (320px ruang kosong) menjadi `pb-8` yang proporsional ("Secukupnya saja!").

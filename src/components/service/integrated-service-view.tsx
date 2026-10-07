@@ -162,8 +162,8 @@ export function IntegratedServiceView() {
       {/* Ambient glow */}
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-[400px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-100/40 via-amber-50/15 to-transparent dark:from-orange-950/20 dark:via-slate-950 dark:to-transparent" />
 
-      {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section className="relative pb-2 pt-20 md:pb-3 md:pt-24">
+      {/* ── HERO (Desktop only — Sesuai permintaan: di mobile langsung ke bilah pencarian) ── */}
+      <section className="relative hidden pb-2 pt-20 md:block md:pb-3 md:pt-24">
         <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
           <div className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-orange-200/90 bg-white/90 px-3.5 py-1 backdrop-blur-md dark:border-orange-900/60 dark:bg-slate-900/90">
             <ShieldCheck className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
@@ -178,8 +178,8 @@ export function IntegratedServiceView() {
         </div>
       </section>
 
-      {/* ── SEARCH & FILTER ───────────────────────────────────────────────── */}
-      <section className="relative mx-auto mt-3 max-w-7xl px-4 sm:px-6 md:mt-5 lg:px-8">
+      {/* ── SEARCH & FILTER (Langsung tampil di atas pada tampilan mobile) ── */}
+      <section className="sm:pt-22 relative mx-auto max-w-7xl px-4 pt-20 sm:px-6 md:mt-5 md:pt-0 lg:px-8">
         <div className="shadow-2xs mb-6 flex flex-col items-stretch justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:p-3 md:rounded-3xl">
           {/* Search bar */}
           <div className="relative flex-1">

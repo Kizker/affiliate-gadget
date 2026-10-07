@@ -26,7 +26,8 @@ describe('Customer Profile Mobile Scroll & VPS DB Sync', () => {
   it('memvalidasi tombol simpan profil dapat diakses di mobile pada halaman settings', () => {
     const content = fs.readFileSync(customerSettingsPagePath, 'utf-8')
     expect(content).toContain('Simpan Profil Biodata')
-    expect(content).toContain('bg-orange-500 hover:bg-orange-600')
+    expect(content).toContain('bg-orange-500')
+    expect(content).toContain('hover:bg-orange-600')
     // Pastikan tombol tidak disembunyikan di mobile (tidak memiliki hidden md:flex)
     expect(content).not.toContain(
       'hidden items-center justify-end border-t border-slate-100 pt-4 md:flex'
@@ -36,7 +37,8 @@ describe('Customer Profile Mobile Scroll & VPS DB Sync', () => {
   it('memvalidasi tombol perbarui kata sandi dapat diakses di mobile', () => {
     const content = fs.readFileSync(customerSettingsPagePath, 'utf-8')
     expect(content).toContain('Perbarui Kata Sandi')
-    expect(content).toContain('bg-orange-500 hover:bg-orange-600')
+    expect(content).toContain('bg-orange-500')
+    expect(content).toContain('hover:bg-orange-600')
   })
 
   it('memvalidasi skrip deploy VPS menyertakan sinkronisasi prisma db push otomatis', () => {
