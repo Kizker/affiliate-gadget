@@ -1295,6 +1295,8 @@ export default function CustomerSettingsPage() {
             onClose={() => setIsAddressModalOpen(false)}
             onSuccess={fetchAddresses}
             addressToEdit={addressToEdit}
+            defaultRecipientName={name || session?.user?.name || ''}
+            defaultPhone={phone || (session?.user as any)?.phone || ''}
           />
         </motion.div>
       )}

@@ -38,7 +38,8 @@ export default function HubungiKamiPage() {
   const quickTopics = [
     {
       icon: ShieldCheck,
-      color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/40 dark:text-orange-400',
+      color:
+        'text-orange-600 bg-orange-50 dark:bg-orange-950/40 dark:text-orange-400',
       title: 'Klaim Garansi 30 Hari',
       desc: 'Panduan syarat dan alur klaim tukar unit second di detail pesanan Anda.',
       href: '/dashboard/customer/orders',
@@ -54,7 +55,8 @@ export default function HubungiKamiPage() {
     },
     {
       icon: Store,
-      color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400',
+      color:
+        'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400',
       title: 'Toko Offline Resmi',
       desc: 'Daftar alamat fisik toko, legalitas PT, dan jam buka.',
       href: '/toko',
@@ -62,11 +64,12 @@ export default function HubungiKamiPage() {
     },
     {
       icon: MessageCircle,
-      color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400',
-      title: 'Live Chat Toko',
-      desc: 'Konsultasi cepat kondisi unit second & garansi.',
-      href: '/dashboard/customer/chat',
-      action: 'Buka Chat Toko',
+      color:
+        'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400',
+      title: 'Live Chat CS Superadmin',
+      desc: 'Layanan kendala transaksi, garansi, & konsultasi langsung ke CS Superadmin.',
+      href: '/dashboard/customer/chat?type=cs',
+      action: 'Hubungi CS Superadmin',
       external: false,
     },
   ]
@@ -92,49 +95,51 @@ export default function HubungiKamiPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col justify-between">
+    <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar variant="light" />
 
-      <main className="pt-28 pb-20">
+      <main className="pb-20 pt-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          
           {/* Header Section (Modern, Clean & Proportional) */}
-          <div className="mx-auto max-w-2xl text-center mb-12 space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3.5 py-1 text-[11px] font-semibold text-slate-700 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          <div className="mx-auto mb-12 max-w-2xl space-y-3 text-center">
+            <div className="shadow-2xs inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               <Sparkles className="h-3.5 w-3.5 text-orange-500" />
               <span>Pusat Bantuan & Layanan Resmi</span>
             </div>
-            
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
+
+            <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
               Pusat Bantuan Pelanggan
             </h1>
-            
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-              Temukan jawaban cepat seputar pesanan, garansi unit, atau kirimkan tiket bantuan resmi ke tim support kami.
+
+            <p className="mx-auto max-w-md text-xs leading-relaxed text-slate-500 dark:text-slate-400 sm:text-sm">
+              Temukan jawaban cepat seputar pesanan, garansi unit, atau kirimkan
+              tiket bantuan resmi ke tim support kami.
             </p>
           </div>
 
           {/* Quick Topic Bento Cards (4-Column Bento) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-14">
+          <div className="mb-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {quickTopics.map((topic, idx) => {
               const Icon = topic.icon
               const isExternal = topic.external
               const CardContent = (
                 <div className="flex h-full flex-col justify-between">
                   <div>
-                    <div className={`mb-4 flex h-10 w-10 items-center justify-center rounded-2xl ${topic.color} shadow-2xs`}>
+                    <div
+                      className={`mb-4 flex h-10 w-10 items-center justify-center rounded-2xl ${topic.color} shadow-2xs`}
+                    >
                       <Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-orange-600 transition-colors dark:text-white">
+                    <h3 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-orange-600 dark:text-white">
                       {topic.title}
                     </h3>
-                    <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                       {topic.desc}
                     </p>
                   </div>
                   <div className="mt-5 flex items-center gap-1 text-xs font-bold text-slate-900 dark:text-white">
                     <span>{topic.action}</span>
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1 text-orange-500" />
+                    <ArrowRight className="h-3.5 w-3.5 text-orange-500 transition-transform group-hover:translate-x-1" />
                   </div>
                 </div>
               )
@@ -145,7 +150,7 @@ export default function HubungiKamiPage() {
                   href={topic.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
+                  className="shadow-xs group rounded-3xl border border-slate-200/80 bg-white p-5 transition-all duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 sm:p-6"
                 >
                   {CardContent}
                 </a>
@@ -153,7 +158,7 @@ export default function HubungiKamiPage() {
                 <Link
                   key={idx}
                   href={topic.href}
-                  className="group rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
+                  className="shadow-xs group rounded-3xl border border-slate-200/80 bg-white p-5 transition-all duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 sm:p-6"
                 >
                   {CardContent}
                 </Link>
@@ -162,13 +167,12 @@ export default function HubungiKamiPage() {
           </div>
 
           {/* Main 2-Column Bento Grid: FAQ (Left) & Kirim Pesan Form (Right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-16">
-            
+          <div className="mb-16 grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
             {/* Left Column: FAQ Accordion (6 cols) */}
-            <div className="lg:col-span-6 rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="shadow-xs space-y-4 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8 lg:col-span-6">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
                 <HelpCircle className="h-4 w-4 text-blue-600" />
-                <h2 className="text-sm sm:text-base font-bold text-slate-950 dark:text-white">
+                <h2 className="text-sm font-bold text-slate-950 dark:text-white sm:text-base">
                   Pertanyaan yang Sering Diajukan (FAQ)
                 </h2>
               </div>
@@ -179,24 +183,26 @@ export default function HubungiKamiPage() {
                   return (
                     <div
                       key={idx}
-                      className="rounded-2xl border border-slate-200/70 bg-slate-50/50 transition-colors duration-200 dark:border-slate-800 dark:bg-slate-800/40 overflow-hidden"
+                      className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-50/50 transition-colors duration-200 dark:border-slate-800 dark:bg-slate-800/40"
                     >
                       <button
                         onClick={() => setOpenFaq(isOpen ? null : idx)}
                         className="flex w-full items-center justify-between p-4 text-left focus:outline-none"
                       >
-                        <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white pr-4 leading-snug">
+                        <span className="pr-4 text-xs font-bold leading-snug text-slate-900 dark:text-white sm:text-sm">
                           {faq.q}
                         </span>
                         <ChevronDown
                           className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${
-                            isOpen ? 'rotate-180 text-slate-900 dark:text-white' : ''
+                            isOpen
+                              ? 'rotate-180 text-slate-900 dark:text-white'
+                              : ''
                           }`}
                         />
                       </button>
-                      
+
                       {isOpen && (
-                        <div className="px-4 pb-4 pt-0 text-xs text-slate-600 dark:text-slate-300 leading-relaxed border-t border-slate-200/60 dark:border-slate-700/60 pt-3 animate-in fade-in duration-150">
+                        <div className="border-t border-slate-200/60 px-4 pb-4 pt-0 pt-3 text-xs leading-relaxed text-slate-600 duration-150 animate-in fade-in dark:border-slate-700/60 dark:text-slate-300">
                           {faq.a}
                         </div>
                       )}
@@ -207,29 +213,31 @@ export default function HubungiKamiPage() {
             </div>
 
             {/* Right Column: Contact Message Form Card (6 cols) */}
-            <div className="lg:col-span-6 rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-              <div className="mb-6 space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-950 dark:text-white">
+            <div className="shadow-xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8 lg:col-span-6">
+              <div className="mb-6 space-y-1 border-b border-slate-100 pb-3 dark:border-slate-800">
+                <h2 className="text-base font-bold tracking-tight text-slate-950 dark:text-white sm:text-lg">
                   Kirim Pesan Resmi ke Tim Support
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Punya pertanyaan khusus, klaim, atau pengadaan unit? Hubungi kami di sini.
+                  Punya pertanyaan khusus, klaim, atau pengadaan unit? Hubungi
+                  kami di sini.
                 </p>
               </div>
 
               {submitted ? (
-                <div className="rounded-2xl bg-emerald-50/80 p-8 text-center space-y-3 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800">
+                <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-8 text-center dark:border-emerald-800 dark:bg-emerald-950/30">
                   <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600 dark:text-emerald-400" />
                   <h3 className="text-base font-bold text-emerald-950 dark:text-emerald-200">
                     Pesan Anda Telah Berhasil Terkirim!
                   </h3>
-                  <p className="text-xs text-emerald-800 dark:text-emerald-300 max-w-md mx-auto">
-                    Representatif tim kami akan merespons melalui WhatsApp atau email yang Anda cantumkan dalam 1x24 jam kerja.
+                  <p className="mx-auto max-w-md text-xs text-emerald-800 dark:text-emerald-300">
+                    Representatif tim kami akan merespons melalui WhatsApp atau
+                    email yang Anda cantumkan dalam 1x24 jam kerja.
                   </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-3.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                     <div>
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Nama Lengkap *
@@ -238,9 +246,11 @@ export default function HubungiKamiPage() {
                         type="text"
                         required
                         value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, name: e.target.value })
+                        }
                         placeholder="Contoh: Budi Santoso"
-                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
 
@@ -252,14 +262,16 @@ export default function HubungiKamiPage() {
                         type="tel"
                         required
                         value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, phone: e.target.value })
+                        }
                         placeholder="081234567890"
-                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                     <div>
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Topik Kategori *
@@ -270,8 +282,14 @@ export default function HubungiKamiPage() {
                         size="sm"
                         options={[
                           { value: 'garansi', label: 'Klaim Garansi 30 Hari' },
-                          { value: 'produk', label: 'Pertanyaan Stok Produk & Varian' },
-                          { value: 'pengiriman', label: 'Status Pengiriman & Asuransi' },
+                          {
+                            value: 'produk',
+                            label: 'Pertanyaan Stok Produk & Varian',
+                          },
+                          {
+                            value: 'pengiriman',
+                            label: 'Status Pengiriman & Asuransi',
+                          },
                           { value: 'kemitraan', label: 'Kemitraan Toko & B2B' },
                           { value: 'lainnya', label: 'Lainnya' },
                         ]}
@@ -284,7 +302,9 @@ export default function HubungiKamiPage() {
                       </label>
                       <CustomSelect
                         value={form.storeBranch}
-                        onChange={(val) => setForm({ ...form, storeBranch: val })}
+                        onChange={(val) =>
+                          setForm({ ...form, storeBranch: val })
+                        }
                         size="sm"
                         options={[
                           { value: 'roxy', label: 'Roxy Mas (Jakarta Pusat)' },
@@ -303,16 +323,18 @@ export default function HubungiKamiPage() {
                       rows={4}
                       required
                       value={form.message}
-                      onChange={(e) => setForm({ ...form, message: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, message: e.target.value })
+                      }
                       placeholder="Tuliskan kendala atau pertanyaan Anda secara jelas..."
-                      className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 text-xs text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                   </div>
 
                   <div className="pt-2 text-right">
                     <button
                       type="submit"
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-7 py-3 text-xs font-bold text-white shadow-2xs hover:bg-slate-800 active:scale-[0.99] transition-all duration-200 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 w-full sm:w-auto"
+                      className="shadow-2xs inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-7 py-3 text-xs font-bold text-white transition-all duration-200 hover:bg-slate-800 active:scale-[0.99] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 sm:w-auto"
                     >
                       <Send className="h-3.5 w-3.5" /> Kirim Pesan Bantuan
                     </button>
@@ -320,9 +342,7 @@ export default function HubungiKamiPage() {
                 </form>
               )}
             </div>
-
           </div>
-
         </div>
       </main>
 

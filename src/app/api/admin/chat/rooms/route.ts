@@ -37,7 +37,10 @@ export async function GET() {
     // Only return rooms that actually have messages (non-empty rooms)
     let whereClause: Record<string, unknown>
 
-    if (user.role === 'STORE_ADMIN' && user.storeId) {
+    if (
+      (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') &&
+      user.storeId
+    ) {
       whereClause = {
         messages: { some: {} },
         OR: [
@@ -51,6 +54,19 @@ export async function GET() {
           },
           // Rooms tanpa order (general inquiry) yang di-claim admin ini
           { claimedById: session.user.id },
+          // Rooms bantuan admin toko ini langsung ke Superadmin
+          { customerId: session.user.id, storeId: null },
+        ],
+      }
+    } else if (user.role === 'SUPER_ADMIN') {
+      whereClause = {
+        messages: { some: {} },
+        OR: [
+          // Seluruh percakapan bantuan CS platform (pelanggan & bantuan admin toko)
+          { storeId: null },
+          // Percakapan yang di-claim atau belum di-claim
+          { claimedById: session.user.id },
+          { claimedById: null },
         ],
       }
     } else {
@@ -84,6 +100,14 @@ export async function GET() {
             email: true,
             image: true,
             phone: true,
+            role: true,
+            store: {
+              select: {
+                id: true,
+                name: true,
+                city: true,
+              },
+            },
           },
         },
         order: {
@@ -148,12 +172,29 @@ export async function GET() {
       orderBy: { lastMessageAt: 'desc' },
     })
 
+    const enrichedRooms = rooms.map((room) => {
+      const isStoreHelpToSuperAdmin =
+        room.customerId === session.user.id && room.storeId === null
+
+      const isStoreAdminUser =
+        room.customer.role === 'STORE_ADMIN' ||
+        room.customer.role === 'STORE_SALES'
+
+      return {
+        ...room,
+        isStoreHelpToSuperAdmin,
+        isStoreAdminUser,
+      }
+    })
+
     // Get stats
-    const totalRooms = rooms.length
-    const unreadRooms = rooms.filter((r) => r._count.messages > 0).length
+    const totalRooms = enrichedRooms.length
+    const unreadRooms = enrichedRooms.filter(
+      (r) => r._count.messages > 0
+    ).length
 
     return NextResponse.json({
-      rooms,
+      rooms: enrichedRooms,
       stats: { totalRooms, unreadRooms },
     })
   } catch (error) {

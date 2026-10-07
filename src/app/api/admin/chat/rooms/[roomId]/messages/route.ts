@@ -167,20 +167,28 @@ export async function POST(
     }
 
     // Auto-claim room if not claimed yet
+    const isRoomCustomer = room.customerId === session.user.id
+    const isSuperAdmin = user.role === 'SUPER_ADMIN'
+
     if (!room.claimedById) {
-      await prisma.adminChatRoom.update({
-        where: { id: roomId },
-        data: {
-          claimedById: session.user.id,
-          claimedAt: new Date(),
-        },
-      })
+      // Hanya auto-claim jika pengirim BUKAN pemohon/customer (misal Superadmin/staff yang membalas)
+      if (!isRoomCustomer) {
+        await prisma.adminChatRoom.update({
+          where: { id: roomId },
+          data: {
+            claimedById: session.user.id,
+            claimedAt: new Date(),
+          },
+        })
+      }
     } else if (room.claimedById !== session.user.id) {
-      // If room is claimed by another admin, prevent sending
-      return NextResponse.json(
-        { error: 'This chat is already claimed by another admin' },
-        { status: 403 }
-      )
+      // Cegah pengiriman KECUALI pengirim adalah SUPER_ADMIN atau pemilik inquiry (admin toko yang meminta bantuan)
+      if (!isSuperAdmin && !isRoomCustomer) {
+        return NextResponse.json(
+          { error: 'This chat is already claimed by another admin' },
+          { status: 403 }
+        )
+      }
     }
 
     // Create message and update room lastMessageAt

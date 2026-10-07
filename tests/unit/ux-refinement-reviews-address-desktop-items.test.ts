@@ -38,6 +38,21 @@ describe('UX Refinement: Reviews Modal, Address GPS Auto-fill & Desktop Checkout
       checkoutContent.match(/<AddressModal/g) || []
     ).length
     expect(addressModalOccurrences).toBe(1)
+
+    // Verify form wraps both body and sticky footer, and button has direct onClick
+    expect(addressContent).toContain('onClick={handleSubmit}')
+    expect(addressContent).toContain('id="address-form"')
+    expect(addressContent).toContain('resolvedRecipientName')
+    expect(addressContent).toContain('resolvedPhone')
+
+    // Verify customer settings passes defaultRecipientName & defaultPhone
+    const settingsPath = path.resolve(
+      __dirname,
+      '../../src/app/dashboard/customer/settings/page.tsx'
+    )
+    const settingsContent = fs.readFileSync(settingsPath, 'utf-8')
+    expect(settingsContent).toContain('defaultRecipientName=')
+    expect(settingsContent).toContain('defaultPhone=')
   })
 
   it('Desktop Checkout should place "Produk yang Dipesan" at the top of the left column', () => {

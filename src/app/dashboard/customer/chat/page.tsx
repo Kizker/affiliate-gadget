@@ -287,6 +287,7 @@ function CustomerChatContent() {
   const paramOrderId = searchParams.get('orderId')
   const paramOrderNumber = searchParams.get('orderNumber')
   const paramStoreId = searchParams.get('storeId')
+  const paramType = searchParams.get('type')
   const paramMitraId = searchParams.get('mitraId')
   const paramMitraName = searchParams.get('mitraName')
   const paramMitraCity = searchParams.get('mitraCity')
@@ -835,9 +836,14 @@ function CustomerChatContent() {
 
   // Auto-open and initialize direct store room from URL parameters
   useEffect(() => {
+    const isCsParam =
+      paramType === 'cs' ||
+      paramStoreId === 'superadmin' ||
+      paramStoreId === 'cs'
+
     if (
       status !== 'authenticated' ||
-      (!paramStoreId && !paramOrderId && !paramMitraId)
+      (!paramStoreId && !paramOrderId && !paramMitraId && !isCsParam)
     )
       return
 
@@ -866,7 +872,7 @@ function CustomerChatContent() {
     const resolvedMitraCity = safeParam(paramMitraCity)
     const resolvedMitraImage = safeParam(paramMitraImage)
 
-    const initKey = `${paramOrderId || ''}_${paramStoreId || ''}_${paramMitraId || ''}_${paramProductId || ''}_${resolvedProductName || ''}_${resolvedMitraName || ''}_${resolvedVariantName || ''}_${resolvedReturnReason || ''}_${resolvedServiceContext || ''}`
+    const initKey = `${paramType || ''}_${paramOrderId || ''}_${paramStoreId || ''}_${paramMitraId || ''}_${paramProductId || ''}_${resolvedProductName || ''}_${resolvedMitraName || ''}_${resolvedVariantName || ''}_${resolvedReturnReason || ''}_${resolvedServiceContext || ''}`
     if (lastInitializedKeyRef.current === initKey) return
     lastInitializedKeyRef.current = initKey
 
@@ -942,6 +948,7 @@ function CustomerChatContent() {
               serviceContext: resolvedServiceContext || undefined,
             })
           : JSON.stringify({
+              isCs: isCsParam,
               orderId: paramOrderId || undefined,
               orderNumber: resolvedOrderNumber || undefined,
               returnId: paramReturnId || undefined,
@@ -1080,6 +1087,7 @@ function CustomerChatContent() {
     paramOrderId,
     paramOrderNumber,
     paramStoreId,
+    paramType,
     paramMitraId,
     paramMitraName,
     paramMitraCity,
@@ -1502,11 +1510,18 @@ function CustomerChatContent() {
     '6281299887766'
   ).replace(/\D/g, '')
 
-  const activeStoreTitle =
-    activeStore?.name ||
-    selectedRoom?.order?.items?.[0]?.product?.name ||
-    selectedRoom?.technician?.user?.name ||
-    'CS Toko'
+  const isCsActive =
+    (activeStore as any)?.isCs ||
+    (selectedRoom?.type === 'admin' &&
+      !selectedRoom?.storeId &&
+      !selectedRoom?.technician)
+
+  const activeStoreTitle = isCsActive
+    ? 'Customer Service (Superadmin)'
+    : activeStore?.name ||
+      selectedRoom?.order?.items?.[0]?.product?.name ||
+      selectedRoom?.technician?.user?.name ||
+      'CS Toko'
 
   const activeStoreLogo =
     selectedRoom?.claimedBy?.image ||
@@ -1713,11 +1728,17 @@ function CustomerChatContent() {
                       room.order?.claimedBy?.image ||
                       null
                     const firstProduct = room.order?.items?.[0]?.product?.name
-                    const title =
-                      storeObj?.name ||
-                      firstProduct ||
-                      room.technician?.user?.name ||
-                      'CS Toko'
+                    const isCsRoom =
+                      (storeObj as any)?.isCs ||
+                      (room.type === 'admin' &&
+                        !room.storeId &&
+                        !room.technician)
+                    const title = isCsRoom
+                      ? 'Customer Service (Superadmin)'
+                      : storeObj?.name ||
+                        firstProduct ||
+                        room.technician?.user?.name ||
+                        'CS Toko'
                     const orderNumber = room.order?.orderNumber
                     const lastMsg = formatMessagePreview(room.messages?.[0])
 
@@ -1791,23 +1812,33 @@ function CustomerChatContent() {
                             </div>
                           )}
 
-                          {!orderNumber && room.claimedBy?.name && (
+                          {isCsRoom && (
                             <div className="mt-0.5 flex items-center gap-1">
-                              <span
-                                className={`truncate text-[10px] font-semibold ${
-                                  (room.claimedBy as any)?.role === 'MITRA'
-                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                    : 'text-blue-600 dark:text-blue-400'
-                                }`}
-                              >
-                                •{' '}
-                                {(room.claimedBy as any)?.role === 'MITRA'
-                                  ? 'Mitra Servis'
-                                  : 'Admin'}
-                                : {room.claimedBy.name}
+                              <span className="rounded bg-blue-50 px-1 text-[9px] font-bold text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+                                CS Superadmin
                               </span>
                             </div>
                           )}
+
+                          {!isCsRoom &&
+                            !orderNumber &&
+                            room.claimedBy?.name && (
+                              <div className="mt-0.5 flex items-center gap-1">
+                                <span
+                                  className={`truncate text-[10px] font-semibold ${
+                                    (room.claimedBy as any)?.role === 'MITRA'
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-blue-600 dark:text-blue-400'
+                                  }`}
+                                >
+                                  •{' '}
+                                  {(room.claimedBy as any)?.role === 'MITRA'
+                                    ? 'Mitra Servis'
+                                    : 'Admin'}
+                                  : {room.claimedBy.name}
+                                </span>
+                              </div>
+                            )}
 
                           <p className="mt-1 truncate text-[11px] font-normal text-slate-500 dark:text-slate-400">
                             {lastMsg}
@@ -1880,6 +1911,10 @@ function CustomerChatContent() {
                         <p className="truncate text-[11px] text-slate-400">
                           {activeOrderContext?.orderNumber ? (
                             `Pesanan #${activeOrderContext.orderNumber}`
+                          ) : isCsActive ? (
+                            <span className="font-semibold text-blue-600 dark:text-blue-400">
+                              Pusat Layanan & Bantuan CS Superadmin Platform
+                            </span>
                           ) : (selectedRoom.claimedBy as any)?.role ===
                             'MITRA' ? (
                             <span className="font-semibold text-emerald-600 dark:text-emerald-400">
@@ -1889,7 +1924,10 @@ function CustomerChatContent() {
                             </span>
                           ) : selectedRoom.claimedBy?.name ? (
                             <span className="font-semibold text-blue-600 dark:text-blue-400">
-                              Admin Toko: {selectedRoom.claimedBy.name}
+                              {(selectedRoom.claimedBy as any)?.role ===
+                              'SUPER_ADMIN'
+                                ? `CS Superadmin: ${selectedRoom.claimedBy.name}`
+                                : `Admin Toko: ${selectedRoom.claimedBy.name}`}
                             </span>
                           ) : (
                             selectedRoom.store?.companyName ||

@@ -29,6 +29,8 @@ import {
   ZoomIn,
   Maximize2,
   Play,
+  Headphones,
+  ChevronRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DateSeparator } from '@/components/chat/date-separator'
@@ -77,16 +79,25 @@ const renderAdminWhatsAppTick = (
 interface ChatRoom {
   id: string
   customerId: string
+  storeId?: string | null
   orderId: string | null
   claimedById: string | null
   claimedAt: string | null
   lastMessageAt: string
+  isStoreHelpToSuperAdmin?: boolean
+  isStoreAdminUser?: boolean
   customer: {
     id: string
     name: string | null
     email: string
     image: string | null
     phone: string | null
+    role?: string
+    store?: {
+      id: string
+      name: string
+      city?: string
+    } | null
   }
   claimedBy: {
     id: string
@@ -273,10 +284,18 @@ function AdminChatContent() {
   const searchParams = useSearchParams()
   const paramRoomId = searchParams?.get('roomId')
   const paramOrderId = searchParams?.get('orderId')
+  const paramCs = searchParams?.get('cs') === 'true'
 
-  const { isLoading: guardLoading, isAllowed } = usePageGuard(
-    '/dashboard/admin/chat'
-  )
+  const {
+    isLoading: guardLoading,
+    isAllowed,
+    session,
+  } = usePageGuard('/dashboard/admin/chat')
+  const currentUserId = session?.user?.id
+  const userRole = session?.user?.role as string | undefined
+  const isSuperAdmin = userRole === 'SUPER_ADMIN'
+  const isStoreAdmin = userRole === 'STORE_ADMIN' || userRole === 'STORE_SALES'
+
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -290,13 +309,71 @@ function AdminChatContent() {
   } | null>(null)
   const [messageInput, setMessageInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [roomFilter, setRoomFilter] = useState<'ALL' | 'UNREAD' | 'ORDER'>(
-    'ALL'
-  )
+  const [roomFilter, setRoomFilter] = useState<
+    'ALL' | 'UNREAD' | 'ORDER' | 'STORE_HELP' | 'CUSTOMER_CS'
+  >('ALL')
   const [stats, setStats] = useState({ totalRooms: 0, unreadRooms: 0 })
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
   const [activePinnedOrder, setActivePinnedOrder] =
     useState<PinnedOrderContext | null>(null)
+
+  // Handler untuk membuka/membuat ruang bantuan CS Superadmin (khusus Store Admin / Sales)
+  const handleOpenSuperAdminCsChat = useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/customer/chat/store-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isCs: true }),
+      })
+      if (!res.ok) throw new Error('Gagal membuka chat CS Superadmin')
+      const data = await res.json()
+
+      const csRoom: ChatRoom = {
+        id: data.roomId,
+        customerId: currentUserId || '',
+        storeId: null,
+        orderId: null,
+        claimedById: data.claimedBy?.id || null,
+        claimedAt: null,
+        lastMessageAt: new Date().toISOString(),
+        isStoreHelpToSuperAdmin: true,
+        customer: {
+          id: currentUserId || '',
+          name: session?.user?.name || 'Admin Toko',
+          email: session?.user?.email || '',
+          image: session?.user?.image || null,
+          phone: null,
+          role: userRole,
+        },
+        claimedBy: data.claimedBy || null,
+        order: null,
+        messages: (data.messages || []).slice(-1),
+        _count: { messages: 0 },
+      }
+
+      setSelectedRoom(csRoom)
+      setShowChatOnMobile(true)
+      setRooms((prev) => {
+        const exists = prev.some((r) => r.id === csRoom.id)
+        if (exists)
+          return prev.map((r) => (r.id === csRoom.id ? { ...r, ...csRoom } : r))
+        return [csRoom, ...prev]
+      })
+    } catch (err) {
+      console.error('Error opening Superadmin CS chat:', err)
+      toast.error('Gagal membuka ruang bantuan Superadmin')
+    } finally {
+      setLoading(false)
+    }
+  }, [currentUserId, session?.user, userRole])
+
+  // Auto-buka CS room jika diakses via parameter ?cs=true
+  useEffect(() => {
+    if (paramCs && isStoreAdmin && isAllowed) {
+      handleOpenSuperAdminCsChat()
+    }
+  }, [paramCs, isStoreAdmin, isAllowed, handleOpenSuperAdminCsChat])
   const [activeOrderContext, setActiveOrderContext] = useState<{
     orderId: string
     orderNumber: string
@@ -1439,6 +1516,20 @@ function AdminChatContent() {
     if (roomFilter === 'ORDER') {
       return !!room.order || !!(room as any).hasOrder
     }
+    if (roomFilter === 'STORE_HELP') {
+      return (
+        room.isStoreAdminUser ||
+        room.customer.role === 'STORE_ADMIN' ||
+        room.customer.role === 'STORE_SALES'
+      )
+    }
+    if (roomFilter === 'CUSTOMER_CS') {
+      return (
+        !room.storeId &&
+        room.customer.role !== 'STORE_ADMIN' &&
+        room.customer.role !== 'STORE_SALES'
+      )
+    }
     return true
   })
 
@@ -1519,6 +1610,30 @@ function AdminChatContent() {
         >
           {/* Integrated Sidebar Header */}
           <div className="space-y-2.5 border-b border-slate-100 p-3 dark:border-slate-800 sm:p-3.5">
+            {/* Tombol Bantuan CS Superadmin khusus untuk Admin Toko */}
+            {isStoreAdmin && (
+              <button
+                type="button"
+                onClick={handleOpenSuperAdminCsChat}
+                className="shadow-xs flex w-full items-center justify-between gap-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-2.5 text-left text-white transition hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99]"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                    <Headphones className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block truncate text-xs font-bold leading-tight">
+                      Bantuan CS Superadmin
+                    </span>
+                    <span className="block truncate text-[10px] text-blue-100">
+                      Konsultasi kendala & bantuan langsung ke Superadmin
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-white/80" />
+              </button>
+            )}
+
             {/* Search Capsule */}
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
@@ -1533,11 +1648,25 @@ function AdminChatContent() {
 
             {/* Segmented Filter Pills */}
             <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
-              {[
-                { id: 'ALL', label: 'Semua' },
-                { id: 'UNREAD', label: `Belum Dibaca (${stats.unreadRooms})` },
-                { id: 'ORDER', label: 'Pesanan' },
-              ].map((tab) => (
+              {(isSuperAdmin
+                ? [
+                    { id: 'ALL', label: 'Semua' },
+                    { id: 'STORE_HELP', label: '🏢 Toko' },
+                    { id: 'CUSTOMER_CS', label: '🎧 CS' },
+                    {
+                      id: 'UNREAD',
+                      label: `Belum Dibaca (${stats.unreadRooms})`,
+                    },
+                  ]
+                : [
+                    { id: 'ALL', label: 'Semua' },
+                    {
+                      id: 'UNREAD',
+                      label: `Belum Dibaca (${stats.unreadRooms})`,
+                    },
+                    { id: 'ORDER', label: 'Pesanan' },
+                  ]
+              ).map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setRoomFilter(tab.id as any)}
@@ -1575,8 +1704,21 @@ function AdminChatContent() {
             ) : (
               filteredRooms.map((room) => {
                 const isSelected = selectedRoom?.id === room.id
-                const customerName =
-                  room.customer.name || room.customer.email.split('@')[0]
+                const isStoreHelpChat =
+                  (room.customerId === currentUserId &&
+                    room.storeId === null) ||
+                  room.isStoreHelpToSuperAdmin
+                const isStoreAdminUser =
+                  room.isStoreAdminUser ||
+                  room.customer.role === 'STORE_ADMIN' ||
+                  room.customer.role === 'STORE_SALES'
+
+                const displayTitle = isStoreHelpChat
+                  ? 'Customer Service (Superadmin)'
+                  : isStoreAdminUser
+                    ? `${room.customer.name || 'Admin Toko'} (${room.customer.store?.name || 'Toko Cabang'})`
+                    : room.customer.name || room.customer.email.split('@')[0]
+
                 const status = room.order
                   ? statusConfig[room.order.status]
                   : null
@@ -1597,17 +1739,21 @@ function AdminChatContent() {
                       <div className="absolute bottom-3 left-0 top-3 w-1 rounded-r-full bg-slate-950 dark:bg-orange-500" />
                     )}
 
-                    {/* Customer Avatar */}
+                    {/* Customer / CS Avatar */}
                     <div className="relative shrink-0">
-                      {room.customer.image ? (
+                      {isStoreHelpChat ? (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200/60 bg-blue-50 text-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400">
+                          <Headphones className="h-5 w-5" />
+                        </div>
+                      ) : room.customer.image ? (
                         <img
                           src={room.customer.image}
-                          alt={customerName}
+                          alt={displayTitle}
                           className="shadow-2xs h-10 w-10 rounded-2xl border border-slate-200/60 object-cover"
                         />
                       ) : (
                         <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-100 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-                          {customerName.charAt(0).toUpperCase()}
+                          {displayTitle.charAt(0).toUpperCase()}
                         </div>
                       )}
                       {unreadCount > 0 && (
@@ -1621,26 +1767,41 @@ function AdminChatContent() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
                         <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
-                          {customerName}
+                          {displayTitle}
                         </p>
                         <span className="shrink-0 text-[10px] font-medium text-slate-400">
                           {formatTime(room.lastMessageAt)}
                         </span>
                       </div>
 
-                      {/* Order Tag */}
-                      {room.order && (
-                        <div className="mt-0.5 flex items-center gap-1.5 text-[10px]">
-                          <span className="max-w-[130px] truncate font-mono font-semibold text-slate-500 dark:text-slate-400">
+                      {/* Tag Badges */}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                        {isStoreHelpChat ? (
+                          <span className="rounded bg-blue-50 px-1 text-[9px] font-bold text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+                            Superadmin CS
+                          </span>
+                        ) : isStoreAdminUser ? (
+                          <span className="rounded bg-indigo-50 px-1 text-[9px] font-bold text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+                            🏢 Admin Toko:{' '}
+                            {room.customer.store?.name || 'Cabang'}
+                          </span>
+                        ) : !room.storeId ? (
+                          <span className="rounded bg-sky-50 px-1 text-[9px] font-bold text-sky-600 dark:bg-sky-950/50 dark:text-sky-400">
+                            🎧 CS Pelanggan
+                          </span>
+                        ) : null}
+
+                        {room.order && (
+                          <span className="max-w-[120px] truncate font-mono text-[9.5px] font-semibold text-slate-500 dark:text-slate-400">
                             #{room.order.orderNumber}
                           </span>
-                          {status && (
-                            <span className="py-0.2 rounded bg-slate-100 px-1 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              {status.label}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                        )}
+                        {status && (
+                          <span className="py-0.2 rounded bg-slate-100 px-1 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            {status.label}
+                          </span>
+                        )}
+                      </div>
 
                       {/* Message Preview */}
                       <p className="mt-1 truncate text-[11px] font-normal text-slate-500 dark:text-slate-400">
@@ -1674,7 +1835,12 @@ function AdminChatContent() {
                   </button>
 
                   <div className="relative shrink-0">
-                    {selectedRoom.customer.image ? (
+                    {selectedRoom.customerId === currentUserId &&
+                    selectedRoom.storeId === null ? (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200/60 bg-blue-50 text-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400">
+                        <Headphones className="h-5 w-5" />
+                      </div>
+                    ) : selectedRoom.customer.image ? (
                       <img
                         src={selectedRoom.customer.image}
                         alt=""
@@ -1695,17 +1861,48 @@ function AdminChatContent() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="truncate text-xs font-bold text-slate-900 dark:text-white sm:text-sm">
-                        {selectedRoom.customer.name ||
-                          selectedRoom.customer.email}
+                        {selectedRoom.customerId === currentUserId &&
+                        selectedRoom.storeId === null
+                          ? 'Customer Service (Superadmin)'
+                          : selectedRoom.customer.role === 'STORE_ADMIN' ||
+                              selectedRoom.customer.role === 'STORE_SALES'
+                            ? `${selectedRoom.customer.name || 'Admin Toko'} (${selectedRoom.customer.store?.name || 'Toko Cabang'})`
+                            : selectedRoom.customer.name ||
+                              selectedRoom.customer.email}
                       </h3>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9.5px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                        Customer
-                      </span>
+                      {selectedRoom.customerId === currentUserId &&
+                      selectedRoom.storeId === null ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[9.5px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                          Superadmin CS
+                        </span>
+                      ) : selectedRoom.customer.role === 'STORE_ADMIN' ||
+                        selectedRoom.customer.role === 'STORE_SALES' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[9.5px] font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                          Admin Toko
+                        </span>
+                      ) : !selectedRoom.storeId ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[9.5px] font-bold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                          CS Pelanggan
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9.5px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                          Customer
+                        </span>
+                      )}
                     </div>
                     <p className="truncate text-[11px] text-slate-400">
-                      {selectedRoom.customer.phone ||
-                        selectedRoom.customer.email}
+                      {selectedRoom.customerId === currentUserId &&
+                      selectedRoom.storeId === null
+                        ? 'Pusat Layanan & Bantuan CS Superadmin Platform'
+                        : selectedRoom.customer.role === 'STORE_ADMIN' ||
+                            selectedRoom.customer.role === 'STORE_SALES'
+                          ? `Admin Toko: ${selectedRoom.customer.store?.name || 'Cabang'} • ${selectedRoom.customer.email}`
+                          : selectedRoom.customer.phone ||
+                            selectedRoom.customer.email}
                     </p>
                   </div>
                 </div>

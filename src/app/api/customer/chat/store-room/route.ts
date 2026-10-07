@@ -24,8 +24,15 @@ export async function POST(req: NextRequest) {
       productPrice,
       variantName,
       productImage,
+      isCs: reqIsCs,
+      type: reqType,
     } = body
     let storeId = reqStoreId
+    const isCs =
+      reqIsCs === true ||
+      reqType === 'cs' ||
+      reqStoreId === 'superadmin' ||
+      reqStoreId === 'cs'
 
     // If orderId is provided, look up the order and its store
     let resolvedOrder: any = null
@@ -70,6 +77,120 @@ export async function POST(req: NextRequest) {
       if (resolvedOrder?.storeId && !storeId) {
         storeId = resolvedOrder.storeId
       }
+    }
+
+    // Direct CS Chat to Superadmin (Platform Level Support)
+    if (isCs) {
+      const superAdmin = await prisma.user.findFirst({
+        where: {
+          role: 'SUPER_ADMIN',
+          isActive: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      })
+
+      let room = await prisma.adminChatRoom.findFirst({
+        where: {
+          customerId: session.user.id,
+          storeId: null,
+        },
+        orderBy: { lastMessageAt: 'desc' },
+      })
+
+      const isNew = !room
+
+      if (!room) {
+        room = await prisma.adminChatRoom.create({
+          data: {
+            customerId: session.user.id,
+            storeId: null,
+            orderId: orderId || null,
+            claimedById: superAdmin?.id || null,
+            claimedAt: superAdmin ? new Date() : null,
+            lastMessageAt: new Date(),
+          } as any,
+        })
+      } else if (orderId && room.orderId !== orderId) {
+        room = await prisma.adminChatRoom.update({
+          where: { id: room.id },
+          data: {
+            orderId,
+            lastMessageAt: new Date(),
+          },
+        })
+      }
+
+      const messages = await prisma.adminChatMessage.findMany({
+        where: { roomId: room.id },
+        select: {
+          id: true,
+          content: true,
+          messageType: true,
+          mediaUrl: true,
+          mediaType: true,
+          isRead: true,
+          createdAt: true,
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+              role: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      })
+
+      const csStore = {
+        id: 'superadmin',
+        name: 'Customer Service (Superadmin)',
+        companyName: 'Pusat Bantuan CS Platform',
+        phone: '0812-3456-7890',
+        city: 'Kantor Pusat',
+        logo: null,
+        isActive: true,
+        isCs: true,
+        schedules: [
+          {
+            day: 'Senin - Minggu',
+            openTime: '08:00',
+            closeTime: '22:00',
+            isClosed: false,
+          },
+        ],
+      }
+
+      return NextResponse.json({
+        roomId: room.id,
+        store: csStore,
+        claimedBy: superAdmin
+          ? {
+              id: superAdmin.id,
+              name: superAdmin.name,
+              email: superAdmin.email,
+              image: superAdmin.image,
+            }
+          : null,
+        orderId: room.orderId || (resolvedOrder ? resolvedOrder.id : null),
+        order: resolvedOrder
+          ? {
+              id: resolvedOrder.id,
+              orderNumber: resolvedOrder.orderNumber,
+              status: resolvedOrder.status,
+              total: resolvedOrder.total,
+              items: resolvedOrder.items,
+              returnRequests: resolvedOrder.returnRequests || [],
+            }
+          : null,
+        isNew,
+        messages,
+      })
     }
 
     if (!storeId || typeof storeId !== 'string') {

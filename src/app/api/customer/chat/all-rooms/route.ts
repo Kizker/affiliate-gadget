@@ -306,7 +306,16 @@ export async function GET() {
               logo: mitra.banner || mitra.images?.[0]?.url || null,
               isActive: mitra.isActive,
             }
-          : null)
+          : {
+              id: 'superadmin',
+              name: 'Customer Service (Superadmin)',
+              companyName: 'Pusat Bantuan CS Platform',
+              phone: '0812-3456-7890',
+              city: 'Kantor Pusat',
+              logo: null,
+              isActive: true,
+              isCs: true,
+            })
 
       return {
         ...room,

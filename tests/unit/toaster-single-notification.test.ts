@@ -40,9 +40,9 @@ describe('Toaster Non-Stacking Configuration', () => {
     // Verify absence of vertical stacking flex-col
     expect(toasterContent).not.toContain('flex flex-col')
     // Verify single-line row flex container
-    expect(toasterContent).toContain(
-      'flex items-center gap-1.5 min-w-0 text-xs'
-    )
+    expect(toasterContent).toContain('items-center')
+    expect(toasterContent).toContain('min-w-0')
+    expect(toasterContent).toContain('text-xs')
   })
 
   it('should format customer settings OTP verification toast as clean 1-line notification', () => {

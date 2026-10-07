@@ -485,7 +485,7 @@ export function MobileCustomerAccountView({
             </button>
 
             <Link
-              href="/dashboard/customer/chat"
+              href="/dashboard/customer/chat?type=cs"
               className="flex w-full items-center justify-between p-3.5 text-left transition active:bg-slate-50 dark:active:bg-slate-800/60"
             >
               <div className="flex items-center gap-3">
@@ -494,10 +494,10 @@ export function MobileCustomerAccountView({
                 </div>
                 <div>
                   <span className="block text-xs font-bold text-slate-950 dark:text-white">
-                    Chat Bantuan Toko
+                    Pusat Bantuan CS Superadmin
                   </span>
                   <span className="block text-[10px] text-slate-400">
-                    Konsultasi unit & kendala transaksi langsung ke toko
+                    Layanan kendala transaksi & akun langsung ke Superadmin
                   </span>
                 </div>
               </div>

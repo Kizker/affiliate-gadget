@@ -31,6 +31,7 @@ import {
   Heart,
   Sparkles,
   Radio,
+  Headphones,
 } from 'lucide-react'
 import { useSidebarSafe } from '@/context/sidebar-context'
 import { useAdminNotifications } from '@/context/admin-notifications-context'
@@ -165,6 +166,11 @@ const storeAdminNavSections: NavSection[] = [
         href: '/dashboard/admin/finance',
       },
       { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
+      {
+        icon: Headphones,
+        label: 'Bantuan Superadmin',
+        href: '/dashboard/admin/chat?cs=true',
+      },
       {
         icon: RotateCcw,
         label: 'Pengembalian & Klaim Garansi',
