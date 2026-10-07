@@ -44,6 +44,15 @@ async function main() {
       // 1. Pull latest code from GitHub
       await runRemoteCommand('cd /opt/affiliate-gadget && git fetch origin main && git reset --hard origin/main')
 
+      // 1.5. Synchronize Prisma Database Schema (auto db push)
+      await runRemoteCommand(`docker run --rm \\
+        --network affiliate_gadget_network \\
+        -v /opt/affiliate-gadget:/app \\
+        -w /app \\
+        -e DATABASE_URL="postgresql://agadget:AgProd2026Secure@postgres:5432/affiliate_gadget?schema=public" \\
+        node:22-alpine \\
+        sh -c "apk add --no-cache openssl && npx prisma@6.19.1 db push --schema=./prisma/schema.prisma --accept-data-loss"`)
+
       // 2. Build app container (and ws-server if needed)
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose build app')
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose up -d app ws-server')

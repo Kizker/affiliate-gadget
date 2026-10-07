@@ -76,32 +76,11 @@ export function MobileCustomerAccountView({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.scrollY !== 0) {
+      window.scrollTo(0, 0)
+    }
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' })
   }, [activeSubView])
-
-  // Automatically scroll focused input to center when virtual keyboard pops up
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.visualViewport) return
-    const vv = window.visualViewport
-    const handleViewportResize = () => {
-      if (
-        document.activeElement &&
-        document.activeElement instanceof HTMLElement &&
-        (document.activeElement.tagName === 'INPUT' ||
-          document.activeElement.tagName === 'TEXTAREA' ||
-          document.activeElement.tagName === 'SELECT')
-      ) {
-        setTimeout(() => {
-          document.activeElement?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-          })
-        }, 150)
-      }
-    }
-    vv.addEventListener('resize', handleViewportResize)
-    return () => vv.removeEventListener('resize', handleViewportResize)
-  }, [])
 
   if (activeSubView !== 'overview') {
     const titles = {
@@ -112,9 +91,9 @@ export function MobileCustomerAccountView({
     }
 
     return (
-      <div className="flex h-dvh max-h-screen min-h-screen w-full flex-col overflow-hidden bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <div className="fixed inset-0 z-40 flex h-full w-full flex-col overflow-hidden bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         {/* Sticky Sub-View Header with Back Button & Quick Save Action */}
-        <header className="z-40 flex shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 px-3.5 py-2.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
+        <header className="z-50 flex shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 px-3.5 py-2.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
           <button
             type="button"
             onClick={() => setActiveSubView('overview')}
@@ -170,28 +149,12 @@ export function MobileCustomerAccountView({
           </div>
         </header>
 
-        {/* Scrollable Content Body with Auto-Scroll on Keyboard Open */}
+        {/* Scrollable Content Body with Natural In-Container Scrolling */}
         <div
           ref={scrollContainerRef}
-          onFocusCapture={(e) => {
-            const target = e.target as HTMLElement
-            if (
-              target &&
-              (target.tagName === 'INPUT' ||
-                target.tagName === 'TEXTAREA' ||
-                target.tagName === 'SELECT')
-            ) {
-              setTimeout(() => {
-                target.scrollIntoView({
-                  behavior: 'smooth',
-                  block: 'center',
-                })
-              }, 250)
-            }
-          }}
           className="flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
         >
-          <main className="p-3 pb-80">
+          <main className="p-3 pb-8">
             <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
               {children}
             </div>

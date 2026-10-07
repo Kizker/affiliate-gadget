@@ -1074,13 +1074,13 @@ export default function CustomerSettingsPage() {
             </div>
           </div>
 
-          {/* Save Button (Desktop only — Mobile uses top-right header action button) */}
-          <div className="hidden items-center justify-end border-t border-slate-100 pt-4 md:flex">
+          {/* Save Button (Accessible on both Mobile & Desktop) */}
+          <div className="flex items-center justify-end border-t border-slate-100 pt-4">
             <button
               type="button"
               onClick={handleSaveProfile}
               disabled={saving}
-              className="shadow-xs inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+              className="shadow-xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-orange-500 px-6 py-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50 sm:w-auto"
             >
               {saving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1427,7 +1427,7 @@ export default function CustomerSettingsPage() {
                 disabled={
                   saving || !currentPassword || !newPassword || !confirmPassword
                 }
-                className="shadow-xs hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 md:inline-flex md:w-auto"
+                className="shadow-xs flex w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl bg-orange-500 px-5 py-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50 sm:inline-flex sm:w-auto"
               >
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />

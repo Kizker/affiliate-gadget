@@ -52,7 +52,14 @@
 - **Port Tersedia:** Port 3000 (Next.js Web App) & Port 3001 (Standalone WebSocket Server)
 - **Mode Eksekusi:** `pnpm dev` (menjalankan Next.js port 3000 dan WS Server port 3001 secara paralel via `concurrently`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
-- **Unit Tests:** 115 test files, 852 tests lulus 100% (`pnpm test:unit` pass)
+- **Unit Tests:** 116 test files, 856 tests lulus 100% (`pnpm test:unit` pass)
+
+- **2026-10-07 (Perbaikan Scroll Subview Profil Mobile, Tombol Simpan Terlihat & Sinkronisasi DB Live VPS):**
+  - **1. Perbaikan Scroll Subview Profil Mobile ([`src/components/customer/mobile-customer-account-view.tsx`](file:///src/components/customer/mobile-customer-account-view.tsx)):** Mengunci container subview menggunakan `fixed inset-0 z-40 flex h-full w-full flex-col` sehingga header tidak terdorong ke atas oleh window-scroll iOS Safari. Mengeliminasi `scrollIntoView` agresif yang menggeser viewport browser. Memangkas padding bawah `main` dari `pb-80` (320px ruang kosong) menjadi `pb-8` yang proporsional ("Secukupnya saja!").
+  - **2. Aksesibilitas Tombol Simpan Form Profil & Password ([`src/app/dashboard/customer/settings/page.tsx`](file:///src/app/dashboard/customer/settings/page.tsx)):** Mengaktifkan tombol "Simpan Profil Biodata" dan "Perbarui Kata Sandi" di mode mobile (`flex w-full sm:w-auto bg-orange-500`) tepat di bawah form, di samping tombol header atas yang tetap berfungsi.
+  - **3. Sinkronisasi Skema Database Live VPS Hostinger ([`scripts/deploy-hostinger.cjs`](file:///scripts/deploy-hostinger.cjs)):** Mengatasi crash `stores.heroImage does not exist` di PostgreSQL VPS dengan eksekusi `prisma db push` melalui network `affiliate_gadget_network`. Seluruh 8 cabang toko resmi kini termuat sukses di API publik dan halaman `/toko`.
+  - **4. Unit Testing Suite ([`tests/unit/customer-profile-scroll-and-vps-db-sync.test.ts`](file:///tests/unit/customer-profile-scroll-and-vps-db-sync.test.ts)):** 4 unit tests memvalidasi struktur subview mobile, keberadaan tombol simpan mobile, dan otomatisasi db sync pada skrip deploy.
+  - **5. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 116 test files dengan 856 tests lulus 100% (`pnpm test:unit` pass).
 
 - **2026-10-07 (Routing Chat Bantuan CS & Permintaan Bantuan Toko ke Superadmin + Perbaikan Simpan Alamat GPS):**
   - **1. Sentralisasi Chat CS ke Superadmin Platform ([`src/app/api/customer/chat/store-room/route.ts`](file:///src/app/api/customer/chat/store-room/route.ts), [`src/app/api/customer/chat/all-rooms/route.ts`](file:///src/app/api/customer/chat/all-rooms/route.ts), [`src/app/api/customer/chat/messages/route.ts`](file:///src/app/api/customer/chat/messages/route.ts)):** Mengarahkan seluruh percakapan Customer Service / bantuan platform ke Superadmin dengan entitas room `storeId: null`, metadata `Customer Service (Superadmin)`, dan penanganan langsung tim Superadmin.
