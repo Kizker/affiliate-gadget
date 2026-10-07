@@ -1628,7 +1628,7 @@ export default function CustomerSettingsPage() {
       <Toaster />
 
       {/* 1. Mobile View: Modular Customer Account Hub & Subviews (No Footer) */}
-      <div className="block h-dvh max-h-screen w-full overflow-hidden md:hidden">
+      <div className="block w-full md:hidden">
         <MobileCustomerAccountView
           user={{
             name,
