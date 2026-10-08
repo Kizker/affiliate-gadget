@@ -2,12 +2,16 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { Navbar, Footer } from '@/components/layouts'
 import { SectionHeroClean } from '@/components/landing/section-hero-clean'
 import { SectionTrustPillars } from '@/components/landing/section-trust-pillars'
 import { SectionFeaturedGadgets } from '@/components/landing/section-featured-gadgets'
 import { SectionStoreSpotlight } from '@/components/landing/section-store-spotlight'
-import GadgetKatalogPage from '@/app/gadget/page'
+
+const GadgetKatalogPage = dynamic(() => import('@/app/gadget/page'), {
+  ssr: false,
+})
 
 export default function HomePage() {
   const router = useRouter()

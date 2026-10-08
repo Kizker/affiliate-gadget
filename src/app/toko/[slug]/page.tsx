@@ -45,7 +45,6 @@ function ProductCardImage({ src, alt }: { src: string; alt: string }) {
       alt={alt}
       fill
       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-      unoptimized
       onError={() => {
         setImgSrc(
           'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
@@ -369,7 +368,6 @@ export default function StoreDetailPage() {
                 alt={store.name}
                 fill
                 sizes="44px"
-                unoptimized={!!store.logo?.startsWith('/')}
                 className="object-cover"
               />
             </div>
@@ -444,7 +442,6 @@ export default function StoreDetailPage() {
                   alt={store.name}
                   fill
                   priority
-                  unoptimized={!!content.editorial1.imageUrl?.startsWith('/')}
                   className="object-cover object-center"
                 />
                 <div className="absolute inset-0 flex items-center bg-gradient-to-t from-black/95 via-black/80 to-black/40 sm:bg-gradient-to-r sm:from-black/90 sm:via-black/55 sm:to-transparent">
@@ -926,7 +923,6 @@ export default function StoreDetailPage() {
                 alt="Pakar Toko"
                 fill
                 sizes="56px"
-                unoptimized={!!store.logo?.startsWith('/')}
                 className="object-cover"
               />
             </div>

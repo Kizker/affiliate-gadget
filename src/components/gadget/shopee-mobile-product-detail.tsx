@@ -631,7 +631,6 @@ export function ShopeeMobileProductDetail({
                       alt={`${product.name} - ${idx + 1}`}
                       fill
                       priority={idx === 0}
-                      unoptimized
                       className="object-cover transition-all duration-300"
                     />
                   )}
@@ -666,7 +665,6 @@ export function ShopeeMobileProductDetail({
                   alt={product.name}
                   fill
                   priority
-                  unoptimized
                   className="object-cover"
                 />
               )}
@@ -823,7 +821,6 @@ export function ShopeeMobileProductDetail({
                       alt={v.name}
                       fill
                       sizes="32px"
-                      unoptimized
                       className="object-cover"
                     />
                   </div>

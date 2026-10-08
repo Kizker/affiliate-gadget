@@ -101,7 +101,6 @@ function ImageWithFallback({
       fill={fill}
       sizes={sizes}
       priority={priority}
-      unoptimized={imgSrc.startsWith('/')}
       onError={() => setImgSrc(fallbackSrc)}
       className={className}
     />

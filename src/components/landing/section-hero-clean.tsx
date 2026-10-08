@@ -264,7 +264,6 @@ export function SectionHeroClean() {
                             fill
                             priority={isCenter}
                             sizes="(max-width: 640px) 100vw, 400px"
-                            unoptimized
                             className="h-full w-full object-cover"
                           />
 

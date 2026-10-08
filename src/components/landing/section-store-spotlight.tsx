@@ -102,7 +102,6 @@ export function SectionStoreSpotlight() {
                         alt={store.name}
                         fill
                         sizes="33vw"
-                        unoptimized={displayImg.startsWith('/')}
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
                       />
@@ -187,7 +186,6 @@ export function SectionStoreSpotlight() {
                           alt={store.name}
                           fill
                           sizes="100vw"
-                          unoptimized={displayImg.startsWith('/')}
                           className="object-cover"
                           loading="lazy"
                         />

@@ -186,7 +186,6 @@ export function MobileTopHeroBanner({
               fill
               className="object-cover"
               priority={idx === 0}
-              unoptimized
             />
           )}
 
