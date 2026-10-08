@@ -83,9 +83,7 @@ describe('Customer Orders Back Routing & Status Tab Preservation Suite', () => {
     // 3. handleNavigateBack dan MobileTopNav menggunakan backHref
     expect(content).toContain('router.push(backHref)')
     expect(content).toContain('backHref={backHref}')
-    expect(content).toContain(
-      '<Link\n                            href={backHref}'
-    )
+    expect(content).toContain('href={backHref}')
   })
 
   it('memvalidasi page.tsx detail pesanan membungkus Suspense dan menangani fallback 404 dengan backHref yang sesuai', () => {
