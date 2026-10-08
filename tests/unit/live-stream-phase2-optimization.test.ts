@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { describe, it, expect } from 'vitest'
 
 describe('Live Stream Phase 2 Optimization Verification', () => {
   const rootDir = process.cwd()
@@ -45,7 +46,7 @@ describe('Live Stream Phase 2 Optimization Verification', () => {
   })
 
   it('Task 2.3 & 4.1: live page.tsx preloads LCP poster and sets Navbar/Footer to ssr: false', () => {
-    const filePath = path.join(
+    const pagePath = path.join(
       rootDir,
       'src',
       'app',
@@ -53,16 +54,26 @@ describe('Live Stream Phase 2 Optimization Verification', () => {
       '[id]',
       'page.tsx'
     )
-    const content = fs.readFileSync(filePath, 'utf8')
+    const pageContent = fs.readFileSync(pagePath, 'utf8')
     // Preload link for LCP cover image
-    expect(content).toContain('rel="preload"')
-    expect(content).toContain('as="image"')
-    expect(content).toContain('initialStream?.coverImage')
-    // ssr: false for mobile critical path optimization
-    expect(content).toContain('Navbar = dynamicImport')
-    expect(content).toContain('Footer = dynamicImport')
-    expect(content).toMatch(/Navbar[\s\S]*?\{\s*ssr:\s*false\s*\}/)
-    expect(content).toMatch(/Footer[\s\S]*?\{\s*ssr:\s*false\s*\}/)
+    expect(pageContent).toContain('rel="preload"')
+    expect(pageContent).toContain('as="image"')
+    expect(pageContent).toContain('initialStream?.coverImage')
+    expect(pageContent).toContain('LiveDesktopNavbar')
+    expect(pageContent).toContain('LiveDesktopFooter')
+
+    // ssr: false in live-desktop-chrome.tsx for mobile critical path optimization
+    const chromePath = path.join(
+      rootDir,
+      'src',
+      'components',
+      'live',
+      'live-desktop-chrome.tsx'
+    )
+    expect(fs.existsSync(chromePath)).toBe(true)
+    const chromeContent = fs.readFileSync(chromePath, 'utf8')
+    expect(chromeContent).toMatch(/Navbar[\s\S]*?\{\s*ssr:\s*false\s*\}/)
+    expect(chromeContent).toMatch(/Footer[\s\S]*?\{\s*ssr:\s*false\s*\}/)
   })
 
   it('Task 3.1 & 3.2: viewer uses shared useIsMobile and debounces auto-scroll with rAF', () => {

@@ -1,23 +1,16 @@
 import { Metadata } from 'next'
-import dynamicImport from 'next/dynamic'
 import prisma from '@/lib/db'
 import { LiveStreamViewer } from '@/components/live/live-stream-viewer'
+import {
+  LiveDesktopNavbar,
+  LiveDesktopFooter,
+} from '@/components/live/live-desktop-chrome'
 import {
   getLiveStreamInitialData,
   getGuestViewerToken,
 } from '@/lib/live-stream-data'
 
 export const dynamic = 'force-dynamic'
-
-// Dynamic import for Navbar & Footer with ssr: false so desktop styles don't block mobile LCP/FCP
-const Navbar = dynamicImport(
-  () => import('@/components/layouts/navbar').then((m) => m.Navbar),
-  { ssr: false }
-)
-const Footer = dynamicImport(
-  () => import('@/components/layouts/footer').then((m) => m.Footer),
-  { ssr: false }
-)
 
 interface Props {
   params: Promise<{ id: string }>
@@ -131,10 +124,8 @@ export default async function LiveStreamPage({ params }: Props) {
         />
       )}
 
-      {/* Desktop Only Navigation Bar */}
-      <div className="hidden md:block">
-        <Navbar variant="light" />
-      </div>
+      {/* Desktop Only Navigation Bar (Client-only ssr:false to eliminate mobile CSS blocking) */}
+      <LiveDesktopNavbar />
 
       {/* Main Content Area with Semantic Accessible Landmark */}
       <main
@@ -149,10 +140,8 @@ export default async function LiveStreamPage({ params }: Props) {
         />
       </main>
 
-      {/* Desktop Only Footer */}
-      <div className="hidden md:block">
-        <Footer />
-      </div>
+      {/* Desktop Only Footer (Client-only ssr:false to eliminate mobile CSS blocking) */}
+      <LiveDesktopFooter />
     </div>
   )
 }
