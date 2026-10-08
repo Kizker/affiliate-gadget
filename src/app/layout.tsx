@@ -8,8 +8,8 @@ import { SessionProvider } from '@/components/providers/session-provider'
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  // WCAG 1.4.4 & Lighthouse 100 scaling enabled (formerly maximumScale: 1, userScalable: false)
   viewportFit: 'cover',
   themeColor: '#ffffff',
 }

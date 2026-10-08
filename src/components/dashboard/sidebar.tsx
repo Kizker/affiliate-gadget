@@ -410,7 +410,7 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                   className="group flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-90"
                 >
                   <img
-                    src="/logo.png"
+                    src="/logo.webp"
                     alt="Affiliate Gadget Logo"
                     className="shadow-2xs h-7 w-7 shrink-0 rounded-lg object-contain"
                   />
@@ -445,7 +445,7 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                   className="group relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 active:scale-95 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
                   <img
-                    src="/logo.png"
+                    src="/logo.webp"
                     alt="Logo"
                     className="shadow-2xs h-6 w-6 rounded-lg object-contain transition-opacity group-hover:opacity-0"
                   />

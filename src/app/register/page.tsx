@@ -333,7 +333,7 @@ export default function RegisterPage() {
           aria-label="Affiliate Gadget Beranda"
         >
           <img
-            src="/logo.png"
+            src="/logo.webp"
             alt="Affiliate Gadget Logo"
             className="shadow-2xs h-8 w-8 rounded-xl object-contain transition-transform duration-200 group-hover:scale-105"
           />
@@ -365,7 +365,7 @@ export default function RegisterPage() {
                 aria-label="Affiliate Gadget Beranda"
               >
                 <img
-                  src="/logo.png"
+                  src="/logo.webp"
                   alt="Affiliate Gadget"
                   className="shadow-2xs h-11 w-11 rounded-2xl object-contain transition-transform duration-200 group-hover:scale-105"
                 />

@@ -73,6 +73,8 @@ const nextConfig = {
       '@radix-ui/react-select',
       'date-fns',
       'sonner',
+      '@livekit/components-react',
+      'livekit-client',
     ],
     serverActions: {
       bodySizeLimit: '50mb',

@@ -102,7 +102,7 @@ export function MobileTopNav({
         <Link href="/gadget" className="flex items-center gap-2.5">
           <div className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-950 p-1.5">
             <Image
-              src="/logo.png"
+              src="/logo.webp"
               alt="AffiliateGadget Logo"
               width={28}
               height={28}

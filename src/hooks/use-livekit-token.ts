@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 export interface LiveKitTokenData {
   token: string
@@ -14,11 +14,24 @@ export interface LiveKitTokenData {
 export function useLiveKitToken(
   streamId: string,
   role: 'broadcaster' | 'viewer' = 'viewer',
-  guestName?: string
+  guestName?: string,
+  initialData?: { token: string; wsUrl: string; roomName?: string } | null
 ) {
-  const [data, setData] = useState<LiveKitTokenData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<LiveKitTokenData | null>(
+    initialData?.token
+      ? {
+          token: initialData.token,
+          wsUrl: initialData.wsUrl,
+          roomName: initialData.roomName || '',
+          isBroadcaster: role === 'broadcaster',
+          identity: '',
+          name: guestName || 'Penonton',
+        }
+      : null
+  )
+  const [loading, setLoading] = useState<boolean>(!initialData?.token)
   const [error, setError] = useState<string | null>(null)
+  const hasUsedInitialData = useRef<boolean>(!!initialData?.token)
 
   const fetchToken = useCallback(async () => {
     if (!streamId) return
@@ -48,6 +61,10 @@ export function useLiveKitToken(
   }, [streamId, role, guestName])
 
   useEffect(() => {
+    if (hasUsedInitialData.current) {
+      hasUsedInitialData.current = false
+      return
+    }
     fetchToken()
   }, [fetchToken])
 

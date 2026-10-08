@@ -21,8 +21,12 @@ export function Footer({ variant = 'light', className = '' }: FooterProps) {
           <div className="max-w-sm space-y-3.5">
             <Link href="/" className="flex items-center gap-2.5">
               <img
-                src="/logo.png"
+                src="/logo.webp"
                 alt="Affiliate Gadget Logo"
+                width={32}
+                height={32}
+                loading="lazy"
+                decoding="async"
                 className="shadow-2xs h-8 w-8 rounded-xl object-contain"
               />
               <span className="text-base font-black tracking-tight text-slate-950 dark:text-white">

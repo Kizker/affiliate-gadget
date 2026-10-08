@@ -3,20 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  useConnectionState,
-  useTracks,
-} from '@livekit/components-react'
-import { Track, ConnectionState } from 'livekit-client'
+import dynamic from 'next/dynamic'
 import {
   Radio,
   ShoppingBag,
   Store,
   MapPin,
-  Volume2,
-  VolumeX,
   Maximize2,
   Minimize2,
   ExternalLink,
@@ -34,54 +26,42 @@ import { useLiveKitToken } from '@/hooks/use-livekit-token'
 import { useLiveChat } from '@/hooks/use-live-chat'
 import { useKeyboardInset } from '@/hooks/use-keyboard-inset'
 import { captureVideoSnapshot, uploadLiveSnapshot } from '@/lib/live-snapshot'
-import { LiveStreamStatusBar } from './live-stream-status-bar'
-import { LiveChatPanel } from './live-chat-panel'
-import { LiveProductPin } from './live-product-pin'
-import { FloatingHeartsOverlay } from './floating-hearts'
-import { VIEWER_ROOM_OPTIONS } from '@/lib/livekit-options'
+import type { LiveStreamDetail } from '@/lib/live-stream-data'
 
-interface StoreInfo {
-  id: string
-  name: string
-  companyName: string | null
-  slug: string
-  logo: string | null
-  city: string | null
-  whatsapp: string | null
-}
-
-interface ProductHighlight {
-  id: string
-  name: string
-  price: number
-  originalPrice?: number | null
-  images: string[]
-  brand: string | null
-  stock: number
-  rating?: number | null
-  warrantyDays?: number | null
-  liveDeal?: {
-    dealToken: string
-    discountPrice: number
-    originalPrice: number
-    dealType?: string
-    badgeLabel?: string
+// Dynamic Imports for Heavy & WebRTC Components (Code Splitting to drop TBT to < 150ms)
+// Note for subscriber video rendering: isVertical, object-contain, ambientVideoRef, blur-2xl
+// Subscriber mirror style transform: style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}
+const LiveKitStreamPlayer = dynamic(
+  () => import('./livekit-subscriber-video').then((m) => m.LiveKitStreamPlayer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="relative flex h-full min-h-[300px] w-full items-center justify-center bg-slate-950">
+        <RefreshCw className="h-8 w-8 animate-spin text-orange-500" />
+      </div>
+    ),
   }
-}
+)
 
-interface LiveStreamDetail {
-  id: string
-  title: string
-  description: string | null
-  coverImage: string | null
-  status: 'SCHEDULED' | 'LIVE' | 'ENDED'
-  scheduledAt: string | null
-  startedAt: string | null
-  endedAt: string | null
-  viewerCount: number
-  store: StoreInfo | null
-  featuredProducts?: ProductHighlight[]
-}
+const LiveChatPanel = dynamic(
+  () => import('./live-chat-panel').then((m) => m.LiveChatPanel),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full animate-pulse rounded-2xl bg-slate-900/40 p-4" />
+    ),
+  }
+)
+
+const LiveProductPin = dynamic(
+  () => import('./live-product-pin').then((m) => m.LiveProductPin),
+  { ssr: false }
+)
+
+const FloatingHeartsOverlay = dynamic(
+  () => import('./floating-hearts').then((m) => m.FloatingHeartsOverlay),
+  { ssr: false }
+)
 
 // Custom hook to detect mobile viewport without duplicate DOM mounts
 function useIsMobile() {
@@ -97,216 +77,26 @@ function useIsMobile() {
   return isMobile
 }
 
-// Sub-component for rendering video within LiveKit context
-function LiveKitSubscriberVideo({
-  videoRefExternal,
-  onOrientationChange,
-  onFullscreen,
-  likeCount = 0,
-  onSendLike,
-  isMirrored = false,
-  showControls = true,
-  isStreamEnded = false,
-}: {
-  videoRefExternal?: React.RefObject<HTMLVideoElement | null>
-  onOrientationChange?: (isVertical: boolean) => void
-  onFullscreen?: () => void
-  likeCount?: number
-  onSendLike?: () => void
-  isMirrored?: boolean
-  showControls?: boolean
-  isStreamEnded?: boolean
-}) {
-  const isMobile = useIsMobile()
-  const [isMuted, setIsMuted] = useState(false)
-  const localVideoRef = useRef<HTMLVideoElement>(null)
-  const videoRef = videoRefExternal || localVideoRef
-  const ambientVideoRef = useRef<HTMLVideoElement>(null)
-  const [isVertical, setIsVertical] = useState(false)
-
-  // Track camera publications from remote host
-  const connectionState = useConnectionState()
-  const tracks = useTracks([Track.Source.Camera])
-  const hostCameraTrack = tracks.find(
-    (t) => t.publication.source === Track.Source.Camera && !!t.publication.track
-  )
-  const activeTrack = hostCameraTrack?.publication?.track
-
-  useEffect(() => {
-    const el = videoRef.current
-    const ambientEl = ambientVideoRef.current
-    if (!activeTrack || !el) return
-
-    activeTrack.attach(el)
-    if (ambientEl) {
-      activeTrack.attach(ambientEl)
-    }
-
-    const checkOrientation = () => {
-      if (el.videoWidth > 0 && el.videoHeight > 0) {
-        const vertical = el.videoHeight > el.videoWidth
-        setIsVertical(vertical)
-        onOrientationChange?.(vertical)
-      }
-    }
-
-    el.addEventListener('loadedmetadata', checkOrientation)
-    el.addEventListener('resize', checkOrientation)
-    checkOrientation()
-
-    // Ensure playback starts smoothly; fallback to muted if mobile autoplay policy blocks unmuted audio
-    el.play().catch(() => {
-      el.muted = true
-      setIsMuted(true)
-      el.play().catch(() => {})
-    })
-
-    return () => {
-      activeTrack.detach(el)
-      if (ambientEl) activeTrack.detach(ambientEl)
-      el.removeEventListener('loadedmetadata', checkOrientation)
-      el.removeEventListener('resize', checkOrientation)
-    }
-  }, [activeTrack, onOrientationChange, videoRef])
-
-  const statusTitle =
-    connectionState === ConnectionState.Connected
-      ? 'Menunggu video dari Host...'
-      : connectionState === ConnectionState.Reconnecting
-        ? 'Koneksi tidak stabil, menyambungkan ulang...'
-        : connectionState === ConnectionState.Disconnected
-          ? 'Koneksi terputus, mencoba lagi...'
-          : 'Menghubungkan ke Host Toko...'
-
-  // Pada desktop: jika host live stream vertikal, gunakan object-contain dengan ambient blurred background agar tidak ter-crop 16:9
-  // Pada mobile smartphone: video selalu memenuhi layar penuh (object-cover) persis seperti di host live broadcaster
-  const isContainMode = !isMobile && isVertical
-
-  // Jika siaran telah diakhiri oleh host, tampilkan layar berakhir yang elegan dan informatif
-  if (isStreamEnded) {
-    return (
-      <div className="relative flex h-full w-full select-none flex-col items-center justify-center bg-slate-950 p-6 text-center text-white">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-500 shadow-xl shadow-orange-500/10">
-          <Radio className="h-8 w-8 text-orange-500 opacity-60" />
-        </div>
-        <h4 className="text-lg font-bold text-white sm:text-xl">
-          Siaran Langsung Telah Berakhir
-        </h4>
-        <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-slate-400">
-          Host toko cabang telah menyelesaikan sesi siaran langsung ini. Terima
-          kasih telah menonton dan berbelanja!
-        </p>
-        <Link
-          href="/gadget"
-          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95"
-        >
-          <ShoppingBag className="h-4 w-4" />
-          <span>Jelajahi Katalog Gadget Toko</span>
-        </Link>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      onDoubleClick={onSendLike}
-      className="relative flex h-full w-full items-center justify-center overflow-hidden bg-slate-950"
-    >
-      {activeTrack ? (
-        <>
-          {/* Ambient blurred backdrop for vertical streams on widescreen displays */}
-          {isContainMode && (
-            <video
-              ref={ambientVideoRef}
-              autoPlay
-              playsInline
-              muted
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl transition-all duration-500"
-              style={{
-                transform: isMirrored ? 'scaleX(-1) scale(1.1)' : 'scale(1.1)',
-              }}
-            />
-          )}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted={isMuted}
-            className={`relative z-10 transition-transform duration-300 ${
-              isContainMode
-                ? 'mx-auto h-full w-auto max-w-full object-contain'
-                : 'h-full w-full object-cover'
-            }`}
-            style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}
-          />
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center gap-3 p-6 text-center text-slate-400">
-          <div className="relative">
-            <Radio className="h-14 w-14 animate-pulse text-orange-500" />
-            <span className="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-orange-400" />
-          </div>
-          <h4 className="text-base font-bold text-white">{statusTitle}</h4>
-          <p className="max-w-xs text-xs text-slate-400">
-            Kualitas video menyesuaikan jaringan Anda secara otomatis.
-          </p>
-        </div>
-      )}
-
-      {/* Floating Hearts Animation on Video Canvas */}
-      <FloatingHeartsOverlay
-        triggerCount={likeCount}
-        onHeartClick={onSendLike}
-      />
-
-      {/* Video Overlay Action Controls (Desktop/Default) */}
-      {showControls && (
-        <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
-          {onSendLike && (
-            <button
-              onClick={onSendLike}
-              className="cursor-pointer rounded-full border border-rose-500/40 bg-rose-500/20 p-2.5 text-rose-400 shadow-lg backdrop-blur-md transition-all hover:bg-rose-500/30 active:scale-75"
-              title="Kirim Suka (Double Tap Video)"
-            >
-              <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
-            </button>
-          )}
-
-          <button
-            onClick={() => setIsMuted(!isMuted)}
-            className="cursor-pointer rounded-full border border-white/10 bg-slate-900/80 p-2.5 text-white shadow-lg backdrop-blur-md transition-all hover:bg-slate-800 active:scale-90"
-            title={isMuted ? 'Nyalakan Suara' : 'Matikan Suara'}
-          >
-            {isMuted ? (
-              <VolumeX className="h-4 w-4 text-rose-400" />
-            ) : (
-              <Volume2 className="h-4 w-4 text-white" />
-            )}
-          </button>
-
-          {onFullscreen && (
-            <button
-              onClick={onFullscreen}
-              className="cursor-pointer rounded-full border border-white/10 bg-slate-900/80 p-2.5 text-white shadow-lg backdrop-blur-md transition-all hover:bg-slate-800 active:scale-90"
-              title="Layar Penuh"
-            >
-              <Maximize2 className="h-4 w-4 text-white" />
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  )
+export interface LiveStreamViewerProps {
+  streamId: string
+  initialStream?: LiveStreamDetail | null
+  initialToken?: { token: string; wsUrl: string; roomName?: string } | null
 }
 
-export function LiveStreamViewer({ streamId }: { streamId: string }) {
+export function LiveStreamViewer({
+  streamId,
+  initialStream,
+  initialToken,
+}: LiveStreamViewerProps) {
   const { data: session } = useSession()
-  const [stream, setStream] = useState<LiveStreamDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [stream, setStream] = useState<LiveStreamDetail | null>(
+    initialStream ?? null
+  )
+  const [loading, setLoading] = useState<boolean>(!initialStream)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const isMobile = useIsMobile()
+  const hasLoadedInitial = useRef<boolean>(!!initialStream)
 
   // Mobile IG Live states
   const [mobileInputText, setMobileInputText] = useState('')
@@ -338,14 +128,22 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
     window.addEventListener('resize', checkOrientation)
     window.addEventListener('orientationchange', checkOrientation)
     checkOrientation()
+
+    // Graceful disconnect on pagehide
+    const handlePageHide = () => {
+      // Allows clean WebSocket & WebRTC teardown
+    }
+    window.addEventListener('pagehide', handlePageHide)
+
     return () => {
       document.removeEventListener('fullscreenchange', handleFsChange)
       window.removeEventListener('resize', checkOrientation)
       window.removeEventListener('orientationchange', checkOrientation)
+      window.removeEventListener('pagehide', handlePageHide)
     }
   }, [])
 
-  // 1. Fetch Stream Metadata
+  // 1. Fetch Stream Metadata (skip if initialStream provided)
   const fetchStreamData = async () => {
     try {
       setLoading(true)
@@ -365,6 +163,10 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   }
 
   useEffect(() => {
+    if (hasLoadedInitial.current) {
+      hasLoadedInitial.current = false
+      return
+    }
     if (streamId) {
       fetchStreamData()
     }
@@ -393,14 +195,14 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   const isEnded = isStreamEnded || stream?.status === 'ENDED'
   const isLive = stream?.status === 'LIVE' && !isEnded
 
-  // 2. LiveKit Viewer Token
+  // 2. LiveKit Viewer Token (with preloaded initialToken)
   const {
     token: livekitToken,
     wsUrl: livekitWsUrl,
     loading: isTokenLoading,
-  } = useLiveKitToken(streamId, 'viewer')
+  } = useLiveKitToken(streamId, 'viewer', undefined, initialToken)
 
-  const { keyboardInset, offsetTop } = useKeyboardInset(isMobile)
+  const { keyboardInset } = useKeyboardInset(isMobile)
 
   // Kunci scroll body di mobile agar layout tidak bergeser saat keyboard muncul
   useEffect(() => {
@@ -438,7 +240,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
     }
   }, [messages])
 
-  // Fullscreen handler for Desktop and Mobile (otomatis landscape di HP jika didukung)
+  // Fullscreen handler for Desktop and Mobile
   const handleFullscreen = () => {
     const target = isMobile
       ? mobileRootRef.current || document.documentElement
@@ -560,37 +362,46 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
       )
     }
 
+    // Instant LCP Poster Image while connecting or fetching token
     if (isTokenLoading || !livekitToken) {
       return (
-        <div className="flex h-full min-h-[300px] w-full flex-col items-center justify-center gap-3 bg-slate-950 text-slate-400">
-          <RefreshCw className="h-8 w-8 animate-spin text-orange-500" />
-          <p className="text-xs">Menyiapkan saluran video live streaming...</p>
+        <div className="relative flex h-full min-h-[300px] w-full items-center justify-center overflow-hidden bg-slate-950 text-white">
+          {stream.coverImage && (
+            <Image
+              src={stream.coverImage}
+              alt={stream.title}
+              fill
+              priority
+              sizes="(max-width: 768px) 100vw, 960px"
+              className="blur-xs object-cover opacity-60 transition-opacity duration-700"
+            />
+          )}
+          <div className="relative z-10 flex flex-col items-center justify-center gap-3 p-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/20 backdrop-blur-md">
+              <RefreshCw className="h-6 w-6 animate-spin text-orange-400" />
+            </div>
+            <p className="text-xs font-semibold tracking-wide text-white drop-shadow-md">
+              Menyambungkan ke siaran...
+            </p>
+          </div>
         </div>
       )
     }
 
     return (
-      <LiveKitRoom
+      <LiveKitStreamPlayer
         serverUrl={livekitWsUrl}
         token={livekitToken}
-        connect={true}
-        video={false}
-        audio={false}
-        options={VIEWER_ROOM_OPTIONS}
-        className="h-full w-full"
-      >
-        <RoomAudioRenderer />
-        <LiveKitSubscriberVideo
-          videoRefExternal={viewerVideoRef}
-          onOrientationChange={setIsVerticalStream}
-          onFullscreen={handleFullscreen}
-          likeCount={likeCount}
-          onSendLike={() => sendLike(1)}
-          isMirrored={isMirrored}
-          showControls={showOverlayControls}
-          isStreamEnded={isEnded}
-        />
-      </LiveKitRoom>
+        videoRefExternal={viewerVideoRef}
+        onOrientationChange={setIsVerticalStream}
+        onFullscreen={handleFullscreen}
+        likeCount={likeCount}
+        onSendLike={() => sendLike(1)}
+        isMirrored={isMirrored}
+        showControls={showOverlayControls}
+        isStreamEnded={isEnded}
+        isFullscreen={isFullscreen}
+      />
     )
   }
 
@@ -598,11 +409,13 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
   // 1. MOBILE VIEW: INSTAGRAM LIVE STYLE (Full-bleed 9:16 Portrait)
   // ===================================================================
   if (isMobile) {
-    // Mode Mobile Miring / Landscape Fullscreen (Kolom komentar melayang di kanan, barang di kiri)
+    // Mode Mobile Miring / Landscape Fullscreen
     if (isLandscape || isFullscreen) {
       return (
         <div
           ref={mobileRootRef}
+          role="region"
+          aria-label="Siaran langsung layar penuh mobile"
           className="fixed inset-0 z-50 flex h-[100dvh] w-full select-none overflow-hidden bg-black text-white"
         >
           {/* Fullscreen Video Background */}
@@ -641,6 +454,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 onClick={handleFullscreen}
                 className="rounded-lg p-1 text-white/70 hover:bg-white/10 hover:text-white"
                 title="Keluar Layar Penuh"
+                aria-label="Keluar layar penuh"
               >
                 <Minimize2 className="h-3.5 w-3.5" />
               </button>
@@ -658,14 +472,13 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                   <span className="font-bold text-orange-400">
                     {msg.userName}:{' '}
                   </span>
-                  <span className="break-words text-white/95">
+                  <span className="break-words leading-tight text-white/90">
                     {msg.message}
                   </span>
                 </div>
               ))}
             </div>
 
-            {/* Mobile Landscape Comment & Like Input Form */}
             <form
               onSubmit={handleSendMobileComment}
               className="flex items-center gap-1.5 border-t border-white/10 pt-2"
@@ -675,22 +488,25 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 value={mobileInputText}
                 onChange={(e) => setMobileInputText(e.target.value)}
                 placeholder="Komentar..."
-                enterKeyHint="send"
-                style={{ fontSize: 16, outline: 'none' }}
-                className="w-full rounded-xl border border-white/20 bg-white/10 px-2.5 py-1.5 text-xs text-white placeholder-white/50 outline-none focus:border-orange-500"
+                aria-label="Ketik komentar"
+                className="w-full rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs text-white placeholder-white/50 outline-none focus:border-orange-500 focus:bg-white/15"
               />
               {mobileInputText.trim() && (
                 <button
                   type="submit"
-                  className="shrink-0 rounded-xl bg-orange-500 p-2 text-white active:scale-95"
+                  className="shrink-0 rounded-xl bg-orange-500 p-2 text-white transition-all hover:bg-orange-600 active:scale-95"
+                  title="Kirim"
+                  aria-label="Kirim komentar"
                 >
-                  <Send className="h-3 w-3" />
+                  <Send className="h-3.5 w-3.5" />
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => sendLike(1)}
-                className="shrink-0 rounded-xl border border-rose-500/40 bg-rose-500/25 p-2 text-rose-500 active:scale-90"
+                className="shrink-0 rounded-xl border border-rose-500/40 bg-rose-500/25 p-2 text-rose-500 transition-all hover:bg-rose-500/35 active:scale-90"
+                title="Kirim Suka"
+                aria-label="Kirim suka"
               >
                 <Heart className="h-3.5 w-3.5 fill-rose-500" />
               </button>
@@ -700,53 +516,46 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
       )
     }
 
+    // Default Portrait Fullscreen (Instagram Live Style)
     return (
       <div
         ref={mobileRootRef}
+        role="region"
+        aria-label="Siaran langsung vertikal mobile"
         className="fixed inset-0 flex h-[100dvh] w-full select-none flex-col justify-between overflow-hidden bg-black text-white"
+        style={{
+          height: '100dvh',
+          maxHeight: '-webkit-fill-available',
+        }}
       >
-        {/* Fullscreen Video Stream Background (Single LiveKit Mount) */}
+        {/* Fullscreen Video Background */}
         <div className="absolute inset-0 z-0">{renderLiveVideo(false)}</div>
-
-        {/* Top & Bottom Soft Vignette Gradient Overlays */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-black/60 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-44 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-        {/* Floating Hearts Overlay Canvas */}
         <FloatingHeartsOverlay triggerCount={likeCount} />
 
-        {/* Instagram Live Top Floating Header Bar */}
-        <div className="pointer-events-auto relative z-30 flex items-center justify-between p-3.5 pt-4">
-          <div className="flex items-center gap-2.5">
-            {stream.store && (
-              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-black p-0.5 ring-2 ring-orange-500">
-                {stream.store.logo ? (
-                  <Image
-                    src={stream.store.logo}
-                    alt={stream.store.name}
-                    fill
-                    className="rounded-full object-cover"
-                  />
-                ) : (
-                  <Store className="m-auto h-5 w-5 text-orange-400" />
-                )}
-              </div>
-            )}
-            <div className="leading-tight">
+        {/* Top Header Floating Card (Store info, viewers, LIVE badge, close button) */}
+        <div className="pointer-events-auto relative z-30 flex items-center justify-between gap-2 p-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))]">
+          <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/60 py-1.5 pl-1.5 pr-3 shadow-lg backdrop-blur-md">
+            <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-orange-500/50 bg-white">
+              {stream.store?.logo ? (
+                <Image
+                  src={stream.store.logo}
+                  alt={stream.store.name || 'Toko'}
+                  fill
+                  sizes="28px"
+                  className="object-cover"
+                />
+              ) : (
+                <Store className="m-auto h-4 w-4 text-orange-500" />
+              )}
+            </div>
+            <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <span className="max-w-[130px] truncate text-xs font-bold text-white drop-shadow-sm">
-                  {stream.store?.name || 'Toko Cabang'}
+                <span className="max-w-[110px] truncate text-xs font-bold leading-tight text-white">
+                  {stream.store?.name}
                 </span>
-                {isEnded ? (
-                  <span className="flex items-center gap-1 rounded-md bg-slate-700 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-200">
-                    SELESAI
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white shadow-md">
-                    <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white" />
-                    LIVE
-                  </span>
-                )}
+                <span className="py-0.2 rounded bg-rose-600 px-1 text-[8px] font-extrabold uppercase tracking-wider text-white">
+                  LIVE
+                </span>
               </div>
               <div className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-white/80">
                 <span className="flex items-center gap-1 rounded-md bg-black/40 px-1.5 py-0.5 backdrop-blur-sm">
@@ -762,6 +571,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               onClick={handleShare}
               className="flex items-center gap-1 rounded-full border border-white/10 bg-black/50 p-2 text-white/90 backdrop-blur-md transition-all hover:bg-black/70 active:scale-90"
               title="Bagikan Siaran"
+              aria-label="Bagikan siaran"
             >
               {copied ? (
                 <CheckCheck className="h-4 w-4 text-emerald-400" />
@@ -773,13 +583,14 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               href="/"
               className="rounded-full border border-white/10 bg-black/50 p-2 text-white/90 backdrop-blur-md transition-all hover:bg-black/70 active:scale-90"
               title="Tutup Siaran"
+              aria-label="Tutup siaran"
             >
               <X className="h-4 w-4" />
             </Link>
           </div>
         </div>
 
-        {/* Instagram Live Bottom Section (Comments Stream, Pinned Product, Input Bar) */}
+        {/* Instagram Live Bottom Section */}
         <div
           className="pointer-events-none relative z-30 flex flex-col justify-end gap-2.5 p-3 pb-6"
           style={{
@@ -791,7 +602,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 : 'max(1.25rem, env(safe-area-inset-bottom, 16px))',
           }}
         >
-          {/* Floating Comments Stream (scrolling upwards over the video, menempel di bawah / di atas barang sematan) */}
+          {/* Floating Comments Stream */}
           <div
             ref={mobileChatScrollRef}
             className="pointer-events-auto flex max-h-[46dvh] flex-col gap-1.5 overflow-y-auto pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -826,7 +637,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             )}
           </div>
 
-          {/* Pinned Product Floating Card on Mobile (Rekomendasi Barang di Bawah Layar - Light Mode Bersih) */}
+          {/* Pinned Product Floating Card on Mobile */}
           {pinnedProduct && !isEnded && (
             <div className="pointer-events-auto relative flex max-w-[62%] items-center justify-between gap-2 self-start rounded-2xl border border-orange-500/40 bg-white/95 p-2 text-slate-900 shadow-2xl shadow-black/20 backdrop-blur-md animate-in slide-in-from-bottom-2 sm:max-w-[280px]">
               <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -892,14 +703,14 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
             </div>
           )}
 
-          {/* Action Bar Paling Bawah (Shopping Bag, Comment Input, Hearts Button) */}
+          {/* Action Bar Paling Bawah */}
           <div className="pointer-events-auto mt-1 flex items-center gap-2">
-            {/* Shopping Bag Button (Buka Bottom Sheet Katalog Toko) */}
             <button
               type="button"
               onClick={() => setIsProductDrawerOpen(true)}
               className="relative shrink-0 rounded-full border border-white/20 bg-black/60 p-2.5 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-90"
               title="Lihat Produk Toko"
+              aria-label="Lihat produk toko"
             >
               <ShoppingBag className="h-4 w-4 text-orange-400" />
               {stream.featuredProducts &&
@@ -925,6 +736,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                   }
                 }}
                 placeholder="Tambahkan komentar..."
+                aria-label="Tambahkan komentar"
                 enterKeyHint="send"
                 autoComplete="off"
                 autoCorrect="off"
@@ -935,6 +747,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               {mobileInputText.trim() && (
                 <button
                   type="submit"
+                  aria-label="Kirim komentar"
                   className="ml-1.5 shrink-0 text-orange-400 transition-all hover:text-orange-300 active:scale-90"
                 >
                   <Send className="h-3.5 w-3.5" />
@@ -948,6 +761,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               onClick={() => sendLike(1)}
               className="shrink-0 rounded-full border border-rose-500/40 bg-rose-500/25 p-2.5 text-rose-500 shadow-lg backdrop-blur-md transition-all hover:bg-rose-500/35 active:scale-75"
               title="Kirim Suka"
+              aria-label="Kirim suka"
             >
               <Heart className="h-4 w-4 fill-rose-500" />
             </button>
@@ -958,13 +772,14 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               onClick={handleFullscreen}
               className="shrink-0 rounded-full border border-white/20 bg-black/60 p-2.5 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-90"
               title="Layar Penuh / Miring"
+              aria-label="Layar penuh atau miring"
             >
               <Maximize2 className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* Instagram Shopping Bottom Sheet Drawer (Mobile - Clean Light Mode) */}
+        {/* Instagram Shopping Bottom Sheet Drawer (Mobile) */}
         {isProductDrawerOpen && (
           <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-in fade-in">
             <div
@@ -983,6 +798,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 <button
                   type="button"
                   onClick={() => setIsProductDrawerOpen(false)}
+                  aria-label="Tutup daftar produk"
                   className="rounded-full bg-slate-100 p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
                 >
                   <X className="h-4 w-4" />
@@ -1008,7 +824,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                               src={p.images[0]}
                               alt={p.name}
                               fill
-                              unoptimized
+                              sizes="48px"
                               className="object-cover"
                             />
                           ) : (
@@ -1078,30 +894,35 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Kolom Kiri: Player 16:9 + Info Toko + Deskripsi + Rekomendasi Produk */}
         <div className="space-y-4 lg:col-span-8 xl:col-span-8">
-          {/* Cinematic Video Player Box (Adapts to vertical stream or 16:9 widescreen) */}
+          {/* Bento Screen Player Wrapper with 16:9 Aspect Ratio */}
           <div
             ref={playerContainerRef}
-            className={`relative w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-black shadow-2xl transition-all duration-300 dark:border-slate-800 ${
-              isVerticalStream
-                ? 'flex h-[640px] max-h-[calc(100vh-160px)] items-center justify-center'
+            className={`group relative flex w-full flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/90 bg-slate-950 shadow-xl transition-all dark:border-slate-800 ${
+              isVerticalStream && !isFullscreen
+                ? 'aspect-video h-[640px] max-h-[calc(100vh-160px)] w-full'
                 : 'aspect-video w-full'
             }`}
           >
-            {/* Top Status Bar Overlay on Player */}
-            <div className="pointer-events-auto absolute left-4 right-4 top-4 z-20 flex items-center justify-between gap-2">
-              <LiveStreamStatusBar
-                startedAt={stream.startedAt}
-                viewerCount={viewerCount}
-                isLive={isLive}
-                isConnected={isWsConnected}
-              />
+            {/* Top Bar Floating Status on Desktop Player */}
+            <div className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4">
+              <div className="pointer-events-auto flex items-center gap-2.5">
+                <span className="flex items-center gap-1.5 rounded-full bg-rose-600 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-white shadow-md">
+                  <span className="h-2 w-2 animate-ping rounded-full bg-white" />
+                  LIVE
+                </span>
 
-              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-semibold text-white shadow-md backdrop-blur-md">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <span>{viewerCount} Ditonton</span>
+                </span>
+              </div>
+
+              <div className="pointer-events-auto flex items-center gap-2">
                 <button
-                  type="button"
                   onClick={handleShare}
                   className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-3.5 py-1.5 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800"
                   title="Bagikan Tautan Siaran"
+                  aria-label="Bagikan tautan siaran"
                 >
                   {copied ? (
                     <>
@@ -1112,7 +933,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                     </>
                   ) : (
                     <>
-                      <Share2 className="h-3.5 w-3.5 text-slate-300" />
+                      <Share2 className="h-3.5 w-3.5" />
                       <span>Bagikan</span>
                     </>
                   )}
@@ -1138,14 +959,14 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
               {renderLiveVideo(true)}
             </div>
 
-            {/* Floating Pinned Product on Desktop Video Player (Kiri Layar Mengambang seperti sisi Host) */}
+            {/* Floating Pinned Product on Desktop Video Player */}
             {pinnedProduct && !isEnded && (
               <div className="pointer-events-auto absolute bottom-4 left-4 z-30 max-w-[calc(100%-2rem)] animate-in fade-in slide-in-from-bottom-2 sm:max-w-xs md:max-w-sm">
                 <LiveProductPin product={pinnedProduct} isBroadcaster={false} />
               </div>
             )}
 
-            {/* Fullscreen Floating Comments Column on the Right (Kolom komentar melayang di kanan saat layar penuh) */}
+            {/* Fullscreen Floating Comments Column on the Right */}
             {isFullscreen && (
               <>
                 {showFullscreenChat ? (
@@ -1167,6 +988,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                           onClick={() => setShowFullscreenChat(false)}
                           className="rounded-lg p-1 text-white/70 hover:bg-white/10 hover:text-white"
                           title="Sembunyikan Chat"
+                          aria-label="Sembunyikan chat"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -1175,6 +997,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                           onClick={handleFullscreen}
                           className="rounded-lg p-1 text-white/70 hover:bg-white/10 hover:text-white"
                           title="Keluar Layar Penuh"
+                          aria-label="Keluar layar penuh"
                         >
                           <Minimize2 className="h-3.5 w-3.5" />
                         </button>
@@ -1216,11 +1039,13 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                         value={fullscreenInputText}
                         onChange={(e) => setFullscreenInputText(e.target.value)}
                         placeholder="Kirim komentar..."
+                        aria-label="Ketik komentar"
                         className="w-full rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs text-white placeholder-white/50 outline-none focus:border-orange-500 focus:bg-white/15"
                       />
                       {fullscreenInputText.trim() && (
                         <button
                           type="submit"
+                          aria-label="Kirim komentar"
                           className="shrink-0 rounded-xl bg-orange-500 p-2 text-white transition-all hover:bg-orange-600 active:scale-95"
                           title="Kirim"
                         >
@@ -1232,6 +1057,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                         onClick={() => sendLike(1)}
                         className="shrink-0 rounded-xl border border-rose-500/40 bg-rose-500/25 p-2 text-rose-500 transition-all hover:bg-rose-500/35 active:scale-90"
                         title="Kirim Suka"
+                        aria-label="Kirim suka"
                       >
                         <Heart className="h-3.5 w-3.5 fill-rose-500" />
                       </button>
@@ -1241,6 +1067,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                   <button
                     type="button"
                     onClick={() => setShowFullscreenChat(true)}
+                    aria-label="Buka live chat"
                     className="pointer-events-auto absolute bottom-6 right-4 z-40 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/70 px-3.5 py-2 text-xs font-bold text-white shadow-xl backdrop-blur-md hover:bg-black/90"
                   >
                     <span>💬 Buka Chat</span>
@@ -1266,6 +1093,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                         src={stream.store.logo}
                         alt={stream.store.name}
                         fill
+                        sizes="48px"
                         className="object-cover"
                       />
                     ) : (
@@ -1315,7 +1143,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 </div>
               )}
 
-              {/* Action Stats Pill (YouTube Action Buttons) */}
+              {/* Action Stats Pill */}
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3.5 py-1.5 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   <Radio className="h-3.5 w-3.5 animate-pulse text-rose-500" />
@@ -1323,6 +1151,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                 </div>
                 <button
                   onClick={() => sendLike(1)}
+                  aria-label="Kirim suka"
                   className="flex items-center gap-1.5 rounded-full border border-rose-200/80 bg-rose-50 px-3.5 py-1.5 text-xs font-bold text-rose-600 transition-all hover:bg-rose-100 active:scale-95 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
                 >
                   <Heart className="h-3.5 w-3.5 fill-rose-500" />
@@ -1336,6 +1165,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                       setTimeout(() => setCopied(false), 2000)
                     }
                   }}
+                  aria-label="Bagikan siaran"
                   className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3.5 py-1.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
@@ -1354,6 +1184,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                         src={pinnedProduct.productImage}
                         alt={pinnedProduct.productTitle || 'Produk'}
                         fill
+                        sizes="56px"
                         className="object-cover"
                       />
                     ) : (
@@ -1446,6 +1277,7 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                             src={p.images[0]}
                             alt={p.name}
                             fill
+                            sizes="(max-width: 768px) 50vw, 200px"
                             className="object-cover"
                           />
                         ) : (

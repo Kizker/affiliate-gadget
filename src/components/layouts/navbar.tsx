@@ -172,8 +172,12 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
             aria-label="Affiliate Gadget Beranda"
           >
             <img
-              src="/logo.png"
+              src="/logo.webp"
               alt="Affiliate Gadget Logo"
+              width={32}
+              height={32}
+              loading="lazy"
+              decoding="async"
               className="shadow-2xs h-7 w-7 rounded-xl object-contain transition-transform duration-200 group-hover:scale-105 sm:h-8 sm:w-8"
             />
             <span className="text-sm font-black leading-none tracking-tight text-slate-950 dark:text-white sm:text-base">
