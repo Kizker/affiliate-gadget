@@ -5,8 +5,8 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Navbar, MobileTopNav } from '@/components/layouts'
 import Link from 'next/link'
+import { Navbar } from '@/components/layouts'
 import {
   MessageSquare,
   Search,
@@ -1107,7 +1107,15 @@ function CustomerChatContent() {
   ])
 
   const handleBackToList = () => {
-    setShowChatOnMobile(false)
+    if (
+      typeof window !== 'undefined' &&
+      window.history.length > 1 &&
+      rooms.length === 0
+    ) {
+      router.back()
+    } else {
+      setShowChatOnMobile(false)
+    }
   }
 
   // Send message with optimistic instant feedback without any page reload
@@ -1531,18 +1539,11 @@ function CustomerChatContent() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-950">
-        <div className="block shrink-0 md:hidden">
-          <MobileTopNav
-            showBack
-            backHref="/dashboard/customer/settings"
-            title="Pusat Chat Toko"
-          />
-        </div>
+      <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-white dark:bg-slate-950">
         <div className="hidden shrink-0 md:block">
           <Navbar variant="light" />
         </div>
-        <div className="flex flex-1 items-center justify-center pt-20">
+        <div className="flex flex-1 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
         </div>
       </div>
@@ -1550,18 +1551,8 @@ function CustomerChatContent() {
   }
 
   return (
-    <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-slate-50/50 font-sans dark:bg-slate-950">
-      {/* 1. Top Navigation: Mobile Top Nav & Desktop Navbar */}
-      <div className="block shrink-0 md:hidden">
-        <MobileTopNav
-          showBack
-          backHref={
-            showChatOnMobile ? undefined : '/dashboard/customer/settings'
-          }
-          onBack={showChatOnMobile ? handleBackToList : undefined}
-          title={showChatOnMobile ? activeStoreTitle : 'Pusat Chat Toko'}
-        />
-      </div>
+    <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-white font-sans dark:bg-slate-950">
+      {/* 1. Top Navigation: Desktop Navbar only (Mobile is fully edge-to-edge fullscreen chat) */}
       <div className="hidden shrink-0 md:block">
         <Navbar variant="light" />
       </div>
@@ -1640,16 +1631,32 @@ function CustomerChatContent() {
           document.body
         )}
 
-      <main className="flex flex-1 flex-col overflow-hidden pb-16 pt-1.5 md:pb-4 md:pt-20">
-        <div className="mx-auto flex h-full w-full max-w-7xl flex-1 flex-col px-2 sm:px-6 lg:px-8">
+      <main className="flex flex-1 flex-col overflow-hidden p-0 md:pb-4 md:pt-20">
+        <div className="flex h-full w-full flex-1 flex-col px-0 md:mx-auto md:max-w-7xl md:px-6 lg:px-8">
           {/* Single-Surface Bento Chat Hub Container */}
-          <div className="shadow-xs grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl lg:grid-cols-12">
+          <div className="md:shadow-xs grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-none border-0 bg-white dark:bg-slate-900 md:rounded-3xl md:border md:border-slate-200/80 lg:grid-cols-12">
             {/* Left Pane: Integrated Control & Conversation List (4 Cols) */}
             <div
               className={`flex h-full min-h-0 flex-col overflow-hidden border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:col-span-4 xl:col-span-4 ${
                 showChatOnMobile ? 'hidden lg:flex' : 'flex'
               }`}
             >
+              {/* Mobile Dedicated Header for Room List (Back to Customer Settings) */}
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-3.5 py-3 dark:border-slate-800 lg:hidden">
+                <div className="flex items-center gap-2.5">
+                  <Link
+                    href="/dashboard/customer/settings"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                    title="Kembali ke Pengaturan"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Link>
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Pusat Chat Toko
+                  </h2>
+                </div>
+              </div>
+
               {/* Integrated Sidebar Header */}
               <div className="shrink-0 space-y-2.5 border-b border-slate-100 p-3 dark:border-slate-800 sm:p-3.5">
                 {/* Segmented Filter Pills */}
@@ -2867,7 +2874,7 @@ function CustomerChatContent() {
                   ) : null}
 
                   {/* Bottom Message Input Bar */}
-                  <div className="shrink-0 border-t border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-3.5">
+                  <div className="shrink-0 border-t border-slate-200/80 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] dark:border-slate-800 dark:bg-slate-900 sm:p-3.5 sm:pb-3.5">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -2939,18 +2946,11 @@ export default function CustomerChatPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="flex min-h-screen flex-col bg-slate-50/50 dark:bg-slate-950">
-          <div className="block shrink-0 md:hidden">
-            <MobileTopNav
-              showBack
-              backHref="/dashboard/customer/settings"
-              title="Pusat Chat Toko"
-            />
-          </div>
+        <div className="flex min-h-screen flex-col bg-white dark:bg-slate-950">
           <div className="hidden shrink-0 md:block">
             <Navbar variant="light" />
           </div>
-          <div className="flex flex-1 items-center justify-center pt-24">
+          <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
           </div>
         </div>

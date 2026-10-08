@@ -52,7 +52,15 @@
 - **Port Tersedia:** Port 3000 (Next.js Web App) & Port 3001 (Standalone WebSocket Server)
 - **Mode Eksekusi:** `pnpm dev` (menjalankan Next.js port 3000 dan WS Server port 3001 secara paralel via `concurrently`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
-- **Unit Tests:** 123 test files, 884 tests lulus 100% (`pnpm test:unit` pass)
+- **Unit Tests:** 124 test files, 888 tests lulus 100% (`pnpm test:unit` pass)
+
+- **2026-10-08 (Fullscreen Mobile Chat Customer, Eliminasi Header Ganda & Bawah Penuh Edge-to-Edge):**
+  - **1. Eliminasi Header Mobile Redundan ([`src/app/dashboard/customer/chat/page.tsx`](file:///src/app/dashboard/customer/chat/page.tsx)):** Menghapus rendering `<MobileTopNav />` di rute chat mobile sehingga tidak lagi terjadi penumpukan header ganda (header toko luar + header chat aktif) serta menghilangkan icon cart & chat bubble yang tidak relevan di dalam ruang chat.
+  - **2. Fullscreen Edge-to-Edge ([`src/app/dashboard/customer/chat/page.tsx`](file:///src/app/dashboard/customer/chat/page.tsx)):** Mengubah kontainer mobile dari kotak mengambang bertingkat (`px-2 pt-1.5 rounded-2xl border`) menjadi fullscreen murni (`p-0 px-0 rounded-none border-0`) pada `main` dan bento grid card.
+  - **3. Input Bar Penuh Sampai Bawah ([`src/app/dashboard/customer/chat/page.tsx`](file:///src/app/dashboard/customer/chat/page.tsx)):** Menghapus margin kosong bawah `pb-16` (64px) pada `main` dan menerapkan `pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]` pada input bar, sehingga chat field menempel tepat di bagian bawah layar tanpa celah putih kosong.
+  - **4. Navigasi Kembali List Mobile ([`src/app/dashboard/customer/chat/page.tsx`](file:///src/app/dashboard/customer/chat/page.tsx)):** Menambahkan top header mobile bersih dengan tombol `<` kembali ke Akun/Pengaturan di tampilan daftar percakapan, serta fallback `router.back()` pada chat aktif saat riwayat room kosong.
+  - **5. Unit Testing Suite ([`tests/unit/customer-chat-fullscreen-mobile.test.ts`](file:///tests/unit/customer-chat-fullscreen-mobile.test.ts)):** 4 unit tests memvalidasi eliminasi total `MobileTopNav`, layout edge-to-edge `p-0`/`px-0`/`rounded-none`, padding input bar bawah penuh, dan tombol kembali list room.
+  - **6. Health & Quality Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 124 test files dengan 888 unit tests lulus 100% (`pnpm test:unit` pass).
 
 - **2026-10-08 (Perbaikan Visual Kartu Pesanan, Chat Admin Full-Height, Badge 1-Baris & Sistem Diskon Live Dua Tingkat 1x Checkout):**
   - **1. Tampilan Gambar Pesanan Fit & Rapi ([`src/components/customer/mobile-orders-view.tsx`](file:///src/components/customer/mobile-orders-view.tsx), [`src/app/dashboard/customer/orders/orders-client.tsx`](file:///src/app/dashboard/customer/orders/orders-client.tsx)):** Mengoptimalkan thumbnail produk di daftar pesanan mobile dan desktop menggunakan container `bg-white` dengan `object-cover` tanpa padding inset yang kaku, sehingga gambar produk berlatar warna menyatu secara estetik.
