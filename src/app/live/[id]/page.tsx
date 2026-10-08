@@ -9,14 +9,14 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-// Dynamic import for Navbar & Footer so desktop shell doesn't bloat mobile live bundle
+// Dynamic import for Navbar & Footer with ssr: false so desktop styles don't block mobile LCP/FCP
 const Navbar = dynamicImport(
   () => import('@/components/layouts/navbar').then((m) => m.Navbar),
-  { ssr: true }
+  { ssr: false }
 )
 const Footer = dynamicImport(
   () => import('@/components/layouts/footer').then((m) => m.Footer),
-  { ssr: true }
+  { ssr: false }
 )
 
 interface Props {
@@ -121,6 +121,15 @@ export default async function LiveStreamPage({ params }: Props) {
       {/* Early preconnect hints for LiveKit WebRTC connection */}
       <link rel="preconnect" href={livekitDomain} crossOrigin="anonymous" />
       <link rel="dns-prefetch" href={livekitDomain} />
+      {/* High-priority preload for LCP stream cover poster */}
+      {initialStream?.coverImage && (
+        <link
+          rel="preload"
+          as="image"
+          href={initialStream.coverImage}
+          {...({ fetchpriority: 'high' } as Record<string, string>)}
+        />
+      )}
 
       {/* Desktop Only Navigation Bar */}
       <div className="hidden md:block">

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import {
   LiveKitRoom,
@@ -20,20 +21,7 @@ import {
 } from 'lucide-react'
 import { VIEWER_ROOM_OPTIONS } from '@/lib/livekit-options'
 import { FloatingHeartsOverlay } from './floating-hearts'
-
-// Hook to detect mobile viewport
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState<boolean>(false)
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
-  return isMobile
-}
+import { useIsMobile } from '@/hooks/use-is-mobile'
 
 interface LiveKitSubscriberVideoProps {
   videoRefExternal?: React.RefObject<HTMLVideoElement | null>
@@ -45,6 +33,7 @@ interface LiveKitSubscriberVideoProps {
   showControls?: boolean
   isStreamEnded?: boolean
   isFullscreen?: boolean
+  coverImage?: string | null
 }
 
 function LiveKitSubscriberVideo({
@@ -57,6 +46,7 @@ function LiveKitSubscriberVideo({
   showControls = true,
   isStreamEnded = false,
   isFullscreen = false,
+  coverImage,
 }: LiveKitSubscriberVideoProps) {
   const isMobile = useIsMobile()
   const [isMuted, setIsMuted] = useState(false)
@@ -194,10 +184,32 @@ function LiveKitSubscriberVideo({
               src="/captions/live-empty.vtt"
               srcLang="id"
               label="Bahasa Indonesia"
-              default
             />
           </video>
         </>
+      ) : coverImage ? (
+        <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-slate-950 text-white">
+          <Image
+            src={coverImage}
+            alt="Siaran Langsung"
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 960px"
+            className="object-cover opacity-65 blur-[1px]"
+          />
+          <div className="relative z-10 flex flex-col items-center justify-center gap-3 p-6 text-center text-slate-200">
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/20 backdrop-blur-md">
+              <Radio className="h-7 w-7 animate-pulse text-orange-400" />
+              <span className="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-orange-400" />
+            </div>
+            <h4 className="text-base font-bold text-white drop-shadow-md">
+              {statusTitle}
+            </h4>
+            <p className="max-w-xs text-xs text-slate-300 drop-shadow-sm">
+              Kualitas video menyesuaikan jaringan Anda secara otomatis.
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="flex flex-col items-center justify-center gap-3 p-6 text-center text-slate-400">
           <div className="relative">
@@ -278,6 +290,7 @@ export interface LiveKitStreamPlayerProps {
   showControls?: boolean
   isStreamEnded?: boolean
   isFullscreen?: boolean
+  coverImage?: string | null
 }
 
 export function LiveKitStreamPlayer({
@@ -292,6 +305,7 @@ export function LiveKitStreamPlayer({
   showControls = true,
   isStreamEnded = false,
   isFullscreen = false,
+  coverImage,
 }: LiveKitStreamPlayerProps) {
   return (
     <LiveKitRoom
@@ -314,6 +328,7 @@ export function LiveKitStreamPlayer({
         showControls={showControls}
         isStreamEnded={isStreamEnded}
         isFullscreen={isFullscreen}
+        coverImage={coverImage}
       />
     </LiveKitRoom>
   )

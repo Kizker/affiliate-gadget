@@ -25,7 +25,7 @@ import { useSession } from 'next-auth/react'
 import { useLiveKitToken } from '@/hooks/use-livekit-token'
 import { useLiveChat } from '@/hooks/use-live-chat'
 import { useKeyboardInset } from '@/hooks/use-keyboard-inset'
-import { captureVideoSnapshot, uploadLiveSnapshot } from '@/lib/live-snapshot'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { LiveStreamDetail } from '@/lib/live-stream-data'
 
 // Dynamic Imports for Heavy & WebRTC Components (Code Splitting to drop TBT to < 150ms)
@@ -36,8 +36,10 @@ const LiveKitStreamPlayer = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="relative flex h-full min-h-[300px] w-full items-center justify-center bg-slate-950">
-        <RefreshCw className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="relative flex h-full min-h-[300px] w-full items-center justify-center bg-transparent">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/20 backdrop-blur-md">
+          <RefreshCw className="h-6 w-6 animate-spin text-orange-400" />
+        </div>
       </div>
     ),
   }
@@ -62,20 +64,6 @@ const FloatingHeartsOverlay = dynamic(
   () => import('./floating-hearts').then((m) => m.FloatingHeartsOverlay),
   { ssr: false }
 )
-
-// Custom hook to detect mobile viewport without duplicate DOM mounts
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState<boolean>(false)
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
-  return isMobile
-}
 
 export interface LiveStreamViewerProps {
   streamId: string
@@ -224,21 +212,25 @@ export function LiveStreamViewer({
     }
   }, [isMobile])
 
-  // Auto-scroll mobile comments stream to bottom
+  // Auto-scroll mobile comments stream to bottom (debounced with rAF to prevent layout thrashing)
   useEffect(() => {
-    if (mobileChatScrollRef.current) {
-      mobileChatScrollRef.current.scrollTop =
-        mobileChatScrollRef.current.scrollHeight
-    }
-  }, [messages])
+    if (messages.length === 0 || !mobileChatScrollRef.current) return
+    const el = mobileChatScrollRef.current
+    const rafId = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight
+    })
+    return () => cancelAnimationFrame(rafId)
+  }, [messages.length])
 
-  // Auto-scroll fullscreen chat to bottom
+  // Auto-scroll fullscreen chat to bottom (debounced with rAF)
   useEffect(() => {
-    if (fullscreenChatScrollRef.current) {
-      fullscreenChatScrollRef.current.scrollTop =
-        fullscreenChatScrollRef.current.scrollHeight
-    }
-  }, [messages])
+    if (messages.length === 0 || !fullscreenChatScrollRef.current) return
+    const el = fullscreenChatScrollRef.current
+    const rafId = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight
+    })
+    return () => cancelAnimationFrame(rafId)
+  }, [messages.length])
 
   // Fullscreen handler for Desktop and Mobile
   const handleFullscreen = () => {
@@ -284,10 +276,22 @@ export function LiveStreamViewer({
 
   // Handle Share Live Stream with dynamic frame capture
   const handleShare = async () => {
-    const videoEl = viewerVideoRef.current
-    const snapshot = captureVideoSnapshot(videoEl, 1280, 720, 0.85, isMirrored)
-    if (snapshot && stream?.id) {
-      uploadLiveSnapshot(stream.id, snapshot).catch(() => {})
+    try {
+      const { captureVideoSnapshot, uploadLiveSnapshot } =
+        await import('@/lib/live-snapshot')
+      const videoEl = viewerVideoRef.current
+      const snapshot = captureVideoSnapshot(
+        videoEl,
+        1280,
+        720,
+        0.85,
+        isMirrored
+      )
+      if (snapshot && stream?.id) {
+        uploadLiveSnapshot(stream.id, snapshot).catch(() => {})
+      }
+    } catch {
+      // Non-critical snapshot error
     }
     const shareUrl = `${window.location.origin}/live/${stream?.id}`
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -362,46 +366,49 @@ export function LiveStreamViewer({
       )
     }
 
-    // Instant LCP Poster Image while connecting or fetching token
-    if (isTokenLoading || !livekitToken) {
-      return (
-        <div className="relative flex h-full min-h-[300px] w-full items-center justify-center overflow-hidden bg-slate-950 text-white">
-          {stream.coverImage && (
-            <Image
-              src={stream.coverImage}
-              alt={stream.title}
-              fill
-              priority
-              sizes="(max-width: 768px) 100vw, 960px"
-              className="blur-xs object-cover opacity-60 transition-opacity duration-700"
+    // Instant LCP Poster Image base layer with priority so LCP paints on frame 1
+    return (
+      <div className="relative h-full w-full overflow-hidden bg-slate-950">
+        {stream.coverImage && (
+          <Image
+            src={stream.coverImage}
+            alt={stream.title}
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 960px"
+            className="object-cover opacity-65"
+          />
+        )}
+        <div className="relative z-10 h-full w-full">
+          {isTokenLoading || !livekitToken ? (
+            <div className="relative flex h-full min-h-[300px] w-full items-center justify-center">
+              <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/20 backdrop-blur-md">
+                  <RefreshCw className="h-6 w-6 animate-spin text-orange-400" />
+                </div>
+                <p className="text-xs font-semibold tracking-wide text-white drop-shadow-md">
+                  Menyambungkan ke siaran...
+                </p>
+              </div>
+            </div>
+          ) : (
+            <LiveKitStreamPlayer
+              serverUrl={livekitWsUrl}
+              token={livekitToken}
+              videoRefExternal={viewerVideoRef}
+              onOrientationChange={setIsVerticalStream}
+              onFullscreen={handleFullscreen}
+              likeCount={likeCount}
+              onSendLike={() => sendLike(1)}
+              isMirrored={isMirrored}
+              showControls={showOverlayControls}
+              isStreamEnded={isEnded}
+              isFullscreen={isFullscreen}
+              coverImage={stream.coverImage}
             />
           )}
-          <div className="relative z-10 flex flex-col items-center justify-center gap-3 p-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/20 backdrop-blur-md">
-              <RefreshCw className="h-6 w-6 animate-spin text-orange-400" />
-            </div>
-            <p className="text-xs font-semibold tracking-wide text-white drop-shadow-md">
-              Menyambungkan ke siaran...
-            </p>
-          </div>
         </div>
-      )
-    }
-
-    return (
-      <LiveKitStreamPlayer
-        serverUrl={livekitWsUrl}
-        token={livekitToken}
-        videoRefExternal={viewerVideoRef}
-        onOrientationChange={setIsVerticalStream}
-        onFullscreen={handleFullscreen}
-        likeCount={likeCount}
-        onSendLike={() => sendLike(1)}
-        isMirrored={isMirrored}
-        showControls={showOverlayControls}
-        isStreamEnded={isEnded}
-        isFullscreen={isFullscreen}
-      />
+      </div>
     )
   }
 
@@ -537,12 +544,13 @@ export function LiveStreamViewer({
           <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/60 py-1.5 pl-1.5 pr-3 shadow-lg backdrop-blur-md">
             <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-orange-500/50 bg-white">
               {stream.store?.logo ? (
-                <Image
+                <img
                   src={stream.store.logo}
                   alt={stream.store.name || 'Toko'}
-                  fill
-                  sizes="28px"
-                  className="object-cover"
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    ;(e.currentTarget as HTMLElement).style.display = 'none'
+                  }}
                 />
               ) : (
                 <Store className="m-auto h-4 w-4 text-orange-500" />
@@ -1089,12 +1097,14 @@ export function LiveStreamViewer({
                 <div className="flex items-center gap-3">
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-white ring-2 ring-orange-500/20 dark:border-slate-700 dark:bg-slate-800">
                     {stream.store.logo ? (
-                      <Image
+                      <img
                         src={stream.store.logo}
                         alt={stream.store.name}
-                        fill
-                        sizes="48px"
-                        className="object-cover"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          ;(e.currentTarget as HTMLElement).style.display =
+                            'none'
+                        }}
                       />
                     ) : (
                       <Store className="m-auto h-6 w-6 text-orange-500" />

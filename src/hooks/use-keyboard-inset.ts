@@ -33,7 +33,7 @@ export function useKeyboardInset(enabled = true) {
       })
     }
 
-    update()
+    // Only listen to actual viewport changes (opening/closing keyboard) to avoid forced reflow on initial mount
     vv.addEventListener('resize', update)
     vv.addEventListener('scroll', update)
 
