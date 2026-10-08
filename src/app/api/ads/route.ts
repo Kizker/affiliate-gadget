@@ -1,11 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
+const adsCache = new Map<string, { data: any; timestamp: number }>()
+const ADS_CACHE_TTL = 30 * 1000 // 30s
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const placement = searchParams.get('placement')
     const limit = parseInt(searchParams.get('limit') || '10', 10)
+
+    const cacheKey = `${placement || 'ALL'}_${limit}`
+    const cached = adsCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < ADS_CACHE_TTL) {
+      return NextResponse.json(
+        { success: true, data: cached.data },
+        {
+          headers: {
+            'Cache-Control':
+              'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+          },
+        }
+      )
+    }
 
     const now = new Date()
     const whereClause: any = {

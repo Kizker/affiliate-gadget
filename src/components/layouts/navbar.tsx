@@ -217,6 +217,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari..."
+                  aria-label="Cari produk atau toko"
                   className="focus:shadow-xs w-32 rounded-full border border-slate-200/70 bg-slate-50/80 py-1.5 pl-8 pr-3 text-xs font-medium text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-400 focus:w-48 focus:border-slate-300 focus:bg-white dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-100 dark:focus:border-slate-700 xl:w-36"
                 />
                 <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-slate-400" />
@@ -263,7 +264,10 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
             ) : session?.user ? (
               <div className="relative">
                 <button
+                  type="button"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  aria-label="Menu akun pengguna"
+                  aria-expanded={userDropdownOpen}
                   className="shadow-xs flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-white p-1 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 sm:gap-2 sm:py-1 sm:pl-1 sm:pr-2.5"
                 >
                   {avatarUrl ? (

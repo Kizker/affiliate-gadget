@@ -3,6 +3,11 @@ import prisma from '@/lib/db'
 import { auth } from '@/auth'
 import { analyzeSmartQuery } from '@/lib/smart-search'
 
+// In-memory cache for public default gadget catalog requests (drops latency from 2s to <5ms)
+let publicGadgetsCache: { data: any[]; timestamp: number } | null = null
+let salesMapCache: { map: Map<string, number>; timestamp: number } | null = null
+const CACHE_TTL_MS = 60 * 1000 // 60 seconds
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -16,6 +21,33 @@ export async function GET(request: Request) {
     const maxPrice = searchParams.get('maxPrice')
       ? parseFloat(searchParams.get('maxPrice')!)
       : undefined
+
+    const isDefaultPublicRequest =
+      !scoped &&
+      !search &&
+      (!brand || brand === 'ALL') &&
+      !storeId &&
+      minPrice === undefined &&
+      maxPrice === undefined
+
+    if (
+      isDefaultPublicRequest &&
+      publicGadgetsCache &&
+      Date.now() - publicGadgetsCache.timestamp < CACHE_TTL_MS
+    ) {
+      return NextResponse.json(
+        {
+          success: true,
+          data: publicGadgetsCache.data,
+        },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+            'X-Cache': 'HIT',
+          },
+        }
+      )
+    }
 
     if (scoped && !storeId) {
       const session = await auth()
@@ -113,8 +145,11 @@ export async function GET(request: Request) {
 
     // Agregasi jumlah penjualan riil dari OrderItem (order valid / tidak dibatalkan)
     const productIds = products.map((p) => p.id)
-    const salesMap = new Map<string, number>()
-    if (productIds.length > 0) {
+    let salesMap = new Map<string, number>()
+
+    if (salesMapCache && Date.now() - salesMapCache.timestamp < CACHE_TTL_MS) {
+      salesMap = salesMapCache.map
+    } else if (productIds.length > 0) {
       const salesGroup = await prisma.orderItem.groupBy({
         by: ['productId'],
         where: {
@@ -133,6 +168,7 @@ export async function GET(request: Request) {
           salesMap.set(s.productId, s._sum.quantity || 0)
         }
       })
+      salesMapCache = { map: salesMap, timestamp: Date.now() }
     }
 
     const enrichedProducts = products.map((p) => ({
@@ -148,9 +184,16 @@ export async function GET(request: Request) {
         : null,
     }))
 
+    if (isDefaultPublicRequest) {
+      publicGadgetsCache = { data: enrichedProducts, timestamp: Date.now() }
+    }
+
     const cacheHeaders = scoped
       ? { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
-      : { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' }
+      : {
+          'Cache-Control':
+            'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+        }
 
     return NextResponse.json(
       {

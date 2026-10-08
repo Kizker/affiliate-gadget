@@ -21,12 +21,15 @@ export interface HeroSlideData {
 
 const DEFAULT_BANNER_SLIDES: HeroSlideData[] = [
   {
-    id: 'default-hero-1',
-    image: '/images/banners/samsung-campaign-banner.jpg',
-    badgeText: '',
-    title: 'Flash Sale Gadget Second Resmi',
-    subtitle: 'Garansi 30 Hari Tukar Unit Baru di Seluruh Indonesia',
-    targetUrl: '/gadget',
+    id: 'default-hero-roxy',
+    image: '/uploads/ads/1790671900234-6yrant-poster.webp',
+    videoUrl: '/uploads/ads/1790671900234-6yrant.mp4',
+    isVideo: true,
+    badgeText: 'Cabang Jakarta Pusat',
+    title: 'Video Eksklusif: Flash Sale Roxy Mas Pusat',
+    subtitle: 'Garansi Toko 30 Hari Tukar Unit Baru',
+    targetUrl: '/toko/roxy-mas-jakarta',
+    storeName: 'Affiliate Gadget - Roxy Mas Jakarta',
   },
 ]
 
@@ -74,10 +77,13 @@ export function MobileTopHeroBanner({
               )
               const videoUrl =
                 ad.videoUrl || (isVideo ? ad.bannerUrl || ad.imageUrl : null)
+              const companionPoster = videoUrl
+                ? videoUrl.replace(/\.(mp4|webm)$/i, '-poster.webp')
+                : null
               const finalImage =
                 !isVideo && ad.imageUrl && ad.imageUrl.trim() !== ''
                   ? ad.imageUrl
-                  : fallbackPoster
+                  : companionPoster || fallbackPoster
 
               return {
                 id: ad.id || `hero-ad-${index}`,
@@ -176,7 +182,8 @@ export function MobileTopHeroBanner({
               loop
               muted
               playsInline
-              preload="metadata"
+              poster={slide.image}
+              preload="none"
               className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
@@ -184,6 +191,7 @@ export function MobileTopHeroBanner({
               src={slide.image}
               alt={slide.title}
               fill
+              sizes="(max-width: 768px) 100vw, 1200px"
               className="object-cover"
               priority={idx === 0}
             />

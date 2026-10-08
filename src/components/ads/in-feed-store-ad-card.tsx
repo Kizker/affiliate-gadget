@@ -42,12 +42,21 @@ export function InFeedStoreAdCard({
     .replace('AffiliateGadget Store - ', '')
   const storeCity = ad.store?.city
 
+  const isVideo = isVideoAd(ad)
+  const videoSrc =
+    ad.videoUrl || (isVideo ? ad.imageUrl || (ad as any).bannerUrl : null)
+  const companionPoster = videoSrc
+    ? videoSrc.replace(/\.(mp4|webm)$/i, '-poster.webp')
+    : null
+
   const fallbackPoster =
     ad.product?.images?.[0] ||
     ad.store?.banner ||
     '/images/banners/samsung-mobile-hero.jpg'
   const bannerImage =
-    ad.imageUrl && ad.imageUrl.trim() !== '' ? ad.imageUrl : fallbackPoster
+    ad.imageUrl && ad.imageUrl.trim() !== ''
+      ? ad.imageUrl
+      : companionPoster || fallbackPoster
 
   // ============================================================
   // 1. PROMOTED PRODUCT CARD (Standardized with Catalog Products)
@@ -152,9 +161,6 @@ export function InFeedStoreAdCard({
   // ============================================================
   // 2. STORE BANNER AD (Clean Link Card with Video & Image Support)
   // ============================================================
-  const isVideo = isVideoAd(ad)
-  const videoSrc = ad.videoUrl || (isVideo ? ad.imageUrl || bannerImage : null)
-
   return (
     <div
       className={`shadow-xs group relative col-span-1 flex aspect-[4/5] w-full min-w-0 max-w-full flex-col justify-between overflow-hidden rounded-2xl border-2 border-orange-200/90 bg-slate-950 p-0 transition-all duration-300 hover:-translate-y-1 hover:border-orange-400 hover:shadow-xl dark:border-slate-800 sm:col-span-2 sm:aspect-auto sm:h-full sm:min-h-[220px] sm:rounded-3xl ${className}`}
@@ -174,7 +180,8 @@ export function InFeedStoreAdCard({
           loop
           muted
           playsInline
-          preload="metadata"
+          poster={bannerImage}
+          preload="none"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
         />
       ) : (

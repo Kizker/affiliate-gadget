@@ -32,6 +32,7 @@ interface CustomSelectProps {
   contentClassName?: string
   align?: 'start' | 'center' | 'end'
   size?: 'sm' | 'md'
+  ariaLabel?: string
 }
 
 /**
@@ -52,6 +53,7 @@ export function CustomSelect({
   contentClassName,
   align = 'start',
   size = 'md',
+  ariaLabel,
 }: CustomSelectProps) {
   // Check if options have an empty value option (e.g. { value: '', label: 'Semua' })
   const hasEmptyValueOption = React.useMemo(
@@ -116,6 +118,7 @@ export function CustomSelect({
     <div className={cn('relative inline-block', className)}>
       <Select value={internalValue} onValueChange={handleValueChange}>
         <SelectTrigger
+          aria-label={ariaLabel || placeholder || 'Pilih opsi'}
           className={cn(
             heightClass,
             'shadow-2xs rounded-2xl border-slate-200/90 bg-white/95 font-medium text-slate-800 transition-all hover:bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-800/60',

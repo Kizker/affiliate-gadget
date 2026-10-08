@@ -430,12 +430,14 @@ export function MobileCatalogView({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari tipe iPhone, Galaxy, Xiaomi..."
+              aria-label="Cari tipe iPhone, Galaxy, Xiaomi atau model smartphone"
               className="shadow-2xs w-full rounded-2xl border border-slate-200/80 bg-slate-50/90 py-2.5 pl-9 pr-8 text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:bg-slate-900"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
+                aria-label="Hapus kata kunci pencarian"
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
                 <X className="h-3.5 w-3.5" />
@@ -469,7 +471,7 @@ export function MobileCatalogView({
               toast.info(`Urutan: ${labels[nextSort] || nextSort}`)
             }}
             className="shadow-2xs flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200/80 bg-slate-50/90 text-orange-500 transition-all hover:bg-orange-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-orange-950/30"
-            aria-label="Filter"
+            aria-label="Urutkan dan filter produk katalog"
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>

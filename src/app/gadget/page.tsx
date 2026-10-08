@@ -45,16 +45,17 @@ import {
   LiveBannerCard,
   LiveBannerData,
 } from '@/components/live/live-banner-card'
+import INITIAL_CATALOG_GADGETS from '@/lib/initial-gadgets.json'
 
 function GadgetKatalogContent() {
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
-  const [gadgets, setGadgets] = useState<any[]>([])
+  const [gadgets, setGadgets] = useState<any[]>(() => INITIAL_CATALOG_GADGETS)
   const [promotedAds, setPromotedAds] = useState<InFeedAdData[]>([])
   const [liveStreams, setLiveStreams] = useState<LiveBannerData[]>([])
   const promotedAd = promotedAds[0] || null
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [brand, setBrand] = useState('ALL')
   const [search, setSearch] = useState(() => searchParams.get('search') ?? '')
   const [sortBy, setSortBy] = useState('RELEVANCE')
@@ -109,7 +110,9 @@ function GadgetKatalogContent() {
   }, [])
 
   const fetchGadgets = async () => {
-    setLoading(true)
+    if (gadgets.length === 0) {
+      setLoading(true)
+    }
     try {
       const [gRes, adRes, liveRes] = await Promise.all([
         fetch('/api/gadgets'),
@@ -353,12 +356,14 @@ function GadgetKatalogContent() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Cari iPhone, Samsung, Xiaomi..."
+                    aria-label="Cari iPhone, Samsung, Xiaomi atau model smartphone"
                     className="w-full rounded-xl border border-slate-200/70 bg-slate-50/80 py-1.5 pl-8 pr-8 text-[11px] font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:rounded-2xl sm:py-2 sm:pl-9 sm:text-xs"
                   />
                   {search && (
                     <button
                       type="button"
                       onClick={() => setSearch('')}
+                      aria-label="Hapus kata kunci pencarian"
                       className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                     >
                       <X className="h-3 w-3" />
@@ -371,6 +376,7 @@ function GadgetKatalogContent() {
                   <CustomSelect
                     value={sortBy}
                     onChange={(val) => setSortBy(val)}
+                    ariaLabel="Urutkan katalog smartphone"
                     size="sm"
                     options={[
                       { value: 'RELEVANCE', label: 'Paling Relevan' },
@@ -483,6 +489,7 @@ function GadgetKatalogContent() {
                               fill
                               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
                               className="object-cover transition-transform duration-500 group-hover:scale-105"
+                              priority={idx < 4}
                             />
 
                             {/* Top-Left: Solid Clean Rating Capsule */}
