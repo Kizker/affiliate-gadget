@@ -52,7 +52,13 @@
 - **Port Tersedia:** Port 3000 (Next.js Web App) & Port 3001 (Standalone WebSocket Server)
 - **Mode Eksekusi:** `pnpm dev` (menjalankan Next.js port 3000 dan WS Server port 3001 secara paralel via `concurrently`)
 - **TypeScript Health:** 0 error (`pnpm tsc --noEmit` pass)
-- **Unit Tests:** 124 test files, 888 tests lulus 100% (`pnpm test:unit` pass)
+- **Unit Tests:** 125 test files, 893 tests lulus 100% (`pnpm test:unit` pass)
+
+- **2026-10-08 (Optimasi Hero Banner Video Poster 11KB, Preload Katalog Instant & Aksesibilitas Menuju Lighthouse 100):**
+  - **1. Poster WebP & Preload None Banner Video ([`src/components/ads/mobile-top-hero-banner.tsx`](file:///src/components/ads/mobile-top-hero-banner.tsx), [`src/components/ads/in-feed-store-ad-card.tsx`](file:///src/components/ads/in-feed-store-ad-card.tsx)):** Menghilangkan bottleneck LCP akibat video 5MB tanpa poster dengan mengekstrak poster WebP 11KB (`1790671900234-6yrant-poster.webp`), menambahkan `poster={slide.image}` dan `preload="none"` pada elemen `<video>`, serta menyetel ukuran responsif `sizes="(max-width: 768px) 100vw, 1200px"` pada hero image.
+  - **2. Eliminasi Loading Spinner Awal Katalog ([`src/app/gadget/page.tsx`](file:///src/app/gadget/page.tsx), [`src/lib/initial-gadgets.json`](file:///src/lib/initial-gadgets.json)):** Menginisialisasi katalog produk dengan `INITIAL_CATALOG_GADGETS` dan `loading: false`, sehingga First Contentful Paint (FCP) & LCP terjadi instan pada frame pertama tanpa layar kosong / spinner.
+  - **3. Aksesibilitas Lengkap ([`src/app/gadget/page.tsx`](file:///src/app/gadget/page.tsx), [`src/components/gadget/mobile-catalog-view.tsx`](file:///src/components/gadget/mobile-catalog-view.tsx), [`src/components/ui/custom-select.tsx`](file:///src/components/ui/custom-select.tsx), [`src/components/layouts/navbar.tsx`](file:///src/components/layouts/navbar.tsx)):** Melengkapi seluruh input pencarian, tombol hapus pencarian, filter sort, dan menu akun dengan atribut `aria-label` dan `aria-expanded`.
+  - **4. Unit Testing & Validasi Live VPS ([`tests/unit/gadget-performance-accessibility.test.ts`](file:///tests/unit/gadget-performance-accessibility.test.ts)):** 125 file uji coba dengan 893 tests lulus 100% (`pnpm test:unit` pass), TypeScript 0 error (`npx tsc --noEmit` pass), build Docker live ter-deploy, HTTP 200 terverifikasi.
 
 - **2026-10-08 (Optimasi Performa Menyeluruh Menuju Lighthouse 100 Tanpa Ubah Visual & Push Live):**
   - **1. Eliminasi Render-Blocking CSS & Font Optimization ([`src/styles/globals.css`](file:///src/styles/globals.css), [`src/app/layout.tsx`](file:///src/app/layout.tsx)):** Menghapus duplikasi render-blocking `@import url('https://fonts.googleapis.com/...')` pada CSS global dan merampingkan font Poppins via `next/font/google` dengan `weight: ['300', '400', '600', '700']` serta `preload: true`, mengurangi Total Blocking Time (TBT) dan payload jaringan.
