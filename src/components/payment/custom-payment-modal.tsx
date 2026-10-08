@@ -778,16 +778,6 @@ export function CustomPaymentModal({
                   <span>Cek Sekarang</span>
                 </button>
               </div>
-
-              {/* Tombol Ganti Metode Pembayaran */}
-              <button
-                type="button"
-                onClick={handleChangePaymentMethod}
-                className="shadow-2xs flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200/90 bg-white py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              >
-                <RefreshCw className="h-3.5 w-3.5 text-orange-500" />
-                <span>Ganti Metode Pembayaran Lain</span>
-              </button>
             </div>
           ) : (
             /* Select Payment Method View */

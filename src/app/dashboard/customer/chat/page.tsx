@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Navbar, MobileTopNav, MobileBottomNav } from '@/components/layouts'
+import { Navbar, MobileTopNav } from '@/components/layouts'
 import Link from 'next/link'
 import {
   MessageSquare,
@@ -1545,9 +1545,6 @@ function CustomerChatContent() {
         <div className="flex flex-1 items-center justify-center pt-20">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
         </div>
-        <div className="block shrink-0 md:hidden">
-          <MobileBottomNav />
-        </div>
       </div>
     )
   }
@@ -2934,11 +2931,6 @@ function CustomerChatContent() {
           </div>
         </div>
       </main>
-
-      {/* 2. Mobile Bottom Navigation Bar */}
-      <div className="block shrink-0 md:hidden">
-        <MobileBottomNav />
-      </div>
     </div>
   )
 }
@@ -2960,9 +2952,6 @@ export default function CustomerChatPage() {
           </div>
           <div className="flex flex-1 items-center justify-center pt-24">
             <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-          </div>
-          <div className="block shrink-0 md:hidden">
-            <MobileBottomNav />
           </div>
         </div>
       }

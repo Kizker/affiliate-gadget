@@ -91,9 +91,21 @@ export function ProductShareModal({
   const shareTitle = `${product.name}${
     selectedVariant?.name ? ` (${selectedVariant.name})` : ''
   }`
-  const shareMessage = `Hai! Cek ${shareTitle} di Affiliate Gadget dengan harga Rp ${displayPrice.toLocaleString(
-    'id-ID'
-  )}. Garansi 30 Hari Tukar Unit Baru & Bonus Aksesoris 3-in-1!\n\nLihat detail produk di sini:\n${shareUrl}`
+  const formattedPrice = `Rp ${displayPrice.toLocaleString('id-ID')}`
+  const variantText = selectedVariant?.name
+    ? `\n✨ *Varian:* ${selectedVariant.name}`
+    : ''
+  const storeText = storeName ? `\n🏢 *Gerai:* ${storeName}` : ''
+
+  const shareMessage = `🔥 *${product.name}*${variantText}
+💰 *Harga:* ${formattedPrice}
+🛡️ *Garansi:* 30 Hari Tukar Unit Baru Resmi
+🎁 *Bonus:* Paket Aksesoris 3-in-1 Lengkap${storeText}
+
+🌟 Unit original like new terverifikasi siap kirim dengan proteksi asuransi kurir JNE/Gojek.
+
+🔗 *Lihat Detail & Pesan Unit:*
+${shareUrl}`
 
   const handleCopyLink = async () => {
     try {
@@ -119,8 +131,8 @@ export function ProductShareModal({
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: shareTitle,
-          text: `Cek ${shareTitle} - Rp ${displayPrice.toLocaleString('id-ID')} di Affiliate Gadget!`,
+          title: `${product.name} — ${formattedPrice}`,
+          text: shareMessage,
           url: shareUrl,
         })
         onClose()
@@ -163,7 +175,7 @@ export function ProductShareModal({
         window.open(
           `https://t.me/share/url?url=${encodeURIComponent(
             shareUrl
-          )}&text=${encodeURIComponent(shareTitle)}`,
+          )}&text=${encodeURIComponent(shareMessage)}`,
           '_blank'
         )
       },
@@ -199,7 +211,7 @@ export function ProductShareModal({
           `https://twitter.com/intent/tweet?url=${encodeURIComponent(
             shareUrl
           )}&text=${encodeURIComponent(
-            `Cek ${shareTitle} - Rp ${displayPrice.toLocaleString('id-ID')} di Affiliate Gadget!`
+            `🔥 Cek ${product.name} — ${formattedPrice} di Affiliate Gadget! Unit original garansi 30 hari tukar unit baru & bonus aksesoris 3-in-1 ✨`
           )}`,
           '_blank'
         )

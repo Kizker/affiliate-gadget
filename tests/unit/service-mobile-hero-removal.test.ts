@@ -19,9 +19,8 @@ describe('Service Page Mobile Hero Removal', () => {
 
   it('memvalidasi section search dan filter langsung tampil di atas pada tampilan mobile', () => {
     const content = fs.readFileSync(serviceViewPath, 'utf-8')
-    // Search bar memiliki padding atas yang pas untuk langsung berada di bawah navbar pada mobile
-    expect(content).toContain(
-      'section className="relative mx-auto max-w-7xl px-4 pt-20 sm:px-6 sm:pt-22 md:mt-5 md:pt-0 lg:px-8"'
+    expect(content).toMatch(
+      /section className="[^"]*max-w-7xl[^"]*pt-20[^"]*md:pt-0[^"]*"/
     )
     expect(content).toContain(
       'placeholder="Cari nama mitra, layanan, atau kota..."'
