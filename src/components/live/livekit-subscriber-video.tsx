@@ -195,7 +195,7 @@ function LiveKitSubscriberVideo({
             fill
             priority
             sizes="(max-width: 768px) 100vw, 960px"
-            className="object-cover opacity-65 blur-[1px]"
+            className="object-cover"
           />
           <div className="relative z-10 flex flex-col items-center justify-center gap-3 p-6 text-center text-slate-200">
             <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/20 backdrop-blur-md">

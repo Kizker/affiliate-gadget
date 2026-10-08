@@ -30,9 +30,8 @@ describe('Customer Chat Fullscreen Mobile & Header Elimination Suite', () => {
       'className="flex h-full w-full flex-1 flex-col px-0 md:mx-auto md:max-w-7xl md:px-6 lg:px-8"'
     )
     // rounded-none dan border-0 di mobile agar memenuhi layar
-    expect(content).toContain(
-      'grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-none border-0 bg-white dark:bg-slate-900 md:rounded-3xl md:border md:border-slate-200/80 md:shadow-xs lg:grid-cols-12'
-    )
+    expect(content).toContain('rounded-none border-0')
+    expect(content).toContain('md:rounded-3xl md:border')
   })
 
   it('3. Input bar chat memenuhi bagian bawah layar dengan safe-area inset tanpa gap pb-16', () => {

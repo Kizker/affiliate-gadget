@@ -1,5 +1,7 @@
 import { Metadata } from 'next'
+import { headers } from 'next/headers'
 import prisma from '@/lib/db'
+import { parseUserAgent } from '@/lib/user-agent-parser'
 import { LiveStreamViewer } from '@/components/live/live-stream-viewer'
 import {
   LiveDesktopNavbar,
@@ -96,6 +98,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function LiveStreamPage({ params }: Props) {
   const { id } = await params
 
+  // Detect mobile device on the server to prevent mobile hydration flash & double-mount
+  const headerList = await headers()
+  const ua = headerList.get('user-agent') || ''
+  const isMobileDevice = parseUserAgent(ua).deviceType === 'mobile'
+
   // Preload initial stream data on the server to eliminate client loading spinner & drop LCP to < 2.5s
   const initialStream = await getLiveStreamInitialData(id)
   const initialToken = initialStream
@@ -124,8 +131,8 @@ export default async function LiveStreamPage({ params }: Props) {
         />
       )}
 
-      {/* Desktop Only Navigation Bar (Client-only ssr:false to eliminate mobile CSS blocking) */}
-      <LiveDesktopNavbar />
+      {/* Desktop Only Navigation Bar (Omitted on mobile to eliminate client chunk load & CSS blocking) */}
+      {!isMobileDevice && <LiveDesktopNavbar />}
 
       {/* Main Content Area with Semantic Accessible Landmark */}
       <main
@@ -137,11 +144,12 @@ export default async function LiveStreamPage({ params }: Props) {
           streamId={id}
           initialStream={initialStream}
           initialToken={initialToken}
+          initialIsMobile={isMobileDevice}
         />
       </main>
 
-      {/* Desktop Only Footer (Client-only ssr:false to eliminate mobile CSS blocking) */}
-      <LiveDesktopFooter />
+      {/* Desktop Only Footer (Omitted on mobile to eliminate client chunk load & CSS blocking) */}
+      {!isMobileDevice && <LiveDesktopFooter />}
     </div>
   )
 }

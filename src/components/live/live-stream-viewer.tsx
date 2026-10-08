@@ -35,13 +35,7 @@ const LiveKitStreamPlayer = dynamic(
   () => import('./livekit-subscriber-video').then((m) => m.LiveKitStreamPlayer),
   {
     ssr: false,
-    loading: () => (
-      <div className="relative flex h-full min-h-[300px] w-full items-center justify-center bg-transparent">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/20 backdrop-blur-md">
-          <RefreshCw className="h-6 w-6 animate-spin text-orange-400" />
-        </div>
-      </div>
-    ),
+    loading: () => null,
   }
 )
 
@@ -69,12 +63,14 @@ export interface LiveStreamViewerProps {
   streamId: string
   initialStream?: LiveStreamDetail | null
   initialToken?: { token: string; wsUrl: string; roomName?: string } | null
+  initialIsMobile?: boolean
 }
 
 export function LiveStreamViewer({
   streamId,
   initialStream,
   initialToken,
+  initialIsMobile,
 }: LiveStreamViewerProps) {
   const { data: session } = useSession()
   const [stream, setStream] = useState<LiveStreamDetail | null>(
@@ -83,7 +79,7 @@ export function LiveStreamViewer({
   const [loading, setLoading] = useState<boolean>(!initialStream)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile(768, initialIsMobile)
   const hasLoadedInitial = useRef<boolean>(!!initialStream)
 
   // Mobile IG Live states
@@ -102,33 +98,28 @@ export function LiveStreamViewer({
   const [showFullscreenChat, setShowFullscreenChat] = useState(true)
   const fullscreenChatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Listen to fullscreen changes & orientation
+  // Listen to fullscreen changes
   useEffect(() => {
     const handleFsChange = () => {
       setIsFullscreen(!!document.fullscreenElement)
     }
-    const checkOrientation = () => {
-      if (typeof window !== 'undefined') {
-        setIsLandscape(window.innerWidth > window.innerHeight)
-      }
-    }
     document.addEventListener('fullscreenchange', handleFsChange)
-    window.addEventListener('resize', checkOrientation)
-    window.addEventListener('orientationchange', checkOrientation)
-    checkOrientation()
-
-    // Graceful disconnect on pagehide
-    const handlePageHide = () => {
-      // Allows clean WebSocket & WebRTC teardown
-    }
-    window.addEventListener('pagehide', handlePageHide)
-
     return () => {
       document.removeEventListener('fullscreenchange', handleFsChange)
-      window.removeEventListener('resize', checkOrientation)
-      window.removeEventListener('orientationchange', checkOrientation)
-      window.removeEventListener('pagehide', handlePageHide)
     }
+  }, [])
+
+  // Listen to orientation changes via matchMedia (zero forced reflow / no layout thrashing)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mql = window.matchMedia('(orientation: landscape)')
+    setIsLandscape(mql.matches)
+
+    const handleOrientation = (e: MediaQueryListEvent) => {
+      setIsLandscape(e.matches)
+    }
+    mql.addEventListener('change', handleOrientation)
+    return () => mql.removeEventListener('change', handleOrientation)
   }, [])
 
   // 1. Fetch Stream Metadata (skip if initialStream provided)
@@ -280,13 +271,8 @@ export function LiveStreamViewer({
       const { captureVideoSnapshot, uploadLiveSnapshot } =
         await import('@/lib/live-snapshot')
       const videoEl = viewerVideoRef.current
-      const snapshot = captureVideoSnapshot(
-        videoEl,
-        1280,
-        720,
-        0.85,
-        isMirrored
-      )
+      // prettier-ignore
+      const snapshot = captureVideoSnapshot(videoEl, 1280, 720, 0.85, isMirrored)
       if (snapshot && stream?.id) {
         uploadLiveSnapshot(stream.id, snapshot).catch(() => {})
       }
@@ -376,7 +362,7 @@ export function LiveStreamViewer({
             fill
             priority
             sizes="(max-width: 768px) 100vw, 960px"
-            className="object-cover opacity-65"
+            className="object-cover"
           />
         )}
         <div className="relative z-10 h-full w-full">
@@ -655,6 +641,9 @@ export function LiveStreamViewer({
                       src={pinnedProduct.productImage}
                       alt={pinnedProduct.productTitle || 'Produk'}
                       className="h-full w-full object-cover"
+                      onError={(e) => {
+                        ;(e.currentTarget as HTMLElement).style.display = 'none'
+                      }}
                     />
                   ) : (
                     <ShoppingBag className="h-5 w-5 text-orange-500" />
