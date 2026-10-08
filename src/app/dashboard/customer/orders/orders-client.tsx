@@ -35,6 +35,10 @@ import {
   getOrderPaymentRemainingSeconds,
   formatPaymentCountdown,
 } from '@/lib/order-expiration'
+import {
+  getOrderContextualTimestamp,
+  sortOrdersByLatestProcess,
+} from '@/lib/order-date-utils'
 
 interface Order {
   id: string
@@ -50,11 +54,13 @@ interface Order {
   trackingNumber?: string | null
   warrantyExpiryDate?: string | null
   createdAt: string
+  updatedAt?: string
   notes?: string | null
   payment?: {
     id: string
     status: string
     notes?: string | null
+    verifiedAt?: string | null
   } | null
   store?: {
     id: string
@@ -83,8 +89,8 @@ interface Order {
     rentalItem?: { name: string; images?: string[] }
   }>
   review?: { rating: number; comment: string | null } | null
-  completedAt?: string
-  customerConfirmedAt?: string
+  completedAt?: string | null
+  customerConfirmedAt?: string | null
   complaints?: Array<{
     id: string
     status: string
@@ -314,8 +320,23 @@ export default function OrdersClient({
   useEffect(() => {
     if (statusParam) {
       setSelectedStatus(statusParam)
+    } else {
+      setSelectedStatus('ALL')
     }
   }, [statusParam])
+
+  const handleStatusChange = (status: string) => {
+    setSelectedStatus(status)
+    const newUrl =
+      status === 'ALL'
+        ? '/dashboard/customer/orders'
+        : `/dashboard/customer/orders?status=${status}`
+
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', newUrl)
+    }
+    router.replace(newUrl, { scroll: false })
+  }
 
   // Return Modal state
   const [returnModal, setReturnModal] = useState<{
@@ -389,7 +410,7 @@ export default function OrdersClient({
   ]
 
   const filteredOrders = useMemo(() => {
-    return initialOrders.filter((order) => {
+    const list = initialOrders.filter((order) => {
       // Status filter
       if (selectedStatus !== 'ALL') {
         if (selectedStatus === 'RETURNED') {
@@ -425,6 +446,8 @@ export default function OrdersClient({
 
       return true
     })
+
+    return sortOrdersByLatestProcess(list)
   }, [initialOrders, selectedStatus, searchQuery])
 
   return (
@@ -433,7 +456,8 @@ export default function OrdersClient({
       <div className="block md:hidden">
         <MobileOrdersView
           orders={initialOrders}
-          initialTab={selectedStatus}
+          activeTab={selectedStatus}
+          onTabChange={handleStatusChange}
           onOpenReturnModal={(order) => {
             setReturnModal({
               isOpen: true,
@@ -460,7 +484,7 @@ export default function OrdersClient({
                   return (
                     <button
                       key={opt.value}
-                      onClick={() => setSelectedStatus(opt.value)}
+                      onClick={() => handleStatusChange(opt.value)}
                       className={`flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 ${
                         isActive
                           ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
@@ -540,13 +564,7 @@ export default function OrdersClient({
                     firstItem?.rentalItem?.images?.[0] ||
                     DEFAULT_GADGET_IMAGE
 
-                  const formattedDate = new Date(
-                    order.createdAt
-                  ).toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })
+                  const contextualTime = getOrderContextualTimestamp(order)
 
                   return (
                     <div
@@ -582,8 +600,11 @@ export default function OrdersClient({
                             •
                           </span>
 
-                          <span className="hidden text-xs text-slate-400 sm:inline">
-                            {formattedDate}
+                          <span className="hidden text-xs font-medium text-slate-500 dark:text-slate-400 sm:inline">
+                            <span className="text-slate-400 dark:text-slate-500">
+                              {contextualTime.label}:{' '}
+                            </span>
+                            {contextualTime.shortDate}
                           </span>
                         </div>
 
@@ -821,7 +842,7 @@ export default function OrdersClient({
 
                             {order.status === 'PENDING_PAYMENT' ? (
                               <Link
-                                href={`/dashboard/customer/orders/${order.id}`}
+                                href={`/dashboard/customer/orders/${order.id}?fromStatus=${selectedStatus}`}
                                 className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
                               >
                                 <CreditCard className="h-3.5 w-3.5" />
@@ -829,7 +850,7 @@ export default function OrdersClient({
                               </Link>
                             ) : (
                               <Link
-                                href={`/dashboard/customer/orders/${order.id}`}
+                                href={`/dashboard/customer/orders/${order.id}?fromStatus=${selectedStatus}`}
                                 className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950"
                               >
                                 <span>Rincian Pesanan</span>

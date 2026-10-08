@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Navbar,
   Footer,
@@ -50,6 +50,10 @@ import { toast } from 'sonner'
 import { LiveCourierTracker } from '@/components/shipping/live-courier-tracker'
 import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
 import { CheckResiModal } from '@/components/shipping/check-resi-modal'
+import {
+  getOrderContextualTimestamp,
+  buildOrderAuditTimeline,
+} from '@/lib/order-date-utils'
 
 const DEFAULT_GADGET_IMAGE =
   'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'
@@ -214,6 +218,14 @@ const statusConfig: Record<
 
 export default function OrderDetailClient({ order }: OrderDetailProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromStatus =
+    searchParams?.get('fromStatus') || searchParams?.get('status')
+  const contextualTime = useMemo(
+    () => getOrderContextualTimestamp(order),
+    [order]
+  )
+  const auditTimeline = useMemo(() => buildOrderAuditTimeline(order), [order])
   const [copied, setCopied] = useState(false)
   const [complaintModalOpen, setComplaintModalOpen] = useState(false)
   const [returnModalOpen, setReturnModalOpen] = useState(false)
@@ -492,6 +504,38 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     chatParams.set('productImage', firstProduct.images[0])
   if (firstItem?.price) chatParams.set('productPrice', String(firstItem.price))
 
+  // Resolusi rute kembali yang akurat: mempertahankan tab status yang dikunjungi customer sebelumnya
+  const backHref = useMemo(() => {
+    if (fromStatus) {
+      if (fromStatus === 'ALL') {
+        return '/dashboard/customer/orders'
+      }
+      return `/dashboard/customer/orders?status=${fromStatus}`
+    }
+
+    // Fallback cerdas berbasis status aktual pesanan jika diakses langsung tanpa query
+    const isReturn =
+      order.status === 'RETURNED' ||
+      Boolean(order.returnRequests && order.returnRequests.length > 0)
+    if (isReturn) return '/dashboard/customer/orders?status=RETURNED'
+    if (order.status === 'SHIPPED' || order.status === 'IN_PROGRESS') {
+      return '/dashboard/customer/orders?status=SHIPPED'
+    }
+    if (order.status === 'PROCESSING' || order.status === 'PAID') {
+      return '/dashboard/customer/orders?status=PROCESSING'
+    }
+    if (order.status === 'PENDING_PAYMENT') {
+      return '/dashboard/customer/orders?status=PENDING_PAYMENT'
+    }
+    if (order.status === 'COMPLETED') {
+      return '/dashboard/customer/orders?status=COMPLETED'
+    }
+    if (order.status === 'CANCELLED') {
+      return '/dashboard/customer/orders?status=CANCELLED'
+    }
+    return '/dashboard/customer/orders'
+  }, [fromStatus, order.status, order.returnRequests])
+
   const handleNavigateBack = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault()
@@ -505,12 +549,12 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
           typeof window !== 'undefined' &&
           window.location.pathname === currentPath
         ) {
-          router.push('/dashboard/customer/orders')
+          router.push(backHref)
         }
       }, 250)
       return
     }
-    router.push('/dashboard/customer/orders')
+    router.push(backHref)
   }
 
   return (
@@ -520,7 +564,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         <MobileTopNav
           showBack={true}
           onBack={handleNavigateBack}
-          backHref="/dashboard/customer/orders"
+          backHref={backHref}
           title={`Pesanan #${order.orderNumber}`}
         />
       </div>
@@ -586,16 +630,14 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
                     <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                    {new Date(order.createdAt).toLocaleDateString('id-ID', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}{' '}
-                    WIB
+                    <span>
+                      <span className="text-slate-400 dark:text-slate-500">
+                        {contextualTime.label}:{' '}
+                      </span>
+                      {contextualTime.fullDateTime}
+                    </span>
                   </span>
                   <span>•</span>
                   <span>{order.store?.ptName || 'PT Resmi Terverifikasi'}</span>
@@ -1081,6 +1123,76 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 )}
               </div>
 
+              {/* Bagian Riwayat Waktu Transaksi (Mobile Audit Trail) */}
+              <div className="bg-slate-50/50 p-4 dark:bg-slate-800/30">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+                  <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <Clock className="h-3.5 w-3.5 text-slate-500" />
+                    <span>Riwayat Transaksi</span>
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                    {contextualTime.label}
+                  </span>
+                </div>
+
+                <div className="mt-3.5 space-y-3">
+                  {auditTimeline.map((step, idx) => (
+                    <div
+                      key={step.key}
+                      className="relative flex items-start gap-3"
+                    >
+                      {idx !== auditTimeline.length - 1 && (
+                        <div
+                          className={`absolute bottom-0 left-[9px] top-4 w-0.5 ${
+                            step.isPassed
+                              ? 'bg-emerald-200 dark:bg-emerald-900/60'
+                              : 'bg-slate-200 dark:bg-slate-800'
+                          }`}
+                        />
+                      )}
+                      <div
+                        className={`relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                          step.isCurrent
+                            ? 'shadow-xs bg-orange-500 text-white shadow-orange-500/30 ring-2 ring-orange-100 dark:ring-orange-950/60'
+                            : step.isPassed
+                              ? 'bg-emerald-500 text-white'
+                              : 'border border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500'
+                        }`}
+                      >
+                        {step.isPassed ? (
+                          <Check className="h-2.5 w-2.5 stroke-[2.5]" />
+                        ) : (
+                          <span>{idx + 1}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline justify-between gap-1">
+                          <span
+                            className={`text-xs font-bold ${
+                              step.isPassed || step.isCurrent
+                                ? 'text-slate-900 dark:text-white'
+                                : 'text-slate-400 dark:text-slate-500'
+                            }`}
+                          >
+                            {step.title}
+                          </span>
+                          {step.dateFormatted && (
+                            <span className="font-mono text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                              {step.dateFormatted}
+                            </span>
+                          )}
+                        </div>
+                        {step.description && (
+                          <p className="mt-0.5 text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                            {step.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Bagian 7: Aksi Pesanan */}
               <div className="space-y-2 p-4">
                 {order.status === 'CANCELLED' && (
@@ -1206,16 +1318,14 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400">
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
                       <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                      {new Date(order.createdAt).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}{' '}
-                      WIB
+                      <span>
+                        <span className="text-slate-400 dark:text-slate-500">
+                          {contextualTime.label}:{' '}
+                        </span>
+                        {contextualTime.fullDateTime}
+                      </span>
                     </span>
                     <span>•</span>
                     <span>
@@ -2049,7 +2159,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                             <span>Pesan Ulang di Katalog</span>
                           </Link>
                           <Link
-                            href="/dashboard/customer/orders"
+                            href={backHref}
                             className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                           >
                             <ArrowLeft className="h-3.5 w-3.5" />
@@ -2310,6 +2420,79 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                         <span>Batalkan Pesanan</span>
                       </button>
                     )}
+                  </div>
+                </div>
+
+                {/* Riwayat Waktu Transaksi (Audit Trail Bento) */}
+                <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-4 dark:border-slate-800">
+                    <h3 className="flex min-w-0 items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <Clock className="h-4 w-4 shrink-0 text-slate-500" />
+                      <span className="truncate">Riwayat Waktu Transaksi</span>
+                    </h3>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" />
+                      <span>{contextualTime.label}</span>
+                    </span>
+                  </div>
+
+                  <div className="mt-5 space-y-4">
+                    {auditTimeline.map((step, idx) => (
+                      <div
+                        key={step.key}
+                        className="relative flex items-start gap-3"
+                      >
+                        {idx !== auditTimeline.length - 1 && (
+                          <div
+                            className={`absolute bottom-0 left-[11px] top-6 w-0.5 ${
+                              step.isPassed
+                                ? 'bg-emerald-200 dark:bg-emerald-900/60'
+                                : 'bg-slate-200 dark:bg-slate-800'
+                            }`}
+                          />
+                        )}
+
+                        <div
+                          className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                            step.isCurrent
+                              ? 'shadow-xs bg-orange-500 text-white shadow-orange-500/30 ring-4 ring-orange-100 dark:ring-orange-950/60'
+                              : step.isPassed
+                                ? 'bg-emerald-500 text-white'
+                                : 'border border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500'
+                          }`}
+                        >
+                          {step.isPassed ? (
+                            <Check className="h-3 w-3 stroke-[2.5]" />
+                          ) : (
+                            <span className="text-[10px]">{idx + 1}</span>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <div className="flex flex-wrap items-center justify-between gap-1">
+                            <span
+                              className={`text-xs font-bold leading-tight ${
+                                step.isPassed || step.isCurrent
+                                  ? 'text-slate-900 dark:text-white'
+                                  : 'text-slate-400 dark:text-slate-500'
+                              }`}
+                            >
+                              {step.title}
+                            </span>
+                            {step.dateFormatted && (
+                              <span className="font-mono text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                {step.dateFormatted}
+                              </span>
+                            )}
+                          </div>
+                          {step.description && (
+                            <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                              {step.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

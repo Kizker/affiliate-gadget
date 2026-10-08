@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { useSession, signOut } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Navbar } from '@/components/layouts/navbar'
 import { useToast } from '@/hooks/use-toast'
@@ -60,9 +60,11 @@ import { CustomerWishlistView } from '@/components/customer/customer-wishlist-vi
 
 type Tab = 'profile' | 'address' | 'security' | 'wishlist'
 
-export default function CustomerSettingsPage() {
+function CustomerSettingsContent() {
   const { data: session, status, update } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const subviewParam = searchParams?.get('subview')
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -277,14 +279,51 @@ export default function CustomerSettingsPage() {
     fetchSecurity,
   ])
 
-  const handleSelectSubView = (
-    view: 'overview' | 'profile' | 'address' | 'security' | 'wishlist'
-  ) => {
-    setActiveSubView(view)
-    if (view !== 'overview') {
-      setActiveTab(view)
+  // Sinkronisasi URL query param ?subview= dengan activeSubView & activeTab
+  useEffect(() => {
+    if (
+      subviewParam === 'profile' ||
+      subviewParam === 'address' ||
+      subviewParam === 'security' ||
+      subviewParam === 'wishlist'
+    ) {
+      setActiveSubView(subviewParam)
+      setActiveTab(subviewParam)
+    } else {
+      setActiveSubView('overview')
     }
-  }
+  }, [subviewParam])
+
+  const handleSelectSubView = useCallback(
+    (view: 'overview' | 'profile' | 'address' | 'security' | 'wishlist') => {
+      setActiveSubView(view)
+      if (view !== 'overview') {
+        setActiveTab(view)
+        router.push(`/dashboard/customer/settings?subview=${view}`, {
+          scroll: false,
+        })
+      } else {
+        router.push('/dashboard/customer/settings', { scroll: false })
+      }
+    },
+    [router]
+  )
+
+  const handleBackFromSubView = useCallback(() => {
+    setActiveSubView('overview')
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      if (url.searchParams.has('subview')) {
+        if (window.history.length > 1) {
+          router.back()
+        } else {
+          router.replace('/dashboard/customer/settings', { scroll: false })
+        }
+        return
+      }
+    }
+    router.replace('/dashboard/customer/settings', { scroll: false })
+  }, [router])
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -1606,9 +1645,7 @@ export default function CustomerSettingsPage() {
           transition={{ duration: 0.15 }}
           className="space-y-6"
         >
-          <CustomerWishlistView
-            onBackToOverview={() => setActiveSubView('overview')}
-          />
+          <CustomerWishlistView onBackToOverview={handleBackFromSubView} />
         </motion.div>
       )}
     </AnimatePresence>
@@ -1641,6 +1678,7 @@ export default function CustomerSettingsPage() {
           addressesCount={addresses.length}
           activeSubView={activeSubView}
           setActiveSubView={handleSelectSubView}
+          onBack={handleBackFromSubView}
           onAvatarClick={handleAvatarClick}
           onSignOut={() => signOut({ callbackUrl: '/' })}
           onSaveProfile={handleSaveProfile}
@@ -1944,5 +1982,13 @@ export default function CustomerSettingsPage() {
           document.body
         )}
     </>
+  )
+}
+
+export default function CustomerSettingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <CustomerSettingsContent />
+    </Suspense>
   )
 }

@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/db'
 import { batchCancelExpiredOrders } from '@/lib/order-expiration'
+import { sortOrdersByLatestProcess } from '@/lib/order-date-utils'
 import OrdersClient from './orders-client'
 
 export const dynamic = 'force-dynamic'
@@ -33,10 +34,12 @@ export default async function CustomerOrdersPage() {
           status: true,
           method: true,
           notes: true,
+          verifiedAt: true,
           updatedAt: true,
         },
       },
       items: {
+        orderBy: { createdAt: 'desc' },
         select: {
           id: true,
           type: true,
@@ -111,7 +114,7 @@ export default async function CustomerOrdersPage() {
         select: { id: true, rating: true, comment: true },
       },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
   })
 
   // Transform for client
@@ -128,13 +131,17 @@ export default async function CustomerOrdersPage() {
     courierService: order.courierService,
     trackingNumber: order.trackingNumber,
     warrantyExpiryDate: order.warrantyExpiryDate?.toISOString() ?? null,
+    customerConfirmedAt: order.customerConfirmedAt?.toISOString() ?? null,
+    completedAt: order.completedAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
+    updatedAt: order.updatedAt.toISOString(),
     notes: order.notes,
     payment: order.payment
       ? {
           id: order.payment.id,
           status: order.payment.status,
           notes: order.payment.notes,
+          verifiedAt: order.payment.verifiedAt?.toISOString() ?? null,
         }
       : null,
     store: order.store
@@ -174,8 +181,6 @@ export default async function CustomerOrdersPage() {
     review: order.reviews[0]
       ? { rating: order.reviews[0].rating, comment: order.reviews[0].comment }
       : null,
-    completedAt: order.completedAt?.toISOString(),
-    customerConfirmedAt: order.customerConfirmedAt?.toISOString(),
     complaints: order.complaints.map((c) => ({
       id: c.id,
       status: c.status as string,
@@ -212,7 +217,7 @@ export default async function CustomerOrdersPage() {
 
   return (
     <Suspense fallback={null}>
-      <OrdersClient initialOrders={ordersData} />
+      <OrdersClient initialOrders={sortOrdersByLatestProcess(ordersData)} />
     </Suspense>
   )
 }

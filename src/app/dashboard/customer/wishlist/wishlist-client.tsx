@@ -2,6 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, Heart, ShoppingBag, Trash2 } from 'lucide-react'
 import { Navbar } from '@/components/layouts/navbar'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
@@ -11,6 +12,7 @@ import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { toast } from 'sonner'
 
 export default function WishlistClient() {
+  const router = useRouter()
   const { totalCount, clearWishlist } = useWishlistSafe()
 
   const handleClearAll = () => {
@@ -22,49 +24,44 @@ export default function WishlistClient() {
     }
   }
 
+  const handleBackToProfile = () => {
+    router.push('/dashboard/customer/settings')
+  }
+
   return (
     <div className="min-h-screen bg-slate-50/50 text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
       {/* 1. Mobile Layout */}
       <div className="block md:hidden">
-        <MobileTopNav />
+        <MobileTopNav
+          showBack={true}
+          backHref="/dashboard/customer/settings"
+          title="Wishlist Saya"
+          onBack={handleBackToProfile}
+        />
 
-        {/* Mobile Page Header Bar */}
-        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
-          <Link
-            href="/dashboard/customer/settings"
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-700 transition hover:text-orange-500 active:scale-95 dark:text-slate-300"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Profil</span>
-          </Link>
-          <div className="flex items-center gap-1.5">
-            <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
-            <h1 className="text-xs font-bold text-slate-950 dark:text-white">
-              Wishlist Saya
-            </h1>
-            {totalCount > 0 && (
-              <span className="py-0.2 rounded-full bg-rose-100 px-2 text-[10px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
-                {totalCount}
-              </span>
-            )}
-          </div>
-          {totalCount > 0 ? (
+        {/* Action Bar when items exist */}
+        {totalCount > 0 && (
+          <div className="flex items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 py-2.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {totalCount} produk di Wishlist
+            </span>
             <button
               type="button"
               onClick={handleClearAll}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 active:scale-95 dark:text-rose-400 dark:hover:bg-rose-950/40"
+              className="flex items-center gap-1 text-xs font-bold text-rose-600 transition hover:text-rose-700 active:scale-95 dark:text-rose-400"
               title="Kosongkan Wishlist"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Kosongkan</span>
             </button>
-          ) : (
-            <div className="w-16" />
-          )}
-        </div>
+          </div>
+        )}
 
         <main className="p-4">
-          <CustomerWishlistView isStandalonePage={true} />
+          <CustomerWishlistView
+            isStandalonePage={true}
+            onBackToOverview={handleBackToProfile}
+          />
         </main>
 
         <MobileBottomNav />

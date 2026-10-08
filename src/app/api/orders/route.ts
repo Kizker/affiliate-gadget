@@ -20,6 +20,9 @@ export async function GET() {
       where: { userId: session.user.id },
       include: {
         items: {
+          orderBy: {
+            createdAt: 'desc',
+          },
           select: {
             id: true,
             type: true,
@@ -100,9 +103,7 @@ export async function GET() {
           },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
     })
 
     // Cache for 15 seconds - order list can change frequently but benefit from short cache

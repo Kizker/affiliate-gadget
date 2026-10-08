@@ -92,13 +92,24 @@ export function CustomerWishlistView({
             Klik ikon hati pada produk smartphone pilihan di beranda atau
             katalog untuk menyimpannya di sini.
           </p>
-          <Link
-            href="/gadget"
-            className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-orange-600 active:scale-95"
-          >
-            <ShoppingBag className="h-3.5 w-3.5" />
-            <span>Jelajahi Gadget Sekarang</span>
-          </Link>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+            {onBackToOverview && (
+              <button
+                type="button"
+                onClick={onBackToOverview}
+                className="shadow-xs inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <span>Kembali ke Profil</span>
+              </button>
+            )}
+            <Link
+              href="/gadget"
+              className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-orange-600 active:scale-95"
+            >
+              <ShoppingBag className="h-3.5 w-3.5" />
+              <span>Jelajahi Gadget Sekarang</span>
+            </Link>
+          </div>
         </div>
       ) : (
         /* Items Grid */

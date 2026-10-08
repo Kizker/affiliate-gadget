@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/db'
@@ -17,9 +18,13 @@ export const revalidate = 0
 
 interface Props {
   params: Promise<{ orderId: string }>
+  searchParams?: Promise<{ fromStatus?: string; status?: string }>
 }
 
-export default async function CustomerOrderDetailPage({ params }: Props) {
+export default async function CustomerOrderDetailPage({
+  params,
+  searchParams,
+}: Props) {
   const session = await auth()
 
   if (!session?.user?.id) {
@@ -41,6 +46,7 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
     },
     include: {
       items: {
+        orderBy: { createdAt: 'desc' },
         include: {
           service: { select: { id: true, name: true, category: true } },
           product: {
@@ -119,12 +125,19 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
   })
 
   if (!order) {
+    const sp = searchParams ? await searchParams : {}
+    const fromStatus = sp?.fromStatus || sp?.status
+    const notFoundBackHref =
+      fromStatus && fromStatus !== 'ALL'
+        ? `/dashboard/customer/orders?status=${fromStatus}`
+        : '/dashboard/customer/orders'
+
     return (
       <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
         <div className="block md:hidden">
           <MobileTopNav
             showBack={true}
-            backHref="/dashboard/customer/orders"
+            backHref={notFoundBackHref}
             title="Pesanan Tidak Ditemukan"
           />
         </div>
@@ -139,7 +152,7 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
               Pesanan tidak ditemukan
             </h2>
             <Link
-              href="/dashboard/customer/orders"
+              href={notFoundBackHref}
               className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
             >
               Kembali ke Pesanan Saya
@@ -268,5 +281,9 @@ export default async function CustomerOrderDetailPage({ params }: Props) {
     review: order.reviews[0] ?? null,
   }
 
-  return <OrderDetailClient order={orderData} />
+  return (
+    <Suspense fallback={null}>
+      <OrderDetailClient order={orderData} />
+    </Suspense>
+  )
 }

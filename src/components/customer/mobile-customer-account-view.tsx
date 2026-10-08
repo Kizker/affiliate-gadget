@@ -49,6 +49,7 @@ export interface MobileCustomerAccountViewProps {
   setActiveSubView: (
     view: 'overview' | 'profile' | 'address' | 'security' | 'wishlist'
   ) => void
+  onBack?: () => void
   onAvatarClick: () => void
   onSignOut: () => void
   onSaveProfile?: () => void
@@ -64,6 +65,7 @@ export function MobileCustomerAccountView({
   addressesCount,
   activeSubView,
   setActiveSubView,
+  onBack,
   onAvatarClick,
   onSignOut,
   onSaveProfile,
@@ -96,7 +98,7 @@ export function MobileCustomerAccountView({
         <header className="z-50 flex shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 px-3.5 py-2.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
           <button
             type="button"
-            onClick={() => setActiveSubView('overview')}
+            onClick={onBack || (() => setActiveSubView('overview'))}
             className="flex items-center gap-1 text-xs font-bold text-slate-700 transition hover:text-orange-500 active:scale-95 dark:text-slate-300"
           >
             <ArrowLeft className="h-4 w-4" />

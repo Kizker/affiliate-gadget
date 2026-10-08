@@ -28,6 +28,10 @@ import {
   getOrderPaymentRemainingSeconds,
   formatPaymentCountdown,
 } from '@/lib/order-expiration'
+import {
+  getOrderContextualTimestamp,
+  sortOrdersByLatestProcess,
+} from '@/lib/order-date-utils'
 
 export interface OrderItem {
   id?: string
@@ -60,6 +64,10 @@ export interface MobileOrder {
   courierService?: string | null
   trackingNumber?: string | null
   createdAt: string
+  updatedAt?: string | null
+  completedAt?: string | null
+  customerConfirmedAt?: string | null
+  warrantyExpiryDate?: string | null
   store?: {
     id: string
     name: string
@@ -71,6 +79,7 @@ export interface MobileOrder {
     id: string
     status: string
     notes?: string | null
+    verifiedAt?: string | null
   } | null
   items: OrderItem[]
   returnRequests?: Array<{
@@ -80,6 +89,8 @@ export interface MobileOrder {
     reason?: string | null
     reasonLabel?: string | null
     description?: string | null
+    createdAt?: string
+    resolvedAt?: string | null
   }>
 }
 
@@ -87,6 +98,8 @@ interface MobileOrdersViewProps {
   orders: MobileOrder[]
   onOpenReturnModal?: (order: MobileOrder) => void
   initialTab?: string
+  activeTab?: string
+  onTabChange?: (tab: string) => void
 }
 
 function MobilePaymentCountdown({
@@ -153,8 +166,15 @@ export function MobileOrdersView({
   orders,
   onOpenReturnModal,
   initialTab,
+  activeTab: controlledActiveTab,
+  onTabChange,
 }: MobileOrdersViewProps) {
-  const [activeTab, setActiveTab] = useState(initialTab || 'ALL')
+  const [localActiveTab, setLocalActiveTab] = useState(
+    controlledActiveTab || initialTab || 'ALL'
+  )
+  const activeTab =
+    controlledActiveTab !== undefined ? controlledActiveTab : localActiveTab
+
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   // Prevent SSR/client hydration mismatch on dynamic count badges
@@ -164,10 +184,30 @@ export function MobileOrdersView({
   }, [])
 
   useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab)
+    if (controlledActiveTab !== undefined) {
+      setLocalActiveTab(controlledActiveTab)
+    } else if (initialTab) {
+      setLocalActiveTab(initialTab)
     }
-  }, [initialTab])
+  }, [controlledActiveTab, initialTab])
+
+  const handleTabClick = (tabKey: string) => {
+    setLocalActiveTab(tabKey)
+    if (onTabChange) {
+      onTabChange(tabKey)
+    } else if (typeof window !== 'undefined') {
+      const newUrl =
+        tabKey === 'ALL'
+          ? '/dashboard/customer/orders'
+          : `/dashboard/customer/orders?status=${tabKey}`
+      window.history.replaceState(null, '', newUrl)
+    }
+  }
+
+  const getOrderDetailHref = (orderId: string) => {
+    const currentTab = activeTab || 'ALL'
+    return `/dashboard/customer/orders/${orderId}?fromStatus=${currentTab}`
+  }
 
   const copyOrderNumber = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -219,9 +259,9 @@ export function MobileOrdersView({
     { key: 'RETURNED', label: 'Dikembalikan', count: counts.RETURNED },
   ]
 
-  // Filter pesanan berdasarkan tab dan pencarian
+  // Filter pesanan berdasarkan tab dan pencarian, lalu urutkan dari yang terbaru
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
+    const list = orders.filter((order) => {
       // Filter status
       if (activeTab !== 'ALL') {
         if (activeTab === 'RETURNED') {
@@ -257,12 +297,18 @@ export function MobileOrdersView({
 
       return true
     })
+
+    return sortOrdersByLatestProcess(list)
   }, [orders, activeTab, searchQuery])
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* 1. Universal Mobile Top Nav */}
-      <MobileTopNav showBack={true} backHref="/" title="Pesanan Saya" />
+      <MobileTopNav
+        showBack={true}
+        backHref="/dashboard/customer/settings"
+        title="Pesanan Saya"
+      />
 
       {/* 2. Shopee/Tokopedia Horizontal Status Tab Bar (Sticky) */}
       <div className="sticky top-[61px] z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
@@ -273,7 +319,7 @@ export function MobileOrdersView({
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => handleTabClick(tab.key)}
                 className={`relative flex shrink-0 items-center gap-1.5 px-3.5 py-3 text-xs font-semibold transition-colors ${
                   isActive
                     ? 'border-b-2 border-orange-500 font-bold text-orange-500'
@@ -358,14 +404,7 @@ export function MobileOrdersView({
               0
             )
 
-            const formattedDate = new Date(order.createdAt).toLocaleDateString(
-              'id-ID',
-              {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              }
-            )
+            const contextualTime = getOrderContextualTimestamp(order)
 
             return (
               <div
@@ -390,7 +429,7 @@ export function MobileOrdersView({
 
                 {/* Body: Clickable Item Preview */}
                 <Link
-                  href={`/dashboard/customer/orders/${order.id}`}
+                  href={getOrderDetailHref(order.id)}
                   className="block py-3 transition-opacity active:opacity-75"
                 >
                   <div className="flex items-start gap-3">
@@ -488,7 +527,12 @@ export function MobileOrdersView({
                       <Copy className="h-2.5 w-2.5 text-slate-400" />
                     )}
                   </button>
-                  <span>{formattedDate}</span>
+                  <span className="font-medium text-slate-500 dark:text-slate-400">
+                    <span className="text-slate-400 dark:text-slate-500">
+                      {contextualTime.label}:{' '}
+                    </span>
+                    {contextualTime.shortDate}
+                  </span>
                 </div>
 
                 {/* Footer: Total & Actions */}
@@ -555,14 +599,14 @@ export function MobileOrdersView({
 
                     {order.status === 'PENDING_PAYMENT' ? (
                       <Link
-                        href={`/dashboard/customer/orders/${order.id}`}
+                        href={getOrderDetailHref(order.id)}
                         className="shadow-2xs rounded-xl bg-orange-500 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-orange-600 active:scale-95"
                       >
                         Bayar Sekarang
                       </Link>
                     ) : isReturnOrder(order) ? (
                       <Link
-                        href={`/dashboard/customer/orders/${order.id}`}
+                        href={getOrderDetailHref(order.id)}
                         className="flex items-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-[11px] font-bold text-purple-700 transition active:scale-95 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300"
                       >
                         <RotateCcw className="h-3 w-3" />
@@ -570,7 +614,7 @@ export function MobileOrdersView({
                       </Link>
                     ) : (
                       <Link
-                        href={`/dashboard/customer/orders/${order.id}`}
+                        href={getOrderDetailHref(order.id)}
                         className="rounded-xl border border-slate-900 bg-slate-900 px-3 py-1.5 text-[11px] font-bold text-white transition active:scale-95 dark:border-white dark:bg-white dark:text-slate-900"
                       >
                         Rincian
