@@ -60,6 +60,13 @@ interface ProductHighlight {
   stock: number
   rating?: number | null
   warrantyDays?: number | null
+  liveDeal?: {
+    dealToken: string
+    discountPrice: number
+    originalPrice: number
+    dealType?: string
+    badgeLabel?: string
+  }
 }
 
 interface LiveStreamDetail {
@@ -846,17 +853,23 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                     (pinnedProduct.originalPrice ||
                       pinnedProduct.productPrice ||
                       0) ? (
-                    <div className="flex flex-wrap items-baseline gap-1">
-                      <p className="text-xs font-extrabold text-orange-600 sm:text-sm">
-                        Rp {pinnedProduct.discountPrice.toLocaleString('id-ID')}
-                      </p>
-                      <p className="text-[10px] text-slate-400 line-through">
-                        Rp{' '}
-                        {(
-                          pinnedProduct.originalPrice ||
-                          pinnedProduct.productPrice
-                        )?.toLocaleString('id-ID')}
-                      </p>
+                    <div className="space-y-0.5">
+                      <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-extrabold text-rose-600">
+                        🔥 Diskon Sematan Live (1x checkout)
+                      </span>
+                      <div className="flex flex-wrap items-baseline gap-1">
+                        <p className="text-xs font-extrabold text-orange-600 sm:text-sm">
+                          Rp{' '}
+                          {pinnedProduct.discountPrice.toLocaleString('id-ID')}
+                        </p>
+                        <p className="text-[10px] text-slate-400 line-through">
+                          Rp{' '}
+                          {(
+                            pinnedProduct.originalPrice ||
+                            pinnedProduct.productPrice
+                          )?.toLocaleString('id-ID')}
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     <p className="mt-0.5 text-xs font-extrabold text-orange-600 sm:text-sm">
@@ -1006,13 +1019,41 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                           <p className="truncate text-xs font-semibold text-slate-900">
                             {p.name}
                           </p>
-                          <p className="text-xs font-extrabold text-orange-600">
-                            Rp {p.price.toLocaleString('id-ID')}
-                          </p>
+                          {p.liveDeal &&
+                          p.liveDeal.discountPrice <
+                            (p.liveDeal.originalPrice || p.price) ? (
+                            <div className="mt-0.5">
+                              <span className="py-0.2 inline-block rounded bg-orange-100 px-1.5 text-[9px] font-bold text-orange-700">
+                                Diskon Live (1x checkout)
+                              </span>
+                              <div className="flex items-baseline gap-1.5">
+                                <p className="text-xs font-extrabold text-orange-600">
+                                  Rp{' '}
+                                  {p.liveDeal.discountPrice.toLocaleString(
+                                    'id-ID'
+                                  )}
+                                </p>
+                                <p className="text-[10px] text-slate-400 line-through">
+                                  Rp{' '}
+                                  {(
+                                    p.liveDeal.originalPrice || p.price
+                                  ).toLocaleString('id-ID')}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs font-extrabold text-orange-600">
+                              Rp {p.price.toLocaleString('id-ID')}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <Link
-                        href={`/gadget/${p.id}`}
+                        href={
+                          p.liveDeal?.dealToken
+                            ? `/gadget/${p.id}?dealToken=${p.liveDeal.dealToken}`
+                            : `/gadget/${p.id}`
+                        }
                         target="_blank"
                         className="shrink-0 rounded-xl bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition-all hover:bg-orange-600 active:scale-95"
                       >
@@ -1320,20 +1361,44 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                     )}
                   </div>
                   <div>
-                    <span className="inline-flex items-center gap-1 rounded-md bg-orange-500 px-2 py-0.5 text-[10px] font-extrabold uppercase text-white shadow-sm">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-rose-600 px-2 py-0.5 text-[10px] font-extrabold uppercase text-white shadow-sm">
                       <Zap className="h-2.5 w-2.5 fill-white" />
-                      Rekomendasi Host Sekarang
+                      🔥 Diskon Spesial Sematan Live • 1x Checkout
                     </span>
                     <h4 className="mt-1 text-sm font-bold text-slate-900 dark:text-white">
                       {pinnedProduct.productTitle}
                     </h4>
-                    <p className="text-base font-extrabold text-orange-600 dark:text-orange-400">
-                      Rp {pinnedProduct.productPrice?.toLocaleString('id-ID')}
-                    </p>
+                    {pinnedProduct.discountPrice &&
+                    pinnedProduct.discountPrice <
+                      (pinnedProduct.originalPrice ||
+                        pinnedProduct.productPrice ||
+                        0) ? (
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-base font-extrabold text-orange-600 dark:text-orange-400">
+                          Rp{' '}
+                          {pinnedProduct.discountPrice.toLocaleString('id-ID')}
+                        </p>
+                        <p className="text-xs text-slate-400 line-through">
+                          Rp{' '}
+                          {(
+                            pinnedProduct.originalPrice ||
+                            pinnedProduct.productPrice
+                          )?.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-base font-extrabold text-orange-600 dark:text-orange-400">
+                        Rp {pinnedProduct.productPrice?.toLocaleString('id-ID')}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <Link
-                  href={`/gadget/${pinnedProduct.productId}`}
+                  href={
+                    pinnedProduct.dealToken
+                      ? `/gadget/${pinnedProduct.productId}?dealToken=${pinnedProduct.dealToken}`
+                      : `/gadget/${pinnedProduct.productId}`
+                  }
                   target="_blank"
                   className="shrink-0 rounded-xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-orange-600 active:scale-95"
                 >
@@ -1391,12 +1456,40 @@ export function LiveStreamViewer({ streamId }: { streamId: string }) {
                         <h5 className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
                           {p.name}
                         </h5>
-                        <p className="mt-1 text-sm font-extrabold text-orange-600 dark:text-orange-400">
-                          Rp {p.price.toLocaleString('id-ID')}
-                        </p>
+                        {p.liveDeal &&
+                        p.liveDeal.discountPrice <
+                          (p.liveDeal.originalPrice || p.price) ? (
+                          <div className="mt-1">
+                            <span className="inline-block rounded bg-orange-100 px-1.5 py-0.5 text-[9px] font-bold text-orange-700 dark:bg-orange-950/60 dark:text-orange-300">
+                              Diskon Live (1x checkout)
+                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                              <p className="text-sm font-extrabold text-orange-600 dark:text-orange-400">
+                                Rp{' '}
+                                {p.liveDeal.discountPrice.toLocaleString(
+                                  'id-ID'
+                                )}
+                              </p>
+                              <p className="text-[10px] text-slate-400 line-through">
+                                Rp{' '}
+                                {(
+                                  p.liveDeal.originalPrice || p.price
+                                ).toLocaleString('id-ID')}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-sm font-extrabold text-orange-600 dark:text-orange-400">
+                            Rp {p.price.toLocaleString('id-ID')}
+                          </p>
+                        )}
                       </div>
                       <Link
-                        href={`/gadget/${p.id}`}
+                        href={
+                          p.liveDeal?.dealToken
+                            ? `/gadget/${p.id}?dealToken=${p.liveDeal.dealToken}`
+                            : `/gadget/${p.id}`
+                        }
                         target="_blank"
                         className="mt-2.5 rounded-xl bg-slate-100 py-1.5 text-center text-xs font-bold text-slate-800 transition-all hover:bg-orange-500 hover:text-white dark:bg-slate-800 dark:text-slate-200"
                       >

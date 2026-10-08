@@ -433,11 +433,11 @@ export function MobileOrdersView({
                   className="block py-3 transition-opacity active:opacity-75"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-800">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-800">
                       <img
                         src={itemImage}
                         alt={firstItem?.product?.name || 'Gadget'}
-                        className="h-full w-full object-contain"
+                        className="h-full w-full object-cover"
                         onError={(e) => {
                           e.currentTarget.src = DEFAULT_IMAGE
                         }}

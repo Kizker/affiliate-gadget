@@ -632,11 +632,11 @@ export default function OrdersClient({
                       <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
                         {/* Left: Thumbnail & Gadget Details */}
                         <div className="flex min-w-0 flex-1 items-start gap-4 sm:items-center">
-                          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/80 p-2 dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24">
+                          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24">
                             <img
                               src={itemImage}
                               alt={firstItem?.product?.name || 'Gadget'}
-                              className="h-full w-full object-contain"
+                              className="h-full w-full object-cover"
                               onError={(e) => {
                                 e.currentTarget.src = DEFAULT_GADGET_IMAGE
                               }}

@@ -12,6 +12,8 @@ export interface LiveDeal {
   productSlug?: string
   originalPrice: number
   discountPrice: number
+  dealType?: 'LIVE_FEATURED' | 'PINNED_DEAL'
+  badgeLabel?: string
   isActive: boolean
   isUsed: boolean
   usedByUserId?: string | null
@@ -68,7 +70,7 @@ function saveDeals() {
 }
 
 /**
- * Buat deal diskon khusus live baru saat host menyematkan produk
+ * Buat deal diskon khusus live baru saat setup siaran atau saat host menyematkan produk
  */
 export function createLiveDeal(params: {
   streamId: string
@@ -78,21 +80,25 @@ export function createLiveDeal(params: {
   productSlug?: string
   originalPrice: number
   discountPrice: number
+  dealType?: 'LIVE_FEATURED' | 'PINNED_DEAL'
+  badgeLabel?: string
 }): LiveDeal {
   const deals = loadDeals()
+  const dealType = params.dealType || 'PINNED_DEAL'
 
-  // Nonaktifkan deal sebelumnya untuk produk yang sama pada stream ini jika ada
+  // Nonaktifkan deal sebelumnya dengan tipe yang sama untuk produk ini pada stream ini
   for (const existing of deals.values()) {
     if (
       existing.streamId === params.streamId &&
       existing.productId === params.productId &&
+      (existing.dealType || 'PINNED_DEAL') === dealType &&
       existing.isActive
     ) {
       existing.isActive = false
     }
   }
 
-  const dealToken = `deal_${Date.now().toString(36)}_${crypto.randomBytes(6).toString('hex')}`
+  const dealToken = `deal_${dealType === 'PINNED_DEAL' ? 'pin_' : 'live_'}${Date.now().toString(36)}_${crypto.randomBytes(6).toString('hex')}`
   const newDeal: LiveDeal = {
     id: `deal-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
     dealToken,
@@ -103,6 +109,12 @@ export function createLiveDeal(params: {
     productSlug: params.productSlug,
     originalPrice: params.originalPrice,
     discountPrice: params.discountPrice,
+    dealType,
+    badgeLabel:
+      params.badgeLabel ||
+      (dealType === 'PINNED_DEAL'
+        ? 'Diskon Spesial Sematan Live'
+        : 'Diskon Khusus Siaran Live'),
     isActive: true,
     isUsed: false,
     usedByUserId: null,
@@ -119,15 +131,21 @@ export function createLiveDeal(params: {
 /**
  * Nonaktifkan deal saat host melepas sematan produk atau mengakhiri sesi live
  */
-export function deactivateStreamDeals(streamId: string, productId?: string) {
+export function deactivateStreamDeals(
+  streamId: string,
+  productId?: string,
+  dealType?: 'LIVE_FEATURED' | 'PINNED_DEAL'
+) {
   const deals = loadDeals()
   let changed = false
 
   for (const deal of deals.values()) {
     if (deal.streamId === streamId && deal.isActive) {
       if (!productId || deal.productId === productId) {
-        deal.isActive = false
-        changed = true
+        if (!dealType || deal.dealType === dealType) {
+          deal.isActive = false
+          changed = true
+        }
       }
     }
   }
@@ -207,13 +225,16 @@ export function getActiveDealsForStream(streamId: string): LiveDeal[] {
 }
 
 /**
- * Dapatkan deal aktif saat ini untuk live stream tertentu (opsional berdasarkan productId)
+ * Dapatkan deal aktif saat ini untuk live stream tertentu (opsional berdasarkan productId dan dealType)
  */
 export function getActiveDealForStream(
   streamId: string,
-  productId?: string
+  productId?: string,
+  preferredType?: 'PINNED_DEAL' | 'LIVE_FEATURED'
 ): LiveDeal | null {
   const deals = loadDeals()
+  let fallback: LiveDeal | null = null
+
   for (const deal of deals.values()) {
     if (
       deal.streamId === streamId &&
@@ -221,8 +242,37 @@ export function getActiveDealForStream(
       !deal.isUsed &&
       (!productId || deal.productId === productId)
     ) {
-      return deal
+      if (preferredType) {
+        if (deal.dealType === preferredType) return deal
+      } else {
+        // Prioritas ke PINNED_DEAL jika produk sedang disematkan
+        if (deal.dealType === 'PINNED_DEAL') return deal
+        if (!fallback) fallback = deal
+      }
     }
   }
-  return null
+  return fallback
+}
+
+/**
+ * Cek apakah user sudah pernah memakai diskon live stream tertentu (kebijakan 1x checkout)
+ */
+export function hasUserUsedStreamDeal(
+  userId: string,
+  streamId: string,
+  productId?: string
+): boolean {
+  if (!userId) return false
+  const deals = loadDeals()
+  for (const deal of deals.values()) {
+    if (
+      deal.streamId === streamId &&
+      deal.usedByUserId === userId &&
+      deal.isUsed &&
+      (!productId || deal.productId === productId)
+    ) {
+      return true
+    }
+  }
+  return false
 }

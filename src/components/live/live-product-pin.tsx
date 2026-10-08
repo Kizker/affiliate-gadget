@@ -74,7 +74,7 @@ export function LiveProductPin({
               </span>
               <span className="inline-flex items-center gap-0.5 rounded-md bg-rose-100 px-1.5 py-0.5 text-[9px] font-extrabold text-rose-700">
                 <Zap className="h-2.5 w-2.5 fill-rose-500 text-rose-500" />
-                DISKON LIVE
+                DISKON SEMATAN • 1X CHECKOUT
               </span>
             </>
           ) : (

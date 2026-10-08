@@ -5,7 +5,7 @@ import { SidebarProvider, useSidebar } from '@/context/sidebar-context'
 import { AdminNotificationsProvider } from '@/context/admin-notifications-context'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { AdminNotificationBell } from '@/components/dashboard/admin-notification-bell'
-import { PanelLeft, ExternalLink, Store } from 'lucide-react'
+import { ExternalLink, Store } from 'lucide-react'
 import { AdminFooter } from '@/components/dashboard/admin-footer'
 
 import Link from 'next/link'
@@ -21,7 +21,7 @@ function AdminLayoutInner({
   const { isCollapsed, toggleCollapse, toggleMobile, isMobileOpen } =
     useSidebar()
   const pathname = usePathname()
-  const isChatPage = pathname === '/dashboard/admin/chat'
+  const isChatPage = pathname?.startsWith('/dashboard/admin/chat')
 
   return (
     <div className="relative min-h-screen bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
@@ -37,14 +37,7 @@ function AdminLayoutInner({
         {/* Top Control Bar (Desktop & Mobile) */}
         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-900/80 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            {/* Mobile Menu Hamburger */}
-            <button
-              onClick={toggleMobile}
-              aria-label={isMobileOpen ? 'Tutup Menu' : 'Buka Menu'}
-              className="shadow-2xs flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-700 hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 lg:hidden"
-            >
-              <PanelLeft className="h-4 w-4" />
-            </button>
+            {/* Tombol buka-tutup side tab redundan di belakang burger button dihilangkan */}
           </div>
 
           {/* Right Header Quick Links & Notifications */}
@@ -68,22 +61,22 @@ function AdminLayoutInner({
         <main
           className={`relative z-10 w-full overflow-x-hidden ${
             isChatPage
-              ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-2 sm:p-3'
+              ? 'flex h-[calc(100dvh-3.5rem)] min-h-0 flex-1 flex-col overflow-hidden p-0'
               : 'min-h-[calc(100vh-3.5rem)] pb-12 pt-4 sm:pt-6'
           }`}
         >
           <div
-            className={`mx-auto w-full max-w-[1600px] transition-all duration-300 ${
+            className={`mx-auto w-full transition-all duration-300 ${
               isChatPage
-                ? 'flex h-full min-h-0 flex-col px-0'
-                : 'px-3 sm:px-6 lg:px-8 xl:px-10'
+                ? 'flex h-full min-h-0 flex-1 flex-col px-0'
+                : 'max-w-[1600px] px-3 sm:px-6 lg:px-8 xl:px-10'
             }`}
           >
             {children}
           </div>
         </main>
 
-        <AdminFooter isChatPage={isChatPage} />
+        {!isChatPage && <AdminFooter isChatPage={isChatPage} />}
       </div>
     </div>
   )

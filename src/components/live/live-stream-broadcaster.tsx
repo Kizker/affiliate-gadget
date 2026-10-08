@@ -378,7 +378,7 @@ function LiveKitStudioControls({
     setMirror(nextMirror)
   }
 
-  // Handle Pin Product (dari katalog manapun dengan harga diskon live opsional)
+  // Handle Pin Product (memilih diskon sematan khusus yang berbeda dari diskon 5 barang live)
   const handlePinProduct = async (
     prod: StoreProduct,
     customDiscount?: number
@@ -396,6 +396,8 @@ function LiveKitStudioControls({
             productSlug: prod.id,
             originalPrice: prod.price,
             discountPrice: customDiscount,
+            dealType: 'PINNED_DEAL',
+            badgeLabel: 'Diskon Spesial Sematan Live',
           }),
         })
         const json = await res.json()
@@ -403,21 +405,30 @@ function LiveKitStudioControls({
           dealToken = json.data.dealToken
         }
       } catch (err) {
-        console.error('Error creating live deal:', err)
+        console.error('Error creating pinned live deal:', err)
       }
     } else {
-      // Periksa apakah produk ini sudah memiliki diskon khusus live yang dibuat saat persiapan setup
+      // Periksa apakah produk ini sudah memiliki diskon khusus sematan atau live yang dibuat saat setup
       try {
         const res = await fetch(`/api/live-streams/${stream.id}/deals`)
         const json = await res.json()
         const deals: any[] =
           json.activeDeals || (json.activeDeal ? [json.activeDeal] : [])
-        const existing = deals.find(
+        // Prioritaskan PINNED_DEAL, fallback ke LIVE_FEATURED
+        const existingPinned = deals.find(
+          (d: any) =>
+            d.productId === prod.id &&
+            d.dealType === 'PINNED_DEAL' &&
+            d.isActive &&
+            !d.isUsed
+        )
+        const existingFeatured = deals.find(
           (d: any) => d.productId === prod.id && d.isActive && !d.isUsed
         )
-        if (existing) {
-          dealToken = existing.dealToken
-          customDiscount = existing.discountPrice
+        const chosen = existingPinned || existingFeatured
+        if (chosen) {
+          dealToken = chosen.dealToken
+          customDiscount = chosen.discountPrice
         }
       } catch (err) {
         console.error('Error fetching existing setup deals:', err)
@@ -457,9 +468,12 @@ function LiveKitStudioControls({
   const handleUnpinProduct = async () => {
     unpinProduct()
     if (stream.id) {
-      fetch(`/api/live-streams/${stream.id}/deals`, {
-        method: 'DELETE',
-      }).catch(() => {})
+      fetch(
+        `/api/live-streams/${stream.id}/deals?productId=${selectedProductId || ''}&dealType=PINNED_DEAL`,
+        {
+          method: 'DELETE',
+        }
+      ).catch(() => {})
     }
   }
 
@@ -984,11 +998,11 @@ function LiveKitStudioControls({
                           </button>
                         </div>
 
-                        {/* Input Opsional Diskon Khusus Live Deal */}
+                        {/* Input Memilih Diskon Khusus Sematan Saat Disematkan */}
                         {!isCurrentlyPinned && (
                           <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
-                            <span className="whitespace-nowrap text-[10px] font-semibold text-slate-500">
-                              Diskon Live (Rp):
+                            <span className="whitespace-nowrap text-[10px] font-bold text-orange-600">
+                              Diskon Sematan (Rp):
                             </span>
                             <input
                               type="number"
@@ -999,8 +1013,8 @@ function LiveKitStudioControls({
                                   [p.id]: e.target.value,
                                 }))
                               }
-                              placeholder="Kosongkan jika harga normal"
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white"
+                              placeholder="Pilih diskon ekstra khusus sematan"
+                              className="w-full rounded-lg border border-orange-200 bg-orange-50/50 px-2 py-1 text-[11px] font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white"
                             />
                           </div>
                         )}
@@ -1377,8 +1391,8 @@ function LiveKitStudioControls({
 
                     {!isPinned && (
                       <div className="mt-1.5 flex items-center gap-1.5 border-t border-slate-200/60 pt-1.5 dark:border-slate-700/60">
-                        <span className="shrink-0 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                          Diskon (Rp):
+                        <span className="shrink-0 text-[10px] font-bold text-orange-600 dark:text-orange-500">
+                          Diskon Sematan / Diskon (Rp):
                         </span>
                         <input
                           type="number"
@@ -1389,8 +1403,8 @@ function LiveKitStudioControls({
                               [p.id]: e.target.value,
                             }))
                           }
-                          placeholder="Opsional diskon live"
-                          className="w-full rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[10.5px] text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          placeholder="Pilih diskon saat disematkan"
+                          className="w-full rounded-lg border border-orange-200 bg-white px-2 py-0.5 text-[10.5px] font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         />
                       </div>
                     )}
@@ -1416,6 +1430,9 @@ export function LiveStreamBroadcaster() {
   const [setupDiscounts, setSetupDiscounts] = useState<Record<string, string>>(
     {}
   )
+  const [setupPinnedDiscounts, setSetupPinnedDiscounts] = useState<
+    Record<string, string>
+  >({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -1493,25 +1510,60 @@ export function LiveStreamBroadcaster() {
         // Buat diskon khusus live untuk produk yang diberikan diskon spesial saat persiapan setup
         for (const prodId of featuredProductIds) {
           const discountRaw = setupDiscounts[prodId]?.replace(/\D/g, '')
+          const pinnedDiscountRaw = setupPinnedDiscounts[prodId]?.replace(
+            /\D/g,
+            ''
+          )
           const prodObj = products.find((p) => p.id === prodId)
-          if (discountRaw && prodObj) {
-            const discPrice = parseInt(discountRaw, 10)
-            if (discPrice > 0 && discPrice < prodObj.price) {
-              try {
-                await fetch(`/api/live-streams/${json.data.id}/deals`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    productId: prodObj.id,
-                    productTitle: prodObj.name,
-                    productImage: prodObj.images[0] || '',
-                    productSlug: prodObj.id,
-                    originalPrice: prodObj.price,
-                    discountPrice: discPrice,
-                  }),
-                })
-              } catch (dealErr) {
-                console.error('Error creating setup deal:', dealErr)
+
+          if (prodObj) {
+            // 1. Diskon Khusus Siaran Live (Etalase 5 barang live)
+            if (discountRaw) {
+              const discPrice = parseInt(discountRaw, 10)
+              if (discPrice > 0 && discPrice < prodObj.price) {
+                try {
+                  await fetch(`/api/live-streams/${json.data.id}/deals`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      productId: prodObj.id,
+                      productTitle: prodObj.name,
+                      productImage: prodObj.images[0] || '',
+                      productSlug: prodObj.id,
+                      originalPrice: prodObj.price,
+                      discountPrice: discPrice,
+                      dealType: 'LIVE_FEATURED',
+                      badgeLabel: 'Diskon Khusus Siaran Live',
+                    }),
+                  })
+                } catch (dealErr) {
+                  console.error('Error creating setup live deal:', dealErr)
+                }
+              }
+            }
+
+            // 2. Diskon Khusus Saat Disematkan (Pinned Deal)
+            if (pinnedDiscountRaw) {
+              const pinnedPrice = parseInt(pinnedDiscountRaw, 10)
+              if (pinnedPrice > 0 && pinnedPrice < prodObj.price) {
+                try {
+                  await fetch(`/api/live-streams/${json.data.id}/deals`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      productId: prodObj.id,
+                      productTitle: prodObj.name,
+                      productImage: prodObj.images[0] || '',
+                      productSlug: prodObj.id,
+                      originalPrice: prodObj.price,
+                      discountPrice: pinnedPrice,
+                      dealType: 'PINNED_DEAL',
+                      badgeLabel: 'Diskon Spesial Sematan Live',
+                    }),
+                  })
+                } catch (pinnedErr) {
+                  console.error('Error creating setup pinned deal:', pinnedErr)
+                }
               }
             }
           }
@@ -1765,27 +1817,46 @@ export function LiveStreamBroadcaster() {
                       </div>
                     </div>
 
-                    {/* Kolom Diskon Spesial Live untuk produk yang dipilih */}
+                    {/* Kolom Diskon Spesial Live & Sematan untuk produk yang dipilih */}
                     {isSelected && (
                       <div
                         onClick={(e) => e.stopPropagation()}
-                        className="mt-2.5 flex items-center gap-2 border-t border-slate-100 pt-2 dark:border-slate-700/60"
+                        className="mt-2.5 space-y-2 border-t border-slate-100 pt-2.5 dark:border-slate-700/60"
                       >
-                        <span className="shrink-0 text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                          Diskon Live (Rp):
-                        </span>
-                        <input
-                          type="number"
-                          value={setupDiscounts[p.id] || ''}
-                          onChange={(e) =>
-                            setSetupDiscounts((prev) => ({
-                              ...prev,
-                              [p.id]: e.target.value,
-                            }))
-                          }
-                          placeholder={`Kosongkan jika harga normal (Rp ${p.price.toLocaleString('id-ID')})`}
-                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        />
+                        <div className="flex items-center gap-2">
+                          <span className="w-36 shrink-0 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                            Diskon Live (Rp):
+                          </span>
+                          <input
+                            type="number"
+                            value={setupDiscounts[p.id] || ''}
+                            onChange={(e) =>
+                              setSetupDiscounts((prev) => ({
+                                ...prev,
+                                [p.id]: e.target.value,
+                              }))
+                            }
+                            placeholder={`Harga siaran live (Normal: Rp ${p.price.toLocaleString('id-ID')})`}
+                            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-36 shrink-0 text-[10px] font-bold text-orange-600 dark:text-orange-500">
+                            Diskon Sematan (Rp):
+                          </span>
+                          <input
+                            type="number"
+                            value={setupPinnedDiscounts[p.id] || ''}
+                            onChange={(e) =>
+                              setSetupPinnedDiscounts((prev) => ({
+                                ...prev,
+                                [p.id]: e.target.value,
+                              }))
+                            }
+                            placeholder="Harga spesial jika disematkan nanti (opsional)"
+                            className="w-full rounded-lg border border-orange-200 bg-orange-50/40 px-2.5 py-1 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-orange-900/60 dark:bg-slate-800 dark:text-white"
+                          />
+                        </div>
                       </div>
                     )}
                   </div>

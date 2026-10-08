@@ -67,7 +67,10 @@ export async function GET(
     const activeDeal = getActiveDealForStream(id)
 
     const enrichedFeaturedProducts = featuredProducts.map((p) => {
-      const dealForProd = activeDeals.find((d) => d.productId === p.id)
+      const dealForProd =
+        activeDeals.find(
+          (d) => d.productId === p.id && d.dealType === 'PINNED_DEAL'
+        ) || activeDeals.find((d) => d.productId === p.id)
       if (dealForProd) {
         return {
           ...p,
@@ -75,6 +78,8 @@ export async function GET(
             dealToken: dealForProd.dealToken,
             discountPrice: dealForProd.discountPrice,
             originalPrice: dealForProd.originalPrice,
+            dealType: dealForProd.dealType,
+            badgeLabel: dealForProd.badgeLabel,
           },
         }
       }

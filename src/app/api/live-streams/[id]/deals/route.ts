@@ -68,6 +68,8 @@ export async function POST(
       productSlug,
       originalPrice,
       discountPrice,
+      dealType,
+      badgeLabel,
     } = body
 
     if (
@@ -100,6 +102,8 @@ export async function POST(
       productSlug,
       originalPrice,
       discountPrice,
+      dealType: dealType || 'PINNED_DEAL',
+      badgeLabel,
     })
 
     return NextResponse.json({
@@ -117,7 +121,7 @@ export async function POST(
 
 /**
  * DELETE /api/live-streams/[id]/deals
- * Host melepas sematan barang (unpin) sehingga diskon live dinonaktifkan
+ * Host melepas sematan barang (unpin) sehingga diskon sematan dinonaktifkan
  */
 export async function DELETE(
   req: NextRequest,
@@ -126,11 +130,12 @@ export async function DELETE(
   const { id: streamId } = await params
   const { searchParams } = new URL(req.url)
   const productId = searchParams.get('productId') || undefined
+  const dealType = (searchParams.get('dealType') as any) || 'PINNED_DEAL'
 
-  deactivateStreamDeals(streamId, productId)
+  deactivateStreamDeals(streamId, productId, dealType)
 
   return NextResponse.json({
     success: true,
-    message: 'Diskon khusus live telah dinonaktifkan.',
+    message: 'Diskon sematan live telah dinonaktifkan.',
   })
 }

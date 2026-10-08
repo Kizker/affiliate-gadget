@@ -59,6 +59,7 @@ import {
   X,
   AlertCircle,
   CheckCircle2,
+  Zap,
 } from 'lucide-react'
 
 interface BankAccount {
@@ -94,6 +95,51 @@ function CheckoutContent() {
 
   const [isDirectBuy, setIsDirectBuy] = useState(false)
   const [directItem, setDirectItem] = useState<any>(null)
+  const [liveDealInfo, setLiveDealInfo] = useState<{
+    valid: boolean
+    deal?: any
+    discountAmount: number
+    badgeLabel?: string
+  } | null>(null)
+
+  // Verifikasi dealToken live streaming saat masuk checkout (single-use limit)
+  useEffect(() => {
+    if (!dealToken) return
+    fetch(`/api/live-deals/verify?token=${encodeURIComponent(dealToken)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.valid && data.deal) {
+          const discountDiff = Math.max(
+            0,
+            data.deal.originalPrice - data.deal.discountPrice
+          )
+          setLiveDealInfo({
+            valid: true,
+            deal: data.deal,
+            discountAmount: discountDiff,
+            badgeLabel:
+              data.deal.badgeLabel ||
+              (data.deal.dealType === 'PINNED_DEAL'
+                ? 'Diskon Spesial Sematan Live'
+                : 'Diskon Khusus Siaran Live'),
+          })
+          toast.success(
+            `${data.deal.badgeLabel || 'Diskon Live'} Diterapkan!`,
+            {
+              description: `Hemat Rp ${discountDiff.toLocaleString('id-ID')} (berlaku 1x checkout).`,
+            }
+          )
+        } else {
+          setLiveDealInfo(null)
+          if (data.reason === 'USED') {
+            toast.error(
+              'Diskon khusus live deal ini telah digunakan untuk transaksi sebelumnya (hanya 1 kali checkout).'
+            )
+          }
+        }
+      })
+      .catch(() => {})
+  }, [dealToken])
 
   // Detect Buy Now mode from URL parameter or cached direct item
   useEffect(() => {
@@ -369,9 +415,10 @@ function CheckoutContent() {
         : jneRegCost
 
   const voucherDiscount = appliedVoucher ? appliedVoucher.discountAmount : 0
+  const liveDealDiscount = liveDealInfo?.discountAmount || 0
   const total = Math.max(
     0,
-    subtotal + shippingCost + insuranceFee - voucherDiscount
+    subtotal + shippingCost + insuranceFee - voucherDiscount - liveDealDiscount
   )
 
   // Recalculate applied voucher if subtotal changes
@@ -1257,6 +1304,22 @@ function CheckoutContent() {
                         </span>
                         <span className="font-bold tabular-nums">
                           - Rp {voucherDiscount.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Live Stream Deal Discount Deduction (Single-use per customer) */}
+                    {liveDealDiscount > 0 && (
+                      <div className="flex items-center justify-between text-rose-600 dark:text-rose-400">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <Zap className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />
+                          <span>
+                            {liveDealInfo?.badgeLabel || 'Diskon Live Siaran'}{' '}
+                            (1x checkout)
+                          </span>
+                        </span>
+                        <span className="font-bold tabular-nums">
+                          - Rp {liveDealDiscount.toLocaleString('id-ID')}
                         </span>
                       </div>
                     )}

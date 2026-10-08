@@ -24,7 +24,11 @@ import {
 import { verifyServerShippingCost } from '@/lib/shipping/shipping-engine'
 import { calculateVoucherDiscountAmount } from '@/lib/constants/voucher'
 import { calculateOrderVat } from '@/lib/tax/tax-engine'
-import { verifyDealToken, consumeDealToken } from '@/lib/live-deals'
+import {
+  verifyDealToken,
+  consumeDealToken,
+  hasUserUsedStreamDeal,
+} from '@/lib/live-deals'
 
 interface CartItem {
   type: 'PRODUCT' | 'RENTAL' | 'SERVICE'
@@ -630,14 +634,14 @@ export async function POST(request: NextRequest) {
               let appliedVoucherCode: string | null = null
               let appliedDiscountAmount = 0
 
-              // Verifikasi Diskon Khusus Live Deal (Single-Use)
+              // Verifikasi Diskon Khusus Live Deal (Single-Use per checkout & customer)
               let appliedLiveDealToken: string | null = null
               if (orderType === 'PRODUCT' && dealToken) {
                 const dealCheck = verifyDealToken(dealToken)
                 if (!dealCheck.valid) {
                   if (dealCheck.reason === 'USED') {
                     throw new CheckoutError(
-                      'Diskon khusus live deal ini telah digunakan untuk transaksi sebelumnya.',
+                      'Diskon khusus live deal ini telah digunakan untuk transaksi sebelumnya (hanya 1 kali checkout).',
                       CHECKOUT_ERROR_CODES.PRODUK_TIDAK_AKTIF,
                       400
                     )
@@ -650,6 +654,22 @@ export async function POST(request: NextRequest) {
                 }
 
                 const deal = dealCheck.deal!
+
+                // Validasi bahwa dealToken hanya bisa digunakan 1 kali checkout per pengguna
+                if (
+                  session?.user?.id &&
+                  hasUserUsedStreamDeal(
+                    session.user.id,
+                    deal.streamId,
+                    deal.productId
+                  )
+                ) {
+                  throw new CheckoutError(
+                    'Diskon khusus live stream ini hanya dapat digunakan 1 kali checkout per akun pelanggan.',
+                    CHECKOUT_ERROR_CODES.PRODUK_TIDAK_AKTIF,
+                    400
+                  )
+                }
                 const matchedItem = verifiedItems.find(
                   (vi) => vi.raw.productId === deal.productId
                 )
