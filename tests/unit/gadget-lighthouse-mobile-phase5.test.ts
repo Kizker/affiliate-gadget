@@ -55,4 +55,14 @@ describe('Gadget Catalog Phase 5 Mobile Lighthouse 90+ Suite', () => {
     const adContent = fs.readFileSync(adPath, 'utf-8')
     expect(adContent).toContain('quality={70}')
   })
+
+  it('5. Gadget page Suspense fallback renders MobileCatalogView shell for instant Frame-1 LCP', () => {
+    const pagePath = path.join(process.cwd(), 'src/app/gadget/page.tsx')
+    const content = fs.readFileSync(pagePath, 'utf-8')
+
+    expect(content).toContain('fallback=')
+    expect(content).toContain('<MobileCatalogView')
+    expect(content).toContain('INITIAL_CATALOG_GADGETS')
+    expect(content).toContain('<MobileBottomNav activeTab="beranda" />')
+  })
 })

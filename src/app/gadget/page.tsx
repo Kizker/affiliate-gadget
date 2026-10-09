@@ -687,13 +687,36 @@ export default function GadgetKatalogPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-          <Navbar variant="light" />
-          <div className="flex flex-1 items-center justify-center pt-28">
-            <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        <>
+          {/* Mobile Shell Fallback (Instant SSR HTML for Frame-1 LCP without spinner delay) */}
+          <div className="block md:hidden">
+            <MobileCatalogView
+              gadgets={INITIAL_CATALOG_GADGETS}
+              loading={false}
+              brand="ALL"
+              setBrand={() => {}}
+              search=""
+              setSearch={() => {}}
+              sortBy="RELEVANCE"
+              setSortBy={() => {}}
+              session={null}
+              status="unauthenticated"
+              promotedAd={null}
+              promotedAds={[]}
+              liveStreams={[]}
+            />
+            <MobileBottomNav activeTab="beranda" />
           </div>
-          <Footer variant="light" />
-        </div>
+
+          {/* Desktop Shell Fallback */}
+          <div className="hidden min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex">
+            <Navbar variant="light" />
+            <div className="flex flex-1 items-center justify-center pt-28">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            </div>
+            <Footer variant="light" />
+          </div>
+        </>
       }
     >
       <GadgetKatalogContent />
