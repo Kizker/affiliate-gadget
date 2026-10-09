@@ -55,7 +55,8 @@ export function LiveBannerCard({
           src={coverSrc}
           alt={stream.title}
           fill
-          sizes="(max-width: 640px) 50vw, 300px"
+          sizes="(max-width: 640px) 45vw, 300px"
+          quality={70}
           className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
 

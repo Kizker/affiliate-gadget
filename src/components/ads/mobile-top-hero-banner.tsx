@@ -21,13 +21,15 @@ export interface HeroSlideData {
 
 const DEFAULT_BANNER_SLIDES: HeroSlideData[] = [
   {
-    id: 'default-hero-roxy',
-    image: '/uploads/ads/1790671900234-6yrant-poster.webp',
-    videoUrl: '/uploads/ads/1790671900234-6yrant.mp4',
+    id: 'cmuiftegm0001tzagr48ikekn',
+    adId: 'cmuiftegm0001tzagr48ikekn',
+    image: '/uploads/ads/1790671997412-zuzb6l-poster.webp',
+    videoUrl: '/uploads/ads/1790671997412-zuzb6l.mp4',
     isVideo: true,
     badgeText: 'Cabang Jakarta Pusat',
     title: 'Video Eksklusif: Flash Sale Roxy Mas Pusat',
-    subtitle: 'Garansi Toko 30 Hari Tukar Unit Baru',
+    subtitle:
+      'Tonton Video Review Fisik Mulus & Garansi Toko 30 Hari Tukar Unit Baru',
     targetUrl: '/toko/roxy-mas-jakarta',
     storeName: 'Affiliate Gadget - Roxy Mas Jakarta',
   },
@@ -146,7 +148,16 @@ export function MobileTopHeroBanner({
           )
 
           if (isSubscribed) {
-            setSlides(mapped)
+            setSlides((prev) => {
+              if (
+                prev.length === mapped.length &&
+                prev[0]?.id === mapped[0]?.id &&
+                prev[0]?.image === mapped[0]?.image
+              ) {
+                return prev
+              }
+              return mapped
+            })
           }
         }
       } catch {
@@ -227,6 +238,8 @@ export function MobileTopHeroBanner({
             sizes="(max-width: 768px) 100vw, 1200px"
             className="object-cover"
             priority={idx === 0}
+            fetchPriority={idx === 0 ? 'high' : 'auto'}
+            loading={idx === 0 ? 'eager' : 'lazy'}
           />
 
           {/* Deferred Video Layer: Loaded only on user interaction to prevent critical network saturation */}

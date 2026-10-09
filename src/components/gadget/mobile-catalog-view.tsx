@@ -353,6 +353,7 @@ export function MobileCatalogView({
                 width={300}
                 height={300}
                 sizes="(max-width: 640px) 50vw, 300px"
+                quality={70}
                 priority={isPriority}
                 loading={isPriority ? 'eager' : 'lazy'}
                 onError={(e) => {
