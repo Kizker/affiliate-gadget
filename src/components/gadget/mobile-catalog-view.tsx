@@ -322,9 +322,27 @@ export function MobileCatalogView({
         key={item.id}
         className="shadow-xs relative flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-200/90 bg-white p-2.5 transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
       >
+        {/* Wishlist Button (Positioned absolutely outside Link to satisfy WCAG interactive control guidelines) */}
+        <button
+          type="button"
+          onClick={(e) => toggleWishlist(item, e)}
+          className="backdrop-blur-xs shadow-2xs absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
+          aria-label={
+            isWishlisted
+              ? `Hapus ${item.name} dari Wishlist`
+              : `Tambah ${item.name} ke Wishlist`
+          }
+        >
+          <Heart
+            className={`h-3.5 w-3.5 transition-colors ${
+              isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
+            }`}
+          />
+        </button>
+
         <Link
           href={`/gadget/${item.id}`}
-          className="flex w-full flex-col gap-1.5"
+          className="flex w-full flex-col gap-1.5 focus:outline-none"
         >
           <div>
             {/* Natural Aspect Ratio Image Box (Dynamic height based on uploaded photo) */}
@@ -333,6 +351,8 @@ export function MobileCatalogView({
                 src={imgSrc}
                 alt={item.name}
                 loading="lazy"
+                width={300}
+                height={300}
                 onError={(e) => {
                   ;(e.currentTarget as HTMLImageElement).src =
                     'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
@@ -347,22 +367,6 @@ export function MobileCatalogView({
                 <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
                 <span>{badge.label}</span>
               </span>
-
-              {/* Wishlist Button (Top Right) */}
-              <button
-                type="button"
-                onClick={(e) => toggleWishlist(item, e)}
-                className="backdrop-blur-xs shadow-2xs absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 transition-transform hover:text-rose-500 active:scale-90 dark:bg-slate-900/90"
-                aria-label="Wishlist"
-              >
-                <Heart
-                  className={`h-3.5 w-3.5 transition-colors ${
-                    isWishlisted
-                      ? 'fill-rose-500 text-rose-500'
-                      : 'text-slate-400'
-                  }`}
-                />
-              </button>
             </div>
 
             {/* Meta Section */}
@@ -504,9 +508,9 @@ export function MobileCatalogView({
       {/* 4. SUMMARY & SORT ROW */}
       <section className="mt-3 flex items-center justify-between px-4">
         <div className="flex items-baseline gap-1">
-          <h2 className="text-sm font-extrabold text-slate-950 dark:text-white">
+          <h1 className="text-sm font-extrabold text-slate-950 dark:text-white">
             Katalog Gadget
-          </h2>
+          </h1>
           <span className="text-xs font-medium text-slate-500">
             ({gadgets.length} Pilihan)
           </span>
@@ -517,6 +521,7 @@ export function MobileCatalogView({
           <CustomSelect
             value={sortBy}
             onChange={(val) => setSortBy(val)}
+            ariaLabel="Urutkan katalog smartphone"
             size="sm"
             icon={<ArrowUpDown className="h-3 w-3 text-slate-400" />}
             options={[

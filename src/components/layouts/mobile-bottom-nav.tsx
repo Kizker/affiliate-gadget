@@ -87,6 +87,7 @@ export function MobileBottomNav({
         {/* 1. Beranda (Katalog Gadget yang kini berfungsi sebagai Beranda utama di mode mobile) */}
         <Link
           href="/gadget"
+          aria-label="Beranda Katalog Gadget"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'beranda'
               ? 'font-bold text-orange-500'
@@ -105,6 +106,7 @@ export function MobileBottomNav({
         {/* 3. Servis */}
         <Link
           href="/servis"
+          aria-label="Layanan Servis Gadget"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'servis'
               ? 'font-bold text-orange-500'
@@ -128,6 +130,7 @@ export function MobileBottomNav({
         {/* 4. Toko */}
         <Link
           href="/toko"
+          aria-label="Daftar Toko Cabang"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'toko'
               ? 'font-bold text-orange-500'
@@ -147,6 +150,7 @@ export function MobileBottomNav({
         {showCartTab && (
           <Link
             href="/cart"
+            aria-label="Keranjang Belanja"
             className={`relative flex flex-col items-center justify-center px-3 py-1 transition-colors ${
               currentTab === 'keranjang'
                 ? 'font-bold text-orange-500'
@@ -173,6 +177,7 @@ export function MobileBottomNav({
         {/* 4 (or 5). Akun Saya / Login */}
         <Link
           href={accountHref}
+          aria-label={accountLabel}
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'akun'
               ? 'font-bold text-orange-500'

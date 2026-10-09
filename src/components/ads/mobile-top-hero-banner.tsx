@@ -50,6 +50,48 @@ export function MobileTopHeroBanner({
   )
   const [currentSlide, setCurrentSlide] = useState(0)
   const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [canLoadVideo, setCanLoadVideo] = useState(false)
+
+  // Defer video playback until user interaction or after initial critical render
+  useEffect(() => {
+    let triggered = false
+    const enableVideo = () => {
+      if (triggered) return
+      triggered = true
+      setCanLoadVideo(true)
+      cleanup()
+    }
+
+    const cleanup = () => {
+      window.removeEventListener('scroll', enableVideo)
+      window.removeEventListener('touchstart', enableVideo)
+      window.removeEventListener('pointerdown', enableVideo)
+      window.removeEventListener('mousemove', enableVideo)
+    }
+
+    window.addEventListener('scroll', enableVideo, {
+      once: true,
+      passive: true,
+    })
+    window.addEventListener('touchstart', enableVideo, {
+      once: true,
+      passive: true,
+    })
+    window.addEventListener('pointerdown', enableVideo, {
+      once: true,
+      passive: true,
+    })
+    window.addEventListener('mousemove', enableVideo, {
+      once: true,
+      passive: true,
+    })
+
+    const timer = setTimeout(enableVideo, 4000)
+    return () => {
+      clearTimeout(timer)
+      cleanup()
+    }
+  }, [])
 
   useEffect(() => {
     let isSubscribed = true
@@ -175,7 +217,18 @@ export function MobileTopHeroBanner({
               : 'pointer-events-none z-0 opacity-0'
           }`}
         >
-          {slide.isVideo && slide.videoUrl ? (
+          {/* Base Poster Layer (Always rendered immediately for instant frame-1 LCP) */}
+          <Image
+            src={slide.image}
+            alt={slide.title}
+            fill
+            sizes="(max-width: 768px) 100vw, 1200px"
+            className="object-cover"
+            priority={idx === 0}
+          />
+
+          {/* Deferred Video Layer: Loaded only on user interaction to prevent critical network saturation */}
+          {slide.isVideo && slide.videoUrl && canLoadVideo && (
             <video
               src={slide.videoUrl}
               autoPlay
@@ -184,17 +237,12 @@ export function MobileTopHeroBanner({
               playsInline
               poster={slide.image}
               preload="none"
+              title={slide.title || 'Video Promo Iklan Toko'}
+              aria-label={slide.title || 'Video Promo Iklan Toko'}
               className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : (
-            <Image
-              src={slide.image}
-              alt={slide.title}
-              fill
-              sizes="(max-width: 768px) 100vw, 1200px"
-              className="object-cover"
-              priority={idx === 0}
-            />
+            >
+              <track kind="captions" src="/captions/live-empty.vtt" />
+            </video>
           )}
 
           {/* Vignette gradients for editorial readability */}

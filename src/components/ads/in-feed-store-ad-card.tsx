@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Store, CheckCircle2, Star, Play } from 'lucide-react'
 
+import { useState, useEffect } from 'react'
+
 import { InFeedAdData, isProductAdData, isVideoAd } from '@/types/ads'
 export type { InFeedAdData }
 export { isProductAdData, isVideoAd }
@@ -19,6 +21,47 @@ export function InFeedStoreAdCard({
   className = '',
 }: InFeedStoreAdCardProps) {
   const router = useRouter()
+  const [canLoadVideo, setCanLoadVideo] = useState(false)
+
+  useEffect(() => {
+    let triggered = false
+    const enableVideo = () => {
+      if (triggered) return
+      triggered = true
+      setCanLoadVideo(true)
+      cleanup()
+    }
+
+    const cleanup = () => {
+      window.removeEventListener('scroll', enableVideo)
+      window.removeEventListener('touchstart', enableVideo)
+      window.removeEventListener('pointerdown', enableVideo)
+      window.removeEventListener('mousemove', enableVideo)
+    }
+
+    window.addEventListener('scroll', enableVideo, {
+      once: true,
+      passive: true,
+    })
+    window.addEventListener('touchstart', enableVideo, {
+      once: true,
+      passive: true,
+    })
+    window.addEventListener('pointerdown', enableVideo, {
+      once: true,
+      passive: true,
+    })
+    window.addEventListener('mousemove', enableVideo, {
+      once: true,
+      passive: true,
+    })
+
+    const timer = setTimeout(enableVideo, 4500)
+    return () => {
+      clearTimeout(timer)
+      cleanup()
+    }
+  }, [])
   const storeSlug = ad.store?.slug
   const destination =
     ad.targetUrl || (storeSlug ? `/toko/${storeSlug}` : '/gadget')
@@ -170,10 +213,23 @@ export function InFeedStoreAdCard({
         href={destination}
         className="absolute inset-0 z-30 block focus:outline-none"
       >
-        <span className="sr-only">Kunjungi {storeCleanName}</span>
+        <span className="sr-only">
+          Kunjungi {storeCleanName || ad.title || 'Affiliate Gadget'}
+        </span>
       </Link>
 
-      {isVideo && videoSrc ? (
+      {/* Base Poster Layer (Always rendered immediately) */}
+      <Image
+        src={bannerImage}
+        alt={ad.title || 'Iklan Toko'}
+        fill
+        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 50vw"
+        className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+        priority={false}
+      />
+
+      {/* Deferred Video Layer: Loaded only on user interaction */}
+      {isVideo && videoSrc && canLoadVideo && (
         <video
           src={videoSrc}
           autoPlay
@@ -182,17 +238,12 @@ export function InFeedStoreAdCard({
           playsInline
           poster={bannerImage}
           preload="none"
+          title={ad.title || 'Video Promo Iklan Toko'}
+          aria-label={ad.title || 'Video Promo Iklan Toko'}
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-        />
-      ) : (
-        <Image
-          src={bannerImage}
-          alt={ad.title}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 50vw"
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-          priority={false}
-        />
+        >
+          <track kind="captions" src="/captions/live-empty.vtt" />
+        </video>
       )}
 
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/35" />
