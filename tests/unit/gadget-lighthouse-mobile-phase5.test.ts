@@ -79,12 +79,27 @@ describe('Gadget Catalog Phase 5 Mobile Lighthouse 90+ Suite', () => {
     // Desktop navbar & footer static SSR import for 0 CLS and instant FCP
     expect(pageContent).toContain('import { Navbar, Footer, MobileBottomNav }')
 
-    // Brand filter WCAG accessibility
+    // Scoped mobile media preload to recover mobile 96+ without desktop unused penalty
+    expect(pageContent).toContain('rel="preload"')
+    expect(pageContent).toContain('media="(max-width: 768px)"')
+    expect(pageContent).toContain('1790671997412-zuzb6l-poster.webp')
+
+    // Brand filter and load more WCAG accessibility
     const catalogPath = path.join(
       process.cwd(),
       'src/components/gadget/mobile-catalog-view.tsx'
     )
     const catalogContent = fs.readFileSync(catalogPath, 'utf-8')
     expect(catalogContent).toContain('aria-pressed={isSelected}')
+    expect(catalogContent).toContain('aria-label="Muat Lebih Banyak Gadget"')
+
+    // Hero banner slide WCAG button role and keyboard interaction
+    const heroBannerPath = path.join(
+      process.cwd(),
+      'src/components/ads/mobile-top-hero-banner.tsx'
+    )
+    const heroBannerContent = fs.readFileSync(heroBannerPath, 'utf-8')
+    expect(heroBannerContent).toContain('role="button"')
+    expect(heroBannerContent).toContain('tabIndex={0}')
   })
 })

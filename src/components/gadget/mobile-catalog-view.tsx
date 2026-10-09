@@ -625,6 +625,7 @@ export function MobileCatalogView({
                   <button
                     type="button"
                     onClick={loadMore}
+                    aria-label="Muat Lebih Banyak Gadget"
                     className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
                   >
                     <span>Muat Lebih Banyak</span>

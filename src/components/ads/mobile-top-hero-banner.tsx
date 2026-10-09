@@ -244,6 +244,15 @@ export function MobileTopHeroBanner({
       {slides.map((slide, idx) => (
         <div
           key={slide.id}
+          role="button"
+          tabIndex={0}
+          aria-label={slide.title || 'Promo Banner Toko'}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              handleSlideClick(slide)
+            }
+          }}
           onClick={() => handleSlideClick(slide)}
           className={`absolute inset-0 cursor-pointer transition-opacity duration-700 ease-in-out ${
             idx === currentSlide

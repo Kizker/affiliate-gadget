@@ -708,41 +708,51 @@ function GadgetKatalogContent() {
 
 export default function GadgetKatalogPage() {
   return (
-    <Suspense
-      fallback={
-        <>
-          {/* Mobile Shell Fallback (Instant SSR HTML for Frame-1 LCP without spinner delay) */}
-          <div className="block md:hidden">
-            <MobileCatalogView
-              gadgets={INITIAL_CATALOG_GADGETS}
-              loading={false}
-              brand="ALL"
-              setBrand={() => {}}
-              search=""
-              setSearch={() => {}}
-              sortBy="RELEVANCE"
-              setSortBy={() => {}}
-              session={null}
-              status="unauthenticated"
-              promotedAd={null}
-              promotedAds={[]}
-              liveStreams={[]}
-            />
-            <MobileBottomNav activeTab="beranda" />
-          </div>
-
-          {/* Desktop Shell Fallback */}
-          <div className="hidden min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex">
-            <Navbar variant="light" />
-            <div className="flex flex-1 items-center justify-center pt-28">
-              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+    <>
+      {/* High-priority media-scoped preload for instant Mobile Frame-1 LCP without desktop unused penalty */}
+      <link
+        rel="preload"
+        as="image"
+        href="/uploads/ads/1790671997412-zuzb6l-poster.webp"
+        media="(max-width: 768px)"
+        {...({ fetchpriority: 'high' } as Record<string, string>)}
+      />
+      <Suspense
+        fallback={
+          <>
+            {/* Mobile Shell Fallback (Instant SSR HTML for Frame-1 LCP without spinner delay) */}
+            <div className="block md:hidden">
+              <MobileCatalogView
+                gadgets={INITIAL_CATALOG_GADGETS}
+                loading={false}
+                brand="ALL"
+                setBrand={() => {}}
+                search=""
+                setSearch={() => {}}
+                sortBy="RELEVANCE"
+                setSortBy={() => {}}
+                session={null}
+                status="unauthenticated"
+                promotedAd={null}
+                promotedAds={[]}
+                liveStreams={[]}
+              />
+              <MobileBottomNav activeTab="beranda" />
             </div>
-            <Footer variant="light" />
-          </div>
-        </>
-      }
-    >
-      <GadgetKatalogContent />
-    </Suspense>
+
+            {/* Desktop Shell Fallback */}
+            <div className="hidden min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex">
+              <Navbar variant="light" />
+              <div className="mx-auto w-full max-w-7xl px-2.5 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-28 lg:px-8">
+                <div className="h-10 w-full animate-pulse rounded-2xl bg-slate-200/60 dark:bg-slate-800/60" />
+              </div>
+              <Footer variant="light" />
+            </div>
+          </>
+        }
+      >
+        <GadgetKatalogContent />
+      </Suspense>
+    </>
   )
 }
