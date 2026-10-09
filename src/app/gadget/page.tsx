@@ -562,8 +562,8 @@ function GadgetKatalogContent() {
                             <div className="space-y-1.5 px-0.5 sm:space-y-2">
                               {/* Store & Semantic Stock Row */}
                               <div className="flex items-center justify-between gap-1 text-[10px] sm:text-xs">
-                                <div className="flex min-w-0 items-center gap-1 truncate font-medium text-slate-400">
-                                  <Store className="h-2.5 w-2.5 shrink-0 text-slate-400 sm:h-3 sm:w-3" />
+                                <div className="flex min-w-0 items-center gap-1 truncate font-medium text-slate-600 dark:text-slate-400">
+                                  <Store className="h-2.5 w-2.5 shrink-0 text-slate-500 sm:h-3 sm:w-3" />
                                   <span className="truncate text-[10px] sm:text-[11px]">
                                     {item.store
                                       ? item.store.name
@@ -574,7 +574,7 @@ function GadgetKatalogContent() {
                                 {/* Semantic Stock Pill */}
                                 <div className="shrink-0">
                                   {totalStock > 5 ? (
-                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:gap-1 sm:text-[10px]">
+                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:gap-1 sm:text-[10px]">
                                       <Package className="hidden h-2.5 w-2.5 text-slate-500 sm:inline" />
                                       <span>{totalStock} Unit</span>
                                     </span>
@@ -602,7 +602,7 @@ function GadgetKatalogContent() {
                                 </span>
 
                                 {item.variants && item.variants.length > 1 && (
-                                  <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 dark:bg-slate-800 sm:text-[10px]">
+                                  <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-700 dark:bg-slate-800 sm:text-[10px]">
                                     {item.variants.length} Varian
                                   </span>
                                 )}
@@ -612,7 +612,7 @@ function GadgetKatalogContent() {
                               <div className="flex items-center justify-between gap-1 pt-0.5 text-[10px] sm:text-[11px]">
                                 {item.originalPrice &&
                                 item.originalPrice > item.price ? (
-                                  <span className="whitespace-nowrap font-normal tabular-nums text-slate-400 line-through">
+                                  <span className="whitespace-nowrap font-normal tabular-nums text-slate-500 line-through">
                                     Rp{' '}
                                     {item.originalPrice.toLocaleString('id-ID')}
                                   </span>

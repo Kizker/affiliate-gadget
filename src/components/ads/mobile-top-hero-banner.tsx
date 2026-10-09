@@ -239,7 +239,7 @@ export function MobileTopHeroBanner({
           key={slide.id}
           role="button"
           tabIndex={0}
-          aria-label={`${slide.storeName || 'Affiliate Gadget'} - ${slide.title}`}
+          aria-label={`Advertisement - ${slide.storeName || 'Affiliate Gadget'} - ${slide.title}`}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
