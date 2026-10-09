@@ -135,7 +135,7 @@ function ProductCatalogMiniCard({ item }: { item: any }) {
             <span className="text-[10.5px] font-extrabold text-slate-900 dark:text-white">
               {(item.rating || 5.0).toFixed(1)}
             </span>
-            <span className="text-[9.5px] font-medium text-slate-400">
+            <span className="text-[9.5px] font-medium text-slate-500">
               ({item.totalReview ?? item.reviewCount ?? 0})
             </span>
           </div>
@@ -161,7 +161,7 @@ function ProductCatalogMiniCard({ item }: { item: any }) {
               Rp {(item.price || 0).toLocaleString('id-ID')}
             </span>
             {strikePrice > (item.price || 0) && (
-              <span className="mt-0.5 block text-[9.5px] leading-none text-slate-400 line-through">
+              <span className="mt-0.5 block text-[9.5px] leading-none text-slate-500 line-through">
                 Rp {strikePrice.toLocaleString('id-ID')}
               </span>
             )}
@@ -169,7 +169,7 @@ function ProductCatalogMiniCard({ item }: { item: any }) {
 
           {/* Store Location */}
           <div className="flex items-center gap-1 truncate pt-0.5 text-[9.5px] text-slate-500 dark:text-slate-400">
-            <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+            <Store className="h-2.5 w-2.5 shrink-0 text-slate-500" />
             <span className="truncate">{storeCleanName}</span>
           </div>
         </div>
@@ -519,9 +519,9 @@ export function ShopeeMobileProductDetail({
               isScrolled ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
           >
-            <h2 className="truncate text-xs font-bold text-slate-900 dark:text-white">
+            <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
               {product.name}
-            </h2>
+            </p>
           </div>
 
           {/* Right Action Icons: Wishlist, Cart & Share */}
@@ -631,6 +631,8 @@ export function ShopeeMobileProductDetail({
                       alt={`${product.name} - ${idx + 1}`}
                       fill
                       priority={idx === 0}
+                      fetchPriority={idx === 0 ? 'high' : undefined}
+                      sizes="(max-width: 640px) 100vw, 400px"
                       className="object-cover transition-all duration-300"
                     />
                   )}
@@ -733,6 +735,7 @@ export function ShopeeMobileProductDetail({
         <h1 className="text-sm font-bold leading-snug text-slate-950 dark:text-white">
           {product.name}
         </h1>
+        <h2 className="sr-only">Informasi dan Spesifikasi Lengkap Gadget</h2>
 
         {/* Price Row */}
         <div className="flex items-baseline justify-between gap-2 pt-0.5">
@@ -743,7 +746,7 @@ export function ShopeeMobileProductDetail({
 
             {product.originalPrice && product.originalPrice > currentPrice && (
               <div className="flex items-center gap-1">
-                <span className="text-[11px] font-normal tabular-nums text-slate-400 line-through">
+                <span className="text-[11px] font-normal tabular-nums text-slate-500 line-through">
                   Rp {product.originalPrice.toLocaleString('id-ID')}
                 </span>
                 <span className="rounded-md border border-rose-200/60 bg-rose-50 px-1 py-0.5 text-[9px] font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
@@ -857,7 +860,7 @@ export function ShopeeMobileProductDetail({
           <span className="text-xs font-bold text-slate-900 dark:text-white">
             Jumlah Pesanan
           </span>
-          <p className="text-[10px] text-slate-400">
+          <p className="text-[10px] text-slate-500">
             Maksimal pembelian {availableStock} unit
           </p>
         </div>
@@ -963,16 +966,16 @@ export function ShopeeMobileProductDetail({
               )}
 
               <div className="min-w-0">
-                <h3 className="truncate text-xs font-bold text-slate-950 dark:text-white">
+                <p className="truncate text-xs font-bold text-slate-950 dark:text-white">
                   {product.store.name}
-                </h3>
+                </p>
                 {product.store.companyName && (
-                  <p className="truncate text-[10px] text-slate-400">
+                  <p className="truncate text-[10px] text-slate-500">
                     {product.store.companyName}
                   </p>
                 )}
                 <div className="flex items-center gap-1 text-[9.5px] text-slate-500">
-                  <MapPin className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+                  <MapPin className="h-2.5 w-2.5 shrink-0 text-slate-500" />
                   <span className="truncate">{product.store.city}</span>
                 </div>
               </div>
@@ -995,13 +998,13 @@ export function ShopeeMobileProductDetail({
                   otherStoreProducts.length ||
                   1}
               </p>
-              <p className="text-[9.5px] text-slate-400">Katalog Tersedia</p>
+              <p className="text-[9.5px] text-slate-500">Katalog Tersedia</p>
             </div>
             <div>
               <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                 Terverifikasi
               </p>
-              <p className="text-[9.5px] text-slate-400">Toko Fisik Resmi</p>
+              <p className="text-[9.5px] text-slate-500">Toko Fisik Resmi</p>
             </div>
           </div>
         </div>
@@ -1011,7 +1014,7 @@ export function ShopeeMobileProductDetail({
       {otherStoreProducts.length > 0 && (
         <div className="mt-1.5 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
           <div className="mb-2.5 flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Unit Lain di Toko Ini
             </h3>
             <Link
@@ -1038,7 +1041,7 @@ export function ShopeeMobileProductDetail({
           onClick={() => setIsSpecsExpanded(!isSpecsExpanded)}
           className="flex w-full items-center justify-between text-left"
         >
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Spesifikasi Detail
           </h3>
           <div className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
@@ -1056,13 +1059,13 @@ export function ShopeeMobileProductDetail({
         {isSpecsExpanded && (
           <div className="mt-2.5 space-y-1.5 border-t border-slate-100 pt-2.5 text-xs dark:border-slate-800">
             <div className="flex justify-between border-b border-slate-50 py-1 dark:border-slate-800/60">
-              <span className="text-slate-400">Merek</span>
+              <span className="text-slate-500">Merek</span>
               <span className="font-bold text-slate-900 dark:text-white">
                 {product.brand || '-'}
               </span>
             </div>
             <div className="flex justify-between border-b border-slate-50 py-1 dark:border-slate-800/60">
-              <span className="text-slate-400">Kapasitas Storage</span>
+              <span className="text-slate-500">Kapasitas Storage</span>
               <span className="font-bold text-slate-900 dark:text-white">
                 {selectedVariant?.storage ||
                   (product.specs as any)?.['Storage'] ||
@@ -1070,25 +1073,25 @@ export function ShopeeMobileProductDetail({
               </span>
             </div>
             <div className="flex justify-between border-b border-slate-50 py-1 dark:border-slate-800/60">
-              <span className="text-slate-400">Kapasitas RAM</span>
+              <span className="text-slate-500">Kapasitas RAM</span>
               <span className="font-bold text-slate-900 dark:text-white">
                 {selectedVariant?.ram || (product.specs as any)?.['RAM'] || '-'}
               </span>
             </div>
             <div className="flex justify-between border-b border-slate-50 py-1 dark:border-slate-800/60">
-              <span className="text-slate-400">Kondisi Fisik</span>
+              <span className="text-slate-500">Kondisi Fisik</span>
               <span className="font-bold text-slate-900 dark:text-white">
                 {conditionLabel}
               </span>
             </div>
             <div className="flex justify-between border-b border-slate-50 py-1 dark:border-slate-800/60">
-              <span className="text-slate-400">Garansi Toko</span>
+              <span className="text-slate-500">Garansi Toko</span>
               <span className="font-bold text-emerald-600 dark:text-emerald-400">
                 {product.warrantyDays || 30} Hari Tukar Unit
               </span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-slate-400">Asal Pengiriman</span>
+              <span className="text-slate-500">Asal Pengiriman</span>
               <span className="font-bold text-slate-900 dark:text-white">
                 {product.store?.city || 'Indonesia'}
               </span>
@@ -1107,7 +1110,7 @@ export function ShopeeMobileProductDetail({
 
         return (
           <div className="mt-1.5 border-y border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
+            <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
               Deskripsi & Catatan Unit
             </h3>
             <div
@@ -1156,7 +1159,7 @@ export function ShopeeMobileProductDetail({
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Rekomendasi Gadget Lainnya
             </h3>
-            <span className="text-[10px] font-semibold text-slate-400">
+            <span className="text-[10px] font-semibold text-slate-500">
               {relatedProducts.length} Pilihan
             </span>
           </div>
@@ -1185,7 +1188,7 @@ export function ShopeeMobileProductDetail({
                   className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
                 >
                   <span>Muat Rekomendasi Lainnya</span>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-slate-500">
                     ({recommendationsCount} / {relatedProducts.length})
                   </span>
                 </button>
@@ -1225,6 +1228,7 @@ export function ShopeeMobileProductDetail({
           <button
             type="button"
             onClick={handleChatStore}
+            aria-label="Chat Toko"
             className="flex flex-col items-center justify-center px-2.5 text-slate-600 transition hover:text-slate-950 active:scale-95 dark:text-slate-400 dark:hover:text-white"
           >
             <MessageSquare className="h-5 w-5 text-slate-600 dark:text-slate-300" />
@@ -1260,6 +1264,7 @@ export function ShopeeMobileProductDetail({
             type="button"
             onClick={handleAddToCart}
             disabled={isOutOfStock}
+            aria-label="Tambah ke Keranjang"
             className="relative flex flex-col items-center justify-center px-3 text-slate-600 transition hover:text-slate-950 active:scale-95 disabled:opacity-40 dark:text-slate-400 dark:hover:text-white"
           >
             <ShoppingBag className="h-5 w-5 text-slate-600 dark:text-slate-300" />
@@ -1278,6 +1283,7 @@ export function ShopeeMobileProductDetail({
             type="button"
             onClick={handleBuyNow}
             disabled={isOutOfStock}
+            aria-label="Beli Sekarang"
             className="ml-2 flex h-11 flex-1 items-center justify-center rounded-2xl bg-orange-500 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800"
           >
             {isOutOfStock ? 'Stok Habis' : 'Beli Sekarang'}

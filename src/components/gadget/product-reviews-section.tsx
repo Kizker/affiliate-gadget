@@ -139,10 +139,49 @@ export function ProductReviewsSection({
 
   const [helpfulVotes, setHelpfulVotes] = useState<Record<string, number>>({})
   const [votedReviews, setVotedReviews] = useState<Record<string, boolean>>({})
+  const [shouldFetchReviews, setShouldFetchReviews] = useState(false)
+
+  // Defer review fetching to user interaction or timeout to eliminate bandwidth competition on initial LCP
+  useEffect(() => {
+    if (
+      selectedRating !== null ||
+      hasMediaOnly ||
+      sortBy !== 'newest' ||
+      page > 1
+    ) {
+      setShouldFetchReviews(true)
+      return
+    }
+
+    const enableFetch = () => {
+      setShouldFetchReviews(true)
+    }
+
+    const events = ['scroll', 'touchstart', 'pointerdown', 'keydown']
+    events.forEach((ev) =>
+      window.addEventListener(ev, enableFetch, { passive: true, once: true })
+    )
+
+    const timer = setTimeout(enableFetch, 2500)
+
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, enableFetch))
+      clearTimeout(timer)
+    }
+  }, [selectedRating, hasMediaOnly, sortBy, page])
 
   useEffect(() => {
-    fetchReviews()
-  }, [productId, selectedRating, hasMediaOnly, sortBy, page])
+    if (shouldFetchReviews) {
+      fetchReviews()
+    }
+  }, [
+    productId,
+    selectedRating,
+    hasMediaOnly,
+    sortBy,
+    page,
+    shouldFetchReviews,
+  ])
 
   const fetchReviews = async () => {
     setLoading(true)
@@ -310,7 +349,7 @@ export function ProductReviewsSection({
               <span className="text-5xl font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-6xl">
                 {statistics.averageRating.toFixed(1)}
               </span>
-              <span className="text-base font-bold text-slate-400">/ 5.0</span>
+              <span className="text-base font-bold text-slate-500">/ 5.0</span>
             </div>
 
             <div className="flex items-center gap-1.5 text-amber-400">
@@ -383,7 +422,7 @@ export function ProductReviewsSection({
                     />
                   </div>
 
-                  <span className="w-10 shrink-0 text-right font-mono text-[11px] font-semibold tabular-nums text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200">
+                  <span className="w-10 shrink-0 text-right font-mono text-[11px] font-semibold tabular-nums text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-200">
                     {count}
                   </span>
                 </button>
@@ -410,7 +449,7 @@ export function ProductReviewsSection({
                 className={`cursor-pointer text-[11px] font-bold transition ${
                   hasMediaOnly
                     ? 'text-orange-600'
-                    : 'text-slate-400 hover:text-slate-600'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 {hasMediaOnly
@@ -549,7 +588,7 @@ export function ProductReviewsSection({
         {loading ? (
           <div className="shadow-xs rounded-3xl border border-slate-200/80 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
             <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-orange-500" />
-            <p className="text-xs font-medium text-slate-400">
+            <p className="text-xs font-medium text-slate-500">
               Memuat ulasan pembeli...
             </p>
           </div>
@@ -558,11 +597,11 @@ export function ProductReviewsSection({
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 dark:bg-orange-950/40">
               <MessageSquare className="h-6 w-6" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               {selectedRating !== null || hasMediaOnly
                 ? 'Belum Ada Ulasan untuk Filter Ini'
                 : 'Belum Ada Ulasan'}
-            </h4>
+            </h3>
             {userEligibility.canReview && (
               <>
                 <p className="mx-auto max-w-sm text-xs text-slate-500">
@@ -653,16 +692,16 @@ export function ProductReviewsSection({
 
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                          <h3 className="text-xs font-bold text-slate-900 dark:text-white">
                             {maskName(review.user?.name)}
-                          </h4>
+                          </h3>
                           <span className="py-0.2 inline-flex items-center gap-1 rounded-full border border-emerald-200/50 bg-emerald-50 px-2 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                             <CheckCircle2 className="h-3 w-3 text-emerald-600" />
                             <span>Pembeli Terverifikasi</span>
                           </span>
                         </div>
 
-                        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-400">
+                        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500">
                           <span>{formattedDate}</span>
                           {review.variantName && (
                             <>
@@ -692,7 +731,7 @@ export function ProductReviewsSection({
                       </div>
 
                       {review.order?.courierCode && (
-                        <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-400">
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
                           <Truck className="h-3 w-3 text-orange-500" />
                           <span>
                             {review.order.courierCode}{' '}
