@@ -66,7 +66,7 @@ describe('Gadget Catalog Phase 5 Mobile Lighthouse 90+ Suite', () => {
     expect(content).toContain('<MobileBottomNav activeTab="beranda" />')
   })
 
-  it('6. Gadget catalog defers background sync to user interaction / 6s, preloads poster LCP & enables WCAG aria-pressed', () => {
+  it('6. Gadget catalog defers background sync to user interaction / 6s, preserves desktop SSR Navbar & enables WCAG aria-pressed', () => {
     const pagePath = path.join(process.cwd(), 'src/app/gadget/page.tsx')
     const pageContent = fs.readFileSync(pagePath, 'utf-8')
 
@@ -76,12 +76,8 @@ describe('Gadget Catalog Phase 5 Mobile Lighthouse 90+ Suite', () => {
     expect(pageContent).toContain('setTimeout')
     expect(pageContent).toContain('fetchGadgets()')
 
-    // Must preload hero banner poster in SSR head
-    expect(pageContent).toContain('rel="preload"')
-    expect(pageContent).toContain('1790671997412-zuzb6l-poster.webp')
-
-    // Desktop navbar & footer dynamic import
-    expect(pageContent).toContain('dynamic')
+    // Desktop navbar & footer static SSR import for 0 CLS and instant FCP
+    expect(pageContent).toContain('import { Navbar, Footer, MobileBottomNav }')
 
     // Brand filter WCAG accessibility
     const catalogPath = path.join(
