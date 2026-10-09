@@ -495,6 +495,8 @@ export function MobileCatalogView({
                 key={b}
                 type="button"
                 onClick={() => setBrand(b)}
+                aria-pressed={isSelected}
+                aria-label={`Filter merek ${b === 'ALL' ? 'Semua Merek' : b}`}
                 className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
                   isSelected
                     ? 'shadow-xs bg-slate-950 text-white dark:bg-white dark:text-slate-950'

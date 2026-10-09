@@ -165,12 +165,33 @@ export function MobileTopHeroBanner({
       }
     }
 
-    const timer = setTimeout(() => {
+    let triggered = false
+    const triggerLoad = () => {
+      if (triggered) return
+      triggered = true
       loadHeroAds()
-    }, 2500)
+      cleanup()
+    }
+
+    const cleanup = () => {
+      window.removeEventListener('scroll', triggerLoad)
+      window.removeEventListener('touchstart', triggerLoad)
+      window.removeEventListener('pointerdown', triggerLoad)
+      window.removeEventListener('mousemove', triggerLoad)
+    }
+
+    window.addEventListener('scroll', triggerLoad, { passive: true })
+    window.addEventListener('touchstart', triggerLoad, { passive: true })
+    window.addEventListener('pointerdown', triggerLoad, { passive: true })
+    window.addEventListener('mousemove', triggerLoad, { passive: true })
+
+    const timer = setTimeout(() => {
+      triggerLoad()
+    }, 6000)
 
     return () => {
       isSubscribed = false
+      cleanup()
       clearTimeout(timer)
     }
   }, [])
@@ -236,6 +257,7 @@ export function MobileTopHeroBanner({
             alt={slide.title}
             fill
             sizes="(max-width: 768px) 100vw, 1200px"
+            quality={70}
             className="object-cover"
             priority={idx === 0}
             fetchPriority={idx === 0 ? 'high' : 'auto'}

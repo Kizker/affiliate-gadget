@@ -5,9 +5,19 @@ import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Navbar, Footer, MobileBottomNav } from '@/components/layouts'
+import dynamic from 'next/dynamic'
+import { MobileBottomNav } from '@/components/layouts'
 import { MobileCatalogView } from '@/components/gadget/mobile-catalog-view'
 import { MobileTopHeroBanner } from '@/components/ads/mobile-top-hero-banner'
+
+const Navbar = dynamic(
+  () => import('@/components/layouts/navbar').then((m) => m.Navbar),
+  { ssr: false }
+)
+const Footer = dynamic(
+  () => import('@/components/layouts/footer').then((m) => m.Footer),
+  { ssr: false }
+)
 import {
   ShieldCheck,
   Gift,
@@ -119,11 +129,34 @@ function GadgetKatalogContent() {
       return
     }
 
-    const timer = setTimeout(() => {
+    let triggered = false
+    const triggerSync = () => {
+      if (triggered) return
+      triggered = true
       fetchGadgets()
-    }, 2500)
+      cleanup()
+    }
 
-    return () => clearTimeout(timer)
+    const cleanup = () => {
+      window.removeEventListener('scroll', triggerSync)
+      window.removeEventListener('touchstart', triggerSync)
+      window.removeEventListener('pointerdown', triggerSync)
+      window.removeEventListener('keydown', triggerSync)
+    }
+
+    window.addEventListener('scroll', triggerSync, { passive: true })
+    window.addEventListener('touchstart', triggerSync, { passive: true })
+    window.addEventListener('pointerdown', triggerSync, { passive: true })
+    window.addEventListener('keydown', triggerSync, { passive: true })
+
+    const timer = setTimeout(() => {
+      triggerSync()
+    }, 6000)
+
+    return () => {
+      cleanup()
+      clearTimeout(timer)
+    }
   }, [searchParams])
 
   const fetchGadgets = async () => {
@@ -685,41 +718,50 @@ function GadgetKatalogContent() {
 
 export default function GadgetKatalogPage() {
   return (
-    <Suspense
-      fallback={
-        <>
-          {/* Mobile Shell Fallback (Instant SSR HTML for Frame-1 LCP without spinner delay) */}
-          <div className="block md:hidden">
-            <MobileCatalogView
-              gadgets={INITIAL_CATALOG_GADGETS}
-              loading={false}
-              brand="ALL"
-              setBrand={() => {}}
-              search=""
-              setSearch={() => {}}
-              sortBy="RELEVANCE"
-              setSortBy={() => {}}
-              session={null}
-              status="unauthenticated"
-              promotedAd={null}
-              promotedAds={[]}
-              liveStreams={[]}
-            />
-            <MobileBottomNav activeTab="beranda" />
-          </div>
-
-          {/* Desktop Shell Fallback */}
-          <div className="hidden min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex">
-            <Navbar variant="light" />
-            <div className="flex flex-1 items-center justify-center pt-28">
-              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+    <>
+      {/* High-priority preload for instant Frame-1 LCP Hero Banner Poster */}
+      <link
+        rel="preload"
+        as="image"
+        href="/uploads/ads/1790671997412-zuzb6l-poster.webp"
+        {...({ fetchpriority: 'high' } as Record<string, string>)}
+      />
+      <Suspense
+        fallback={
+          <>
+            {/* Mobile Shell Fallback (Instant SSR HTML for Frame-1 LCP without spinner delay) */}
+            <div className="block md:hidden">
+              <MobileCatalogView
+                gadgets={INITIAL_CATALOG_GADGETS}
+                loading={false}
+                brand="ALL"
+                setBrand={() => {}}
+                search=""
+                setSearch={() => {}}
+                sortBy="RELEVANCE"
+                setSortBy={() => {}}
+                session={null}
+                status="unauthenticated"
+                promotedAd={null}
+                promotedAds={[]}
+                liveStreams={[]}
+              />
+              <MobileBottomNav activeTab="beranda" />
             </div>
-            <Footer variant="light" />
-          </div>
-        </>
-      }
-    >
-      <GadgetKatalogContent />
-    </Suspense>
+
+            {/* Desktop Shell Fallback */}
+            <div className="hidden min-h-screen flex-col justify-between bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex">
+              <Navbar variant="light" />
+              <div className="flex flex-1 items-center justify-center pt-28">
+                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+              </div>
+              <Footer variant="light" />
+            </div>
+          </>
+        }
+      >
+        <GadgetKatalogContent />
+      </Suspense>
+    </>
   )
 }

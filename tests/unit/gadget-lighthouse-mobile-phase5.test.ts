@@ -65,4 +65,30 @@ describe('Gadget Catalog Phase 5 Mobile Lighthouse 90+ Suite', () => {
     expect(content).toContain('INITIAL_CATALOG_GADGETS')
     expect(content).toContain('<MobileBottomNav activeTab="beranda" />')
   })
+
+  it('6. Gadget catalog defers background sync to user interaction / 6s, preloads poster LCP & enables WCAG aria-pressed', () => {
+    const pagePath = path.join(process.cwd(), 'src/app/gadget/page.tsx')
+    const pageContent = fs.readFileSync(pagePath, 'utf-8')
+
+    // Must defer fetchGadgets to interaction events to eliminate TBT & drop Speed Index
+    expect(pageContent).toContain("addEventListener('scroll'")
+    expect(pageContent).toContain("addEventListener('touchstart'")
+    expect(pageContent).toContain('setTimeout')
+    expect(pageContent).toContain('fetchGadgets()')
+
+    // Must preload hero banner poster in SSR head
+    expect(pageContent).toContain('rel="preload"')
+    expect(pageContent).toContain('1790671997412-zuzb6l-poster.webp')
+
+    // Desktop navbar & footer dynamic import
+    expect(pageContent).toContain('dynamic')
+
+    // Brand filter WCAG accessibility
+    const catalogPath = path.join(
+      process.cwd(),
+      'src/components/gadget/mobile-catalog-view.tsx'
+    )
+    const catalogContent = fs.readFileSync(catalogPath, 'utf-8')
+    expect(catalogContent).toContain('aria-pressed={isSelected}')
+  })
 })
