@@ -36,7 +36,6 @@ export function InFeedStoreAdCard({
       window.removeEventListener('scroll', enableVideo)
       window.removeEventListener('touchstart', enableVideo)
       window.removeEventListener('pointerdown', enableVideo)
-      window.removeEventListener('mousemove', enableVideo)
     }
 
     window.addEventListener('scroll', enableVideo, {
@@ -48,10 +47,6 @@ export function InFeedStoreAdCard({
       passive: true,
     })
     window.addEventListener('pointerdown', enableVideo, {
-      once: true,
-      passive: true,
-    })
-    window.addEventListener('mousemove', enableVideo, {
       once: true,
       passive: true,
     })

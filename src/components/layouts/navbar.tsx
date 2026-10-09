@@ -169,7 +169,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
           <Link
             href="/"
             className="group flex shrink-0 items-center gap-2 focus:outline-none sm:gap-2.5"
-            aria-label="Affiliate Gadget Beranda"
+            aria-label="AffiliateGadget Beranda"
           >
             <img
               src="/logo.webp"

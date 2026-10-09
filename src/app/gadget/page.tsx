@@ -474,6 +474,10 @@ function GadgetKatalogContent() {
                     </div>
                   )}
 
+                  {/* Semantic H2 heading for proper WCAG heading order (H1 -> H2 -> H3) */}
+                  <h2 className="sr-only">
+                    Daftar Pilihan Produk Smartphone dan Gadget
+                  </h2>
                   <div
                     id="desktop-catalog-grid"
                     className="grid scroll-mt-28 grid-cols-2 items-stretch gap-2 sm:gap-4 lg:grid-cols-4"
@@ -709,12 +713,11 @@ function GadgetKatalogContent() {
 export default function GadgetKatalogPage() {
   return (
     <>
-      {/* High-priority media-scoped preload for instant Mobile Frame-1 LCP without desktop unused penalty */}
+      {/* High-priority preload for instant Frame-1 LCP Hero Banner Poster */}
       <link
         rel="preload"
         as="image"
         href="/uploads/ads/1790671997412-zuzb6l-poster.webp"
-        media="(max-width: 768px)"
         {...({ fetchpriority: 'high' } as Record<string, string>)}
       />
       <Suspense

@@ -68,7 +68,6 @@ export function MobileTopHeroBanner({
       window.removeEventListener('scroll', enableVideo)
       window.removeEventListener('touchstart', enableVideo)
       window.removeEventListener('pointerdown', enableVideo)
-      window.removeEventListener('mousemove', enableVideo)
     }
 
     window.addEventListener('scroll', enableVideo, {
@@ -80,10 +79,6 @@ export function MobileTopHeroBanner({
       passive: true,
     })
     window.addEventListener('pointerdown', enableVideo, {
-      once: true,
-      passive: true,
-    })
-    window.addEventListener('mousemove', enableVideo, {
       once: true,
       passive: true,
     })
@@ -177,13 +172,11 @@ export function MobileTopHeroBanner({
       window.removeEventListener('scroll', triggerLoad)
       window.removeEventListener('touchstart', triggerLoad)
       window.removeEventListener('pointerdown', triggerLoad)
-      window.removeEventListener('mousemove', triggerLoad)
     }
 
     window.addEventListener('scroll', triggerLoad, { passive: true })
     window.addEventListener('touchstart', triggerLoad, { passive: true })
     window.addEventListener('pointerdown', triggerLoad, { passive: true })
-    window.addEventListener('mousemove', triggerLoad, { passive: true })
 
     const timer = setTimeout(() => {
       triggerLoad()
@@ -246,7 +239,7 @@ export function MobileTopHeroBanner({
           key={slide.id}
           role="button"
           tabIndex={0}
-          aria-label={slide.title || 'Promo Banner Toko'}
+          aria-label={`${slide.storeName || 'Affiliate Gadget'} - ${slide.title}`}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
@@ -263,10 +256,11 @@ export function MobileTopHeroBanner({
           {/* Base Poster Layer (Always rendered immediately for instant frame-1 LCP) */}
           <Image
             src={slide.image}
-            alt={slide.title}
+            alt={`${slide.storeName || 'Affiliate Gadget'} - ${slide.title}`}
             fill
             sizes="(max-width: 768px) 100vw, 1200px"
             quality={70}
+            unoptimized={slide.image.endsWith('.webp')}
             className="object-cover"
             priority={idx === 0}
             fetchPriority={idx === 0 ? 'high' : 'auto'}

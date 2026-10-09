@@ -50,9 +50,9 @@ export function Footer({ variant = 'light', className = '' }: FooterProps) {
           <div className="flex flex-wrap gap-12 sm:flex-nowrap sm:gap-20 md:gap-28 lg:gap-32">
             {/* Quick Links */}
             <div>
-              <h5 className="mb-3 font-bold text-slate-950 dark:text-white">
+              <h3 className="mb-3 font-bold text-slate-950 dark:text-white">
                 Menu Utama
-              </h5>
+              </h3>
               <ul className="space-y-2 text-slate-500 dark:text-slate-400">
                 <li>
                   <Link
@@ -107,9 +107,9 @@ export function Footer({ variant = 'light', className = '' }: FooterProps) {
 
             {/* Categories */}
             <div>
-              <h5 className="mb-3 font-bold text-slate-950 dark:text-white">
+              <h3 className="mb-3 font-bold text-slate-950 dark:text-white">
                 Merek Populer
-              </h5>
+              </h3>
               <ul className="space-y-2 text-slate-500 dark:text-slate-400">
                 <li>
                   <Link
@@ -149,7 +149,7 @@ export function Footer({ variant = 'light', className = '' }: FooterProps) {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-6 text-[11px] text-slate-400 dark:border-slate-800/80 sm:flex-row">
+        <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-6 text-[11px] text-slate-600 dark:border-slate-800/80 dark:text-slate-400 sm:flex-row">
           <p suppressHydrationWarning>
             © {new Date().getFullYear()} Affiliate Gadget. All rights reserved.
             Platform Marketplace Gadget Terpercaya Indonesia.
@@ -157,13 +157,13 @@ export function Footer({ variant = 'light', className = '' }: FooterProps) {
           <div className="flex items-center gap-4">
             <Link
               href="/garansi"
-              className="hover:text-slate-600 dark:hover:text-slate-300"
+              className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
             >
               Ketentuan Garansi
             </Link>
             <Link
               href="/hubungi-kami"
-              className="hover:text-slate-600 dark:hover:text-slate-300"
+              className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
             >
               Kontak Toko
             </Link>
