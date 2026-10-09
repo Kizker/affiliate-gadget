@@ -113,8 +113,18 @@ function GadgetKatalogContent() {
   }, [searchParams])
 
   useEffect(() => {
-    fetchGadgets()
-  }, [])
+    const query = searchParams.get('search')
+    if (query) {
+      fetchGadgets()
+      return
+    }
+
+    const timer = setTimeout(() => {
+      fetchGadgets()
+    }, 2500)
+
+    return () => clearTimeout(timer)
+  }, [searchParams])
 
   const fetchGadgets = async () => {
     if (gadgets.length === 0) {

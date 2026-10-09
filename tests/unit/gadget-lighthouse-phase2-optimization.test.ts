@@ -95,5 +95,30 @@ describe('Gadget Catalog Phase 2 Lighthouse 100 Suite', () => {
     )
     expect(content).toContain('aria-label="Halaman sebelumnya"')
     expect(content).toContain('aria-label="Halaman selanjutnya"')
+    expect(content).toContain('setTimeout')
+    expect(content).toContain('fetchGadgets()')
+  })
+
+  it('6. Phase 4: MobileCatalogView uses Next.js Image, above-the-fold priority, and INITIAL_COUNT = 8', () => {
+    const mobileViewPath = path.join(
+      process.cwd(),
+      'src/components/gadget/mobile-catalog-view.tsx'
+    )
+    const content = fs.readFileSync(mobileViewPath, 'utf-8')
+
+    expect(content).toContain('const INITIAL_COUNT = 8')
+    expect(content).toContain('<Image')
+    expect(content).toContain('priority={isPriority}')
+    expect(content).toContain('sizes="(max-width: 640px) 50vw, 300px"')
+    expect(content).toContain('renderProductCard(item.data, idx === 0)')
+  })
+
+  it('7. Phase 4: Homepage root page.tsx gates mobile vs desktop to prevent mounting heavy desktop sections', () => {
+    const homePath = path.join(process.cwd(), 'src/app/page.tsx')
+    const content = fs.readFileSync(homePath, 'utf-8')
+
+    expect(content).toContain('useIsMobile')
+    expect(content).toContain('(!mounted || isMobile)')
+    expect(content).toContain('(!mounted || !isMobile)')
   })
 })

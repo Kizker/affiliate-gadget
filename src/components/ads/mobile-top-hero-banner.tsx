@@ -86,9 +86,7 @@ export function MobileTopHeroBanner({
       passive: true,
     })
 
-    const timer = setTimeout(enableVideo, 4000)
     return () => {
-      clearTimeout(timer)
       cleanup()
     }
   }, [])
@@ -156,9 +154,13 @@ export function MobileTopHeroBanner({
       }
     }
 
-    loadHeroAds()
+    const timer = setTimeout(() => {
+      loadHeroAds()
+    }, 2500)
+
     return () => {
       isSubscribed = false
+      clearTimeout(timer)
     }
   }, [])
 

@@ -56,9 +56,7 @@ export function InFeedStoreAdCard({
       passive: true,
     })
 
-    const timer = setTimeout(enableVideo, 4500)
     return () => {
-      clearTimeout(timer)
       cleanup()
     }
   }, [])

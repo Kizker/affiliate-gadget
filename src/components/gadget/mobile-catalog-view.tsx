@@ -35,7 +35,7 @@ import {
   LiveBannerData,
 } from '@/components/live/live-banner-card'
 
-const INITIAL_COUNT = 16
+const INITIAL_COUNT = 8
 const BATCH_SIZE = 8
 
 interface MobileCatalogViewProps {
@@ -302,7 +302,7 @@ export function MobileCatalogView({
     }
   }
 
-  const renderProductCard = (item: any) => {
+  const renderProductCard = (item: any, isPriority = false) => {
     const badge = getConditionBadge(item)
     const isWishlisted = isInWishlist(item.id)
     const strikePrice =
@@ -346,13 +346,15 @@ export function MobileCatalogView({
         >
           <div>
             {/* Natural Aspect Ratio Image Box (Dynamic height based on uploaded photo) */}
-            <div className="relative w-full max-w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800/60">
-              <img
+            <div className="relative aspect-square w-full max-w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800/60">
+              <Image
                 src={imgSrc}
                 alt={item.name}
-                loading="lazy"
                 width={300}
                 height={300}
+                sizes="(max-width: 640px) 50vw, 300px"
+                priority={isPriority}
+                loading={isPriority ? 'eager' : 'lazy'}
                 onError={(e) => {
                   ;(e.currentTarget as HTMLImageElement).src =
                     'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
@@ -570,7 +572,7 @@ export function MobileCatalogView({
                     className="w-full min-w-0"
                   >
                     {item.type === 'product' ? (
-                      renderProductCard(item.data)
+                      renderProductCard(item.data, idx === 0)
                     ) : item.type === 'ad' ? (
                       <InFeedStoreAdCard ad={item.data} />
                     ) : (
@@ -594,7 +596,7 @@ export function MobileCatalogView({
                     className="w-full min-w-0"
                   >
                     {item.type === 'product' ? (
-                      renderProductCard(item.data)
+                      renderProductCard(item.data, idx === 0)
                     ) : item.type === 'ad' ? (
                       <InFeedStoreAdCard ad={item.data} />
                     ) : (
