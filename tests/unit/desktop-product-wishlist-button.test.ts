@@ -57,7 +57,13 @@ describe('Desktop Product Cards Wishlist Love Button Suite', () => {
   })
 
   it('verifies store detail products have wishlist love button at top-right', () => {
-    const filePath = path.join(process.cwd(), 'src/app/toko/[slug]/page.tsx')
+    const clientPath = path.join(
+      process.cwd(),
+      'src/app/toko/[slug]/store-detail-client.tsx'
+    )
+    const filePath = fs.existsSync(clientPath)
+      ? clientPath
+      : path.join(process.cwd(), 'src/app/toko/[slug]/page.tsx')
     const content = fs.readFileSync(filePath, 'utf-8')
 
     expect(content).toContain('Heart')
