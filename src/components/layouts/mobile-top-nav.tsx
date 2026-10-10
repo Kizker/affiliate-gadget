@@ -99,7 +99,11 @@ export function MobileTopNav({
           )}
         </div>
       ) : (
-        <Link href="/gadget" className="flex items-center gap-2.5">
+        <Link
+          href="/gadget"
+          className="flex items-center gap-2.5"
+          aria-label="AffiliateGadget Beranda"
+        >
           <div className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-950 p-1.5">
             <Image
               src="/logo.webp"
@@ -131,7 +135,7 @@ export function MobileTopNav({
               ? 'shadow-xs border-orange-500 bg-orange-50 text-orange-600 ring-2 ring-orange-500/20 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'
               : 'border-slate-200/80 bg-slate-50 text-slate-700 hover:text-orange-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
           }`}
-          aria-label="Chat"
+          aria-label="Chat Customer Service"
           title="Chat"
         >
           <MessageSquare className="h-4 w-4" />
