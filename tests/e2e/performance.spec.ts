@@ -18,10 +18,10 @@ test.describe('Performance', () => {
     expect(loadTime).toBeLessThan(10000)
   })
 
-  test('Blog page loads within acceptable time', async ({ page }) => {
+  test('Servis LCD page loads within acceptable time', async ({ page }) => {
     const startTime = Date.now()
 
-    await page.goto('/blog')
+    await page.goto('/servis-lcd')
     await page.waitForLoadState('domcontentloaded')
 
     const loadTime = Date.now() - startTime
@@ -160,8 +160,8 @@ test.describe('Console Error Check', () => {
     expect(errors, `Console errors found: ${errors.join(', ')}`).toHaveLength(0)
   })
 
-  test('Blog page has no critical console errors', async ({ page }) => {
-    const errors = await checkPageForErrors(page, '/blog')
+  test('Servis LCD page has no critical console errors', async ({ page }) => {
+    const errors = await checkPageForErrors(page, '/servis-lcd')
     expect(errors, `Console errors found: ${errors.join(', ')}`).toHaveLength(0)
   })
 

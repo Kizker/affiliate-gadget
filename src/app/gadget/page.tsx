@@ -718,7 +718,7 @@ export default function GadgetKatalogPage() {
         rel="preload"
         as="image"
         href="/uploads/ads/1790671997412-zuzb6l-poster.webp"
-        {...({ fetchpriority: 'high' } as Record<string, string>)}
+        fetchPriority="high"
       />
       <Suspense
         fallback={

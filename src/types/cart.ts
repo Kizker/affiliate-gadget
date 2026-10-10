@@ -11,11 +11,22 @@ export interface CartItem {
   price: number
   quantity: number
   rentalDays?: number
-  stock?: number
+  stock?: number | null
   weightGram?: number // Berat produk dalam gram
   pricePerKg?: number // Tarif dasar ongkir per kg
   notes?: string
   depositAmount?: number
+  storeId?: string | null
+  store?: {
+    id: string
+    name: string
+    city?: string | null
+    province?: string | null
+    address?: string | null
+    postalCode?: string | null
+    latitude?: number | null
+    longitude?: number | null
+  } | null
 }
 
 export interface CartSummary {

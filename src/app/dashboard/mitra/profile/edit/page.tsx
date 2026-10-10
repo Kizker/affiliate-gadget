@@ -342,6 +342,10 @@ export default function MitraProfileEdit() {
         features: profile.features.filter((f) => f !== feature),
       })
     } else {
+      if (profile.features.length >= 5) {
+        toast.error('Maksimal 5 elemen keunggulan yang dapat dipilih')
+        return
+      }
       setProfile({
         ...profile,
         features: [...profile.features, feature],
@@ -351,6 +355,10 @@ export default function MitraProfileEdit() {
 
   const addCustomFeature = () => {
     const trimmed = newFeature.trim()
+    if (profile.features.length >= 5) {
+      toast.error('Maksimal 5 elemen keunggulan yang dapat ditambahkan')
+      return
+    }
     if (
       trimmed &&
       trimmed.length <= MAX_FEATURE_LENGTH &&

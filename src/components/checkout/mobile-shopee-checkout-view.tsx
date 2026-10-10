@@ -22,10 +22,40 @@ import {
 } from 'lucide-react'
 import { UserAddressItem } from '@/components/customer/address-modal'
 import { ShippingOption } from '@/lib/shipping/shipping-engine'
+import { StoreVoucherSelector } from '@/components/checkout/store-voucher-selector'
 import { toast } from 'sonner'
+
+export interface CheckoutStorePackage {
+  storeId: string
+  storeName: string
+  city?: string | null
+  province?: string | null
+  items: any[]
+  courier: 'JNE' | 'GOJEK'
+  courierService: string
+  notes: string
+  shippingCost: number
+  insuranceFee: number
+  subtotal: number
+  shippingOptions?: ShippingOption[]
+  loadingShippingRates?: boolean
+  shippingDistanceKm?: number | null
+  jneRegCost?: number
+  jneYesCost?: number
+  gojekCost?: number
+  isGojekAvailable?: boolean
+  gojekUnavailableReason?: string
+}
 
 interface MobileShopeeCheckoutViewProps {
   selectedItems: any[]
+  storePackages?: CheckoutStorePackage[]
+  onUpdateStoreCourier?: (
+    storeId: string,
+    courier: 'JNE' | 'GOJEK',
+    courierService: string
+  ) => void
+  onUpdateStoreNotes?: (storeId: string, notes: string) => void
   isDirectBuy: boolean
   addresses: UserAddressItem[]
   selectedAddressId: string | null
@@ -40,15 +70,29 @@ interface MobileShopeeCheckoutViewProps {
   voucherInput: string
   setVoucherInput: (v: string) => void
   handleApplyVoucher: () => void
-  handleRemoveVoucher: () => void
-  appliedVoucher: {
+  handleRemoveVoucher: (code?: string) => void
+  appliedVouchers?: Array<{
+    code: string
+    discountPercent: number
+    discountAmount: number
+    maxDiscountAmount?: number | null
+    minimumPurchase?: number
+    description?: string | null
+    targetStoreId?: string
+    targetStoreName?: string
+  }>
+  appliedVoucher?: {
     code: string
     discountPercent: number
     discountAmount: number
     description?: string | null
+    targetStoreId?: string
+    targetStoreName?: string
   } | null
   voucherError: string | null
   isValidatingVoucher: boolean
+  selectedVoucherStoreId?: string | null
+  setSelectedVoucherStoreId?: (storeId: string) => void
   paymentMethod?: 'GATEWAY' | 'MANUAL_TRANSFER'
   setPaymentMethod?: (m: 'GATEWAY' | 'MANUAL_TRANSFER') => void
   termsAccepted: boolean
@@ -61,7 +105,7 @@ interface MobileShopeeCheckoutViewProps {
   submitting: boolean
   handleSubmitOrder: () => void
   backHref: string
-  // Real-time shipping engine props
+  // Real-time shipping engine props (fallback)
   shippingOptions?: ShippingOption[]
   loadingShippingRates?: boolean
   shippingDistanceKm?: number | null
@@ -74,6 +118,9 @@ interface MobileShopeeCheckoutViewProps {
 
 export function MobileShopeeCheckoutView({
   selectedItems,
+  storePackages,
+  onUpdateStoreCourier,
+  onUpdateStoreNotes,
   isDirectBuy,
   addresses,
   selectedAddressId,
@@ -89,9 +136,12 @@ export function MobileShopeeCheckoutView({
   setVoucherInput,
   handleApplyVoucher,
   handleRemoveVoucher,
+  appliedVouchers,
   appliedVoucher,
   voucherError,
   isValidatingVoucher,
+  selectedVoucherStoreId,
+  setSelectedVoucherStoreId,
   paymentMethod,
   setPaymentMethod,
   termsAccepted,
@@ -106,13 +156,20 @@ export function MobileShopeeCheckoutView({
   backHref,
   shippingOptions = [],
   loadingShippingRates = false,
-  shippingDistanceKm = null,
+  shippingDistanceKm: propShippingDistanceKm = null,
   jneRegCost = 15_000,
   jneYesCost = 28_000,
   gojekCost = 20_000,
   isGojekAvailable = true,
   gojekUnavailableReason,
 }: MobileShopeeCheckoutViewProps) {
+  const allAppliedVouchers =
+    appliedVouchers && appliedVouchers.length > 0
+      ? appliedVouchers
+      : appliedVoucher
+        ? [appliedVoucher]
+        : []
+
   const [showVoucherBox, setShowVoucherBox] = useState(false)
   const [showNotesInput, setShowNotesInput] = useState(false)
   const [showAddressPicker, setShowAddressPicker] = useState(false)
@@ -269,331 +326,441 @@ export function MobileShopeeCheckoutView({
           </div>
         </div>
 
-        {/* 3. Toko & Daftar Barang Card (Shopee Style) */}
-        <div className="shadow-2xs space-y-3 rounded-2xl border border-slate-200/70 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900">
-          {/* Header Toko Cabang PT */}
-          <div className="flex items-center gap-1.5 border-b border-slate-100 pb-2.5 dark:border-slate-800">
-            <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
-            <span className="truncate text-xs font-bold text-slate-950 dark:text-white">
-              {firstItemStore}
-            </span>
-          </div>
+        {/* 3. Toko & Daftar Barang Cards (Shopee Style Multi-Store) */}
+        {(storePackages && storePackages.length > 0
+          ? storePackages
+          : [
+              {
+                storeId: 'default',
+                storeName: firstItemStore,
+                city: null,
+                items: selectedItems,
+                courier,
+                courierService,
+                notes,
+                shippingCost,
+                insuranceFee,
+                subtotal,
+                shippingOptions,
+                loadingShippingRates,
+                shippingDistanceKm: propShippingDistanceKm,
+                jneRegCost,
+                jneYesCost,
+                gojekCost,
+                isGojekAvailable,
+                gojekUnavailableReason,
+              },
+            ]
+        ).map((pkg, pIdx) => {
+          const pkgCourier = pkg.courier
+          const pkgService = pkg.courierService
+          const pkgJneRegCost = pkg.jneRegCost ?? 15_000
+          const pkgJneYesCost = pkg.jneYesCost ?? 28_000
+          const pkgGojekCost = pkg.gojekCost ?? 20_000
+          const pkgIsGojekAvailable = pkg.isGojekAvailable ?? true
+          const pkgGojekReason = pkg.gojekUnavailableReason
+          const shippingDistanceKm =
+            pkg.shippingDistanceKm ?? propShippingDistanceKm ?? null
+          const pkgSubtotal = pkg.items.reduce(
+            (sum, it) =>
+              sum +
+              (it.rentalDays
+                ? it.price * it.rentalDays * it.quantity
+                : it.price * it.quantity),
+            0
+          )
+          const pkgVouchers = allAppliedVouchers.filter(
+            (v) => v.targetStoreId === pkg.storeId
+          )
+          const isVoucherStore = pkgVouchers.length > 0
+          const pkgVoucherDiscount = pkgVouchers.reduce(
+            (sum, v) => sum + v.discountAmount,
+            0
+          )
+          const pkgTotal = Math.max(
+            0,
+            pkgSubtotal +
+              pkg.shippingCost +
+              pkg.insuranceFee -
+              pkgVoucherDiscount
+          )
 
-          {/* Daftar Produk */}
-          <div className="space-y-3">
-            {selectedItems.map((item, idx) => {
-              const strikePrice =
-                item.originalPrice && item.originalPrice > item.price
-                  ? item.originalPrice
-                  : Math.round(item.price * 1.15)
+          const handleCourierChange = (c: 'JNE' | 'GOJEK', s: string) => {
+            if (onUpdateStoreCourier) {
+              onUpdateStoreCourier(pkg.storeId, c, s)
+            } else {
+              setCourier(c)
+              setCourierService(s)
+            }
+          }
 
-              return (
-                <div key={item.id || idx} className="flex gap-2.5">
-                  {/* Thumbnail Foto */}
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
-                        Gadget
-                      </div>
-                    )}
-                  </div>
+          const handleNotesChange = (val: string) => {
+            if (onUpdateStoreNotes) {
+              onUpdateStoreNotes(pkg.storeId, val)
+            } else {
+              setNotes(val)
+            }
+          }
 
-                  {/* Info Produk */}
-                  <div className="flex min-w-0 flex-1 flex-col justify-between">
-                    <div>
-                      <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-950 dark:text-white">
-                        {item.name}
-                      </h3>
-                      {item.variantName && (
-                        <span className="mt-0.5 inline-block text-[11px] text-slate-500 dark:text-slate-400">
-                          Variasi: {item.variantName}
+          return (
+            <div
+              key={pkg.storeId || pIdx}
+              className="shadow-2xs space-y-3 rounded-2xl border border-slate-200/70 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900"
+            >
+              {/* Header Toko Cabang PT */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
+                  <span className="truncate text-xs font-bold text-slate-950 dark:text-white">
+                    {pkg.storeName}
+                  </span>
+                  {isVoucherStore && (
+                    <div className="flex flex-wrap gap-1">
+                      {pkgVouchers.map((v) => (
+                        <span
+                          key={v.code}
+                          className="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        >
+                          Voucher {v.code} (-Rp{' '}
+                          {v.discountAmount.toLocaleString('id-ID')})
                         </span>
-                      )}
+                      ))}
                     </div>
-
-                    <div className="flex items-baseline justify-between pt-1">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-xs font-bold text-slate-950 dark:text-white">
-                          Rp {Number(item.price).toLocaleString('id-ID')}
-                        </span>
-                        <span className="text-[10px] text-slate-400 line-through">
-                          Rp {strikePrice.toLocaleString('id-ID')}
-                        </span>
-                      </div>
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        x{item.quantity}
-                      </span>
-                    </div>
-                  </div>
+                  )}
                 </div>
-              )
-            })}
-          </div>
-
-          {/* Proteksi Kerusakan & Asuransi Wajib (Shopee Style) */}
-          <div className="rounded-xl border border-orange-100 bg-orange-50/40 p-2.5 dark:border-orange-900/30 dark:bg-orange-950/20">
-            <div className="flex items-start gap-2">
-              <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-orange-500 text-white">
-                <Check className="h-2.5 w-2.5 stroke-[3]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
-                    Proteksi Kerusakan & Asuransi Kurir
-                  </span>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
-                    Rp {insuranceFee.toLocaleString('id-ID')}
-                  </span>
-                </div>
-                <p className="mt-0.5 text-[10px] leading-tight text-slate-500 dark:text-slate-400">
-                  Unit second dilindungi garansi fisik 30 hari tukar unit &
-                  asuransi ganti rugi 100% jika hilang/rusak di perjalanan.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Opsi Pengiriman Kurir (Shopee Style) */}
-          <div className="space-y-2 border-t border-slate-100 pt-2 dark:border-slate-800">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-950 dark:text-white">
-                Opsi Pengiriman
-              </span>
-              <div className="flex items-center gap-1.5">
-                {loadingShippingRates ? (
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-orange-600 dark:text-orange-400">
-                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                    Cek Tarif API...
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-medium text-slate-400">
-                    Logistik Terproteksi
+                {pkg.city && (
+                  <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    {pkg.city}
                   </span>
                 )}
               </div>
-            </div>
 
-            {/* Pilihan JNE Express */}
-            <div
-              onClick={() => {
-                setCourier('JNE')
-                if (courierService !== 'YES' && courierService !== 'REG') {
-                  setCourierService('REG')
-                }
-              }}
-              className={`cursor-pointer rounded-xl border p-3 transition-all ${
-                courier === 'JNE'
-                  ? 'border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-500/30 dark:border-emerald-500 dark:bg-emerald-950/20'
-                  : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                      courier === 'JNE'
-                        ? 'border-emerald-600 bg-emerald-600 text-white'
-                        : 'border-slate-300 dark:border-slate-600'
-                    }`}
-                  >
-                    {courier === 'JNE' && (
-                      <Check className="h-2.5 w-2.5 stroke-[3]" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">
-                        JNE Express
-                      </span>
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        Antar Kota & Provinsi
-                      </span>
+              {/* Daftar Produk */}
+              <div className="space-y-3">
+                {pkg.items.map((item, idx) => {
+                  const strikePrice =
+                    item.originalPrice && item.originalPrice > item.price
+                      ? item.originalPrice
+                      : Math.round(item.price * 1.15)
+
+                  return (
+                    <div key={item.id || idx} className="flex gap-2.5">
+                      {/* Thumbnail Foto */}
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
+                            Gadget
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info Produk */}
+                      <div className="flex min-w-0 flex-1 flex-col justify-between">
+                        <div>
+                          <h3 className="line-clamp-2 text-xs font-semibold leading-snug text-slate-950 dark:text-white">
+                            {item.name}
+                          </h3>
+                          {item.variantName && (
+                            <span className="mt-0.5 inline-block text-[11px] text-slate-500 dark:text-slate-400">
+                              Variasi: {item.variantName}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-baseline justify-between pt-1">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-xs font-bold text-slate-950 dark:text-white">
+                              Rp {Number(item.price).toLocaleString('id-ID')}
+                            </span>
+                            <span className="text-[10px] text-slate-400 line-through">
+                              Rp {strikePrice.toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            x{item.quantity}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                      {courierService === 'YES'
-                        ? 'Layanan YES (1 Hari / Esok Sampai)'
-                        : 'Layanan Reguler (2-3 Hari Kerja)'}
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-slate-900 dark:text-white">
-                  Rp{' '}
-                  {(courierService === 'YES'
-                    ? jneYesCost
-                    : jneRegCost
-                  ).toLocaleString('id-ID')}
-                </span>
+                  )
+                })}
               </div>
 
-              {/* Sub-Pilihan Paket JNE (REG 2-3 Hari vs YES 1 Hari) */}
-              {courier === 'JNE' && (
-                <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setCourier('JNE')
-                      setCourierService('REG')
-                    }}
-                    className={`flex flex-col rounded-lg p-2 text-left transition-all ${
-                      courierService === 'REG'
-                        ? 'border border-emerald-500 bg-emerald-500/10 font-bold text-emerald-950 dark:text-emerald-300'
-                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span>JNE Reguler</span>
-                      <span className="text-[9px] font-normal text-slate-500">
-                        2-3 Hari
-                      </span>
-                    </div>
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                      Rp {jneRegCost.toLocaleString('id-ID')}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setCourier('JNE')
-                      setCourierService('YES')
-                    }}
-                    className={`flex flex-col rounded-lg p-2 text-left transition-all ${
-                      courierService === 'YES'
-                        ? 'border border-emerald-500 bg-emerald-500/10 font-bold text-emerald-950 dark:text-emerald-300'
-                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="flex items-center gap-1">
-                        JNE YES
-                        <span className="py-0.2 rounded bg-orange-100 px-1 text-[8px] font-bold text-orange-700 dark:bg-orange-950/50 dark:text-orange-300">
-                          Kilat
-                        </span>
-                      </span>
-                      <span className="text-[9px] font-normal text-slate-500">
-                        1 Hari
-                      </span>
-                    </div>
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                      Rp {jneYesCost.toLocaleString('id-ID')}
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Pilihan Gojek Instant */}
-            <div
-              onClick={() => {
-                if (!isGojekAvailable) {
-                  toast.error(
-                    gojekUnavailableReason ||
-                      'Jarak pengiriman melebihi batas maksimal 40 km untuk Gojek Instant. Silakan pilih JNE Express.'
-                  )
-                  return
-                }
-                setCourier('GOJEK')
-                setCourierService('INSTANT')
-              }}
-              className={`rounded-xl border p-3 transition-all ${
-                !isGojekAvailable
-                  ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50/70 opacity-60 dark:border-slate-800 dark:bg-slate-900/40'
-                  : courier === 'GOJEK'
-                    ? 'cursor-pointer border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-500/30 dark:border-emerald-500 dark:bg-emerald-950/20'
-                    : 'cursor-pointer border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 flex-1 items-start gap-2">
-                  <div
-                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                      courier === 'GOJEK' && isGojekAvailable
-                        ? 'border-emerald-600 bg-emerald-600 text-white'
-                        : 'border-slate-300 dark:border-slate-600'
-                    }`}
-                  >
-                    {courier === 'GOJEK' && isGojekAvailable && (
-                      <Check className="h-2.5 w-2.5 stroke-[3]" />
-                    )}
+              {/* Proteksi Kerusakan & Asuransi Wajib (Shopee Style) */}
+              <div className="rounded-xl border border-orange-100 bg-orange-50/40 p-2.5 dark:border-orange-900/30 dark:bg-orange-950/20">
+                <div className="flex items-start gap-2">
+                  <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-orange-500 text-white">
+                    <Check className="h-2.5 w-2.5 stroke-[3]" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">
-                        Gojek Instant Kurir
+                        Proteksi Kerusakan & Asuransi Kurir
                       </span>
-                      {shippingDistanceKm !== null && (
-                        <span
-                          className={`inline-flex shrink-0 items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[9.5px] font-bold leading-none ${
-                            isGojekAvailable
-                              ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
-                          }`}
-                        >
-                          {shippingDistanceKm.toFixed(1)} km
-                        </span>
-                      )}
-                      {!isGojekAvailable && (
-                        <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded bg-rose-100 px-1.5 py-0.5 text-[9.5px] font-bold leading-none text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
-                          &gt; 40 km
-                        </span>
-                      )}
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        Rp {pkg.insuranceFee.toLocaleString('id-ID')}
+                      </span>
                     </div>
-                    <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                      {isGojekAvailable
-                        ? 'Langsung Sampai (Maks 1-2 Jam)'
-                        : 'Di luar jangkauan (maks 40 km). Gunakan JNE.'}
+                    <p className="mt-0.5 text-[10px] leading-tight text-slate-500 dark:text-slate-400">
+                      Unit second dilindungi garansi fisik 30 hari tukar unit &
+                      asuransi ganti rugi 100% jika hilang/rusak di perjalanan.
                     </p>
                   </div>
                 </div>
-                <span
-                  className={`shrink-0 text-right text-xs font-bold ${
-                    isGojekAvailable
-                      ? 'text-slate-900 dark:text-white'
-                      : 'text-slate-400 line-through'
+              </div>
+
+              {/* Opsi Pengiriman Kurir (Shopee Style) */}
+              <div className="space-y-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-950 dark:text-white">
+                    Opsi Pengiriman Toko
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {pkg.loadingShippingRates ? (
+                      <span className="flex items-center gap-1 text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        Cek Tarif API...
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-slate-400">
+                        Logistik Terproteksi
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pilihan JNE Express */}
+                <div
+                  onClick={() => {
+                    handleCourierChange(
+                      'JNE',
+                      pkgService === 'YES' ? 'YES' : 'REG'
+                    )
+                  }}
+                  className={`cursor-pointer rounded-xl border p-3 transition-all ${
+                    pkgCourier === 'JNE'
+                      ? 'border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-500/30 dark:border-emerald-500 dark:bg-emerald-950/20'
+                      : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
                   }`}
                 >
-                  Rp {gojekCost.toLocaleString('id-ID')}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                          pkgCourier === 'JNE'
+                            ? 'border-emerald-600 bg-emerald-600 text-white'
+                            : 'border-slate-300 dark:border-slate-600'
+                        }`}
+                      >
+                        {pkgCourier === 'JNE' && (
+                          <Check className="h-2.5 w-2.5 stroke-[3]" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                            JNE Express
+                          </span>
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            Antar Kota & Provinsi
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                          {pkgService === 'YES'
+                            ? 'Layanan YES (1 Hari / Esok Sampai)'
+                            : 'Layanan Reguler (2-3 Hari Kerja)'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      Rp{' '}
+                      {(pkgService === 'YES'
+                        ? pkgJneYesCost
+                        : pkgJneRegCost
+                      ).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+
+                  {/* Sub-Pilihan Paket JNE */}
+                  {pkgCourier === 'JNE' && (
+                    <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleCourierChange('JNE', 'REG')
+                        }}
+                        className={`flex flex-col rounded-lg p-2 text-left transition-all ${
+                          pkgService === 'REG'
+                            ? 'border border-emerald-500 bg-emerald-500/10 font-bold text-emerald-950 dark:text-emerald-300'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span>JNE Reguler</span>
+                          <span className="text-[9px] font-normal text-slate-500">
+                            2-3 Hari
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                          Rp {pkgJneRegCost.toLocaleString('id-ID')}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleCourierChange('JNE', 'YES')
+                        }}
+                        className={`flex flex-col rounded-lg p-2 text-left transition-all ${
+                          pkgService === 'YES'
+                            ? 'border border-emerald-500 bg-emerald-500/10 font-bold text-emerald-950 dark:text-emerald-300'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="flex items-center gap-1">
+                            JNE YES
+                            <span className="py-0.2 rounded bg-orange-100 px-1 text-[8px] font-bold text-orange-700 dark:bg-orange-950/50 dark:text-orange-300">
+                              Kilat
+                            </span>
+                          </span>
+                          <span className="text-[9px] font-normal text-slate-500">
+                            1 Hari
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                          Rp {pkgJneYesCost.toLocaleString('id-ID')}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pilihan Gojek Instant */}
+                <div
+                  onClick={() => {
+                    if (!pkgIsGojekAvailable) {
+                      toast.error(
+                        pkgGojekReason ||
+                          'Jarak pengiriman melebihi batas maksimal 40 km untuk Gojek Instant. Silakan pilih JNE Express.'
+                      )
+                      return
+                    }
+                    handleCourierChange('GOJEK', 'INSTANT')
+                  }}
+                  className={`rounded-xl border p-3 transition-all ${
+                    !pkgIsGojekAvailable
+                      ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50/70 opacity-60 dark:border-slate-800 dark:bg-slate-900/40'
+                      : pkgCourier === 'GOJEK'
+                        ? 'cursor-pointer border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-500/30 dark:border-emerald-500 dark:bg-emerald-950/20'
+                        : 'cursor-pointer border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-1 items-start gap-2">
+                      <div
+                        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                          pkgCourier === 'GOJEK' && pkgIsGojekAvailable
+                            ? 'border-emerald-600 bg-emerald-600 text-white'
+                            : 'border-slate-300 dark:border-slate-600'
+                        }`}
+                      >
+                        {pkgCourier === 'GOJEK' && pkgIsGojekAvailable && (
+                          <Check className="h-2.5 w-2.5 stroke-[3]" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                            Gojek Instant Kurir
+                          </span>
+                          {shippingDistanceKm !== null && (
+                            <span
+                              className={`inline-flex shrink-0 items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[9.5px] font-bold leading-none ${
+                                pkgIsGojekAvailable
+                                  ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                                  : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                              }`}
+                            >
+                              {shippingDistanceKm.toFixed(1)} km
+                            </span>
+                          )}
+                          {!pkgIsGojekAvailable && (
+                            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded bg-rose-100 px-1.5 py-0.5 text-[9.5px] font-bold leading-none text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                              &gt; 40 km
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                          {pkgIsGojekAvailable
+                            ? 'Langsung Sampai (Maks 1-2 Jam)'
+                            : 'Di luar jangkauan (maks 40 km). Gunakan JNE.'}
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className={`shrink-0 text-right text-xs font-bold ${
+                        pkgIsGojekAvailable
+                          ? 'text-slate-900 dark:text-white'
+                          : 'text-slate-400 line-through'
+                      }`}
+                    >
+                      Rp {pkgGojekCost.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pesan untuk Penjual Toko Ini */}
+              <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    Pesan untuk Penjual
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    {pkg.notes ? 'Catatan tersimpan' : 'Opsional'}
+                  </span>
+                </div>
+                <div className="mt-1.5">
+                  <input
+                    type="text"
+                    value={pkg.notes}
+                    onChange={(e) => handleNotesChange(e.target.value)}
+                    placeholder="Contoh: Titip di satpam atau bubble wrap tebal..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Subtotal Toko */}
+              <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs dark:border-slate-800">
+                <div className="flex flex-col">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Subtotal Pesanan Toko ({pkg.items.length} produk)
+                  </span>
+                  {pkgVoucherDiscount > 0 && (
+                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      Diskon Voucher (
+                      {pkgVouchers.map((v) => v.code).join(', ')}): -Rp{' '}
+                      {pkgVoucherDiscount.toLocaleString('id-ID')}
+                    </span>
+                  )}
+                </div>
+                <span className="font-bold text-slate-900 dark:text-white">
+                  Rp {pkgTotal.toLocaleString('id-ID')}
                 </span>
               </div>
             </div>
-          </div>
-
-          {/* Pesan untuk Penjual */}
-          <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setShowNotesInput(!showNotesInput)}
-              className="flex w-full items-center justify-between py-1 text-xs"
-            >
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                Pesan untuk Penjual
-              </span>
-              <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                <span>{notes ? 'Catatan terisi' : 'Tinggalkan pesan'}</span>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </span>
-            </button>
-            {showNotesInput && (
-              <div className="mt-1.5">
-                <input
-                  type="text"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Contoh: Titip di satpam atau konfirmasi via WA..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
-              </div>
-            )}
-          </div>
-        </div>
+          )
+        })}
 
         {/* 4. Voucher & Diskon Platform (Shopee Style) */}
         <div className="shadow-2xs rounded-2xl border border-slate-200/70 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900">
@@ -602,26 +769,17 @@ export function MobileShopeeCheckoutView({
               <Ticket className="h-4 w-4 text-orange-500" />
               <span className="text-xs font-bold text-slate-950 dark:text-white">
                 Voucher Diskon
+                {allAppliedVouchers.length > 0 && (
+                  <span className="py-0.2 ml-1.5 rounded-full bg-emerald-100 px-1.5 text-[9.5px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    {allAppliedVouchers.length} Terpasang
+                  </span>
+                )}
               </span>
             </div>
-            {appliedVoucher ? (
-              <div className="flex items-center gap-1">
-                <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                  {appliedVoucher.code} (-Rp{' '}
-                  {appliedVoucher.discountAmount.toLocaleString('id-ID')})
-                </span>
-                <button
-                  type="button"
-                  onClick={handleRemoveVoucher}
-                  className="p-1 text-slate-400 hover:text-rose-500"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ) : (
+            {allAppliedVouchers.length === 0 && !showVoucherBox && (
               <button
                 type="button"
-                onClick={() => setShowVoucherBox(!showVoucherBox)}
+                onClick={() => setShowVoucherBox(true)}
                 className="flex items-center gap-1 text-xs font-semibold text-orange-500 hover:text-orange-600"
               >
                 <span>Gunakan Voucher</span>
@@ -630,27 +788,114 @@ export function MobileShopeeCheckoutView({
             )}
           </div>
 
-          {showVoucherBox && !appliedVoucher && (
-            <div className="mt-3 flex gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800">
-              <input
-                type="text"
-                value={voucherInput}
-                onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
-                placeholder="Masukkan kode voucher"
-                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs uppercase outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-              <button
-                type="button"
-                onClick={handleApplyVoucher}
-                disabled={isValidatingVoucher}
-                className="shadow-2xs rounded-xl bg-orange-500 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
-              >
-                {isValidatingVoucher ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  'Pakai'
+          {/* List of applied vouchers with individual [X] removal */}
+          {allAppliedVouchers.length > 0 && (
+            <div className="mt-2.5 space-y-1.5">
+              {allAppliedVouchers.map((v) => (
+                <div
+                  key={v.code}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-2.5 py-1.5 dark:border-emerald-800/60 dark:bg-emerald-950/40"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-200">
+                        {v.code}
+                      </span>
+                      {v.discountPercent ? (
+                        <span className="py-0.2 rounded bg-emerald-200/80 px-1.5 text-[9px] font-extrabold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200">
+                          {v.discountPercent}% OFF
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="truncate text-[10px] text-emerald-700 dark:text-emerald-300">
+                      {v.targetStoreName || 'Toko'} • Hemat Rp{' '}
+                      {v.discountAmount.toLocaleString('id-ID')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveVoucher(v.code)}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-emerald-700 hover:bg-rose-100 hover:text-rose-600 dark:text-emerald-300 dark:hover:bg-rose-950 dark:hover:text-rose-300"
+                    title={`Hapus voucher ${v.code}`}
+                    aria-label={`Hapus voucher ${v.code}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Opsi Tambah Voucher Lagi */}
+          {allAppliedVouchers.length > 0 && !showVoucherBox && (
+            <button
+              type="button"
+              onClick={() => setShowVoucherBox(true)}
+              className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-orange-300 bg-orange-50/40 py-2 text-xs font-bold text-orange-600 transition hover:bg-orange-100/60 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Tambah Voucher Lain</span>
+            </button>
+          )}
+
+          {/* Input Form Tambah Voucher */}
+          {showVoucherBox && (
+            <div className="mt-3 space-y-2.5 border-t border-slate-100 pt-2.5 dark:border-slate-800">
+              {storePackages && storePackages.length > 1 && (
+                <StoreVoucherSelector
+                  stores={storePackages.map((pkg) => ({
+                    storeId: pkg.storeId,
+                    storeName: pkg.storeName,
+                    city: pkg.city,
+                    subtotal: pkg.subtotal,
+                  }))}
+                  selectedStoreId={
+                    selectedVoucherStoreId || storePackages[0]?.storeId
+                  }
+                  onSelectStore={(storeId) =>
+                    setSelectedVoucherStoreId?.(storeId)
+                  }
+                />
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={voucherInput}
+                  onChange={(e) =>
+                    setVoucherInput(e.target.value.toUpperCase())
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleApplyVoucher()
+                    }
+                  }}
+                  placeholder="Contoh: SUPERGADGET"
+                  disabled={isValidatingVoucher}
+                  className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs uppercase outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyVoucher}
+                  disabled={isValidatingVoucher || !voucherInput.trim()}
+                  className="shadow-2xs rounded-xl bg-orange-500 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
+                >
+                  {isValidatingVoucher ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    'Pakai'
+                  )}
+                </button>
+                {allAppliedVouchers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowVoucherBox(false)}
+                    className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400"
+                  >
+                    Batal
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           )}
           {voucherError && (
@@ -724,14 +969,28 @@ export function MobileShopeeCheckoutView({
               <span>Paket Bonus 3-in-1 (Aksesoris)</span>
               <span className="font-semibold">Rp 0 (Gratis)</span>
             </div>
-            {voucherDiscount > 0 && (
-              <div className="flex justify-between text-orange-600 dark:text-orange-400">
+            {allAppliedVouchers.length > 0 ? (
+              allAppliedVouchers.map((v) => (
+                <div
+                  key={v.code}
+                  className="flex justify-between text-emerald-600 dark:text-emerald-400"
+                >
+                  <span className="truncate pr-2">
+                    Diskon Voucher ({v.code} • {v.targetStoreName || 'Toko'})
+                  </span>
+                  <span className="shrink-0 font-bold tabular-nums">
+                    -Rp {v.discountAmount.toLocaleString('id-ID')}
+                  </span>
+                </div>
+              ))
+            ) : voucherDiscount > 0 ? (
+              <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                 <span>Diskon Voucher</span>
-                <span className="font-bold">
+                <span className="shrink-0 font-bold tabular-nums">
                   -Rp {voucherDiscount.toLocaleString('id-ID')}
                 </span>
               </div>
-            )}
+            ) : null}
             <div className="flex justify-between border-t border-slate-100 pt-2 text-xs font-extrabold text-slate-950 dark:border-slate-800 dark:text-white">
               <span>Total Pembayaran</span>
               <span className="text-sm text-orange-500">

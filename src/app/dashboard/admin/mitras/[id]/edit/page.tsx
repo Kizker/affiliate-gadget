@@ -130,6 +130,10 @@ export default function EditStorePage() {
   }, [storeId, router])
 
   const toggleFeature = (feature: string) => {
+    if (!formData.features.includes(feature) && formData.features.length >= 5) {
+      toast.error('Maksimal 5 elemen keunggulan yang dapat dipilih')
+      return
+    }
     const features = formData.features.includes(feature)
       ? formData.features.filter((f) => f !== feature)
       : [...formData.features, feature]
@@ -207,25 +211,30 @@ export default function EditStorePage() {
   if (!store) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-xs font-semibold text-slate-500">Data toko tidak ditemukan</p>
+        <p className="text-xs font-semibold text-slate-500">
+          Data toko tidak ditemukan
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-5 max-w-6xl mx-auto pb-20 pt-1" suppressHydrationWarning>
+    <div
+      className="mx-auto max-w-6xl space-y-5 pb-20 pt-1"
+      suppressHydrationWarning
+    >
       {/* Top Floating Control Bar */}
       <div className="flex items-center justify-between gap-3 pb-1">
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/admin/mitras"
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white dark:bg-slate-900 dark:border-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Kembali</span>
           </Link>
           <span className="text-slate-300 dark:text-slate-700">/</span>
-          <span className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-none">
+          <span className="max-w-[200px] truncate text-xs font-bold text-slate-900 dark:text-white sm:max-w-none">
             {formData.businessName || 'Profil Toko'}
           </span>
         </div>
@@ -235,7 +244,7 @@ export default function EditStorePage() {
             <Link
               href={`/toko/${store.slug}`}
               target="_blank"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white dark:bg-slate-900 dark:border-slate-800 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="shadow-2xs hidden items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white sm:inline-flex"
             >
               <span>Halaman Publik</span>
               <ExternalLink className="h-3 w-3" />
@@ -246,7 +255,7 @@ export default function EditStorePage() {
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 dark:bg-white px-5 py-1.5 text-xs font-bold text-white dark:text-slate-950 shadow-xs hover:bg-slate-800 dark:hover:bg-slate-100 active:scale-95 transition disabled:opacity-50"
+            className="shadow-xs inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
           >
             {saving ? (
               <>
@@ -264,17 +273,18 @@ export default function EditStorePage() {
       </div>
 
       {/* Main 2-Column Responsive Layout */}
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12"
+      >
         {/* ========================================================================= */}
         {/* LEFT COLUMN (8 Cols): MAIN STORE DATA                                    */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-8 space-y-5">
-          
+        <div className="space-y-5 lg:col-span-8">
           {/* Card 1: Profil & Identitas Toko */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+          <div className="shadow-2xs space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 <Store className="h-4 w-4" />
               </div>
               <div>
@@ -289,7 +299,7 @@ export default function EditStorePage() {
 
             <div className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Nama Toko / Cabang <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -299,13 +309,13 @@ export default function EditStorePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, businessName: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs"
+                  className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                   placeholder="Contoh: Affiliate Gadget - Roxy Mas Jakarta"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Tagline Singkat
                 </label>
                 <input
@@ -314,13 +324,13 @@ export default function EditStorePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, tagline: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs"
+                  className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                   placeholder="Pusat Gadget & Flagship Store Jakarta Pusat"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Deskripsi Toko
                 </label>
                 <textarea
@@ -329,7 +339,7 @@ export default function EditStorePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs resize-none"
+                  className="dark:focus:bg-slate-850 shadow-2xs w-full resize-none rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                   placeholder="Jelaskan layanan toko, fasilitas, dan keunggulan unit..."
                 />
               </div>
@@ -337,9 +347,9 @@ export default function EditStorePage() {
           </div>
 
           {/* Card 2: Alamat Fisik & Titik Logistik */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+          <div className="shadow-2xs space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 <MapPin className="h-4 w-4" />
               </div>
               <div>
@@ -354,7 +364,7 @@ export default function EditStorePage() {
 
             <div className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Alamat Lengkap <span className="text-rose-500">*</span>
                 </label>
                 <textarea
@@ -364,14 +374,14 @@ export default function EditStorePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, address: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs resize-none"
+                  className="dark:focus:bg-slate-850 shadow-2xs w-full resize-none rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                   placeholder="Gedung / Mall, Lantai, No. Unit, Jalan, Kelurahan, Kecamatan"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Kota / Kabupaten <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -381,12 +391,12 @@ export default function EditStorePage() {
                     onChange={(e) =>
                       setFormData({ ...formData, city: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs"
+                    className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                     placeholder="Jakarta Pusat"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Provinsi <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -396,7 +406,7 @@ export default function EditStorePage() {
                     onChange={(e) =>
                       setFormData({ ...formData, province: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs"
+                    className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                     placeholder="DKI Jakarta"
                   />
                 </div>
@@ -405,9 +415,9 @@ export default function EditStorePage() {
           </div>
 
           {/* Card 3: Kontak CS & Telepon */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+          <div className="shadow-2xs space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 <Phone className="h-4 w-4" />
               </div>
               <div>
@@ -420,9 +430,9 @@ export default function EditStorePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Nomor Telepon Toko <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -432,12 +442,12 @@ export default function EditStorePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs font-mono"
+                  className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 font-mono text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                   placeholder="021-63859988"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Nomor WhatsApp CS / Sales
                 </label>
                 <input
@@ -446,7 +456,7 @@ export default function EditStorePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, whatsapp: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs font-mono"
+                  className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 font-mono text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                   placeholder="6281288997701"
                 />
               </div>
@@ -457,18 +467,17 @@ export default function EditStorePage() {
         {/* ========================================================================= */}
         {/* RIGHT COLUMN (4 Cols): META & OPERATIONAL SETTINGS                       */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-4 space-y-5">
-          
+        <div className="space-y-5 lg:col-span-4">
           {/* Card: Akun Pengelola Toko */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="shadow-2xs space-y-3 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-slate-500" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                   Entitas Toko
                 </h3>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40">
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-400">
                 <span className="h-1 w-1 rounded-full bg-emerald-500" />
                 Aktif
               </span>
@@ -476,19 +485,21 @@ export default function EditStorePage() {
 
             <div className="space-y-2">
               <div>
-                <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block">
+                <span className="block text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">
                   Badan Usaha / Penanggung Jawab
                 </span>
-                <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
-                  {store.companyName || store.user.name || 'PT Gadget Jaya Sentosa'}
+                <p className="mt-0.5 text-xs font-bold text-slate-900 dark:text-white">
+                  {store.companyName ||
+                    store.user.name ||
+                    'PT Gadget Jaya Sentosa'}
                 </p>
               </div>
 
               <div>
-                <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block">
+                <span className="block text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">
                   Email Akun Cabang
                 </span>
-                <p className="text-xs font-mono font-medium text-slate-700 dark:text-slate-300 mt-0.5 truncate">
+                <p className="mt-0.5 truncate font-mono text-xs font-medium text-slate-700 dark:text-slate-300">
                   {store.user.email}
                 </p>
               </div>
@@ -496,8 +507,8 @@ export default function EditStorePage() {
           </div>
 
           {/* Card: Status Operasional Switch */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
-            <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="shadow-2xs space-y-3 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800">
               <ShieldCheck className="h-4 w-4 text-slate-500" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 Status Operasional
@@ -505,39 +516,39 @@ export default function EditStorePage() {
             </div>
 
             <div className="space-y-2.5">
-              <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/50 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 transition hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-800/50 dark:hover:bg-slate-800">
                 <input
                   type="checkbox"
                   checked={formData.isApproved}
                   onChange={(e) =>
                     setFormData({ ...formData, isApproved: e.target.checked })
                   }
-                  className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-slate-950 focus:ring-0 cursor-pointer"
+                  className="mt-0.5 h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-slate-950 focus:ring-0"
                 />
                 <div>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                  <span className="block text-xs font-bold text-slate-900 dark:text-white">
                     Status Terverifikasi
                   </span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight block">
+                  <span className="block text-[10px] leading-tight text-slate-400 dark:text-slate-500">
                     Lencana terverifikasi publik
                   </span>
                 </div>
               </label>
 
-              <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/50 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 transition hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-800/50 dark:hover:bg-slate-800">
                 <input
                   type="checkbox"
                   checked={formData.isActive}
                   onChange={(e) =>
                     setFormData({ ...formData, isActive: e.target.checked })
                   }
-                  className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-slate-950 focus:ring-0 cursor-pointer"
+                  className="mt-0.5 h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-slate-950 focus:ring-0"
                 />
                 <div>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                  <span className="block text-xs font-bold text-slate-900 dark:text-white">
                     Toko Aktif Beroperasi
                   </span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight block">
+                  <span className="block text-[10px] leading-tight text-slate-400 dark:text-slate-500">
                     Bisa menerima pesanan & checkout
                   </span>
                 </div>
@@ -546,8 +557,8 @@ export default function EditStorePage() {
           </div>
 
           {/* Card: Jam Operasional */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
-            <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="shadow-2xs space-y-3 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800">
               <Clock className="h-4 w-4 text-slate-500" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 Jam Operasional
@@ -556,7 +567,7 @@ export default function EditStorePage() {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                   Hari Kerja (Senin - Jumat)
                 </label>
                 <input
@@ -565,13 +576,13 @@ export default function EditStorePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, weekdayHours: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3 py-1.5 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs"
+                  className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-1.5 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                   placeholder="10:00 - 21:00"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                   Akhir Pekan (Sabtu - Minggu)
                 </label>
                 <input
@@ -580,7 +591,7 @@ export default function EditStorePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, weekendHours: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700/80 px-3 py-1.5 text-xs font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 focus:bg-white dark:focus:border-slate-400 dark:focus:bg-slate-850 shadow-2xs"
+                  className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-1.5 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                   placeholder="10:00 - 21:30"
                 />
               </div>
@@ -588,8 +599,8 @@ export default function EditStorePage() {
           </div>
 
           {/* Card: Fasilitas Toko */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
-            <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="shadow-2xs space-y-3 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800">
               <Sparkles className="h-4 w-4 text-slate-500" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 Fasilitas & Keunggulan
@@ -606,7 +617,7 @@ export default function EditStorePage() {
                     onClick={() => toggleFeature(feature)}
                     className={`rounded-full border px-2.5 py-1 text-left text-[10px] font-semibold transition-all ${
                       isSelected
-                        ? 'border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950 shadow-2xs'
+                        ? 'shadow-2xs border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950'
                         : 'border-slate-200/80 bg-slate-50/60 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400'
                     }`}
                   >
@@ -617,9 +628,7 @@ export default function EditStorePage() {
               })}
             </div>
           </div>
-
         </div>
-
       </form>
     </div>
   )

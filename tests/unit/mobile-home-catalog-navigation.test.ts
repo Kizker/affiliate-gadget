@@ -9,7 +9,10 @@ describe('Mobile Navigation & Beranda Catalog Consolidation Suite', () => {
       if (pathname === '/' || pathname.startsWith('/gadget')) {
         return 'beranda'
       }
-      if (pathname.startsWith('/servis')) {
+      if (
+        pathname.startsWith('/servis-lcd') ||
+        pathname.startsWith('/rekomendasi')
+      ) {
         return 'servis'
       }
       if (pathname.startsWith('/toko')) {
@@ -31,7 +34,8 @@ describe('Mobile Navigation & Beranda Catalog Consolidation Suite', () => {
     expect(resolveTab('/gadget/apple-iphone-15')).toBe('beranda')
     expect(resolveTab('/gadget', 'katalog')).toBe('beranda')
     expect(resolveTab('/gadget', 'beranda')).toBe('beranda')
-    expect(resolveTab('/servis')).toBe('servis')
+    expect(resolveTab('/servis-lcd')).toBe('servis')
+    expect(resolveTab('/rekomendasi/1')).toBe('servis')
     expect(resolveTab('/toko')).toBe('toko')
     expect(resolveTab('/login')).toBe('akun')
   })
@@ -48,7 +52,7 @@ describe('Mobile Navigation & Beranda Catalog Consolidation Suite', () => {
       {
         id: 'servis',
         label: 'Servis',
-        href: '/servis',
+        href: '/servis-lcd',
         icon: 'Wrench',
       },
       {

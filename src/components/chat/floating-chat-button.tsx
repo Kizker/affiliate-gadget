@@ -786,7 +786,12 @@ export default function FloatingChatButton() {
     return null
 
   // Hide floating button on chat detail pages ONLY on mobile
-  if (isMobile && pathname?.startsWith('/chat/')) return null
+  if (
+    isMobile &&
+    (pathname?.startsWith('/dashboard/customer/chat') ||
+      pathname?.startsWith('/dashboard/admin/chat'))
+  )
+    return null
 
   return (
     <>
@@ -1364,7 +1369,7 @@ export default function FloatingChatButton() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() =>
-                          (window.location.href = `/chat/${activeRoom.id}`)
+                          (window.location.href = '/dashboard/customer/chat')
                         }
                         className="rounded-full p-2 transition-colors hover:bg-white/20"
                         title="Buka di halaman penuh"

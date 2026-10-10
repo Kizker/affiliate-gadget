@@ -3,12 +3,7 @@
 import { useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import {
-  Navbar,
-  Footer,
-  MobileTopNav,
-  MobileBottomNav,
-} from '@/components/layouts'
+import { Navbar, Footer, MobileTopNav } from '@/components/layouts'
 import CartItem from '@/components/cart/cart-item'
 import CartSummary from '@/components/cart/cart-summary'
 import { useCartStore } from '@/lib/store/cart-store'
@@ -76,9 +71,6 @@ export default function CartPage() {
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
         </div>
-        <div className="block md:hidden">
-          <MobileBottomNav />
-        </div>
       </div>
     )
   }
@@ -93,7 +85,7 @@ export default function CartPage() {
         <Navbar variant="light" />
       </div>
 
-      <main className="flex flex-1 flex-col pb-32 pt-2 sm:pb-36 sm:pt-4 md:pb-24 md:pt-28 lg:pt-32">
+      <main className="flex flex-1 flex-col pb-24 pt-2 sm:pb-28 sm:pt-4 md:pb-24 md:pt-28 lg:pt-32">
         <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8">
           {/* Page Header (Desktop Only - Disembunyikan di Mobile karena sudah ada di MobileTopNav) */}
           <div className="mb-6 hidden flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:flex">
@@ -240,13 +232,13 @@ export default function CartPage() {
         </div>
       </main>
 
-      {/* 2. Floating Mobile Checkout Bar (Hanya Muncul Saat Ada Item yang Diceklist) */}
+      {/* 2. Floating Mobile Checkout Bar (Menempel di Bawah Layar Tanpa Navbar Mengganggu) */}
       {status === 'authenticated' && hasSelected && (
         <aside
           aria-label="Bar Ringkasan Checkout Mobile"
-          className="pointer-events-none fixed inset-x-0 bottom-[58px] z-40 px-3 pb-1.5 duration-200 animate-in fade-in slide-in-from-bottom-3 md:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/90 bg-white/95 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 md:hidden"
         >
-          <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
+          <div className="mx-auto flex max-w-md items-center justify-between gap-3">
             {/* Kiri: Total Harga Barang Diceklist */}
             <div className="flex min-w-0 flex-col">
               <span className="text-[11px] font-medium leading-tight text-slate-500 dark:text-slate-400">
@@ -260,7 +252,7 @@ export default function CartPage() {
             {/* Kanan: Button Lanjut ke Checkout */}
             <Link
               href="/checkout"
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95"
             >
               <span>Lanjut ke Checkout</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -269,10 +261,7 @@ export default function CartPage() {
         </aside>
       )}
 
-      {/* 3. Bottom Navigation: Mobile Bottom Nav & Desktop Footer */}
-      <div className="block md:hidden">
-        <MobileBottomNav />
-      </div>
+      {/* 3. Desktop Footer Only (Mobile tidak memakai navbar di keranjang) */}
       <div className="hidden md:block">
         <Footer variant="light" />
       </div>

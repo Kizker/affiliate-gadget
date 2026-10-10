@@ -42,8 +42,7 @@ export function MobileTopNav({
 
   const isChatActive =
     pathname?.startsWith('/dashboard/customer/chat') ||
-    pathname?.startsWith('/dashboard/admin/chat') ||
-    pathname?.startsWith('/chat')
+    pathname?.startsWith('/dashboard/admin/chat')
 
   const isCartActive = pathname === '/cart'
 

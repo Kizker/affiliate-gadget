@@ -265,7 +265,17 @@ export async function POST(request: NextRequest) {
     const createOrder = async (
       rawItems: CartItem[],
       orderType: 'PRODUCT' | 'RENTAL' | 'SERVICE',
-      prefix: string
+      prefix: string,
+      packageConfig?: {
+        storeId?: string | null
+        courierCode?: string | null
+        courierService?: string | null
+        customShippingCost?: number | null
+        customInsuranceFee?: number | null
+        notes?: string | null
+        voucherCode?: string | null
+        voucherCodes?: string[] | null
+      }
     ): Promise<CreatedOrder | null> => {
       if (rawItems.length === 0) return null
 
@@ -514,13 +524,18 @@ export async function POST(request: NextRequest) {
               let shippingCost = 0
               let insuranceFee = 0
               let totalWeightGram: number | null = null
-              const detectedCourier = courierCode === 'GOJEK' ? 'GOJEK' : 'JNE'
+              const activeCourierCode =
+                packageConfig?.courierCode || courierCode
+              const activeCourierService =
+                packageConfig?.courierService || courierService
+              const detectedCourier =
+                activeCourierCode === 'GOJEK' ? 'GOJEK' : 'JNE'
               const detectedService =
                 detectedCourier === 'GOJEK'
-                  ? courierService === 'SAMEDAY'
+                  ? activeCourierService === 'SAMEDAY'
                     ? 'SAMEDAY'
                     : 'INSTANT'
-                  : courierService === 'YES'
+                  : activeCourierService === 'YES'
                     ? 'YES'
                     : 'REG'
 
@@ -535,7 +550,8 @@ export async function POST(request: NextRequest) {
                 totalWeightGram = accumulatedWeight
 
                 // Dapatkan Store & Address untuk kalkulasi ongkir real-time
-                const storeId = verifiedItems[0]?.storeId
+                const storeId =
+                  packageConfig?.storeId || verifiedItems[0]?.storeId
                 let originLoc: any = {}
                 let destLoc: any = {}
 
@@ -684,94 +700,139 @@ export async function POST(request: NextRequest) {
                 }
               }
 
-              if (orderType === 'PRODUCT' && voucherCode) {
-                const cleanCode = voucherCode.trim().toUpperCase()
-                const dbVoucher = await tx.voucher.findUnique({
-                  where: { code: cleanCode },
-                })
+              // Multiple candidate vouchers calculation (PRODUCT only)
+              const candidateVoucherCodes: string[] = []
+              if (
+                packageConfig?.voucherCodes &&
+                packageConfig.voucherCodes.length > 0
+              ) {
+                candidateVoucherCodes.push(...packageConfig.voucherCodes)
+              } else if (packageConfig?.voucherCode) {
+                candidateVoucherCodes.push(packageConfig.voucherCode)
+              } else if (voucherCode) {
+                candidateVoucherCodes.push(voucherCode)
+              }
 
-                if (!dbVoucher) {
-                  throw new CheckoutError(
-                    `Kode voucher "${cleanCode}" tidak valid`,
-                    CHECKOUT_ERROR_CODES.VOUCHER_INVALID,
-                    400
-                  )
-                }
-
-                if (!dbVoucher.isActive) {
-                  throw new CheckoutError(
-                    'Voucher yang Anda gunakan sedang tidak aktif',
-                    CHECKOUT_ERROR_CODES.VOUCHER_INVALID,
-                    400
-                  )
-                }
-
-                const now = new Date()
-                if (now < dbVoucher.validFrom || now > dbVoucher.validUntil) {
-                  throw new CheckoutError(
-                    'Masa berlaku voucher telah berakhir',
-                    CHECKOUT_ERROR_CODES.VOUCHER_EXPIRED,
-                    400
-                  )
-                }
-
-                if (dbVoucher.usedCount >= dbVoucher.totalQuota) {
-                  throw new CheckoutError(
-                    'Kuota penukaran voucher telah habis',
-                    CHECKOUT_ERROR_CODES.VOUCHER_QUOTA_EMPTY,
-                    400
-                  )
-                }
-
-                if (subtotal < dbVoucher.minimumPurchase) {
-                  throw new CheckoutError(
-                    `Minimum belanja Rp ${dbVoucher.minimumPurchase.toLocaleString('id-ID')} untuk menggunakan voucher ini`,
-                    CHECKOUT_ERROR_CODES.VOUCHER_MIN_PURCHASE,
-                    400
-                  )
-                }
-
-                const userUsageCount = await tx.voucherUsage.count({
-                  where: {
-                    voucherId: dbVoucher.id,
-                    userId: session.user.id,
-                  },
-                })
-
-                if (userUsageCount >= dbVoucher.usagePerUser) {
-                  throw new CheckoutError(
-                    `Anda telah mencapai batas maksimal (${dbVoucher.usagePerUser}x) pemakaian voucher ini`,
-                    CHECKOUT_ERROR_CODES.VOUCHER_USER_LIMIT,
-                    400
-                  )
-                }
-
-                appliedDiscountAmount = calculateVoucherDiscountAmount(
-                  subtotal,
-                  dbVoucher.discountPercent,
-                  dbVoucher.maxDiscountAmount
+              const activeVoucherCodes = Array.from(
+                new Set(
+                  candidateVoucherCodes
+                    .map((c) => (c || '').trim().toUpperCase())
+                    .filter(Boolean)
                 )
+              )
 
-                const voucherUpdate = await tx.voucher.updateMany({
-                  where: {
-                    id: dbVoucher.id,
-                    usedCount: { lt: dbVoucher.totalQuota },
-                  },
-                  data: {
-                    usedCount: { increment: 1 },
-                  },
-                })
+              const appliedVoucherRecords: Array<{
+                id: string
+                code: string
+                discountAmount: number
+              }> = []
 
-                if (voucherUpdate.count === 0) {
-                  throw new CheckoutError(
-                    'Kuota voucher telah habis',
-                    CHECKOUT_ERROR_CODES.VOUCHER_QUOTA_EMPTY,
-                    400
+              if (orderType === 'PRODUCT' && activeVoucherCodes.length > 0) {
+                const now = new Date()
+
+                for (const cleanCode of activeVoucherCodes) {
+                  const dbVoucher = await tx.voucher.findUnique({
+                    where: { code: cleanCode },
+                  })
+
+                  if (!dbVoucher) {
+                    throw new CheckoutError(
+                      `Kode voucher "${cleanCode}" tidak valid`,
+                      CHECKOUT_ERROR_CODES.VOUCHER_INVALID,
+                      400
+                    )
+                  }
+
+                  if (!dbVoucher.isActive) {
+                    throw new CheckoutError(
+                      `Voucher "${cleanCode}" sedang tidak aktif`,
+                      CHECKOUT_ERROR_CODES.VOUCHER_INVALID,
+                      400
+                    )
+                  }
+
+                  if (now < dbVoucher.validFrom || now > dbVoucher.validUntil) {
+                    throw new CheckoutError(
+                      `Masa berlaku voucher "${cleanCode}" telah berakhir`,
+                      CHECKOUT_ERROR_CODES.VOUCHER_EXPIRED,
+                      400
+                    )
+                  }
+
+                  if (dbVoucher.usedCount >= dbVoucher.totalQuota) {
+                    throw new CheckoutError(
+                      `Kuota penukaran voucher "${cleanCode}" telah habis`,
+                      CHECKOUT_ERROR_CODES.VOUCHER_QUOTA_EMPTY,
+                      400
+                    )
+                  }
+
+                  if (subtotal < dbVoucher.minimumPurchase) {
+                    throw new CheckoutError(
+                      `Minimum belanja Rp ${dbVoucher.minimumPurchase.toLocaleString('id-ID')} untuk menggunakan voucher "${cleanCode}"`,
+                      CHECKOUT_ERROR_CODES.VOUCHER_MIN_PURCHASE,
+                      400
+                    )
+                  }
+
+                  const userUsageCount = await tx.voucherUsage.count({
+                    where: {
+                      voucherId: dbVoucher.id,
+                      userId: session.user.id,
+                    },
+                  })
+
+                  if (userUsageCount >= dbVoucher.usagePerUser) {
+                    throw new CheckoutError(
+                      `Anda telah mencapai batas maksimal (${dbVoucher.usagePerUser}x) pemakaian voucher "${cleanCode}"`,
+                      CHECKOUT_ERROR_CODES.VOUCHER_USER_LIMIT,
+                      400
+                    )
+                  }
+
+                  const singleDisc = calculateVoucherDiscountAmount(
+                    subtotal,
+                    dbVoucher.discountPercent,
+                    dbVoucher.maxDiscountAmount
                   )
+
+                  const voucherUpdate = await tx.voucher.updateMany({
+                    where: {
+                      id: dbVoucher.id,
+                      usedCount: { lt: dbVoucher.totalQuota },
+                    },
+                    data: {
+                      usedCount: { increment: 1 },
+                    },
+                  })
+
+                  if (voucherUpdate.count === 0) {
+                    throw new CheckoutError(
+                      `Kuota voucher "${cleanCode}" telah habis`,
+                      CHECKOUT_ERROR_CODES.VOUCHER_QUOTA_EMPTY,
+                      400
+                    )
+                  }
+
+                  appliedDiscountAmount += singleDisc
+                  appliedVoucherRecords.push({
+                    id: dbVoucher.id,
+                    code: dbVoucher.code,
+                    discountAmount: singleDisc,
+                  })
                 }
 
-                appliedVoucherId = dbVoucher.id
-                appliedVoucherCode = dbVoucher.code
+                // Capping total diskon tidak melebihi subtotal
+                appliedDiscountAmount = Math.min(
+                  subtotal,
+                  appliedDiscountAmount
+                )
+                if (appliedVoucherRecords.length > 0) {
+                  appliedVoucherId = appliedVoucherRecords[0].id
+                  appliedVoucherCode = appliedVoucherRecords
+                    .map((r) => r.code)
+                    .join(', ')
+                }
               }
 
               const total = Math.max(
@@ -813,12 +874,21 @@ export async function POST(request: NextRequest) {
                   ? verifiedItems.every((vi) => vi.includesCase !== false)
                   : false
 
+              const effectiveStoreId = packageConfig?.storeId || detectedStoreId
+
+              let orderSpecificNotes = formattedNotes
+              if (packageConfig?.notes && packageConfig.notes.trim()) {
+                orderSpecificNotes = orderSpecificNotes
+                  ? `[Catatan Toko: ${packageConfig.notes.trim()}]\n${orderSpecificNotes}`
+                  : `[Catatan Toko: ${packageConfig.notes.trim()}]`
+              }
+
               // Create Order record
               const newOrder = await tx.order.create({
                 data: {
                   orderNumber,
                   userId: session.user.id,
-                  storeId: detectedStoreId,
+                  storeId: effectiveStoreId,
                   technicianId:
                     orderType === 'SERVICE'
                       ? verifiedItems[0]?.technicianId || null
@@ -849,17 +919,17 @@ export async function POST(request: NextRequest) {
                   bonusProtectorIncluded,
                   bonusCaseIncluded,
                   total,
-                  notes: formattedNotes || null,
+                  notes: orderSpecificNotes || null,
                 },
               })
 
-              if (appliedVoucherId) {
+              for (const vRec of appliedVoucherRecords) {
                 await tx.voucherUsage.create({
                   data: {
-                    voucherId: appliedVoucherId,
+                    voucherId: vRec.id,
                     userId: session.user.id,
                     orderId: newOrder.id,
-                    discountApplied: appliedDiscountAmount,
+                    discountApplied: vRec.discountAmount,
                   },
                 })
               }
@@ -971,11 +1041,78 @@ export async function POST(request: NextRequest) {
     }
 
     // Create orders for each type
-    const productOrder = await createOrder(productItems, 'PRODUCT', 'SPR')
+    if (
+      parseResult.data.storePackages &&
+      parseResult.data.storePackages.length > 0
+    ) {
+      let voucherAppliedToPackage = false
+      const assignments = parseResult.data.voucherAssignments || []
+
+      for (const pkg of parseResult.data.storePackages) {
+        const pkgVoucherList: string[] = []
+        if (pkg.voucherCodes && pkg.voucherCodes.length > 0) {
+          pkgVoucherList.push(...pkg.voucherCodes)
+        }
+        if (pkg.voucherCode) {
+          pkgVoucherList.push(pkg.voucherCode)
+        }
+        for (const assign of assignments) {
+          if (assign.storeId === pkg.storeId && assign.code) {
+            pkgVoucherList.push(assign.code)
+          }
+        }
+        // Backward-compatibility: single global voucher applied to target store
+        if (
+          !voucherAppliedToPackage &&
+          pkgVoucherList.length === 0 &&
+          parseResult.data.voucherCode
+        ) {
+          const isTargetStore = parseResult.data.voucherStoreId
+            ? pkg.storeId === parseResult.data.voucherStoreId
+            : true
+          if (isTargetStore) {
+            pkgVoucherList.push(parseResult.data.voucherCode)
+          }
+        }
+
+        const uniquePkgVouchers = Array.from(
+          new Set(
+            pkgVoucherList
+              .map((v) => (v || '').trim().toUpperCase())
+              .filter(Boolean)
+          )
+        )
+
+        const order = await createOrder(
+          pkg.items as CartItem[],
+          'PRODUCT',
+          'SPR',
+          {
+            storeId: pkg.storeId,
+            courierCode: pkg.courierCode,
+            courierService: pkg.courierService,
+            customShippingCost: pkg.shippingCost,
+            customInsuranceFee: pkg.insuranceFee,
+            notes: pkg.notes,
+            voucherCode: uniquePkgVouchers[0] || null,
+            voucherCodes: uniquePkgVouchers,
+          }
+        )
+        if (order) {
+          createdOrders.push(order)
+          if (uniquePkgVouchers.length > 0) {
+            voucherAppliedToPackage = true
+          }
+        }
+      }
+    } else {
+      const productOrder = await createOrder(productItems, 'PRODUCT', 'SPR')
+      if (productOrder) createdOrders.push(productOrder)
+    }
+
     const rentalOrder = await createOrder(rentalItems, 'RENTAL', 'RNT')
     const serviceOrder = await createOrder(serviceItems, 'SERVICE', 'SVC')
 
-    if (productOrder) createdOrders.push(productOrder)
     if (rentalOrder) createdOrders.push(rentalOrder)
     if (serviceOrder) createdOrders.push(serviceOrder)
 

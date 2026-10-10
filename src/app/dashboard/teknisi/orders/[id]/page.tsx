@@ -244,7 +244,7 @@ export default function TechnicianOrderDetailPage() {
         )
 
         if (existingRoom?.id) {
-          router.push(`/chat/${existingRoom.id}`)
+          router.push('/dashboard/customer/chat')
           return
         }
       }
@@ -264,7 +264,7 @@ export default function TechnicianOrderDetailPage() {
       if (createRes.ok) {
         const createData = await createRes.json()
         if (createData.room?.id) {
-          router.push(`/chat/${createData.room.id}`)
+          router.push('/dashboard/customer/chat')
         }
       } else {
         toast.error('Gagal membuat chat room')

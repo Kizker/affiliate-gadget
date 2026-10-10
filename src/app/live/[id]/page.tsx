@@ -127,7 +127,7 @@ export default async function LiveStreamPage({ params }: Props) {
           rel="preload"
           as="image"
           href={initialStream.coverImage}
-          {...({ fetchpriority: 'high' } as Record<string, string>)}
+          fetchPriority="high"
         />
       )}
 

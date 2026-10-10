@@ -149,7 +149,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
     { href: '/', label: 'Beranda' },
     { href: '/gadget', label: 'Produk' },
     { href: '/toko', label: 'Toko' },
-    { href: '/servis', label: 'Layanan Servis' },
+    { href: '/servis-lcd', label: 'Servis LCD' },
   ]
 
   const isSearchPage =

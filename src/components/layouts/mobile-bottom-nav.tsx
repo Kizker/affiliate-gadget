@@ -42,8 +42,7 @@ export function MobileBottomNav({
 
   const isChatPage =
     pathname?.startsWith('/dashboard/customer/chat') ||
-    pathname?.startsWith('/dashboard/admin/chat') ||
-    pathname?.startsWith('/chat')
+    pathname?.startsWith('/dashboard/admin/chat')
 
   const isCartPage = pathname?.startsWith('/cart')
   const isOrderConfirmationPage = pathname?.startsWith('/order-confirmation')
@@ -58,7 +57,8 @@ export function MobileBottomNav({
         ? 'none'
         : pathname === '/' || pathname.startsWith('/gadget')
           ? 'beranda'
-          : pathname.startsWith('/servis')
+          : pathname.startsWith('/servis-lcd') ||
+              pathname.startsWith('/rekomendasi')
             ? 'servis'
             : pathname.startsWith('/toko')
               ? 'toko'
@@ -105,7 +105,7 @@ export function MobileBottomNav({
 
         {/* 3. Servis */}
         <Link
-          href="/servis"
+          href="/servis-lcd"
           aria-label="Layanan Servis Gadget"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'servis'

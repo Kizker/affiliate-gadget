@@ -40,13 +40,12 @@ test.describe('Public Pages', () => {
     expect(criticalErrors).toHaveLength(0)
   })
 
-  test('Blog page loads correctly', async ({ page }) => {
-    await page.goto('/blog')
+  test('Servis LCD page loads correctly', async ({ page }) => {
+    await page.goto('/servis-lcd')
 
-    await expect(page).toHaveTitle(/Blog/)
-    await expect(page.locator('h1')).toContainText(/Teknologi|Blog/)
+    await expect(page).toHaveTitle(/Servis LCD|Affiliate Gadget/)
 
-    // Wait for articles to load
+    // Wait for page to load
     await page.waitForLoadState('domcontentloaded')
   })
 
@@ -134,16 +133,18 @@ test.describe('Navigation', () => {
     await expect(page).toHaveURL(/\/toko/, { timeout: 15000 })
   })
 
-  test('Can navigate from homepage to blog via footer', async ({ page }) => {
+  test('Can navigate from homepage to servis-lcd via footer', async ({
+    page,
+  }) => {
     await page.goto('/')
     await page.waitForLoadState('domcontentloaded')
 
-    const blogLink = page.locator('footer a[href="/blog"]').first()
-    await blogLink.scrollIntoViewIfNeeded()
-    await expect(blogLink).toBeVisible()
-    await blogLink.click()
+    const servisLink = page.locator('footer a[href="/servis-lcd"]').first()
+    await servisLink.scrollIntoViewIfNeeded()
+    await expect(servisLink).toBeVisible()
+    await servisLink.click()
 
-    await expect(page).toHaveURL(/\/blog/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/servis-lcd/, { timeout: 15000 })
   })
 
   test('Can navigate from homepage to teknisi', async ({ page }) => {

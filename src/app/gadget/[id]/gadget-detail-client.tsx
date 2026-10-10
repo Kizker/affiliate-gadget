@@ -300,6 +300,19 @@ export default function GadgetDetailClient({
       (product.images && product.images[0]) ||
       ''
 
+    const storeInfo = product.store
+      ? {
+          id: product.store.id,
+          name: product.store.name,
+          city: product.store.city,
+          province: product.store.province,
+          address: product.store.address,
+          postalCode: product.store.postalCode,
+          latitude: product.store.latitude,
+          longitude: product.store.longitude,
+        }
+      : null
+
     addItem({
       type: 'PRODUCT',
       productId: product.id,
@@ -313,6 +326,8 @@ export default function GadgetDetailClient({
       weightGram: product.weightGram ?? 500,
       pricePerKg: product.pricePerKg ?? 20000,
       notes: `${product.warrantyDays || 30} Hari Garansi Toko + Free Bonus 3-in-1`,
+      storeId: product.storeId || product.store?.id || null,
+      store: storeInfo,
     })
 
     setIsAddedToCart(true)
@@ -334,6 +349,19 @@ export default function GadgetDetailClient({
       (product.images && product.images[0]) ||
       ''
 
+    const storeInfo = product.store
+      ? {
+          id: product.store.id,
+          name: product.store.name,
+          city: product.store.city,
+          province: product.store.province,
+          address: product.store.address,
+          postalCode: product.store.postalCode,
+          latitude: product.store.latitude,
+          longitude: product.store.longitude,
+        }
+      : null
+
     const directItem = {
       id: `buynow-${product.id}-${variantId || 'base'}-${Date.now()}`,
       type: 'PRODUCT' as const,
@@ -348,6 +376,8 @@ export default function GadgetDetailClient({
       weightGram: product.weightGram ?? 500,
       pricePerKg: product.pricePerKg ?? 20000,
       notes: `${product.warrantyDays || 30} Hari Garansi Toko + Free Bonus 3-in-1`,
+      storeId: product.storeId || product.store?.id || null,
+      store: storeInfo,
     }
 
     // Set Buy Now item langsung tanpa memasukkan ke keranjang belanja umum

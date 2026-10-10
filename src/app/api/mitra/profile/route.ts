@@ -158,7 +158,9 @@ export async function POST(request: NextRequest) {
           whatsapp: body.whatsapp || body.phone || null,
           email: body.email || null,
           website: body.website || null,
-          features: body.features || [],
+          features: Array.isArray(body.features)
+            ? body.features.slice(0, 5)
+            : [],
           weekdayHours: body.weekdayHours || null,
           weekendHours: body.weekendHours || null,
           latitude: body.latitude || null,
@@ -194,7 +196,9 @@ export async function POST(request: NextRequest) {
           whatsapp: body.whatsapp || body.phone || null,
           email: body.email || null,
           website: body.website || null,
-          features: body.features || [],
+          features: Array.isArray(body.features)
+            ? body.features.slice(0, 5)
+            : [],
           weekdayHours: body.weekdayHours || null,
           weekendHours: body.weekendHours || null,
           latitude: body.latitude || null,

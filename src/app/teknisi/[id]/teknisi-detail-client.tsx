@@ -472,8 +472,7 @@ export default function TeknisiDetailClient({
                             }),
                           })
                           if (res.ok) {
-                            const data = await res.json()
-                            window.location.href = `/chat/${data.room.id}`
+                            window.location.href = '/dashboard/customer/chat'
                           } else if (res.status === 401) {
                             window.location.href = '/login'
                           }

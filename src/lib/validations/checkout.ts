@@ -64,11 +64,43 @@ export const checkoutItemSchema = z
     }
   })
 
+export const storePackageSchema = z.object({
+  storeId: z.string().trim().min(1, 'ID Toko wajib diisi'),
+  storeName: z.string().optional().nullable(),
+  courierCode: z.string().trim().min(1).max(50).default('JNE'),
+  courierService: z.string().trim().min(1).max(50).default('REG'),
+  shippingCost: z
+    .number({ invalid_type_error: 'Biaya pengiriman harus berupa angka' })
+    .nonnegative('Biaya pengiriman tidak boleh negatif')
+    .default(0),
+  insuranceFee: z
+    .number({ invalid_type_error: 'Biaya asuransi harus berupa angka' })
+    .nonnegative('Biaya asuransi tidak boleh negatif')
+    .default(0),
+  isInsuranceMandatory: z.boolean().optional().nullable(),
+  notes: z
+    .string()
+    .max(500, 'Catatan toko maksimal 500 karakter')
+    .optional()
+    .nullable(),
+  voucherCode: z
+    .string()
+    .trim()
+    .max(50, 'Kode voucher maksimal 50 karakter')
+    .optional()
+    .nullable(),
+  voucherCodes: z.array(z.string().trim().max(50)).optional().nullable(),
+  items: z.array(checkoutItemSchema).min(1, 'Item toko tidak boleh kosong'),
+})
+
+export type StorePackageInput = z.infer<typeof storePackageSchema>
+
 export const checkoutSchema = z.object({
   items: z
     .array(checkoutItemSchema)
     .min(1, 'Keranjang belanja kosong')
     .max(20, 'Maksimal 20 item dalam satu pesanan'),
+  storePackages: z.array(storePackageSchema).optional().nullable(),
   paymentMethod: z
     .enum(['CASH', 'MANUAL_TRANSFER', 'MIDTRANS'])
     .default('CASH'),
@@ -113,6 +145,17 @@ export const checkoutSchema = z.object({
     .string()
     .trim()
     .max(50, 'Kode voucher maksimal 50 karakter')
+    .optional()
+    .nullable(),
+  voucherCodes: z.array(z.string().trim().max(50)).optional().nullable(),
+  voucherStoreId: z.string().trim().optional().nullable(),
+  voucherAssignments: z
+    .array(
+      z.object({
+        code: z.string().trim().min(1),
+        storeId: z.string().trim().optional().nullable(),
+      })
+    )
     .optional()
     .nullable(),
   dealToken: z

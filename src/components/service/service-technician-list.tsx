@@ -187,45 +187,6 @@ export default function ServiceTechnicianList({
             </p>
           </div>
 
-          {/* Service Flow Tabs */}
-          <div className="mb-8 flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-2">
-            <Link
-              href="/konsultasi"
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                serviceType === 'konsultasi'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">1.</span> Konsultasi
-            </Link>
-            <ChevronRight className="h-5 w-5 self-center text-gray-300" />
-            <Link
-              href="/cek-bongkar"
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                serviceType === 'cek-bongkar'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Wrench className="h-4 w-4" />
-              <span className="hidden sm:inline">2.</span> Cek/Bongkar
-            </Link>
-            <ChevronRight className="h-5 w-5 self-center text-gray-300" />
-            <Link
-              href="/jasa-servis"
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                serviceType === 'jasa-servis'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">3.</span> Jasa Servis
-            </Link>
-          </div>
-
           {/* Search & Filter */}
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <SearchBar
