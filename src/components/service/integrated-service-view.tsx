@@ -566,9 +566,9 @@ export function IntegratedServiceView({
                       </span>
                     </div>
 
-                    {/* Bottom rating */}
+                    {/* Bottom rating (Dark Glassmorphic Pill for WCAG AAA 10:1 Contrast) */}
                     {mitra.rating > 0 && (
-                      <div className="absolute bottom-3 left-3 flex items-center gap-1.5 drop-shadow-md">
+                      <div className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-slate-900/80 px-2.5 py-1 backdrop-blur-md">
                         <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
                         <span className="text-xs font-bold text-amber-300">
                           {mitra.rating.toFixed(1)} (

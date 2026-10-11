@@ -80,10 +80,10 @@ export function Footer({ variant = 'light', className = '' }: FooterProps) {
                 </li>
                 <li>
                   <Link
-                    href="/servis-lcd"
+                    href="/servis"
                     className="transition-colors hover:text-orange-500"
                   >
-                    Servis Layar LCD
+                    Layanan Servis
                   </Link>
                 </li>
                 <li>

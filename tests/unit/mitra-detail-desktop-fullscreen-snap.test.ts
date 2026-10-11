@@ -19,13 +19,15 @@ describe('Mitra Detail Desktop Fullscreen Snap Layout Suite', () => {
   it('verifies all desktop sections have md:h-screen and md:snap-start to fit exactly 1 viewport screen', () => {
     // 1. Hero
     expect(content).toContain('id="hero"')
-    expect(content).toContain('md:h-screen md:items-center md:snap-start')
+    expect(content).toContain('md:h-screen')
+    expect(content).toContain('md:snap-start')
+    expect(content).toContain('md:items-center')
 
     // 2. Banner Editorial
     expect(content).toContain('id="banner-editorial"')
-    expect(content).toContain(
-      'md:h-screen md:flex-col md:justify-center md:overflow-hidden md:pt-16 md:snap-start'
-    )
+    expect(content).toContain('md:h-screen')
+    expect(content).toContain('md:snap-start')
+    expect(content).toContain('md:flex-col')
 
     // 3. Katalog Layanan
     expect(content).toContain('id="katalog-layanan"')

@@ -83,8 +83,8 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        source: '/servis',
-        destination: '/servis-lcd',
+        source: '/servis-lcd',
+        destination: '/servis',
         permanent: true,
       },
       {

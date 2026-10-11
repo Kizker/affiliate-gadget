@@ -57,7 +57,7 @@ export function MobileBottomNav({
         ? 'none'
         : pathname === '/' || pathname.startsWith('/gadget')
           ? 'beranda'
-          : pathname.startsWith('/servis-lcd') ||
+          : pathname.startsWith('/servis') ||
               pathname.startsWith('/rekomendasi')
             ? 'servis'
             : pathname.startsWith('/toko')
@@ -90,13 +90,15 @@ export function MobileBottomNav({
           aria-label="Beranda Katalog Gadget"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'beranda'
-              ? 'font-bold text-orange-500'
+              ? 'font-bold text-orange-700 dark:text-orange-400'
               : 'font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <Home
             className={`h-5 w-5 transition-transform ${
-              currentTab === 'beranda' ? 'scale-110 text-orange-500' : ''
+              currentTab === 'beranda'
+                ? 'scale-110 text-orange-700 dark:text-orange-400'
+                : ''
             }`}
             strokeWidth={currentTab === 'beranda' ? 2.5 : 1.8}
           />
@@ -105,23 +107,25 @@ export function MobileBottomNav({
 
         {/* 3. Servis */}
         <Link
-          href="/servis-lcd"
+          href="/servis"
           aria-label="Layanan Servis Gadget"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'servis'
-              ? 'font-bold text-orange-500'
+              ? 'font-bold text-orange-700 dark:text-orange-400'
               : 'font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <div className="relative">
             <Wrench
               className={`h-5 w-5 transition-transform ${
-                currentTab === 'servis' ? 'scale-110 text-orange-500' : ''
+                currentTab === 'servis'
+                  ? 'scale-110 text-orange-700 dark:text-orange-400'
+                  : ''
               }`}
               strokeWidth={currentTab === 'servis' ? 2.5 : 1.8}
             />
             {currentTab === 'servis' && (
-              <span className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-full bg-orange-500" />
+              <span className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-full bg-orange-700 dark:bg-orange-400" />
             )}
           </div>
           <span className="mt-1 text-[10px] tracking-tight">Servis</span>
@@ -133,13 +137,15 @@ export function MobileBottomNav({
           aria-label="Daftar Toko Cabang"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'toko'
-              ? 'font-bold text-orange-500'
+              ? 'font-bold text-orange-700 dark:text-orange-400'
               : 'font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <Store
             className={`h-5 w-5 transition-transform ${
-              currentTab === 'toko' ? 'scale-110 text-orange-500' : ''
+              currentTab === 'toko'
+                ? 'scale-110 text-orange-700 dark:text-orange-400'
+                : ''
             }`}
             strokeWidth={currentTab === 'toko' ? 2.5 : 1.8}
           />

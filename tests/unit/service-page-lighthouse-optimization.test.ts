@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { getMitraServiceListData } from '@/lib/mitra-service-data'
 
-describe('Service Page Lighthouse Optimization Suite (/servis-lcd & /servis)', () => {
+describe('Service Page Lighthouse Optimization Suite (/servis)', () => {
   it('verifies getMitraServiceListData returns valid mitra list with proper fields and fallbacks', async () => {
     const mitras = await getMitraServiceListData()
     expect(Array.isArray(mitras)).toBe(true)
@@ -17,8 +17,8 @@ describe('Service Page Lighthouse Optimization Suite (/servis-lcd & /servis)', (
     expect(first.googleMapsUrl).toContain('https://maps.google.com/?q=')
   })
 
-  it('verifies src/app/servis-lcd/page.tsx implements SSR Direct Data Hydration & Schema.org JSON-LD', () => {
-    const pagePath = path.join(process.cwd(), 'src/app/servis-lcd/page.tsx')
+  it('verifies src/app/servis/page.tsx implements SSR Direct Data Hydration & Schema.org JSON-LD', () => {
+    const pagePath = path.join(process.cwd(), 'src/app/servis/page.tsx')
     const content = fs.readFileSync(pagePath, 'utf-8')
 
     // 1. Force dynamic & direct data fetch
@@ -29,7 +29,7 @@ describe('Service Page Lighthouse Optimization Suite (/servis-lcd & /servis)', (
     // 2. Canonical SEO & Metadata
     expect(content).toContain('generateMetadata()')
     expect(content).toContain('canonical:')
-    expect(content).toContain('/servis-lcd')
+    expect(content).toContain('/servis')
 
     // 3. Schema.org Structured Data
     expect(content).toContain('application/ld+json')
@@ -70,18 +70,20 @@ describe('Service Page Lighthouse Optimization Suite (/servis-lcd & /servis)', (
       'Booking servis dan konsultasi di ${mitra.businessName}'
     )
     expect(content).toContain('aria-pressed={isActive}')
+    // 4. Mobile Rating Badge Dark Backdrop for WCAG AAA
+    expect(content).toContain('bg-slate-900/80')
   })
 
-  it('verifies next.config.js includes 301 permanent redirect for legacy /servis route', () => {
+  it('verifies next.config.js includes 301 permanent redirect for /servis-lcd to /servis', () => {
     const configPath = path.join(process.cwd(), 'next.config.js')
     const content = fs.readFileSync(configPath, 'utf-8')
 
-    expect(content).toContain("source: '/servis'")
-    expect(content).toContain("destination: '/servis-lcd'")
+    expect(content).toContain("source: '/servis-lcd'")
+    expect(content).toContain("destination: '/servis'")
     expect(content).toContain('permanent: true')
   })
 
-  it('verifies navbar.tsx has optimized Next Image logo and accessible touch target for mobile login', () => {
+  it('verifies navbar.tsx has optimized Next Image logo, accessible touch target, and high contrast buttons', () => {
     const navbarPath = path.join(
       process.cwd(),
       'src/components/layouts/navbar.tsx'
@@ -96,6 +98,23 @@ describe('Service Page Lighthouse Optimization Suite (/servis-lcd & /servis)', (
     expect(content).toContain('height={32}')
 
     // 2. Mobile touch target >= 44px
-    expect(content).toContain('min-h-[44px] min-w-[44px]')
+    expect(content).toContain('min-h-[44px]')
+    expect(content).toContain('min-w-[44px]')
+
+    // 3. High contrast register button
+    expect(content).toContain('bg-orange-700')
+    expect(content).toContain("href: '/servis'")
+  })
+
+  it('verifies mobile-bottom-nav.tsx routes directly to /servis with high contrast active tab', () => {
+    const navPath = path.join(
+      process.cwd(),
+      'src/components/layouts/mobile-bottom-nav.tsx'
+    )
+    const content = fs.readFileSync(navPath, 'utf-8')
+
+    expect(content).toContain('href="/servis"')
+    expect(content).toContain("pathname.startsWith('/servis')")
+    expect(content).toContain('text-orange-700')
   })
 })

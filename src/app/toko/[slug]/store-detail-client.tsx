@@ -643,7 +643,7 @@ export default function StoreDetailClient({
 
                 <div className="flex flex-wrap items-center justify-center gap-4 pt-2 sm:gap-5 lg:justify-start">
                   <Link
-                    href="/servis-lcd"
+                    href="/servis"
                     aria-label="Pelajari servis kilat LCD 2 jam"
                     className="text-xs font-bold text-neutral-900 underline underline-offset-4 transition-opacity hover:opacity-75 dark:text-white sm:text-sm"
                   >

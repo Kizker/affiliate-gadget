@@ -40,10 +40,10 @@ test.describe('Public Pages', () => {
     expect(criticalErrors).toHaveLength(0)
   })
 
-  test('Servis LCD page loads correctly', async ({ page }) => {
-    await page.goto('/servis-lcd')
+  test('Layanan Servis page loads correctly', async ({ page }) => {
+    await page.goto('/servis')
 
-    await expect(page).toHaveTitle(/Servis LCD|Affiliate Gadget/)
+    await expect(page).toHaveTitle(/Servis|Affiliate Gadget/)
 
     // Wait for page to load
     await page.waitForLoadState('domcontentloaded')
@@ -133,18 +133,16 @@ test.describe('Navigation', () => {
     await expect(page).toHaveURL(/\/toko/, { timeout: 15000 })
   })
 
-  test('Can navigate from homepage to servis-lcd via footer', async ({
-    page,
-  }) => {
+  test('Can navigate from homepage to servis via footer', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('domcontentloaded')
 
-    const servisLink = page.locator('footer a[href="/servis-lcd"]').first()
+    const servisLink = page.locator('footer a[href="/servis"]').first()
     await servisLink.scrollIntoViewIfNeeded()
     await expect(servisLink).toBeVisible()
     await servisLink.click()
 
-    await expect(page).toHaveURL(/\/servis-lcd/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/servis/, { timeout: 15000 })
   })
 
   test('Can navigate from homepage to teknisi', async ({ page }) => {

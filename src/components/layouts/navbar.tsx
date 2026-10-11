@@ -150,7 +150,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
     { href: '/', label: 'Beranda' },
     { href: '/gadget', label: 'Produk' },
     { href: '/toko', label: 'Toko' },
-    { href: '/servis-lcd', label: 'Servis LCD' },
+    { href: '/servis', label: 'Servis' },
   ]
 
   const isSearchPage =
@@ -180,7 +180,10 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
               className="shadow-2xs h-7 w-7 rounded-xl object-contain transition-transform duration-200 group-hover:scale-105 sm:h-8 sm:w-8"
             />
             <span className="text-sm font-black leading-none tracking-tight text-slate-950 dark:text-white sm:text-base">
-              Affiliate<span className="text-orange-500">Gadget</span>
+              Affiliate
+              <span className="text-orange-600 dark:text-orange-400">
+                Gadget
+              </span>
             </span>
           </Link>
 
@@ -404,7 +407,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                   </Link>
                   <Link
                     href="/register"
-                    className="shadow-xs inline-flex items-center justify-center rounded-full bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white transition-all duration-200 hover:bg-orange-600 active:scale-95"
+                    className="shadow-xs inline-flex items-center justify-center rounded-full bg-orange-700 px-3.5 py-1.5 text-xs font-bold text-white transition-all duration-200 hover:bg-orange-800 active:scale-95"
                   >
                     Daftar
                   </Link>

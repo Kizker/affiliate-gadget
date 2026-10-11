@@ -131,7 +131,7 @@ export function computeTargetUrl(
     case 'ALL_CATALOG':
       return '/gadget'
     case 'SERVICE_LCD':
-      return '/servis-lcd'
+      return '/servis'
     case 'WARRANTY':
       return '/garansi'
     case 'CUSTOM':

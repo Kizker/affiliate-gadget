@@ -82,7 +82,7 @@ describe('Admin Ads Modular Decomposition', () => {
 
     it('generates standard platform feature URLs', () => {
       expect(computeTargetUrl('ALL_CATALOG')).toBe('/gadget')
-      expect(computeTargetUrl('SERVICE_LCD')).toBe('/servis-lcd')
+      expect(computeTargetUrl('SERVICE_LCD')).toBe('/servis')
       expect(computeTargetUrl('WARRANTY')).toBe('/garansi')
     })
 
