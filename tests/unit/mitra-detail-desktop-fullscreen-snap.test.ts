@@ -2,52 +2,64 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 
-describe('Mitra Detail Desktop Fullscreen Snap Layout Suite', () => {
+describe('Mitra Detail Desktop Balanced Layout Suite', () => {
   const filePath = path.join(
     process.cwd(),
     'src/app/rekomendasi/[id]/mitra-detail-client.tsx'
   )
   const content = fs.readFileSync(filePath, 'utf-8')
 
-  it('verifies outer container has snap-container id and full-screen overflow properties on desktop', () => {
-    expect(content).toContain('id="snap-container"')
-    expect(content).toContain('md:snap-container')
-    expect(content).toContain('md:h-screen')
-    expect(content).toContain('md:overflow-y-scroll')
+  it('verifies outer container has natural scroll flow and eliminates rigid snap-container on desktop', () => {
+    expect(content).not.toContain('id="snap-container"')
+    expect(content).not.toContain('md:snap-container')
+    expect(content).toContain('min-h-screen bg-white')
+    expect(content).toContain('<main className="w-full">')
   })
 
-  it('verifies all desktop sections have md:h-screen and md:snap-start to fit exactly 1 viewport screen', () => {
+  it('verifies all desktop sections have balanced proportional spacing without rigid md:h-screen or md:snap-start', () => {
     // 1. Hero
     expect(content).toContain('id="hero"')
-    expect(content).toContain('md:h-screen')
-    expect(content).toContain('md:snap-start')
-    expect(content).toContain('md:items-center')
+    expect(content).not.toContain(
+      'id="hero"\n          className="relative hidden w-full overflow-hidden bg-[#FBFBFD] pt-16 dark:bg-neutral-950 md:flex md:h-screen md:snap-start'
+    )
+    expect(content).toContain('max-w-7xl items-center')
 
     // 2. Banner Editorial
     expect(content).toContain('id="banner-editorial"')
-    expect(content).toContain('md:h-screen')
-    expect(content).toContain('md:snap-start')
-    expect(content).toContain('md:flex-col')
+    expect(content).toContain('px-4 py-6 sm:px-6 sm:py-10 lg:px-8')
 
     // 3. Katalog Layanan
     expect(content).toContain('id="katalog-layanan"')
+    expect(content).toContain(
+      'border-y border-neutral-100 bg-[#F8F9FA] px-4 py-8'
+    )
 
     // 4. Keunggulan
     expect(content).toContain('id="keunggulan"')
+    expect(content).toContain('px-4 py-8 sm:px-6 sm:py-12 lg:px-8')
 
     // 5. Galeri Workshop
     expect(content).toContain('id="galeri-workshop"')
+    expect(content).toContain(
+      'border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8'
+    )
 
     // 6. Informasi Mitra
     expect(content).toContain('id="informasi-mitra"')
+    expect(content).toContain('border-t border-neutral-100 px-4 py-8')
 
     // 7. Ulasan Pelanggan
     expect(content).toContain('id="ulasan-pelanggan"')
+    expect(content).toContain(
+      'border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8'
+    )
   })
 
-  it('verifies Footer is omitted from the mitra detail page', () => {
-    expect(content).not.toContain('<Footer')
-    expect(content).not.toContain("from '@/components/layouts/footer'")
+  it('verifies Footer is included at the bottom of the mitra detail page', () => {
+    expect(content).toContain('<Footer />')
+    expect(content).toContain(
+      "import { Footer } from '@/components/layouts/footer'"
+    )
   })
 
   it('verifies mobile hero has centered fading card over full-cover image', () => {

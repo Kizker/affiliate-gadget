@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/layouts/navbar'
+import { Footer } from '@/components/layouts/footer'
 import ReviewModal from '@/components/reviews/review-modal'
 import ReviewList from '@/components/reviews/review-list'
 import ImageLightbox from '@/components/gallery/image-lightbox'
@@ -258,144 +259,142 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
     '/images/service/service-roxy.jpg'
 
   return (
-    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white md:h-screen md:overflow-hidden">
+    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white">
       <Navbar variant="light" />
 
-      {/* Snap Scroll Container on Desktop (Matching Homepage) */}
-      <div
-        id="snap-container"
-        className="md:snap-container h-full w-full overflow-y-auto md:h-screen md:overflow-y-scroll md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden"
-      >
+      <main className="w-full">
         {/* ─────────────────────────────────────────────────────────────
             1A. DESKTOP HERO VIEWPORT: STUDIO SPLIT (Matching /toko/[slug])
             Clean studio aesthetic, workshop photo on left, typography on right.
         ───────────────────────────────────────────────────────────── */}
         <section
           id="hero"
-          className="relative hidden w-full overflow-hidden bg-[#FBFBFD] pt-16 dark:bg-neutral-950 md:flex md:h-screen md:snap-start md:items-center"
+          className="relative hidden w-full overflow-hidden bg-[#FBFBFD] pb-10 pt-20 dark:bg-neutral-950 md:flex md:items-center lg:pb-12 lg:pt-24"
         >
-          {/* Left Column (56%): Workshop/Bengkel Photo Studio Frame */}
-          <div className="relative flex h-[82vh] max-h-[640px] w-[56%] items-center justify-start overflow-hidden pl-6 lg:pl-10">
-            <div className="relative h-full w-full overflow-hidden rounded-3xl border border-neutral-200/80 bg-neutral-100 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:border-neutral-800 dark:bg-neutral-900">
-              <ImageWithFallback
-                src={heroImageSrc}
-                alt={mitra.businessName}
-                fill
-                priority
-                sizes="60vw"
-                className="object-cover object-center transition-transform duration-700 ease-out hover:scale-105"
-              />
-              {/* Subtle Gradient Vignette */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+          <div className="mx-auto flex w-full max-w-7xl items-center">
+            {/* Left Column (55%): Workshop/Bengkel Photo Studio Frame */}
+            <div className="relative flex h-[480px] w-[55%] items-center justify-start overflow-hidden pl-4 lg:h-[540px] lg:pl-8">
+              <div className="relative h-full w-full overflow-hidden rounded-3xl border border-neutral-200/80 bg-neutral-100 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:border-neutral-800 dark:bg-neutral-900">
+                <ImageWithFallback
+                  src={heroImageSrc}
+                  alt={mitra.businessName}
+                  fill
+                  priority
+                  sizes="60vw"
+                  className="object-cover object-center transition-transform duration-700 ease-out hover:scale-105"
+                />
+                {/* Subtle Gradient Vignette */}
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
-              {/* Overlaid Badges on Image */}
-              <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between text-white">
-                <div className="flex items-center gap-2 rounded-full bg-black/65 px-4 py-2 backdrop-blur-md">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                  <span className="text-xs font-semibold tracking-wide">
-                    Mitra Servis Resmi Terverifikasi
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 rounded-full bg-black/65 px-3.5 py-2 backdrop-blur-md">
-                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  <span className="text-xs font-bold">
-                    {mitra.rating.toFixed(1)}
-                  </span>
-                  <span className="text-[11px] text-neutral-300">
-                    ({mitra.totalReview} ulasan)
-                  </span>
+                {/* Overlaid Badges on Image */}
+                <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-2 rounded-full bg-black/65 px-4 py-2 backdrop-blur-md">
+                    <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                    <span className="text-xs font-semibold tracking-wide">
+                      Mitra Servis Resmi Terverifikasi
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-full bg-black/65 px-3.5 py-2 backdrop-blur-md">
+                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    <span className="text-xs font-bold">
+                      {mitra.rating.toFixed(1)}
+                    </span>
+                    <span className="text-[11px] text-neutral-300">
+                      ({mitra.totalReview} ulasan)
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Right Column (44%): Sleek Editorial Typography & Action Buttons */}
-          <div className="z-10 flex h-full w-[44%] flex-col items-start justify-center space-y-5 pl-6 pr-8 lg:pl-10 lg:pr-16">
-            <div className="inline-flex items-center gap-2">
-              <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400 sm:text-sm">
-                Spesialis Servis & Reparasi Gadget
-              </span>
-              <Sparkles className="h-4 w-4 text-[#0070F3] dark:text-sky-400" />
-            </div>
+            {/* Right Column (45%): Sleek Editorial Typography & Action Buttons */}
+            <div className="z-10 flex w-[45%] flex-col items-start justify-center space-y-4 pl-6 pr-6 lg:space-y-5 lg:pl-10 lg:pr-12">
+              <div className="inline-flex items-center gap-2">
+                <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400 sm:text-sm">
+                  Spesialis Servis & Reparasi Gadget
+                </span>
+                <Sparkles className="h-4 w-4 text-[#0070F3] dark:text-sky-400" />
+              </div>
 
-            <h1 className="text-3xl font-black leading-[1.08] tracking-tight text-neutral-950 dark:text-white lg:text-4xl xl:text-5xl">
-              {mitra.businessName}
-            </h1>
+              <h1 className="text-3xl font-black leading-[1.08] tracking-tight text-neutral-950 dark:text-white lg:text-4xl xl:text-5xl">
+                {mitra.businessName}
+              </h1>
 
-            <p className="max-w-lg text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 lg:text-base">
-              {mitra.tagline ||
-                mitra.description ||
-                `Pusat reparasi gadget profesional di ${mitra.city}. Pengerjaan transparan, teknisi berpengalaman, dan suku cadang berkualitas dengan jaminan garansi servis.`}
-            </p>
+              <p className="max-w-lg text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 lg:text-base">
+                {mitra.tagline ||
+                  mitra.description ||
+                  `Pusat reparasi gadget profesional di ${mitra.city}. Pengerjaan transparan, teknisi berpengalaman, dan suku cadang berkualitas dengan jaminan garansi servis.`}
+              </p>
 
-            {/* Quick Info Chips */}
-            <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold ${
-                  mitra.isOpen
-                    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-                    : 'border border-neutral-200 bg-neutral-100 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400'
-                }`}
-              >
+              {/* Quick Info Chips */}
+              <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs">
                 <span
-                  className={`h-2 w-2 rounded-full ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold ${
                     mitra.isOpen
-                      ? 'animate-pulse bg-emerald-500'
-                      : 'bg-neutral-400'
+                      ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                      : 'border border-neutral-200 bg-neutral-100 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400'
                   }`}
-                />
-                {mitra.isOpen ? 'Buka Sekarang' : 'Tutup Sementara'}
-              </span>
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      mitra.isOpen
+                        ? 'animate-pulse bg-emerald-500'
+                        : 'bg-neutral-400'
+                    }`}
+                  />
+                  {mitra.isOpen ? 'Buka Sekarang' : 'Tutup Sementara'}
+                </span>
 
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 font-medium text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
-                <Clock className="h-3.5 w-3.5 text-neutral-500" />
-                {mitra.weekdayHours || '09:00 - 20:00 WIB'}
-              </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 font-medium text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+                  <Clock className="h-3.5 w-3.5 text-neutral-500" />
+                  {mitra.weekdayHours || '09:00 - 20:00 WIB'}
+                </span>
 
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 font-medium text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
-                <MapPin className="h-3.5 w-3.5 text-neutral-500" />
-                {mitra.city}, {mitra.province || 'Indonesia'}
-              </span>
-            </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 font-medium text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+                  <MapPin className="h-3.5 w-3.5 text-neutral-500" />
+                  {mitra.city}, {mitra.province || 'Indonesia'}
+                </span>
+              </div>
 
-            {/* Action Buttons Row */}
-            <div className="flex flex-wrap items-center gap-3 pt-3">
-              <button
-                onClick={(e) => handleBookingChat(e)}
-                className="rounded-full bg-black px-7 py-3.5 text-xs font-bold text-white shadow-md transition hover:bg-neutral-800 active:scale-95 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
-              >
-                Booking Servis / Chat Langsung
-              </button>
+              {/* Action Buttons Row */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  onClick={(e) => handleBookingChat(e)}
+                  className="rounded-full bg-black px-7 py-3.5 text-xs font-bold text-white shadow-md transition hover:bg-neutral-800 active:scale-95 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
+                >
+                  Booking Servis / Chat Langsung
+                </button>
 
-              <a
-                href={getWhatsAppUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={trackInquiry}
-                className="shadow-2xs inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-white px-5 py-3.5 text-xs font-bold text-neutral-900 transition hover:border-black hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-white"
-              >
-                <MessageCircle className="h-4 w-4 text-emerald-600" />
-                <span>WhatsApp</span>
-              </a>
+                <a
+                  href={getWhatsAppUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={trackInquiry}
+                  className="shadow-2xs inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-white px-5 py-3.5 text-xs font-bold text-neutral-900 transition hover:border-black hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-white"
+                >
+                  <MessageCircle className="h-4 w-4 text-emerald-600" />
+                  <span>WhatsApp</span>
+                </a>
 
-              <a
-                href={getMapsUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
-                title="Buka Petunjuk Arah Google Maps"
-              >
-                <Compass className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
-                <span>Peta</span>
-              </a>
+                <a
+                  href={getMapsUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+                  title="Buka Petunjuk Arah Google Maps"
+                >
+                  <Compass className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+                  <span>Peta</span>
+                </a>
 
-              <button
-                onClick={handleShare}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 transition hover:border-neutral-400 hover:text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
-                title="Bagikan Halaman Mitra"
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
+                <button
+                  onClick={handleShare}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 transition hover:border-neutral-400 hover:text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+                  title="Bagikan Halaman Mitra"
+                >
+                  <Share2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -552,11 +551,11 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
       ───────────────────────────────────────────────────────────── */}
         <section
           id="banner-editorial"
-          className="relative px-4 py-8 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+          className="px-4 py-6 sm:px-6 sm:py-10 lg:px-8"
         >
           <div className="mx-auto w-full max-w-7xl">
-            <div className="relative overflow-hidden rounded-3xl bg-[#EAF2FA] shadow-sm transition-colors dark:bg-neutral-900 md:h-[76vh] md:max-h-[620px]">
-              <div className="flex min-h-[360px] flex-col items-center gap-6 sm:min-h-[420px] md:h-full lg:grid lg:min-h-0 lg:grid-cols-12">
+            <div className="relative overflow-hidden rounded-3xl bg-[#EAF2FA] shadow-sm transition-colors dark:bg-neutral-900 md:min-h-[380px] lg:min-h-[420px]">
+              <div className="flex flex-col items-center gap-6 sm:min-h-[360px] lg:grid lg:min-h-[420px] lg:grid-cols-12">
                 {/* Left Editorial Copy */}
                 <div className="z-10 order-1 flex w-full flex-col justify-center space-y-4 p-7 text-center sm:p-12 md:h-full lg:col-span-6 lg:pl-16 lg:text-left">
                   <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#0070F3] dark:text-sky-400 sm:text-sm">
@@ -594,7 +593,7 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
                 </div>
 
                 {/* Right Illustration / Workbench Visual */}
-                <div className="relative order-2 h-64 min-h-[240px] w-full sm:h-80 sm:min-h-[320px] md:h-full lg:col-span-6 lg:min-h-0">
+                <div className="relative order-2 h-64 min-h-[240px] w-full sm:h-72 lg:col-span-6 lg:h-full lg:min-h-[420px]">
                   <ImageWithFallback
                     src={
                       (mitra.images && mitra.images.length > 1
@@ -618,11 +617,11 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
       ───────────────────────────────────────────────────────────── */}
         <section
           id="katalog-layanan"
-          className="relative border-y border-neutral-100 bg-[#F8F9FA] px-4 py-10 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+          className="border-y border-neutral-100 bg-[#F8F9FA] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 sm:py-12 lg:px-8"
         >
-          <div className="mx-auto flex w-full max-w-7xl flex-col justify-center">
+          <div className="mx-auto w-full max-w-7xl">
             {/* Section Header */}
-            <div className="space-y-2 pb-5 text-center sm:pb-7">
+            <div className="space-y-1.5 pb-6 text-center sm:pb-8">
               <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400">
                 Katalog Layanan Workshop
               </span>
@@ -714,10 +713,10 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
         {mitra.features && mitra.features.length > 0 && (
           <section
             id="keunggulan"
-            className="relative px-4 py-10 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+            className="px-4 py-8 sm:px-6 sm:py-12 lg:px-8"
           >
-            <div className="mx-auto flex w-full max-w-7xl flex-col justify-center">
-              <div className="mb-6 space-y-2 text-center sm:mb-8">
+            <div className="mx-auto w-full max-w-7xl">
+              <div className="mb-6 space-y-1.5 text-center sm:mb-8">
                 <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400">
                   Standar Kualitas
                 </span>
@@ -756,10 +755,10 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
         {mitra.images && mitra.images.length > 0 && (
           <section
             id="galeri-workshop"
-            className="relative border-t border-neutral-100 bg-[#FBFBFD] px-4 py-10 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+            className="border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 sm:py-12 lg:px-8"
           >
-            <div className="mx-auto flex w-full max-w-7xl flex-col justify-center">
-              <div className="mb-6 space-y-2 text-center sm:mb-8">
+            <div className="mx-auto w-full max-w-7xl">
+              <div className="mb-6 space-y-1.5 text-center sm:mb-8">
                 <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400">
                   Dokumentasi Workshop
                 </span>
@@ -850,10 +849,10 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
       ───────────────────────────────────────────────────────────── */}
         <section
           id="informasi-mitra"
-          className="relative border-t border-neutral-100 px-4 py-6 dark:border-neutral-900 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+          className="border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 sm:py-12 lg:px-8"
         >
-          <div className="mx-auto flex w-full max-w-7xl flex-col justify-center">
-            <div className="mb-4 space-y-1 text-center sm:mb-5">
+          <div className="mx-auto w-full max-w-7xl">
+            <div className="mb-5 space-y-1.5 text-center sm:mb-6">
               <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-2xl lg:text-3xl">
                 Informasi Workshop &amp; Lokasi Resmi
               </h2>
@@ -1006,8 +1005,8 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
 
             {/* Embedded Google Maps Container (Desktop & Tablet) */}
             {mitra.latitude && mitra.longitude && (
-              <div className="mt-4 hidden overflow-hidden rounded-3xl border border-neutral-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:border-neutral-800 md:block">
-                <div className="h-56 w-full lg:h-64">
+              <div className="mt-5 hidden overflow-hidden rounded-3xl border border-neutral-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:border-neutral-800 md:block">
+                <div className="h-64 w-full lg:h-72">
                   <GoogleMapsProvider>
                     <GoogleMapDisplay
                       latitude={mitra.latitude}
@@ -1027,9 +1026,9 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
       ───────────────────────────────────────────────────────────── */}
         <section
           id="ulasan-pelanggan"
-          className="relative border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+          className="border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8 pb-14 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 sm:py-12 sm:pb-16 lg:px-8"
         >
-          <div className="mx-auto flex w-full max-w-7xl flex-col justify-center">
+          <div className="mx-auto w-full max-w-7xl">
             <div className="mb-4 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
               <div>
                 <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400">
@@ -1061,7 +1060,7 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
                 )}
             </div>
 
-            <div className="max-h-[58vh] overflow-y-auto rounded-3xl border border-neutral-200/80 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
+            <div className="rounded-3xl border border-neutral-200/80 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
               <ReviewList
                 mitraId={mitra.id}
                 refreshTrigger={refreshReviews}
@@ -1087,7 +1086,8 @@ export default function MitraDetailClient({ mitra }: MitraDetailClientProps) {
             />
           </div>
         </section>
-      </div>
+      </main>
+      <Footer />
 
       {/* ─────────────────────────────────────────────────────────────
           8A. DESKTOP FLOATING TECHNICIAN SPECIALIST CHAT POPUP (Matching Toko 6A)
