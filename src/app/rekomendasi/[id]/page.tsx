@@ -11,8 +11,6 @@ import { isMitraCurrentlyOpen } from '@/lib/mitra-utils'
 // Force dynamic rendering - avoid DB calls at build time (Docker build stage has no DB)
 export const dynamic = 'force-dynamic'
 
-export { isMitraCurrentlyOpen }
-
 // Generate metadata for SEO
 export async function generateMetadata({
   params,

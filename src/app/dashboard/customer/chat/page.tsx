@@ -27,12 +27,6 @@ import {
   ChatInputBar,
 } from '@/components/customer/chat'
 
-// Contract helper: filter automated confirmation greeting
-export const filterConfirmationGreeting = (p: { note?: string }) =>
-  typeof p.note === 'string' &&
-  p.note.trim() !== '' &&
-  !p.note.includes('ingin mengonfirmasi pesanan')
-
 function CustomerChatContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
