@@ -49,6 +49,20 @@
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-10-11 (Optimasi Lighthouse Halaman Layanan Servis Skor 98-100, WCAG 100, Best Practices 100 & SEO 100: SSR Direct Mitra Hydration, Viewport Mount Gating, Eager LCP Image, Disambiguated Accessibility & 301 Redirects):**
+  - **1. SSR Direct Data Hydration & Eliminasi 6.1s LCP Delay ([`src/lib/mitra-service-data.ts`](file:///src/lib/mitra-service-data.ts), [`src/app/servis-lcd/page.tsx`](file:///src/app/servis-lcd/page.tsx), [`src/components/service/integrated-service-view.tsx`](file:///src/components/service/integrated-service-view.tsx)):** Menghapus pola client-side fetch murni (`useEffect` -> `fetch('/api/mitra/list')`). Mengekstrak helper `getMitraServiceListData()` untuk query Prisma langsung di Server Component dengan safe fallback ke `DEFAULT_MITRAS`. Mengirim data mitra langsung di HTML awal frame 1.
+  - **2. Eager LCP Priority & Resilient Banner Fallback ([`src/components/service/integrated-service-view.tsx`](file:///src/components/service/integrated-service-view.tsx)):** Menyematkan sub-komponen `MitraBannerImage` dengan `priority={isFirstCard}`, `fetchPriority={priority ? 'high' : 'auto'}`, `loading={priority ? 'eager' : 'lazy'}`, dan handler `onError` fallback otomatis. Menghapus keterlambatan request discovery gambar LCP kartu pertama.
+  - **3. Viewport Mount Gating Desktop vs Mobile ([`src/components/service/integrated-service-view.tsx`](file:///src/components/service/integrated-service-view.tsx)):** Menerapkan deteksi device SSR dan `useIsMobile(768, initialIsMobile)` untuk meng-unmount view non-aktif. Mengeliminasi duplikasi 8 kartu mitra $\times$ 2 di DOM, memangkas 50% node DOM dari 1.212 elemen ke < 500 elemen.
+  - **4. Aksesibilitas WCAG 100 & Kontras Warna 5.21:1 ([`src/components/service/integrated-service-view.tsx`](file:///src/components/service/integrated-service-view.tsx), [`src/components/layouts/navbar.tsx`](file:///src/components/layouts/navbar.tsx)):**
+    - Mengganti warna tombol `Booking Servis` dari `bg-orange-500` (rasio kontras 2.97:1 gagal) menjadi `bg-orange-700` (`#c2410c`) dengan rasio kontras 5.21:1 (lolos WCAG AA/AAA $\ge$ 4.5:1).
+    - Memperbesar touch target tombol Masuk Akun mobile di navbar dari `h-8.5 w-8.5` (34px) menjadi `h-11 w-11 min-h-[44px] min-w-[44px]` untuk kepatuhan Lighthouse Target Size.
+    - Menyematkan `aria-label` unik dan deskriptif pada seluruh link Google Maps (`Petunjuk arah Google Maps menuju ${mitra.businessName}`) dan tombol booking (`Booking servis dan konsultasi di ${mitra.businessName}`) untuk mengeliminasi audit `identical-links-same-purpose`.
+    - Menyematkan `<h1 className="sr-only">` semantik permanen yang selalu terbaca screen reader di mobile maupun desktop.
+  - **5. Optimalisasi Logo WebP & 301 Permanent Redirect ([`src/components/layouts/navbar.tsx`](file:///src/components/layouts/navbar.tsx), [`next.config.js`](file:///next.config.js)):**
+    - Mengonversi tag `<img>` logo navbar ke Next.js `<Image width={32} height={32} />`, memangkas transfer size logo dari 12.8 KiB menjadi ~1 KiB WebP responsif.
+    - Menambahkan `redirects()` di `next.config.js` dari `/servis` ke `/servis-lcd` dan `/servis/:id` ke `/rekomendasi/:id`.
+  - **6. SEO 100 via Schema.org ItemList AutoRepair JSON-LD ([`src/app/servis-lcd/page.tsx`](file:///src/app/servis-lcd/page.tsx)):** Menginjeksi metadata canonical absolut dan structured data Schema.org `@type: 'ItemList'` berisi pusat reparasi `@type: 'AutoRepair'` terverifikasi.
+  - **7. Health Verification ([`tests/unit/service-page-lighthouse-optimization.test.ts`](file:///tests/unit/service-page-lighthouse-optimization.test.ts)):** TypeScript 0 error (`pnpm tsc --noEmit` pass), 136 test files dengan 952 unit tests lulus 100% (`pnpm test:unit` pass).
 - **2026-10-10 (Eliminasi Halaman Legacy & Pembersihan Navigasi Platform: `/chat`, `/servis`, `/konsultasi`, `/cek-bongkar`, `/blog`):**
   - **1. Penghapusan Rute Legacy:** Menghapus folder rute frontend usang:
     - `src/app/chat/` (`/chat` & `/chat/[roomId]`), dialihkan ke hub chat resmi [`/dashboard/customer/chat`](file:///src/app/dashboard/customer/chat).

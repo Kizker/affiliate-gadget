@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -171,13 +172,11 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
             className="group flex shrink-0 items-center gap-2 focus:outline-none sm:gap-2.5"
             aria-label="AffiliateGadget Beranda"
           >
-            <img
+            <Image
               src="/logo.webp"
               alt="Affiliate Gadget Logo"
               width={32}
               height={32}
-              loading="lazy"
-              decoding="async"
               className="shadow-2xs h-7 w-7 rounded-xl object-contain transition-transform duration-200 group-hover:scale-105 sm:h-8 sm:w-8"
             />
             <span className="text-sm font-black leading-none tracking-tight text-slate-950 dark:text-white sm:text-base">
@@ -388,7 +387,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                 {/* Mobile icon button: direct link to /login on small screens */}
                 <Link
                   href="/login"
-                  className="h-8.5 w-8.5 shadow-xs flex items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-700 transition-all hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:hidden"
+                  className="shadow-xs flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-700 transition-all hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:hidden"
                   aria-label="Masuk Akun"
                   title="Masuk Akun"
                 >

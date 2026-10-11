@@ -80,6 +80,20 @@ const nextConfig = {
       bodySizeLimit: '50mb',
     },
   },
+  async redirects() {
+    return [
+      {
+        source: '/servis',
+        destination: '/servis-lcd',
+        permanent: true,
+      },
+      {
+        source: '/servis/:id',
+        destination: '/rekomendasi/:id',
+        permanent: true,
+      },
+    ]
+  },
   async headers() {
     return [
       {
