@@ -1,5 +1,5 @@
 import prisma from '@/lib/db'
-import RekomendasiClientPage from './rekomendasi-client'
+import RekomendasiClientPage from '@/components/rekomendasi/rekomendasi-client'
 
 // Enable ISR - revalidate every 2 minutes
 export const revalidate = 120

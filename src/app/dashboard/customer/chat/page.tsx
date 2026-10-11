@@ -1,283 +1,37 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Navbar } from '@/components/layouts'
-import {
-  MessageSquare,
-  Search,
-  Send,
-  ChevronLeft,
-  Loader2,
-  RotateCcw,
-  Plus,
-  X,
-  ZoomIn,
-  Maximize2,
-  Play,
-  Check,
-  ExternalLink,
-  MessageCircle,
-  Package,
-  Store,
-  CheckCheck,
-  ShoppingBag,
-  Wrench,
-  MapPin,
-} from 'lucide-react'
+import { ChevronLeft, Loader2, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
-import { isStoreOperational, getChatTickStatus } from '@/lib/chat-status'
+import { isStoreOperational } from '@/lib/chat-status'
 
-interface ChatRoom {
-  id: string
-  customerId?: string
-  orderId?: string | null
-  storeId?: string | null
-  claimedById?: string | null
-  claimedBy?: {
-    id: string
-    name: string | null
-    email?: string | null
-    image?: string | null
-    role?: string
-  } | null
-  lastMessageAt: string
-  type: 'admin' | 'technician'
-  order?: {
-    id: string
-    orderNumber: string
-    status: string
-    total?: number
-    store?: {
-      id: string
-      name: string
-      companyName?: string
-      phone?: string | null
-      city?: string
-      logo?: string | null
-      isActive?: boolean
-      schedules?: Array<{
-        day: string
-        openTime: string
-        closeTime: string
-        isClosed?: boolean
-      }>
-    } | null
-    claimedBy?: {
-      id: string
-      name: string | null
-      image?: string | null
-    } | null
-    items?: Array<{
-      product?: { name: string; brand?: string; images?: string[] } | null
-      rentalItem?: { name: string; images?: string[] } | null
-      service?: { name: string } | null
-      price?: number
-      quantity?: number
-    }>
-    returnRequests?: Array<{
-      id: string
-      status: string
-      type: string
-      reason?: string
-      reasonLabel?: string
-    }>
-  } | null
-  store?: {
-    id: string
-    name: string
-    companyName?: string
-    phone?: string | null
-    city?: string
-    logo?: string | null
-    isActive?: boolean
-    schedules?: Array<{
-      day: string
-      openTime: string
-      closeTime: string
-      isClosed?: boolean
-    }>
-  } | null
-  technician?: {
-    id?: string
-    isAvailable?: boolean
-    user: {
-      name: string | null
-      image: string | null
-      phone?: string | null
-    }
-  }
-  customer?: {
-    id: string
-    name: string | null
-    email: string
-    image: string | null
-  }
-  hasOrder?: boolean
-  totalUnread?: number
-  messages?: {
-    id?: string
-    content: string
-    messageType?: string
-    mediaUrl?: string | null
-    mediaType?: string | null
-    isRead?: boolean
-    createdAt?: string
-    senderId?: string
-  }[]
-  _count?: {
-    messages: number
-  }
-}
+import {
+  ChatRoom,
+  Message,
+  PinnedOrderContext,
+  ActiveServiceContext,
+  ActiveProductContext,
+  ActiveOrderContext,
+  ChatMediaModal,
+  ChatSidebar,
+  ChatHeader,
+  ChatPinnedBanner,
+  ChatMessageList,
+  ChatOrderContextBar,
+  ChatServiceContextBar,
+  ChatProductContextBar,
+  ChatInputBar,
+} from '@/components/customer/chat'
 
-interface Message {
-  id: string
-  content: string
-  messageType?: string
-  mediaUrl: string | null
-  mediaType?: string | null
-  createdAt: string
-  isRead?: boolean
-  sender: {
-    id: string
-    name: string | null
-    role: string
-    image?: string | null
-  }
-}
-
-const NON_MEDIA_TYPES = [
-  'product_reference',
-  'product',
-  'order',
-  'rental',
-  'service',
-  'text',
-]
-
-const isVideoMedia = (
-  url?: string | null,
-  mediaType?: string | null,
-  messageType?: string | null
-) => {
-  // Never treat non-media message types as video
-  if (messageType && NON_MEDIA_TYPES.includes(messageType)) return false
-  if (messageType === 'video') return true
-  if (mediaType?.startsWith('video/')) return true
-  if (url && /\.(mp4|webm|mov|mkv|ogg|3gp)(\?.*)?$/i.test(url)) return true
-  return false
-}
-
-const isImageMedia = (
-  url?: string | null,
-  mediaType?: string | null,
-  messageType?: string | null
-) => {
-  // Never treat non-media message types as image
-  if (messageType && NON_MEDIA_TYPES.includes(messageType)) return false
-  if (messageType === 'image') return true
-  if (mediaType?.startsWith('image/')) return true
-  if (url && /\.(jpg|jpeg|png|webp|gif|svg|avif)(\?.*)?$/i.test(url))
-    return true
-  if (
-    url &&
-    (url.startsWith('/uploads/') || url.includes('images.unsplash.com')) &&
-    !isVideoMedia(url, mediaType, messageType)
-  ) {
-    return true
-  }
-  return false
-}
-
-const renderWhatsAppTick = (
-  isRead?: boolean,
-  isOnline: boolean = true,
-  size: 'normal' | 'small' = 'normal',
-  variant: 'default' | 'on-blue' = 'default'
-) => {
-  const tickStatus = getChatTickStatus({ isRead, isRecipientOnline: isOnline })
-  const iconClass = size === 'small' ? 'inline h-2.5 w-2.5' : 'inline h-3 w-3'
-
-  if (variant === 'on-blue') {
-    if (tickStatus === 'READ') {
-      return (
-        <span title="Sudah dibaca">
-          <CheckCheck className={`${iconClass} text-sky-300`} />
-        </span>
-      )
-    }
-    if (tickStatus === 'DELIVERED') {
-      return (
-        <span title="Diterima server (Toko online)">
-          <CheckCheck className={`${iconClass} text-blue-200/80`} />
-        </span>
-      )
-    }
-    return (
-      <span title="Terkirim ke server (Toko offline)">
-        <Check className={`${iconClass} text-blue-200/80`} />
-      </span>
-    )
-  }
-
-  if (tickStatus === 'READ') {
-    // Ceklis 2 Biru: Sudah dibaca oleh salah satu pihak
-    return (
-      <span title="Sudah dibaca">
-        <CheckCheck
-          className={`${iconClass} text-blue-500 dark:text-blue-400`}
-        />
-      </span>
-    )
-  }
-
-  if (tickStatus === 'DELIVERED') {
-    // Ceklis 2 Abu-abu: Diterima server & pihak toko online (belum dibaca)
-    return (
-      <span title="Diterima server (Toko online)">
-        <CheckCheck
-          className={`${iconClass} text-slate-400 dark:text-slate-400`}
-        />
-      </span>
-    )
-  }
-
-  // Ceklis 1 Abu-abu: Diterima server, tetapi toko sedang offline / di luar jam operasional
-  return (
-    <span title="Terkirim ke server (Toko offline)">
-      <Check className={`${iconClass} text-slate-400 dark:text-slate-400`} />
-    </span>
-  )
-}
-
-interface PinnedOrderContext {
-  messageId?: string
-  orderId?: string
-  orderNumber: string
-  total?: number
-  status?: string
-  productName?: string | null
-  isReturn?: boolean
-  returnReason?: string | null
-  returnStatus?: string | null
-}
-
-const statusConfig: Record<string, { label: string; color: string }> = {
-  PENDING_PAYMENT: {
-    label: 'Belum Bayar',
-    color: 'bg-amber-50 text-amber-700',
-  },
-  PAID: { label: 'Dibayar', color: 'bg-blue-50 text-blue-700' },
-  PROCESSING: { label: 'Diproses', color: 'bg-purple-50 text-purple-700' },
-  SHIPPED: { label: 'Dikirim', color: 'bg-indigo-50 text-indigo-700' },
-  DELIVERED: { label: 'Terkirim', color: 'bg-teal-50 text-teal-700' },
-  COMPLETED: { label: 'Selesai', color: 'bg-emerald-50 text-emerald-700' },
-  CANCELLED: { label: 'Dibatalkan', color: 'bg-rose-50 text-rose-700' },
-}
+// Contract helper: filter automated confirmation greeting
+export const filterConfirmationGreeting = (p: { note?: string }) =>
+  typeof p.note === 'string' &&
+  p.note.trim() !== '' &&
+  !p.note.includes('ingin mengonfirmasi pesanan')
 
 function CustomerChatContent() {
   const { data: session, status } = useSession()
@@ -304,36 +58,12 @@ function CustomerChatContent() {
   const paramServiceContext =
     searchParams.get('serviceContext') || searchParams.get('initialMessage')
 
-  const [activeServiceContext, setActiveServiceContext] = useState<{
-    mitraId: string
-    mitraName: string
-    mitraCity?: string
-    mitraImage?: string
-  } | null>(null)
-
-  const [activeProductContext, setActiveProductContext] = useState<{
-    productId?: string
-    productName?: string
-    productPrice?: number
-    productImage?: string
-    variantName?: string
-  } | null>(null)
-
-  const [activeOrderContext, setActiveOrderContext] = useState<{
-    orderId: string
-    orderNumber?: string
-    status?: string
-    total?: number
-    productName?: string
-    productImage?: string
-    productPrice?: number
-    returnRequest?: {
-      id?: string
-      status?: string
-      reason?: string
-      type?: string
-    } | null
-  } | null>(null)
+  const [activeServiceContext, setActiveServiceContext] =
+    useState<ActiveServiceContext | null>(null)
+  const [activeProductContext, setActiveProductContext] =
+    useState<ActiveProductContext | null>(null)
+  const [activeOrderContext, setActiveOrderContext] =
+    useState<ActiveOrderContext | null>(null)
 
   const [isInitializingRoom, setIsInitializingRoom] = useState(false)
   const lastInitializedKeyRef = useRef<string | null>(null)
@@ -350,7 +80,7 @@ function CustomerChatContent() {
   const [sending, setSending] = useState(false)
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false)
 
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery] = useState('')
   const [messageInput, setMessageInput] = useState('')
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
   const [roomFilter, setRoomFilter] = useState<'ALL' | 'UNREAD' | 'ORDER'>(
@@ -380,16 +110,6 @@ function CustomerChatContent() {
     setMounted(true)
   }, [])
 
-  // Keyboard shortcut listener (ESC to close lightbox)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!fullscreenMedia) return
-      if (e.key === 'Escape') setFullscreenMedia(null)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [fullscreenMedia])
-
   // Keep selectedRoomRef synced with state
   useEffect(() => {
     selectedRoomRef.current = selectedRoom
@@ -412,11 +132,9 @@ function CustomerChatContent() {
   }, [status, router])
 
   // Fetch all chat rooms
-  // Deps: [] — stable reference, gunakan functional setRooms agar tidak perlu rooms dalam deps
   const fetchRooms = useCallback(async (isPolling = false) => {
     try {
       if (!isPolling) {
-        setLoading((prev) => prev) // trigger loading hanya jika belum ada rooms
         setRooms((prevRooms) => {
           if (prevRooms.length === 0) setLoading(true)
           return prevRooms
@@ -455,7 +173,6 @@ function CustomerChatContent() {
       )
 
       setRooms((prev) => {
-        // Clear unread count for the active room so badge stays cleared while room is open
         const mappedRooms = allRooms.map((r) =>
           selectedRoomRef.current?.id === r.id
             ? { ...r, _count: { messages: 0 } }
@@ -533,7 +250,6 @@ function CustomerChatContent() {
   // Fetch messages for selected room
   const fetchMessages = useCallback(
     async (room: ChatRoom, isPolling = false) => {
-      // Guard: skip polling fetch if currently sending to prevent wiping optimistic message
       if (isPolling && isSendingRef.current) {
         return
       }
@@ -565,14 +281,11 @@ function CustomerChatContent() {
           }
 
           setMessages((prev) => {
-            // Guard: jika newMsgs lebih sedikit dari prev, ada optimistic message pending
-            // Jangan overwrite — biarkan polling berikutnya yang akan sync setelah commit DB
             if (isPolling && newMsgs.length < prev.length) {
               return prev
             }
 
             if (prev.length !== newMsgs.length) {
-              // Pesan baru dari toko/admin tiba → trigger auto scroll
               if (newMsgs.length > previousMessagesCountRef.current) {
                 setShouldScrollToBottom(true)
               }
@@ -606,11 +319,9 @@ function CustomerChatContent() {
   useEffect(() => {
     if (selectedRoom?.id) {
       if (loadedRoomIdRef.current === selectedRoom.id) {
-        // Messages already loaded/injected for this exact room — consume ref and skip duplicate fetch
         loadedRoomIdRef.current = null
         return
       }
-      // Hanya tampilkan loading spinner jika belum ada messages untuk room ini
       setMessages((prev) => {
         if (prev.length === 0) setMessagesLoading(true)
         return []
@@ -666,7 +377,6 @@ function CustomerChatContent() {
       setSelectedRoom(room)
       setShowChatOnMobile(true)
       setShouldScrollToBottom(true)
-      // Instantly clear unread badge in state
       setRooms((prev) =>
         prev.map((r) =>
           r.id === room.id ? { ...r, _count: { messages: 0 } } : r
@@ -678,7 +388,6 @@ function CustomerChatContent() {
       })
       fetchMessages(room, false)
 
-      // Sync URL - keep clean without polluting with orderId
       if (typeof window !== 'undefined') {
         window.history.replaceState(null, '', '/dashboard/customer/chat')
       }
@@ -692,7 +401,6 @@ function CustomerChatContent() {
     const list: PinnedOrderContext[] = []
     const seenOrderNumbers = new Set<string>()
 
-    // Check all messages for order context cards
     for (const msg of messages) {
       const contentTrimmed = msg.content?.trim() || ''
       let parsed: any = null
@@ -747,7 +455,6 @@ function CustomerChatContent() {
       }
     }
 
-    // Include activeOrderContext if not yet in list
     if (
       activeOrderContext?.orderNumber &&
       !seenOrderNumbers.has(activeOrderContext.orderNumber)
@@ -782,18 +489,15 @@ function CustomerChatContent() {
 
     const updateActivePinnedContext = () => {
       const containerRect = container.getBoundingClientRect()
-      // Threshold: around 120px from top of container viewport
       const thresholdY = containerRect.top + 120
 
       let currentContext = conversationOrderContexts[0]
 
-      // Check all context messages that have rendered elements in DOM
       for (const ctx of conversationOrderContexts) {
         if (!ctx.messageId) continue
         const el = document.getElementById(`chat-context-msg-${ctx.messageId}`)
         if (el) {
           const rect = el.getBoundingClientRect()
-          // If this card is at or has passed the threshold
           if (rect.top <= thresholdY) {
             currentContext = ctx
           }
@@ -921,7 +625,6 @@ function CustomerChatContent() {
         setActiveOrderContext(null)
         setActiveServiceContext(null)
       } else {
-        // Direct store chat or plain chat: strictly empty context!
         setActiveOrderContext(null)
         setActiveProductContext(null)
         setActiveServiceContext(null)
@@ -936,7 +639,6 @@ function CustomerChatContent() {
       try {
         setIsInitializingRoom(true)
 
-        // Determine which endpoint and payload to use
         const isMitraRoom = !!paramMitraId && !paramStoreId && !paramOrderId
         const endpoint = isMitraRoom
           ? '/api/customer/chat/mitra-room'
@@ -972,7 +674,6 @@ function CustomerChatContent() {
         if (res.ok) {
           const data = await res.json()
 
-          // Construct target room object directly
           const targetRoom: ChatRoom = {
             id: data.roomId,
             customerId: session?.user?.id,
@@ -991,7 +692,6 @@ function CustomerChatContent() {
             _count: { messages: 0 },
           }
 
-          // Immediately inject messages from backend response into state
           if (data.messages && Array.isArray(data.messages)) {
             loadedRoomIdRef.current = data.roomId
             setMessages(data.messages)
@@ -999,14 +699,10 @@ function CustomerChatContent() {
             setMessagesLoading(false)
           }
 
-          // Prevent auto-select from overriding this room
           hasAutoSelectedRef.current = true
-
-          // Set active room and open view
           setSelectedRoom(targetRoom)
           setShowChatOnMobile(true)
 
-          // Immediately inject targetRoom into rooms list state so sidebar is instantly rendered
           setRooms((prev) => {
             const exists = prev.some((r) => r.id === targetRoom.id)
             if (exists) {
@@ -1016,17 +712,6 @@ function CustomerChatContent() {
           })
           setLoading(false)
 
-          // Check if messages already have this order or return discussed
-          const hasExistingOrderMessage = data.messages?.some(
-            (m: any) =>
-              m.messageType === 'return_reference' ||
-              m.messageType === 'order_reference' ||
-              (data.order?.orderNumber &&
-                m.content?.includes(data.order.orderNumber)) ||
-              (data.order?.id && m.content?.includes(data.order.id))
-          )
-
-          // STRICT RULE: Only set activeOrderContext if paramOrderId was explicitly provided in URL (navigated from order detail)
           if (paramOrderId && data.order) {
             const firstItem = data.order.items?.[0]
             const prod = firstItem?.product
@@ -1049,14 +734,11 @@ function CustomerChatContent() {
                 : null,
             })
           } else if (!paramOrderId) {
-            // Direct store chat: NEVER show order context even if store room has past orders
             setActiveOrderContext(null)
           }
 
-          // Refresh rooms list in background
           fetchRooms(true)
 
-          // Clean URL params via window.history and router.replace
           if (typeof window !== 'undefined') {
             window.history.replaceState(null, '', '/dashboard/customer/chat')
             if (
@@ -1104,6 +786,7 @@ function CustomerChatContent() {
     fetchRooms,
     session?.user?.id,
     router,
+    paramReturnId,
   ])
 
   const handleBackToList = () => {
@@ -1118,7 +801,7 @@ function CustomerChatContent() {
     }
   }
 
-  // Send message with optimistic instant feedback without any page reload
+  // Send message with optimistic instant feedback
   const handleSendMessage = async (
     overrideContent?: string | React.MouseEvent
   ) => {
@@ -1133,7 +816,6 @@ function CustomerChatContent() {
       ? activeProductContext
       : null
 
-    // Instantly dismiss context pop up so it NEVER shows again!
     if (currentOrderContext) {
       setActiveOrderContext(null)
       if (currentOrderContext.orderId)
@@ -1157,7 +839,7 @@ function CustomerChatContent() {
 
     setMessageInput('')
     setSending(true)
-    isSendingRef.current = true // Block polling overwrite while message is in transit
+    isSendingRef.current = true
 
     let messageType:
       | 'text'
@@ -1177,7 +859,7 @@ function CustomerChatContent() {
         productName: currentOrderContext.productName,
         productPrice: currentOrderContext.productPrice,
         productImage: currentOrderContext.productImage,
-        note: rawContent, // Context and caption sent together!
+        note: rawContent,
         ...(currentOrderContext.returnRequest
           ? {
               returnId: currentOrderContext.returnRequest.id,
@@ -1199,11 +881,10 @@ function CustomerChatContent() {
         productPrice: currentProductContext.productPrice,
         productImage: currentProductContext.productImage,
         variantName: currentProductContext.variantName,
-        note: rawContent, // Context and caption sent together!
+        note: rawContent,
       })
     }
 
-    // Optimistic message append
     const tempId = `temp-${Date.now()}`
     const optimisticMsg: Message = {
       id: tempId,
@@ -1250,7 +931,6 @@ function CustomerChatContent() {
       )
       setShouldScrollToBottom(true)
 
-      // Update room list locally first to reflect instant last message
       setRooms((prev) =>
         prev.map((r) =>
           r.id === selectedRoom.id
@@ -1276,16 +956,13 @@ function CustomerChatContent() {
       setMessageInput(content)
     } finally {
       setSending(false)
-      // Cooldown 1500ms sebelum polling diizinkan fetch lagi
-      // Ini memberikan waktu cukup untuk DB commit + response kembali ke client
-      // sehingga polling tidak overwrite optimistic message dengan data lama
       setTimeout(() => {
         isSendingRef.current = false
       }, 1500)
     }
   }
 
-  // Media (Photo & Video) upload handler
+  // Media upload handler
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !selectedRoom) return
@@ -1367,7 +1044,6 @@ function CustomerChatContent() {
     }
   }
 
-  // Helper to determine if a room has unread messages
   const checkIsRoomUnread = (room: ChatRoom) => {
     const incomingUnread = (room._count?.messages || 0) > 0
     const latestMsgUnread =
@@ -1376,8 +1052,6 @@ function CustomerChatContent() {
     return incomingUnread || latestMsgUnread || roomTotalUnread
   }
 
-  // Helper to determine if a room is an order chat ("khusus chat yang sudah ada bagian memesannya saja")
-  // Chats that are only asking questions (e.g. tanya produk / konsultasi umum) will return false
   const checkIsRoomOrder = (room: ChatRoom) => {
     return !!room.order || !!room.hasOrder || !!room.orderId
   }
@@ -1411,113 +1085,13 @@ function CustomerChatContent() {
     return true
   })
 
-  const formatTime = (dateString: string) => {
-    if (!dateString) return ''
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffDays = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-    )
-
-    if (diffDays === 0) {
-      return date.toLocaleTimeString('id-ID', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    } else if (diffDays === 1) {
-      return 'Kemarin'
-    } else {
-      return date.toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: 'short',
-      })
-    }
-  }
-
-  // Format message preview for sidebar
-  const formatMessagePreview = (message?: {
-    content: string
-    messageType?: string
-    mediaUrl?: string | null
-    mediaType?: string | null
-  }) => {
-    if (!message) return 'Mulai percakapan...'
-    const trimmed = message.content?.trim() || ''
-
-    // 1. Product reference / inquiry from customer
-    if (
-      message.messageType === 'product_reference' ||
-      (trimmed.startsWith('{') &&
-        (trimmed.includes('"productName"') ||
-          trimmed.includes('"type":"product_reference"')))
-    ) {
-      try {
-        const p = JSON.parse(trimmed)
-        const name = p.productName || p.name || 'Produk'
-        return `📦 Tanya: ${name}`
-      } catch {
-        return '📦 Produk Ditanyakan'
-      }
-    }
-
-    // 2. Product recommendation from store
-    if (
-      message.messageType === 'product' ||
-      (trimmed.startsWith('{') &&
-        (trimmed.includes('"name"') || trimmed.includes('"productName"')) &&
-        (trimmed.includes('"price"') || trimmed.includes('"productPrice"')))
-    ) {
-      try {
-        const p = JSON.parse(trimmed)
-        const name = p.productName || p.name || 'Produk'
-        return `📦 Rekomendasi: ${name}`
-      } catch {
-        return '📦 Rekomendasi Gadget'
-      }
-    }
-
-    // 3. Order detail
-    if (
-      message.messageType === 'order' ||
-      (trimmed.startsWith('{') && trimmed.includes('"orderNumber"'))
-    ) {
-      try {
-        const o = JSON.parse(trimmed)
-        return `📋 Pesanan #${o.orderNumber}`
-      } catch {
-        return '📋 Rincian Pesanan'
-      }
-    }
-
-    // 4. Media attachments (check mediaUrl properly)
-    if (
-      isVideoMedia(message.mediaUrl, message.mediaType, message.messageType)
-    ) {
-      return '🎥 Lampiran Video'
-    }
-    if (
-      isImageMedia(message.mediaUrl, message.mediaType, message.messageType)
-    ) {
-      return '📷 Lampiran Foto'
-    }
-
-    if (message.messageType === 'rental') return '🔄 Rekomendasi Sewa'
-    if (message.messageType === 'service') return '🔧 Rekomendasi Servis'
-    return message.content
-  }
-
-  // Active Store / CS Phone for WhatsApp direct action
   const activeStore = selectedRoom?.order?.store || selectedRoom?.store
   const isStoreOnline = isStoreOperational(
     activeStore,
     selectedRoom?.technician
   )
-  const activeStorePhone = (
-    activeStore?.phone ||
-    selectedRoom?.technician?.user?.phone ||
-    '6281299887766'
-  ).replace(/\D/g, '')
 
+  // Support CS Superadmin chat mode
   const isCsActive =
     (activeStore as any)?.isCs ||
     (selectedRoom?.type === 'admin' &&
@@ -1525,7 +1099,7 @@ function CustomerChatContent() {
       !selectedRoom?.technician)
 
   const activeStoreTitle = isCsActive
-    ? 'Customer Service (Superadmin)'
+    ? 'Customer Service (Superadmin)' // CS Superadmin
     : activeStore?.name ||
       selectedRoom?.order?.items?.[0]?.product?.name ||
       selectedRoom?.technician?.user?.name ||
@@ -1552,7 +1126,7 @@ function CustomerChatContent() {
 
   return (
     <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-white font-sans dark:bg-slate-950">
-      {/* 1. Top Navigation: Desktop Navbar only (Mobile is fully edge-to-edge fullscreen chat) */}
+      {/* 1. Top Navigation: Desktop Navbar only */}
       <div className="hidden shrink-0 md:block">
         <Navbar variant="light" />
       </div>
@@ -1566,70 +1140,12 @@ function CustomerChatContent() {
         onChange={handleFileUpload}
       />
 
-      {/* Luxury Fullscreen Portal Lightbox Modal (Escape stacking context & covers 100% viewport) */}
-      {mounted &&
-        fullscreenMedia &&
-        createPortal(
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[99999] flex cursor-pointer select-none flex-col items-center justify-between bg-white/45 p-4 backdrop-blur-xl sm:p-6"
-              onClick={() => setFullscreenMedia(null)}
-            >
-              {/* Top spacing spacer */}
-              <div className="h-2 sm:h-4" />
-
-              {/* Middle Main Media (Image/Video) Stage */}
-              <div className="relative my-auto flex w-full flex-1 items-center justify-center px-2 sm:px-14">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="relative flex max-h-[68vh] max-w-[90vw] cursor-default items-center justify-center overflow-hidden rounded-2xl border border-slate-200/80 bg-white/60 shadow-2xl ring-1 ring-black/5 sm:max-h-[72vh] sm:max-w-[80vw] sm:rounded-3xl"
-                  >
-                    {fullscreenMedia.type === 'video' ? (
-                      <video
-                        src={fullscreenMedia.url}
-                        controls
-                        autoPlay
-                        playsInline
-                        className="max-h-[68vh] w-auto max-w-full rounded-2xl bg-black object-contain shadow-2xl sm:max-h-[72vh] sm:rounded-3xl"
-                      />
-                    ) : (
-                      <img
-                        src={fullscreenMedia.url}
-                        alt="Pratinjau Foto Lampiran"
-                        className="max-h-[68vh] w-auto max-w-full select-none rounded-2xl object-contain sm:max-h-[72vh] sm:rounded-3xl"
-                      />
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-
-              {/* Bottom Bar: Instructions / Keyboard shortcuts */}
-              <div
-                className="z-20 flex w-full max-w-sm cursor-default items-center justify-center gap-3"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2 text-[11px] font-bold text-slate-700 shadow-lg backdrop-blur-xl">
-                  <span>
-                    Klik di luar area atau tekan{' '}
-                    <kbd className="rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[10px]">
-                      ESC
-                    </kbd>{' '}
-                    untuk menutup
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>,
-          document.body
-        )}
+      {/* Fullscreen Modal Lightbox */}
+      <ChatMediaModal
+        media={fullscreenMedia}
+        onClose={() => setFullscreenMedia(null)}
+        mounted={mounted}
+      />
 
       <main className="flex flex-1 flex-col overflow-hidden p-0 md:pb-4 md:pt-20">
         <div className="flex h-full w-full flex-1 flex-col px-0 md:mx-auto md:max-w-7xl md:px-6 lg:px-8">
@@ -1657,202 +1173,17 @@ function CustomerChatContent() {
                 </div>
               </div>
 
-              {/* Integrated Sidebar Header */}
-              <div className="shrink-0 space-y-2.5 border-b border-slate-100 p-3 dark:border-slate-800 sm:p-3.5">
-                {/* Segmented Filter Pills */}
-                <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
-                  {[
-                    { id: 'ALL', label: 'Semua', count: rooms.length },
-                    {
-                      id: 'UNREAD',
-                      label: 'Belum Dibaca',
-                      count: unreadRoomsCount,
-                    },
-                    { id: 'ORDER', label: 'Pesanan', count: orderRoomsCount },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setRoomFilter(tab.id as any)}
-                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-center text-[11px] font-bold transition-all ${
-                        roomFilter === tab.id
-                          ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
-                          : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
-                      }`}
-                    >
-                      <span>{tab.label}</span>
-                      {tab.count > 0 && (
-                        <span
-                          className={`py-0.2 rounded-full px-1.5 text-[9.5px] font-bold ${
-                            roomFilter === tab.id
-                              ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-200'
-                              : 'bg-slate-200/70 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                          }`}
-                        >
-                          {tab.count}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Room List Scrollable */}
-              <div className="min-h-0 flex-1 divide-y divide-slate-50 overflow-y-auto dark:divide-slate-800/60">
-                {filteredRooms.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center p-6 text-center text-slate-400">
-                    <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-300 dark:bg-slate-800">
-                      <MessageSquare className="h-6 w-6" />
-                    </div>
-                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      {roomFilter === 'UNREAD'
-                        ? 'Tidak Ada Pesan Belum Dibaca'
-                        : roomFilter === 'ORDER'
-                          ? 'Belum Ada Chat Pesanan'
-                          : 'Belum Ada Percakapan'}
-                    </p>
-                    <p className="mt-0.5 max-w-[200px] text-[11px] text-slate-400">
-                      {roomFilter === 'UNREAD'
-                        ? 'Semua pesan sudah dibaca.'
-                        : roomFilter === 'ORDER'
-                          ? 'Chat khusus barang yang sudah dipesan akan tampil di sini. Tanya-tanya umum tidak masuk tab ini.'
-                          : 'Mulai chat melalui rincian pesanan Anda.'}
-                    </p>
-                  </div>
-                ) : (
-                  filteredRooms.map((room) => {
-                    const isSelected = selectedRoom?.id === room.id
-                    const storeObj = room.order?.store || room.store
-                    const roomIsOnline = isStoreOperational(
-                      storeObj,
-                      room.technician
-                    )
-                    const storeLogo =
-                      room.claimedBy?.image ||
-                      storeObj?.logo ||
-                      room.order?.claimedBy?.image ||
-                      null
-                    const firstProduct = room.order?.items?.[0]?.product?.name
-                    const isCsRoom =
-                      (storeObj as any)?.isCs ||
-                      (room.type === 'admin' &&
-                        !room.storeId &&
-                        !room.technician)
-                    const title = isCsRoom
-                      ? 'Customer Service (Superadmin)'
-                      : storeObj?.name ||
-                        firstProduct ||
-                        room.technician?.user?.name ||
-                        'CS Toko'
-                    const orderNumber = room.order?.orderNumber
-                    const lastMsg = formatMessagePreview(room.messages?.[0])
-
-                    return (
-                      <button
-                        key={room.id}
-                        onClick={() => handleSelectRoom(room)}
-                        className={`relative flex w-full items-start gap-3 p-3.5 text-left transition-all ${
-                          isSelected
-                            ? 'bg-slate-50/90 dark:bg-slate-800/90'
-                            : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
-                        }`}
-                      >
-                        {/* Minimalist Left Accent Pill (No harsh bounding border) */}
-                        {isSelected && (
-                          <div className="absolute bottom-3 left-0 top-3 w-1 rounded-r-full bg-slate-950 dark:bg-orange-500" />
-                        )}
-
-                        {/* Avatar Squircle */}
-                        <div className="relative shrink-0">
-                          {storeLogo ? (
-                            <img
-                              src={storeLogo}
-                              alt={title}
-                              className="shadow-2xs h-10 w-10 rounded-2xl border border-slate-200/60 object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-100 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-                              {title.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          {/* Store Online / Offline Status Dot */}
-                          <span
-                            className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-900 ${
-                              roomIsOnline
-                                ? 'bg-emerald-500'
-                                : 'bg-slate-300 dark:bg-slate-600'
-                            }`}
-                            title={
-                              roomIsOnline ? 'Toko Online' : 'Toko Offline'
-                            }
-                          />
-                          {(room._count?.messages || 0) > 0 && (
-                            <span className="shadow-2xs absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
-                              {room._count?.messages}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Room Info */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <h4 className="truncate text-xs font-bold text-slate-900 dark:text-white">
-                              {title}
-                            </h4>
-                            <span className="shrink-0 text-[10px] font-medium text-slate-400">
-                              {formatTime(room.lastMessageAt)}
-                            </span>
-                          </div>
-
-                          {orderNumber && (
-                            <div className="mt-0.5 flex items-center gap-1.5">
-                              <span className="font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                                #{orderNumber}
-                              </span>
-                              {room.order?.status && (
-                                <span className="py-0.2 rounded bg-slate-100 px-1 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                  {room.order.status}
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {isCsRoom && (
-                            <div className="mt-0.5 flex items-center gap-1">
-                              <span className="rounded bg-blue-50 px-1 text-[9px] font-bold text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-                                CS Superadmin
-                              </span>
-                            </div>
-                          )}
-
-                          {!isCsRoom &&
-                            !orderNumber &&
-                            room.claimedBy?.name && (
-                              <div className="mt-0.5 flex items-center gap-1">
-                                <span
-                                  className={`truncate text-[10px] font-semibold ${
-                                    (room.claimedBy as any)?.role === 'MITRA'
-                                      ? 'text-emerald-600 dark:text-emerald-400'
-                                      : 'text-blue-600 dark:text-blue-400'
-                                  }`}
-                                >
-                                  •{' '}
-                                  {(room.claimedBy as any)?.role === 'MITRA'
-                                    ? 'Mitra Servis'
-                                    : 'Admin'}
-                                  : {room.claimedBy.name}
-                                </span>
-                              </div>
-                            )}
-
-                          <p className="mt-1 truncate text-[11px] font-normal text-slate-500 dark:text-slate-400">
-                            {lastMsg}
-                          </p>
-                        </div>
-                      </button>
-                    )
-                  })
-                )}
-              </div>
+              {/* Sidebar Tabs & Room List */}
+              <ChatSidebar
+                rooms={rooms}
+                unreadRoomsCount={unreadRoomsCount}
+                orderRoomsCount={orderRoomsCount}
+                roomFilter={roomFilter}
+                setRoomFilter={setRoomFilter}
+                filteredRooms={filteredRooms}
+                selectedRoom={selectedRoom}
+                onSelectRoom={handleSelectRoom}
+              />
             </div>
 
             {/* Right Pane: Active Conversation Window (8 Cols) */}
@@ -1874,1051 +1205,87 @@ function CustomerChatContent() {
               ) : selectedRoom ? (
                 <>
                   {/* Chat Top Header */}
-                  <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-3.5">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <button
-                        onClick={handleBackToList}
-                        className="rounded-xl p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
-                      >
-                        <ChevronLeft className="h-5 w-5" />
-                      </button>
+                  <ChatHeader
+                    onBackToList={handleBackToList}
+                    activeStoreLogo={activeStoreLogo}
+                    activeStoreTitle={activeStoreTitle}
+                    isStoreOnline={isStoreOnline}
+                    activeOrderContext={activeOrderContext}
+                    isCsActive={isCsActive}
+                    selectedRoom={selectedRoom}
+                  />
 
-                      {activeStoreLogo ? (
-                        <img
-                          src={activeStoreLogo}
-                          alt={activeStoreTitle}
-                          className="shadow-2xs h-10 w-10 shrink-0 rounded-2xl border border-slate-200/60 object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-100 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-                          {activeStoreTitle.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="truncate text-xs font-bold text-slate-900 dark:text-white sm:text-sm">
-                            {activeStoreTitle}
-                          </h3>
-                          {isStoreOnline ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9.5px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                              Online
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9.5px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                              Offline
-                            </span>
-                          )}
-                        </div>
-                        <p className="truncate text-[11px] text-slate-400">
-                          {activeOrderContext?.orderNumber ? (
-                            `Pesanan #${activeOrderContext.orderNumber}`
-                          ) : isCsActive ? (
-                            <span className="font-semibold text-blue-600 dark:text-blue-400">
-                              Pusat Layanan & Bantuan CS Superadmin Platform
-                            </span>
-                          ) : (selectedRoom.claimedBy as any)?.role ===
-                            'MITRA' ? (
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                              Mitra Servis Resmi:{' '}
-                              {selectedRoom.store?.name ||
-                                selectedRoom.claimedBy?.name}
-                            </span>
-                          ) : selectedRoom.claimedBy?.name ? (
-                            <span className="font-semibold text-blue-600 dark:text-blue-400">
-                              {(selectedRoom.claimedBy as any)?.role ===
-                              'SUPER_ADMIN'
-                                ? `CS Superadmin: ${selectedRoom.claimedBy.name}`
-                                : `Admin Toko: ${selectedRoom.claimedBy.name}`}
-                            </span>
-                          ) : (
-                            selectedRoom.store?.companyName ||
-                            'Customer Support & Sales Toko'
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Dynamic Pinned Order Context Banner (Changes on Scroll like WhatsApp Pinned) */}
-                  {activePinnedOrder && (
-                    <div
-                      onClick={() =>
-                        handleScrollToContextMessage(
-                          activePinnedOrder.messageId
-                        )
-                      }
-                      className="flex shrink-0 cursor-pointer items-center justify-between border-b border-blue-100/80 bg-blue-50/70 px-4 py-2 text-xs transition-all hover:bg-blue-100/60 dark:border-blue-900/40 dark:bg-blue-950/40"
-                      title="Klik untuk melompat ke kartu pesanan ini di chat"
-                    >
-                      <div className="flex min-w-0 items-center gap-2 truncate">
-                        {activePinnedOrder.isReturn ? (
-                          <RotateCcw className="h-3.5 w-3.5 shrink-0 text-purple-600 dark:text-purple-400" />
-                        ) : (
-                          <Package className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
-                        )}
-                        <span className="truncate font-mono font-bold text-blue-950 dark:text-blue-200">
-                          Order #{activePinnedOrder.orderNumber}
-                        </span>
-                        {(activePinnedOrder.total ?? 0) > 0 && (
-                          <>
-                            <span className="hidden text-slate-400 sm:inline">
-                              •
-                            </span>
-                            <span className="hidden font-medium text-slate-600 dark:text-slate-300 sm:inline">
-                              Rp{' '}
-                              {activePinnedOrder.total!.toLocaleString('id-ID')}
-                            </span>
-                          </>
-                        )}
-                        {activePinnedOrder.isReturn ? (
-                          <span className="py-0.2 rounded bg-purple-100 px-1.5 text-[9.5px] font-bold text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
-                            Retur:{' '}
-                            {activePinnedOrder.returnStatus === 'APPROVED'
-                              ? 'Disetujui'
-                              : activePinnedOrder.returnStatus === 'REJECTED'
-                                ? 'Ditolak'
-                                : activePinnedOrder.returnStatus === 'COMPLETED'
-                                  ? 'Selesai'
-                                  : 'Verifikasi'}
-                          </span>
-                        ) : statusConfig[activePinnedOrder.status || ''] ? (
-                          <span className="py-0.2 rounded bg-blue-100/80 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
-                            {statusConfig[activePinnedOrder.status!].label}
-                          </span>
-                        ) : activePinnedOrder.status ? (
-                          <span className="py-0.2 rounded bg-blue-100/80 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
-                            {activePinnedOrder.status}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-2.5">
-                        <span className="hidden items-center gap-1 text-[10.5px] font-semibold text-blue-600/80 dark:text-blue-400/80 md:inline-flex">
-                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
-                          Konteks Pinned
-                        </span>
-                        {activePinnedOrder.orderId && (
-                          <Link
-                            href={`/dashboard/customer/orders/${activePinnedOrder.orderId}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-blue-600 transition hover:text-blue-700 hover:underline dark:text-blue-400"
-                          >
-                            <span>Lihat Rincian</span>
-                            <ExternalLink className="h-3 w-3" />
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {/* Dynamic Pinned Order Context Banner */}
+                  <ChatPinnedBanner
+                    activePinnedOrder={activePinnedOrder}
+                    onScrollToContextMessage={handleScrollToContextMessage}
+                  />
 
                   {/* Messages Bubble Canvas */}
-                  <div
-                    ref={messagesContainerRef}
-                    className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden p-4 sm:p-5"
-                  >
-                    {messagesLoading ? (
-                      <div className="flex h-full items-center justify-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
-                      </div>
-                    ) : messages.length === 0 ? (
-                      <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-                        <div className="shadow-2xs mb-2 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
-                          <MessageSquare className="h-6 w-6 text-orange-500" />
-                        </div>
-                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                          Mulai Percakapan Langsung
-                        </h4>
-                        <p className="mt-0.5 max-w-xs text-[11px] text-slate-400">
-                          Tanyakan ketersediaan varian gadget, status resi, atau
-                          konsultasi servis teknisi.
-                        </p>
-                      </div>
-                    ) : (
-                      messages.map((msg) => {
-                        const isMe = msg.sender.id === session?.user?.id
-                        const isVideo = isVideoMedia(
-                          msg.mediaUrl,
-                          msg.mediaType,
-                          msg.messageType
-                        )
-                        const isImage = isImageMedia(
-                          msg.mediaUrl,
-                          msg.mediaType,
-                          msg.messageType
-                        )
-                        const isMedia = isVideo || isImage
-
-                        const formattedTime = new Date(
-                          msg.createdAt
-                        ).toLocaleTimeString('id-ID', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-
-                        const contentTrimmed = msg.content?.trim() || ''
-
-                        // Pre-parse JSON content once to detect type field
-                        let parsedContent: Record<string, unknown> | null = null
-                        if (contentTrimmed.startsWith('{')) {
-                          try {
-                            parsedContent = JSON.parse(contentTrimmed)
-                          } catch {
-                            parsedContent = null
-                          }
-                        }
-
-                        const isOrderOrReturn =
-                          msg.messageType === 'return_reference' ||
-                          msg.messageType === 'order_reference' ||
-                          msg.messageType === 'order' ||
-                          parsedContent?.type === 'return_reference' ||
-                          parsedContent?.type === 'order_reference' ||
-                          parsedContent?.type === 'order' ||
-                          (parsedContent !== null &&
-                            parsedContent.orderNumber !== undefined)
-
-                        // Detect legacy or prefilled plain text message patterns (e.g. from previous sends)
-                        const returnTextMatch =
-                          !parsedContent &&
-                          contentTrimmed.match(
-                            /Halo admin, saya ingin menanyakan perkembangan pengajuan retur untuk pesanan #([^\s(]+)(?:\s*\(([^,)]+)(?:,\s*Kendala:\s*([^)]+))?\))?/i
-                          )
-                        const orderTextMatch =
-                          !parsedContent &&
-                          !returnTextMatch &&
-                          contentTrimmed.match(
-                            /Halo admin, saya ingin menanyakan (?:tentang pesanan saya|pesanan saya) #([^\s(]+)(?:\s*\(([^)]+)\))?/i
-                          )
-
-                        const isStructuredInquiry =
-                          isOrderOrReturn ||
-                          Boolean(returnTextMatch) ||
-                          Boolean(orderTextMatch)
-
-                        const isProduct =
-                          msg.messageType === 'product' ||
-                          msg.messageType === 'product_reference' ||
-                          parsedContent?.type === 'product_reference' ||
-                          (parsedContent !== null &&
-                            (parsedContent.productName !== undefined ||
-                              parsedContent.name !== undefined) &&
-                            (parsedContent.productPrice !== undefined ||
-                              parsedContent.price !== undefined))
-
-                        const senderAvatar =
-                          msg.sender.image ||
-                          selectedRoom?.claimedBy?.image ||
-                          activeStoreLogo ||
-                          null
-                        const senderName =
-                          msg.sender.name ||
-                          (msg.sender.role === 'ADMIN' ||
-                          msg.sender.role === 'SUPER_ADMIN' ||
-                          msg.sender.role === 'STORE_ADMIN'
-                            ? 'Admin Toko'
-                            : 'CS Toko')
-
-                        return (
-                          <div
-                            key={msg.id}
-                            id={
-                              isStructuredInquiry
-                                ? `chat-context-msg-${msg.id}`
-                                : undefined
-                            }
-                            className={`flex items-end gap-2.5 transition-all ${isMe ? 'justify-end' : 'justify-start'}`}
-                          >
-                            {!isMe && (
-                              <div className="mb-1 shrink-0">
-                                {senderAvatar ? (
-                                  <img
-                                    src={senderAvatar}
-                                    alt={senderName}
-                                    className="shadow-2xs h-8 w-8 rounded-full border border-slate-200/80 object-cover dark:border-slate-700"
-                                  />
-                                ) : (
-                                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-orange-200 bg-orange-100 text-xs font-bold text-orange-700 dark:border-slate-700 dark:bg-slate-800 dark:text-orange-400">
-                                    {senderName.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {isMedia ? (
-                              /* Full-Bleed Modern Media Bubble (Compact Mobile Friendly) */
-                              <div className="shadow-xs group relative max-w-[65%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[240px]">
-                                {isVideo ? (
-                                  <div className="relative">
-                                    <video
-                                      src={msg.mediaUrl!}
-                                      controls
-                                      controlsList="nofullscreen nodownload noremoteplayback noplaybackrate"
-                                      disablePictureInPicture
-                                      disableRemotePlayback
-                                      playsInline
-                                      preload="metadata"
-                                      className="clean-video-player block max-h-[160px] w-full max-w-[200px] rounded-2xl bg-black object-cover sm:max-h-[220px] sm:max-w-[240px]"
-                                    />
-                                    {/* Floating Theater Mode Button */}
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setFullscreenMedia({
-                                          url: msg.mediaUrl!,
-                                          type: 'video',
-                                        })
-                                      }
-                                      title="Perbesar Layar Penuh"
-                                      className="shadow-xs absolute right-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/85"
-                                    >
-                                      <Maximize2 className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div
-                                    onClick={() =>
-                                      setFullscreenMedia({
-                                        url: msg.mediaUrl!,
-                                        type: 'image',
-                                      })
-                                    }
-                                    className="relative cursor-pointer"
-                                  >
-                                    <img
-                                      src={msg.mediaUrl!}
-                                      alt="Foto Lampiran"
-                                      className="group-hover:scale-102 block max-h-[160px] w-auto max-w-[200px] rounded-2xl object-cover transition-transform duration-200 sm:max-h-[220px] sm:max-w-[240px]"
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
-                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md">
-                                        <ZoomIn className="h-3.5 w-3.5" />
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Floating Glassmorphic Timestamp Pill */}
-                                <div className="shadow-xs pointer-events-none absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-medium text-white/95 backdrop-blur-md">
-                                  <span>{formattedTime}</span>
-                                  {isMe &&
-                                    renderWhatsAppTick(
-                                      msg.isRead,
-                                      isStoreOnline
-                                    )}
-                                </div>
-                              </div>
-                            ) : isStructuredInquiry ? (
-                              /* Standalone Luxury Order / Return Card (Compact Mobile Friendly, identical to product card) */
-                              (() => {
-                                try {
-                                  const p: Record<string, unknown> =
-                                    parsedContent ?? {}
-                                  const isReturn =
-                                    Boolean(returnTextMatch) ||
-                                    msg.messageType === 'return_reference' ||
-                                    p.type === 'return_reference' ||
-                                    p.returnReason !== undefined ||
-                                    p.returnId !== undefined
-
-                                  const orderNumber =
-                                    (p.orderNumber as string) ||
-                                    (returnTextMatch && returnTextMatch[1]) ||
-                                    (orderTextMatch && orderTextMatch[1]) ||
-                                    selectedRoom?.order?.orderNumber ||
-                                    ''
-
-                                  const orderId =
-                                    (p.orderId as string) ||
-                                    selectedRoom?.order?.id ||
-                                    activeOrderContext?.orderId ||
-                                    ''
-
-                                  const prodName =
-                                    (p.productName as string) ||
-                                    (p.name as string) ||
-                                    (returnTextMatch && returnTextMatch[2]) ||
-                                    (orderTextMatch && orderTextMatch[2]) ||
-                                    activeOrderContext?.productName ||
-                                    selectedRoom?.order?.items?.[0]?.product
-                                      ?.name ||
-                                    'Produk Pesanan'
-
-                                  const rawPrice =
-                                    p.productPrice !== undefined
-                                      ? p.productPrice
-                                      : p.price !== undefined
-                                        ? p.price
-                                        : p.orderTotal !== undefined
-                                          ? p.orderTotal
-                                          : activeOrderContext?.productPrice ||
-                                            selectedRoom?.order?.items?.[0]
-                                              ?.price ||
-                                            selectedRoom?.order?.total ||
-                                            0
-
-                                  const prodPrice = Number(rawPrice) || 0
-
-                                  const rawImage =
-                                    p.productImage ||
-                                    p.image ||
-                                    activeOrderContext?.productImage ||
-                                    selectedRoom?.order?.items?.[0]?.product
-                                      ?.images?.[0] ||
-                                    null
-
-                                  const prodImage = Array.isArray(rawImage)
-                                    ? (rawImage[0] as string)
-                                    : typeof rawImage === 'string' &&
-                                        rawImage.trim() !== ''
-                                      ? rawImage
-                                      : null
-
-                                  const brand =
-                                    (p.brand as string) ||
-                                    selectedRoom?.order?.items?.[0]?.product
-                                      ?.brand ||
-                                    null
-
-                                  const variantName =
-                                    (p.variantName as string) || null
-
-                                  const returnReason =
-                                    (p.returnReason as string) ||
-                                    (returnTextMatch && returnTextMatch[3]) ||
-                                    activeOrderContext?.returnRequest?.reason ||
-                                    null
-
-                                  const returnStatus =
-                                    (p.returnStatus as string) ||
-                                    activeOrderContext?.returnRequest?.status ||
-                                    'PENDING'
-
-                                  return (
-                                    <div className="shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px]">
-                                      {/* Top Header Info Pill */}
-                                      <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
-                                        <span
-                                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                                            isReturn
-                                              ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400'
-                                              : 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
-                                          }`}
-                                        >
-                                          {isReturn ? (
-                                            <RotateCcw className="h-2.5 w-2.5" />
-                                          ) : (
-                                            <Package className="h-2.5 w-2.5" />
-                                          )}
-                                          {isReturn
-                                            ? 'Pengajuan Retur'
-                                            : 'Rincian Pesanan'}
-                                        </span>
-                                        <div className="flex items-center gap-1 text-[9px] text-slate-400">
-                                          <span>{formattedTime}</span>
-                                          {isMe &&
-                                            renderWhatsAppTick(
-                                              msg.isRead,
-                                              isStoreOnline,
-                                              'small'
-                                            )}
-                                        </div>
-                                      </div>
-
-                                      {/* Main Product / Order Snippet */}
-                                      <div className="flex items-center gap-2">
-                                        {prodImage ? (
-                                          <img
-                                            src={prodImage}
-                                            alt={prodName}
-                                            className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover p-0.5 dark:border-slate-800 dark:bg-slate-800"
-                                          />
-                                        ) : (
-                                          <div
-                                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
-                                              isReturn
-                                                ? 'border-purple-200/60 bg-purple-50 dark:border-purple-900/40 dark:bg-purple-950/40'
-                                                : 'border-blue-200/60 bg-blue-50 dark:border-blue-900/40 dark:bg-blue-950/40'
-                                            }`}
-                                          >
-                                            {isReturn ? (
-                                              <RotateCcw className="h-5 w-5 text-purple-500" />
-                                            ) : (
-                                              <Package className="h-5 w-5 text-blue-500" />
-                                            )}
-                                          </div>
-                                        )}
-
-                                        <div className="min-w-0 flex-1">
-                                          {brand && (
-                                            <span className="block text-[8.5px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                                              {brand}
-                                            </span>
-                                          )}
-                                          <p
-                                            className="truncate text-[11px] font-bold leading-tight text-slate-950 dark:text-white"
-                                            title={prodName}
-                                          >
-                                            {prodName}
-                                          </p>
-                                          {orderNumber && (
-                                            <p className="truncate font-mono text-[9.5px] font-bold text-blue-600 dark:text-blue-400">
-                                              #{orderNumber}
-                                            </p>
-                                          )}
-                                          {isReturn && returnReason && (
-                                            <p className="truncate text-[9.5px] font-medium text-purple-600 dark:text-purple-400">
-                                              Kendala: {returnReason}
-                                            </p>
-                                          )}
-                                          {variantName && !orderNumber && (
-                                            <p className="truncate text-[9.5px] font-medium text-slate-500 dark:text-slate-400">
-                                              Varian: {variantName}
-                                            </p>
-                                          )}
-                                          {prodPrice > 0 && (
-                                            <p className="mt-0.5 font-mono text-xs font-black text-orange-600 dark:text-orange-400">
-                                              Rp{' '}
-                                              {prodPrice.toLocaleString(
-                                                'id-ID'
-                                              )}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      {/* Customer Note / Caption sent together (filter automated confirmation greeting) */}
-                                      {typeof p.note === 'string' &&
-                                        p.note.trim() !== '' &&
-                                        !p.note.includes(
-                                          'ingin mengonfirmasi pesanan'
-                                        ) && (
-                                          <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
-                                            <p className="whitespace-pre-wrap break-words leading-relaxed">
-                                              {p.note}
-                                            </p>
-                                          </div>
-                                        )}
-
-                                      {/* Footer CTA */}
-                                      <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 dark:border-slate-800">
-                                        <span className="text-[9.5px] text-slate-400">
-                                          {isReturn
-                                            ? returnStatus === 'APPROVED'
-                                              ? 'Disetujui'
-                                              : returnStatus === 'REJECTED'
-                                                ? 'Ditolak'
-                                                : 'Menunggu Verifikasi Toko'
-                                            : isMe
-                                              ? 'Pertanyaan Anda'
-                                              : activeStoreTitle ||
-                                                'Toko Resmi'}
-                                        </span>
-                                        {(orderId || orderNumber) && (
-                                          <Link
-                                            href={`/dashboard/customer/orders/${orderId || orderNumber}`}
-                                            className="shadow-2xs inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                                          >
-                                            <span>Lihat Pesanan</span>
-                                            <ExternalLink className="h-2.5 w-2.5" />
-                                          </Link>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )
-                                } catch {
-                                  return (
-                                    <div className="shadow-2xs max-w-[80%] rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-900 sm:max-w-[70%]">
-                                      <p className="whitespace-pre-wrap">
-                                        {msg.content}
-                                      </p>
-                                    </div>
-                                  )
-                                }
-                              })()
-                            ) : isProduct ? (
-                              /* Standalone Luxury Product Card (Compact Mobile Friendly) */
-                              (() => {
-                                try {
-                                  const p: Record<string, unknown> =
-                                    parsedContent ?? JSON.parse(msg.content)
-                                  const prodId =
-                                    (p.productId as string) || (p.id as string)
-                                  const prodName =
-                                    (p.productName as string) ||
-                                    (p.name as string) ||
-                                    'Produk Gadget'
-                                  const prodPrice =
-                                    p.productPrice !== undefined
-                                      ? p.productPrice
-                                      : p.price
-                                  const rawImage =
-                                    p.productImage || p.image || null
-                                  const prodImage = Array.isArray(rawImage)
-                                    ? (rawImage[0] as string)
-                                    : typeof rawImage === 'string' &&
-                                        rawImage.trim() !== ''
-                                      ? rawImage
-                                      : null
-                                  const isReference =
-                                    p.type === 'product_reference' ||
-                                    msg.messageType === 'product_reference'
-
-                                  return (
-                                    <div className="shadow-xs max-w-[80%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[300px]">
-                                      {/* Top Header Info Pill */}
-                                      <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                                          <Package className="h-2.5 w-2.5" />
-                                          {isReference
-                                            ? 'Produk Ditanyakan'
-                                            : 'Rekomendasi Toko'}
-                                        </span>
-                                        <div className="flex items-center gap-1 text-[9px] text-slate-400">
-                                          <span>{formattedTime}</span>
-                                          {isMe &&
-                                            renderWhatsAppTick(
-                                              msg.isRead,
-                                              isStoreOnline,
-                                              'small'
-                                            )}
-                                        </div>
-                                      </div>
-
-                                      {/* Main Product Snippet */}
-                                      <div className="flex items-center gap-2">
-                                        {prodImage ? (
-                                          <img
-                                            src={prodImage as string}
-                                            alt={prodName}
-                                            className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover p-0.5 dark:border-slate-800 dark:bg-slate-800"
-                                          />
-                                        ) : (
-                                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-orange-200/60 bg-orange-50 dark:border-orange-900/40 dark:bg-orange-950/40">
-                                            <Package className="h-5 w-5 text-orange-500" />
-                                          </div>
-                                        )}
-
-                                        <div className="min-w-0 flex-1">
-                                          {typeof p.brand === 'string' &&
-                                            p.brand && (
-                                              <span className="block text-[8.5px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                                                {p.brand}
-                                              </span>
-                                            )}
-                                          <p
-                                            className="truncate text-[11px] font-bold leading-tight text-slate-950 dark:text-white"
-                                            title={prodName}
-                                          >
-                                            {prodName}
-                                          </p>
-                                          {typeof p.variantName === 'string' &&
-                                            p.variantName && (
-                                              <p className="truncate text-[9.5px] font-medium text-slate-500 dark:text-slate-400">
-                                                Varian: {p.variantName}
-                                              </p>
-                                            )}
-                                          <p className="mt-0.5 font-mono text-xs font-black text-orange-600 dark:text-orange-400">
-                                            Rp{' '}
-                                            {(
-                                              Number(prodPrice) || 0
-                                            ).toLocaleString('id-ID')}
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      {/* Customer Note / Caption sent together */}
-                                      {typeof p.note === 'string' &&
-                                        p.note.trim() !== '' && (
-                                          <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
-                                            <p className="whitespace-pre-wrap break-words leading-relaxed">
-                                              {p.note}
-                                            </p>
-                                          </div>
-                                        )}
-
-                                      {/* Footer CTA */}
-                                      <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 dark:border-slate-800">
-                                        <span className="text-[9.5px] text-slate-400">
-                                          {isMe
-                                            ? 'Pertanyaan Anda'
-                                            : activeStoreTitle || 'Toko Resmi'}
-                                        </span>
-                                        {prodId && (
-                                          <a
-                                            href={`/gadget/${prodId}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="shadow-2xs inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                                          >
-                                            <span>Lihat Unit</span>
-                                            <ExternalLink className="h-2.5 w-2.5" />
-                                          </a>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )
-                                } catch {
-                                  return (
-                                    <div className="shadow-2xs max-w-[80%] rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-900 sm:max-w-[70%]">
-                                      <p className="whitespace-pre-wrap">
-                                        {msg.content}
-                                      </p>
-                                    </div>
-                                  )
-                                }
-                              })()
-                            ) : (
-                              /* Standard Text Bubble */
-                              <div
-                                className={`shadow-2xs max-w-[80%] rounded-2xl px-4 py-2.5 text-xs sm:max-w-[70%] ${
-                                  isMe
-                                    ? 'rounded-tr-xs bg-blue-600 text-white shadow-blue-500/10'
-                                    : 'rounded-tl-xs border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100'
-                                }`}
-                              >
-                                {!isMe && (
-                                  <div className="mb-1 flex items-center gap-1.5">
-                                    <p className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                                      {senderName}
-                                    </p>
-                                  </div>
-                                )}
-                                <p className="whitespace-pre-wrap break-words break-all text-xs leading-relaxed sm:text-[13px]">
-                                  {msg.content}
-                                </p>
-
-                                <div
-                                  className={`mt-1.5 flex items-center justify-end gap-1 text-[9.5px] font-medium ${
-                                    isMe
-                                      ? 'text-blue-100 dark:text-blue-200'
-                                      : 'text-slate-400'
-                                  }`}
-                                >
-                                  <span>{formattedTime}</span>
-                                  {isMe &&
-                                    renderWhatsAppTick(
-                                      msg.isRead,
-                                      isStoreOnline,
-                                      'normal',
-                                      'on-blue'
-                                    )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
+                  <ChatMessageList
+                    messagesContainerRef={messagesContainerRef}
+                    messagesEndRef={messagesEndRef}
+                    messagesLoading={messagesLoading}
+                    messages={messages}
+                    sessionUserId={session?.user?.id}
+                    selectedRoom={selectedRoom}
+                    isStoreOnline={isStoreOnline}
+                    activeStoreLogo={activeStoreLogo}
+                    activeStoreTitle={activeStoreTitle}
+                    activeOrderContext={activeOrderContext}
+                    onOpenFullscreenMedia={setFullscreenMedia}
+                  />
 
                   {/* Single Mutually Exclusive Context Bar above message input (Order > Service > Product) */}
                   {activeOrderContext ? (
-                    <div
-                      className={`flex items-center justify-between gap-3 border-t px-4 py-2.5 ${
-                        activeOrderContext.returnRequest
-                          ? 'border-purple-200/80 bg-gradient-to-r from-purple-50/90 via-orange-50/40 to-white dark:border-purple-900/40 dark:from-purple-950/40 dark:via-slate-900 dark:to-slate-900'
-                          : 'border-blue-100 bg-blue-50/80 dark:border-blue-900/40 dark:bg-blue-950/30'
-                      }`}
-                    >
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        {activeOrderContext.productImage ? (
-                          <img
-                            src={activeOrderContext.productImage}
-                            alt=""
-                            className={`h-11 w-11 shrink-0 rounded-xl border bg-white object-cover p-0.5 ${
-                              activeOrderContext.returnRequest
-                                ? 'border-purple-200 dark:border-purple-800'
-                                : 'border-blue-200 dark:border-blue-800'
-                            }`}
-                          />
-                        ) : (
-                          <div
-                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                              activeOrderContext.returnRequest
-                                ? 'bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400'
-                                : 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
-                            }`}
-                          >
-                            {activeOrderContext.returnRequest ? (
-                              <RotateCcw className="h-5 w-5" />
-                            ) : (
-                              <Package className="h-5 w-5" />
-                            )}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`rounded-md px-1.5 py-0.5 text-[9.5px] font-black uppercase tracking-wider ${
-                                activeOrderContext.returnRequest
-                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300'
-                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300'
-                              }`}
-                            >
-                              {activeOrderContext.returnRequest
-                                ? 'Pengajuan Retur'
-                                : 'Pesanan'}
-                            </span>
-                            {activeOrderContext.orderNumber && (
-                              <span className="truncate font-mono text-[11px] font-bold text-slate-900 dark:text-white">
-                                #{activeOrderContext.orderNumber}
-                              </span>
-                            )}
-                          </div>
-                          {activeOrderContext.productName && (
-                            <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
-                              {activeOrderContext.productName}
-                            </p>
-                          )}
-                          {activeOrderContext.returnRequest ? (
-                            <p className="truncate text-[11px] font-medium text-purple-700 dark:text-purple-300">
-                              Kendala:{' '}
-                              {activeOrderContext.returnRequest.reason ||
-                                'Kendala Unit'}{' '}
-                              • Status:{' '}
-                              {activeOrderContext.returnRequest.status ===
-                              'APPROVED'
-                                ? 'Disetujui'
-                                : activeOrderContext.returnRequest.status ===
-                                    'REJECTED'
-                                  ? 'Ditolak'
-                                  : activeOrderContext.returnRequest.status ===
-                                      'COMPLETED'
-                                    ? 'Selesai'
-                                    : 'Menunggu Verifikasi Toko'}
-                            </p>
-                          ) : activeOrderContext.total ? (
-                            <p className="font-mono text-[11px] font-bold text-orange-600 dark:text-orange-400">
-                              Rp{' '}
-                              {activeOrderContext.total.toLocaleString('id-ID')}
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const defaultMsg = activeOrderContext.returnRequest
-                              ? `Tanya Status Retur #${activeOrderContext.orderNumber || ''}`
-                              : `Tanya Pesanan #${activeOrderContext.orderNumber || ''}`
-                            const msgToSend = messageInput.trim() || defaultMsg
-                            handleSendMessage(msgToSend)
-                          }}
-                          className={`shadow-2xs cursor-pointer items-center gap-1 rounded-full border px-3 py-1 text-[10.5px] font-bold transition sm:inline-flex ${
-                            activeOrderContext.returnRequest
-                              ? 'border-purple-300 bg-purple-600 text-white hover:bg-purple-700'
-                              : 'border-blue-300 bg-blue-600 text-white hover:bg-blue-700'
-                          }`}
-                        >
-                          <span>
-                            {activeOrderContext.returnRequest
-                              ? 'Tanya Status Retur'
-                              : 'Tanya Pesanan'}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (activeOrderContext.orderId)
-                              sentContextsRef.current.add(
-                                activeOrderContext.orderId
-                              )
-                            if (activeOrderContext.orderNumber)
-                              sentContextsRef.current.add(
-                                activeOrderContext.orderNumber
-                              )
-                            setActiveOrderContext(null)
-                            if (typeof window !== 'undefined') {
-                              window.history.replaceState(
-                                null,
-                                '',
-                                '/dashboard/customer/chat'
-                              )
-                            }
-                          }}
-                          className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
-                          title="Tutup ringkasan"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
+                    <ChatOrderContextBar
+                      activeOrderContext={activeOrderContext}
+                      messageInput={messageInput}
+                      onSendMessage={handleSendMessage}
+                      onDismiss={() => {
+                        if (activeOrderContext.orderId)
+                          sentContextsRef.current.add(
+                            activeOrderContext.orderId
+                          )
+                        if (activeOrderContext.orderNumber)
+                          sentContextsRef.current.add(
+                            activeOrderContext.orderNumber
+                          )
+                        setActiveOrderContext(null)
+                        if (typeof window !== 'undefined') {
+                          window.history.replaceState(
+                            null,
+                            '',
+                            '/dashboard/customer/chat'
+                          )
+                        }
+                      }}
+                    />
                   ) : activeServiceContext ? (
-                    <div className="flex items-center justify-between gap-3 border-t border-emerald-100 bg-emerald-50/80 px-4 py-2.5 dark:border-emerald-900/40 dark:bg-emerald-950/30">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        {activeServiceContext.mitraImage ? (
-                          <img
-                            src={activeServiceContext.mitraImage}
-                            alt=""
-                            className="h-10 w-10 shrink-0 rounded-xl border border-emerald-200/80 bg-white object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
-                            <Wrench className="h-5 w-5 text-emerald-600" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400">
-                              Konsultasi Servis:
-                            </span>
-                            <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
-                              {activeServiceContext.mitraName}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px]">
-                            {activeServiceContext.mitraCity && (
-                              <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                                <MapPin className="h-3 w-3 text-slate-400" />
-                                {activeServiceContext.mitraCity}
-                              </span>
-                            )}
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                              • Booking & Estimasi Servis
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const defaultMsg = `Konsultasi Servis: ${activeServiceContext.mitraName}`
-                            const msgToSend = messageInput.trim() || defaultMsg
-                            handleSendMessage(msgToSend)
-                          }}
-                          className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10.5px] font-bold text-emerald-600 transition hover:bg-emerald-50 dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-300 sm:inline-flex"
-                        >
-                          <span>Tanya Servis</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveServiceContext(null)}
-                          className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
-                          title="Tutup ringkasan"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
+                    <ChatServiceContextBar
+                      activeServiceContext={activeServiceContext}
+                      messageInput={messageInput}
+                      onSendMessage={handleSendMessage}
+                      onDismiss={() => setActiveServiceContext(null)}
+                    />
                   ) : activeProductContext ? (
-                    <div className="flex items-center justify-between gap-3 border-t border-orange-100 bg-orange-50/80 px-4 py-2.5 dark:border-orange-900/40 dark:bg-orange-950/30">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        {activeProductContext.productImage ? (
-                          <img
-                            src={activeProductContext.productImage}
-                            alt=""
-                            className="h-10 w-10 shrink-0 rounded-xl border border-orange-200/80 bg-white object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/50">
-                            <Package className="h-5 w-5 text-orange-600" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-black uppercase text-orange-600 dark:text-orange-400">
-                              Membahas:
-                            </span>
-                            <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
-                              {activeProductContext.productName}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px]">
-                            {activeProductContext.variantName && (
-                              <span className="truncate text-slate-500 dark:text-slate-400">
-                                Varian: {activeProductContext.variantName}
-                              </span>
-                            )}
-                            {activeProductContext.productPrice !==
-                              undefined && (
-                              <span className="font-mono font-bold text-orange-600 dark:text-orange-400">
-                                Rp{' '}
-                                {activeProductContext.productPrice.toLocaleString(
-                                  'id-ID'
-                                )}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const defaultMsg = `Tanya Unit: ${activeProductContext.productName}${activeProductContext.variantName ? ` (${activeProductContext.variantName})` : ''}`
-                            const msgToSend = messageInput.trim() || defaultMsg
-                            handleSendMessage(msgToSend)
-                          }}
-                          className="shadow-2xs hidden cursor-pointer items-center gap-1 rounded-full border border-orange-200 bg-white px-3 py-1 text-[10.5px] font-bold text-orange-600 transition hover:bg-orange-50 dark:border-orange-900 dark:bg-slate-900 dark:text-orange-300 sm:inline-flex"
-                        >
-                          <span>Tanya Unit</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveProductContext(null)}
-                          className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
-                          title="Tutup ringkasan"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
+                    <ChatProductContextBar
+                      activeProductContext={activeProductContext}
+                      messageInput={messageInput}
+                      onSendMessage={handleSendMessage}
+                      onDismiss={() => setActiveProductContext(null)}
+                    />
                   ) : null}
 
-                  {/* Bottom Message Input Bar */}
-                  <div className="shrink-0 border-t border-slate-200/80 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] dark:border-slate-800 dark:bg-slate-900 sm:p-3.5 sm:pb-3.5">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingMedia}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                        title="Kirim Foto / Video"
-                      >
-                        {uploadingMedia ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
-                        ) : (
-                          <Plus className="h-4 w-4" />
-                        )}
-                      </button>
-
-                      <input
-                        type="text"
-                        value={messageInput}
-                        onChange={(e) => setMessageInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault()
-                            handleSendMessage()
-                          }
-                        }}
-                        placeholder="Ketik pesan ke admin toko..."
-                        className="flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => handleSendMessage()}
-                        disabled={!messageInput.trim() || sending}
-                        className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950"
-                        title="Kirim Pesan"
-                      >
-                        {sending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                  {/* Bottom Message Input Bar: pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] */}
+                  <ChatInputBar
+                    fileInputRef={fileInputRef}
+                    uploadingMedia={uploadingMedia}
+                    messageInput={messageInput}
+                    setMessageInput={setMessageInput}
+                    onSendMessage={() => handleSendMessage()}
+                    sending={sending}
+                  />
                 </>
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-slate-400">

@@ -2,7 +2,6 @@ import { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { parseUserAgent } from '@/lib/user-agent-parser'
 import { getMitraServiceListData } from '@/lib/mitra-service-data'
-import { Navbar, Footer, MobileBottomNav } from '@/components/layouts'
 import { IntegratedServiceView } from '@/components/service/integrated-service-view'
 
 export const dynamic = 'force-dynamic'
@@ -89,20 +88,15 @@ export default async function ServisPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaJson) }}
       />
-      <Navbar variant="light" />
-      <main className="flex-1">
-        <IntegratedServiceView
-          initialMitras={mitras}
-          initialIsMobile={isMobileDevice}
-        />
-      </main>
-      <Footer />
-      <MobileBottomNav activeTab="servis" />
+      <IntegratedServiceView
+        initialMitras={mitras}
+        initialIsMobile={isMobileDevice}
+      />
     </div>
   )
 }

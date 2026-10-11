@@ -186,7 +186,24 @@ describe('Dynamic Order Date & Process-Based Timeline Audit Suite', () => {
   })
 
   it('5. memvalidasi halaman rincian pesanan order-detail-client.tsx merender header dinamis dan kartu Riwayat Waktu Transaksi', () => {
-    const detailClient = fs.readFileSync(orderDetailClientPath, 'utf-8')
+    const orderDetailDir = path.resolve(
+      process.cwd(),
+      'src/components/customer/order-detail'
+    )
+    const detailComponentContents = fs.existsSync(orderDetailDir)
+      ? fs
+          .readdirSync(orderDetailDir, { recursive: true })
+          .filter(
+            (f): f is string =>
+              typeof f === 'string' && (f.endsWith('.tsx') || f.endsWith('.ts'))
+          )
+          .map((f) => fs.readFileSync(path.join(orderDetailDir, f), 'utf-8'))
+          .join('\n')
+      : ''
+    const detailClient =
+      fs.readFileSync(orderDetailClientPath, 'utf-8') +
+      '\n' +
+      detailComponentContents
 
     // Import utilitas
     expect(detailClient).toContain('getOrderContextualTimestamp')

@@ -3,9 +3,15 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import MitraDetailClient from './mitra-detail-client'
 import { Loader2 } from 'lucide-react'
+import { auth } from '@/auth'
+import { Footer } from '@/components/layouts/footer'
+
+import { isMitraCurrentlyOpen } from '@/lib/mitra-utils'
 
 // Force dynamic rendering - avoid DB calls at build time (Docker build stage has no DB)
 export const dynamic = 'force-dynamic'
+
+export { isMitraCurrentlyOpen }
 
 // Generate metadata for SEO
 export async function generateMetadata({
@@ -38,7 +44,7 @@ export async function generateMetadata({
 }
 
 // Define the type to match client component expectations
-type MitraData = {
+export type MitraData = {
   id: string
   businessName: string
   tagline: string | null
@@ -69,16 +75,27 @@ type MitraData = {
   images: Array<{ id: string; url: string }>
 }
 
-// Fetch mitra data on server
+// Fetch mitra data on server with optimized select
 async function getMitra(id: string): Promise<MitraData | null> {
   try {
     const mitra = await prisma.mitra.findUnique({
       where: { id },
       include: {
         services: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            icon: true,
+            description: true,
+          },
           orderBy: { createdAt: 'asc' },
         },
         images: {
+          select: {
+            id: true,
+            url: true,
+          },
           orderBy: { createdAt: 'asc' },
         },
       },
@@ -88,12 +105,7 @@ async function getMitra(id: string): Promise<MitraData | null> {
       return null
     }
 
-    // Calculate if currently open
-    const now = new Date()
-    const dayOfWeek = now.getDay()
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-    const currentHours = isWeekend ? mitra.weekendHours : mitra.weekdayHours
-    const isOpen = !!currentHours
+    const isOpen = isMitraCurrentlyOpen(mitra.weekdayHours, mitra.weekendHours)
 
     return {
       id: mitra.id,
@@ -116,22 +128,14 @@ async function getMitra(id: string): Promise<MitraData | null> {
       rating: mitra.rating,
       totalReview: mitra.totalReview,
       isOpen,
-      services: mitra.services.map(
-        (s: {
-          id: string
-          name: string
-          price: string | null
-          icon: string | null
-          description?: string | null
-        }) => ({
-          id: s.id,
-          name: s.name,
-          price: s.price || 'Hubungi kami',
-          icon: s.icon,
-          description: s.description || null,
-        })
-      ),
-      images: mitra.images.map((img: { id: string; url: string }) => ({
+      services: mitra.services.map((s) => ({
+        id: s.id,
+        name: s.name,
+        price: s.price || 'Hubungi kami',
+        icon: s.icon,
+        description: s.description || null,
+      })),
+      images: mitra.images.map((img) => ({
         id: img.id,
         url: img.url,
       })),
@@ -157,15 +161,33 @@ export default async function MitraDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const mitra = await getMitra(id)
+  const [mitra, session] = await Promise.all([getMitra(id), auth()])
 
   if (!mitra) {
     notFound()
   }
 
+  let initialUserHasReview = false
+  if (session?.user?.id) {
+    const existingReview = await prisma.review.findFirst({
+      where: {
+        userId: session.user.id,
+        mitraId: id,
+      },
+      select: { id: true },
+    })
+    initialUserHasReview = !!existingReview
+  }
+
   return (
-    <Suspense fallback={<MitraDetailLoading />}>
-      <MitraDetailClient mitra={mitra!} />
-    </Suspense>
+    <>
+      <Suspense fallback={<MitraDetailLoading />}>
+        <MitraDetailClient
+          mitra={mitra}
+          initialUserHasReview={initialUserHasReview}
+        />
+      </Suspense>
+      <Footer />
+    </>
   )
 }

@@ -129,7 +129,24 @@ describe('Unified Warranty Claim & Returns Suite (Phase 9)', () => {
       process.cwd(),
       'src/app/dashboard/customer/orders/[orderId]/order-detail-client.tsx'
     )
-    const content = fs.readFileSync(customerDetailPath, 'utf-8')
+    const customerDetailDir = path.join(
+      process.cwd(),
+      'src/components/customer/order-detail'
+    )
+    const customerComponentContents = fs.existsSync(customerDetailDir)
+      ? fs
+          .readdirSync(customerDetailDir, { recursive: true })
+          .filter(
+            (f): f is string =>
+              typeof f === 'string' && (f.endsWith('.tsx') || f.endsWith('.ts'))
+          )
+          .map((f) => fs.readFileSync(path.join(customerDetailDir, f), 'utf-8'))
+          .join('\n')
+      : ''
+    const content =
+      fs.readFileSync(customerDetailPath, 'utf-8') +
+      '\n' +
+      customerComponentContents
 
     // Must have CheckResiModal integration
     expect(content).toContain('CheckResiModal')

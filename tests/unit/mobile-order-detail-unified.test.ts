@@ -7,7 +7,22 @@ describe('Mobile Order Detail Unified & Neutral Palette Suite', () => {
     process.cwd(),
     'src/app/dashboard/customer/orders/[orderId]/order-detail-client.tsx'
   )
-  const fileContent = fs.readFileSync(filePath, 'utf-8')
+  const detailDir = path.join(
+    process.cwd(),
+    'src/components/customer/order-detail'
+  )
+  const componentContents = fs.existsSync(detailDir)
+    ? fs
+        .readdirSync(detailDir, { recursive: true })
+        .filter(
+          (f): f is string =>
+            typeof f === 'string' && (f.endsWith('.tsx') || f.endsWith('.ts'))
+        )
+        .map((f) => fs.readFileSync(path.join(detailDir, f), 'utf-8'))
+        .join('\n')
+    : ''
+  const fileContent =
+    fs.readFileSync(filePath, 'utf-8') + '\n' + componentContents
 
   it('contains unified single card container for mobile mode with divide-y dividers', () => {
     // Verifikasi keberadaan kontainer mobile 1 bagian saja
