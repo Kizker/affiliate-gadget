@@ -19,6 +19,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import StoreDataForm from '@/components/mitra/store-data-form'
+import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal'
 
 interface ApplicationDetails {
   id?: string
@@ -48,6 +49,7 @@ export default function MitraPendingPage() {
     useState<ApplicationDetails | null>(null)
   const [isChecking, setIsChecking] = useState(false)
   const [isEditingForm, setIsEditingForm] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [lastCheckedTime, setLastCheckedTime] = useState<string>('')
 
   const isRedirectingRef = useRef(false)
@@ -404,7 +406,7 @@ export default function MitraPendingPage() {
             <div className="mt-6 flex flex-col gap-2.5 border-t border-slate-100 pt-2 dark:border-slate-800 sm:flex-row">
               <button
                 type="button"
-                onClick={() => signOut({ callbackUrl: '/' })}
+                onClick={() => setShowLogoutModal(true)}
                 className="rounded-full border border-slate-200/80 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:w-1/3"
               >
                 Keluar / Logout
@@ -438,6 +440,12 @@ export default function MitraPendingPage() {
           </p>
         </div>
       </div>
+
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={() => signOut({ callbackUrl: '/' })}
+      />
     </div>
   )
 }

@@ -30,6 +30,7 @@ import { id } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
+import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal'
 
 // --- Types ---
 
@@ -248,6 +249,8 @@ const Header = ({
   user: { name: string | null; email: string | null; image: string | null }
   profile: { isAvailable: boolean }
 }) => {
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 11) return 'Selamat Pagi'
@@ -335,13 +338,19 @@ const Header = ({
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => signOut({ callbackUrl: '/login' })}
+          onClick={() => setShowLogoutModal(true)}
           className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50/80 px-5 py-3 text-sm font-semibold text-rose-600 shadow-sm backdrop-blur-sm transition-all hover:border-rose-300 hover:bg-rose-100 hover:shadow-md"
         >
           <LogOut className="h-4 w-4" />
           Keluar
         </motion.button>
       </div>
+
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={() => signOut({ callbackUrl: '/login' })}
+      />
     </motion.div>
   )
 }

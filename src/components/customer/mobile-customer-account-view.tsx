@@ -27,6 +27,7 @@ import {
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { MobileBottomNav } from '@/components/layouts/mobile-bottom-nav'
+import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal'
 
 export interface MobileCustomerAccountViewProps {
   user: {
@@ -76,6 +77,7 @@ export function MobileCustomerAccountView({
 }: MobileCustomerAccountViewProps) {
   const { totalCount: wishlistCount } = useWishlistSafe()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showLogoutModal, setShowLogoutModal] = React.useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.scrollY !== 0) {
@@ -487,7 +489,7 @@ export function MobileCustomerAccountView({
         {/* 5. Tombol Keluar (Logout) */}
         <button
           type="button"
-          onClick={onSignOut}
+          onClick={() => setShowLogoutModal(true)}
           className="shadow-2xs flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white py-3 text-xs font-bold text-rose-600 transition active:scale-[0.99] dark:border-rose-900/60 dark:bg-slate-900 dark:text-rose-400"
         >
           <LogOut className="h-4 w-4" />
@@ -497,6 +499,13 @@ export function MobileCustomerAccountView({
 
       {/* 6. Standard Universal Mobile Bottom Navigation */}
       <MobileBottomNav activeTab="akun" />
+
+      {/* Modal Validasi Keluar Akun */}
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={onSignOut}
+      />
     </div>
   )
 }

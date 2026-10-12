@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
 import { useWishlistStore } from '@/lib/store/wishlist-store'
+import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal'
 
 interface NavbarProps {
   variant?: 'light' | 'dark'
@@ -31,6 +32,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -374,8 +376,8 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                     <div className="border-t border-slate-100 pt-1 dark:border-slate-800">
                       <button
                         onClick={() => {
-                          cartSetUserId(null)
-                          signOut({ callbackUrl: '/' })
+                          setUserDropdownOpen(false)
+                          setShowLogoutModal(true)
                         }}
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                       >
@@ -417,6 +419,15 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
           </div>
         </div>
       </div>
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={() => {
+          cartSetUserId(null)
+          wishlistSetUserId(null)
+          signOut({ callbackUrl: '/' })
+        }}
+      />
     </header>
   )
 }

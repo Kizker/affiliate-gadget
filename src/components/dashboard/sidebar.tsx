@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
+import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal'
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -231,6 +232,7 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
   const { counts, markAsRead } = useAdminNotifications()
 
   const [localOpen, setLocalOpen] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   const pathname = usePathname()
   const { data: session } = useSession()
 
@@ -703,7 +705,7 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
 
                 {/* Sign Out Button */}
                 <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
+                  onClick={() => setShowLogoutModal(true)}
                   title="Keluar dari Panel Admin"
                   aria-label="Keluar"
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
@@ -718,7 +720,7 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
               >
                 {displayUserImage ? (
                   <button
-                    onClick={() => signOut({ callbackUrl: '/' })}
+                    onClick={() => setShowLogoutModal(true)}
                     aria-label="Keluar"
                     className="shadow-2xs relative flex h-10 w-10 overflow-hidden rounded-xl border border-slate-200/80 bg-white transition hover:opacity-80"
                   >
@@ -731,7 +733,7 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
                   </button>
                 ) : (
                   <button
-                    onClick={() => signOut({ callbackUrl: '/' })}
+                    onClick={() => setShowLogoutModal(true)}
                     aria-label="Keluar"
                     className="shadow-2xs relative flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-[11px] font-black text-white transition-colors hover:bg-red-600 dark:bg-white dark:text-slate-950 dark:hover:bg-red-600 dark:hover:text-white"
                   >
@@ -773,6 +775,14 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
           </div>
         </div>
       </aside>
+
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={() => signOut({ callbackUrl: '/' })}
+        title="Keluar dari Panel Admin?"
+        description="Apakah Anda yakin ingin keluar dari sesi dashboard manajemen toko? Anda harus masuk kembali untuk mengelola pesanan dan produk."
+      />
     </>
   )
 }
