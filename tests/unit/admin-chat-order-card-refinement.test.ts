@@ -54,7 +54,13 @@ describe('Admin & Customer Chat Order Context Refinements', () => {
 
   it('filters out legacy automated confirmation greeting note if present in message data', () => {
     const adminChatContent = fs.readFileSync(adminChatPath, 'utf8')
-    const customerChatContent = fs.readFileSync(customerChatPath, 'utf8')
+    const customerBubblePath = path.resolve(
+      process.cwd(),
+      'src/components/customer/chat/chat-message-bubble.tsx'
+    )
+    const customerChatContent = fs.existsSync(customerBubblePath)
+      ? fs.readFileSync(customerBubblePath, 'utf8')
+      : fs.readFileSync(customerChatPath, 'utf8')
 
     // Admin chat ignores automated confirmation greetings
     expect(adminChatContent).toContain(
@@ -62,8 +68,8 @@ describe('Admin & Customer Chat Order Context Refinements', () => {
     )
 
     // Customer chat ignores automated confirmation greetings
-    expect(customerChatContent.replace(/\s+/g, ' ')).toContain(
-      "!p.note.includes( 'ingin mengonfirmasi pesanan' )"
+    expect(customerChatContent).toContain(
+      "!p.note.includes('ingin mengonfirmasi pesanan')"
     )
   })
 })
