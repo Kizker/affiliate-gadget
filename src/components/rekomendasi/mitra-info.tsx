@@ -3,6 +3,7 @@
 import React from 'react'
 import dynamic from 'next/dynamic'
 import { ShieldCheck, MapPin, Compass, ExternalLink, Clock } from 'lucide-react'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { MitraDetail } from '@/types/mitra-detail'
 
 // Dynamic import for heavy Google Maps SDK components (Task 2.3)
@@ -22,10 +23,13 @@ interface MitraInfoProps {
 }
 
 export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
+  const isMobile = useIsMobile(768)
+
   return (
     <section
       id="informasi-mitra"
       className="relative border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-5 space-y-1.5 text-center sm:mb-6">

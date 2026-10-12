@@ -4,6 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { ShieldCheck } from 'lucide-react'
 import { ImageWithFallback } from '@/components/ui/image-with-fallback'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { MitraDetail } from '@/types/mitra-detail'
 
 interface MitraEditorialBannerProps {
@@ -17,10 +18,13 @@ export function MitraEditorialBanner({
   heroImageSrc,
   onBookingChat,
 }: MitraEditorialBannerProps) {
+  const isMobile = useIsMobile(768)
+
   return (
     <section
       id="banner-editorial"
       className="relative px-4 py-6 sm:px-6 sm:py-10 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="relative overflow-hidden rounded-3xl bg-[#EAF2FA] shadow-sm transition-colors dark:bg-neutral-900 md:min-h-[380px] lg:min-h-[420px]">

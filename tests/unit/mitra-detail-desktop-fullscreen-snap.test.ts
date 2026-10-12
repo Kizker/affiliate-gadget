@@ -67,6 +67,11 @@ describe('Mitra Detail Desktop Balanced Layout Suite', () => {
     expect(combinedContent).toContain('id="ulasan-pelanggan"')
     expect(combinedContent).toContain('md:h-screen')
     expect(combinedContent).toContain('md:snap-start')
+
+    // Desktop Fullscreen 100vh dynamic enforcement via useIsMobile
+    expect(allSubComponentsContent).toContain(
+      "minHeight: '100vh', height: '100vh'"
+    )
   })
 
   it('verifies Footer is included at the bottom of the mitra detail page', () => {
