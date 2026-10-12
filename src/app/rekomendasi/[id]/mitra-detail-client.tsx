@@ -144,7 +144,7 @@ export default function MitraDetailClient({
   }, [mitra.businessName, mitra.city])
 
   return (
-    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white">
+    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white md:h-screen md:overflow-hidden">
       {/* 1. Mobile Top Navigation: Reusable Mobile Component (Konsisten Tanpa Profile Button) */}
       <div className="block md:hidden">
         <MobileTopNav

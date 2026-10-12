@@ -137,7 +137,8 @@
   }
 
   /* Smooth snap scroll with slower transition */
-  .snap-container {
+  .snap-container,
+  #snap-container {
     scroll-snap-type: y mandatory;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
@@ -149,9 +150,46 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .snap-start {
+  .snap-start,
+  .snap-item {
     scroll-snap-align: start;
     scroll-snap-stop: always;
+  }
+
+  /* Desktop 1 section 1 page fullscreen layout */
+  @media screen and (min-width: 768px) {
+    #snap-container {
+      height: 100vh !important;
+      overflow-y: scroll !important;
+      scroll-snap-type: y mandatory !important;
+      scroll-behavior: smooth !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    #snap-container > section,
+    #snap-container > div#hero {
+      height: 100vh !important;
+      min-height: 100vh !important;
+      max-height: 100vh !important;
+      scroll-snap-align: start !important;
+      scroll-snap-stop: always !important;
+      box-sizing: border-box !important;
+    }
+
+    #snap-container > footer,
+    #snap-container > div.footer-snap-item {
+      scroll-snap-align: start !important;
+      scroll-snap-stop: always !important;
+    }
+
+    .md\:h-screen {
+      height: 100vh !important;
+    }
+
+    .md\:snap-start {
+      scroll-snap-align: start !important;
+      scroll-snap-stop: always !important;
+    }
   }
 
   /* Custom smooth scrolling - slower duration */

@@ -41,8 +41,9 @@ export function MitraHero({
       <section
         id="hero"
         className="relative hidden w-full overflow-hidden bg-[#FBFBFD] pt-16 dark:bg-neutral-950 md:flex md:h-screen md:snap-start md:items-center"
+        style={{ minHeight: '100vh', height: '100vh' }}
       >
-        <div className="mx-auto flex w-full max-w-7xl items-center">
+        <div className="mx-auto flex h-full w-full max-w-7xl items-center">
           {/* Left Column (55%): Workshop/Bengkel Photo Studio Frame */}
           <div className="relative flex h-[480px] w-[55%] items-center justify-start overflow-hidden pl-4 lg:h-[540px] lg:pl-8">
             <div className="relative h-full w-full overflow-hidden rounded-3xl border border-neutral-200/80 bg-neutral-100 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:border-neutral-800 dark:bg-neutral-900">
