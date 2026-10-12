@@ -14,6 +14,7 @@ interface ChatSidebarProps {
   filteredRooms: ChatRoom[]
   selectedRoom: ChatRoom | null
   onSelectRoom: (room: ChatRoom) => void
+  loading?: boolean
 }
 
 export function ChatSidebar({
@@ -25,13 +26,18 @@ export function ChatSidebar({
   filteredRooms,
   selectedRoom,
   onSelectRoom,
+  loading = false,
 }: ChatSidebarProps) {
   return (
     <>
       {/* Integrated Sidebar Header */}
       <div className="shrink-0 space-y-2.5 border-b border-slate-100 p-3 dark:border-slate-800 sm:p-3.5">
         {/* Segmented Filter Pills */}
-        <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
+        <div
+          role="tablist"
+          aria-label="Filter Percakapan"
+          className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80"
+        >
           {[
             { id: 'ALL', label: 'Semua', count: rooms.length },
             {
@@ -43,6 +49,9 @@ export function ChatSidebar({
           ].map((tab) => (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={roomFilter === tab.id}
+              aria-label={`${tab.label} (${tab.count} percakapan)`}
               onClick={() => setRoomFilter(tab.id as any)}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-center text-[11px] font-bold transition-all ${
                 roomFilter === tab.id
@@ -69,7 +78,25 @@ export function ChatSidebar({
 
       {/* Room List Scrollable */}
       <div className="min-h-0 flex-1 divide-y divide-slate-50 overflow-y-auto dark:divide-slate-800/60">
-        {filteredRooms.length === 0 ? (
+        {loading && rooms.length === 0 ? (
+          <div className="divide-y divide-slate-50 dark:divide-slate-800/60">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="flex animate-pulse items-start gap-3 p-3.5"
+              >
+                <div className="h-10 w-10 shrink-0 rounded-2xl bg-slate-200/80 dark:bg-slate-800" />
+                <div className="flex-1 space-y-2 py-0.5">
+                  <div className="flex items-center justify-between">
+                    <div className="h-3 w-28 rounded bg-slate-200/80 dark:bg-slate-800" />
+                    <div className="h-2.5 w-10 rounded bg-slate-200/60 dark:bg-slate-800/60" />
+                  </div>
+                  <div className="h-2.5 w-40 rounded bg-slate-200/60 dark:bg-slate-800/60" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredRooms.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center p-6 text-center text-slate-400">
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-300 dark:bg-slate-800">
               <MessageSquare className="h-6 w-6" />

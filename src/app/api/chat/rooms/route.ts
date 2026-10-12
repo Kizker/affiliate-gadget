@@ -18,8 +18,8 @@ export async function GET() {
       where: { userId },
     })
 
-    // Clean up abandoned empty technician chat rooms (older than 30 seconds and 0 messages)
-    await prisma.chatRoom
+    // Non-blocking cleanup of abandoned empty technician chat rooms in background
+    prisma.chatRoom
       .deleteMany({
         where: {
           messages: { none: {} },

@@ -27,6 +27,7 @@ export function ChatInputBar({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadingMedia}
+          aria-label="Kirim foto atau video"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
           title="Kirim Foto / Video"
         >
@@ -47,6 +48,7 @@ export function ChatInputBar({
               onSendMessage()
             }
           }}
+          aria-label="Ketik pesan ke admin toko"
           placeholder="Ketik pesan ke admin toko..."
           className="flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
         />
@@ -55,6 +57,7 @@ export function ChatInputBar({
           type="button"
           onClick={onSendMessage}
           disabled={!messageInput.trim() || sending}
+          aria-label="Kirim pesan"
           className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950"
           title="Kirim Pesan"
         >

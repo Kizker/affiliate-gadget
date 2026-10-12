@@ -9,6 +9,8 @@ import { ChevronLeft, Loader2, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { isStoreOperational } from '@/lib/chat-status'
 
+import dynamic from 'next/dynamic'
+
 import {
   ChatRoom,
   Message,
@@ -16,7 +18,6 @@ import {
   ActiveServiceContext,
   ActiveProductContext,
   ActiveOrderContext,
-  ChatMediaModal,
   ChatSidebar,
   ChatHeader,
   ChatPinnedBanner,
@@ -26,6 +27,14 @@ import {
   ChatProductContextBar,
   ChatInputBar,
 } from '@/components/customer/chat'
+
+const ChatMediaModal = dynamic(
+  () =>
+    import('@/components/customer/chat/chat-media-modal').then(
+      (mod) => mod.ChatMediaModal
+    ),
+  { ssr: false }
+)
 
 function CustomerChatContent() {
   const { data: session, status } = useSession()
@@ -327,28 +336,50 @@ function CustomerChatContent() {
     }
   }, [selectedRoom?.id, fetchMessages])
 
-  // Real-time polling for new messages in active room (2s interval)
+  // Real-time polling for new messages in active room (4s interval, visible tabs only)
   useEffect(() => {
     if (selectedRoom?.id) {
-      pollingRef.current = setInterval(() => {
-        if (selectedRoomRef.current) {
-          fetchMessages(selectedRoomRef.current, true)
+      // 4s initial delay allows page paint and initial hydration to settle cleanly
+      const timeoutId = setTimeout(() => {
+        pollingRef.current = setInterval(() => {
+          if (
+            typeof document !== 'undefined' &&
+            document.visibilityState !== 'visible'
+          ) {
+            return
+          }
+          if (selectedRoomRef.current) {
+            fetchMessages(selectedRoomRef.current, true)
+          }
+        }, 4000)
+      }, 4000)
+
+      return () => {
+        clearTimeout(timeoutId)
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current)
         }
-      }, 2000)
-    }
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
       }
     }
   }, [selectedRoom?.id, fetchMessages])
 
-  // Background room list polling (5s interval)
+  // Background room list polling (8s interval, visible tabs only)
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchRooms(true)
-    }, 5000)
-    return () => clearInterval(interval)
+    const timeoutId = setTimeout(() => {
+      const interval = setInterval(() => {
+        if (
+          typeof document !== 'undefined' &&
+          document.visibilityState !== 'visible'
+        ) {
+          return
+        }
+        fetchRooms(true)
+      }, 8000)
+
+      return () => clearInterval(interval)
+    }, 6000)
+
+    return () => clearTimeout(timeoutId)
   }, [fetchRooms])
 
   // Auto scroll to bottom
@@ -1142,6 +1173,7 @@ function CustomerChatContent() {
       />
 
       <main className="flex flex-1 flex-col overflow-hidden p-0 md:pb-4 md:pt-20">
+        <h1 className="sr-only">Pusat Pesan & Chat Pelanggan</h1>
         <div className="flex h-full w-full flex-1 flex-col px-0 md:mx-auto md:max-w-7xl md:px-6 lg:px-8">
           {/* Single-Surface Bento Chat Hub Container */}
           <div className="md:shadow-xs grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-none border-0 bg-white dark:bg-slate-900 md:rounded-3xl md:border md:border-slate-200/80 lg:grid-cols-12">
@@ -1156,6 +1188,7 @@ function CustomerChatContent() {
                 <div className="flex items-center gap-2.5">
                   <Link
                     href="/dashboard/customer/settings"
+                    aria-label="Kembali ke Pengaturan"
                     className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                     title="Kembali ke Pengaturan"
                   >
@@ -1177,6 +1210,7 @@ function CustomerChatContent() {
                 filteredRooms={filteredRooms}
                 selectedRoom={selectedRoom}
                 onSelectRoom={handleSelectRoom}
+                loading={loading}
               />
             </div>
 

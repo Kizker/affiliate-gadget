@@ -28,6 +28,7 @@ export function ChatHeader({
       <div className="flex min-w-0 items-center gap-3">
         <button
           onClick={onBackToList}
+          aria-label="Kembali ke daftar percakapan"
           className="rounded-xl p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -37,6 +38,10 @@ export function ChatHeader({
           <img
             src={activeStoreLogo}
             alt={activeStoreTitle}
+            width={40}
+            height={40}
+            loading="lazy"
+            decoding="async"
             className="shadow-2xs h-10 w-10 shrink-0 rounded-2xl border border-slate-200/60 object-cover"
           />
         ) : (

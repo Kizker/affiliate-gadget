@@ -36,6 +36,7 @@ export function ChatRoomCard({
     <button
       key={room.id}
       onClick={() => onSelectRoom(room)}
+      aria-label={`Buka percakapan dengan ${title}`}
       className={`relative flex w-full items-start gap-3 p-3.5 text-left transition-all ${
         isSelected
           ? 'bg-slate-50/90 dark:bg-slate-800/90'
@@ -53,6 +54,10 @@ export function ChatRoomCard({
           <img
             src={storeLogo}
             alt={title}
+            width={40}
+            height={40}
+            loading="lazy"
+            decoding="async"
             className="shadow-2xs h-10 w-10 rounded-2xl border border-slate-200/60 object-cover"
           />
         ) : (
@@ -65,6 +70,7 @@ export function ChatRoomCard({
           className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-900 ${
             roomIsOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
           }`}
+          aria-label={roomIsOnline ? 'Toko Online' : 'Toko Offline'}
           title={roomIsOnline ? 'Toko Online' : 'Toko Offline'}
         />
         {(room._count?.messages || 0) > 0 && (
@@ -77,9 +83,9 @@ export function ChatRoomCard({
       {/* Room Info */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-1">
-          <h4 className="truncate text-xs font-bold text-slate-900 dark:text-white">
+          <span className="block truncate text-xs font-bold text-slate-900 dark:text-white">
             {title}
-          </h4>
+          </span>
           <span className="shrink-0 text-[10px] font-medium text-slate-400">
             {formatTime(room.lastMessageAt)}
           </span>

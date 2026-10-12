@@ -124,6 +124,10 @@ export function ChatMessageBubble({
             <img
               src={senderAvatar}
               alt={senderName}
+              width={32}
+              height={32}
+              loading="lazy"
+              decoding="async"
               className="shadow-2xs h-8 w-8 rounded-full border border-slate-200/80 object-cover dark:border-slate-700"
             />
           ) : (
@@ -157,6 +161,7 @@ export function ChatMessageBubble({
                     type: 'video',
                   })
                 }
+                aria-label="Perbesar layar penuh"
                 title="Perbesar Layar Penuh"
                 className="shadow-xs absolute right-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/85"
               >
@@ -176,6 +181,10 @@ export function ChatMessageBubble({
               <img
                 src={msg.mediaUrl!}
                 alt="Foto Lampiran"
+                width={200}
+                height={160}
+                loading="lazy"
+                decoding="async"
                 className="group-hover:scale-102 block max-h-[160px] w-auto max-w-[200px] rounded-2xl object-cover transition-transform duration-200 sm:max-h-[220px] sm:max-w-[240px]"
               />
               <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
@@ -302,6 +311,10 @@ export function ChatMessageBubble({
                     <img
                       src={prodImage}
                       alt={prodName}
+                      width={44}
+                      height={44}
+                      loading="lazy"
+                      decoding="async"
                       className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover p-0.5 dark:border-slate-800 dark:bg-slate-800"
                     />
                   ) : (
@@ -441,6 +454,10 @@ export function ChatMessageBubble({
                     <img
                       src={prodImage as string}
                       alt={prodName}
+                      width={44}
+                      height={44}
+                      loading="lazy"
+                      decoding="async"
                       className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover p-0.5 dark:border-slate-800 dark:bg-slate-800"
                     />
                   ) : (

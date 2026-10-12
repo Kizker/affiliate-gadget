@@ -34,6 +34,10 @@ export function ChatOrderContextBar({
           <img
             src={activeOrderContext.productImage}
             alt=""
+            width={44}
+            height={44}
+            loading="lazy"
+            decoding="async"
             className={`h-11 w-11 shrink-0 rounded-xl border bg-white object-cover p-0.5 ${
               activeOrderContext.returnRequest
                 ? 'border-purple-200 dark:border-purple-800'
@@ -123,6 +127,7 @@ export function ChatOrderContextBar({
         <button
           type="button"
           onClick={onDismiss}
+          aria-label="Tutup ringkasan pesanan"
           className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
           title="Tutup ringkasan"
         >
@@ -153,6 +158,10 @@ export function ChatServiceContextBar({
           <img
             src={activeServiceContext.mitraImage}
             alt=""
+            width={40}
+            height={40}
+            loading="lazy"
+            decoding="async"
             className="h-10 w-10 shrink-0 rounded-xl border border-emerald-200/80 bg-white object-cover"
           />
         ) : (
@@ -198,6 +207,7 @@ export function ChatServiceContextBar({
         <button
           type="button"
           onClick={onDismiss}
+          aria-label="Tutup ringkasan servis"
           className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
           title="Tutup ringkasan"
         >
@@ -228,6 +238,10 @@ export function ChatProductContextBar({
           <img
             src={activeProductContext.productImage}
             alt=""
+            width={40}
+            height={40}
+            loading="lazy"
+            decoding="async"
             className="h-10 w-10 shrink-0 rounded-xl border border-orange-200/80 bg-white object-cover"
           />
         ) : (
@@ -274,6 +288,7 @@ export function ChatProductContextBar({
         <button
           type="button"
           onClick={onDismiss}
+          aria-label="Tutup ringkasan produk"
           className="p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
           title="Tutup ringkasan"
         >
