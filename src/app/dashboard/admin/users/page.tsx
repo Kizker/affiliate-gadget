@@ -160,6 +160,14 @@ export default function UsersPage() {
     }
   }
 
+  // Helper to determine if a user account is effectively active
+  const isUserActive = (user: User) => {
+    if (user.role === 'MITRA') {
+      return Boolean(user.isActive && user.mitraStatus === 'APPROVED')
+    }
+    return Boolean(user.isActive)
+  }
+
   // Quick toggle active/suspend status
   const handleToggleStatus = async (user: User) => {
     if (user.role === 'SUPER_ADMIN') {
@@ -167,12 +175,23 @@ export default function UsersPage() {
       return
     }
 
-    const newStatus = !user.isActive
+    const currentlyActive = isUserActive(user)
+    const newStatus = !currentlyActive
+
+    const payload: { isActive: boolean; mitraStatus?: string } = {
+      isActive: newStatus,
+    }
+
+    // Jika mengaktifkan akun mitra, otomatis setujui status kemitraannya
+    if (user.role === 'MITRA' && newStatus) {
+      payload.mitraStatus = 'APPROVED'
+    }
+
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: newStatus }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -564,17 +583,19 @@ export default function UsersPage() {
                       <td className="px-4 py-3.5">
                         <span
                           className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
-                            user.isActive
+                            isUserActive(user)
                               ? 'border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-400'
                               : 'border-rose-200/60 bg-rose-50 text-rose-700 dark:border-rose-800/40 dark:bg-rose-950/40 dark:text-rose-400'
                           }`}
                         >
                           <span
                             className={`h-1.5 w-1.5 rounded-full ${
-                              user.isActive ? 'bg-emerald-500' : 'bg-rose-500'
+                              isUserActive(user)
+                                ? 'bg-emerald-500'
+                                : 'bg-rose-500'
                             }`}
                           />
-                          {user.isActive ? 'Aktif' : 'Nonaktif'}
+                          {isUserActive(user) ? 'Aktif' : 'Nonaktif'}
                         </span>
                       </td>
 
@@ -593,17 +614,17 @@ export default function UsersPage() {
                             <button
                               onClick={() => handleToggleStatus(user)}
                               className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition ${
-                                user.isActive
+                                isUserActive(user)
                                   ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400'
                                   : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400'
                               }`}
                               title={
-                                user.isActive
+                                isUserActive(user)
                                   ? 'Nonaktifkan akun pengguna ini'
                                   : 'Aktifkan akun pengguna ini'
                               }
                             >
-                              {user.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                              {isUserActive(user) ? 'Nonaktifkan' : 'Aktifkan'}
                             </button>
                           )}
 

@@ -45,28 +45,47 @@ export async function PATCH(
     if (isActive !== undefined) updateData.isActive = isActive
     if (mitraStatus !== undefined) updateData.mitraStatus = mitraStatus
 
-    // If mitraStatus is being updated, also update Mitra table and user role
-    if (mitraStatus !== undefined) {
-      // Find mitra record for this user
-      const mitra = await prisma.mitra.findUnique({
-        where: { userId: id },
-      })
-
-      if (mitra) {
-        // Update Mitra.isApproved based on mitraStatus
-        await prisma.mitra.update({
+    // Otomatis sinkronisasi status persetujuan jika user adalah MITRA
+    const targetRole = role !== undefined ? role : user.role
+    if (targetRole === 'MITRA') {
+      if (isActive === true) {
+        // Mengaktifkan akun mitra: otomatis setujui pendaftaran mitra
+        updateData.mitraStatus = 'APPROVED'
+        await prisma.mitra.updateMany({
           where: { userId: id },
           data: {
-            isApproved: mitraStatus === 'APPROVED',
+            isApproved: true,
+            isActive: true,
           },
         })
+      } else if (isActive === false) {
+        // Menonaktifkan akun mitra
+        await prisma.mitra.updateMany({
+          where: { userId: id },
+          data: {
+            isActive: false,
+          },
+        })
+      }
+    }
 
-        // Update user role based on mitra status
-        if (mitraStatus === 'APPROVED') {
-          updateData.role = 'MITRA'
-        } else if (mitraStatus === 'REJECTED') {
-          updateData.role = 'CUSTOMER'
-        }
+    // If mitraStatus is being updated explicitly, also update Mitra table and user role
+    if (mitraStatus !== undefined) {
+      const isApproved = mitraStatus === 'APPROVED'
+      await prisma.mitra.updateMany({
+        where: { userId: id },
+        data: {
+          isApproved,
+          isActive: isApproved,
+        },
+      })
+
+      if (isApproved) {
+        updateData.role = 'MITRA'
+        updateData.isActive = true
+      } else if (mitraStatus === 'REJECTED') {
+        updateData.role = 'CUSTOMER'
+        updateData.isActive = false
       }
     }
 

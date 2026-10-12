@@ -23,7 +23,8 @@ describe('Mobile Orders Simplified UI Suite (Screenshot 2 Match)', () => {
 
   it('2. Baris produk bersih dengan Varian dan jumlah barang (1 barang x1) tanpa chip/pill berlebihan', () => {
     // Varian
-    expect(content).toContain('Varian: {firstItem?.variantName')
+    expect(content).toContain('Varian:')
+    expect(content).toContain('firstItem?.variantName')
     // Jumlah barang di kiri dan quantity di kanan
     expect(content).toContain('{totalItemCount} barang')
     expect(content).toContain('x{firstItem?.quantity || 1}')

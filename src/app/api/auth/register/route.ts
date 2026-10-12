@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         phone: formattedPhone,
         role: role as 'CUSTOMER' | 'MITRA',
-        isActive: true, // [DEV-MODE] Active immediately (original: false pending email verification)
+        isActive: role === 'MITRA' ? false : true, // Mitra baru otomatis nonaktif hingga diverifikasi & diaktifkan Superadmin
         emailVerified: new Date(), // [DEV-MODE] Auto-verified (original: null)
         mitraStatus: role === 'MITRA' ? 'NEEDS_STORE_DATA' : null,
       },

@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         phone,
         role,
+        isActive: role === 'MITRA' ? false : true,
         mitraStatus: role === 'MITRA' ? 'PENDING' : null,
       },
       select: {
