@@ -49,6 +49,10 @@
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-10-12 (Pencegahan Efek Auto-Zoom iOS Safari Saat Fokus Input Email & Password via Enforced 16px Font Size Mobile & `touch-action: manipulation` di [`src/styles/globals.css`]):**
+  - **1. Akar Masalah WebKit/iOS:** Safari iOS memiliki perilaku bawaan di mana setiap elemen input form (`<input>`, `<select>`, `<textarea>`) yang memiliki computed `font-size < 16px` (seperti `text-sm` = 14px) akan secara otomatis memicu viewport auto-zoom (~115%–150%) saat difokuskan agar teks dianggap terbaca.
+  - **2. Solusi Standar WebKit & Preservasi WCAG 1.4.4 ([`src/styles/globals.css`](file:///src/styles/globals.css)):** Menambahkan aturan `@media screen and (max-width: 768px)` di `@layer base` yang memastikan seluruh input teks, email, password, select, dan textarea menggunakan `font-size: 16px !important;` pada perangkat layar ponsel sembari mempertahankan `touch-action: manipulation` untuk mencegah gesture double-tap zoom yang tidak disengaja. Di desktop ($\ge 769\text{px}$), ukuran `text-sm` tetap aktif. Viewport `maximumScale: 5` di `src/app/layout.tsx` tetap dipertahankan untuk kepatuhan skor Lighthouse 100 dan WCAG 1.4.4.
+  - **3. Health Verification ([`tests/unit/iphone-safari-fixes.test.ts`](file:///tests/unit/iphone-safari-fixes.test.ts)):** TypeScript 0 error (`pnpm tsc --noEmit` pass), 138 test files dengan 966 unit tests lulus 100% (`pnpm test:unit` pass).
 - **2026-10-12 (Validasi Konfirmasi Keluar Akun Universal via [`LogoutConfirmModal`], Dialog Aksesibel Portal, & Integrasi Seluruh Touchpoint Auth Platform):**
   - **1. Komponen Universal Modal Validasi ([`src/components/auth/logout-confirm-modal.tsx`](file:///src/components/auth/logout-confirm-modal.tsx)):** Menghadirkan modal konfirmasi keluar akun dengan React Portal ke `document.body`, `role="dialog"`, `aria-modal="true"`, pencegah scroll body, shortcut tombol keyboard ESC, backdrop blur, badge ikon rose `LogOut`, serta tombol aksi eksplisit ("Batal" dan "Ya, Keluar" dengan status `isSubmitting`/`Loader2`).
   - **2. Integrasi Touchpoint Navigasi & Akun Platform:**

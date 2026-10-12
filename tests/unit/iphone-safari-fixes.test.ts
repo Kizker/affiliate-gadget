@@ -62,4 +62,11 @@ describe('iPhone Safari Fixes Suite (Bottom Nav, Auto-Zoom, Uniform Grid)', () =
     expect(login).toContain('text-sm font-medium')
     expect(login).not.toContain('text-base font-medium')
   })
+
+  it('7. should enforce 16px input font size and manipulation touch-action in globals.css to prevent iOS Safari auto-zoom', () => {
+    const css = fs.readFileSync(globalsCssPath, 'utf-8')
+    expect(css).toContain('font-size: 16px !important')
+    expect(css).toContain('touch-action: manipulation')
+    expect(css).toContain('@media screen and (max-width: 768px)')
+  })
 })
