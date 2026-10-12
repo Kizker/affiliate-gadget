@@ -18,7 +18,7 @@ export function MitraServiceCatalog({
   return (
     <section
       id="katalog-layanan"
-      className="border-y border-neutral-100 bg-[#F8F9FA] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 sm:py-12 lg:px-8"
+      className="relative border-y border-neutral-100 bg-[#F8F9FA] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
     >
       <div className="mx-auto w-full max-w-7xl">
         {/* Section Header */}

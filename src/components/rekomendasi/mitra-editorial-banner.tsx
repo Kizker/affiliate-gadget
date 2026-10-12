@@ -20,7 +20,7 @@ export function MitraEditorialBanner({
   return (
     <section
       id="banner-editorial"
-      className="px-4 py-6 sm:px-6 sm:py-10 lg:px-8"
+      className="relative px-4 py-6 sm:px-6 sm:py-10 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="relative overflow-hidden rounded-3xl bg-[#EAF2FA] shadow-sm transition-colors dark:bg-neutral-900 md:min-h-[380px] lg:min-h-[420px]">

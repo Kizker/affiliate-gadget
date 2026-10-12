@@ -40,7 +40,7 @@ export function MitraHero({
       ───────────────────────────────────────────────────────────── */}
       <section
         id="hero"
-        className="relative hidden w-full overflow-hidden bg-[#FBFBFD] pb-10 pt-20 dark:bg-neutral-950 md:flex md:items-center lg:pb-12 lg:pt-24"
+        className="relative hidden w-full overflow-hidden bg-[#FBFBFD] pt-16 dark:bg-neutral-950 md:flex md:h-screen md:snap-start md:items-center"
       >
         <div className="mx-auto flex w-full max-w-7xl items-center">
           {/* Left Column (55%): Workshop/Bengkel Photo Studio Frame */}

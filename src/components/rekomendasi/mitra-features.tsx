@@ -12,7 +12,10 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
   if (!features || features.length === 0) return null
 
   return (
-    <section id="keunggulan" className="px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+    <section
+      id="keunggulan"
+      className="px-4 py-8 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+    >
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-6 space-y-1.5 text-center sm:mb-8">
           <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400">

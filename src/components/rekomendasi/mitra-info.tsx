@@ -25,7 +25,7 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
   return (
     <section
       id="informasi-mitra"
-      className="border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 sm:py-12 lg:px-8"
+      className="relative border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-5 space-y-1.5 text-center sm:mb-6">

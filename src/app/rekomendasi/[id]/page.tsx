@@ -185,7 +185,9 @@ export default async function MitraDetailPage({
           initialUserHasReview={initialUserHasReview}
         />
       </Suspense>
-      <Footer />
+      <div className="block md:hidden">
+        <Footer />
+      </div>
     </>
   )
 }

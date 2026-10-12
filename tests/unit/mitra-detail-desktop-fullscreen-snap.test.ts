@@ -22,50 +22,51 @@ describe('Mitra Detail Desktop Balanced Layout Suite', () => {
 
   const combinedContent = `${pageContent}\n${clientContent}\n${allSubComponentsContent}`
 
-  it('verifies outer container has natural scroll flow and eliminates rigid snap-container on desktop', () => {
-    expect(clientContent).not.toContain('id="snap-container"')
-    expect(clientContent).not.toContain('md:snap-container')
-    expect(clientContent).toContain('min-h-screen bg-white')
-    expect(clientContent).toContain('<main className="w-full">')
+  it('verifies outer container has snap-container id and full-screen overflow properties on desktop', () => {
+    expect(clientContent).toContain('id="snap-container"')
+    expect(clientContent).toContain('md:snap-container')
+    expect(clientContent).toContain('md:h-screen')
+    expect(clientContent).toContain('md:overflow-y-scroll')
+    expect(clientContent).toContain('md:snap-y')
+    expect(clientContent).toContain('md:snap-mandatory')
   })
 
-  it('verifies all desktop sections have balanced proportional spacing without rigid md:h-screen or md:snap-start', () => {
+  it('verifies all desktop sections have md:h-screen and md:snap-start to fit exactly 1 viewport screen', () => {
     // 1. Hero
     expect(combinedContent).toContain('id="hero"')
-    expect(combinedContent).not.toContain(
-      'id="hero"\n          className="relative hidden w-full overflow-hidden bg-[#FBFBFD] pt-16 dark:bg-neutral-950 md:flex md:h-screen md:snap-start'
-    )
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
     expect(combinedContent).toContain('max-w-7xl items-center')
 
     // 2. Banner Editorial
     expect(combinedContent).toContain('id="banner-editorial"')
-    expect(combinedContent).toContain('px-4 py-6 sm:px-6 sm:py-10 lg:px-8')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 3. Katalog Layanan
     expect(combinedContent).toContain('id="katalog-layanan"')
-    expect(combinedContent).toContain(
-      'border-y border-neutral-100 bg-[#F8F9FA] px-4 py-8'
-    )
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 4. Keunggulan
     expect(combinedContent).toContain('id="keunggulan"')
-    expect(combinedContent).toContain('px-4 py-8 sm:px-6 sm:py-12 lg:px-8')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 5. Galeri Workshop
     expect(combinedContent).toContain('id="galeri-workshop"')
-    expect(combinedContent).toContain(
-      'border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8'
-    )
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 6. Informasi Mitra
     expect(combinedContent).toContain('id="informasi-mitra"')
-    expect(combinedContent).toContain('border-t border-neutral-100 px-4 py-8')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 7. Ulasan Pelanggan
     expect(combinedContent).toContain('id="ulasan-pelanggan"')
-    expect(combinedContent).toContain(
-      'border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8'
-    )
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
   })
 
   it('verifies Footer is included at the bottom of the mitra detail page', () => {

@@ -63,7 +63,7 @@ export function MitraReviews({
   return (
     <section
       id="ulasan-pelanggan"
-      className="border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8 pb-14 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 sm:py-12 sm:pb-16 lg:px-8"
+      className="relative border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-4 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
