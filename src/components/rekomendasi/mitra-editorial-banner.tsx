@@ -39,10 +39,8 @@ export function MitraEditorialBanner({
               </div>
 
               <p className="mx-auto max-w-md text-xs leading-relaxed text-neutral-600 dark:text-neutral-300 sm:text-sm lg:mx-0">
-                Dikerjakan langsung di meja kerja teknisi tersertifikasi{' '}
-                {mitra.businessName}. Konsultasi kerusakan gratis di awal,
-                transparansi harga suku cadang, dan jaminan garansi servis
-                setelah perbaikan selesai.
+                {mitra.description ||
+                  `Dikerjakan langsung di meja kerja teknisi tersertifikasi ${mitra.businessName}. Konsultasi kerusakan gratis di awal, transparansi harga suku cadang, dan jaminan garansi servis setelah perbaikan selesai.`}
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2 sm:gap-4 lg:justify-start">

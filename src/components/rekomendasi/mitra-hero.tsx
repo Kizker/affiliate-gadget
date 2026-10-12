@@ -91,10 +91,17 @@ export function MitraHero({
               {mitra.businessName}
             </h1>
 
-            <p className="max-w-lg text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 lg:text-base">
-              {mitra.tagline ||
-                mitra.description ||
-                `Pusat reparasi gadget profesional di ${mitra.city}. Pengerjaan transparan, teknisi berpengalaman, dan suku cadang berkualitas dengan jaminan garansi servis.`}
+            {mitra.tagline && (
+              <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 lg:text-base">
+                {mitra.tagline}
+              </p>
+            )}
+
+            <p className="max-w-lg text-xs leading-relaxed text-neutral-600 dark:text-neutral-300 lg:text-sm">
+              {mitra.description ||
+                (!mitra.tagline
+                  ? `Pusat reparasi gadget profesional di ${mitra.city}. Pengerjaan transparan, teknisi berpengalaman, dan suku cadang berkualitas dengan jaminan garansi servis.`
+                  : '')}
             </p>
 
             {/* Quick Info Chips */}
@@ -201,9 +208,17 @@ export function MitraHero({
             {mitra.businessName}
           </h1>
 
-          <p className="mx-auto mt-2 line-clamp-2 px-1 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
-            {mitra.tagline ||
-              `Spesialis servis & pergantian LCD gadget bergaransi di ${mitra.city}.`}
+          {mitra.tagline && (
+            <p className="mx-auto mt-2 px-1 text-xs font-bold text-neutral-800 dark:text-neutral-200">
+              {mitra.tagline}
+            </p>
+          )}
+
+          <p className="mx-auto mt-1 line-clamp-3 px-1 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
+            {mitra.description ||
+              (!mitra.tagline
+                ? `Spesialis servis & pergantian LCD gadget bergaransi di ${mitra.city}.`
+                : '')}
           </p>
 
           <div className="mt-3 flex items-center justify-center gap-2">

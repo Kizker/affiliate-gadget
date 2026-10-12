@@ -85,19 +85,43 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
           </div>
 
           {/* Hours & Chat Action */}
-          <div className="flex items-center justify-between border-t border-neutral-100 pt-2 dark:border-neutral-800">
-            <div className="flex items-center gap-2 text-xs">
-              <Clock className="h-3.5 w-3.5 text-neutral-500" />
-              <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-                {mitra.weekdayHours || '09:00 - 20:00 WIB'}
-              </span>
+          <div className="space-y-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-neutral-500" />
+                <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                  {mitra.weekdayHours || '09:00 - 20:00 WIB'}
+                </span>
+              </div>
+              <button
+                onClick={(e) => onBookingChat(e)}
+                className="text-xs font-bold text-blue-600 underline underline-offset-4 dark:text-sky-400"
+              >
+                Chat Teknisi →
+              </button>
             </div>
-            <button
-              onClick={(e) => onBookingChat(e)}
-              className="text-xs font-bold text-blue-600 underline underline-offset-4 dark:text-sky-400"
-            >
-              Chat Teknisi →
-            </button>
+
+            {/* Mobile Contact Badges */}
+            {(mitra.phone || mitra.email) && (
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-neutral-600 dark:text-neutral-400">
+                {mitra.phone && (
+                  <a
+                    href={`tel:${mitra.phone}`}
+                    className="flex items-center gap-1 font-medium text-neutral-800 hover:underline dark:text-neutral-200"
+                  >
+                    <span>📞 {mitra.phone}</span>
+                  </a>
+                )}
+                {mitra.email && (
+                  <a
+                    href={`mailto:${mitra.email}`}
+                    className="flex items-center gap-1 truncate hover:underline"
+                  >
+                    <span>✉️ {mitra.email}</span>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -116,6 +140,11 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
                 {mitra.businessName}
               </p>
               <p>Mitra Terverifikasi Platform Affiliate Gadget</p>
+              {mitra.description && (
+                <p className="line-clamp-2 pt-1 text-[11px] leading-relaxed text-neutral-500">
+                  {mitra.description}
+                </p>
+              )}
               <p className="pt-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                 ✓ Garansi Pengerjaan &amp; Suku Cadang Teruji
               </p>
@@ -154,21 +183,72 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
               <Clock className="h-4 w-4" />
             </div>
             <h3 className="text-xs font-bold text-neutral-950 dark:text-white sm:text-sm">
-              Jam Buka &amp; Konsultasi
+              Jam Buka &amp; Kontak Resmi
             </h3>
-            <div className="space-y-0.5 text-xs text-neutral-600 dark:text-neutral-400">
+            <div className="space-y-1 text-xs text-neutral-600 dark:text-neutral-400">
               <p className="font-medium text-neutral-900 dark:text-neutral-200">
-                Senin - Jumat: {mitra.weekdayHours || '09:00 - 20:00 WIB'}
+                {mitra.weekdayHours?.toLowerCase().includes('senin')
+                  ? mitra.weekdayHours
+                  : `Senin - Sabtu: ${mitra.weekdayHours || '09:00 - 20:00 WIB'}`}
               </p>
               {mitra.weekendHours && (
                 <p className="text-neutral-500">
-                  Sabtu - Minggu: {mitra.weekendHours}
+                  {mitra.weekendHours.toLowerCase().includes('minggu')
+                    ? mitra.weekendHours
+                    : `Minggu / Libur: ${mitra.weekendHours}`}
                 </p>
               )}
-              <div className="flex items-center gap-2 pt-1">
+
+              {/* Saluran Kontak Resmi yang diinputkan mitra */}
+              <div className="space-y-1 border-t border-neutral-100 pt-2 text-[11px] dark:border-neutral-800">
+                {mitra.phone && (
+                  <p className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300">
+                    <span className="font-semibold text-neutral-900 dark:text-white">
+                      Telp:
+                    </span>
+                    <a href={`tel:${mitra.phone}`} className="hover:underline">
+                      {mitra.phone}
+                    </a>
+                  </p>
+                )}
+                {mitra.email && (
+                  <p className="flex items-center gap-1.5 truncate text-neutral-700 dark:text-neutral-300">
+                    <span className="font-semibold text-neutral-900 dark:text-white">
+                      Email:
+                    </span>
+                    <a
+                      href={`mailto:${mitra.email}`}
+                      className="truncate hover:underline"
+                    >
+                      {mitra.email}
+                    </a>
+                  </p>
+                )}
+                {mitra.website && (
+                  <p className="flex items-center gap-1.5 truncate text-neutral-700 dark:text-neutral-300">
+                    <span className="font-semibold text-neutral-900 dark:text-white">
+                      Web:
+                    </span>
+                    <a
+                      href={
+                        mitra.website.startsWith('http')
+                          ? mitra.website
+                          : `https://${mitra.website}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-blue-600 hover:underline dark:text-sky-400"
+                    >
+                      {mitra.website}
+                    </a>
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1.5">
                 <button
                   onClick={(e) => onBookingChat(e)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-black underline underline-offset-4 dark:text-white"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-black underline underline-offset-4 dark:text-white"
                 >
                   Buka Chat Teknisi →
                 </button>
