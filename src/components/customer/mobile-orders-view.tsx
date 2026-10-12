@@ -5,12 +5,7 @@ import Link from 'next/link'
 import {
   Package,
   Search,
-  Store,
-  Truck,
-  ShieldCheck,
   ChevronRight,
-  Copy,
-  Check,
   X,
   RotateCcw,
   Clock,
@@ -18,7 +13,6 @@ import {
 } from 'lucide-react'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { MobileBottomNav } from '@/components/layouts/mobile-bottom-nav'
-import { toast } from 'sonner'
 import {
   ORDER_STATUS_MAP as STATUS_MAP,
   isReturnOrder,
@@ -160,7 +154,32 @@ function MobilePaymentCountdown({
 const DEFAULT_IMAGE =
   'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'
 
-export { STATUS_MAP, isReturnOrder, getOrderStatusMeta }
+function getStatusBadgeClass(
+  order: MobileOrder,
+  currentStatus: { label: string; textClass: string }
+): string {
+  if (isReturnOrder(order)) {
+    return 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300'
+  }
+  switch (order.status) {
+    case 'PENDING_PAYMENT':
+      return 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300'
+    case 'PAID':
+    case 'PROCESSING':
+      return 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300'
+    case 'SHIPPED':
+    case 'IN_PROGRESS':
+      return 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300'
+    case 'COMPLETED':
+      return 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'
+    case 'CANCELLED':
+      return 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+    default:
+      return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+  }
+}
+
+export { STATUS_MAP, isReturnOrder, getOrderStatusMeta, getStatusBadgeClass }
 
 export function MobileOrdersView({
   orders,
@@ -176,7 +195,6 @@ export function MobileOrdersView({
     controlledActiveTab !== undefined ? controlledActiveTab : localActiveTab
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [copiedId, setCopiedId] = useState<string | null>(null)
   // Prevent SSR/client hydration mismatch on dynamic count badges
   const [isMounted, setIsMounted] = useState(false)
   useEffect(() => {
@@ -207,13 +225,6 @@ export function MobileOrdersView({
   const getOrderDetailHref = (orderId: string) => {
     const currentTab = activeTab || 'ALL'
     return `/dashboard/customer/orders/${orderId}?fromStatus=${currentTab}`
-  }
-
-  const copyOrderNumber = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedId(id)
-    toast.success(`Nomor pesanan #${text} disalin`)
-    setTimeout(() => setCopiedId(null), 1500)
   }
 
   const formatPrice = (price: number) => {
@@ -409,19 +420,21 @@ export function MobileOrdersView({
             return (
               <div
                 key={order.id}
-                className="shadow-2xs rounded-2xl border border-slate-200/70 bg-white p-3.5 transition-all dark:border-slate-800 dark:bg-slate-900"
+                className="shadow-xs rounded-2xl border border-slate-100 bg-white p-4 transition-all dark:border-slate-800/80 dark:bg-slate-900"
               >
-                {/* Header: Store Name & Status Text */}
-                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <Store className="h-3.5 w-3.5 shrink-0 text-slate-700 dark:text-slate-300" />
+                {/* Header: Store Name & Status Badge Pill */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-1">
                     <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
                       {order.store?.name || 'Cabang Resmi Toko'}
                     </span>
-                    <ChevronRight className="h-3 w-3 shrink-0 text-slate-400" />
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                   </div>
                   <span
-                    className={`shrink-0 text-[11px] ${currentStatus.textClass}`}
+                    className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
+                      order,
+                      currentStatus
+                    )}`}
                   >
                     {currentStatus.label}
                   </span>
@@ -432,8 +445,8 @@ export function MobileOrdersView({
                   href={getOrderDetailHref(order.id)}
                   className="block py-3 transition-opacity active:opacity-75"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-800">
                       <img
                         src={itemImage}
                         alt={firstItem?.product?.name || 'Gadget'}
@@ -445,108 +458,66 @@ export function MobileOrdersView({
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <h4 className="line-clamp-1 text-xs font-bold leading-snug text-slate-900 dark:text-white">
+                      <h3 className="line-clamp-1 text-xs font-bold leading-snug text-slate-900 dark:text-white">
                         {firstItem?.product?.name ||
                           firstItem?.service?.name ||
                           firstItem?.notes ||
                           'Unit Smartphone Original'}
-                      </h4>
+                      </h3>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                        {firstItem?.variantName && (
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                            {firstItem.variantName}
-                          </span>
-                        )}
-                        <span>
-                          {firstItem?.product?.brand || 'Gadget Terverifikasi'}
+                      <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                        Varian:{' '}
+                        {firstItem?.variantName ||
+                          firstItem?.product?.brand ||
+                          'Standar Original'}
+                      </p>
+
+                      <div className="mt-1 flex items-center justify-between text-xs">
+                        <span className="text-slate-400 dark:text-slate-500">
+                          {totalItemCount} barang
                         </span>
-                        <span>•</span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        <span className="font-bold text-slate-900 dark:text-white">
                           x{firstItem?.quantity || 1}
                         </span>
                       </div>
-
-                      {order.items.length > 1 && (
-                        <div className="mt-1.5 space-y-0.5 rounded-lg bg-slate-50 p-1.5 text-[10px] text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-                          {order.items.slice(1).map((extra, idx) => (
-                            <div key={idx} className="flex justify-between">
-                              <span className="truncate">
-                                •{' '}
-                                {extra.product?.name ||
-                                  extra.service?.name ||
-                                  extra.notes ||
-                                  'Item Gadget'}
-                              </span>
-                              <span className="ml-1 shrink-0 font-mono">
-                                x{extra.quantity || 1}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Mini Feature Badges */}
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          <Truck className="h-2.5 w-2.5 text-orange-500" />
-                          {order.courierCode || 'JNE'}{' '}
-                          {order.courierService || 'REG'}
-                        </span>
-                        <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                          <ShieldCheck className="h-2.5 w-2.5 text-emerald-600" />
-                          Garansi 30 Hari
-                        </span>
-                      </div>
                     </div>
-
-                    {/* Limit Waktu Pembayaran Tercepat (QRIS 15m / VA) */}
-                    {order.status === 'PENDING_PAYMENT' && (
-                      <div className="shrink-0 self-start pt-0.5">
-                        <MobilePaymentCountdown
-                          createdAt={order.createdAt}
-                          payment={order.payment}
-                          orderNumber={order.orderNumber}
-                        />
-                      </div>
-                    )}
                   </div>
                 </Link>
 
-                {/* Sub-meta: Order Number & Date */}
-                <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-[10px] text-slate-400 dark:border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => copyOrderNumber(order.orderNumber, order.id)}
-                    className="inline-flex items-center gap-1 font-mono transition hover:text-slate-950 dark:hover:text-white"
-                  >
-                    <span>#{order.orderNumber}</span>
-                    {copiedId === order.id ? (
-                      <Check className="h-2.5 w-2.5 text-emerald-600" />
-                    ) : (
-                      <Copy className="h-2.5 w-2.5 text-slate-400" />
-                    )}
-                  </button>
-                  <span className="font-medium text-slate-500 dark:text-slate-400">
-                    <span className="text-slate-400 dark:text-slate-500">
-                      {contextualTime.label}:{' '}
-                    </span>
-                    {contextualTime.shortDate}
-                  </span>
-                </div>
+                {/* Limit Waktu Pembayaran Tercepat (Hanya pada Belum Bayar) */}
+                {order.status === 'PENDING_PAYMENT' && (
+                  <div className="mb-2">
+                    <MobilePaymentCountdown
+                      createdAt={order.createdAt}
+                      payment={order.payment}
+                      orderNumber={order.orderNumber}
+                    />
+                  </div>
+                )}
 
-                {/* Footer: Total & Actions */}
-                <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-slate-800">
+                {/* Footer: Date & Order Number on top, Total Price below, Action Buttons on right */}
+                <div className="flex items-center justify-between pt-1">
                   <div className="min-w-0">
-                    <span className="block text-[10px] text-slate-400">
-                      Total ({totalItemCount} produk):
-                    </span>
-                    <span className="block text-xs font-black text-orange-600 dark:text-orange-400">
+                    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                      <span className="hidden sm:inline">
+                        {contextualTime.label}:{' '}
+                      </span>
+                      <span>{contextualTime.shortDate}</span>
+                      <span className="mx-1">•</span>
+                      <span className="font-mono">#{order.orderNumber}</span>
+                    </div>
+                    <div
+                      className={`text-sm font-bold sm:text-base ${
+                        order.status === 'CANCELLED'
+                          ? 'text-slate-900 dark:text-white'
+                          : 'text-orange-600 dark:text-orange-400'
+                      }`}
+                    >
                       {formatPrice(order.total)}
-                    </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex shrink-0 items-center gap-2">
                     {(() => {
                       const latestReturn = order.returnRequests?.[0]
                       const firstItem = order.items?.[0]
@@ -577,9 +548,9 @@ export function MobileOrdersView({
                       return (
                         <Link
                           href={`/dashboard/customer/chat?${chatParams.toString()}`}
-                          className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700 transition active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                          className="shadow-2xs rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
-                          Chat Toko
+                          Chat
                         </Link>
                       )
                     })()}
@@ -591,7 +562,7 @@ export function MobileOrdersView({
                         <button
                           type="button"
                           onClick={() => onOpenReturnModal(order)}
-                          className="rounded-xl border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-[11px] font-bold text-orange-700 transition active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                          className="rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-xs font-semibold text-orange-700 transition active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
                         >
                           Retur
                         </button>
@@ -600,14 +571,14 @@ export function MobileOrdersView({
                     {order.status === 'PENDING_PAYMENT' ? (
                       <Link
                         href={getOrderDetailHref(order.id)}
-                        className="shadow-2xs rounded-xl bg-orange-500 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-orange-600 active:scale-95"
+                        className="shadow-2xs rounded-full bg-orange-500 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-orange-600 active:scale-95"
                       >
-                        Bayar Sekarang
+                        Bayar
                       </Link>
                     ) : isReturnOrder(order) ? (
                       <Link
                         href={getOrderDetailHref(order.id)}
-                        className="flex items-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-[11px] font-bold text-purple-700 transition active:scale-95 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300"
+                        className="flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-3.5 py-1.5 text-xs font-semibold text-purple-700 transition active:scale-95 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300"
                       >
                         <RotateCcw className="h-3 w-3" />
                         <span>Status Retur</span>
@@ -615,7 +586,7 @@ export function MobileOrdersView({
                     ) : (
                       <Link
                         href={getOrderDetailHref(order.id)}
-                        className="rounded-xl border border-slate-900 bg-slate-900 px-3 py-1.5 text-[11px] font-bold text-white transition active:scale-95 dark:border-white dark:bg-white dark:text-slate-900"
+                        className="rounded-full border border-slate-900 bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 active:scale-95 dark:border-white dark:bg-white dark:text-slate-900"
                       >
                         Rincian
                       </Link>
