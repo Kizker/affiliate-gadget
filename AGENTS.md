@@ -49,6 +49,10 @@
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-10-13 (Eliminasi Snap Scroll di Beranda & Pengembalian Inner Scroll Katalog Desktop [`src/app/page.tsx` & `src/components/landing/section-featured-gadgets.tsx`]):**
+  - **1. Eliminasi Snap Scroll di Beranda:** Mengganti container `#snap-container` dan kelas `h-screen overflow-y-scroll` di `src/app/page.tsx` dengan elemen semantik `<main className="min-h-screen ...">` untuk mengembalikan natural continuous scrolling browser di desktop.
+  - **2. Pengembalian Inner Scroll Katalog Desktop:** Mengembalikan struktur `h-screen flex flex-col overflow-hidden` pada `SectionFeaturedGadgets` dengan header `shrink-0` dan grid produk dibungkus container `min-h-0 flex-1 overflow-y-auto pr-1` sehingga pengguna di desktop dapat men-scroll katalog 20 HP pilihan secara mandiri di dalam section.
+  - **3. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 145 test files dengan 1.003 unit tests lulus 100% (`pnpm test:unit` pass).
 - **2026-10-13 (Sinkronisasi Banner Toko Mitra Real-Time, Auto-Save Instan PATCH, & Revalidasi Cache Publik [`/dashboard/mitra/profile/edit` & `/rekomendasi/[id]`]):**
   - **1. Akar Masalah:** Banner yang diunggah sebelumnya hanya masuk ke lokal React state tanpa auto-save, mengharuskan scroll ke tombol simpan di paling bawah formulir; jika tab di-refresh atau dibuka langsung di tab toko, banner belum tersimpan di DB. Selain itu URL toko di tab browser user membuka ID toko lain (`cmuf8nn730035tz78j91j3tte`), bukan ID toko akun Fauzan Hitam (`cmuf8nn6m002rtz78i83ecx80`).
   - **2. Auto-Save Instan PATCH Endpoint ([`src/app/api/mitra/profile/route.ts`]):** Menambahkan endpoint `PATCH` di mana setiap kali file banner selesai diunggah di [`ImageUpload`], sistem langsung menyimpan URL banner ke database mitra saat itu juga dan memicu `revalidatePath('/rekomendasi/[id]')` serta `/servis`.

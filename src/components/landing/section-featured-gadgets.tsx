@@ -176,10 +176,10 @@ export function SectionFeaturedGadgets() {
   }, [hasMore, loading, loadMore])
 
   return (
-    <section className="relative w-full bg-white py-12 dark:bg-slate-950 sm:py-16">
-      <div className="mx-auto w-full max-w-7xl px-2.5 sm:px-6 lg:px-8">
+    <section className="flex h-screen flex-col overflow-hidden bg-white pt-16 dark:bg-slate-950">
+      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-2.5 py-4 sm:px-6 sm:py-8 lg:px-8">
         {/* Streamlined Section Header & Action Toolbar */}
-        <div className="mb-6 space-y-3 sm:mb-10 sm:space-y-4">
+        <div className="mb-4 shrink-0 space-y-3 sm:mb-6 sm:space-y-4">
           {/* Row 1: Crisp Section Title */}
           <div>
             <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
@@ -226,8 +226,8 @@ export function SectionFeaturedGadgets() {
           </div>
         </div>
 
-        {/* Product Grid — Natural Flow without h-screen or inner scrollbars */}
-        <div>
+        {/* Product Grid — inner scrollable area */}
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-color:#e2e8f0_transparent] [scrollbar-width:thin]">
           {loading ? (
             <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (

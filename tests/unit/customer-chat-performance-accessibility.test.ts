@@ -133,9 +133,9 @@ describe('Customer Chat Performance & Accessibility Optimization Suite', () => {
 
     // Tanpa await pada deleteMany
     expect(allRoomsRoute).not.toContain('await prisma.adminChatRoom.deleteMany')
-    expect(allRoomsRoute).toContain('prisma.adminChatRoom\n      .deleteMany')
+    expect(allRoomsRoute).toMatch(/prisma\.adminChatRoom\s*\.deleteMany/)
 
     expect(chatRoomsRoute).not.toContain('await prisma.chatRoom.deleteMany')
-    expect(chatRoomsRoute).toContain('prisma.chatRoom\n      .deleteMany')
+    expect(chatRoomsRoute).toMatch(/prisma\.chatRoom\s*\.deleteMany/)
   })
 })

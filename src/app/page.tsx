@@ -38,19 +38,16 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 2. Desktop View — Fullscreen Snap Layout Intact */}
+      {/* 2. Desktop View — Natural Scroll Layout (Snap Scroll Removed) */}
       {(!mounted || !isMobile) && (
         <div
           className={`hidden md:block ${mounted && isMobile ? '!hidden' : ''}`}
         >
-          {/* Navbar fixed di atas, di luar scroll container */}
+          {/* Navbar fixed di atas */}
           <Navbar variant="light" />
 
-          {/* Scroll snap container — fullscreen scroll */}
-          <div
-            id="snap-container"
-            className="h-screen overflow-y-scroll bg-white text-slate-900 [scrollbar-width:none] selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100 [&::-webkit-scrollbar]:hidden"
-          >
+          {/* Natural scroll layout — snap scroll disabled */}
+          <main className="min-h-screen bg-white text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
             {/* 1. Hero — Section 1 */}
             <SectionHeroClean />
 
@@ -65,7 +62,7 @@ export default function HomePage() {
 
             {/* 5. Footer — Section 5 */}
             <Footer variant="light" />
-          </div>
+          </main>
         </div>
       )}
     </>
