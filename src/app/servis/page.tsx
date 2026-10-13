@@ -87,8 +87,28 @@ export default async function ServisPage() {
     })),
   }
 
+  const firstBanner =
+    mitras[0]?.banner ||
+    'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&q=80'
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      {/* Preconnect to external image CDN */}
+      <link
+        rel="preconnect"
+        href="https://images.unsplash.com"
+        crossOrigin="anonymous"
+      />
+      <link rel="dns-prefetch" href="https://images.unsplash.com" />
+      {/* High-priority preload for LCP first card banner */}
+      {firstBanner && (
+        <link
+          rel="preload"
+          as="image"
+          href={`/_next/image?url=${encodeURIComponent(firstBanner)}&w=640&q=70`}
+          fetchPriority="high"
+        />
+      )}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaJson) }}

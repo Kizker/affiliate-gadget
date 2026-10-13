@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
 import {
   ShieldCheck,
   MapPin,
@@ -51,6 +50,7 @@ function MitraBannerImage({
       alt={alt}
       fill
       sizes={sizes}
+      quality={70}
       priority={priority}
       fetchPriority={priority ? 'high' : 'auto'}
       loading={priority ? 'eager' : 'lazy'}
@@ -102,7 +102,6 @@ export function IntegratedServiceView({
   initialIsMobile = false,
 }: IntegratedServiceViewProps) {
   const router = useRouter()
-  const { status } = useSession()
   const isMobile = useIsMobile(768, initialIsMobile)
   const [mounted, setMounted] = useState(false)
 
@@ -124,10 +123,6 @@ export function IntegratedServiceView({
   const handleBookingChat = (e: React.MouseEvent, mitra: MitraData) => {
     e.preventDefault()
     const url = getChatUrl(mitra)
-    if (status === 'unauthenticated') {
-      router.push(`/login?callbackUrl=${encodeURIComponent(url)}`)
-      return
-    }
     router.push(url)
   }
 
@@ -332,7 +327,7 @@ export function IntegratedServiceView({
                               src={mitra.banner}
                               alt={mitra.businessName}
                               priority={isFirstCard}
-                              sizes="(max-width: 768px) 100vw, 750px"
+                              sizes="(max-width: 640px) 384px, (max-width: 768px) 600px, 750px"
                             />
                           ) : (
                             <div className="flex h-full items-center justify-center">
@@ -399,7 +394,7 @@ export function IntegratedServiceView({
                           {/* Layanan Populer */}
                           {mitra.services.length > 0 && (
                             <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                                 Layanan Populer:
                               </p>
                               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -693,7 +688,7 @@ export function IntegratedServiceView({
                             {/* Specialties */}
                             {specialties.length > 0 && (
                               <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                                   Layanan Tersedia:
                                 </p>
                                 <div className="flex flex-wrap gap-1.5">

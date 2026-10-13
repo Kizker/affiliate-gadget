@@ -31,11 +31,23 @@ export interface MitraData {
   googleMapsUrl: string
 }
 
+let cachedMitras: { data: MitraData[]; timestamp: number } | null = null
+const CACHE_TTL_MS = 60 * 1000 // 60 seconds cache
+
+export function invalidateMitraServiceDataCache() {
+  cachedMitras = null
+}
+
 /**
  * Fetch approved mitras directly on the server for instant SSR hydration (/servis-lcd).
  * Eliminates client-side network waterfall delay and guarantees frame-1 markup discoverability.
  */
 export async function getMitraServiceListData(): Promise<MitraData[]> {
+  const now = Date.now()
+  if (cachedMitras && now - cachedMitras.timestamp < CACHE_TTL_MS) {
+    return cachedMitras.data
+  }
+
   try {
     const mitras = await prisma.mitra.findMany({
       where: {
@@ -66,7 +78,7 @@ export async function getMitraServiceListData(): Promise<MitraData[]> {
     })
 
     if (mitras && mitras.length > 0) {
-      return mitras.map((mitra) => ({
+      const result = mitras.map((mitra) => ({
         id: mitra.id,
         businessName: mitra.businessName,
         tagline: mitra.tagline,
@@ -91,13 +103,15 @@ export async function getMitraServiceListData(): Promise<MitraData[]> {
             ? `https://maps.google.com/?q=${mitra.latitude},${mitra.longitude}`
             : `https://maps.google.com/?q=${encodeURIComponent(mitra.address + ', ' + mitra.city)}`,
       }))
+      cachedMitras = { data: result, timestamp: now }
+      return result
     }
   } catch (error) {
     console.error('Error fetching mitras in getMitraServiceListData:', error)
   }
 
   // Resilient fallback to DEFAULT_MITRAS if database is empty or during cold boot
-  return DEFAULT_MITRAS.map((m, idx) => ({
+  const fallback = DEFAULT_MITRAS.map((m, idx) => ({
     id: `seed-mitra-${idx + 1}`,
     businessName: m.businessName,
     tagline: m.tagline,
@@ -124,4 +138,6 @@ export async function getMitraServiceListData(): Promise<MitraData[]> {
     longitude: m.longitude,
     googleMapsUrl: `https://maps.google.com/?q=${m.latitude},${m.longitude}`,
   }))
+  cachedMitras = { data: fallback, timestamp: now }
+  return fallback
 }

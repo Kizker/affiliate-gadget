@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
+import { invalidateMitraServiceDataCache } from '@/lib/mitra-service-data'
 
 // GET /api/mitra/profile - Get current user's mitra profile
 export async function GET() {
@@ -333,6 +334,7 @@ export async function POST(request: NextRequest) {
 
     // Trigger Next.js cache revalidation for public partner page
     try {
+      invalidateMitraServiceDataCache()
       revalidatePath(`/rekomendasi/${mitra.id}`)
       revalidatePath('/rekomendasi')
       revalidatePath('/servis')
@@ -420,6 +422,7 @@ export async function PATCH(request: NextRequest) {
 
     // Instant revalidate
     try {
+      invalidateMitraServiceDataCache()
       revalidatePath(`/rekomendasi/${updated.id}`)
       revalidatePath('/rekomendasi')
       revalidatePath('/servis')
