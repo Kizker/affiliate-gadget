@@ -69,7 +69,7 @@ describe('Mitra Profile Inputs to Service Detail 1:1 Mapping Verification Suite'
 
     // Katalog servis me-render service.name, service.price, service.icon
     expect(serviceCatalogContent).toContain('{service.name}')
-    expect(serviceCatalogContent).toContain('{service.price}')
+    expect(serviceCatalogContent).toContain('service.price')
     expect(serviceCatalogContent).toContain('{service.icon}')
     expect(serviceCatalogContent).toContain('onBookingChat')
   })

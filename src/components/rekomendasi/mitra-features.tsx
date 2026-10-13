@@ -175,8 +175,8 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
                     : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
           }`}
         >
-          {activeFeatures.map((feat, idx) => {
-            const visual = getFeatureVisual(feat)
+          {activeFeatures.map((feature, idx) => {
+            const visual = getFeatureVisual(feature)
             const isOddLastOnMobile =
               (activeFeatures.length === 3 && idx === 2) ||
               (activeFeatures.length === 5 && idx === 4)
@@ -198,7 +198,7 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
                 {/* Content: Teks Murni Inputan Mitra */}
                 <div className="my-auto py-1 sm:py-1.5">
                   <h3 className="text-xs font-bold leading-snug text-neutral-950 dark:text-white sm:text-sm lg:text-base">
-                    {feat}
+                    {feature}
                   </h3>
                 </div>
 
