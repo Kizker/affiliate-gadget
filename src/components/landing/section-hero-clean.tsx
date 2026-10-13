@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -213,8 +213,6 @@ export function SectionHeroClean() {
   const [activeSlide, setActiveSlide] = useState(1)
   const [isPaused, setIsPaused] = useState(false)
   const [showcaseMode, setShowcaseMode] = useState<'bestseller' | 'promo'>('bestseller')
-  const [bestsellerList, setBestsellerList] = useState<ShowcaseItem[]>([])
-  const [promoList, setPromoList] = useState<ShowcaseItem[]>([])
   const [showcaseItems, setShowcaseItems] = useState<ShowcaseItem[]>(DEFAULT_SHOWCASE_ITEMS)
   const [mounted, setMounted] = useState(false)
 
@@ -249,8 +247,6 @@ export function SectionHeroClean() {
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           const bList = buildBestsellers(data.data)
           const pList = buildPromos(data.data)
-          setBestsellerList(bList)
-          setPromoList(pList)
 
           const activeItems = nextMode === 'promo' ? pList : bList
           if (activeItems.length > 0) {
@@ -264,23 +260,6 @@ export function SectionHeroClean() {
 
     loadGadgets()
   }, [])
-
-  const handleModeSwitch = useCallback(
-    (mode: 'bestseller' | 'promo') => {
-      setShowcaseMode(mode)
-      try {
-        sessionStorage.setItem(STORAGE_KEY, mode)
-      } catch {}
-
-      if (mode === 'promo' && promoList.length > 0) {
-        setShowcaseItems(promoList)
-      } else if (mode === 'bestseller' && bestsellerList.length > 0) {
-        setShowcaseItems(bestsellerList)
-      }
-      setActiveSlide(1) // Kembalikan kartu tengah (Rank #1) ke posisi depan
-    },
-    [promoList, bestsellerList]
-  )
 
   useEffect(() => {
     if (isPaused || totalSlides === 0) return
@@ -348,56 +327,6 @@ export function SectionHeroClean() {
             onMouseLeave={() => setIsPaused(false)}
           >
             <div className="relative mx-auto max-w-md sm:max-w-lg lg:max-w-none">
-              {/* Mode Switcher Segmented Control */}
-              <div className="mb-3.5 flex flex-col items-center gap-1.5">
-                <div className="inline-flex items-center rounded-full border border-slate-200/80 bg-slate-100/80 p-0.5 shadow-2xs backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
-                  <button
-                    type="button"
-                    onClick={() => handleModeSwitch('bestseller')}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold transition-all duration-200 ${
-                      showcaseMode === 'bestseller'
-                        ? 'bg-white text-orange-600 shadow-sm dark:bg-slate-800 dark:text-orange-400'
-                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                    }`}
-                  >
-                    <Flame className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
-                    <span>HP Terlaris</span>
-                    {showcaseMode === 'bestseller' && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleModeSwitch('promo')}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold transition-all duration-200 ${
-                      showcaseMode === 'promo'
-                        ? 'bg-white text-rose-600 shadow-sm dark:bg-slate-800 dark:text-rose-400'
-                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                    }`}
-                  >
-                    <Zap className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />
-                    <span>Flash Promo</span>
-                    {showcaseMode === 'promo' && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
-                    )}
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                  <Sparkles className="h-3 w-3 text-orange-500" />
-                  <span>
-                    {showcaseMode === 'bestseller'
-                      ? 'Kurasi penjualan tertinggi di platform'
-                      : 'Diskon & potongan harga terbaik'}
-                  </span>
-                  <span className="text-slate-300 dark:text-slate-600">•</span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                    berganti saat refresh
-                  </span>
-                </div>
-              </div>
-
               {/* 3D Depth Cards Stage with Hardware Acceleration & Spatial Perspective */}
               <div
                 className="relative flex h-[430px] w-full items-center justify-center sm:h-[460px]"
