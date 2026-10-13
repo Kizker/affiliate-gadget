@@ -19,6 +19,7 @@ import {
   MitraInfo,
   MitraReviews,
   MitraChatPopup,
+  MitraMobileView,
 } from '@/components/rekomendasi'
 
 export type { MitraDetail, ServiceItem, MitraImage } from '@/types/mitra-detail'
@@ -27,12 +28,14 @@ interface MitraDetailClientProps {
   mitra: MitraDetail
   initialUserHasReview?: boolean
   randomEditorialImage?: string | null
+  initialIsMobile?: boolean
 }
 
 export default function MitraDetailClient({
   mitra,
   initialUserHasReview = false,
   randomEditorialImage = null,
+  initialIsMobile = false,
 }: MitraDetailClientProps) {
   const router = useRouter()
   const { data: session, status } = useSession()
@@ -147,87 +150,116 @@ export default function MitraDetailClient({
 
   return (
     <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white md:h-screen md:overflow-hidden">
-      {/* 1. Mobile Top Navigation: Reusable Mobile Component (Konsisten Tanpa Profile Button) */}
+      {/* ─────────────────────────────────────────────────────────────
+          1. MOBILE VIEW: WORLD-CLASS CLEAN, SIMPLE & ELEGANT LAYOUT
+          Cupertino Studio / Airbnb style with interactive tabs,
+          clean cards, and floating conversion bar
+      ───────────────────────────────────────────────────────────── */}
       <div className="block md:hidden">
-        <MobileTopNav
-          showBack={true}
-          backHref="/servis"
-          title={mitra.businessName}
-        />
-      </div>
-
-      {/* 2. Desktop Navigation */}
-      <div className="hidden md:block">
-        <Navbar variant="light" />
-      </div>
-
-      <main
-        id="snap-container"
-        className="md:snap-container w-full [scrollbar-width:none] md:h-screen md:snap-y md:snap-mandatory md:overflow-y-scroll [&::-webkit-scrollbar]:hidden"
-      >
-        {/* Hero Sections (Desktop & Mobile) */}
-        <MitraHero
+        <div className="hidden">
+          <MobileTopNav
+            showBack={true}
+            backHref="/servis"
+            title={mitra.businessName}
+          />
+        </div>
+        <MitraMobileView
           mitra={mitra}
           heroImageSrc={heroImageSrc}
-          onBookingChat={handleBookingChat}
-          onShare={handleShare}
           whatsAppUrl={whatsAppUrl}
           mapsUrl={mapsUrl}
-        />
-
-        {/* 2. Editorial Campaign Banner */}
-        <MitraEditorialBanner
-          mitra={mitra}
-          heroImageSrc={heroImageSrc}
           onBookingChat={handleBookingChat}
-          randomImageSrc={randomEditorialImage}
-        />
-
-        {/* 3. Katalog Layanan & Estimasi Biaya */}
-        <MitraServiceCatalog
-          services={mitra.services}
-          businessName={mitra.businessName}
-          onBookingChat={handleBookingChat}
-        />
-
-        {/* 4. Keunggulan Workshop */}
-        <MitraFeatures
-          features={mitra.features}
-          businessName={mitra.businessName}
-        />
-
-        {/* 5. Galeri Workshop & Fasilitas */}
-        <MitraGallery images={mitra.images} businessName={mitra.businessName} />
-
-        {/* 6. Informasi Workshop & Lokasi Resmi */}
-        <MitraInfo
-          mitra={mitra}
-          mapsUrl={mapsUrl}
-          onBookingChat={handleBookingChat}
-        />
-
-        {/* 7. Ulasan Pelanggan */}
-        <MitraReviews
-          mitraId={mitra.id}
-          rating={mitra.rating}
-          totalReview={mitra.totalReview}
+          onShare={handleShare}
           userHasReview={userHasReview}
           session={session}
           onReviewCreatedOrUpdated={() => setUserHasReview(true)}
         />
+      </div>
 
-        {/* 8. Desktop Footer inside Snap Container */}
-        <div className="footer-snap-item hidden md:block md:snap-start">
-          <Footer variant="light" />
-        </div>
-      </main>
+      {/* ─────────────────────────────────────────────────────────────
+          2. DESKTOP VIEW: SNAP SCROLL FULLSCREEN (100vh) CONTAINER
+          Preserved 100% for desktop browser experience & full test suite
+      ───────────────────────────────────────────────────────────── */}
+      <div className="hidden md:block md:h-screen md:overflow-hidden">
+        <Navbar variant="light" />
+        <main
+          id="snap-container"
+          className="md:snap-container w-full [scrollbar-width:none] md:h-screen md:snap-y md:snap-mandatory md:overflow-y-scroll [&::-webkit-scrollbar]:hidden"
+        >
+          {/* Hero Sections (Desktop) */}
+          <MitraHero
+            mitra={mitra}
+            heroImageSrc={heroImageSrc}
+            onBookingChat={handleBookingChat}
+            onShare={handleShare}
+            whatsAppUrl={whatsAppUrl}
+            mapsUrl={mapsUrl}
+            initialIsMobile={initialIsMobile}
+          />
 
-      {/* 8. Desktop Floating Technician Chat Popup */}
-      <MitraChatPopup
-        businessName={mitra.businessName}
-        heroImageSrc={heroImageSrc}
-        onBookingChat={handleBookingChat}
-      />
+          {/* 2. Editorial Campaign Banner */}
+          <MitraEditorialBanner
+            mitra={mitra}
+            heroImageSrc={heroImageSrc}
+            onBookingChat={handleBookingChat}
+            randomImageSrc={randomEditorialImage}
+            initialIsMobile={initialIsMobile}
+          />
+
+          {/* 3. Katalog Layanan & Estimasi Biaya */}
+          <MitraServiceCatalog
+            services={mitra.services}
+            businessName={mitra.businessName}
+            onBookingChat={handleBookingChat}
+            initialIsMobile={initialIsMobile}
+          />
+
+          {/* 4. Keunggulan Workshop */}
+          <MitraFeatures
+            features={mitra.features}
+            businessName={mitra.businessName}
+            initialIsMobile={initialIsMobile}
+          />
+
+          {/* 5. Galeri Workshop & Fasilitas */}
+          <MitraGallery
+            images={mitra.images}
+            businessName={mitra.businessName}
+            initialIsMobile={initialIsMobile}
+          />
+
+          {/* 6. Informasi Workshop & Lokasi Resmi */}
+          <MitraInfo
+            mitra={mitra}
+            mapsUrl={mapsUrl}
+            onBookingChat={handleBookingChat}
+            initialIsMobile={initialIsMobile}
+          />
+
+          {/* 7. Ulasan Pelanggan */}
+          <MitraReviews
+            mitraId={mitra.id}
+            rating={mitra.rating}
+            totalReview={mitra.totalReview}
+            userHasReview={userHasReview}
+            session={session}
+            onReviewCreatedOrUpdated={() => setUserHasReview(true)}
+            initialIsMobile={initialIsMobile}
+          />
+
+          {/* 8. Desktop Footer inside Snap Container */}
+          <div className="footer-snap-item hidden md:block md:snap-start">
+            <Footer variant="light" />
+          </div>
+        </main>
+
+        {/* 9. Desktop Floating Technician Chat Popup */}
+        <MitraChatPopup
+          businessName={mitra.businessName}
+          heroImageSrc={heroImageSrc}
+          onBookingChat={handleBookingChat}
+        />
+      </div>
     </div>
   )
 }

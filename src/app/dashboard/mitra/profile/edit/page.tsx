@@ -336,6 +336,38 @@ export default function MitraProfileEdit() {
     toast.success('Layanan dihapus dari daftar')
   }
 
+  const handleBannerChange = async (url: string) => {
+    setProfile((prev) => ({ ...prev, banner: url }))
+    try {
+      const res = await fetch('/api/mitra/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ banner: url }),
+      })
+      if (res.ok) {
+        toast.success(
+          'Banner toko berhasil disimpan & langsung aktif di halaman tokomu!'
+        )
+      }
+    } catch (err) {
+      console.error('Auto-save banner error:', err)
+    }
+  }
+
+  const handleBannerRemove = async () => {
+    setProfile((prev) => ({ ...prev, banner: '' }))
+    try {
+      await fetch('/api/mitra/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ banner: '' }),
+      })
+      toast.success('Banner toko berhasil dihapus')
+    } catch (err) {
+      console.error('Error removing banner:', err)
+    }
+  }
+
   const toggleFeature = (feature: string) => {
     if (profile.features.includes(feature)) {
       setProfile({
@@ -343,8 +375,8 @@ export default function MitraProfileEdit() {
         features: profile.features.filter((f) => f !== feature),
       })
     } else {
-      if (profile.features.length >= 5) {
-        toast.error('Maksimal 5 elemen keunggulan yang dapat dipilih')
+      if (profile.features.length >= 10) {
+        toast.error('Maksimal 10 elemen keunggulan yang dapat dipilih')
         return
       }
       setProfile({
@@ -356,8 +388,8 @@ export default function MitraProfileEdit() {
 
   const addCustomFeature = () => {
     const trimmed = newFeature.trim()
-    if (profile.features.length >= 5) {
-      toast.error('Maksimal 5 elemen keunggulan yang dapat ditambahkan')
+    if (profile.features.length >= 10) {
+      toast.error('Maksimal 10 elemen keunggulan yang dapat ditambahkan')
       return
     }
     if (
@@ -579,16 +611,37 @@ export default function MitraProfileEdit() {
 
               {/* Banner Upload */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  Banner Profil Toko
-                </label>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    Banner Profil Toko
+                  </label>
+                  {profile.banner && mitraId && (
+                    <Link
+                      href={`/rekomendasi/${mitraId}`}
+                      target="_blank"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline dark:text-orange-400"
+                    >
+                      <Eye className="h-3 w-3" />
+                      <span>Lihat Tampilan Toko ↗</span>
+                    </Link>
+                  )}
+                </div>
                 <ImageUpload
-                  label="Upload Banner Toko"
+                  label=""
                   value={profile.banner}
-                  onChange={(url) => setProfile({ ...profile, banner: url })}
-                  onRemove={() => setProfile({ ...profile, banner: '' })}
+                  onChange={handleBannerChange}
+                  onRemove={handleBannerRemove}
                   folder="banners"
                 />
+                {profile.banner && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    <span>
+                      Banner tersimpan otomatis & langsung aktif di halaman
+                      tokomu
+                    </span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">

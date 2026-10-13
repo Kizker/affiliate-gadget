@@ -6,6 +6,7 @@ import { useIsMobile } from '@/hooks/use-is-mobile'
 interface MitraFeaturesProps {
   features?: string[] | null
   businessName: string
+  initialIsMobile?: boolean
 }
 
 interface FeatureVisualMeta {
@@ -136,8 +137,12 @@ function getFeatureVisual(featureText: string): FeatureVisualMeta {
   }
 }
 
-export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
-  const isMobile = useIsMobile(768)
+export function MitraFeatures({
+  features,
+  businessName,
+  initialIsMobile,
+}: MitraFeaturesProps) {
+  const isMobile = useIsMobile(768, initialIsMobile)
 
   if (!features || features.length === 0) return null
 
@@ -147,6 +152,7 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
   return (
     <section
       id="keunggulan"
+      suppressHydrationWarning
       className="scroll-mt-20 px-4 py-8 sm:px-6 md:flex md:h-screen md:snap-start md:scroll-mt-24 md:flex-col md:justify-center md:overflow-hidden md:py-10 lg:px-8"
       style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >

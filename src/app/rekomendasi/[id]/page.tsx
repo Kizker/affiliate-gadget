@@ -5,7 +5,8 @@ import MitraDetailClient from './mitra-detail-client'
 import { Loader2 } from 'lucide-react'
 import { auth } from '@/auth'
 import { Footer } from '@/components/layouts/footer'
-
+import { headers } from 'next/headers'
+import { parseUserAgent } from '@/lib/user-agent-parser'
 import { isMitraCurrentlyOpen } from '@/lib/mitra-utils'
 
 // Force dynamic rendering - avoid DB calls at build time (Docker build stage has no DB)
@@ -159,11 +160,19 @@ export default async function MitraDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [mitra, session] = await Promise.all([getMitra(id), auth()])
+  const [mitra, session, headersList] = await Promise.all([
+    getMitra(id),
+    auth(),
+    headers(),
+  ])
 
   if (!mitra) {
     notFound()
   }
+
+  const ua = headersList.get('user-agent') || ''
+  const clientDevice = parseUserAgent(ua)
+  const isMobileDevice = clientDevice.deviceType === 'mobile'
 
   let initialUserHasReview = false
   if (session?.user?.id) {
@@ -197,6 +206,7 @@ export default async function MitraDetailPage({
           mitra={mitra}
           initialUserHasReview={initialUserHasReview}
           randomEditorialImage={randomEditorialImage}
+          initialIsMobile={isMobileDevice}
         />
       </Suspense>
       <div className="block md:hidden">

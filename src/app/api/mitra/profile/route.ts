@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
           email: body.email || null,
           website: body.website || null,
           features: Array.isArray(body.features)
-            ? body.features.slice(0, 5)
+            ? body.features.slice(0, 10)
             : [],
           weekdayHours: body.weekdayHours || null,
           weekendHours: body.weekendHours || null,
@@ -197,7 +198,7 @@ export async function POST(request: NextRequest) {
           email: body.email || null,
           website: body.website || null,
           features: Array.isArray(body.features)
-            ? body.features.slice(0, 5)
+            ? body.features.slice(0, 10)
             : [],
           weekdayHours: body.weekdayHours || null,
           weekendHours: body.weekendHours || null,
@@ -330,6 +331,15 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Trigger Next.js cache revalidation for public partner page
+    try {
+      revalidatePath(`/rekomendasi/${mitra.id}`)
+      revalidatePath('/rekomendasi')
+      revalidatePath('/servis')
+    } catch (revalError) {
+      console.warn('Revalidation warning:', revalError)
+    }
+
     return NextResponse.json({
       ...updatedMitra,
       isPendingReview: !isAlreadyApproved,
@@ -348,6 +358,83 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(
       { error: errorMessage || 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// PATCH /api/mitra/profile - Instant partial update (e.g. auto-save banner)
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await auth()
+
+    if (!session?.user?.id && !session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const user = await prisma.user.findFirst({
+      where: session.user.id
+        ? { id: session.user.id }
+        : { email: session.user.email! },
+      select: { id: true, role: true },
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const existingMitra = await prisma.mitra.findUnique({
+      where: { userId: user.id },
+    })
+
+    if (!existingMitra) {
+      return NextResponse.json(
+        { error: 'Mitra profile not found' },
+        { status: 404 }
+      )
+    }
+
+    const body = await request.json()
+    const updateData: Record<string, any> = {}
+
+    if (body.banner !== undefined) {
+      updateData.banner = body.banner ? String(body.banner).trim() : null
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: 'No valid fields to update' },
+        { status: 400 }
+      )
+    }
+
+    const updated = await prisma.mitra.update({
+      where: { id: existingMitra.id },
+      data: updateData,
+      select: {
+        id: true,
+        businessName: true,
+        banner: true,
+      },
+    })
+
+    // Instant revalidate
+    try {
+      revalidatePath(`/rekomendasi/${updated.id}`)
+      revalidatePath('/rekomendasi')
+      revalidatePath('/servis')
+    } catch (e) {
+      console.warn('Revalidation warning:', e)
+    }
+
+    return NextResponse.json({
+      success: true,
+      mitra: updated,
+    })
+  } catch (error) {
+    console.error('Error updating banner in PATCH:', error)
+    return NextResponse.json(
+      { error: 'Gagal memperbarui banner' },
       { status: 500 }
     )
   }

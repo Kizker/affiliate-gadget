@@ -47,17 +47,29 @@ export default function ImageLightbox({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+    <div className="fixed inset-0 z-50 flex select-none items-center justify-center overflow-hidden bg-black">
+      {/* ── AMBIENT BLURRED BACKDROP (Efek samar bayangan foto di belakang) ── */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <img
+          src={images[currentIndex]}
+          alt=""
+          aria-hidden="true"
+          className="h-full w-full scale-150 object-cover opacity-45 blur-3xl brightness-75 transition-all duration-700 ease-out"
+        />
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-2xl" />
+      </div>
+
       {/* Close Button */}
       <button
         onClick={onClose}
-        className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+        className="absolute right-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white shadow-lg backdrop-blur-md transition hover:bg-black/75 active:scale-90"
+        aria-label="Tutup foto"
       >
-        <X className="h-6 w-6" />
+        <X className="h-5 w-5" />
       </button>
 
       {/* Image Counter */}
-      <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
+      <div className="absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-full border border-white/20 bg-black/50 px-4 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md">
         {currentIndex + 1} / {images.length}
       </div>
 
@@ -65,18 +77,19 @@ export default function ImageLightbox({
       {images.length > 1 && (
         <button
           onClick={handlePrevious}
-          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+          className="absolute left-4 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white shadow-lg backdrop-blur-md transition hover:bg-black/75 active:scale-90"
+          aria-label="Foto sebelumnya"
         >
-          <ChevronLeft className="h-8 w-8" />
+          <ChevronLeft className="h-6 w-6" />
         </button>
       )}
 
-      {/* Main Image */}
-      <div className="relative h-full w-full p-4 sm:p-8">
+      {/* Main Image Container */}
+      <div className="pointer-events-none relative z-20 flex h-full w-full items-center justify-center p-4 sm:p-8">
         <img
           src={images[currentIndex]}
           alt={`Gallery image ${currentIndex + 1}`}
-          className="h-full w-full object-contain"
+          className="pointer-events-auto max-h-[85vh] max-w-full rounded-2xl object-contain shadow-[0_25px_70px_rgba(0,0,0,0.95)] ring-1 ring-white/15 transition-all duration-300"
           onClick={(e) => e.stopPropagation()}
         />
       </div>
@@ -85,23 +98,24 @@ export default function ImageLightbox({
       {images.length > 1 && (
         <button
           onClick={handleNext}
-          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+          className="absolute right-4 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white shadow-lg backdrop-blur-md transition hover:bg-black/75 active:scale-90"
+          aria-label="Foto selanjutnya"
         >
-          <ChevronRight className="h-8 w-8" />
+          <ChevronRight className="h-6 w-6" />
         </button>
       )}
 
       {/* Thumbnail Strip (Desktop only) */}
       {images.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 gap-2 sm:flex">
+        <div className="absolute bottom-4 left-1/2 z-30 hidden -translate-x-1/2 gap-2 sm:flex">
           {images.map((image, index) => (
             <button
               key={index}
               onClick={() => setCurrentIndex(index)}
-              className={`h-16 w-16 overflow-hidden rounded-lg border-2 transition-all ${
+              className={`h-14 w-14 overflow-hidden rounded-xl border-2 shadow-md transition-all ${
                 index === currentIndex
-                  ? 'scale-110 border-white'
-                  : 'border-white/30 opacity-60 hover:opacity-100'
+                  ? 'scale-105 border-white ring-2 ring-white/50'
+                  : 'border-white/20 opacity-50 hover:opacity-100'
               }`}
             >
               <img
@@ -116,7 +130,7 @@ export default function ImageLightbox({
 
       {/* Touch/Swipe area for mobile */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 z-10"
         onClick={onClose}
         onTouchStart={(e) => {
           const touch = e.touches[0]

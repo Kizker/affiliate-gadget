@@ -10,7 +10,7 @@ export function useIsMobile(breakpoint = 768, initialValue?: boolean): boolean {
   const [isMobile, setIsMobile] = useState<boolean>(() => {
     if (typeof initialValue === 'boolean') return initialValue
     if (typeof window === 'undefined') return false
-    return window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches
+    return false
   })
 
   useEffect(() => {

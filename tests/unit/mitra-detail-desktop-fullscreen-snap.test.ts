@@ -86,6 +86,15 @@ describe('Mitra Detail Desktop Balanced Layout Suite', () => {
     expect(combinedContent).toContain('Mitra Servis Resmi')
     expect(combinedContent).toContain('rounded-b-[28px]')
     expect(combinedContent).toContain('Chat / Booking Servis')
+    expect(combinedContent).toContain('<div className="block md:hidden">')
+
+    const globalsCssPath = path.join(process.cwd(), 'src/styles/globals.css')
+    const globalsCssContent = fs.readFileSync(globalsCssPath, 'utf-8')
+    expect(globalsCssContent).toContain(
+      '#snap-container > section:not(.md\\:hidden)'
+    )
+    expect(globalsCssContent).toContain('#snap-container > .md\\:hidden')
+    expect(globalsCssContent).toContain('display: none !important')
   })
 
   it('verifies keunggulan section is capped at 5 features from partner input', () => {

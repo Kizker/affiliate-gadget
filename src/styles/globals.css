@@ -417,7 +417,7 @@
     -webkit-overflow-scrolling: touch !important;
   }
 
-  #snap-container > section,
+  #snap-container > section:not(.md\:hidden),
   #snap-container > div#hero {
     height: 100vh !important;
     min-height: 100vh !important;
@@ -431,6 +431,20 @@
     overflow: hidden !important;
     padding-top: 4rem !important; /* Offset for desktop navbar */
   }
+
+  /* Sembunyikan total elemen khusus mobile agar tidak bocor ke desktop snap container */
+  #snap-container > section.md\:hidden,
+  #snap-container > div.md\:hidden,
+  #snap-container > .md\:hidden {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
   #snap-container > footer,
   #snap-container > div:has(footer),
   #snap-container > div.footer-snap-item {

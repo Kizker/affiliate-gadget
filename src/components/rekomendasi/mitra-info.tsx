@@ -20,14 +20,21 @@ interface MitraInfoProps {
   mitra: MitraDetail
   mapsUrl: string
   onBookingChat: (e?: React.MouseEvent) => void
+  initialIsMobile?: boolean
 }
 
-export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
-  const isMobile = useIsMobile(768)
+export function MitraInfo({
+  mitra,
+  mapsUrl,
+  onBookingChat,
+  initialIsMobile,
+}: MitraInfoProps) {
+  const isMobile = useIsMobile(768, initialIsMobile)
 
   return (
     <section
       id="informasi-mitra"
+      suppressHydrationWarning
       className="relative border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
       style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >
