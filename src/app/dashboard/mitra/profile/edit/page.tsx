@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 import ImageUpload from '@/components/upload/image-upload'
 import MultiImageUpload from '@/components/upload/multi-image-upload'
 import { motion } from 'framer-motion'
+import { formatServicePrice } from '@/lib/mitra-utils'
 
 interface Service {
   name: string
@@ -893,7 +894,7 @@ export default function MitraProfileEdit() {
                               {svc.name}
                             </h5>
                             <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                              {svc.price}
+                              {formatServicePrice(svc.price)}
                             </p>
                           </div>
                         </div>

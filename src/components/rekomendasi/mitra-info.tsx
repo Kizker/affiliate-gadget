@@ -3,7 +3,6 @@
 import React from 'react'
 import dynamic from 'next/dynamic'
 import { ShieldCheck, MapPin, Compass, ExternalLink, Clock } from 'lucide-react'
-import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { MitraDetail } from '@/types/mitra-detail'
 
 // Dynamic import for heavy Google Maps SDK components (Task 2.3)
@@ -23,16 +22,13 @@ interface MitraInfoProps {
 }
 
 export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
-  const isMobile = useIsMobile(768)
-
   return (
     <section
       id="informasi-mitra"
-      className="relative border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
-      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
+      className="relative border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 md:py-10 lg:px-8 scroll-mt-20 md:scroll-mt-24"
     >
       <div className="mx-auto w-full max-w-7xl">
-        <div className="mb-5 space-y-1.5 text-center sm:mb-6">
+        <div className="mb-4 space-y-1.5 text-center sm:mb-5">
           <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-2xl lg:text-3xl">
             Informasi Workshop &amp; Lokasi Resmi
           </h2>
@@ -89,39 +85,79 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
           </div>
 
           {/* Hours & Chat Action */}
-          <div className="space-y-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5 text-neutral-500" />
-                <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-                  {mitra.weekdayHours || '09:00 - 20:00 WIB'}
-                </span>
+          <div className="space-y-2.5 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+                  <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                    {mitra.weekdayHours?.toLowerCase().includes('senin')
+                      ? mitra.weekdayHours
+                      : `Senin - Sabtu: ${mitra.weekdayHours || '09:00 - 20:00 WIB'}`}
+                  </span>
+                </div>
+                <button
+                  onClick={(e) => onBookingChat(e)}
+                  className="shrink-0 text-xs font-bold text-blue-600 underline underline-offset-4 dark:text-sky-400"
+                >
+                  Chat Teknisi →
+                </button>
               </div>
-              <button
-                onClick={(e) => onBookingChat(e)}
-                className="text-xs font-bold text-blue-600 underline underline-offset-4 dark:text-sky-400"
-              >
-                Chat Teknisi →
-              </button>
+
+              {mitra.weekendHours && (
+                <p className="pl-5.5 text-[11px] text-neutral-500">
+                  {mitra.weekendHours.toLowerCase().includes('minggu')
+                    ? mitra.weekendHours
+                    : `Minggu / Libur: ${mitra.weekendHours}`}
+                </p>
+              )}
             </div>
 
-            {/* Mobile Contact Badges */}
-            {(mitra.phone || mitra.email) && (
-              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-neutral-600 dark:text-neutral-400">
+            {/* Mobile Contact Badges (Telp, WA, Email, Web) */}
+            {(mitra.phone || mitra.whatsapp || mitra.email || mitra.website) && (
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-neutral-100 text-[11px] dark:border-neutral-800">
                 {mitra.phone && (
                   <a
                     href={`tel:${mitra.phone}`}
-                    className="flex items-center gap-1 font-medium text-neutral-800 hover:underline dark:text-neutral-200"
+                    className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 font-medium text-neutral-800 transition hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
                   >
                     <span>📞 {mitra.phone}</span>
+                  </a>
+                )}
+                {mitra.whatsapp && (
+                  <a
+                    href={`https://wa.me/${
+                      mitra.whatsapp.replace(/[^0-9]/g, '').startsWith('0')
+                        ? '62' + mitra.whatsapp.replace(/[^0-9]/g, '').slice(1)
+                        : mitra.whatsapp.replace(/[^0-9]/g, '')
+                    }`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300"
+                  >
+                    <span>💬 WA: {mitra.whatsapp}</span>
                   </a>
                 )}
                 {mitra.email && (
                   <a
                     href={`mailto:${mitra.email}`}
-                    className="flex items-center gap-1 truncate hover:underline"
+                    className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 font-medium text-neutral-800 transition hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
                   >
                     <span>✉️ {mitra.email}</span>
+                  </a>
+                )}
+                {mitra.website && (
+                  <a
+                    href={
+                      mitra.website.startsWith('http')
+                        ? mitra.website
+                        : `https://${mitra.website}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-700 transition hover:bg-blue-100 dark:bg-blue-950/50 dark:text-sky-300"
+                  >
+                    <span>🌐 {mitra.website.replace(/^https?:\/\//, '')}</span>
                   </a>
                 )}
               </div>
@@ -212,6 +248,25 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
                     </span>
                     <a href={`tel:${mitra.phone}`} className="hover:underline">
                       {mitra.phone}
+                    </a>
+                  </p>
+                )}
+                {mitra.whatsapp && (
+                  <p className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300">
+                    <span className="font-semibold text-neutral-900 dark:text-white">
+                      WA:
+                    </span>
+                    <a
+                      href={`https://wa.me/${
+                        mitra.whatsapp.replace(/[^0-9]/g, '').startsWith('0')
+                          ? '62' + mitra.whatsapp.replace(/[^0-9]/g, '').slice(1)
+                          : mitra.whatsapp.replace(/[^0-9]/g, '')
+                      }`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-600 hover:underline dark:text-emerald-400"
+                    >
+                      {mitra.whatsapp}
                     </a>
                   </p>
                 )}

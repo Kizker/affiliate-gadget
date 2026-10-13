@@ -22,56 +22,41 @@ describe('Mitra Detail Desktop Balanced Layout Suite', () => {
 
   const combinedContent = `${pageContent}\n${clientContent}\n${allSubComponentsContent}`
 
-  it('verifies outer container has snap-container id and full-screen overflow properties on desktop', () => {
-    expect(clientContent).toContain('id="snap-container"')
-    expect(clientContent).toContain('md:snap-container')
-    expect(clientContent).toContain('md:h-screen')
-    expect(clientContent).toContain('md:overflow-y-scroll')
-    expect(clientContent).toContain('md:snap-y')
-    expect(clientContent).toContain('md:snap-mandatory')
+  it('verifies outer container has natural scrolling and balanced layout without artificial 100vh lock', () => {
+    expect(clientContent).toContain('<main className="w-full')
+    expect(clientContent).not.toContain('md:snap-container')
+    expect(clientContent).not.toContain('md:snap-mandatory')
+    expect(clientContent).not.toContain('md:h-screen md:overflow-hidden')
   })
 
-  it('verifies all desktop sections have md:h-screen and md:snap-start to fit exactly 1 viewport screen', () => {
+  it('verifies all sections have compact, balanced vertical spacing without forced 100vh', () => {
     // 1. Hero
     expect(combinedContent).toContain('id="hero"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
     expect(combinedContent).toContain('max-w-7xl items-center')
 
     // 2. Banner Editorial
     expect(combinedContent).toContain('id="banner-editorial"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
 
     // 3. Katalog Layanan
     expect(combinedContent).toContain('id="katalog-layanan"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
 
     // 4. Keunggulan
     expect(combinedContent).toContain('id="keunggulan"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
 
     // 5. Galeri Workshop
     expect(combinedContent).toContain('id="galeri-workshop"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
 
     // 6. Informasi Mitra
     expect(combinedContent).toContain('id="informasi-mitra"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
 
     // 7. Ulasan Pelanggan
     expect(combinedContent).toContain('id="ulasan-pelanggan"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
 
-    // Desktop Fullscreen 100vh dynamic enforcement via useIsMobile
-    expect(allSubComponentsContent).toContain(
+    // Bebas dari pemaksaan 100vh yang membuat jarak antar section terlalu jauh
+    expect(allSubComponentsContent).not.toContain(
       "minHeight: '100vh', height: '100vh'"
     )
+    expect(allSubComponentsContent).not.toContain('md:snap-start')
   })
 
   it('verifies Footer is included at the bottom of the mitra detail page', () => {
@@ -81,8 +66,8 @@ describe('Mitra Detail Desktop Balanced Layout Suite', () => {
     )
   })
 
-  it('verifies mobile hero has centered fading card over full-cover image', () => {
-    expect(combinedContent).toContain('h-[100dvh] min-h-[100dvh]')
+  it('verifies mobile hero has centered fading card over full-cover image with compact height', () => {
+    expect(combinedContent).toContain('min-h-[460px]')
     expect(combinedContent).toContain('backdrop-blur-xl')
     expect(combinedContent).toContain('max-w-sm rounded-3xl')
   })

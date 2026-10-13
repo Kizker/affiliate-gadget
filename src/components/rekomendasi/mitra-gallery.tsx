@@ -4,7 +4,6 @@ import React, { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { ExternalLink } from 'lucide-react'
 import { ImageWithFallback } from '@/components/ui/image-with-fallback'
-import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { MitraImage } from '@/types/mitra-detail'
 
 // Dynamic import for lightbox modal (Task 2.2)
@@ -19,7 +18,6 @@ interface MitraGalleryProps {
 }
 
 export function MitraGallery({ images, businessName }: MitraGalleryProps) {
-  const isMobile = useIsMobile(768)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
 
@@ -28,14 +26,10 @@ export function MitraGallery({ images, businessName }: MitraGalleryProps) {
   return (
     <section
       id="galeri-workshop"
-      className="border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
-      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
+      className="border-t border-neutral-100 bg-[#FBFBFD] px-4 py-7 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:py-8 lg:px-8 scroll-mt-20 md:scroll-mt-24"
     >
       <div className="mx-auto w-full max-w-7xl">
-        <div className="mb-6 space-y-1.5 text-center sm:mb-8">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400">
-            Dokumentasi Workshop
-          </span>
+        <div className="mb-4 space-y-1.5 text-center sm:mb-5">
           <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-2xl lg:text-3xl">
             Galeri Workshop &amp; Fasilitas Reparasi
           </h2>

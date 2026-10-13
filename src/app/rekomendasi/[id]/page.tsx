@@ -177,17 +177,29 @@ export default async function MitraDetailPage({
     initialUserHasReview = !!existingReview
   }
 
+  // Ambil gambar secara random dari galeri yang di-upload, jika tidak ada fallback ke banner
+  let randomEditorialImage: string | null = null
+  if (mitra.images && mitra.images.length > 0) {
+    const validImages = mitra.images.filter((img) => Boolean(img?.url))
+    if (validImages.length > 0) {
+      const randomIndex = Math.floor(Math.random() * validImages.length)
+      randomEditorialImage = validImages[randomIndex].url
+    }
+  }
+  if (!randomEditorialImage) {
+    randomEditorialImage = mitra.banner || null
+  }
+
   return (
     <>
       <Suspense fallback={<MitraDetailLoading />}>
         <MitraDetailClient
           mitra={mitra}
           initialUserHasReview={initialUserHasReview}
+          randomEditorialImage={randomEditorialImage}
         />
       </Suspense>
-      <div className="block md:hidden">
-        <Footer />
-      </div>
+      <Footer />
     </>
   )
 }

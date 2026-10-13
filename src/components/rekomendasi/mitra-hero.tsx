@@ -40,12 +40,11 @@ export function MitraHero({
       ───────────────────────────────────────────────────────────── */}
       <section
         id="hero"
-        className="relative hidden w-full overflow-hidden bg-[#FBFBFD] pt-16 dark:bg-neutral-950 md:flex md:h-screen md:snap-start md:items-center"
-        style={{ minHeight: '100vh', height: '100vh' }}
+        className="relative hidden w-full overflow-hidden bg-[#FBFBFD] pt-8 pb-12 dark:bg-neutral-950 md:flex md:items-center lg:pt-10 lg:pb-14 scroll-mt-24"
       >
-        <div className="mx-auto flex h-full w-full max-w-7xl items-center">
+        <div className="mx-auto flex w-full max-w-7xl items-center">
           {/* Left Column (55%): Workshop/Bengkel Photo Studio Frame */}
-          <div className="relative flex h-[480px] w-[55%] items-center justify-start overflow-hidden pl-4 lg:h-[540px] lg:pl-8">
+          <div className="relative flex h-[440px] w-[55%] items-center justify-start overflow-hidden pl-4 lg:h-[480px] lg:pl-8">
             <div className="relative h-full w-full overflow-hidden rounded-3xl border border-neutral-200/80 bg-neutral-100 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:border-neutral-800 dark:bg-neutral-900">
               <ImageWithFallback
                 src={heroImageSrc}
@@ -81,13 +80,6 @@ export function MitraHero({
 
           {/* Right Column (45%): Sleek Editorial Typography & Action Buttons */}
           <div className="z-10 flex w-[45%] flex-col items-start justify-center space-y-4 pl-6 pr-6 lg:space-y-5 lg:pl-10 lg:pr-12">
-            <div className="inline-flex items-center gap-2">
-              <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400 sm:text-sm">
-                Spesialis Servis &amp; Reparasi Gadget
-              </span>
-              <Sparkles className="h-4 w-4 text-[#0070F3] dark:text-sky-400" />
-            </div>
-
             <h1 className="text-3xl font-black leading-[1.08] tracking-tight text-neutral-950 dark:text-white lg:text-4xl xl:text-5xl">
               {mitra.businessName}
             </h1>
@@ -121,7 +113,7 @@ export function MitraHero({
                       : 'bg-neutral-400'
                   }`}
                 />
-                {mitra.isOpen ? 'Buka Sekarang' : 'Tutup Sementara'}
+                {mitra.isOpen ? 'Buka Sekarang' : 'Tutup'}
               </span>
 
               <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 font-medium text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
@@ -181,7 +173,7 @@ export function MitraHero({
           1B. MOBILE HERO VIEWPORT: LUXURY MOBILE EXPERIENCE
           Centered fading typography on full background image (Pas 1 Layar Penuh)
       ───────────────────────────────────────────────────────────── */}
-      <section className="relative flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center overflow-hidden px-4 pt-16 md:hidden">
+      <section className="relative flex min-h-[460px] w-full items-center justify-center overflow-hidden px-4 py-14 md:hidden">
         {/* Full Cover Background Image */}
         <div className="absolute inset-0 z-0">
           <ImageWithFallback
@@ -200,12 +192,7 @@ export function MitraHero({
 
         {/* Center: Fading Backdrop Editorial Card (Mencegah warna tulisan & gambar menyatu) */}
         <div className="relative z-10 w-full max-w-sm rounded-3xl border border-white/30 bg-white/85 p-6 text-center shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl dark:border-white/10 dark:bg-neutral-950/85">
-          <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400">
-            <span>Mitra Servis Resmi</span>
-            <Sparkles className="h-3 w-3" />
-          </div>
-
-          <h1 className="mt-2 text-2xl font-black leading-[1.15] tracking-tight text-neutral-950 dark:text-white">
+          <h1 className="text-2xl font-black leading-[1.15] tracking-tight text-neutral-950 dark:text-white">
             {mitra.businessName}
           </h1>
 
@@ -290,46 +277,6 @@ export function MitraHero({
           </a>
         </div>
       </section>
-
-      {/* ─────────────────────────────────────────────────────────────
-          1D. STICKY MOBILE CATEGORY / SECTION FILTER BAR (Mobile Only)
-      ───────────────────────────────────────────────────────────── */}
-      <div className="no-scrollbar shadow-2xs sticky top-16 z-30 flex items-center gap-2 overflow-x-auto border-b border-neutral-200/70 bg-white/95 px-4 py-2.5 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/95 md:hidden">
-        <a
-          href="#katalog-layanan"
-          className="shadow-xs shrink-0 rounded-full bg-black px-3.5 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-black"
-        >
-          Layanan ({mitra.services.length})
-        </a>
-        {mitra.features && mitra.features.length > 0 && (
-          <a
-            href="#keunggulan"
-            className="shrink-0 rounded-full bg-neutral-100 px-3.5 py-1.5 text-xs font-semibold text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400"
-          >
-            Keunggulan
-          </a>
-        )}
-        {mitra.images && mitra.images.length > 0 && (
-          <a
-            href="#galeri-workshop"
-            className="shrink-0 rounded-full bg-neutral-100 px-3.5 py-1.5 text-xs font-semibold text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400"
-          >
-            Galeri
-          </a>
-        )}
-        <a
-          href="#informasi-mitra"
-          className="shrink-0 rounded-full bg-neutral-100 px-3.5 py-1.5 text-xs font-semibold text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400"
-        >
-          Lokasi &amp; Jam Buka
-        </a>
-        <a
-          href="#ulasan-pelanggan"
-          className="shrink-0 rounded-full bg-neutral-100 px-3.5 py-1.5 text-xs font-semibold text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400"
-        >
-          Ulasan ({mitra.totalReview})
-        </a>
-      </div>
     </>
   )
 }

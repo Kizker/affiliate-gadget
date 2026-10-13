@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { useMitraAnalytics } from '@/hooks/use-mitra-analytics'
 
@@ -26,11 +25,13 @@ export type { MitraDetail, ServiceItem, MitraImage } from '@/types/mitra-detail'
 interface MitraDetailClientProps {
   mitra: MitraDetail
   initialUserHasReview?: boolean
+  randomEditorialImage?: string | null
 }
 
 export default function MitraDetailClient({
   mitra,
   initialUserHasReview = false,
+  randomEditorialImage = null,
 }: MitraDetailClientProps) {
   const router = useRouter()
   const { data: session, status } = useSession()
@@ -144,7 +145,7 @@ export default function MitraDetailClient({
   }, [mitra.businessName, mitra.city])
 
   return (
-    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white md:h-screen md:overflow-hidden">
+    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white">
       {/* 1. Mobile Top Navigation: Reusable Mobile Component (Konsisten Tanpa Profile Button) */}
       <div className="block md:hidden">
         <MobileTopNav
@@ -159,10 +160,7 @@ export default function MitraDetailClient({
         <Navbar variant="light" />
       </div>
 
-      <main
-        id="snap-container"
-        className="md:snap-container w-full [scrollbar-width:none] md:h-screen md:snap-y md:snap-mandatory md:overflow-y-scroll [&::-webkit-scrollbar]:hidden"
-      >
+      <main className="w-full md:pt-16">
         {/* Hero Sections (Desktop & Mobile) */}
         <MitraHero
           mitra={mitra}
@@ -178,6 +176,7 @@ export default function MitraDetailClient({
           mitra={mitra}
           heroImageSrc={heroImageSrc}
           onBookingChat={handleBookingChat}
+          randomImageSrc={randomEditorialImage}
         />
 
         {/* 3. Katalog Layanan & Estimasi Biaya */}
@@ -212,11 +211,6 @@ export default function MitraDetailClient({
           session={session}
           onReviewCreatedOrUpdated={() => setUserHasReview(true)}
         />
-
-        {/* 8. Desktop Footer inside Snap Container */}
-        <div className="hidden md:block md:snap-start">
-          <Footer variant="light" />
-        </div>
       </main>
 
       {/* 8. Desktop Floating Technician Chat Popup */}

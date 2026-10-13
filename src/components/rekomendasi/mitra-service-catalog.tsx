@@ -2,8 +2,8 @@
 
 import React from 'react'
 import { Wrench, MessageSquare } from 'lucide-react'
-import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { ServiceItem } from '@/types/mitra-detail'
+import { formatServicePrice } from '@/lib/mitra-utils'
 
 interface MitraServiceCatalogProps {
   services: ServiceItem[]
@@ -16,20 +16,14 @@ export function MitraServiceCatalog({
   businessName,
   onBookingChat,
 }: MitraServiceCatalogProps) {
-  const isMobile = useIsMobile(768)
-
   return (
     <section
       id="katalog-layanan"
-      className="relative border-y border-neutral-100 bg-[#F8F9FA] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
-      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
+      className="relative border-y border-neutral-100 bg-[#F8F9FA] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 md:py-10 lg:px-8 scroll-mt-20 md:scroll-mt-24"
     >
       <div className="mx-auto w-full max-w-7xl">
         {/* Section Header */}
-        <div className="space-y-1.5 pb-6 text-center sm:pb-8">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400">
-            Katalog Layanan Workshop
-          </span>
+        <div className="space-y-1.5 pb-5 text-center sm:pb-6">
           <h2 className="text-2xl font-black tracking-tight text-neutral-950 dark:text-white sm:text-3xl lg:text-4xl">
             Pilihan Servis &amp; Estimasi Biaya
           </h2>
@@ -55,8 +49,8 @@ export function MitraServiceCatalog({
                 className="group relative flex flex-col justify-between rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1.5 hover:border-neutral-300 hover:shadow-[0_20px_35px_rgba(0,0,0,0.1)] active:scale-[0.98] dark:border-neutral-800 dark:bg-neutral-900 sm:rounded-3xl sm:p-6"
               >
                 <div className="space-y-3">
-                  {/* Icon & Category Indicator */}
-                  <div className="flex items-center justify-between">
+                  {/* Icon */}
+                  <div className="flex items-center">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
                       {service.icon ? (
                         <span className="text-xl">{service.icon}</span>
@@ -64,9 +58,6 @@ export function MitraServiceCatalog({
                         <Wrench className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
                       )}
                     </div>
-                    <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[10px] font-bold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                      Servis Presisi
-                    </span>
                   </div>
 
                   {/* Service Name & Description */}
@@ -88,7 +79,7 @@ export function MitraServiceCatalog({
                       Estimasi Mulai
                     </span>
                     <span className="text-sm font-black tabular-nums text-neutral-950 dark:text-white sm:text-base">
-                      {service.price}
+                      {formatServicePrice(service.price)}
                     </span>
                   </div>
 
