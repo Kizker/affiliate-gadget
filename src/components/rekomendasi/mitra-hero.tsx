@@ -13,6 +13,7 @@ import {
   Share2,
 } from 'lucide-react'
 import { ImageWithFallback } from '@/components/ui/image-with-fallback'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { MitraDetail } from '@/types/mitra-detail'
 
 interface MitraHeroProps {
@@ -32,6 +33,8 @@ export function MitraHero({
   whatsAppUrl,
   mapsUrl,
 }: MitraHeroProps) {
+  const isMobile = useIsMobile(768)
+
   return (
     <>
       {/* ─────────────────────────────────────────────────────────────
@@ -40,7 +43,8 @@ export function MitraHero({
       ───────────────────────────────────────────────────────────── */}
       <section
         id="hero"
-        className="relative hidden w-full scroll-mt-24 overflow-hidden bg-[#FBFBFD] pb-12 pt-8 dark:bg-neutral-950 md:flex md:items-center lg:pb-14 lg:pt-10"
+        className="relative hidden w-full scroll-mt-24 overflow-hidden bg-[#FBFBFD] pb-12 pt-8 dark:bg-neutral-950 md:flex md:h-screen md:snap-start md:flex-col md:items-center md:justify-center md:overflow-hidden lg:pb-14 lg:pt-10"
+        style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
       >
         <div className="mx-auto flex w-full max-w-7xl items-center">
           {/* Left Column (55%): Workshop/Bengkel Photo Studio Frame */}
@@ -170,12 +174,13 @@ export function MitraHero({
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          1B. MOBILE HERO VIEWPORT: LUXURY MOBILE EXPERIENCE
-          Centered fading typography on full background image (Pas 1 Layar Penuh)
+          1B. MOBILE HERO & PROFILE CARD: ULTRA-CLEAN & PROFESSIONAL
+          Apple Store Support / Airbnb / Tokopedia Official style
+          100% partner-customized data (photo, name, tagline, description, address, hours, contact)
       ───────────────────────────────────────────────────────────── */}
-      <section className="relative flex min-h-[460px] w-full items-center justify-center overflow-hidden px-4 py-14 md:hidden">
-        {/* Full Cover Background Image */}
-        <div className="absolute inset-0 z-0">
+      <section className="relative w-full overflow-hidden bg-white pb-3 dark:bg-neutral-950 md:hidden">
+        {/* 1. Header Media Visual: Crisp Edge Banner with Ambient Gradients */}
+        <div className="relative h-64 w-full overflow-hidden rounded-b-[28px] bg-neutral-900 shadow-sm sm:h-72">
           <ImageWithFallback
             src={heroImageSrc}
             alt={mitra.businessName}
@@ -184,97 +189,124 @@ export function MitraHero({
             sizes="100vw"
             className="object-cover object-center"
           />
-          {/* Subtle Ambient Dark Vignette Overlay */}
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px]" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
-        </div>
+          {/* Subtle top/bottom contrast vignettes for high readability of floating pills */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40" />
 
-        {/* Center: Fading Backdrop Editorial Card (Mencegah warna tulisan & gambar menyatu) */}
-        <div className="relative z-10 w-full max-w-sm rounded-3xl border border-white/30 bg-white/85 p-6 text-center shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl dark:border-white/10 dark:bg-neutral-950/85">
-          <h1 className="text-2xl font-black leading-[1.15] tracking-tight text-neutral-950 dark:text-white">
-            {mitra.businessName}
-          </h1>
+          {/* Top Floating Row: Verified Badge & Share Button */}
+          <div className="absolute left-3.5 right-3.5 top-3.5 flex items-center justify-between">
+            <div className="shadow-2xs flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Mitra Servis Resmi</span>
+            </div>
 
-          {mitra.tagline && (
-            <p className="mx-auto mt-2 px-1 text-xs font-bold text-neutral-800 dark:text-neutral-200">
-              {mitra.tagline}
-            </p>
-          )}
+            <button
+              onClick={onShare}
+              className="shadow-2xs flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition active:scale-90"
+              aria-label="Bagikan halaman mitra"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+          </div>
 
-          <p className="mx-auto mt-1 line-clamp-3 px-1 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
-            {mitra.description ||
-              (!mitra.tagline
-                ? `Spesialis servis & pergantian LCD gadget bergaransi di ${mitra.city}.`
-                : '')}
-          </p>
+          {/* Bottom Floating Row: Live Open Status & Star Rating Badges */}
+          <div className="absolute bottom-3.5 left-3.5 right-3.5 flex items-center justify-between">
+            <div className="shadow-2xs flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  mitra.isOpen
+                    ? 'animate-pulse bg-emerald-400'
+                    : 'bg-neutral-400'
+                }`}
+              />
+              <span>{mitra.isOpen ? 'Buka Hari Ini' : 'Tutup'}</span>
+              {mitra.weekdayHours && (
+                <span className="text-[10px] text-neutral-300">
+                  • {mitra.weekdayHours.replace(/^senin\s*-\s*sabtu:\s*/i, '')}
+                </span>
+              )}
+            </div>
 
-          <div className="mt-3 flex items-center justify-center gap-2">
-            <div className="flex items-center gap-1 rounded-full bg-neutral-100/90 px-2.5 py-0.5 text-[11px] font-bold text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
-              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+            <div className="shadow-2xs flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
               <span>{mitra.rating.toFixed(1)}</span>
-              <span className="text-[10px] text-neutral-500">
+              <span className="text-[10px] text-neutral-300">
                 ({mitra.totalReview})
               </span>
             </div>
-
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                mitra.isOpen
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                  : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
-              }`}
-            >
-              {mitra.isOpen ? 'Buka Hari Ini' : 'Tutup'}
-            </span>
-          </div>
-
-          {/* Quick Action Button */}
-          <div className="mt-4 flex items-center justify-center">
-            <button
-              onClick={(e) => onBookingChat(e)}
-              className="w-full rounded-full bg-black py-3 text-center text-xs font-bold text-white shadow-lg transition-transform active:scale-95 dark:bg-white dark:text-black"
-            >
-              Booking Servis Sekarang
-            </button>
           </div>
         </div>
-      </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          1C. MOBILE MITRA PROFILE & IDENTITY STRIP (Mobile Only)
-      ───────────────────────────────────────────────────────────── */}
-      <section className="block border-y border-neutral-100 bg-white px-4 py-3.5 dark:border-neutral-900 dark:bg-neutral-950 md:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="shadow-2xs relative h-11 w-11 shrink-0 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800">
-              <ImageWithFallback
-                src={heroImageSrc}
-                alt={mitra.businessName}
-                fill
-                sizes="44px"
-                className="object-cover"
-              />
+        {/* 2. Mitra Identity & Custom Information Details */}
+        <div className="space-y-3 px-4 pt-4">
+          {/* Business Name with Verified Checkmark */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-xl font-black leading-tight tracking-tight text-neutral-950 dark:text-white sm:text-2xl">
+                {mitra.businessName}
+              </h1>
+              <CheckCircle2 className="h-4.5 w-4.5 shrink-0 text-blue-600 dark:text-sky-400" />
             </div>
-            <div className="min-w-0 space-y-0.5">
-              <div className="flex items-center gap-1.5">
-                <h2 className="truncate text-sm font-bold text-neutral-950 dark:text-white">
-                  {mitra.businessName}
-                </h2>
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-              </div>
-              <p className="truncate text-[11px] text-neutral-500 dark:text-neutral-400">
-                Bengkel Servis Resmi • {mitra.city}
+
+            {/* Custom Tagline Mitra */}
+            {mitra.tagline && (
+              <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                {mitra.tagline}
               </p>
-            </div>
+            )}
           </div>
 
+          {/* Clickable Address / Google Maps Card */}
           <a
-            href="#informasi-mitra"
-            className="shrink-0 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[11px] font-semibold text-neutral-700 active:scale-95 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-start gap-2.5 rounded-2xl border border-neutral-100 bg-neutral-50/90 p-3 text-xs text-neutral-600 transition active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-900/80 dark:text-neutral-300"
           >
-            Info Workshop
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-sky-400" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold text-neutral-900 dark:text-white">
+                {mitra.address ||
+                  `${mitra.city}, ${mitra.province || 'Indonesia'}`}
+              </p>
+              <div className="mt-0.5 flex items-center justify-between text-[11px] text-neutral-500">
+                <span>
+                  {mitra.city}, {mitra.province || 'Indonesia'}
+                </span>
+                <span className="font-semibold text-blue-600 dark:text-sky-400">
+                  Lihat Peta →
+                </span>
+              </div>
+            </div>
           </a>
+
+          {/* Custom Description Mitra */}
+          {mitra.description && (
+            <p className="text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
+              {mitra.description}
+            </p>
+          )}
+
+          {/* Fast Contact & Booking Action Buttons */}
+          <div className="flex items-center gap-2.5 pt-1">
+            <button
+              onClick={(e) => onBookingChat(e)}
+              className="shadow-2xs flex flex-1 items-center justify-center gap-1.5 rounded-full bg-neutral-950 py-3 text-xs font-bold text-white transition active:scale-95 dark:bg-white dark:text-black"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span>Chat / Booking Servis</span>
+            </button>
+
+            {whatsAppUrl && (
+              <a
+                href={whatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shadow-2xs flex items-center justify-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-5 py-3 text-xs font-bold text-emerald-700 transition active:scale-95 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+              >
+                <span>WhatsApp</span>
+              </a>
+            )}
+          </div>
         </div>
       </section>
     </>

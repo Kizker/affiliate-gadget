@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Star } from 'lucide-react'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { Session } from 'next-auth'
 
 // Skeleton fallback for review list during dynamic load
@@ -52,6 +53,7 @@ export function MitraReviews({
   session,
   onReviewCreatedOrUpdated,
 }: MitraReviewsProps) {
+  const isMobile = useIsMobile(768)
   const [refreshReviews, setRefreshReviews] = useState(0)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
   const [editingReview, setEditingReview] = useState<{
@@ -63,7 +65,8 @@ export function MitraReviews({
   return (
     <section
       id="ulasan-pelanggan"
-      className="relative scroll-mt-20 border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:scroll-mt-24 md:py-10 lg:px-8"
+      className="relative border-t border-neutral-100 bg-[#FBFBFD] px-4 py-8 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
+      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-4 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">

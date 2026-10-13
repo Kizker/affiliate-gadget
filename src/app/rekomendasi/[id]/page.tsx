@@ -199,7 +199,9 @@ export default async function MitraDetailPage({
           randomEditorialImage={randomEditorialImage}
         />
       </Suspense>
-      <Footer />
+      <div className="block md:hidden">
+        <Footer />
+      </div>
     </>
   )
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/layouts/navbar'
+import { Footer } from '@/components/layouts/footer'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { useMitraAnalytics } from '@/hooks/use-mitra-analytics'
 
@@ -145,7 +146,7 @@ export default function MitraDetailClient({
   }, [mitra.businessName, mitra.city])
 
   return (
-    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white">
+    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white md:h-screen md:overflow-hidden">
       {/* 1. Mobile Top Navigation: Reusable Mobile Component (Konsisten Tanpa Profile Button) */}
       <div className="block md:hidden">
         <MobileTopNav
@@ -160,7 +161,10 @@ export default function MitraDetailClient({
         <Navbar variant="light" />
       </div>
 
-      <main className="w-full md:pt-16">
+      <main
+        id="snap-container"
+        className="md:snap-container w-full [scrollbar-width:none] md:h-screen md:snap-y md:snap-mandatory md:overflow-y-scroll [&::-webkit-scrollbar]:hidden"
+      >
         {/* Hero Sections (Desktop & Mobile) */}
         <MitraHero
           mitra={mitra}
@@ -211,6 +215,11 @@ export default function MitraDetailClient({
           session={session}
           onReviewCreatedOrUpdated={() => setUserHasReview(true)}
         />
+
+        {/* 8. Desktop Footer inside Snap Container */}
+        <div className="footer-snap-item hidden md:block md:snap-start">
+          <Footer variant="light" />
+        </div>
       </main>
 
       {/* 8. Desktop Floating Technician Chat Popup */}

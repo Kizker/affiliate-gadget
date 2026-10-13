@@ -22,59 +22,74 @@ describe('Mitra Detail Desktop Balanced Layout Suite', () => {
 
   const combinedContent = `${pageContent}\n${clientContent}\n${allSubComponentsContent}`
 
-  it('verifies outer container has natural scrolling and balanced layout without artificial 100vh lock', () => {
-    expect(clientContent).toContain('<main className="w-full')
-    expect(clientContent).not.toContain('md:snap-container')
-    expect(clientContent).not.toContain('md:snap-mandatory')
-    expect(clientContent).not.toContain('md:h-screen md:overflow-hidden')
+  it('verifies outer container has snap-container id and full-screen overflow properties on desktop', () => {
+    expect(clientContent).toContain('id="snap-container"')
+    expect(clientContent).toContain('md:snap-container')
+    expect(clientContent).toContain('md:h-screen')
+    expect(clientContent).toContain('md:overflow-y-scroll')
+    expect(clientContent).toContain('md:snap-y')
+    expect(clientContent).toContain('md:snap-mandatory')
   })
 
-  it('verifies all sections have compact, balanced vertical spacing without forced 100vh', () => {
+  it('verifies all desktop sections have md:h-screen and md:snap-start to fit exactly 1 viewport screen', () => {
     // 1. Hero
     expect(combinedContent).toContain('id="hero"')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
     expect(combinedContent).toContain('max-w-7xl items-center')
 
     // 2. Banner Editorial
     expect(combinedContent).toContain('id="banner-editorial"')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 3. Katalog Layanan
     expect(combinedContent).toContain('id="katalog-layanan"')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 4. Keunggulan
     expect(combinedContent).toContain('id="keunggulan"')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 5. Galeri Workshop
     expect(combinedContent).toContain('id="galeri-workshop"')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 6. Informasi Mitra
     expect(combinedContent).toContain('id="informasi-mitra"')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
     // 7. Ulasan Pelanggan
     expect(combinedContent).toContain('id="ulasan-pelanggan"')
+    expect(combinedContent).toContain('md:h-screen')
+    expect(combinedContent).toContain('md:snap-start')
 
-    // Bebas dari pemaksaan 100vh yang membuat jarak antar section terlalu jauh
-    expect(allSubComponentsContent).not.toContain(
+    // Desktop Fullscreen 100vh dynamic enforcement via useIsMobile
+    expect(allSubComponentsContent).toContain(
       "minHeight: '100vh', height: '100vh'"
     )
-    expect(allSubComponentsContent).not.toContain('md:snap-start')
+    expect(allSubComponentsContent).toContain('md:snap-start')
   })
 
-  it('verifies Footer is included at the bottom of the mitra detail page', () => {
-    expect(combinedContent).toContain('<Footer />')
+  it('verifies Footer is included for desktop snap container and mobile', () => {
+    expect(combinedContent).toContain('<Footer')
     expect(pageContent).toContain(
       "import { Footer } from '@/components/layouts/footer'"
     )
   })
 
-  it('verifies mobile hero has centered fading card over full-cover image with compact height', () => {
-    expect(combinedContent).toContain('min-h-[460px]')
-    expect(combinedContent).toContain('backdrop-blur-xl')
-    expect(combinedContent).toContain('max-w-sm rounded-3xl')
+  it('verifies mobile hero has ultra-clean, professional banner layout with verified badge and fast action buttons', () => {
+    expect(combinedContent).toContain('Mitra Servis Resmi')
+    expect(combinedContent).toContain('rounded-b-[28px]')
+    expect(combinedContent).toContain('Chat / Booking Servis')
   })
 
-  it('verifies keunggulan section is displayed in 1 line on mobile and capped at 5 features', () => {
+  it('verifies keunggulan section is capped at 5 features from partner input', () => {
     expect(combinedContent).toContain('features.slice(0, 5)')
-    expect(combinedContent).toContain('overflow-x-auto')
   })
 
   it('verifies documentation gallery is capped at 5 images on screen with lightbox back/next navigation', () => {

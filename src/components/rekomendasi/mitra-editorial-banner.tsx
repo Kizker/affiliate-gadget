@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react'
 import Link from 'next/link'
 import { ImageWithFallback } from '@/components/ui/image-with-fallback'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { MitraDetail } from '@/types/mitra-detail'
 
 interface MitraEditorialBannerProps {
@@ -18,6 +19,8 @@ export function MitraEditorialBanner({
   onBookingChat,
   randomImageSrc,
 }: MitraEditorialBannerProps) {
+  const isMobile = useIsMobile(768)
+
   // Ambil gambar secara acak dari galeri, jika kosong ambil dari banner
   const editorialImage = useMemo(() => {
     if (randomImageSrc) return randomImageSrc
@@ -33,7 +36,8 @@ export function MitraEditorialBanner({
   return (
     <section
       id="banner-editorial"
-      className="relative scroll-mt-20 px-4 pb-6 pt-8 sm:px-6 md:scroll-mt-24 md:pb-8 md:pt-10 lg:px-8"
+      className="relative px-4 pb-6 pt-8 sm:px-6 md:flex md:h-screen md:snap-start md:scroll-mt-24 md:flex-col md:justify-center md:overflow-hidden md:pb-8 md:pt-10 lg:px-8"
+      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="relative overflow-hidden rounded-3xl bg-[#EAF2FA] shadow-sm transition-colors dark:bg-neutral-900 md:min-h-[300px] lg:min-h-[340px]">

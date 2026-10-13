@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 
 interface MitraFeaturesProps {
   features?: string[] | null
@@ -136,6 +137,8 @@ function getFeatureVisual(featureText: string): FeatureVisualMeta {
 }
 
 export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
+  const isMobile = useIsMobile(768)
+
   if (!features || features.length === 0) return null
 
   // Ambil maksimal 5 keunggulan sesuai input profil mitra
@@ -144,7 +147,8 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
   return (
     <section
       id="keunggulan"
-      className="scroll-mt-20 px-4 py-8 sm:px-6 md:scroll-mt-24 md:py-10 lg:px-8"
+      className="scroll-mt-20 px-4 py-8 sm:px-6 md:flex md:h-screen md:snap-start md:scroll-mt-24 md:flex-col md:justify-center md:overflow-hidden md:py-10 lg:px-8"
+      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >
       <div className="mx-auto w-full max-w-7xl">
         {/* Section Header: Bersih, Rapi, Tanpa Ikon */}
