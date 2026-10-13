@@ -1,18 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowRight, Store, Star, Sparkles } from 'lucide-react'
+import { ArrowRight, Store, Star, Sparkles, Flame, Zap } from 'lucide-react'
+import { ImageWithFallback } from '@/components/ui/image-with-fallback'
 
-const DEFAULT_SHOWCASE_ITEMS = [
+export interface ShowcaseItem {
+  id: string
+  brand: string
+  name: string
+  tagline: string
+  price: string
+  originalPrice: string
+  store: string
+  image: string
+  rating: number
+  reviewCount: number
+  href: string
+  badge?: string
+  badgeType?: 'bestseller' | 'promo' | 'default'
+  salesCount?: number
+  discountPct?: number
+  savings?: number
+}
+
+const STORAGE_KEY = 'ag_hero_showcase_mode'
+
+const DEFAULT_SHOWCASE_ITEMS: ShowcaseItem[] = [
   {
     id: 'samsung-s24-ultra',
     brand: 'Samsung',
     name: 'Galaxy S24 Ultra 5G',
-    tagline: 'Second Like New 99% • Galaxy AI',
+    tagline: 'Terjual 3+ unit • Second Like New 99%',
     price: 'Rp 16.499.000',
     originalPrice: 'Rp 21.999.000',
     store: 'WTC Surabaya',
@@ -21,12 +42,14 @@ const DEFAULT_SHOWCASE_ITEMS = [
     rating: 4.9,
     reviewCount: 38,
     href: '/gadget/cmtqt76dh0027tzfojpizvh7p',
+    badge: '#2 Terlaris',
+    badgeType: 'bestseller',
   },
   {
     id: 'iphone-15-pro-max',
     brand: 'Apple',
     name: 'iPhone 15 Pro & Pro Max',
-    tagline: 'Second Like New 99% • BH 90%+',
+    tagline: 'Terjual 12+ unit • BH 90%+ Garansi 30 Hari',
     price: 'Rp 16.999.000',
     originalPrice: 'Rp 20.999.000',
     store: 'Roxy Mas Jakarta Pusat',
@@ -35,12 +58,14 @@ const DEFAULT_SHOWCASE_ITEMS = [
     rating: 5.0,
     reviewCount: 52,
     href: '/gadget/cmtqt76cv001stzfouf5j42kw',
+    badge: '#1 Terlaris',
+    badgeType: 'bestseller',
   },
   {
     id: 'xiaomi-14-ultra',
     brand: 'Xiaomi',
     name: 'Xiaomi 14 Ultra Leica',
-    tagline: 'Second Mulus 98% • Leica Quad Cam',
+    tagline: 'Terjual 2+ unit • Leica Quad Cam Mulus',
     price: 'Rp 13.299.000',
     originalPrice: 'Rp 18.999.000',
     store: 'BEC Bandung',
@@ -49,62 +74,216 @@ const DEFAULT_SHOWCASE_ITEMS = [
     rating: 4.8,
     reviewCount: 29,
     href: '/gadget/cmtqt76e3002otzfor7zag45n',
+    badge: '#3 Terlaris',
+    badgeType: 'bestseller',
   },
 ]
 
+function formatRupiah(num: number): string {
+  return 'Rp ' + Math.round(num).toLocaleString('id-ID')
+}
+
+function resolveProductImage(p: any): string {
+  if (Array.isArray(p.images) && p.images.length > 0 && typeof p.images[0] === 'string') {
+    return p.images[0]
+  }
+  if (typeof p.images === 'string' && p.images.trim()) {
+    return p.images
+  }
+  return 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=900&q=80'
+}
+
+function buildBestsellers(products: any[]): ShowcaseItem[] {
+  const sorted = [...products].sort((a, b) => {
+    const soldA = a.soldCount || 0
+    const soldB = b.soldCount || 0
+    if (soldB !== soldA) return soldB - soldA
+    const revA = a.totalReview || 0
+    const revB = b.totalReview || 0
+    if (revB !== revA) return revB - revA
+    return (b.rating || 0) - (a.rating || 0)
+  })
+
+  const top3 = sorted.slice(0, 3)
+  if (top3.length === 0) return DEFAULT_SHOWCASE_ITEMS
+
+  const mapItem = (p: any, rank: number): ShowcaseItem => {
+    const sold = p.soldCount || 0
+    return {
+      id: p.id,
+      brand: p.brand || 'Smartphone',
+      name: p.name,
+      tagline:
+        sold > 0
+          ? `🔥 ${sold} unit terjual • Garansi 30 Hari`
+          : `Rating ⭐ ${p.rating || 4.9} • Garansi 30 Hari`,
+      price: formatRupiah(p.price),
+      originalPrice:
+        p.originalPrice && p.originalPrice > p.price
+          ? formatRupiah(p.originalPrice)
+          : '',
+      store: p.store?.city || p.store?.name || 'Toko Resmi',
+      image: resolveProductImage(p),
+      rating: typeof p.rating === 'number' ? p.rating : 4.9,
+      reviewCount:
+        typeof p.totalReview === 'number'
+          ? p.totalReview
+          : p.reviewCount || 25,
+      href: `/gadget/${p.id}`,
+      badge: `#${rank} Terlaris`,
+      badgeType: 'bestseller',
+      salesCount: sold,
+    }
+  }
+
+  // Podium layout: [Rank 2, Rank 1, Rank 3] agar index 1 (tengah/depan) adalah Rank 1 terlaris
+  if (top3.length >= 3) {
+    return [mapItem(top3[1], 2), mapItem(top3[0], 1), mapItem(top3[2], 3)]
+  }
+  return top3.map((p, i) => mapItem(p, i + 1))
+}
+
+function buildPromos(products: any[]): ShowcaseItem[] {
+  const promoFiltered = products.filter(
+    (p) => (p.originalPrice && p.originalPrice > p.price) || p.isPromoted
+  )
+
+  const sorted = [...promoFiltered].sort((a, b) => {
+    const discA =
+      a.originalPrice && a.originalPrice > a.price
+        ? (a.originalPrice - a.price) / a.originalPrice
+        : 0
+    const discB =
+      b.originalPrice && b.originalPrice > b.price
+        ? (b.originalPrice - b.price) / b.originalPrice
+        : 0
+    if (discB !== discA) return discB - discA
+    const diffA = (a.originalPrice || a.price) - a.price
+    const diffB = (b.originalPrice || b.price) - a.price
+    return diffB - diffA
+  })
+
+  const top3 = sorted.slice(0, 3)
+  if (top3.length === 0) return DEFAULT_SHOWCASE_ITEMS
+
+  const mapItem = (p: any, rank: number): ShowcaseItem => {
+    const origPrice =
+      p.originalPrice && p.originalPrice > p.price
+        ? p.originalPrice
+        : Math.round(p.price * 1.15)
+    const diff = origPrice - p.price
+    const discPct = Math.round((diff / origPrice) * 100)
+    const diffText =
+      diff >= 1000000
+        ? `${(diff / 1000000).toFixed(diff % 1000000 === 0 ? 0 : 1)} Jt`
+        : `${Math.round(diff / 1000)} Rb`
+
+    return {
+      id: p.id,
+      brand: p.brand || 'Smartphone',
+      name: p.name,
+      tagline: `⚡ Hemat Rp ${diffText} • Diskon ${discPct}%`,
+      price: formatRupiah(p.price),
+      originalPrice: formatRupiah(origPrice),
+      store: p.store?.city || p.store?.name || 'Toko Resmi',
+      image: resolveProductImage(p),
+      rating: typeof p.rating === 'number' ? p.rating : 4.9,
+      reviewCount:
+        typeof p.totalReview === 'number'
+          ? p.totalReview
+          : p.reviewCount || 25,
+      href: `/gadget/${p.id}`,
+      badge: `-${discPct}% Promo`,
+      badgeType: 'promo',
+      discountPct: discPct,
+      savings: diff,
+    }
+  }
+
+  // Podium layout: [Rank 2, Rank 1, Rank 3] agar index 1 (tengah/depan) adalah Diskon Tertinggi
+  if (top3.length >= 3) {
+    return [mapItem(top3[1], 2), mapItem(top3[0], 1), mapItem(top3[2], 3)]
+  }
+  return top3.map((p, i) => mapItem(p, i + 1))
+}
+
 export function SectionHeroClean() {
   const router = useRouter()
-  // Initialized to 1 so the second card (iPhone 15 Pro Max) starts in the front foreground
+  // Initialized to 1 agar kartu tengah (Rank #1) tampil di depan foreground
   const [activeSlide, setActiveSlide] = useState(1)
   const [isPaused, setIsPaused] = useState(false)
-  const [showcaseItems, setShowcaseItems] = useState(DEFAULT_SHOWCASE_ITEMS)
+  const [showcaseMode, setShowcaseMode] = useState<'bestseller' | 'promo'>('bestseller')
+  const [bestsellerList, setBestsellerList] = useState<ShowcaseItem[]>([])
+  const [promoList, setPromoList] = useState<ShowcaseItem[]>([])
+  const [showcaseItems, setShowcaseItems] = useState<ShowcaseItem[]>(DEFAULT_SHOWCASE_ITEMS)
   const [mounted, setMounted] = useState(false)
 
   const totalSlides = showcaseItems.length
 
-  // Dynamically resolve matching product detail URLs from active database
+  // Siklus pergantian otomatis per refresh & fetch katalog dinamis
   useEffect(() => {
-    async function resolveProductLinks() {
+    setMounted(true)
+
+    // Evaluasi mode bergantian per refresh via sessionStorage
+    let nextMode: 'bestseller' | 'promo' = 'bestseller'
+    try {
+      const savedMode = sessionStorage.getItem(STORAGE_KEY)
+      if (savedMode === 'bestseller') {
+        nextMode = 'promo'
+      } else if (savedMode === 'promo') {
+        nextMode = 'bestseller'
+      } else {
+        nextMode = 'bestseller'
+      }
+      sessionStorage.setItem(STORAGE_KEY, nextMode)
+    } catch {
+      // Fallback aman jika sessionStorage diblokir
+    }
+
+    setShowcaseMode(nextMode)
+
+    async function loadGadgets() {
       try {
         const res = await fetch('/api/gadgets')
         const data = await res.json()
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-          const apiProducts = data.data
-          setShowcaseItems((prev) =>
-            prev.map((item) => {
-              const match = apiProducts.find((p: any) => {
-                const bMatch =
-                  p.brand?.toLowerCase() === item.brand.toLowerCase()
-                if (!bMatch) return false
-                const searchWords = item.name.toLowerCase().split(' ')
-                const pName = (p.name + ' ' + (p.model || '')).toLowerCase()
-                return searchWords.some(
-                  (w: string) => w.length > 2 && pName.includes(w)
-                )
-              })
-              if (match && match.id) {
-                return {
-                  ...item,
-                  href: `/gadget/${match.id}`,
-                }
-              }
-              return item
-            })
-          )
+          const bList = buildBestsellers(data.data)
+          const pList = buildPromos(data.data)
+          setBestsellerList(bList)
+          setPromoList(pList)
+
+          const activeItems = nextMode === 'promo' ? pList : bList
+          if (activeItems.length > 0) {
+            setShowcaseItems(activeItems)
+          }
         }
       } catch {
-        // Fallback gracefully to default seeded URLs
+        // Fallback gracefully ke default items
       }
     }
-    resolveProductLinks()
+
+    loadGadgets()
   }, [])
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const handleModeSwitch = useCallback(
+    (mode: 'bestseller' | 'promo') => {
+      setShowcaseMode(mode)
+      try {
+        sessionStorage.setItem(STORAGE_KEY, mode)
+      } catch {}
+
+      if (mode === 'promo' && promoList.length > 0) {
+        setShowcaseItems(promoList)
+      } else if (mode === 'bestseller' && bestsellerList.length > 0) {
+        setShowcaseItems(bestsellerList)
+      }
+      setActiveSlide(1) // Kembalikan kartu tengah (Rank #1) ke posisi depan
+    },
+    [promoList, bestsellerList]
+  )
 
   useEffect(() => {
-    if (isPaused) return
+    if (isPaused || totalSlides === 0) return
     const timer = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % totalSlides)
     }, 4500)
@@ -169,6 +348,56 @@ export function SectionHeroClean() {
             onMouseLeave={() => setIsPaused(false)}
           >
             <div className="relative mx-auto max-w-md sm:max-w-lg lg:max-w-none">
+              {/* Mode Switcher Segmented Control */}
+              <div className="mb-3.5 flex flex-col items-center gap-1.5">
+                <div className="inline-flex items-center rounded-full border border-slate-200/80 bg-slate-100/80 p-0.5 shadow-2xs backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
+                  <button
+                    type="button"
+                    onClick={() => handleModeSwitch('bestseller')}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold transition-all duration-200 ${
+                      showcaseMode === 'bestseller'
+                        ? 'bg-white text-orange-600 shadow-sm dark:bg-slate-800 dark:text-orange-400'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    }`}
+                  >
+                    <Flame className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
+                    <span>HP Terlaris</span>
+                    {showcaseMode === 'bestseller' && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleModeSwitch('promo')}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold transition-all duration-200 ${
+                      showcaseMode === 'promo'
+                        ? 'bg-white text-rose-600 shadow-sm dark:bg-slate-800 dark:text-rose-400'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    }`}
+                  >
+                    <Zap className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />
+                    <span>Flash Promo</span>
+                    {showcaseMode === 'promo' && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  <Sparkles className="h-3 w-3 text-orange-500" />
+                  <span>
+                    {showcaseMode === 'bestseller'
+                      ? 'Kurasi penjualan tertinggi di platform'
+                      : 'Diskon & potongan harga terbaik'}
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                    berganti saat refresh
+                  </span>
+                </div>
+              </div>
+
               {/* 3D Depth Cards Stage with Hardware Acceleration & Spatial Perspective */}
               <div
                 className="relative flex h-[430px] w-full items-center justify-center sm:h-[460px]"
@@ -213,7 +442,7 @@ export function SectionHeroClean() {
 
                   return (
                     <motion.div
-                      key={item.id}
+                      key={`${showcaseMode}-${item.id}`}
                       animate={motionValues}
                       initial={false}
                       transition={{
@@ -258,19 +487,34 @@ export function SectionHeroClean() {
                         className={`block ${isCenter ? 'cursor-pointer' : ''}`}
                       >
                         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 dark:border-slate-800/80 dark:bg-slate-950">
-                          <Image
+                          <ImageWithFallback
                             src={item.image}
                             alt={item.name}
                             fill
                             priority={isCenter}
                             sizes="(max-width: 640px) 100vw, 400px"
                             className="h-full w-full object-cover"
+                            fallbackSrc="https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=900&q=80"
                           />
 
-                          {/* Top-Left: Brand Badge */}
-                          <div className="absolute left-2.5 top-2.5 z-10 flex items-center gap-1 rounded-full bg-slate-950/85 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur-md">
-                            <Sparkles className="h-2.5 w-2.5 text-orange-400" />
-                            <span>{item.brand}</span>
+                          {/* Top-Left: Mode & Ranking Badge */}
+                          <div
+                            className={`absolute left-2.5 top-2.5 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur-md ${
+                              item.badgeType === 'promo'
+                                ? 'bg-rose-600/95 shadow-sm shadow-rose-600/30'
+                                : item.badgeType === 'bestseller'
+                                  ? 'bg-amber-600/95 shadow-sm shadow-amber-600/30'
+                                  : 'bg-slate-950/85'
+                            }`}
+                          >
+                            {item.badgeType === 'promo' ? (
+                              <Zap className="h-2.5 w-2.5 fill-yellow-300 text-yellow-300" />
+                            ) : item.badgeType === 'bestseller' ? (
+                              <Flame className="h-2.5 w-2.5 fill-yellow-300 text-yellow-300" />
+                            ) : (
+                              <Sparkles className="h-2.5 w-2.5 text-orange-400" />
+                            )}
+                            <span>{item.badge || item.brand}</span>
                           </div>
 
                           {/* Top-Right: Solid Rating Capsule */}
@@ -289,7 +533,11 @@ export function SectionHeroClean() {
                       {/* Product Metadata & Action (Consistent Fixed Height Layout) */}
                       <div className="mt-3.5 space-y-2">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="max-w-[170px] truncate font-semibold text-blue-600 dark:text-blue-400">
+                          <span className={`max-w-[170px] truncate font-semibold ${
+                            item.badgeType === 'promo'
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-blue-600 dark:text-blue-400'
+                          }`}>
                             {item.tagline}
                           </span>
                           <span className="max-w-[140px] truncate text-right text-slate-400">
@@ -315,9 +563,18 @@ export function SectionHeroClean() {
                             <span className="text-lg font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
                               {item.price}
                             </span>
-                            <span className="text-[10px] tabular-nums text-slate-400 line-through">
-                              {item.originalPrice}
-                            </span>
+                            {item.originalPrice && item.originalPrice !== item.price ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] tabular-nums text-slate-400 line-through">
+                                  {item.originalPrice}
+                                </span>
+                                {item.discountPct && item.discountPct > 0 ? (
+                                  <span className="rounded bg-rose-50 px-1 py-0.2 text-[9px] font-extrabold text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+                                    -{item.discountPct}%
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : null}
                           </div>
 
                           <div
