@@ -39,8 +39,7 @@ export function MitraEditorialBanner({
     <section
       id="banner-editorial"
       suppressHydrationWarning
-      className="relative px-4 pb-6 pt-8 sm:px-6 md:flex md:h-screen md:snap-start md:scroll-mt-24 md:flex-col md:justify-center md:overflow-hidden md:pb-8 md:pt-10 lg:px-8"
-      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
+      className="relative px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-14"
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="relative overflow-hidden rounded-3xl bg-[#EAF2FA] shadow-sm transition-colors dark:bg-neutral-900 md:min-h-[300px] lg:min-h-[340px]">

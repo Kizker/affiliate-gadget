@@ -149,7 +149,7 @@ export default function MitraDetailClient({
   }, [mitra.businessName, mitra.city])
 
   return (
-    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white md:h-screen md:overflow-hidden">
+    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white">
       {/* ─────────────────────────────────────────────────────────────
           1. MOBILE VIEW: WORLD-CLASS CLEAN, SIMPLE & ELEGANT LAYOUT
           Cupertino Studio / Airbnb style with interactive tabs,
@@ -177,15 +177,12 @@ export default function MitraDetailClient({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. DESKTOP VIEW: SNAP SCROLL FULLSCREEN (100vh) CONTAINER
-          Preserved 100% for desktop browser experience & full test suite
+          2. DESKTOP VIEW: NATURAL CONTINUOUS SCROLL
+          Consistent section spacing matching /toko/[slug]
       ───────────────────────────────────────────────────────────── */}
-      <div className="hidden md:block md:h-screen md:overflow-hidden">
+      <div className="hidden md:block">
         <Navbar variant="light" />
-        <main
-          id="snap-container"
-          className="md:snap-container w-full [scrollbar-width:none] md:h-screen md:snap-y md:snap-mandatory md:overflow-y-scroll [&::-webkit-scrollbar]:hidden"
-        >
+        <main className="w-full">
           {/* Hero Sections (Desktop) */}
           <MitraHero
             mitra={mitra}
@@ -247,10 +244,8 @@ export default function MitraDetailClient({
             initialIsMobile={initialIsMobile}
           />
 
-          {/* 8. Desktop Footer inside Snap Container */}
-          <div className="footer-snap-item hidden md:block md:snap-start">
-            <Footer variant="light" />
-          </div>
+          {/* 8. Desktop Footer */}
+          <Footer variant="light" />
         </main>
 
         {/* 9. Desktop Floating Technician Chat Popup */}

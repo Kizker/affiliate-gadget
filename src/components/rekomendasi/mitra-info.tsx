@@ -35,8 +35,7 @@ export function MitraInfo({
     <section
       id="informasi-mitra"
       suppressHydrationWarning
-      className="relative border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden md:pt-16 lg:px-8"
-      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
+      className="relative border-t border-neutral-100 px-4 py-10 dark:border-neutral-900 sm:px-6 sm:py-14 lg:px-8 lg:py-16"
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-4 space-y-1.5 text-center sm:mb-5">
