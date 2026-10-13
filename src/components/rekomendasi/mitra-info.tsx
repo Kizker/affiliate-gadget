@@ -55,6 +55,11 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
               <p className="text-[11px] text-neutral-500">
                 {mitra.city}, {mitra.province || 'Indonesia'}
               </p>
+              {mitra.description && (
+                <p className="line-clamp-2 pt-1 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-300">
+                  {mitra.description}
+                </p>
+              )}
             </div>
           </div>
 
