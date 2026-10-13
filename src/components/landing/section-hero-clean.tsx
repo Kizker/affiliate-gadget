@@ -211,7 +211,6 @@ export function SectionHeroClean() {
   const router = useRouter()
   // Initialized to 1 agar kartu tengah (Rank #1) tampil di depan foreground
   const [activeSlide, setActiveSlide] = useState(1)
-  const [isPaused, setIsPaused] = useState(false)
   const [showcaseMode, setShowcaseMode] = useState<'bestseller' | 'promo'>('bestseller')
   const [showcaseItems, setShowcaseItems] = useState<ShowcaseItem[]>(DEFAULT_SHOWCASE_ITEMS)
   const [mounted, setMounted] = useState(false)
@@ -261,13 +260,14 @@ export function SectionHeroClean() {
     loadGadgets()
   }, [])
 
+  // Slideshow rotasi otomatis terus menerus setiap 3.5 detik
   useEffect(() => {
-    if (isPaused || totalSlides === 0) return
+    if (totalSlides === 0) return
     const timer = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % totalSlides)
-    }, 4500)
+    }, 3500)
     return () => clearInterval(timer)
-  }, [isPaused, totalSlides])
+  }, [totalSlides])
 
   return (
     <section className="relative flex h-screen items-center overflow-hidden bg-white pt-16 dark:bg-slate-950">
@@ -321,11 +321,7 @@ export function SectionHeroClean() {
           </div>
 
           {/* Right Column: 3-Card 3D Carousel — hidden on mobile, visible on desktop */}
-          <div
-            className="hidden select-none lg:col-span-6 lg:block"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-          >
+          <div className="hidden select-none lg:col-span-6 lg:block">
             <div className="relative mx-auto max-w-md sm:max-w-lg lg:max-w-none">
               {/* 3D Depth Cards Stage with Hardware Acceleration & Spatial Perspective */}
               <div
@@ -520,6 +516,26 @@ export function SectionHeroClean() {
                         </div>
                       </div>
                     </motion.div>
+                  )
+                })}
+              </div>
+
+              {/* Minimalist Slide Indicator Dots */}
+              <div className="mt-3.5 flex items-center justify-center gap-2">
+                {showcaseItems.map((_, idx) => {
+                  const isActive = idx === activeSlide
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveSlide(idx)}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        isActive
+                          ? 'w-7 bg-orange-500 shadow-xs shadow-orange-500/30'
+                          : 'w-1.5 bg-slate-300/80 hover:bg-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600'
+                      }`}
+                      aria-label={`Lihat slide ${idx + 1}`}
+                    />
                   )
                 })}
               </div>
