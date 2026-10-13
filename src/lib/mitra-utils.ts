@@ -92,4 +92,3 @@ export function formatServicePrice(rawPrice?: string | null): string {
 
   return trimmed
 }
-

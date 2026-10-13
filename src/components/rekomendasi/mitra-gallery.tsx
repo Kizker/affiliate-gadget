@@ -26,7 +26,7 @@ export function MitraGallery({ images, businessName }: MitraGalleryProps) {
   return (
     <section
       id="galeri-workshop"
-      className="border-t border-neutral-100 bg-[#FBFBFD] px-4 py-7 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:py-8 lg:px-8 scroll-mt-20 md:scroll-mt-24"
+      className="scroll-mt-20 border-t border-neutral-100 bg-[#FBFBFD] px-4 py-7 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:scroll-mt-24 md:py-8 lg:px-8"
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-4 space-y-1.5 text-center sm:mb-5">

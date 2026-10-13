@@ -25,7 +25,7 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
   return (
     <section
       id="informasi-mitra"
-      className="relative border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 md:py-10 lg:px-8 scroll-mt-20 md:scroll-mt-24"
+      className="relative scroll-mt-20 border-t border-neutral-100 px-4 py-8 dark:border-neutral-900 sm:px-6 md:scroll-mt-24 md:py-10 lg:px-8"
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-4 space-y-1.5 text-center sm:mb-5">
@@ -114,8 +114,11 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
             </div>
 
             {/* Mobile Contact Badges (Telp, WA, Email, Web) */}
-            {(mitra.phone || mitra.whatsapp || mitra.email || mitra.website) && (
-              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-neutral-100 text-[11px] dark:border-neutral-800">
+            {(mitra.phone ||
+              mitra.whatsapp ||
+              mitra.email ||
+              mitra.website) && (
+              <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-1 text-[11px] dark:border-neutral-800">
                 {mitra.phone && (
                   <a
                     href={`tel:${mitra.phone}`}
@@ -259,7 +262,8 @@ export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
                     <a
                       href={`https://wa.me/${
                         mitra.whatsapp.replace(/[^0-9]/g, '').startsWith('0')
-                          ? '62' + mitra.whatsapp.replace(/[^0-9]/g, '').slice(1)
+                          ? '62' +
+                            mitra.whatsapp.replace(/[^0-9]/g, '').slice(1)
                           : mitra.whatsapp.replace(/[^0-9]/g, '')
                       }`}
                       target="_blank"

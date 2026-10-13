@@ -105,7 +105,11 @@ function getFeatureVisual(featureText: string): FeatureVisualMeta {
   }
 
   // 8. Buka Setiap Hari / Operasional
-  if (lower.includes('buka') || lower.includes('hari') || lower.includes('operasional')) {
+  if (
+    lower.includes('buka') ||
+    lower.includes('hari') ||
+    lower.includes('operasional')
+  ) {
     return {
       dotClass: 'bg-rose-500',
       hoverBorder: 'hover:border-rose-400/60 hover:shadow-rose-500/5',
@@ -113,7 +117,11 @@ function getFeatureVisual(featureText: string): FeatureVisualMeta {
   }
 
   // 9. Cicilan / Pembayaran
-  if (lower.includes('cicilan') || lower.includes('bayar') || lower.includes('payment')) {
+  if (
+    lower.includes('cicilan') ||
+    lower.includes('bayar') ||
+    lower.includes('payment')
+  ) {
     return {
       dotClass: 'bg-violet-500',
       hoverBorder: 'hover:border-violet-400/60 hover:shadow-violet-500/5',
@@ -134,7 +142,10 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
   const activeFeatures = features.slice(0, 5)
 
   return (
-    <section id="keunggulan" className="px-4 py-8 sm:px-6 md:py-10 lg:px-8 scroll-mt-20 md:scroll-mt-24">
+    <section
+      id="keunggulan"
+      className="scroll-mt-20 px-4 py-8 sm:px-6 md:scroll-mt-24 md:py-10 lg:px-8"
+    >
       <div className="mx-auto w-full max-w-7xl">
         {/* Section Header: Bersih, Rapi, Tanpa Ikon */}
         <div className="mx-auto mb-6 max-w-2xl text-center sm:mb-8">
@@ -142,7 +153,8 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
             Standar Layanan {businessName}
           </h2>
           <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400 sm:text-sm">
-            Fasilitas dan komitmen keunggulan resmi yang aktif disediakan oleh workshop ini.
+            Fasilitas dan komitmen keunggulan resmi yang aktif disediakan oleh
+            workshop ini.
           </p>
         </div>
 
@@ -153,13 +165,13 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
         <div
           className={`grid gap-3 sm:gap-4 lg:gap-5 ${
             activeFeatures.length === 1
-              ? 'grid-cols-1 max-w-md mx-auto'
+              ? 'mx-auto max-w-md grid-cols-1'
               : activeFeatures.length === 2
-                ? 'grid-cols-2 max-w-2xl mx-auto'
+                ? 'mx-auto max-w-2xl grid-cols-2'
                 : activeFeatures.length === 3
-                  ? 'grid-cols-2 sm:grid-cols-3 max-w-4xl mx-auto'
+                  ? 'mx-auto max-w-4xl grid-cols-2 sm:grid-cols-3'
                   : activeFeatures.length === 4
-                    ? 'grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto'
+                    ? 'mx-auto max-w-6xl grid-cols-2 lg:grid-cols-4'
                     : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
           }`}
         >
@@ -172,31 +184,33 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
             return (
               <div
                 key={idx}
-                className={`group relative flex flex-col justify-between rounded-2xl border border-neutral-200/80 bg-white p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)] dark:border-neutral-800 dark:bg-neutral-900/90 ${visual.hoverBorder} ${
+                className={`group relative flex flex-col justify-between rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)] dark:border-neutral-800 dark:bg-neutral-900/90 sm:p-5 ${visual.hoverBorder} ${
                   isOddLastOnMobile ? 'col-span-2 sm:col-span-1' : ''
                 }`}
               >
                 {/* Top Row: Nomor Urut Monospace Saja */}
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <span className="inline-flex items-center justify-center h-6.5 w-6.5 sm:h-7 sm:w-7 rounded-lg bg-neutral-100 font-mono text-[11px] sm:text-xs font-bold text-neutral-600 transition-colors group-hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:group-hover:bg-neutral-700">
+                <div className="mb-3 flex items-center justify-between sm:mb-4">
+                  <span className="h-6.5 w-6.5 inline-flex items-center justify-center rounded-lg bg-neutral-100 font-mono text-[11px] font-bold text-neutral-600 transition-colors group-hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:group-hover:bg-neutral-700 sm:h-7 sm:w-7 sm:text-xs">
                     0{idx + 1}
                   </span>
                 </div>
 
                 {/* Content: Teks Murni Inputan Mitra */}
                 <div className="my-auto py-1 sm:py-1.5">
-                  <h3 className="text-xs sm:text-sm lg:text-base font-bold text-neutral-950 dark:text-white leading-snug">
+                  <h3 className="text-xs font-bold leading-snug text-neutral-950 dark:text-white sm:text-sm lg:text-base">
                     {feat}
                   </h3>
                 </div>
 
                 {/* Footer: Indikator Fasilitas Toko */}
-                <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-[10px] sm:text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                <div className="mt-3 flex items-center justify-between border-t border-neutral-100 pt-2.5 text-[10px] font-medium text-neutral-500 dark:border-neutral-800/80 dark:text-neutral-400 sm:mt-4 sm:pt-3 sm:text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <span className={`h-1.5 w-1.5 rounded-full ${visual.dotClass}`} />
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${visual.dotClass}`}
+                    />
                     <span>Fasilitas Toko</span>
                   </div>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-[10px] tracking-wide uppercase">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
                     Aktif
                   </span>
                 </div>
@@ -208,5 +222,3 @@ export function MitraFeatures({ features, businessName }: MitraFeaturesProps) {
     </section>
   )
 }
-
-

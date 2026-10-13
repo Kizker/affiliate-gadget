@@ -33,7 +33,7 @@ export function MitraEditorialBanner({
   return (
     <section
       id="banner-editorial"
-      className="relative px-4 pt-8 pb-6 sm:px-6 md:pt-10 md:pb-8 lg:px-8 scroll-mt-20 md:scroll-mt-24"
+      className="relative scroll-mt-20 px-4 pb-6 pt-8 sm:px-6 md:scroll-mt-24 md:pb-8 md:pt-10 lg:px-8"
     >
       <div className="mx-auto w-full max-w-7xl">
         <div className="relative overflow-hidden rounded-3xl bg-[#EAF2FA] shadow-sm transition-colors dark:bg-neutral-900 md:min-h-[300px] lg:min-h-[340px]">
