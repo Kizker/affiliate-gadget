@@ -165,110 +165,69 @@ export default function AddressMapPicker({
     const lat = selectedPosition?.lat || mapCenter.lat
     const lng = selectedPosition?.lng || mapCenter.lng
 
+    const handleFallbackMapClick = async (
+      e: React.MouseEvent<HTMLDivElement>
+    ) => {
+      // Don't trigger if clicked button
+      if ((e.target as HTMLElement).closest('button')) return
+
+      const rect = e.currentTarget.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+
+      const normX = x / rect.width - 0.5
+      const normY = y / rect.height - 0.5
+
+      const currentLat = selectedPosition?.lat || mapCenter.lat
+      const currentLng = selectedPosition?.lng || mapCenter.lng
+
+      // Calculate new coordinates from click position (~0.008 lat span and ~0.012 lng span)
+      const newLat = currentLat - normY * 0.008
+      const newLng = currentLng + normX * 0.012
+
+      const newPos = { lat: newLat, lng: newLng }
+      setSelectedPosition(newPos)
+      setMapCenter(newPos)
+
+      setLoading(true)
+      const addrData = await fetchAddressFromCoords(newLat, newLng)
+      if (addrData) {
+        onLocationSelect(newLat, newLng, addrData)
+      } else {
+        onLocationSelect(newLat, newLng)
+      }
+      setLoading(false)
+    }
+
     return (
       <div
-        className="relative flex w-full select-none flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100"
+        onClick={handleFallbackMapClick}
+        className="relative flex w-full cursor-crosshair select-none flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100"
         style={{ height }}
+        title="Klik di mana saja pada peta untuk mengubah titik lokasi toko"
       >
-        {/* Visual Map Background with City Grid Aesthetic */}
-        <div className="absolute inset-0 overflow-hidden bg-[#e5e9ec]">
-          {/* Subtle vector grid and streets */}
-          <svg
-            className="h-full w-full opacity-60"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <pattern
-                id="grid-pattern"
-                width="40"
-                height="40"
-                patternUnits="userSpaceOnUse"
-              >
-                <path
-                  d="M 40 0 L 0 0 0 40"
-                  fill="none"
-                  stroke="#cbd5e1"
-                  strokeWidth="1"
-                />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid-pattern)" />
-            {/* Major Arterial Roads Simulation */}
-            <path
-              d="M -50 120 Q 150 80 400 240"
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="12"
-            />
-            <path
-              d="M -50 120 Q 150 80 400 240"
-              fill="none"
-              stroke="#fbbf24"
-              strokeWidth="4"
-            />
-            <path
-              d="M 120 -50 Q 160 200 200 450"
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="10"
-            />
-            <path
-              d="M 120 -50 Q 160 200 200 450"
-              fill="none"
-              stroke="#cbd5e1"
-              strokeWidth="3"
-            />
-            <path
-              d="M 280 -50 L 80 450"
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="8"
-            />
-            {/* Green Parks */}
-            <rect
-              x="30"
-              y="40"
-              width="80"
-              height="60"
-              rx="12"
-              fill="#dcfce7"
-              opacity="0.8"
-            />
-            <rect
-              x="220"
-              y="160"
-              width="90"
-              height="70"
-              rx="16"
-              fill="#dcfce7"
-              opacity="0.8"
-            />
-            {/* Water Blue */}
-            <path
-              d="M 300 -10 C 320 100 280 200 350 400"
-              fill="none"
-              stroke="#bae6fd"
-              strokeWidth="20"
-              opacity="0.7"
-            />
-          </svg>
+        {/* Real OpenStreetMap Visual Map Layer */}
+        <iframe
+          src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.007}%2C${lat - 0.004}%2C${lng + 0.007}%2C${lat + 0.004}&layer=mapnik&marker=${lat}%2C${lng}`}
+          className="pointer-events-none absolute inset-0 h-full w-full border-0 opacity-80"
+          title="Peta Interaktif Lokasi Toko"
+        />
 
-          {/* Central Pulsing GPS Pin Target */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="relative flex flex-col items-center">
-              {/* Ripple animation */}
-              <div className="absolute -inset-4 animate-ping rounded-full bg-orange-500/20" />
-              <div className="absolute -inset-2 rounded-full bg-orange-500/30" />
+        {/* Central Pulsing GPS Pin Target */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="relative flex flex-col items-center">
+            {/* Ripple animation */}
+            <div className="absolute -inset-4 animate-ping rounded-full bg-orange-500/20" />
+            <div className="absolute -inset-2 rounded-full bg-orange-500/30" />
 
-              {/* Pin Icon Bubble */}
-              <div className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-white shadow-xl ring-4 ring-white">
-                <MapPin className="h-5 w-5 fill-orange-500 text-orange-500" />
-              </div>
-
-              {/* Pin point anchor stem */}
-              <div className="-mt-0.5 h-3 w-1.5 rounded-b-full bg-slate-950 shadow-sm" />
-              <div className="mt-0.5 h-1.5 w-4 rounded-full bg-slate-950/30 blur-[1px]" />
+            {/* Pin Icon Bubble */}
+            <div className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-white shadow-xl ring-4 ring-white">
+              <MapPin className="h-5 w-5 fill-orange-500 text-orange-500" />
             </div>
+
+            {/* Pin point anchor stem */}
+            <div className="-mt-0.5 h-3 w-1.5 rounded-b-full bg-slate-950 shadow-sm" />
+            <div className="mt-0.5 h-1.5 w-4 rounded-full bg-slate-950/30 blur-[1px]" />
           </div>
         </div>
 
@@ -276,7 +235,7 @@ export default function AddressMapPicker({
         <div className="relative z-10 flex items-center justify-between bg-gradient-to-b from-slate-900/60 via-slate-900/10 to-transparent p-3">
           <div className="shadow-2xs flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-slate-900 backdrop-blur-md">
             <Navigation className="h-3 w-3 text-orange-600" />
-            <span>Peta Interaktif Kurir</span>
+            <span>Klik peta untuk pindahkan pin</span>
           </div>
 
           <button

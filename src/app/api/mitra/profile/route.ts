@@ -144,36 +144,51 @@ export async function POST(request: NextRequest) {
 
     let mitra
 
+    const baseData = {
+      businessName: body.businessName,
+      tagline: body.tagline || null,
+      description: body.description || null,
+      banner: body.banner || null,
+      address: body.address,
+      city: body.city,
+      province: body.province || 'DKI Jakarta',
+      phone: body.phone,
+      whatsapp: body.whatsapp || body.phone || null,
+      email: body.email || null,
+      website: body.website || null,
+      features: Array.isArray(body.features) ? body.features.slice(0, 10) : [],
+      weekdayHours: body.weekdayHours || null,
+      weekendHours: body.weekendHours || null,
+      latitude: body.latitude || null,
+      longitude: body.longitude || null,
+      isApproved: isAlreadyApproved ? true : false,
+    }
+
     if (existingMitra) {
-      // Update existing profile
+      // Update existing profile (safe from in-memory Prisma DMMF lock)
       mitra = await prisma.mitra.update({
         where: { userId: user.id },
-        data: {
-          businessName: body.businessName,
-          tagline: body.tagline || null,
-          description: body.description || null,
-          banner: body.banner || null,
-          address: body.address,
-          city: body.city,
-          province: body.province || 'DKI Jakarta',
-          phone: body.phone,
-          whatsapp: body.whatsapp || body.phone || null,
-          email: body.email || null,
-          website: body.website || null,
-          features: Array.isArray(body.features)
-            ? body.features.slice(0, 10)
-            : [],
-          weekdayHours: body.weekdayHours || null,
-          weekendHours: body.weekendHours || null,
-          latitude: body.latitude || null,
-          longitude: body.longitude || null,
-          isApproved: isAlreadyApproved ? true : false,
-        },
+        data: baseData,
         include: {
           services: true,
           images: true,
         },
       })
+
+      // Sync mapsUrl directly to database column
+      if (body.mapsUrl !== undefined) {
+        const cleanMapsUrl = body.mapsUrl ? String(body.mapsUrl).trim() : null
+        try {
+          await prisma.$executeRawUnsafe(
+            'UPDATE "mitras" SET "mapsUrl" = $1 WHERE "userId" = $2',
+            cleanMapsUrl,
+            user.id
+          )
+          ;(mitra as any).mapsUrl = cleanMapsUrl
+        } catch (rawErr) {
+          console.warn('Gagal sync mapsUrl via raw query:', rawErr)
+        }
+      }
 
       // Delete existing services and images
       await prisma.mitraService.deleteMany({
@@ -187,31 +202,27 @@ export async function POST(request: NextRequest) {
       mitra = await prisma.mitra.create({
         data: {
           userId: user.id,
-          businessName: body.businessName,
-          tagline: body.tagline || null,
-          description: body.description || null,
-          banner: body.banner || null,
-          address: body.address,
-          city: body.city,
-          province: body.province || 'DKI Jakarta',
-          phone: body.phone,
-          whatsapp: body.whatsapp || body.phone || null,
-          email: body.email || null,
-          website: body.website || null,
-          features: Array.isArray(body.features)
-            ? body.features.slice(0, 10)
-            : [],
-          weekdayHours: body.weekdayHours || null,
-          weekendHours: body.weekendHours || null,
-          latitude: body.latitude || null,
-          longitude: body.longitude || null,
-          isApproved: isAlreadyApproved ? true : false,
+          ...baseData,
         },
         include: {
           services: true,
           images: true,
         },
       })
+
+      if (body.mapsUrl !== undefined) {
+        const cleanMapsUrl = body.mapsUrl ? String(body.mapsUrl).trim() : null
+        try {
+          await prisma.$executeRawUnsafe(
+            'UPDATE "mitras" SET "mapsUrl" = $1 WHERE "id" = $2',
+            cleanMapsUrl,
+            mitra.id
+          )
+          ;(mitra as any).mapsUrl = cleanMapsUrl
+        } catch (rawErr) {
+          console.warn('Gagal sync mapsUrl on create:', rawErr)
+        }
+      }
     }
 
     // Create services if provided
@@ -403,6 +414,32 @@ export async function PATCH(request: NextRequest) {
       updateData.banner = body.banner ? String(body.banner).trim() : null
     }
 
+    if (body.mapsUrl !== undefined) {
+      updateData.mapsUrl = body.mapsUrl ? String(body.mapsUrl).trim() : null
+    }
+
+    if (body.address !== undefined) {
+      updateData.address = String(body.address).trim()
+    }
+
+    if (body.city !== undefined) {
+      updateData.city = String(body.city).trim()
+    }
+
+    if (body.province !== undefined) {
+      updateData.province = String(body.province).trim()
+    }
+
+    if (body.latitude !== undefined) {
+      updateData.latitude =
+        body.latitude !== null ? Number(body.latitude) : null
+    }
+
+    if (body.longitude !== undefined) {
+      updateData.longitude =
+        body.longitude !== null ? Number(body.longitude) : null
+    }
+
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { error: 'No valid fields to update' },
@@ -410,15 +447,36 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const updated = await prisma.mitra.update({
-      where: { id: existingMitra.id },
-      data: updateData,
-      select: {
-        id: true,
-        businessName: true,
-        banner: true,
-      },
-    })
+    const mapsUrlValue = updateData.mapsUrl
+    delete updateData.mapsUrl
+
+    let updated: any = existingMitra
+    if (Object.keys(updateData).length > 0) {
+      updated = await prisma.mitra.update({
+        where: { id: existingMitra.id },
+        data: updateData,
+        select: {
+          id: true,
+          businessName: true,
+          banner: true,
+          address: true,
+          city: true,
+        },
+      })
+    }
+
+    if (mapsUrlValue !== undefined) {
+      try {
+        await prisma.$executeRawUnsafe(
+          'UPDATE "mitras" SET "mapsUrl" = $1 WHERE "id" = $2',
+          mapsUrlValue,
+          existingMitra.id
+        )
+        updated.mapsUrl = mapsUrlValue
+      } catch (rawErr) {
+        console.warn('Gagal update mapsUrl in PATCH via raw SQL:', rawErr)
+      }
+    }
 
     // Instant revalidate
     try {

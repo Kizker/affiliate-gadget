@@ -61,6 +61,7 @@ export type MitraData = {
   weekendHours: string | null
   latitude: number | null
   longitude: number | null
+  mapsUrl: string | null
   rating: number
   totalReview: number
   isOpen: boolean
@@ -124,6 +125,7 @@ async function getMitra(id: string): Promise<MitraData | null> {
       weekendHours: mitra.weekendHours,
       latitude: mitra.latitude,
       longitude: mitra.longitude,
+      mapsUrl: mitra.mapsUrl || null,
       rating: mitra.rating,
       totalReview: mitra.totalReview,
       isOpen,

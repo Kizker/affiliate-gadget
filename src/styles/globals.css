@@ -402,3 +402,55 @@
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   DESKTOP 1 SECTION 1 HALAMAN FULLSCREEN SNAP (GLOBAL OVERRIDE)
+   ========================================================================== */
+@media screen and (min-width: 768px) {
+  #snap-container {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    overflow-y: scroll !important;
+    scroll-snap-type: y mandatory !important;
+    scroll-behavior: smooth !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #snap-container > section:not(.md\:hidden),
+  #snap-container > div#hero {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    scroll-snap-align: start !important;
+    scroll-snap-stop: always !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow: hidden !important;
+    padding-top: 5rem !important; /* Safe 80px offset for 64px desktop navbar */
+    padding-bottom: 2.5rem !important; /* Balanced bottom spacing */
+  }
+
+  /* Sembunyikan total elemen khusus mobile agar tidak bocor ke desktop snap container */
+  #snap-container > section.md\:hidden,
+  #snap-container > div.md\:hidden,
+  #snap-container > .md\:hidden {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #snap-container > footer,
+  #snap-container > div:has(footer),
+  #snap-container > div.footer-snap-item {
+    scroll-snap-align: start !important;
+    scroll-snap-stop: always !important;
+  }
+}

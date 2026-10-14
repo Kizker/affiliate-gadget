@@ -736,6 +736,7 @@ model Mitra {
   province       String
   latitude       Float?
   longitude      Float?
+  mapsUrl        String?
   phone          String
   whatsapp       String?
   email          String?

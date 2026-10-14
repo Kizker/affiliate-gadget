@@ -35,9 +35,10 @@ export function MitraInfo({
     <section
       id="informasi-mitra"
       suppressHydrationWarning
-      className="relative border-t border-neutral-100 px-4 py-10 dark:border-neutral-900 sm:px-6 sm:py-14 lg:px-8 lg:py-16"
+      className="relative border-t border-neutral-100 px-4 dark:border-neutral-900 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden lg:px-8"
+      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >
-      <div className="mx-auto w-full max-w-7xl">
+      <div className="mx-auto my-auto w-full max-w-7xl">
         <div className="mb-4 space-y-1.5 text-center sm:mb-5">
           <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-2xl lg:text-3xl">
             Informasi Workshop &amp; Lokasi Resmi
@@ -75,17 +76,26 @@ export function MitraInfo({
 
           {/* Address & Google Maps */}
           <div className="space-y-2.5">
-            <div className="flex items-start gap-2.5 text-xs text-neutral-600 dark:text-neutral-400">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-neutral-900 dark:text-white" />
-              <div>
-                <p className="font-medium leading-relaxed text-neutral-900 dark:text-neutral-200">
-                  {mitra.address}
-                </p>
-                <p className="text-neutral-500">
-                  {mitra.city}, {mitra.province}
-                </p>
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group/addr block rounded-2xl border border-neutral-100 bg-neutral-50/70 p-3 transition hover:border-neutral-300 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900/50 dark:hover:border-neutral-700"
+              title="Buka Alamat di Google Maps"
+            >
+              <div className="flex items-start gap-2.5 text-xs text-neutral-600 dark:text-neutral-400">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-neutral-900 transition-colors group-hover/addr:text-orange-500 dark:text-white" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium leading-relaxed text-neutral-900 transition-colors group-hover/addr:text-orange-600 group-hover/addr:underline dark:text-neutral-200 dark:group-hover/addr:text-orange-400">
+                    {mitra.address}
+                  </p>
+                  <p className="text-neutral-500">
+                    {mitra.city}, {mitra.province}
+                  </p>
+                </div>
+                <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-400 transition-colors group-hover/addr:text-neutral-900 dark:group-hover/addr:text-white" />
               </div>
-            </div>
+            </a>
 
             <a
               href={mapsUrl}
@@ -217,11 +227,21 @@ export function MitraInfo({
             <h3 className="text-xs font-bold text-neutral-950 dark:text-white sm:text-sm">
               Alamat Fisik Workshop
             </h3>
-            <div className="space-y-0.5 text-xs text-neutral-600 dark:text-neutral-400">
-              <p className="line-clamp-2 leading-relaxed">{mitra.address}</p>
-              <p className="font-medium">
-                {mitra.city}, {mitra.province}
-              </p>
+            <div className="space-y-1 text-xs text-neutral-600 dark:text-neutral-400">
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group/deskaddr block"
+                title="Buka alamat di Google Maps"
+              >
+                <p className="line-clamp-2 leading-relaxed text-neutral-900 transition-colors group-hover/deskaddr:text-orange-600 group-hover/deskaddr:underline dark:text-neutral-200 dark:group-hover/deskaddr:text-orange-400">
+                  {mitra.address}
+                </p>
+                <p className="font-medium text-neutral-500">
+                  {mitra.city}, {mitra.province}
+                </p>
+              </a>
               <div className="pt-1">
                 <a
                   href={mapsUrl}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -20,10 +20,18 @@ import {
   Wrench,
   Image as ImageIcon,
   Trash2,
+  MapPin,
+  Compass,
+  Crosshair,
+  Search,
+  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import ImageUpload from '@/components/upload/image-upload'
 import MultiImageUpload from '@/components/upload/multi-image-upload'
+import AddressMapPicker, {
+  GeocodeAddressData,
+} from '@/components/maps/address-map-picker'
 import { motion } from 'framer-motion'
 import { formatServicePrice } from '@/lib/mitra-utils'
 
@@ -40,6 +48,7 @@ interface MitraProfile {
   city: string
   province: string
   address: string
+  mapsUrl?: string
   phone: string
   whatsapp: string
   email: string
@@ -63,6 +72,7 @@ const DEFAULT_PROFILE: MitraProfile = {
   city: '',
   province: '',
   address: '',
+  mapsUrl: '',
   phone: '',
   whatsapp: '',
   email: '',
@@ -119,6 +129,273 @@ export default function MitraProfileEdit() {
   const [newFeature, setNewFeature] = useState('')
   const MAX_FEATURE_LENGTH = 30
   const [mitraId, setMitraId] = useState<string | null>(null)
+  const [gpsLoading, setGpsLoading] = useState(false)
+  const [mapSearchQuery, setMapSearchQuery] = useState('')
+  const [mapSearchResults, setMapSearchResults] = useState<
+    Array<{
+      id: string
+      title: string
+      fullAddress: string
+      city: string
+      province: string
+      latitude: number
+      longitude: number
+      mapsUrl: string
+    }>
+  >([])
+  const [isMapSearching, setIsMapSearching] = useState(false)
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  const isUserTypingRef = useRef(false)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(e.target as Node)
+      ) {
+        setShowSearchResults(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Debounced search for Google Maps places/addresses (only triggers when user actively types)
+  useEffect(() => {
+    if (!isUserTypingRef.current) {
+      return
+    }
+
+    if (!mapSearchQuery.trim() || mapSearchQuery.trim().length < 2) {
+      setMapSearchResults([])
+      setIsMapSearching(false)
+      setShowSearchResults(false)
+      return
+    }
+
+    const isUrlOrCoords =
+      mapSearchQuery.includes('http') ||
+      mapSearchQuery.includes('maps.google') ||
+      mapSearchQuery.includes('goo.gl') ||
+      /@?-?\d+\.\d+/.test(mapSearchQuery)
+
+    const timer = setTimeout(
+      async () => {
+        setIsMapSearching(true)
+        try {
+          const res = await fetch(
+            `/api/geo/search?q=${encodeURIComponent(mapSearchQuery.trim())}`
+          )
+          if (res.ok) {
+            const data = await res.json()
+            const results = data.results || []
+            setMapSearchResults(results)
+            if (isUserTypingRef.current) {
+              setShowSearchResults(true)
+            }
+
+            // If the user pasted an explicit Google Maps URL or coordinates with a valid match, auto-select it immediately
+            if (
+              isUrlOrCoords &&
+              results.length === 1 &&
+              results[0].latitude !== 0 &&
+              results[0].longitude !== 0
+            ) {
+              const first = results[0]
+              setProfile((prev) => ({
+                ...prev,
+                address: first.fullAddress || prev.address,
+                city: first.city || prev.city,
+                province: first.province || prev.province,
+                latitude: first.latitude,
+                longitude: first.longitude,
+                mapsUrl: first.mapsUrl,
+              }))
+              isUserTypingRef.current = false
+              setShowSearchResults(false)
+              setMapSearchResults([])
+              toast.success(
+                'Tautan Google Maps berhasil diterapkan ke profil toko!'
+              )
+            }
+          }
+        } catch (err) {
+          console.warn('Gagal mencari lokasi:', err)
+        } finally {
+          setIsMapSearching(false)
+        }
+      },
+      isUrlOrCoords ? 80 : 280
+    )
+
+    return () => clearTimeout(timer)
+  }, [mapSearchQuery])
+
+  // Computed active Google Maps URL (either user custom link, GPS lat/lng, or address query)
+  const activeMapsLink = useMemo(() => {
+    if (profile.mapsUrl && profile.mapsUrl.trim().startsWith('http')) {
+      return profile.mapsUrl.trim()
+    }
+    if (profile.latitude && profile.longitude) {
+      return `https://maps.google.com/?q=${profile.latitude},${profile.longitude}`
+    }
+    const q = [profile.name, profile.address, profile.city]
+      .filter(Boolean)
+      .join(', ')
+    return q ? `https://maps.google.com/?q=${encodeURIComponent(q)}` : ''
+  }, [
+    profile.mapsUrl,
+    profile.latitude,
+    profile.longitude,
+    profile.name,
+    profile.address,
+    profile.city,
+  ])
+
+  const handleSelectSearchResult = (item: {
+    id: string
+    title: string
+    fullAddress: string
+    city: string
+    province: string
+    latitude: number
+    longitude: number
+    mapsUrl: string
+  }) => {
+    isUserTypingRef.current = false
+    setShowSearchResults(false)
+    setMapSearchResults([])
+
+    if (!item.latitude && !item.longitude) {
+      return
+    }
+
+    setProfile((prev) => ({
+      ...prev,
+      address: item.fullAddress || prev.address,
+      city: item.city || prev.city,
+      province: item.province || prev.province,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      mapsUrl: item.mapsUrl,
+    }))
+    setMapSearchQuery(item.title || item.fullAddress)
+    toast.success(
+      'Alamat lengkap fisik toko dan titik peta berhasil disesuaikan!'
+    )
+  }
+
+  const handleOpenGoogleMapsSearch = () => {
+    const query = [profile.name, profile.address, profile.city]
+      .filter(Boolean)
+      .join(' ')
+    const searchUrl = query
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+      : 'https://www.google.com/maps'
+    window.open(searchUrl, '_blank')
+  }
+
+  // Adjusts physical address, city, and province whenever a location is chosen on the map
+  const handleLocationSelect = (
+    lat: number,
+    lng: number,
+    addrData?: string | GeocodeAddressData
+  ) => {
+    const generatedMapsUrl = `https://maps.google.com/?q=${lat},${lng}`
+    setProfile((prev) => {
+      const updated = {
+        ...prev,
+        latitude: lat,
+        longitude: lng,
+        mapsUrl: generatedMapsUrl,
+      }
+      if (addrData && typeof addrData === 'object') {
+        if (addrData.fullAddress) {
+          updated.address = addrData.fullAddress
+        }
+        if (addrData.city) {
+          updated.city = addrData.city
+        }
+        if (addrData.province) {
+          updated.province = addrData.province
+        }
+      } else if (typeof addrData === 'string' && addrData) {
+        updated.address = addrData
+      }
+      return updated
+    })
+    if (addrData && typeof addrData === 'object' && addrData.fullAddress) {
+      isUserTypingRef.current = false
+      setShowSearchResults(false)
+      setMapSearchResults([])
+      setMapSearchQuery(addrData.fullAddress)
+    }
+    toast.success('Alamat fisik toko berhasil disesuaikan dari titik peta!')
+  }
+
+  const handleGetCurrentLocationGps = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      toast.error('Perangkat Anda tidak mendukung deteksi lokasi GPS')
+      return
+    }
+
+    setGpsLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
+        const gUrl = `https://maps.google.com/?q=${lat},${lng}`
+
+        try {
+          const res = await fetch(`/api/geo/reverse?lat=${lat}&lng=${lng}`)
+          if (res.ok) {
+            const data: GeocodeAddressData = await res.json()
+            setProfile((prev) => ({
+              ...prev,
+              latitude: lat,
+              longitude: lng,
+              mapsUrl: gUrl,
+              address: data.fullAddress || prev.address,
+              city: data.city || prev.city,
+              province: data.province || prev.province,
+            }))
+            isUserTypingRef.current = false
+            setShowSearchResults(false)
+            setMapSearchResults([])
+            setMapSearchQuery(data.fullAddress || '')
+            toast.success(
+              'Alamat fisik toko & titik Google Maps berhasil disinkronkan dari GPS!'
+            )
+            setGpsLoading(false)
+            return
+          }
+        } catch (e) {
+          console.warn('Reverse geocode error:', e)
+        }
+
+        setProfile((prev) => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+          mapsUrl: gUrl,
+        }))
+        toast.success(
+          `Koordinat GPS terpasang: ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+        )
+        setGpsLoading(false)
+      },
+      (err) => {
+        setGpsLoading(false)
+        console.warn('Geolocation error:', err)
+        toast.error(
+          'Gagal mendeteksi lokasi GPS. Pastikan izin lokasi browser aktif.'
+        )
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    )
+  }
 
   // Redirect pending mitra FIRST
   useEffect(() => {
@@ -153,6 +430,9 @@ export default function MitraProfileEdit() {
             city: data.city || '',
             province: data.province || '',
             address: data.address || '',
+            mapsUrl: data.mapsUrl || '',
+            latitude: data.latitude || undefined,
+            longitude: data.longitude || undefined,
             phone: data.phone || '',
             whatsapp: data.whatsapp || data.phone || '',
             email: data.email || '',
@@ -177,6 +457,13 @@ export default function MitraProfileEdit() {
               weekend: data.weekendHours || 'Minggu: Tutup',
             },
           })
+
+          if (data.address) {
+            isUserTypingRef.current = false
+            setShowSearchResults(false)
+            setMapSearchResults([])
+            setMapSearchQuery(data.address)
+          }
         }
       } catch (error) {
         console.error('Error fetching profile:', error)
@@ -252,6 +539,7 @@ export default function MitraProfileEdit() {
         address: profile.address.trim(),
         city: profile.city.trim(),
         province: profile.province.trim() || 'DKI Jakarta',
+        mapsUrl: profile.mapsUrl?.trim() || null,
         phone: profile.phone.trim(),
         whatsapp: (profile.whatsapp || profile.phone).trim(),
         email: profile.email.trim() || null,
@@ -692,50 +980,248 @@ export default function MitraProfileEdit() {
                 />
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  Alamat Lengkap Fisik Toko{' '}
-                  <span className="text-rose-500">*</span>
-                </label>
-                <textarea
-                  value={profile.address}
-                  onChange={(e) =>
-                    setProfile({ ...profile, address: e.target.value })
-                  }
-                  placeholder="Masukkan alamat lengkap fisik toko (Jalan, No, Lantai/Blok Mall, RT/RW, Kecamatan)..."
-                  rows={3}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                />
-              </div>
+              {/* Google Maps & Location Block */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/50 sm:p-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
+                      <MapPin className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Lokasi & Integrasi Google Maps Toko
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Pengunjung profil toko akan langsung dialihkan ke titik
+                        Google Maps ini saat membuka alamat toko.
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
+                  {/* Quick Action Helpers */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 sm:pt-0">
+                    <button
+                      type="button"
+                      onClick={handleOpenGoogleMapsSearch}
+                      className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                      title="Buka Google Maps di tab baru untuk mencari toko dan menyalin tautan"
+                    >
+                      <Search className="h-3.5 w-3.5 text-orange-500" />
+                      <span>Cari di Google Maps ↗</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleGetCurrentLocationGps}
+                      disabled={gpsLoading}
+                      className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                      title="Gunakan GPS perangkat untuk mengambil koordinat dan alamat otomatis"
+                    >
+                      {gpsLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Crosshair className="h-3.5 w-3.5 text-orange-400 dark:text-orange-600" />
+                      )}
+                      <span>
+                        {gpsLoading ? 'Mendeteksi...' : 'GPS Saat Ini'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1. Google Maps Search Bar (Pencarian Seperti di Google Maps) */}
+                <div ref={searchContainerRef} className="relative mt-4">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      <Search className="h-3.5 w-3.5 text-orange-500" />
+                      Cari Lokasi / Alamat di Google Maps
+                    </label>
+                    {activeMapsLink && (
+                      <a
+                        href={activeMapsLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 underline hover:text-orange-700 dark:text-orange-400"
+                        title="Buka titik lokasi saat ini di Google Maps"
+                      >
+                        <span>Tes Buka di Google Maps ↗</span>
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                      {isMapSearching ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                      ) : (
+                        <Search className="h-4 w-4 text-orange-500" />
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={mapSearchQuery}
+                      onChange={(e) => {
+                        isUserTypingRef.current = true
+                        setMapSearchQuery(e.target.value)
+                        setShowSearchResults(true)
+                      }}
+                      onFocus={() => {
+                        if (
+                          isUserTypingRef.current &&
+                          mapSearchResults.length > 0
+                        ) {
+                          setShowSearchResults(true)
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setShowSearchResults(false)
+                        }
+                      }}
+                      placeholder="Ketik nama gedung, toko, jalan, atau landmark (contoh: Ruko Harapan Indah, Roxy Mas)..."
+                      className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:text-sm"
+                    />
+                    {mapSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          isUserTypingRef.current = false
+                          setMapSearchQuery('')
+                          setMapSearchResults([])
+                          setShowSearchResults(false)
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Autocomplete Search Results Dropdown */}
+                  {showSearchResults && mapSearchResults.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                      {mapSearchResults.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleSelectSearchResult(item)}
+                          className="flex w-full cursor-pointer items-start gap-2.5 rounded-xl p-2.5 text-left transition hover:bg-orange-50 dark:hover:bg-orange-950/30"
+                        >
+                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-400">
+                            <MapPin className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                              {item.title}
+                            </p>
+                            <p className="line-clamp-2 text-[11px] text-slate-500 dark:text-slate-400">
+                              {item.fullAddress}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {showSearchResults &&
+                    !isMapSearching &&
+                    mapSearchQuery.trim().length >= 3 &&
+                    mapSearchResults.length === 0 && (
+                      <div className="absolute left-0 right-0 top-full z-30 mt-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                        <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+                          Lokasi tidak ditemukan. Coba ketik nama jalan utama,
+                          kelurahan, atau kecamatan saja.
+                        </p>
+                      </div>
+                    )}
+
+                  <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    💡 Ketik nama jalan, gedung, atau area toko. Pilih dari
+                    dropdown untuk mengisi alamat fisik, kota, provinsi, dan
+                    titik peta secara otomatis.
+                  </p>
+                </div>
+
+                {/* Interactive Map Picker */}
+                <div className="mt-4">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                      Titik Peta Toko (Klik peta untuk menetapkan koordinat):
+                    </span>
+                    {profile.latitude && profile.longitude && (
+                      <span className="font-mono text-[10px] text-slate-500">
+                        {profile.latitude.toFixed(5)},{' '}
+                        {profile.longitude.toFixed(5)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="h-[240px] w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <AddressMapPicker
+                      initialLat={profile.latitude}
+                      initialLng={profile.longitude}
+                      onLocationSelect={handleLocationSelect}
+                      height="240px"
+                    />
+                  </div>
+                </div>
+
+                {/* Alamat Lengkap Fisik Toko */}
+                <div className="mt-4">
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                    Kota <span className="text-rose-500">*</span>
+                    Alamat Lengkap Fisik Toko{' '}
+                    <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={profile.city}
+                  <textarea
+                    value={profile.address}
                     onChange={(e) =>
-                      setProfile({ ...profile, city: e.target.value })
+                      setProfile({ ...profile, address: e.target.value })
                     }
-                    placeholder="Contoh: Jakarta Pusat"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                    placeholder="Masukkan alamat lengkap fisik toko (Jalan, No, Lantai/Blok Mall, RT/RW, Kecamatan)..."
+                    rows={3}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:text-sm"
                   />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                    Provinsi <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={profile.province}
-                    onChange={(e) =>
-                      setProfile({ ...profile, province: e.target.value })
-                    }
-                    placeholder="Contoh: DKI Jakarta"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                  />
+
+                {/* Kota & Provinsi */}
+                <div className="mt-3.5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                      Kota <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={profile.city}
+                      onChange={(e) =>
+                        setProfile({ ...profile, city: e.target.value })
+                      }
+                      placeholder="Contoh: Bandung"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                      Provinsi <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={profile.province}
+                      onChange={(e) =>
+                        setProfile({ ...profile, province: e.target.value })
+                      }
+                      placeholder="Contoh: Jawa Barat"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Redirect Notice */}
+                <div className="mt-3.5 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 p-2.5 text-xs text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <p className="leading-snug">
+                    <strong>Redirect Otomatis Aktif:</strong> Pelanggan yang
+                    menekan alamat toko Anda di halaman rekomendasi maupun
+                    daftar servis akan langsung diarahkan ke Google Maps.
+                  </p>
                 </div>
               </div>
 

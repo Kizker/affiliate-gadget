@@ -99,9 +99,10 @@ export async function getMitraServiceListData(): Promise<MitraData[]> {
         latitude: mitra.latitude,
         longitude: mitra.longitude,
         googleMapsUrl:
-          mitra.latitude && mitra.longitude
+          (mitra as any).mapsUrl ||
+          (mitra.latitude && mitra.longitude
             ? `https://maps.google.com/?q=${mitra.latitude},${mitra.longitude}`
-            : `https://maps.google.com/?q=${encodeURIComponent(mitra.address + ', ' + mitra.city)}`,
+            : `https://maps.google.com/?q=${encodeURIComponent(mitra.address + ', ' + mitra.city)}`),
       }))
       cachedMitras = { data: result, timestamp: now }
       return result

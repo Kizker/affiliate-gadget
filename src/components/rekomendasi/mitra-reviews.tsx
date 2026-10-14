@@ -68,9 +68,10 @@ export function MitraReviews({
     <section
       id="ulasan-pelanggan"
       suppressHydrationWarning
-      className="relative border-t border-neutral-100 bg-[#FBFBFD] px-4 py-10 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 sm:py-14 lg:px-8 lg:py-16"
+      className="relative border-t border-neutral-100 bg-[#FBFBFD] px-4 dark:border-neutral-900 dark:bg-neutral-950/60 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden lg:px-8"
+      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >
-      <div className="mx-auto w-full max-w-7xl">
+      <div className="mx-auto my-auto w-full max-w-7xl">
         <div className="mb-4 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
           <div>
             <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-2xl lg:text-3xl">

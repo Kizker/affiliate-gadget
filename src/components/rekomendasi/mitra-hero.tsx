@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Share2,
+  ExternalLink,
 } from 'lucide-react'
 import { ImageWithFallback } from '@/components/ui/image-with-fallback'
 import { useIsMobile } from '@/hooks/use-is-mobile'
@@ -46,12 +47,16 @@ export function MitraHero({
       <section
         id="hero"
         suppressHydrationWarning
-        className="relative hidden w-full overflow-hidden border-b border-neutral-100 bg-[#FBFBFD] px-4 pb-10 pt-24 dark:border-neutral-900 dark:bg-neutral-950 sm:px-6 sm:pb-12 sm:pt-28 md:flex md:flex-col md:items-center lg:px-8 lg:pb-14 lg:pt-32"
+        className="relative hidden w-full overflow-hidden border-b border-neutral-100 bg-[#FBFBFD] px-4 dark:border-neutral-900 dark:bg-neutral-950 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:items-center md:justify-center md:overflow-hidden lg:px-8"
+        style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
       >
-        <div className="mx-auto flex w-full max-w-7xl items-center">
+        <div className="mx-auto my-auto flex w-full max-w-7xl items-center">
           {/* Left Column (55%): Workshop/Bengkel Photo Studio Frame */}
-          <div className="relative flex h-[440px] w-[55%] items-center justify-start overflow-hidden pl-4 lg:h-[480px] lg:pl-8">
-            <div className="relative h-full w-full overflow-hidden rounded-3xl border border-neutral-200/80 bg-neutral-100 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="relative w-[55%] pl-4 lg:pl-8">
+            <div
+              style={{ height: '420px', minHeight: '380px' }}
+              className="relative h-[420px] w-full overflow-hidden rounded-3xl border border-neutral-200/80 bg-neutral-100 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:border-neutral-800 dark:bg-neutral-900"
+            >
               <ImageWithFallback
                 src={heroImageSrc}
                 alt={mitra.businessName}
@@ -85,8 +90,8 @@ export function MitraHero({
           </div>
 
           {/* Right Column (45%): Sleek Editorial Typography & Action Buttons */}
-          <div className="z-10 flex w-[45%] flex-col items-start justify-center space-y-4 pl-6 pr-6 lg:space-y-5 lg:pl-10 lg:pr-12">
-            <h1 className="text-3xl font-black leading-[1.08] tracking-tight text-neutral-950 dark:text-white lg:text-4xl xl:text-5xl">
+          <div className="z-10 my-auto flex w-[45%] flex-col items-start justify-center space-y-3.5 pl-6 pr-6 lg:space-y-4 lg:pl-10 lg:pr-12">
+            <h1 className="text-2xl font-black leading-[1.1] tracking-tight text-neutral-950 dark:text-white sm:text-3xl lg:text-4xl xl:text-[44px]">
               {mitra.businessName}
             </h1>
 
@@ -127,10 +132,19 @@ export function MitraHero({
                 {mitra.weekdayHours || '09:00 - 20:00 WIB'}
               </span>
 
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 font-medium text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
-                <MapPin className="h-3.5 w-3.5 text-neutral-500" />
-                {mitra.city}, {mitra.province || 'Indonesia'}
-              </span>
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group/map inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 font-medium text-neutral-700 transition hover:border-black hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-white"
+                title="Buka Alamat di Google Maps"
+              >
+                <MapPin className="h-3.5 w-3.5 text-neutral-500 group-hover/map:text-orange-500" />
+                <span className="group-hover/map:underline">
+                  {mitra.city}, {mitra.province || 'Indonesia'}
+                </span>
+                <ExternalLink className="h-2.5 w-2.5 opacity-60 group-hover/map:opacity-100" />
+              </a>
             </div>
 
             {/* Action Buttons Row */}

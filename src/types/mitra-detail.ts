@@ -31,6 +31,7 @@ export interface MitraDetail {
   weekendHours: string | null
   latitude: number | null
   longitude: number | null
+  mapsUrl?: string | null
   services: ServiceItem[]
   images: MitraImage[]
   isOpen: boolean

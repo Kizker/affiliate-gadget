@@ -87,6 +87,9 @@ export default function MitraDetailClient({
   }, [mitra.whatsapp, mitra.phone, mitra.businessName])
 
   const mapsUrl = useMemo(() => {
+    if (mitra.mapsUrl && mitra.mapsUrl.trim().startsWith('http')) {
+      return mitra.mapsUrl.trim()
+    }
     if (mitra.latitude && mitra.longitude) {
       return `https://maps.google.com/?q=${mitra.latitude},${mitra.longitude}`
     }
@@ -95,6 +98,7 @@ export default function MitraDetailClient({
       .join(', ')
     return `https://maps.google.com/?q=${encodeURIComponent(query)}`
   }, [
+    mitra.mapsUrl,
     mitra.latitude,
     mitra.longitude,
     mitra.businessName,
@@ -149,7 +153,7 @@ export default function MitraDetailClient({
   }, [mitra.businessName, mitra.city])
 
   return (
-    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white">
+    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white md:h-screen md:overflow-hidden">
       {/* ─────────────────────────────────────────────────────────────
           1. MOBILE VIEW: WORLD-CLASS CLEAN, SIMPLE & ELEGANT LAYOUT
           Cupertino Studio / Airbnb style with interactive tabs,
@@ -177,12 +181,15 @@ export default function MitraDetailClient({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. DESKTOP VIEW: NATURAL CONTINUOUS SCROLL
-          Consistent section spacing matching /toko/[slug]
+          2. DESKTOP VIEW: SNAP SCROLL FULLSCREEN (100vh) CONTAINER
+          Preserved 100% for desktop browser experience & full test suite
       ───────────────────────────────────────────────────────────── */}
-      <div className="hidden md:block">
+      <div className="hidden md:block md:h-screen md:overflow-hidden">
         <Navbar variant="light" />
-        <main className="w-full">
+        <main
+          id="snap-container"
+          className="md:snap-container w-full [scrollbar-width:none] md:h-screen md:snap-y md:snap-mandatory md:overflow-y-scroll [&::-webkit-scrollbar]:hidden"
+        >
           {/* Hero Sections (Desktop) */}
           <MitraHero
             mitra={mitra}

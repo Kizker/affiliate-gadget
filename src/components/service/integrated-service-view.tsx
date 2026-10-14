@@ -379,12 +379,19 @@ export function IntegratedServiceView({
 
                           {/* Details */}
                           <div className="space-y-1.5 border-t border-slate-100 pt-1 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300">
-                            <div className="flex items-start gap-2">
-                              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                              <span className="line-clamp-2 text-[11px]">
+                            <a
+                              href={mitra.googleMapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="group/addr flex items-start gap-2 transition hover:text-orange-500"
+                              title="Buka alamat di Google Maps"
+                            >
+                              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 group-hover/addr:text-orange-500" />
+                              <span className="line-clamp-2 text-[11px] group-hover/addr:underline">
                                 {mitra.address}
                               </span>
-                            </div>
+                            </a>
                             <div className="flex items-center gap-2">
                               <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                               <span className="text-[11px]">{hours}</span>
@@ -665,12 +672,19 @@ export function IntegratedServiceView({
 
                             {/* Details */}
                             <div className="space-y-2 border-t border-slate-100 pt-1 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300">
-                              <div className="flex items-start gap-2.5">
-                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                <span className="line-clamp-2 text-[11px]">
+                              <a
+                                href={mitra.googleMapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="group/addr flex items-start gap-2.5 transition hover:text-orange-500"
+                                title="Buka alamat di Google Maps"
+                              >
+                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 group-hover/addr:text-orange-500" />
+                                <span className="line-clamp-2 text-[11px] group-hover/addr:underline">
                                   {mitra.address}
                                 </span>
-                              </div>
+                              </a>
                               <div className="flex items-center gap-2.5">
                                 <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                                 <span className="text-[11px]">{hours}</span>

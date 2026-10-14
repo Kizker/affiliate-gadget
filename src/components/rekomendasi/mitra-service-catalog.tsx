@@ -25,9 +25,10 @@ export function MitraServiceCatalog({
     <section
       id="katalog-layanan"
       suppressHydrationWarning
-      className="relative border-y border-neutral-100 bg-[#F8F9FA] px-4 py-10 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 sm:py-14 lg:px-8 lg:py-16"
+      className="relative border-y border-neutral-100 bg-[#F8F9FA] px-4 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden lg:px-8"
+      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
     >
-      <div className="mx-auto w-full max-w-7xl">
+      <div className="mx-auto my-auto w-full max-w-7xl">
         {/* Section Header */}
         <div className="space-y-1.5 pb-5 text-center sm:pb-6">
           <h2 className="text-2xl font-black tracking-tight text-neutral-950 dark:text-white sm:text-3xl lg:text-4xl">
