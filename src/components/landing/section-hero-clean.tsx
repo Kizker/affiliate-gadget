@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowRight, Store, Star, Sparkles, Flame, Zap } from 'lucide-react'
+import { ArrowRight, Store, Star } from 'lucide-react'
 import { ImageWithFallback } from '@/components/ui/image-with-fallback'
 
 export interface ShowcaseItem {
@@ -42,7 +42,6 @@ const DEFAULT_SHOWCASE_ITEMS: ShowcaseItem[] = [
     rating: 4.9,
     reviewCount: 38,
     href: '/gadget/cmtqt76dh0027tzfojpizvh7p',
-    badge: '#2 Terlaris',
     badgeType: 'bestseller',
   },
   {
@@ -58,7 +57,6 @@ const DEFAULT_SHOWCASE_ITEMS: ShowcaseItem[] = [
     rating: 5.0,
     reviewCount: 52,
     href: '/gadget/cmtqt76cv001stzfouf5j42kw',
-    badge: '#1 Terlaris',
     badgeType: 'bestseller',
   },
   {
@@ -74,7 +72,6 @@ const DEFAULT_SHOWCASE_ITEMS: ShowcaseItem[] = [
     rating: 4.8,
     reviewCount: 29,
     href: '/gadget/cmtqt76e3002otzfor7zag45n',
-    badge: '#3 Terlaris',
     badgeType: 'bestseller',
   },
 ]
@@ -84,7 +81,11 @@ function formatRupiah(num: number): string {
 }
 
 function resolveProductImage(p: any): string {
-  if (Array.isArray(p.images) && p.images.length > 0 && typeof p.images[0] === 'string') {
+  if (
+    Array.isArray(p.images) &&
+    p.images.length > 0 &&
+    typeof p.images[0] === 'string'
+  ) {
     return p.images[0]
   }
   if (typeof p.images === 'string' && p.images.trim()) {
@@ -126,11 +127,8 @@ function buildBestsellers(products: any[]): ShowcaseItem[] {
       image: resolveProductImage(p),
       rating: typeof p.rating === 'number' ? p.rating : 4.9,
       reviewCount:
-        typeof p.totalReview === 'number'
-          ? p.totalReview
-          : p.reviewCount || 25,
+        typeof p.totalReview === 'number' ? p.totalReview : p.reviewCount || 25,
       href: `/gadget/${p.id}`,
-      badge: `#${rank} Terlaris`,
       badgeType: 'bestseller',
       salesCount: sold,
     }
@@ -182,16 +180,14 @@ function buildPromos(products: any[]): ShowcaseItem[] {
       id: p.id,
       brand: p.brand || 'Smartphone',
       name: p.name,
-      tagline: `⚡ Hemat Rp ${diffText} • Diskon ${discPct}%`,
+      tagline: `Hemat Rp ${diffText} • Diskon ${discPct}%`,
       price: formatRupiah(p.price),
       originalPrice: formatRupiah(origPrice),
       store: p.store?.city || p.store?.name || 'Toko Resmi',
       image: resolveProductImage(p),
       rating: typeof p.rating === 'number' ? p.rating : 4.9,
       reviewCount:
-        typeof p.totalReview === 'number'
-          ? p.totalReview
-          : p.reviewCount || 25,
+        typeof p.totalReview === 'number' ? p.totalReview : p.reviewCount || 25,
       href: `/gadget/${p.id}`,
       badge: `-${discPct}% Promo`,
       badgeType: 'promo',
@@ -211,8 +207,12 @@ export function SectionHeroClean() {
   const router = useRouter()
   // Initialized to 1 agar kartu tengah (Rank #1) tampil di depan foreground
   const [activeSlide, setActiveSlide] = useState(1)
-  const [showcaseMode, setShowcaseMode] = useState<'bestseller' | 'promo'>('bestseller')
-  const [showcaseItems, setShowcaseItems] = useState<ShowcaseItem[]>(DEFAULT_SHOWCASE_ITEMS)
+  const [showcaseMode, setShowcaseMode] = useState<'bestseller' | 'promo'>(
+    'bestseller'
+  )
+  const [showcaseItems, setShowcaseItems] = useState<ShowcaseItem[]>(
+    DEFAULT_SHOWCASE_ITEMS
+  )
   const [mounted, setMounted] = useState(false)
 
   const totalSlides = showcaseItems.length
@@ -422,25 +422,12 @@ export function SectionHeroClean() {
                             fallbackSrc="https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=900&q=80"
                           />
 
-                          {/* Top-Left: Mode & Ranking Badge */}
-                          <div
-                            className={`absolute left-2.5 top-2.5 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur-md ${
-                              item.badgeType === 'promo'
-                                ? 'bg-rose-600/95 shadow-sm shadow-rose-600/30'
-                                : item.badgeType === 'bestseller'
-                                  ? 'bg-amber-600/95 shadow-sm shadow-amber-600/30'
-                                  : 'bg-slate-950/85'
-                            }`}
-                          >
-                            {item.badgeType === 'promo' ? (
-                              <Zap className="h-2.5 w-2.5 fill-yellow-300 text-yellow-300" />
-                            ) : item.badgeType === 'bestseller' ? (
-                              <Flame className="h-2.5 w-2.5 fill-yellow-300 text-yellow-300" />
-                            ) : (
-                              <Sparkles className="h-2.5 w-2.5 text-orange-400" />
-                            )}
-                            <span>{item.badge || item.brand}</span>
-                          </div>
+                          {/* Top-Left: Mode & Ranking Badge (Hanya tampil untuk Promo, tanpa icon petir) */}
+                          {item.badgeType === 'promo' && item.badge ? (
+                            <div className="absolute left-2.5 top-2.5 z-10 flex items-center rounded-full bg-rose-600/95 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-sm shadow-rose-600/30 backdrop-blur-md">
+                              <span>{item.badge}</span>
+                            </div>
+                          ) : null}
 
                           {/* Top-Right: Solid Rating Capsule */}
                           <div className="absolute right-2.5 top-2.5 z-10 flex items-center gap-1 rounded-full border border-slate-200/90 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-900 shadow-md dark:border-slate-700/80 dark:bg-slate-900 dark:text-white">
@@ -458,11 +445,13 @@ export function SectionHeroClean() {
                       {/* Product Metadata & Action (Consistent Fixed Height Layout) */}
                       <div className="mt-3.5 space-y-2">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className={`max-w-[170px] truncate font-semibold ${
-                            item.badgeType === 'promo'
-                              ? 'text-rose-600 dark:text-rose-400'
-                              : 'text-blue-600 dark:text-blue-400'
-                          }`}>
+                          <span
+                            className={`max-w-[170px] truncate font-semibold ${
+                              item.badgeType === 'promo'
+                                ? 'text-rose-600 dark:text-rose-400'
+                                : 'text-blue-600 dark:text-blue-400'
+                            }`}
+                          >
                             {item.tagline}
                           </span>
                           <span className="max-w-[140px] truncate text-right text-slate-400">
@@ -488,13 +477,14 @@ export function SectionHeroClean() {
                             <span className="text-lg font-black tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-xl">
                               {item.price}
                             </span>
-                            {item.originalPrice && item.originalPrice !== item.price ? (
+                            {item.originalPrice &&
+                            item.originalPrice !== item.price ? (
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[10px] tabular-nums text-slate-400 line-through">
                                   {item.originalPrice}
                                 </span>
                                 {item.discountPct && item.discountPct > 0 ? (
-                                  <span className="rounded bg-rose-50 px-1 py-0.2 text-[9px] font-extrabold text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+                                  <span className="py-0.2 rounded bg-rose-50 px-1 text-[9px] font-extrabold text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
                                     -{item.discountPct}%
                                   </span>
                                 ) : null}
@@ -531,7 +521,7 @@ export function SectionHeroClean() {
                       onClick={() => setActiveSlide(idx)}
                       className={`h-1.5 rounded-full transition-all duration-300 ${
                         isActive
-                          ? 'w-7 bg-orange-500 shadow-xs shadow-orange-500/30'
+                          ? 'shadow-xs w-7 bg-orange-500 shadow-orange-500/30'
                           : 'w-1.5 bg-slate-300/80 hover:bg-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600'
                       }`}
                       aria-label={`Lihat slide ${idx + 1}`}

@@ -49,6 +49,10 @@
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-10-14 (Penyempurnaan Hero Slideshow Beranda [`src/components/landing/section-hero-clean.tsx`]):**
+  - **1. Eliminasi Badge Bestseller (#1 Terlaris):** Menghapus badge ranking "#1 Terlaris", "#2 Terlaris", dan "#3 Terlaris" dari kartu carousel 3D agar kartu produk tampil bersih.
+  - **2. Eliminasi Icon Petir pada Promo:** Menghapus icon petir `<Zap />` dari badge promo dan emoji `⚡` dari tagline promo sehingga kartu promo tampil elegan tanpa icon petir.
+  - **3. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 146 test files dengan 1.005 unit tests lulus 100% (`pnpm test:unit` pass).
 - **2026-10-13 (Eliminasi Snap Scroll & Harmonisasi Spacing Desktop Halaman Detail Mitra/Servis [`/rekomendasi/[id]`]):**
   - **1. Eliminasi Total Snap Scroll & Container Lock ([`src/app/rekomendasi/[id]/mitra-detail-client.tsx`], [`src/styles/globals.css`]):** Menghapus container `#snap-container`, kelas `md:h-screen`, `md:snap-mandatory`, `md:overflow-y-scroll`, serta menghapus CSS override global `@media screen and (min-width: 768px)` yang memaksa `height: 100vh !important` pada setiap section.
   - **2. Harmonisasi Spacing Desktop Konsisten dengan Detail Toko ([`src/components/rekomendasi/`]):** Menyelaraskan seluruh 7 sub-komponen (Hero `py-8 sm:py-12 lg:py-14`, Banner Editorial `py-8 sm:py-12 lg:py-14`, Katalog Layanan `py-10 sm:py-14 lg:py-16`, Keunggulan `py-10 sm:py-14 lg:py-16`, Galeri Workshop `py-10 sm:py-14 lg:py-16`, Info Workshop `py-10 sm:py-14 lg:py-16`, Ulasan Pelanggan `py-10 sm:py-14 lg:py-16`). Menghapus inline style `style={{ minHeight: '100vh', height: '100vh' }}` agar setiap section memiliki tinggi alami yang proporsional tanpa ruang kosong berlebihan di desktop.
