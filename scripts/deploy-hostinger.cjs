@@ -53,8 +53,8 @@ async function main() {
         node:22-alpine \\
         sh -c "apk add --no-cache openssl && npx prisma@6.19.1 db push --schema=./prisma/schema.prisma --accept-data-loss && npx tsx scripts/seed-mitra-reviews-and-gallery.ts"`)
 
-      // 2. Build app container (and ws-server if needed)
-      await runRemoteCommand('cd /opt/affiliate-gadget && docker compose build app')
+      // 2. Build app container and ws-server
+      await runRemoteCommand('cd /opt/affiliate-gadget && docker compose build app ws-server')
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose up -d app ws-server')
 
       // 3. Restart nginx to refresh upstream IPs
