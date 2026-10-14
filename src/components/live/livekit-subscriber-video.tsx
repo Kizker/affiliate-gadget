@@ -8,8 +8,9 @@ import {
   RoomAudioRenderer,
   useConnectionState,
   useTracks,
+  useRoomContext,
 } from '@livekit/components-react'
-import { Track, ConnectionState } from 'livekit-client'
+import { Track, ConnectionState, RoomEvent } from 'livekit-client'
 import {
   Radio,
   ShoppingBag,
@@ -34,6 +35,8 @@ interface LiveKitSubscriberVideoProps {
   isStreamEnded?: boolean
   isFullscreen?: boolean
   coverImage?: string | null
+  isMuted?: boolean
+  onToggleMute?: () => void
 }
 
 function LiveKitSubscriberVideo({
@@ -47,9 +50,14 @@ function LiveKitSubscriberVideo({
   isStreamEnded = false,
   isFullscreen = false,
   coverImage,
+  isMuted: isMutedProp,
+  onToggleMute,
 }: LiveKitSubscriberVideoProps) {
   const isMobile = useIsMobile()
-  const [isMuted, setIsMuted] = useState(false)
+  const [internalMuted, setInternalMuted] = useState(false)
+  const isMuted = isMutedProp !== undefined ? isMutedProp : internalMuted
+  const handleToggleMute =
+    onToggleMute || (() => setInternalMuted((prev) => !prev))
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const videoRef = videoRefExternal || localVideoRef
   const ambientVideoRef = useRef<HTMLVideoElement>(null)
@@ -85,12 +93,10 @@ function LiveKitSubscriberVideo({
     el.addEventListener('resize', checkOrientation)
     checkOrientation()
 
-    // Ensure playback starts smoothly; fallback to muted if mobile autoplay policy blocks unmuted audio
-    el.play().catch(() => {
-      el.muted = true
-      setIsMuted(true)
-      el.play().catch(() => {})
-    })
+    // Pastikan pemutaran elemen video kamera lancar (selalu muted karena audio dikelola terpisah oleh RoomAudioRenderer)
+    el.muted = true
+    el.playsInline = true
+    el.play().catch(() => {})
 
     return () => {
       activeTrack.detach(el)
@@ -244,9 +250,9 @@ function LiveKitSubscriberVideo({
           )}
 
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={handleToggleMute}
             className="cursor-pointer rounded-full border border-white/10 bg-slate-900/80 p-2.5 text-white shadow-lg backdrop-blur-md transition-all hover:bg-slate-800 active:scale-90"
-            title={isMuted ? 'Nyalakan Suara' : 'Matikan Suara'}
+            title={isMuted ? 'Nyalakan Suara (Speaker)' : 'Matikan Suara'}
             aria-label={
               isMuted ? 'Nyalakan suara siaran' : 'Matikan suara siaran'
             }
@@ -293,6 +299,107 @@ export interface LiveKitStreamPlayerProps {
   coverImage?: string | null
 }
 
+interface AudioAutoPlayerProps {
+  isMuted: boolean
+  onUnmute?: () => void
+}
+
+/**
+ * Otomatisasi pemutaran speaker handphone seperti YouTube:
+ * 1. Menangani policy autoplay mobile dengan auto-unlock room.startAudio() pada gesture pertama.
+ * 2. Mengarahkan output audio ke loudspeaker smartphone secara konsisten.
+ */
+function AudioAutoPlayer({ isMuted, onUnmute }: AudioAutoPlayerProps) {
+  const room = useRoomContext()
+  const [canPlayAudio, setCanPlayAudio] = useState(true)
+
+  useEffect(() => {
+    if (!room) return
+
+    setCanPlayAudio(room.canPlaybackAudio)
+
+    const onAudioStatusChanged = () => {
+      setCanPlayAudio(room.canPlaybackAudio)
+    }
+
+    room.on(RoomEvent.AudioPlaybackStatusChanged, onAudioStatusChanged)
+
+    // 1. Coba mulai audio langsung saat koneksi siaran tersambung
+    const tryAutoStart = async () => {
+      try {
+        if (!room.canPlaybackAudio) {
+          await room.startAudio()
+        }
+        setCanPlayAudio(true)
+      } catch {
+        // Autoplay browser mobile menahan audio hingga gesture pertama
+      }
+    }
+
+    tryAutoStart()
+
+    // 2. Listener interaksi gesture pertama di layar HP (touchstart, pointerdown, click)
+    const handleGesture = async () => {
+      if (!room.canPlaybackAudio) {
+        try {
+          await room.startAudio()
+          setCanPlayAudio(true)
+          onUnmute?.()
+        } catch {}
+      }
+    }
+
+    window.addEventListener('touchstart', handleGesture, {
+      passive: true,
+      capture: true,
+    })
+    window.addEventListener('pointerdown', handleGesture, {
+      passive: true,
+      capture: true,
+    })
+    window.addEventListener('click', handleGesture, {
+      passive: true,
+      capture: true,
+    })
+
+    return () => {
+      room.off(RoomEvent.AudioPlaybackStatusChanged, onAudioStatusChanged)
+      window.removeEventListener('touchstart', handleGesture, {
+        capture: true,
+      })
+      window.removeEventListener('pointerdown', handleGesture, {
+        capture: true,
+      })
+      window.removeEventListener('click', handleGesture, {
+        capture: true,
+      })
+    }
+  }, [room, onUnmute])
+
+  if (canPlayAudio || isMuted) return null
+
+  return (
+    <div className="pointer-events-auto absolute left-1/2 top-16 z-40 -translate-x-1/2 animate-in fade-in zoom-in-95">
+      <button
+        type="button"
+        onClick={async () => {
+          if (room) {
+            try {
+              await room.startAudio()
+              setCanPlayAudio(true)
+              onUnmute?.()
+            } catch {}
+          }
+        }}
+        className="flex items-center gap-2 rounded-full border border-white/20 bg-black/85 px-4 py-2 text-xs font-bold text-white shadow-2xl backdrop-blur-md transition-all hover:bg-black/95 active:scale-95"
+      >
+        <Volume2 className="h-4 w-4 animate-pulse text-emerald-400" />
+        <span>Aktifkan Speaker Siaran</span>
+      </button>
+    </div>
+  )
+}
+
 export function LiveKitStreamPlayer({
   serverUrl,
   token,
@@ -307,6 +414,8 @@ export function LiveKitStreamPlayer({
   isFullscreen = false,
   coverImage,
 }: LiveKitStreamPlayerProps) {
+  const [isMuted, setIsMuted] = useState(false)
+
   return (
     <LiveKitRoom
       serverUrl={serverUrl}
@@ -317,7 +426,8 @@ export function LiveKitStreamPlayer({
       options={VIEWER_ROOM_OPTIONS}
       className="h-full w-full"
     >
-      <RoomAudioRenderer />
+      <RoomAudioRenderer volume={1.0} muted={isMuted} />
+      <AudioAutoPlayer isMuted={isMuted} onUnmute={() => setIsMuted(false)} />
       <LiveKitSubscriberVideo
         videoRefExternal={videoRefExternal}
         onOrientationChange={onOrientationChange}
@@ -329,6 +439,8 @@ export function LiveKitStreamPlayer({
         isStreamEnded={isStreamEnded}
         isFullscreen={isFullscreen}
         coverImage={coverImage}
+        isMuted={isMuted}
+        onToggleMute={() => setIsMuted((prev) => !prev)}
       />
     </LiveKitRoom>
   )

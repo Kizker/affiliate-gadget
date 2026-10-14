@@ -86,6 +86,12 @@ class WsRoomManager {
         this.rooms.delete(streamId)
         this.pinnedProducts.delete(streamId)
         this.likeAccumulators.delete(streamId)
+        prisma.liveStream
+          .update({
+            where: { id: streamId },
+            data: { viewerCount: 0 },
+          })
+          .catch(() => {})
       } else {
         this.broadcastViewerCount(streamId)
       }

@@ -125,7 +125,7 @@ async function getMitra(id: string): Promise<MitraData | null> {
       weekendHours: mitra.weekendHours,
       latitude: mitra.latitude,
       longitude: mitra.longitude,
-      mapsUrl: mitra.mapsUrl || null,
+      mapsUrl: (mitra as { mapsUrl?: string | null }).mapsUrl || null,
       rating: mitra.rating,
       totalReview: mitra.totalReview,
       isOpen,

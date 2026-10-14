@@ -56,12 +56,12 @@ export const HOST_ROOM_OPTIONS: RoomOptions = {
  * - adaptiveStream: resolusi yang diminta mengikuti ukuran elemen video &
  *   kualitas jaringan; turun saat lag, naik lagi saat pulih.
  * - dynacast: ikut mengoptimalkan pengiriman layer dari host.
- * - webAudioMix dimatikan: audio diputar langsung lewat elemen <audio>
- *   (latensi lebih rendah, CPU lebih ringan di HP).
+ * - webAudioMix: diaktifkan (true) agar seluruh audio diarahkan lewat AudioContext / Web Audio API
+ *   yang otomatis memetakan keluaran ke Loudspeaker (Speaker Media HP) seperti YouTube, bukan earpiece panggilan telepon.
  */
 export const VIEWER_ROOM_OPTIONS: RoomOptions = {
   adaptiveStream: { pauseVideoInBackground: true },
   dynacast: true,
-  webAudioMix: false,
+  webAudioMix: true,
   disconnectOnPageLeave: true,
 }

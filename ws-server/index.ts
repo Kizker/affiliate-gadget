@@ -107,10 +107,7 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
   // Attempt to authenticate from session cookie or explicit token
   const authSession = await parseAuthSession(req.headers.cookie, tokenParam)
 
-  const isBroadcaster =
-    authSession?.role === 'STORE_ADMIN' ||
-    authSession?.role === 'SUPER_ADMIN' ||
-    queryBroadcaster
+  const isBroadcaster = queryBroadcaster
 
   const session: WsClientSession = {
     ws,
@@ -161,8 +158,8 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
           if (msg.payload?.userId) {
             session.userId = msg.payload.userId
           }
-          if (msg.payload?.isBroadcaster) {
-            session.isBroadcaster = true
+          if (typeof msg.payload?.isBroadcaster === 'boolean') {
+            session.isBroadcaster = msg.payload.isBroadcaster
           }
           roomManager.joinRoom(targetStreamId, session)
           break

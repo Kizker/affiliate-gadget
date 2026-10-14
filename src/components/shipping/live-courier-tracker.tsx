@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import {
   Truck,
-  Phone,
   MessageCircle,
   Copy,
   Check,
@@ -266,15 +265,8 @@ export function LiveCourierTracker({
                 </div>
               </div>
 
-              {/* Action Buttons: Phone & WA */}
+              {/* Action Button: WA */}
               <div className="flex items-center gap-2">
-                <a
-                  href={`tel:${data.driver.phone}`}
-                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  <Phone className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-                  <span>Telepon</span>
-                </a>
                 <a
                   href={`https://wa.me/${data.driver.phone.replace(/[^0-9]/g, '')}?text=Halo%20Pak%20${encodeURIComponent(data.driver.name)},%20saya%20penerima%20pesanan%20%23${data.orderNumber}`}
                   target="_blank"

@@ -173,6 +173,7 @@ export function LiveStreamViewer({
   // Status siaran berakhir (baik dari event WebSocket real-time maupun status record)
   const isEnded = isStreamEnded || stream?.status === 'ENDED'
   const isLive = stream?.status === 'LIVE' && !isEnded
+  const displayViewerCount = Math.max(viewerCount, isLive ? 1 : 0)
 
   // 2. LiveKit Viewer Token (with preloaded initialToken)
   const {
@@ -421,8 +422,8 @@ export function LiveStreamViewer({
               <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white" />
               LIVE
             </span>
-            <span className="rounded-md bg-black/50 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-md">
-              👁 {viewerCount}
+            <span className="flex items-center rounded-full border border-white/15 bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white shadow-lg backdrop-blur-md">
+              <span>{displayViewerCount}</span>
             </span>
             <span className="max-w-[120px] truncate text-xs font-bold text-white drop-shadow">
               {stream.store?.name}
@@ -527,35 +528,40 @@ export function LiveStreamViewer({
 
         {/* Top Header Floating Card (Store info, viewers, LIVE badge, close button) */}
         <div className="pointer-events-auto relative z-30 flex items-center justify-between gap-2 p-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))]">
-          <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/60 py-1.5 pl-1.5 pr-3 shadow-lg backdrop-blur-md">
-            <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-orange-500/50 bg-white">
-              {stream.store?.logo ? (
-                <img
-                  src={stream.store.logo}
-                  alt={stream.store.name || 'Toko'}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    ;(e.currentTarget as HTMLElement).style.display = 'none'
-                  }}
-                />
-              ) : (
-                <Store className="m-auto h-4 w-4 text-orange-500" />
-              )}
+          {/* Sisi Kiri: Profil Toko + Badge Penonton di Luar Profil */}
+          <div className="flex items-center gap-2">
+            {/* 1. Pill Profil Toko */}
+            <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/60 py-1 pl-1 pr-3 shadow-lg backdrop-blur-md">
+              <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-orange-500/50 bg-white">
+                {stream.store?.logo ? (
+                  <img
+                    src={stream.store.logo}
+                    alt={stream.store.name || 'Toko'}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      ;(e.currentTarget as HTMLElement).style.display = 'none'
+                    }}
+                  />
+                ) : (
+                  <Store className="m-auto h-4 w-4 text-orange-500" />
+                )}
+              </div>
+              <span className="max-w-[100px] truncate text-xs font-bold leading-none text-white sm:max-w-[130px]">
+                {stream.store?.name}
+              </span>
+              <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-white">
+                LIVE
+              </span>
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="max-w-[110px] truncate text-xs font-bold leading-tight text-white">
-                  {stream.store?.name}
-                </span>
-                <span className="py-0.2 rounded bg-rose-600 px-1 text-[8px] font-extrabold uppercase tracking-wider text-white">
-                  LIVE
-                </span>
-              </div>
-              <div className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-white/80">
-                <span className="flex items-center gap-1 rounded-md bg-black/40 px-1.5 py-0.5 backdrop-blur-sm">
-                  👁 {viewerCount}
-                </span>
-              </div>
+
+            {/* 2. Badge Jumlah Penonton (Di luar profil, di sebelah kanan) */}
+            <div
+              className="flex items-center justify-center rounded-full border border-white/15 bg-black/60 px-2.5 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md"
+              title={`${displayViewerCount} penonton sedang menyaksikan siaran ini`}
+            >
+              <span className="font-mono text-[11px] leading-none">
+                {displayViewerCount}
+              </span>
             </div>
           </div>
 
@@ -975,8 +981,8 @@ export function LiveStreamViewer({
                         <span className="text-xs font-bold text-white">
                           Live Chat
                         </span>
-                        <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70">
-                          👁 {viewerCount}
+                        <span className="flex items-center rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70">
+                          <span>{displayViewerCount}</span>
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
