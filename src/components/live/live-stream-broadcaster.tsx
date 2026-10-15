@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -111,6 +111,52 @@ function LiveKitStudioControls({
   const [discountInputs, setDiscountInputs] = useState<Record<string, string>>(
     {}
   )
+  const [liveCatalogDeals, setLiveCatalogDeals] = useState<
+    Record<
+      string,
+      {
+        dealToken: string
+        discountPrice: number
+        originalPrice: number
+        dealType?: string
+      }
+    >
+  >({})
+
+  // Fetch active deals in studio to know live catalog promo prices
+  const fetchLiveDeals = useCallback(async () => {
+    if (!stream.id) return
+    try {
+      const res = await fetch(`/api/live-streams/${stream.id}/deals`)
+      const json = await res.json()
+      const deals: any[] =
+        json.activeDeals || (json.activeDeal ? [json.activeDeal] : [])
+
+      const catalogMap: Record<string, any> = {}
+      for (const d of deals) {
+        if (d && d.isActive && !d.isUsed && d.productId) {
+          if (d.dealType === 'LIVE_FEATURED') {
+            catalogMap[d.productId] = d
+          } else if (!catalogMap[d.productId]) {
+            catalogMap[d.productId] = d
+          }
+        }
+      }
+      setLiveCatalogDeals(catalogMap)
+    } catch (err) {
+      console.error('Error fetching live deals in studio:', err)
+    }
+  }, [stream.id])
+
+  useEffect(() => {
+    fetchLiveDeals()
+  }, [fetchLiveDeals])
+
+  useEffect(() => {
+    if (isProductDrawerOpen) {
+      fetchLiveDeals()
+    }
+  }, [isProductDrawerOpen, fetchLiveDeals])
 
   const isMobile = useIsMobile()
   const { keyboardInset } = useKeyboardInset(isMobile)
@@ -378,13 +424,21 @@ function LiveKitStudioControls({
     setMirror(nextMirror)
   }
 
-  // Handle Pin Product (memilih diskon sematan khusus yang berbeda dari diskon 5 barang live)
+  // Handle Pin Product (memakai diskon katalog biasa atau menambahkan diskon ekstra sematan)
   const handlePinProduct = async (
     prod: StoreProduct,
-    customDiscount?: number
+    extraPinnedDiscount?: number
   ) => {
+    const catalogDeal = liveCatalogDeals[prod.id]
     let dealToken: string | undefined
-    if (customDiscount && customDiscount > 0 && customDiscount < prod.price) {
+    let effectiveDiscountPrice: number | undefined
+
+    // 1. Jika host memasukkan diskon ekstra saat pin (harus lebih rendah dari harga normal)
+    if (
+      extraPinnedDiscount &&
+      extraPinnedDiscount > 0 &&
+      extraPinnedDiscount < prod.price
+    ) {
       try {
         const res = await fetch(`/api/live-streams/${stream.id}/deals`, {
           method: 'POST',
@@ -395,7 +449,7 @@ function LiveKitStudioControls({
             productImage: prod.images[0] || '',
             productSlug: prod.id,
             originalPrice: prod.price,
-            discountPrice: customDiscount,
+            discountPrice: extraPinnedDiscount,
             dealType: 'PINNED_DEAL',
             badgeLabel: 'Diskon Spesial Sematan Live',
           }),
@@ -403,36 +457,15 @@ function LiveKitStudioControls({
         const json = await res.json()
         if (json.success && json.data?.dealToken) {
           dealToken = json.data.dealToken
+          effectiveDiscountPrice = extraPinnedDiscount
         }
       } catch (err) {
         console.error('Error creating pinned live deal:', err)
       }
-    } else {
-      // Periksa apakah produk ini sudah memiliki diskon khusus sematan atau live yang dibuat saat setup
-      try {
-        const res = await fetch(`/api/live-streams/${stream.id}/deals`)
-        const json = await res.json()
-        const deals: any[] =
-          json.activeDeals || (json.activeDeal ? [json.activeDeal] : [])
-        // Prioritaskan PINNED_DEAL, fallback ke LIVE_FEATURED
-        const existingPinned = deals.find(
-          (d: any) =>
-            d.productId === prod.id &&
-            d.dealType === 'PINNED_DEAL' &&
-            d.isActive &&
-            !d.isUsed
-        )
-        const existingFeatured = deals.find(
-          (d: any) => d.productId === prod.id && d.isActive && !d.isUsed
-        )
-        const chosen = existingPinned || existingFeatured
-        if (chosen) {
-          dealToken = chosen.dealToken
-          customDiscount = chosen.discountPrice
-        }
-      } catch (err) {
-        console.error('Error fetching existing setup deals:', err)
-      }
+    } else if (catalogDeal && catalogDeal.dealToken) {
+      // 2. Jika tidak ada diskon ekstra saat pin, gunakan diskon katalog live biasa dari setup
+      dealToken = catalogDeal.dealToken
+      effectiveDiscountPrice = catalogDeal.discountPrice
     }
 
     pinProduct({
@@ -442,7 +475,7 @@ function LiveKitStudioControls({
       productImage: prod.images[0] || '',
       productSlug: prod.id,
       originalPrice: prod.price,
-      discountPrice: customDiscount || (dealToken ? customDiscount : undefined),
+      discountPrice: effectiveDiscountPrice,
       dealToken,
     })
     setSelectedProductId(prod.id)
@@ -463,17 +496,22 @@ function LiveKitStudioControls({
         // Abaikan kegagalan patch non-kritis
       }
     }
+
+    fetchLiveDeals()
   }
 
   const handleUnpinProduct = async () => {
     unpinProduct()
     if (stream.id) {
+      // HANYA hapus PINNED_DEAL, pertahankan LIVE_FEATURED untuk katalog etalase penonton
       fetch(
         `/api/live-streams/${stream.id}/deals?productId=${selectedProductId || ''}&dealType=PINNED_DEAL`,
         {
           method: 'DELETE',
         }
-      ).catch(() => {})
+      )
+        .then(() => fetchLiveDeals())
+        .catch(() => {})
     }
   }
 
@@ -963,9 +1001,34 @@ function LiveKitStudioControls({
                               <p className="truncate text-xs font-semibold text-slate-900">
                                 {p.name}
                               </p>
-                              <p className="text-xs font-extrabold text-orange-600">
-                                Rp {p.price.toLocaleString('id-ID')}
-                              </p>
+                              {(() => {
+                                const catalogDeal = liveCatalogDeals[p.id]
+                                const hasCatalogPromo =
+                                  catalogDeal &&
+                                  catalogDeal.discountPrice < p.price
+                                const liveCatalogPrice = hasCatalogPromo
+                                  ? catalogDeal.discountPrice
+                                  : p.price
+
+                                return hasCatalogPromo ? (
+                                  <div className="flex flex-wrap items-baseline gap-1.5">
+                                    <p className="text-xs font-extrabold text-orange-600">
+                                      Rp{' '}
+                                      {liveCatalogPrice.toLocaleString('id-ID')}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 line-through">
+                                      Rp {p.price.toLocaleString('id-ID')}
+                                    </p>
+                                    <span className="py-0.2 rounded bg-orange-100 px-1 text-[9px] font-bold text-orange-700">
+                                      Promo Live
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs font-extrabold text-orange-600">
+                                    Rp {p.price.toLocaleString('id-ID')}
+                                  </p>
+                                )
+                              })()}
                               <span className="text-[10px] text-slate-500">
                                 Stok: {p.stock}
                               </span>
@@ -998,26 +1061,47 @@ function LiveKitStudioControls({
                           </button>
                         </div>
 
-                        {/* Input Memilih Diskon Khusus Sematan Saat Disematkan */}
-                        {!isCurrentlyPinned && (
-                          <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
-                            <span className="whitespace-nowrap text-[10px] font-bold text-orange-600">
-                              Diskon Sematan (Rp):
-                            </span>
-                            <input
-                              type="number"
-                              value={discountInputs[p.id] || ''}
-                              onChange={(e) =>
-                                setDiscountInputs((prev) => ({
-                                  ...prev,
-                                  [p.id]: e.target.value,
-                                }))
-                              }
-                              placeholder="Pilih diskon ekstra khusus sematan"
-                              className="w-full rounded-lg border border-orange-200 bg-orange-50/50 px-2 py-1 text-[11px] font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white"
-                            />
-                          </div>
-                        )}
+                        {/* Input Memilih Diskon Ekstra Saat Disematkan (Pin) */}
+                        {!isCurrentlyPinned &&
+                          (() => {
+                            const catalogDeal = liveCatalogDeals[p.id]
+                            const hasCatalogPromo =
+                              catalogDeal && catalogDeal.discountPrice < p.price
+                            const liveCatalogPrice = hasCatalogPromo
+                              ? catalogDeal.discountPrice
+                              : p.price
+
+                            return (
+                              <div className="mt-2 flex flex-col gap-1 border-t border-slate-100 pt-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="whitespace-nowrap text-[10px] font-bold text-orange-600">
+                                    Diskon Ekstra Saat Disematkan (Rp):
+                                  </span>
+                                  <input
+                                    type="number"
+                                    value={discountInputs[p.id] || ''}
+                                    onChange={(e) =>
+                                      setDiscountInputs((prev) => ({
+                                        ...prev,
+                                        [p.id]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder={
+                                      hasCatalogPromo
+                                        ? `Diskon ekstra di bawah Rp ${liveCatalogPrice.toLocaleString('id-ID')} (opsional)`
+                                        : `Pilih diskon saat disematkan (opsional)`
+                                    }
+                                    className="w-full rounded-lg border border-orange-200 bg-orange-50/50 px-2 py-1 text-[11px] font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white"
+                                  />
+                                </div>
+                                <p className="text-[9px] text-slate-400">
+                                  {hasCatalogPromo
+                                    ? `*Kosongkan jika menggunakan harga promo katalog live (Rp ${liveCatalogPrice.toLocaleString('id-ID')})`
+                                    : `*Kosongkan jika menggunakan harga normal katalog`}
+                                </p>
+                              </div>
+                            )
+                          })()}
                       </div>
                     )
                   })
@@ -1360,9 +1444,29 @@ function LiveKitStudioControls({
                           <p className="max-w-[130px] truncate font-semibold text-slate-800 dark:text-slate-100">
                             {p.name}
                           </p>
-                          <p className="text-[11px] font-bold text-orange-600 dark:text-orange-500">
-                            Rp {p.price.toLocaleString('id-ID')}
-                          </p>
+                          {(() => {
+                            const catalogDeal = liveCatalogDeals[p.id]
+                            const hasCatalogPromo =
+                              catalogDeal && catalogDeal.discountPrice < p.price
+                            const liveCatalogPrice = hasCatalogPromo
+                              ? catalogDeal.discountPrice
+                              : p.price
+
+                            return hasCatalogPromo ? (
+                              <div className="flex flex-wrap items-baseline gap-1">
+                                <span className="text-[11px] font-bold text-orange-600 dark:text-orange-500">
+                                  Rp {liveCatalogPrice.toLocaleString('id-ID')}
+                                </span>
+                                <span className="text-[9.5px] text-slate-400 line-through">
+                                  Rp {p.price.toLocaleString('id-ID')}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="text-[11px] font-bold text-orange-600 dark:text-orange-500">
+                                Rp {p.price.toLocaleString('id-ID')}
+                              </p>
+                            )
+                          })()}
                         </div>
                       </div>
 
@@ -1389,25 +1493,41 @@ function LiveKitStudioControls({
                       </button>
                     </div>
 
-                    {!isPinned && (
-                      <div className="mt-1.5 flex items-center gap-1.5 border-t border-slate-200/60 pt-1.5 dark:border-slate-700/60">
-                        <span className="shrink-0 text-[10px] font-bold text-orange-600 dark:text-orange-500">
-                          Diskon Sematan / Diskon (Rp):
-                        </span>
-                        <input
-                          type="number"
-                          value={discountInputs[p.id] || ''}
-                          onChange={(e) =>
-                            setDiscountInputs((prev) => ({
-                              ...prev,
-                              [p.id]: e.target.value,
-                            }))
-                          }
-                          placeholder="Pilih diskon saat disematkan"
-                          className="w-full rounded-lg border border-orange-200 bg-white px-2 py-0.5 text-[10.5px] font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        />
-                      </div>
-                    )}
+                    {!isPinned &&
+                      (() => {
+                        const catalogDeal = liveCatalogDeals[p.id]
+                        const hasCatalogPromo =
+                          catalogDeal && catalogDeal.discountPrice < p.price
+                        const liveCatalogPrice = hasCatalogPromo
+                          ? catalogDeal.discountPrice
+                          : p.price
+
+                        return (
+                          <div className="mt-1.5 flex flex-col gap-0.5 border-t border-slate-200/60 pt-1.5 dark:border-slate-700/60">
+                            <div className="flex items-center gap-1.5">
+                              <span className="shrink-0 text-[10px] font-bold text-orange-600 dark:text-orange-500">
+                                Diskon Ekstra Saat Sematkan / Diskon (Rp):
+                              </span>
+                              <input
+                                type="number"
+                                value={discountInputs[p.id] || ''}
+                                onChange={(e) =>
+                                  setDiscountInputs((prev) => ({
+                                    ...prev,
+                                    [p.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder={
+                                  hasCatalogPromo
+                                    ? `Ekstra di bawah Rp ${liveCatalogPrice.toLocaleString('id-ID')}`
+                                    : 'Harga spesial saat pin (opsional)'
+                                }
+                                className="w-full rounded-lg border border-orange-200 bg-white px-2 py-0.5 text-[10.5px] font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                              />
+                            </div>
+                          </div>
+                        )
+                      })()}
                   </div>
                 )
               })
@@ -1430,9 +1550,6 @@ export function LiveStreamBroadcaster() {
   const [setupDiscounts, setSetupDiscounts] = useState<Record<string, string>>(
     {}
   )
-  const [setupPinnedDiscounts, setSetupPinnedDiscounts] = useState<
-    Record<string, string>
-  >({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -1507,63 +1624,34 @@ export function LiveStreamBroadcaster() {
           body: JSON.stringify({ featuredProductIds }),
         })
 
-        // Buat diskon khusus live untuk produk yang diberikan diskon spesial saat persiapan setup
+        // Buat diskon katalog live untuk produk yang diberikan diskon spesial saat persiapan setup
         for (const prodId of featuredProductIds) {
           const discountRaw = setupDiscounts[prodId]?.replace(/\D/g, '')
-          const pinnedDiscountRaw = setupPinnedDiscounts[prodId]?.replace(
-            /\D/g,
-            ''
-          )
           const prodObj = products.find((p) => p.id === prodId)
 
-          if (prodObj) {
-            // 1. Diskon Khusus Siaran Live (Etalase 5 barang live)
-            if (discountRaw) {
-              const discPrice = parseInt(discountRaw, 10)
-              if (discPrice > 0 && discPrice < prodObj.price) {
-                try {
-                  await fetch(`/api/live-streams/${json.data.id}/deals`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      productId: prodObj.id,
-                      productTitle: prodObj.name,
-                      productImage: prodObj.images[0] || '',
-                      productSlug: prodObj.id,
-                      originalPrice: prodObj.price,
-                      discountPrice: discPrice,
-                      dealType: 'LIVE_FEATURED',
-                      badgeLabel: 'Diskon Khusus Siaran Live',
-                    }),
-                  })
-                } catch (dealErr) {
-                  console.error('Error creating setup live deal:', dealErr)
-                }
-              }
-            }
-
-            // 2. Diskon Khusus Saat Disematkan (Pinned Deal)
-            if (pinnedDiscountRaw) {
-              const pinnedPrice = parseInt(pinnedDiscountRaw, 10)
-              if (pinnedPrice > 0 && pinnedPrice < prodObj.price) {
-                try {
-                  await fetch(`/api/live-streams/${json.data.id}/deals`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      productId: prodObj.id,
-                      productTitle: prodObj.name,
-                      productImage: prodObj.images[0] || '',
-                      productSlug: prodObj.id,
-                      originalPrice: prodObj.price,
-                      discountPrice: pinnedPrice,
-                      dealType: 'PINNED_DEAL',
-                      badgeLabel: 'Diskon Spesial Sematan Live',
-                    }),
-                  })
-                } catch (pinnedErr) {
-                  console.error('Error creating setup pinned deal:', pinnedErr)
-                }
+          if (prodObj && discountRaw) {
+            const discPrice = parseInt(discountRaw, 10)
+            if (discPrice > 0 && discPrice < prodObj.price) {
+              try {
+                await fetch(`/api/live-streams/${json.data.id}/deals`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    productId: prodObj.id,
+                    productTitle: prodObj.name,
+                    productImage: prodObj.images[0] || '',
+                    productSlug: prodObj.id,
+                    originalPrice: prodObj.price,
+                    discountPrice: discPrice,
+                    dealType: 'LIVE_FEATURED',
+                    badgeLabel: 'Promo Live Siaran',
+                  }),
+                })
+              } catch (dealErr) {
+                console.error(
+                  'Error creating setup live catalog deal:',
+                  dealErr
+                )
               }
             }
           }
@@ -1817,14 +1905,14 @@ export function LiveStreamBroadcaster() {
                       </div>
                     </div>
 
-                    {/* Kolom Diskon Spesial Live & Sematan untuk produk yang dipilih */}
+                    {/* Kolom Diskon Promo Live Katalog untuk produk pilihan awal */}
                     {isSelected && (
                       <div
                         onClick={(e) => e.stopPropagation()}
-                        className="mt-2.5 space-y-2 border-t border-slate-100 pt-2.5 dark:border-slate-700/60"
+                        className="mt-2.5 space-y-1.5 border-t border-slate-100 pt-2.5 dark:border-slate-700/60"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="w-36 shrink-0 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                          <span className="w-40 shrink-0 text-[10px] font-bold text-slate-700 dark:text-slate-300">
                             Diskon Live (Rp):
                           </span>
                           <input
@@ -1836,27 +1924,15 @@ export function LiveStreamBroadcaster() {
                                 [p.id]: e.target.value,
                               }))
                             }
-                            placeholder={`Harga siaran live (Normal: Rp ${p.price.toLocaleString('id-ID')})`}
+                            placeholder={`Harga katalog live (Normal: Rp ${p.price.toLocaleString('id-ID')})`}
                             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-36 shrink-0 text-[10px] font-bold text-orange-600 dark:text-orange-500">
-                            Diskon Sematan (Rp):
-                          </span>
-                          <input
-                            type="number"
-                            value={setupPinnedDiscounts[p.id] || ''}
-                            onChange={(e) =>
-                              setSetupPinnedDiscounts((prev) => ({
-                                ...prev,
-                                [p.id]: e.target.value,
-                              }))
-                            }
-                            placeholder="Harga spesial jika disematkan nanti (opsional)"
-                            className="w-full rounded-lg border border-orange-200 bg-orange-50/40 px-2.5 py-1 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-orange-900/60 dark:bg-slate-800 dark:text-white"
-                          />
-                        </div>
+                        <p className="text-[9.5px] text-slate-400">
+                          *Diskon ini untuk katalog siaran biasa. Diskon ekstra
+                          dapat diberikan saat produk disematkan (pin) nanti di
+                          studio.
+                        </p>
                       </div>
                     )}
                   </div>

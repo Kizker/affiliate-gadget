@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Printer,
   X,
@@ -24,6 +25,19 @@ export function ThermalShippingLabel({
   onBackToOrder,
 }: ThermalShippingLabelProps) {
   const printRef = useRef<HTMLDivElement>(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+    document.body.classList.add('thermal-modal-open')
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.classList.remove('thermal-modal-open')
+      document.body.style.overflow = originalOverflow
+    }
+  }, [])
 
   const handlePrint = useCallback(() => {
     try {
@@ -283,44 +297,45 @@ export function ThermalShippingLabel({
   const isGojek = data.courierCode === 'GOJEK'
   const firstItem = data.items?.[0]
 
-  return (
+  const modalContent = (
     <div
       id="thermal-modal-root"
-      className="backdrop-blur-xs fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 p-4"
+      className="fixed inset-0 z-[999999] flex flex-col overflow-hidden bg-slate-950/85 backdrop-blur-md sm:items-center sm:justify-center sm:p-4"
     >
       {/* Container */}
-      <div className="flex max-h-[95vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex h-[100dvh] max-h-none w-full flex-col overflow-hidden rounded-none bg-white shadow-2xl dark:bg-slate-900 sm:h-auto sm:max-h-[92vh] sm:max-w-lg sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-slate-800">
         {/* Header Bar (Not printed) */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-800/60 print:hidden">
-          <div className="flex items-center gap-2">
-            <div className="shadow-xs flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 text-white">
-              <Printer className="h-4 w-4" />
-            </div>
-            <div>
-              <h3 className="text-xs font-black text-slate-900 dark:text-white">
-                Label Pengiriman Thermal (100 × 150 mm)
-              </h3>
-              <p className="text-[10px] text-slate-500">
-                Standar Ekspedisi Resmi E-Commerce Indonesia
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-200/90 bg-white px-3 dark:border-slate-800 dark:bg-slate-900 sm:h-14 sm:px-5 print:hidden">
+          <div className="flex min-w-0 items-center gap-2">
             {onBackToOrder && (
               <button
                 type="button"
                 onClick={onBackToOrder}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Kembali ke Rincian</span>
-                <span className="sm:hidden">Kembali</span>
+                <span>Kembali</span>
               </button>
             )}
+            <div className="flex min-w-0 items-center gap-1.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white">
+                <Printer className="h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="truncate text-xs font-black text-slate-900 dark:text-white">
+                  Label Thermal (100 × 150 mm)
+                </h3>
+                <p className="hidden text-[10px] text-slate-500 sm:block">
+                  Standar Ekspedisi Resmi E-Commerce Indonesia
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950"
+              className="inline-flex items-center gap-1 rounded-xl bg-slate-950 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950"
             >
               <Printer className="h-3.5 w-3.5" />
               <span>Cetak Label</span>
@@ -328,15 +343,16 @@ export function ThermalShippingLabel({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              aria-label="Tutup"
+              className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* Scrollable Printable Label Area */}
-        <div className="overflow-y-auto p-5 print:overflow-visible print:p-0">
+        {/* Scrollable Printable Label Area with pb-28 to prevent any clipping on mobile */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-2.5 pb-28 pt-3 sm:p-5 sm:pb-6 print:overflow-visible print:p-0">
           <div
             ref={printRef}
             id="printable-shipping-label"
@@ -488,4 +504,10 @@ export function ThermalShippingLabel({
       </div>
     </div>
   )
+
+  if (isMounted && typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body)
+  }
+
+  return modalContent
 }

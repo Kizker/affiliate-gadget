@@ -403,6 +403,16 @@
   }
 }
 
+/* Sembunyikan total admin header, burger menu button, dan navigation bar saat modal cetak label thermal terbuka */
+body.thermal-modal-open header,
+body.thermal-modal-open aside,
+body.thermal-modal-open button[aria-label*='Menu Navigasi'],
+body.thermal-modal-open button[aria-label*='Buka Menu Navigasi'],
+body.thermal-modal-open button[aria-label*='Tutup Menu Navigasi'],
+body.thermal-modal-open .fixed.left-4.top-4.z-50 {
+  display: none !important;
+}
+
 /* ==========================================================================
    DESKTOP 1 SECTION 1 HALAMAN FULLSCREEN SNAP (GLOBAL OVERRIDE)
    ========================================================================== */
