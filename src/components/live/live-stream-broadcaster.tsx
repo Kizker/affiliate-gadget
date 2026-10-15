@@ -1120,208 +1120,208 @@ function LiveKitStudioControls({
   }
 
   // ===================================================================
-  // 2. DESKTOP VIEW: 3-COLUMN STUDIO LAYOUT
+  // 2. DESKTOP VIEW: STUDIO LAYOUT (CAMERA & FULL CHAT + KATALOG DI BAWAH)
   // ===================================================================
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100vh-140px)] lg:min-h-[640px] lg:grid-cols-3 lg:gap-6">
-      {/* Kolom Kiri & Tengah: Kamera Live View & Kontrol */}
-      <div className="relative flex h-[54vh] max-h-[580px] min-h-[380px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 sm:h-[62vh] lg:col-span-2 lg:h-full lg:max-h-none">
-        {/* Top Status Bar Floating Overlay */}
-        <div className="pointer-events-auto absolute left-2.5 right-2.5 top-2.5 z-20 flex items-center justify-between gap-1.5 sm:left-4 sm:right-4 sm:top-4 sm:gap-2">
-          <LiveStreamStatusBar
-            startedAt={stream.startedAt || new Date()}
-            viewerCount={viewerCount}
-            isLive={stream.status === 'LIVE'}
-            isConnected={isWsConnected}
-          />
-
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <button
-              onClick={handleShare}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 p-2 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800 sm:px-3.5 sm:py-1.5"
-              title="Bagikan Tautan Siaran"
-            >
-              {copied ? (
-                <>
-                  <CheckCheck className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="hidden text-emerald-400 sm:inline">
-                    Tersalin!
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="h-3.5 w-3.5 text-slate-300" />
-                  <span className="hidden sm:inline">Bagikan</span>
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={handleEnd}
-              className="flex cursor-pointer items-center gap-1 rounded-full bg-rose-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-md transition-all hover:bg-rose-700 active:scale-95 sm:px-3.5 sm:py-1.5"
-            >
-              <StopCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="text-[11px] sm:text-xs">Akhiri</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Video Canvas / Video Track View */}
-        <div className="relative flex h-full w-full flex-1 items-center justify-center overflow-hidden bg-slate-950">
-          {cameraActive ? (
-            <video
-              ref={videoElementRef}
-              autoPlay
-              playsInline
-              muted
-              style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}
-              className={`h-full w-full transition-transform duration-300 ${
-                showGuides ? 'object-contain' : 'object-cover'
-              }`}
+    <div className="flex flex-col gap-6">
+      {/* SECTION ATAS: STUDIO SIARAN (KAMERA DI KIRI + LIVE CHAT PENUH DI KANAN) */}
+      <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100vh-140px)] lg:min-h-[620px] lg:grid-cols-3 lg:gap-6">
+        {/* Kolom Kiri & Tengah: Kamera Live View & Kontrol */}
+        <div className="relative flex h-[54vh] max-h-[580px] min-h-[380px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 sm:h-[62vh] lg:col-span-2 lg:h-full lg:max-h-none">
+          {/* Top Status Bar Floating Overlay */}
+          <div className="pointer-events-auto absolute left-2.5 right-2.5 top-2.5 z-20 flex items-center justify-between gap-1.5 sm:left-4 sm:right-4 sm:top-4 sm:gap-2">
+            <LiveStreamStatusBar
+              startedAt={stream.startedAt || new Date()}
+              viewerCount={viewerCount}
+              isLive={stream.status === 'LIVE'}
+              isConnected={isWsConnected}
             />
-          ) : (
-            <div className="flex flex-col items-center justify-center gap-3 text-slate-500">
-              <CameraOff className="h-16 w-16 stroke-1 text-slate-600" />
-              <p className="text-sm font-medium">Kamera Dimatikan</p>
+
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <button
+                onClick={handleShare}
+                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 p-2 text-xs text-white shadow-md backdrop-blur-md transition-all hover:bg-slate-800 sm:px-3.5 sm:py-1.5"
+                title="Bagikan Tautan Siaran"
+              >
+                {copied ? (
+                  <>
+                    <CheckCheck className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="hidden text-emerald-400 sm:inline">
+                      Tersalin!
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-3.5 w-3.5 text-slate-300" />
+                    <span className="hidden sm:inline">Bagikan</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleEnd}
+                className="flex cursor-pointer items-center gap-1 rounded-full bg-rose-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-md transition-all hover:bg-rose-700 active:scale-95 sm:px-3.5 sm:py-1.5"
+              >
+                <StopCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-[11px] sm:text-xs">Akhiri</span>
+              </button>
             </div>
-          )}
+          </div>
 
-          {/* Panduan Frame: batas layar HP (9:16) & desktop (16:9) untuk host */}
-          {showGuides && cameraActive && (
-            <LiveFrameGuides videoRef={videoElementRef} />
-          )}
-
-          {/* Floating Hearts Animation Overlay on Video Canvas */}
-          <FloatingHeartsOverlay triggerCount={likeCount} />
-
-          {/* Floating Pinned Product Card on Video (Kiri Bawah Mengambang) */}
-          {pinnedProduct && (
-            <div className="pointer-events-auto absolute bottom-16 left-2.5 right-2.5 z-30 max-w-[calc(100%-20px)] sm:bottom-20 sm:left-4 sm:right-auto sm:max-w-sm">
-              <LiveProductPin
-                product={pinnedProduct}
-                isBroadcaster={true}
-                onUnpin={handleUnpinProduct}
+          {/* Video Canvas / Video Track View */}
+          <div className="relative flex h-full w-full flex-1 items-center justify-center overflow-hidden bg-slate-950">
+            {cameraActive ? (
+              <video
+                ref={videoElementRef}
+                autoPlay
+                playsInline
+                muted
+                style={{ transform: isMirrored ? 'scaleX(-1)' : 'none' }}
+                className={`h-full w-full transition-transform duration-300 ${
+                  showGuides ? 'object-contain' : 'object-cover'
+                }`}
               />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 text-slate-500">
+                <CameraOff className="h-16 w-16 stroke-1 text-slate-600" />
+                <p className="text-sm font-medium">Kamera Dimatikan</p>
+              </div>
+            )}
+
+            {/* Panduan Frame: batas layar HP (9:16) & desktop (16:9) untuk host */}
+            {showGuides && cameraActive && (
+              <LiveFrameGuides videoRef={videoElementRef} />
+            )}
+
+            {/* Floating Hearts Animation Overlay on Video Canvas */}
+            <FloatingHeartsOverlay triggerCount={likeCount} />
+
+            {/* Floating Pinned Product Card on Video (Kiri Bawah Mengambang) */}
+            {pinnedProduct && (
+              <div className="pointer-events-auto absolute bottom-16 left-2.5 right-2.5 z-30 max-w-[calc(100%-20px)] sm:bottom-20 sm:left-4 sm:right-auto sm:max-w-sm">
+                <LiveProductPin
+                  product={pinnedProduct}
+                  isBroadcaster={true}
+                  onUnpin={handleUnpinProduct}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Hardware Controls Bar */}
+          <div className="pointer-events-auto absolute bottom-3 left-2.5 right-2.5 z-20 flex items-center justify-center sm:bottom-4 sm:left-4 sm:right-4">
+            <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/90 px-3 py-1.5 shadow-xl backdrop-blur-md sm:gap-2 sm:px-4 sm:py-2">
+              {/* Camera Toggle */}
+              <button
+                onClick={toggleCamera}
+                className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
+                  cameraActive
+                    ? 'bg-white/10 text-white hover:bg-white/20'
+                    : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
+                }`}
+                title={cameraActive ? 'Matikan Kamera' : 'Nyalakan Kamera'}
+              >
+                {cameraActive ? (
+                  <Camera className="h-4 w-4 sm:h-5 sm:w-5" />
+                ) : (
+                  <CameraOff className="h-4 w-4 sm:h-5 sm:w-5" />
+                )}
+              </button>
+
+              {/* Microphone Toggle */}
+              <button
+                onClick={toggleMic}
+                className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
+                  micActive
+                    ? 'bg-white/10 text-white hover:bg-white/20'
+                    : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
+                }`}
+                title={micActive ? 'Matikan Suara' : 'Nyalakan Suara'}
+              >
+                {micActive ? (
+                  <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
+                ) : (
+                  <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />
+                )}
+              </button>
+
+              {/* Switch Camera */}
+              <button
+                onClick={flipCamera}
+                className="cursor-pointer rounded-full bg-white/10 p-2 text-white transition-all hover:bg-white/20 sm:p-2.5"
+                title="Ganti Kamera Depan/Belakang"
+              >
+                <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+
+              {/* Mirror View Toggle (Instagram Style) */}
+              <button
+                onClick={toggleMirror}
+                className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
+                  isMirrored
+                    ? 'bg-orange-500/30 text-orange-300 ring-2 ring-orange-400/50 hover:bg-orange-500/40'
+                    : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                }`}
+                title={
+                  isMirrored
+                    ? 'Cermin Aktif (Mode Selfie/Instagram - Klik untuk Normal)'
+                    : 'Cermin Nonaktif (Klik untuk Mirror View)'
+                }
+              >
+                <FlipHorizontal className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+
+              {/* Panduan Frame Toggle (batas layar HP & desktop) */}
+              <button
+                onClick={() => setShowGuides((v) => !v)}
+                className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
+                  showGuides
+                    ? 'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-400/50 hover:bg-emerald-500/40'
+                    : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                }`}
+                title={
+                  showGuides
+                    ? 'Panduan Frame Aktif (batas layar HP & Desktop) - Klik untuk sembunyikan'
+                    : 'Tampilkan Panduan Frame (batas layar HP & Desktop)'
+                }
+              >
+                <Crop className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
             </div>
-          )}
-        </div>
-
-        {/* Bottom Hardware Controls Bar */}
-        <div className="pointer-events-auto absolute bottom-3 left-2.5 right-2.5 z-20 flex items-center justify-center sm:bottom-4 sm:left-4 sm:right-4">
-          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/90 px-3 py-1.5 shadow-xl backdrop-blur-md sm:gap-2 sm:px-4 sm:py-2">
-            {/* Camera Toggle */}
-            <button
-              onClick={toggleCamera}
-              className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
-                cameraActive
-                  ? 'bg-white/10 text-white hover:bg-white/20'
-                  : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
-              }`}
-              title={cameraActive ? 'Matikan Kamera' : 'Nyalakan Kamera'}
-            >
-              {cameraActive ? (
-                <Camera className="h-4 w-4 sm:h-5 sm:w-5" />
-              ) : (
-                <CameraOff className="h-4 w-4 sm:h-5 sm:w-5" />
-              )}
-            </button>
-
-            {/* Microphone Toggle */}
-            <button
-              onClick={toggleMic}
-              className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
-                micActive
-                  ? 'bg-white/10 text-white hover:bg-white/20'
-                  : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
-              }`}
-              title={micActive ? 'Matikan Suara' : 'Nyalakan Suara'}
-            >
-              {micActive ? (
-                <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
-              ) : (
-                <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />
-              )}
-            </button>
-
-            {/* Switch Camera */}
-            <button
-              onClick={flipCamera}
-              className="cursor-pointer rounded-full bg-white/10 p-2 text-white transition-all hover:bg-white/20 sm:p-2.5"
-              title="Ganti Kamera Depan/Belakang"
-            >
-              <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-
-            {/* Mirror View Toggle (Instagram Style) */}
-            <button
-              onClick={toggleMirror}
-              className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
-                isMirrored
-                  ? 'bg-orange-500/30 text-orange-300 ring-2 ring-orange-400/50 hover:bg-orange-500/40'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-              }`}
-              title={
-                isMirrored
-                  ? 'Cermin Aktif (Mode Selfie/Instagram - Klik untuk Normal)'
-                  : 'Cermin Nonaktif (Klik untuk Mirror View)'
-              }
-            >
-              <FlipHorizontal className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-
-            {/* Panduan Frame Toggle (batas layar HP & desktop) */}
-            <button
-              onClick={() => setShowGuides((v) => !v)}
-              className={`cursor-pointer rounded-full p-2 transition-all sm:p-2.5 ${
-                showGuides
-                  ? 'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-400/50 hover:bg-emerald-500/40'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-              }`}
-              title={
-                showGuides
-                  ? 'Panduan Frame Aktif (batas layar HP & Desktop) - Klik untuk sembunyikan'
-                  : 'Tampilkan Panduan Frame (batas layar HP & Desktop)'
-              }
-            >
-              <Crop className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
           </div>
         </div>
-      </div>
 
-      {/* Mobile Tab Switcher: Chat vs Sematan Produk */}
-      <div className="shadow-2xs flex rounded-2xl border border-slate-200/80 bg-white p-1 dark:border-slate-800 dark:bg-slate-900 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setMobileTab('chat')}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
-            mobileTab === 'chat'
-              ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-950'
-              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-          }`}
-        >
-          <MessageSquare className="h-4 w-4" />
-          <span>Live Chat ({messages.length})</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMobileTab('products')}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
-            mobileTab === 'products'
-              ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-950'
-              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-          }`}
-        >
-          <ShoppingBag className="h-4 w-4 text-orange-500" />
-          <span>Sematan Produk ({products.length})</span>
-        </button>
-      </div>
+        {/* Mobile Tab Switcher: Chat vs Sematan Produk (< lg) */}
+        <div className="shadow-2xs flex rounded-2xl border border-slate-200/80 bg-white p-1 dark:border-slate-800 dark:bg-slate-900 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileTab('chat')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
+              mobileTab === 'chat'
+                ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>Live Chat ({messages.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('products')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
+              mobileTab === 'products'
+                ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <ShoppingBag className="h-4 w-4 text-orange-500" />
+            <span>Sematan Produk ({products.length})</span>
+          </button>
+        </div>
 
-      {/* Kolom Kanan: Live Chat & Daftar Produk untuk Disematkan */}
-      <div className="flex flex-col gap-4 overflow-hidden lg:h-full">
-        {/* Tab Chat */}
+        {/* Kolom Kanan: Live Chat Panel Penuh (Dari Atas Sampai Bawah di Samping Kamera) */}
         <div
-          className={`h-[440px] sm:h-[480px] lg:h-3/5 lg:min-h-[300px] lg:flex-1 ${
+          className={`h-[480px] sm:h-[520px] lg:col-span-1 lg:h-full ${
             mobileTab === 'chat' ? 'block' : 'hidden lg:block'
           }`}
         >
@@ -1335,204 +1335,238 @@ function LiveKitStudioControls({
             isConnected={isWsConnected}
           />
         </div>
+      </div>
 
-        {/* Tab Featured Products (Pin Management) - Clean White Theme */}
-        <div
-          className={`h-[440px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:h-[480px] lg:h-2/5 lg:min-h-[220px] ${
-            mobileTab === 'products' ? 'flex' : 'hidden lg:flex'
-          }`}
-        >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
-              <ShoppingBag className="h-4 w-4 text-orange-500" />
-              <span>Katalog Sematan ({products.length})</span>
+      {/* SECTION BAWAH: KATALOG BARANG SEMATAN (Di Bawah Section Camera & Live Chat) */}
+      <div
+        className={`flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6 ${
+          mobileTab === 'products' ? 'flex' : 'hidden lg:flex'
+        }`}
+      >
+        <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-500">
+              <ShoppingBag className="h-5 w-5" />
             </div>
-            {pinnedProduct && (
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+                  Katalog Sematan ({products.length})
+                </h3>
+                {pinnedProduct && (
+                  <span className="flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-950/60 dark:text-orange-500">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
+                    1 Produk Tersemat di Layar
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Pilih dan sematkan gadget ke layar siaran langsung penonton
+                secara instan dengan harga promo khusus.
+              </p>
+            </div>
+          </div>
+
+          {pinnedProduct && (
+            <button
+              onClick={handleUnpinProduct}
+              className="flex cursor-pointer items-center gap-1.5 self-start rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400 sm:self-auto"
+            >
+              <X className="h-3.5 w-3.5" />
+              <span>Lepas Sematan</span>
+            </button>
+          )}
+        </div>
+
+        {/* Toolbar: Search bar & filter pills */}
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Cari semua gadget katalog..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs text-slate-900 placeholder-slate-400 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+            {productSearch && (
               <button
-                onClick={unpinProduct}
-                className="cursor-pointer text-[11px] font-semibold text-rose-500 hover:underline"
+                type="button"
+                onClick={() => setProductSearch('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
-                Lepas Sematan
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
 
-          {/* Search bar & filter pills untuk memilih dari semua 200+ katalog */}
-          <div className="mt-2 space-y-1.5">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="text"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Cari semua gadget katalog..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-7 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <button
+              type="button"
+              onClick={() => setProductFilterMode('all')}
+              className={`cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                productFilterMode === 'all'
+                  ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
+              }`}
+            >
+              Semua ({products.length})
+            </button>
+            {stream.featuredProductIds &&
+              stream.featuredProductIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setProductFilterMode('featured')}
+                  className={`cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                    productFilterMode === 'featured'
+                      ? 'shadow-xs bg-orange-500 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                  }`}
+                >
+                  Pilihan Awal ({stream.featuredProductIds.length})
+                </button>
+              )}
+          </div>
+        </div>
+
+        {/* Product Cards Grid dengan scroll halus */}
+        <div className="scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 mt-4 max-h-[580px] overflow-y-auto pr-1">
+          {filteredCatalogProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center text-xs text-slate-400">
+              <ShoppingBag className="mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                {productSearch
+                  ? 'Tidak ada produk yang cocok dengan pencarian.'
+                  : 'Tidak ada produk di katalog toko.'}
+              </p>
               {productSearch && (
                 <button
                   type="button"
                   onClick={() => setProductSearch('')}
-                  className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                  className="mt-2 text-xs font-medium text-orange-600 hover:underline"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  Reset kata kunci pencarian
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setProductFilterMode('all')}
-                className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                  productFilterMode === 'all'
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
-                }`}
-              >
-                Semua ({products.length})
-              </button>
-              {stream.featuredProductIds &&
-                stream.featuredProductIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setProductFilterMode('featured')}
-                    className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                      productFilterMode === 'featured'
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
-                    }`}
-                  >
-                    Pilihan Awal ({stream.featuredProductIds.length})
-                  </button>
-                )}
-            </div>
-          </div>
-
-          <div className="scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 mt-2 flex-1 space-y-2 overflow-y-auto">
-            {filteredCatalogProducts.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400">
-                {productSearch
-                  ? 'Tidak ada produk yang cocok dengan pencarian.'
-                  : 'Tidak ada produk di katalog toko.'}
-              </div>
-            ) : (
-              filteredCatalogProducts.map((p) => {
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredCatalogProducts.map((p) => {
                 const isPinned = pinnedProduct?.productId === p.id
+                const catalogDeal = liveCatalogDeals[p.id]
+                const hasCatalogPromo =
+                  catalogDeal && catalogDeal.discountPrice < p.price
+                const liveCatalogPrice = hasCatalogPromo
+                  ? catalogDeal.discountPrice
+                  : p.price
+
                 return (
                   <div
                     key={p.id}
-                    className={`flex flex-col rounded-2xl border p-2 text-xs transition-all ${
+                    className={`flex flex-col justify-between rounded-2xl border p-3 text-xs transition-all ${
                       isPinned
-                        ? 'border-orange-400 bg-orange-50/70 shadow-sm dark:border-orange-500/40 dark:bg-orange-950/20'
-                        : 'border-slate-200/70 bg-slate-50/80 hover:bg-slate-100/80 dark:border-slate-800 dark:bg-slate-800/40'
+                        ? 'border-orange-500 bg-orange-50/70 shadow-sm ring-2 ring-orange-500/20 dark:border-orange-500/50 dark:bg-orange-950/20'
+                        : 'border-slate-200/80 bg-slate-50/60 hover:border-slate-300 hover:bg-slate-100/60 dark:border-slate-800 dark:bg-slate-800/40'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex min-w-0 items-center gap-2 pr-2">
-                        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-700">
-                          {p.images[0] ? (
-                            <Image
-                              src={p.images[0]}
-                              alt={p.name}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <ShoppingBag className="m-auto h-4 w-4 text-slate-400" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="max-w-[130px] truncate font-semibold text-slate-800 dark:text-slate-100">
-                            {p.name}
-                          </p>
-                          {(() => {
-                            const catalogDeal = liveCatalogDeals[p.id]
-                            const hasCatalogPromo =
-                              catalogDeal && catalogDeal.discountPrice < p.price
-                            const liveCatalogPrice = hasCatalogPromo
-                              ? catalogDeal.discountPrice
-                              : p.price
-
-                            return hasCatalogPromo ? (
+                    <div>
+                      {/* Top Row: Thumbnail + Title + Price + Pin Button */}
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-700">
+                            {p.images[0] ? (
+                              <Image
+                                src={p.images[0]}
+                                alt={p.name}
+                                fill
+                                className="object-cover"
+                              />
+                            ) : (
+                              <ShoppingBag className="m-auto h-5 w-5 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p
+                              className="truncate font-bold text-slate-800 dark:text-slate-100"
+                              title={p.name}
+                            >
+                              {p.name}
+                            </p>
+                            {hasCatalogPromo ? (
                               <div className="flex flex-wrap items-baseline gap-1">
-                                <span className="text-[11px] font-bold text-orange-600 dark:text-orange-500">
+                                <span className="text-xs font-bold text-orange-600 dark:text-orange-500">
                                   Rp {liveCatalogPrice.toLocaleString('id-ID')}
                                 </span>
-                                <span className="text-[9.5px] text-slate-400 line-through">
+                                <span className="text-[10px] text-slate-400 line-through">
                                   Rp {p.price.toLocaleString('id-ID')}
                                 </span>
                               </div>
                             ) : (
-                              <p className="text-[11px] font-bold text-orange-600 dark:text-orange-500">
+                              <p className="text-xs font-bold text-orange-600 dark:text-orange-500">
                                 Rp {p.price.toLocaleString('id-ID')}
                               </p>
-                            )
-                          })()}
+                            )}
+                          </div>
                         </div>
+
+                        <button
+                          onClick={() => {
+                            const rawVal = discountInputs[p.id]?.replace(
+                              /\D/g,
+                              ''
+                            )
+                            const discountPrice = rawVal
+                              ? parseInt(rawVal, 10)
+                              : undefined
+                            handlePinProduct(p, discountPrice)
+                          }}
+                          disabled={isPinned}
+                          className={`flex shrink-0 cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-all ${
+                            isPinned
+                              ? 'cursor-default bg-orange-500 text-white shadow-sm'
+                              : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                          }`}
+                        >
+                          <Pin className="h-3 w-3" />
+                          {isPinned ? 'Tersemat' : 'Sematkan'}
+                        </button>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          const rawVal = discountInputs[p.id]?.replace(
-                            /\D/g,
-                            ''
-                          )
-                          const discountPrice = rawVal
-                            ? parseInt(rawVal, 10)
-                            : undefined
-                          handlePinProduct(p, discountPrice)
-                        }}
-                        disabled={isPinned}
-                        className={`flex cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-all ${
-                          isPinned
-                            ? 'cursor-default bg-orange-500 text-white shadow-sm'
-                            : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                        }`}
-                      >
-                        <Pin className="h-3 w-3" />
-                        {isPinned ? 'Tersemat' : 'Sematkan'}
-                      </button>
+                      {/* Diskon Ekstra Input saat Pin */}
+                      {!isPinned && (
+                        <div className="mt-2.5 flex flex-col gap-1 border-t border-slate-200/60 pt-2 dark:border-slate-700/60">
+                          <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                            Diskon Ekstra Saat Sematkan / Diskon (Rp):
+                          </label>
+                          <input
+                            type="number"
+                            value={discountInputs[p.id] || ''}
+                            onChange={(e) =>
+                              setDiscountInputs((prev) => ({
+                                ...prev,
+                                [p.id]: e.target.value,
+                              }))
+                            }
+                            placeholder={
+                              hasCatalogPromo
+                                ? `Ekstra di bawah Rp ${liveCatalogPrice.toLocaleString('id-ID')}`
+                                : 'Harga spesial saat pin (opsional)'
+                            }
+                            className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-900 placeholder-slate-400 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          />
+                          <p className="text-[9px] text-slate-400">
+                            {hasCatalogPromo
+                              ? `*Kosongkan jika menggunakan harga promo katalog live (Rp ${liveCatalogPrice.toLocaleString('id-ID')})`
+                              : '*Kosongkan jika menggunakan harga normal katalog'}
+                          </p>
+                        </div>
+                      )}
                     </div>
-
-                    {!isPinned &&
-                      (() => {
-                        const catalogDeal = liveCatalogDeals[p.id]
-                        const hasCatalogPromo =
-                          catalogDeal && catalogDeal.discountPrice < p.price
-                        const liveCatalogPrice = hasCatalogPromo
-                          ? catalogDeal.discountPrice
-                          : p.price
-
-                        return (
-                          <div className="mt-1.5 flex flex-col gap-0.5 border-t border-slate-200/60 pt-1.5 dark:border-slate-700/60">
-                            <div className="flex items-center gap-1.5">
-                              <span className="shrink-0 text-[10px] font-bold text-orange-600 dark:text-orange-500">
-                                Diskon Ekstra Saat Sematkan / Diskon (Rp):
-                              </span>
-                              <input
-                                type="number"
-                                value={discountInputs[p.id] || ''}
-                                onChange={(e) =>
-                                  setDiscountInputs((prev) => ({
-                                    ...prev,
-                                    [p.id]: e.target.value,
-                                  }))
-                                }
-                                placeholder={
-                                  hasCatalogPromo
-                                    ? `Ekstra di bawah Rp ${liveCatalogPrice.toLocaleString('id-ID')}`
-                                    : 'Harga spesial saat pin (opsional)'
-                                }
-                                className="w-full rounded-lg border border-orange-200 bg-white px-2 py-0.5 text-[10.5px] font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                              />
-                            </div>
-                          </div>
-                        )
-                      })()}
                   </div>
                 )
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
