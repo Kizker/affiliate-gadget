@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { Star } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { Session } from 'next-auth'
+import type { MitraReviewItem } from '@/types/mitra-detail'
 
 // Skeleton fallback for review list during dynamic load
 function ReviewListSkeleton() {
@@ -44,6 +45,7 @@ interface MitraReviewsProps {
   session: Session | null
   onReviewCreatedOrUpdated?: () => void
   initialIsMobile?: boolean
+  initialReviews?: MitraReviewItem[]
 }
 
 export function MitraReviews({
@@ -54,6 +56,7 @@ export function MitraReviews({
   session,
   onReviewCreatedOrUpdated,
   initialIsMobile,
+  initialReviews,
 }: MitraReviewsProps) {
   const isMobile = useIsMobile(768, initialIsMobile)
   const [refreshReviews, setRefreshReviews] = useState(0)
@@ -105,6 +108,7 @@ export function MitraReviews({
             mitraId={mitraId}
             refreshTrigger={refreshReviews}
             currentUserId={session?.user?.id}
+            initialReviews={initialReviews}
             onEditReview={(review) => {
               setEditingReview(review)
               setIsReviewModalOpen(true)

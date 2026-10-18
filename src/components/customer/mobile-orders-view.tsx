@@ -17,6 +17,7 @@ import {
   ORDER_STATUS_MAP as STATUS_MAP,
   isReturnOrder,
   getOrderStatusMeta,
+  isReturnEligible,
 } from '@/lib/order-return-utils'
 import {
   getOrderPaymentRemainingSeconds,
@@ -555,18 +556,15 @@ export function MobileOrdersView({
                       )
                     })()}
 
-                    {order.status === 'COMPLETED' &&
-                      (!order.returnRequests ||
-                        order.returnRequests.length === 0) &&
-                      onOpenReturnModal && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenReturnModal(order)}
-                          className="rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-xs font-semibold text-orange-700 transition active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
-                        >
-                          Retur
-                        </button>
-                      )}
+                    {isReturnEligible(order) && onOpenReturnModal && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenReturnModal(order)}
+                        className="rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-xs font-semibold text-orange-700 transition active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                      >
+                        Retur
+                      </button>
+                    )}
 
                     {order.status === 'PENDING_PAYMENT' ? (
                       <Link

@@ -11,6 +11,20 @@ export interface MitraImage {
   url: string
 }
 
+export interface ReviewUser {
+  id: string
+  name: string | null
+  image: string | null
+}
+
+export interface MitraReviewItem {
+  id: string
+  rating: number
+  comment: string | null
+  createdAt: string
+  user: ReviewUser
+}
+
 export interface MitraDetail {
   id: string
   businessName: string
@@ -34,5 +48,6 @@ export interface MitraDetail {
   mapsUrl?: string | null
   services: ServiceItem[]
   images: MitraImage[]
+  reviews?: MitraReviewItem[]
   isOpen: boolean
 }

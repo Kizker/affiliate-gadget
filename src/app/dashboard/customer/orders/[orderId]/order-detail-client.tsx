@@ -21,6 +21,7 @@ import {
   getOrderContextualTimestamp,
   buildOrderAuditTimeline,
 } from '@/lib/order-date-utils'
+import { isWarrantyExpired } from '@/lib/order-return-utils'
 import {
   OrderDetailProps,
   statusConfig,
@@ -265,9 +266,11 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     (latestReturnRequest.status === 'PENDING' ||
       latestReturnRequest.status === 'IN_REVIEW' ||
       latestReturnRequest.status === 'APPROVED')
+  const isWarrantyOver = isWarrantyExpired(order)
   const canRequestReturnOrComplaint =
     (order.status === 'SHIPPED' || order.status === 'COMPLETED') &&
-    !hasActiveClaim
+    !hasActiveClaim &&
+    !isWarrantyOver
 
   // Construct chat parameters for all chat entry points
   const firstItem = order.items?.[0]

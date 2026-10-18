@@ -323,16 +323,18 @@ export function buildOrderAuditTimeline(order: {
       : 'Menunggu konfirmasi penerimaan paket oleh pembeli.',
   })
 
-  // Step 5: Garansi Aktif (Jika selesai)
+  // Step 5: Garansi Aktif / Habis (Jika selesai)
   if (isCompleted && order.warrantyExpiryDate) {
+    const isExpired = new Date(order.warrantyExpiryDate).getTime() < Date.now()
     steps.push({
       key: 'warranty',
-      title: 'Garansi 30 Hari Aktif',
+      title: isExpired ? 'Garansi 30 Hari Habis' : 'Garansi 30 Hari Aktif',
       dateFormatted: `s/d ${formatOrderShortDate(order.warrantyExpiryDate)}`,
       isPassed: true,
       isCurrent: false,
-      description:
-        'Garansi tukar unit baru resmi toko cabang aktif selama 30 hari.',
+      description: isExpired
+        ? 'Masa garansi 30 hari telah habis.'
+        : 'Garansi tukar unit baru resmi toko cabang aktif selama 30 hari.',
     })
   }
 

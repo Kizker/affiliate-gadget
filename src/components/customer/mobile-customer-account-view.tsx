@@ -96,62 +96,73 @@ export function MobileCustomerAccountView({
 
     return (
       <div className="fixed inset-0 z-40 flex h-full w-full flex-col overflow-hidden bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-        {/* Sticky Sub-View Header with Back Button & Quick Save Action */}
-        <header className="z-50 flex shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 px-3.5 py-2.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
+        {/* Header / Floating Back Action */}
+        {activeSubView === 'wishlist' ? (
           <button
             type="button"
             onClick={onBack || (() => setActiveSubView('overview'))}
-            className="flex items-center gap-1 text-xs font-bold text-slate-700 transition hover:text-orange-500 active:scale-95 dark:text-slate-300"
+            className="fixed left-3.5 top-3.5 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/90 bg-white/95 text-slate-700 shadow-md backdrop-blur-md transition hover:bg-white hover:text-orange-500 active:scale-95 dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200"
+            aria-label="Kembali"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Kembali</span>
           </button>
-          <h1 className="max-w-[170px] truncate text-center text-xs font-bold text-slate-950 dark:text-white sm:max-w-none">
-            {titles[activeSubView]}
-          </h1>
-          <div className="flex min-w-[70px] items-center justify-end">
-            {activeSubView === 'profile' && onSaveProfile && (
-              <button
-                type="button"
-                onClick={onSaveProfile}
-                disabled={saving}
-                className="shadow-xs flex items-center gap-1.5 rounded-full bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Check className="h-3.5 w-3.5" />
-                )}
-                <span>Simpan</span>
-              </button>
-            )}
-            {activeSubView === 'security' && onSavePassword && (
-              <button
-                type="button"
-                onClick={onSavePassword}
-                disabled={saving}
-                className="shadow-xs flex items-center gap-1.5 rounded-full bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Check className="h-3.5 w-3.5" />
-                )}
-                <span>Simpan</span>
-              </button>
-            )}
-            {activeSubView === 'address' && onAddAddress && (
-              <button
-                type="button"
-                onClick={onAddAddress}
-                className="shadow-xs flex items-center gap-1 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Tambah</span>
-              </button>
-            )}
-          </div>
-        </header>
+        ) : (
+          <header className="z-50 flex shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 px-3.5 py-2.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
+            <button
+              type="button"
+              onClick={onBack || (() => setActiveSubView('overview'))}
+              className="flex items-center gap-1 text-xs font-bold text-slate-700 transition hover:text-orange-500 active:scale-95 dark:text-slate-300"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Kembali</span>
+            </button>
+            <h1 className="max-w-[170px] truncate text-center text-xs font-bold text-slate-950 dark:text-white sm:max-w-none">
+              {titles[activeSubView]}
+            </h1>
+            <div className="flex min-w-[70px] items-center justify-end">
+              {activeSubView === 'profile' && onSaveProfile && (
+                <button
+                  type="button"
+                  onClick={onSaveProfile}
+                  disabled={saving}
+                  className="shadow-xs flex items-center gap-1.5 rounded-full bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )}
+                  <span>Simpan</span>
+                </button>
+              )}
+              {activeSubView === 'security' && onSavePassword && (
+                <button
+                  type="button"
+                  onClick={onSavePassword}
+                  disabled={saving}
+                  className="shadow-xs flex items-center gap-1.5 rounded-full bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )}
+                  <span>Simpan</span>
+                </button>
+              )}
+              {activeSubView === 'address' && onAddAddress && (
+                <button
+                  type="button"
+                  onClick={onAddAddress}
+                  className="shadow-xs flex items-center gap-1 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Tambah</span>
+                </button>
+              )}
+            </div>
+          </header>
+        )}
 
         {/* Scrollable Content Body with Natural In-Container Scrolling */}
         <div
@@ -159,7 +170,11 @@ export function MobileCustomerAccountView({
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
         >
           <main className="p-3 pb-8">
-            <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+            <div
+              className={`shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5 ${
+                activeSubView === 'wishlist' ? 'mt-12' : ''
+              }`}
+            >
               {children}
             </div>
           </main>

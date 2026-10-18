@@ -181,14 +181,13 @@ export async function POST(req: NextRequest) {
       const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`
 
       // Dispatch automated WhatsApp message via Zenziva
-      import('@/lib/notifications').then(({ dispatchOtp }) => {
-        dispatchOtp({
-          identifier: normalizedPhone,
-          purpose: 'LOGIN',
-          channel: 'WHATSAPP',
-          userId: user.id,
-        }).catch((err) => console.error('[SECURITY OTP DISPATCH ERROR]:', err))
-      })
+      import('@/lib/notifications/whatsapp-provider').then(
+        ({ sendWhatsApp }) => {
+          sendWhatsApp(normalizedPhone, message).catch((err) =>
+            console.error('[SECURITY OTP DISPATCH ERROR]:', err)
+          )
+        }
+      )
 
       return NextResponse.json({
         success: true,

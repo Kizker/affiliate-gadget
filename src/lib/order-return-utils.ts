@@ -104,3 +104,57 @@ export function getOrderStatusMeta(order: BaseOrderForReturn): {
     }
   )
 }
+
+export interface OrderWarrantyInfo {
+  status: string
+  warrantyExpiryDate?: string | Date | null
+  completedAt?: string | Date | null
+  customerConfirmedAt?: string | Date | null
+  updatedAt?: string | Date | null
+  createdAt?: string | Date | null
+  returnRequests?: Array<{ status: string }> | null
+}
+
+/**
+ * Checks if 30-day warranty has expired for a given order
+ */
+export function isWarrantyExpired(order: OrderWarrantyInfo): boolean {
+  if (order.warrantyExpiryDate) {
+    return new Date(order.warrantyExpiryDate).getTime() < Date.now()
+  }
+
+  const referenceDate =
+    order.completedAt ||
+    order.customerConfirmedAt ||
+    order.updatedAt ||
+    order.createdAt
+
+  if (!referenceDate) return false
+
+  const elapsedMs = Date.now() - new Date(referenceDate).getTime()
+  return elapsedMs > 30 * 24 * 60 * 60 * 1000
+}
+
+/**
+ * Determines if the customer can request a return for the order:
+ * 1. Order status is COMPLETED
+ * 2. 30-day warranty has NOT expired
+ * 3. No active, completed, or approved return requests
+ */
+export function isReturnEligible(order: OrderWarrantyInfo): boolean {
+  if (order.status !== 'COMPLETED') return false
+  if (isWarrantyExpired(order)) return false
+
+  if (order.returnRequests && order.returnRequests.length > 0) {
+    const activeOrResolved = order.returnRequests.some(
+      (r) =>
+        r.status === 'PENDING' ||
+        r.status === 'IN_REVIEW' ||
+        r.status === 'APPROVED' ||
+        r.status === 'COMPLETED'
+    )
+    if (activeOrResolved) return false
+  }
+
+  return true
+}

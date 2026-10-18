@@ -30,7 +30,6 @@ import {
   Maximize2,
   Play,
   Headphones,
-  ChevronRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DateSeparator } from '@/components/chat/date-separator'
@@ -1610,30 +1609,6 @@ function AdminChatContent() {
         >
           {/* Integrated Sidebar Header */}
           <div className="space-y-2.5 border-b border-slate-100 p-3 dark:border-slate-800 sm:p-3.5">
-            {/* Tombol Bantuan CS Superadmin khusus untuk Admin Toko */}
-            {isStoreAdmin && (
-              <button
-                type="button"
-                onClick={handleOpenSuperAdminCsChat}
-                className="shadow-xs flex w-full items-center justify-between gap-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-2.5 text-left text-white transition hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99]"
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
-                    <Headphones className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block truncate text-xs font-bold leading-tight">
-                      Bantuan CS Superadmin
-                    </span>
-                    <span className="block truncate text-[10px] text-blue-100">
-                      Konsultasi kendala & bantuan langsung ke Superadmin
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-white/80" />
-              </button>
-            )}
-
             {/* Search Capsule */}
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />

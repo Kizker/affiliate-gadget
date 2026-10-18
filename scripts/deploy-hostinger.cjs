@@ -51,7 +51,7 @@ async function main() {
         -w /app \\
         -e DATABASE_URL="postgresql://agadget:AgProd2026Secure@postgres:5432/affiliate_gadget?schema=public" \\
         node:22-alpine \\
-        sh -c "apk add --no-cache openssl && npx prisma@6.19.1 db push --schema=./prisma/schema.prisma --accept-data-loss && npx tsx scripts/seed-mitra-reviews-and-gallery.ts"`)
+        sh -c "apk add --no-cache openssl && npx prisma@6.19.1 db push --schema=./prisma/schema.prisma --accept-data-loss && npx tsx scripts/seed-mitra-reviews-and-gallery.ts && npx tsx scripts/seed-all-mitras-reviews.ts"`)
 
       // 2. Build app container and ws-server
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose build app ws-server')

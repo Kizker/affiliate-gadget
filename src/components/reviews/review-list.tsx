@@ -24,6 +24,7 @@ interface ReviewListProps {
   currentUserId?: string
   maxDisplay?: number
   compact?: boolean
+  initialReviews?: Review[]
   onEditReview?: (review: {
     id: string
     rating: number
@@ -37,15 +38,22 @@ export default function ReviewList({
   currentUserId,
   maxDisplay = 5,
   compact = true,
+  initialReviews,
   onEditReview,
 }: ReviewListProps) {
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [loading, setLoading] = useState(true)
+  const [reviews, setReviews] = useState<Review[]>(initialReviews || [])
+  const [loading, setLoading] = useState(!initialReviews)
   const [error, setError] = useState<string | null>(null)
   const [selectedReviewIndex, setSelectedReviewIndex] = useState(0)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [hasFetched, setHasFetched] = useState(Boolean(initialReviews))
 
   useEffect(() => {
+    // Skip initial fetch if initialReviews were preloaded from SSR and no refresh requested
+    if (initialReviews && !hasFetched) {
+      setHasFetched(true)
+      return
+    }
     fetchReviews()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mitraId, refreshTrigger])

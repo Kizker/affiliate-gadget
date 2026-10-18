@@ -21,9 +21,18 @@ export function useKeyboardInset(enabled = true) {
     const update = () => {
       if (rafId) cancelAnimationFrame(rafId)
       rafId = requestAnimationFrame(() => {
-        // Penurunan tinggi visual viewport menandakan adanya virtual keyboard
+        const activeEl =
+          typeof document !== 'undefined' ? document.activeElement : null
+        const isInputFocused = Boolean(
+          activeEl &&
+          (activeEl.tagName === 'INPUT' ||
+            activeEl.tagName === 'TEXTAREA' ||
+            activeEl.getAttribute('contenteditable') === 'true')
+        )
+
+        // Penurunan tinggi visual viewport menandakan adanya virtual keyboard (hanya saat input aktif)
         const rawDelta = window.innerHeight - vv.height
-        const hasKeyboard = rawDelta > 100
+        const hasKeyboard = isInputFocused && rawDelta > 75
         const inset = hasKeyboard ? Math.round(rawDelta) : 0
 
         setState({
@@ -37,10 +46,19 @@ export function useKeyboardInset(enabled = true) {
     vv.addEventListener('resize', update)
     vv.addEventListener('scroll', update)
 
+    const handleFocusOut = () => {
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      }
+      update()
+    }
+    window.addEventListener('focusout', handleFocusOut)
+
     return () => {
       if (rafId) cancelAnimationFrame(rafId)
       vv.removeEventListener('resize', update)
       vv.removeEventListener('scroll', update)
+      window.removeEventListener('focusout', handleFocusOut)
     }
   }, [enabled])
 

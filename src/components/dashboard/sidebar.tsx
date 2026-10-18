@@ -402,14 +402,17 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
           {/* Brand Header with Desktop Collapse Button */}
           <div
             className={`flex h-16 items-center border-b border-slate-100 dark:border-slate-800/80 ${
-              isCollapsed ? 'justify-center px-2' : 'justify-between px-4'
+              isCollapsed
+                ? 'justify-center px-2'
+                : 'justify-end pl-16 pr-4 lg:justify-between lg:px-4'
             }`}
           >
             {!isCollapsed ? (
               <>
                 <Link
                   href="/"
-                  className="group flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-90"
+                  onClick={closeMobile}
+                  className="group ml-auto flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-90 lg:ml-0"
                 >
                   <img
                     src="/logo.webp"

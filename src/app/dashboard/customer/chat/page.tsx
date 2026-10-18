@@ -75,6 +75,22 @@ function CustomerChatContent() {
   const isSendingRef = useRef(false)
   const sentContextsRef = useRef<Set<string>>(new Set())
 
+  // Melacak apakah chat dibuka langsung dari halaman eksternal (mitra servis, toko, produk, pesanan)
+  const isDirectEntryRef = useRef<boolean>(
+    Boolean(
+      paramMitraId ||
+      paramStoreId ||
+      paramProductId ||
+      paramOrderId ||
+      paramReturnId ||
+      paramServiceContext
+    )
+  )
+  const originMitraIdRef = useRef<string | null>(paramMitraId)
+  const originStoreIdRef = useRef<string | null>(paramStoreId)
+  const originProductIdRef = useRef<string | null>(paramProductId)
+  const originOrderIdRef = useRef<string | null>(paramOrderId)
+
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -815,15 +831,35 @@ function CustomerChatContent() {
   ])
 
   const handleBackToList = () => {
-    if (
-      typeof window !== 'undefined' &&
-      window.history.length > 1 &&
-      rooms.length === 0
-    ) {
+    // Jika percakapan dibuka langsung dari halaman eksternal (mitra servis, toko, produk, pesanan),
+    // tombol kembali harus selalu membawa pengguna kembali ke halaman pemanggilnya
+    if (isDirectEntryRef.current) {
+      if (typeof window !== 'undefined' && window.history.length > 1) {
+        router.back()
+        return
+      }
+      if (originMitraIdRef.current) {
+        router.push(`/rekomendasi/${originMitraIdRef.current}`)
+        return
+      }
+      if (originStoreIdRef.current) {
+        router.push(`/toko/${originStoreIdRef.current}`)
+        return
+      }
+      if (originProductIdRef.current) {
+        router.push(`/gadget/${originProductIdRef.current}`)
+        return
+      }
+      if (originOrderIdRef.current) {
+        router.push(`/dashboard/customer/orders/${originOrderIdRef.current}`)
+        return
+      }
       router.back()
-    } else {
-      setShowChatOnMobile(false)
+      return
     }
+
+    // Jika pengguna memilih percakapan dari daftar room list, kembali ke daftar percakapan
+    setShowChatOnMobile(false)
   }
 
   // Send message with optimistic instant feedback
@@ -1176,24 +1212,34 @@ function CustomerChatContent() {
         <h1 className="sr-only">Pusat Pesan & Chat Pelanggan</h1>
         <div className="flex h-full w-full flex-1 flex-col px-0 md:mx-auto md:max-w-7xl md:px-6 lg:px-8">
           {/* Single-Surface Bento Chat Hub Container */}
-          <div className="md:shadow-xs grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-none border-0 bg-white dark:bg-slate-900 md:rounded-3xl md:border md:border-slate-200/80 lg:grid-cols-12">
+          <div className="md:shadow-xs grid h-full min-h-0 w-full min-w-0 flex-1 grid-cols-1 overflow-hidden rounded-none border-0 bg-white dark:bg-slate-900 md:rounded-3xl md:border md:border-slate-200/80 lg:grid-cols-12">
             {/* Left Pane: Integrated Control & Conversation List (4 Cols) */}
             <div
-              className={`flex h-full min-h-0 flex-col overflow-hidden border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:col-span-4 xl:col-span-4 ${
+              className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:col-span-4 xl:col-span-4 ${
                 showChatOnMobile ? 'hidden lg:flex' : 'flex'
               }`}
             >
-              {/* Mobile Dedicated Header for Room List (Back to Customer Settings) */}
+              {/* Mobile Dedicated Header for Room List (Kembali ke Halaman Sebelumnya) */}
               <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-3.5 py-3 dark:border-slate-800 lg:hidden">
                 <div className="flex items-center gap-2.5">
-                  <Link
-                    href="/dashboard/customer/settings"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        typeof window !== 'undefined' &&
+                        window.history.length > 1
+                      ) {
+                        router.back()
+                      } else {
+                        router.push('/dashboard/customer/settings')
+                      }
+                    }}
                     aria-label="Kembali ke Pengaturan"
                     className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                    title="Kembali ke Pengaturan"
+                    title="Kembali"
                   >
                     <ChevronLeft className="h-5 w-5" />
-                  </Link>
+                  </button>
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                     Pusat Chat Toko
                   </h2>
@@ -1216,7 +1262,7 @@ function CustomerChatContent() {
 
             {/* Right Pane: Active Conversation Window (8 Cols) */}
             <div
-              className={`flex h-full min-h-0 flex-col overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 lg:col-span-8 xl:col-span-8 ${
+              className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 lg:col-span-8 xl:col-span-8 ${
                 !showChatOnMobile ? 'hidden lg:flex' : 'flex'
               }`}
             >

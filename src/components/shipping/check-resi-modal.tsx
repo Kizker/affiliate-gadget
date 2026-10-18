@@ -167,7 +167,7 @@ export function CheckResiModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] w-[95vw] overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] w-[calc(100%-3rem)] overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:w-full sm:max-w-lg">
         {/* Modal Header */}
         <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-6 pr-14 dark:border-slate-800 dark:bg-slate-800/40 sm:px-7 sm:py-7">
           <div className="flex items-start gap-3.5">

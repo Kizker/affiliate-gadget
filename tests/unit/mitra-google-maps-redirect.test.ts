@@ -121,4 +121,19 @@ describe('Mitra Google Maps Input & Direct User Redirect Suite', () => {
     expect(serviceViewContent).toContain('href={mitra.googleMapsUrl}')
     expect(serviceViewContent).toContain('target="_blank"')
   })
+
+  it('6. AddressMapPicker overlay control badges are concise and single-line with whitespace-nowrap', () => {
+    const mapPickerPath = path.resolve(
+      process.cwd(),
+      'src/components/maps/address-map-picker.tsx'
+    )
+    const mapPickerContent = fs.readFileSync(mapPickerPath, 'utf-8')
+
+    // Ringkas satu baris untuk tombol petunjuk pin dan deteksi GPS
+    expect(mapPickerContent).toContain('Klik Peta')
+    expect(mapPickerContent).toContain('Deteksi GPS')
+    expect(mapPickerContent).toContain('whitespace-nowrap')
+    expect(mapPickerContent).not.toContain('Klik peta untuk pindahkan pin')
+    expect(mapPickerContent).not.toContain('Deteksi GPS Saya')
+  })
 })

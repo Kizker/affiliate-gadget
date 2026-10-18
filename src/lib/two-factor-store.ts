@@ -157,14 +157,16 @@ function getOtpMessage(code: string, purpose: OtpPurpose): string {
 export function createWhatsAppOtp(
   identifier: string,
   phone: string,
-  purpose: OtpPurpose = 'LOGIN'
+  purpose: OtpPurpose = 'LOGIN',
+  customCode?: string
 ): {
   code: string
   whatsappUrl: string
   expiresInSeconds: number
   message: string
 } {
-  const code = Math.floor(100000 + Math.random() * 900000).toString()
+  const code =
+    customCode || Math.floor(100000 + Math.random() * 900000).toString()
   const data = loadData()
   const cleanId = identifier.toLowerCase()
   const scopedKey = `${cleanId}:${purpose}`
@@ -190,16 +192,12 @@ export function createWhatsAppOtp(
   const message = getOtpMessage(code, purpose)
   const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`
 
-  // Dispatch via notifications engine if phone is provided
+  // Dispatch automated WhatsApp message via Zenziva provider
   if (phone) {
-    import('@/lib/notifications')
-      .then(({ dispatchOtp }) => {
-        dispatchOtp({
-          identifier: phone,
-          purpose: purpose as any,
-          channel: 'WHATSAPP',
-        }).catch((err) =>
-          console.error('[TWO-FACTOR-STORE DISPATCH ERROR]:', err)
+    import('@/lib/notifications/whatsapp-provider')
+      .then(({ sendWhatsApp }) => {
+        sendWhatsApp(normalizedPhone, message).catch((err) =>
+          console.error('[TWO-FACTOR-STORE WHATSAPP DISPATCH ERROR]:', err)
         )
       })
       .catch(() => {})
@@ -218,13 +216,14 @@ export function createWhatsAppOtp(
  */
 export function createLoginOtp(
   email: string,
-  phone: string
+  phone: string,
+  customCode?: string
 ): {
   code: string
   whatsappUrl: string
   expiresInSeconds: number
 } {
-  const result = createWhatsAppOtp(email, phone, 'LOGIN')
+  const result = createWhatsAppOtp(email, phone, 'LOGIN', customCode)
   return {
     code: result.code,
     whatsappUrl: result.whatsappUrl,

@@ -23,15 +23,25 @@ describe('Customer Profile Mobile Scroll & VPS DB Sync', () => {
     expect(content).not.toContain('pb-80')
   })
 
-  it('memvalidasi tombol simpan profil dapat diakses di mobile pada halaman settings', () => {
-    const content = fs.readFileSync(customerSettingsPagePath, 'utf-8')
-    expect(content).toContain('Simpan Profil Biodata')
-    expect(content).toContain('bg-orange-500')
-    expect(content).toContain('hover:bg-orange-600')
-    // Pastikan tombol tidak disembunyikan di mobile (tidak memiliki hidden md:flex)
-    expect(content).not.toContain(
-      'hidden items-center justify-end border-t border-slate-100 pt-4 md:flex'
-    )
+  it('memvalidasi tombol simpan profil hanya di kanan atas dan form bio ditinggikan', () => {
+    const mobileContent = fs.readFileSync(mobileCustomerAccountPath, 'utf-8')
+    const pageContent = fs.readFileSync(customerSettingsPagePath, 'utf-8')
+
+    // Tombol simpan di kanan atas mobile header
+    expect(mobileContent).toContain('<span>Simpan</span>')
+    expect(mobileContent).toContain('onSaveProfile')
+    expect(mobileContent).toContain('bg-orange-500')
+
+    // Tombol simpan di kanan atas desktop header
+    expect(pageContent).toContain('onClick={handleSaveProfile}')
+    expect(pageContent).toContain("{saving ? 'Menyimpan...' : 'Simpan'}")
+
+    // Tombol simpan bawah dieliminasi
+    expect(pageContent).not.toContain('Simpan Profil Biodata')
+
+    // Form bio ditinggikan
+    expect(pageContent).toContain('rows={4}')
+    expect(pageContent).toContain('min-h-[110px]')
   })
 
   it('memvalidasi tombol perbarui kata sandi dapat diakses di mobile', () => {

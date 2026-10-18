@@ -34,6 +34,7 @@ import {
   X,
   Send,
   Zap,
+  Tag,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useLiveKitToken } from '@/hooks/use-livekit-token'
@@ -57,6 +58,33 @@ function useIsMobile() {
     return () => window.removeEventListener('resize', check)
   }, [])
   return isMobile
+}
+
+// Helper format titik ribuan rupiah untuk input harga live
+function formatPriceInput(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  if (!digits) return ''
+  return new Intl.NumberFormat('id-ID').format(parseInt(digits, 10))
+}
+
+// Helper scroll container internal tanpa menyebabkan window.scroll pada iOS Safari
+function scrollInputIntoContainer(el: HTMLElement) {
+  if (typeof window !== 'undefined') {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }
+
+  const container = el.closest<HTMLElement>('.overflow-y-auto')
+  if (container) {
+    const elRect = el.getBoundingClientRect()
+    const containerRect = container.getBoundingClientRect()
+    const relativeTop = elRect.top - containerRect.top
+    const targetScroll =
+      container.scrollTop +
+      relativeTop -
+      containerRect.height / 2 +
+      elRect.height / 2
+    container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' })
+  }
 }
 
 interface StoreProduct {
@@ -111,6 +139,10 @@ function LiveKitStudioControls({
   const [discountInputs, setDiscountInputs] = useState<Record<string, string>>(
     {}
   )
+  const [pinModalProduct, setPinModalProduct] = useState<StoreProduct | null>(
+    null
+  )
+  const [pinModalDiscount, setPinModalDiscount] = useState<string>('')
   const [liveCatalogDeals, setLiveCatalogDeals] = useState<
     Record<
       string,
@@ -167,23 +199,55 @@ function LiveKitStudioControls({
     setIsMounted(true)
   }, [])
 
+  // Auto-scroll input aktif di dalam drawer produk saat keyboard muncul
+  useEffect(() => {
+    if (keyboardInset > 0 && isProductDrawerOpen) {
+      const activeEl = document.activeElement as HTMLElement | null
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')
+      ) {
+        setTimeout(() => {
+          scrollInputIntoContainer(activeEl)
+        }, 80)
+      }
+    }
+  }, [keyboardInset, isProductDrawerOpen])
+
   useEffect(() => {
     if (isMobile) {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
       document.documentElement.classList.add('mobile-live-active')
       document.body.classList.add('mobile-live-active')
 
-      const handleViewportReset = () => {
-        window.scrollTo(0, 0)
+      const enforceZeroScroll = () => {
+        if (window.scrollY !== 0 || window.scrollX !== 0) {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        }
       }
-      window.addEventListener('resize', handleViewportReset)
-      window.addEventListener('orientationchange', handleViewportReset)
+
+      window.addEventListener('scroll', enforceZeroScroll, { passive: true })
+      window.addEventListener('resize', enforceZeroScroll, { passive: true })
+      window.addEventListener('orientationchange', enforceZeroScroll, {
+        passive: true,
+      })
+
+      const vv = typeof window !== 'undefined' ? window.visualViewport : null
+      if (vv) {
+        vv.addEventListener('resize', enforceZeroScroll, { passive: true })
+        vv.addEventListener('scroll', enforceZeroScroll, { passive: true })
+      }
 
       return () => {
         document.documentElement.classList.remove('mobile-live-active')
         document.body.classList.remove('mobile-live-active')
-        window.removeEventListener('resize', handleViewportReset)
-        window.removeEventListener('orientationchange', handleViewportReset)
+        window.removeEventListener('scroll', enforceZeroScroll)
+        window.removeEventListener('resize', enforceZeroScroll)
+        window.removeEventListener('orientationchange', enforceZeroScroll)
+        if (vv) {
+          vv.removeEventListener('resize', enforceZeroScroll)
+          vv.removeEventListener('scroll', enforceZeroScroll)
+        }
       }
     }
   }, [isMobile])
@@ -515,6 +579,32 @@ function LiveKitStudioControls({
     }
   }
 
+  const handleOpenPinModal = (prod: StoreProduct) => {
+    setPinModalProduct(prod)
+    setPinModalDiscount('')
+  }
+
+  const handleCancelPinModal = () => {
+    setPinModalProduct(null)
+    setPinModalDiscount('')
+  }
+
+  const handleConfirmPinModal = () => {
+    if (!pinModalProduct) return
+    const rawVal = pinModalDiscount.replace(/\D/g, '')
+    const discountPrice = rawVal ? parseInt(rawVal, 10) : undefined
+    if (pinModalDiscount) {
+      setDiscountInputs((prev) => ({
+        ...prev,
+        [pinModalProduct.id]: pinModalDiscount,
+      }))
+    }
+    handlePinProduct(pinModalProduct, discountPrice)
+    setPinModalProduct(null)
+    setPinModalDiscount('')
+    setIsProductDrawerOpen(false)
+  }
+
   // Filter produk katalog berdasarkan search & filter mode
   const filteredCatalogProducts = products.filter((p) => {
     if (productFilterMode === 'featured') {
@@ -614,8 +704,6 @@ function LiveKitStudioControls({
           left: 0,
           right: 0,
           bottom: 0,
-          height: '100dvh',
-          width: '100%',
           position: 'fixed',
           overflow: 'hidden',
           touchAction: 'none',
@@ -644,7 +732,7 @@ function LiveKitStudioControls({
         </div>
 
         {/* Top Floating Status Bar & Quick Actions */}
-        <div className="pointer-events-auto absolute left-3 right-3 top-[max(0.75rem,env(safe-area-inset-top,12px))] z-30 flex items-center justify-between gap-2">
+        <div className="pointer-events-auto absolute left-3 right-3 top-[max(0.85rem,env(safe-area-inset-top,14px))] z-30 flex items-center justify-between gap-2">
           <LiveStreamStatusBar
             startedAt={stream.startedAt || new Date()}
             viewerCount={viewerCount}
@@ -678,7 +766,7 @@ function LiveKitStudioControls({
         </div>
 
         {/* Right Floating Quick Camera/Mic Controls */}
-        <div className="pointer-events-auto absolute right-3 top-[calc(max(0.75rem,env(safe-area-inset-top,12px))+3.25rem)] z-30 flex flex-col items-center gap-2">
+        <div className="pointer-events-auto absolute right-3 top-[calc(max(0.85rem,env(safe-area-inset-top,14px))+3.25rem)] z-30 flex flex-col items-center gap-2">
           {/* Flip Camera */}
           <button
             type="button"
@@ -744,11 +832,13 @@ function LiveKitStudioControls({
         <div
           className="pointer-events-none relative z-30 mt-auto flex flex-col justify-end gap-2.5 p-3"
           style={{
-            transform: `translateY(-${keyboardInset}px)`,
+            transform:
+              keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : 'none',
             paddingBottom:
               keyboardInset > 0
                 ? 10
                 : 'max(1.25rem, env(safe-area-inset-bottom, 16px))',
+            transition: 'transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1)',
           }}
         >
           {/* Floating Comments Stream (Overlay di atas video, menempel di bawah / di atas barang sematan) */}
@@ -877,6 +967,11 @@ function LiveKitStudioControls({
                     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
                   }
                 }}
+                onBlur={() => {
+                  if (typeof window !== 'undefined') {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+                  }
+                }}
                 placeholder="Balas komentar sebagai Host..."
                 enterKeyHint="send"
                 autoComplete="off"
@@ -898,12 +993,26 @@ function LiveKitStudioControls({
 
         {/* Bottom Sheet Drawer: Pilih & Sematkan Barang (Clean Light Mode) */}
         {isProductDrawerOpen && (
-          <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div
+            className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm transition-[padding] duration-200 animate-in fade-in"
+            style={{
+              paddingBottom:
+                keyboardInset > 0 ? `${keyboardInset}px` : undefined,
+            }}
+          >
             <div
               className="fixed inset-0"
               onClick={() => setIsProductDrawerOpen(false)}
             />
-            <div className="relative z-10 flex max-h-[80vh] w-full flex-col rounded-t-3xl border-t border-slate-200 bg-white p-4 text-slate-900 shadow-2xl duration-300 animate-in slide-in-from-bottom">
+            <div
+              className="relative z-10 flex w-full flex-col rounded-t-3xl border-t border-slate-200 bg-white p-4 text-slate-900 shadow-2xl transition-[max-height] duration-200 duration-300 animate-in slide-in-from-bottom"
+              style={{
+                maxHeight:
+                  keyboardInset > 0
+                    ? `calc(100dvh - ${keyboardInset}px - 2rem)`
+                    : '82dvh',
+              }}
+            >
               <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300" />
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
@@ -934,6 +1043,21 @@ function LiveKitStudioControls({
                     type="text"
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
+                    onFocus={(e) => {
+                      const el = e.currentTarget
+                      setTimeout(() => {
+                        scrollInputIntoContainer(el)
+                      }, 100)
+                    }}
+                    onBlur={() => {
+                      if (typeof window !== 'undefined') {
+                        window.scrollTo({
+                          top: 0,
+                          left: 0,
+                          behavior: 'instant',
+                        })
+                      }
+                    }}
                     placeholder="Cari gadget (iPhone, Samsung, MacBook...)"
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white"
                   />
@@ -1040,15 +1164,7 @@ function LiveKitStudioControls({
                               if (isCurrentlyPinned) {
                                 handleUnpinProduct()
                               } else {
-                                const rawVal = discountInputs[p.id]?.replace(
-                                  /\D/g,
-                                  ''
-                                )
-                                const discountPrice = rawVal
-                                  ? parseInt(rawVal, 10)
-                                  : undefined
-                                handlePinProduct(p, discountPrice)
-                                setIsProductDrawerOpen(false)
+                                handleOpenPinModal(p)
                               }
                             }}
                             className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all active:scale-95 ${
@@ -1060,48 +1176,6 @@ function LiveKitStudioControls({
                             {isCurrentlyPinned ? 'Lepas' : 'Sematkan'}
                           </button>
                         </div>
-
-                        {/* Input Memilih Diskon Ekstra Saat Disematkan (Pin) */}
-                        {!isCurrentlyPinned &&
-                          (() => {
-                            const catalogDeal = liveCatalogDeals[p.id]
-                            const hasCatalogPromo =
-                              catalogDeal && catalogDeal.discountPrice < p.price
-                            const liveCatalogPrice = hasCatalogPromo
-                              ? catalogDeal.discountPrice
-                              : p.price
-
-                            return (
-                              <div className="mt-2 flex flex-col gap-1 border-t border-slate-100 pt-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="whitespace-nowrap text-[10px] font-bold text-orange-600">
-                                    Diskon Ekstra Saat Disematkan (Rp):
-                                  </span>
-                                  <input
-                                    type="number"
-                                    value={discountInputs[p.id] || ''}
-                                    onChange={(e) =>
-                                      setDiscountInputs((prev) => ({
-                                        ...prev,
-                                        [p.id]: e.target.value,
-                                      }))
-                                    }
-                                    placeholder={
-                                      hasCatalogPromo
-                                        ? `Diskon ekstra di bawah Rp ${liveCatalogPrice.toLocaleString('id-ID')} (opsional)`
-                                        : `Pilih diskon saat disematkan (opsional)`
-                                    }
-                                    className="w-full rounded-lg border border-orange-200 bg-orange-50/50 px-2 py-1 text-[11px] font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white"
-                                  />
-                                </div>
-                                <p className="text-[9px] text-slate-400">
-                                  {hasCatalogPromo
-                                    ? `*Kosongkan jika menggunakan harga promo katalog live (Rp ${liveCatalogPrice.toLocaleString('id-ID')})`
-                                    : `*Kosongkan jika menggunakan harga normal katalog`}
-                                </p>
-                              </div>
-                            )
-                          })()}
                       </div>
                     )
                   })
@@ -1110,6 +1184,169 @@ function LiveKitStudioControls({
             </div>
           </div>
         )}
+
+        {/* Modal Diskon Spesial Saat Sematkan (Mobile) */}
+        {pinModalProduct &&
+          (() => {
+            const catalogDeal = liveCatalogDeals[pinModalProduct.id]
+            const hasCatalogPromo =
+              catalogDeal && catalogDeal.discountPrice < pinModalProduct.price
+            const liveCatalogPrice = hasCatalogPromo
+              ? catalogDeal.discountPrice
+              : pinModalProduct.price
+
+            return (
+              <div
+                className="fixed inset-0 z-[100000] flex flex-col justify-end bg-black/70 backdrop-blur-sm transition-[padding] duration-200 animate-in fade-in"
+                style={{
+                  paddingBottom:
+                    keyboardInset > 0 ? `${keyboardInset}px` : undefined,
+                }}
+              >
+                <div className="fixed inset-0" onClick={handleCancelPinModal} />
+                <div
+                  className="pointer-events-auto relative z-10 flex max-h-[85dvh] w-full flex-col overflow-y-auto rounded-t-3xl border-t border-slate-200 bg-white p-5 text-slate-900 shadow-2xl duration-200 animate-in slide-in-from-bottom"
+                  style={{
+                    maxHeight:
+                      keyboardInset > 0
+                        ? `calc(100dvh - ${keyboardInset}px - 1.5rem)`
+                        : '85dvh',
+                  }}
+                >
+                  <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300" />
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+                        <Tag className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">
+                          Diskon Spesial Live
+                        </h3>
+                        <p className="text-[11px] text-slate-500">
+                          Atur harga promo eksklusif penonton siaran
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCancelPinModal}
+                      className="rounded-full bg-slate-100 p-1.5 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Ringkasan Produk */}
+                  <div className="my-3.5 flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-2.5">
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      {pinModalProduct.images[0] ? (
+                        <Image
+                          src={pinModalProduct.images[0]}
+                          alt={pinModalProduct.name}
+                          fill
+                          unoptimized
+                          className="object-cover"
+                        />
+                      ) : (
+                        <ShoppingBag className="m-auto h-5 w-5 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-slate-900">
+                        {pinModalProduct.name}
+                      </p>
+                      <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
+                        {hasCatalogPromo ? (
+                          <>
+                            <span className="text-xs font-black text-orange-600">
+                              Rp {liveCatalogPrice.toLocaleString('id-ID')}
+                            </span>
+                            <span className="text-[10px] text-slate-400 line-through">
+                              Rp {pinModalProduct.price.toLocaleString('id-ID')}
+                            </span>
+                            <span className="py-0.2 rounded bg-orange-100 px-1 text-[9px] font-bold text-orange-700">
+                              Promo Live
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs font-black text-slate-800">
+                            Rp {pinModalProduct.price.toLocaleString('id-ID')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Input Diskon Spesial */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-800">
+                      Harga Diskon Saat Disematkan (Rp):
+                    </label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                        Rp
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoFocus
+                        value={pinModalDiscount}
+                        onFocus={(e) => {
+                          const el = e.currentTarget
+                          setTimeout(() => {
+                            scrollInputIntoContainer(el)
+                          }, 100)
+                        }}
+                        onBlur={() => {
+                          if (typeof window !== 'undefined') {
+                            window.scrollTo({
+                              top: 0,
+                              left: 0,
+                              behavior: 'instant',
+                            })
+                          }
+                        }}
+                        onChange={(e) =>
+                          setPinModalDiscount(formatPriceInput(e.target.value))
+                        }
+                        placeholder={
+                          hasCatalogPromo
+                            ? `Diskon ekstra di bawah Rp ${liveCatalogPrice.toLocaleString('id-ID')} (opsional)`
+                            : `Harga diskon spesial (opsional)`
+                        }
+                        className="w-full rounded-xl border border-orange-200 bg-orange-50/50 py-2.5 pl-9 pr-3 text-sm font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/20"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      {hasCatalogPromo
+                        ? `*Kosongkan jika menggunakan harga promo katalog live (Rp ${liveCatalogPrice.toLocaleString('id-ID')})`
+                        : `*Kosongkan jika menggunakan harga normal katalog`}
+                    </p>
+                  </div>
+
+                  {/* Tombol Aksi */}
+                  <div className="mt-4 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelPinModal}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmPinModal}
+                      className="flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95"
+                    >
+                      <Pin className="h-3.5 w-3.5" />
+                      <span>Sematkan Sekarang</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
       </div>
     )
 
@@ -1511,56 +1748,22 @@ function LiveKitStudioControls({
 
                         <button
                           onClick={() => {
-                            const rawVal = discountInputs[p.id]?.replace(
-                              /\D/g,
-                              ''
-                            )
-                            const discountPrice = rawVal
-                              ? parseInt(rawVal, 10)
-                              : undefined
-                            handlePinProduct(p, discountPrice)
+                            if (isPinned) {
+                              handleUnpinProduct()
+                            } else {
+                              handleOpenPinModal(p)
+                            }
                           }}
-                          disabled={isPinned}
                           className={`flex shrink-0 cursor-pointer items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-all ${
                             isPinned
-                              ? 'cursor-default bg-orange-500 text-white shadow-sm'
+                              ? 'bg-rose-500 text-white shadow-sm hover:bg-rose-600'
                               : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
                           }`}
                         >
                           <Pin className="h-3 w-3" />
-                          {isPinned ? 'Tersemat' : 'Sematkan'}
+                          {isPinned ? 'Lepas' : 'Sematkan'}
                         </button>
                       </div>
-
-                      {/* Diskon Ekstra Input saat Pin */}
-                      {!isPinned && (
-                        <div className="mt-2.5 flex flex-col gap-1 border-t border-slate-200/60 pt-2 dark:border-slate-700/60">
-                          <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
-                            Diskon Ekstra Saat Sematkan / Diskon (Rp):
-                          </label>
-                          <input
-                            type="number"
-                            value={discountInputs[p.id] || ''}
-                            onChange={(e) =>
-                              setDiscountInputs((prev) => ({
-                                ...prev,
-                                [p.id]: e.target.value,
-                              }))
-                            }
-                            placeholder={
-                              hasCatalogPromo
-                                ? `Ekstra di bawah Rp ${liveCatalogPrice.toLocaleString('id-ID')}`
-                                : 'Harga spesial saat pin (opsional)'
-                            }
-                            className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-900 placeholder-slate-400 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                          />
-                          <p className="text-[9px] text-slate-400">
-                            {hasCatalogPromo
-                              ? `*Kosongkan jika menggunakan harga promo katalog live (Rp ${liveCatalogPrice.toLocaleString('id-ID')})`
-                              : '*Kosongkan jika menggunakan harga normal katalog'}
-                          </p>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )
@@ -1569,6 +1772,142 @@ function LiveKitStudioControls({
           )}
         </div>
       </div>
+
+      {/* Modal Diskon Spesial Saat Sematkan (Desktop) */}
+      {pinModalProduct &&
+        (() => {
+          const catalogDeal = liveCatalogDeals[pinModalProduct.id]
+          const hasCatalogPromo =
+            catalogDeal && catalogDeal.discountPrice < pinModalProduct.price
+          const liveCatalogPrice = hasCatalogPromo
+            ? catalogDeal.discountPrice
+            : pinModalProduct.price
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+              <div className="fixed inset-0" onClick={handleCancelPinModal} />
+              <div className="relative z-10 w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl duration-150 animate-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900 dark:text-white">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
+                      <Tag className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Diskon Spesial Live
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Atur harga promo eksklusif penonton siaran
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCancelPinModal}
+                    className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Ringkasan Produk */}
+                <div className="my-4 flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+                  <div className="h-13 w-13 relative shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700">
+                    {pinModalProduct.images[0] ? (
+                      <Image
+                        src={pinModalProduct.images[0]}
+                        alt={pinModalProduct.name}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    ) : (
+                      <ShoppingBag className="m-auto h-6 w-6 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                      {pinModalProduct.name}
+                    </p>
+                    <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
+                      {hasCatalogPromo ? (
+                        <>
+                          <span className="text-xs font-black text-orange-600 dark:text-orange-400">
+                            Rp {liveCatalogPrice.toLocaleString('id-ID')}
+                          </span>
+                          <span className="text-[10px] text-slate-400 line-through">
+                            Rp {pinModalProduct.price.toLocaleString('id-ID')}
+                          </span>
+                          <span className="py-0.2 rounded bg-orange-100 px-1 text-[9px] font-bold text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                            Promo Live
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                          Rp {pinModalProduct.price.toLocaleString('id-ID')}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-500">
+                      Stok: {pinModalProduct.stock} unit
+                    </span>
+                  </div>
+                </div>
+
+                {/* Input Diskon Spesial */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Harga Diskon Saat Disematkan (Rp):
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      Rp
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoFocus
+                      value={pinModalDiscount}
+                      onChange={(e) =>
+                        setPinModalDiscount(formatPriceInput(e.target.value))
+                      }
+                      placeholder={
+                        hasCatalogPromo
+                          ? `Di bawah Rp ${liveCatalogPrice.toLocaleString('id-ID')} (opsional)`
+                          : `Harga diskon spesial (opsional)`
+                      }
+                      className="w-full rounded-xl border border-orange-200 bg-orange-50/40 py-2 pl-9 pr-3 text-xs font-bold text-slate-900 placeholder-slate-400 outline-none transition focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    {hasCatalogPromo
+                      ? `*Kosongkan jika menggunakan harga promo katalog live (Rp ${liveCatalogPrice.toLocaleString('id-ID')})`
+                      : '*Kosongkan jika menggunakan harga normal katalog'}
+                  </p>
+                </div>
+
+                {/* Tombol Aksi */}
+                <div className="mt-5 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelPinModal}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmPinModal}
+                    className="flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95"
+                  >
+                    <Pin className="h-3.5 w-3.5" />
+                    <span>Sematkan Sekarang</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
     </div>
   )
 }
@@ -1946,27 +2285,29 @@ export function LiveStreamBroadcaster() {
                         className="mt-2.5 space-y-1.5 border-t border-slate-100 pt-2.5 dark:border-slate-700/60"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="w-40 shrink-0 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                          <span className="shrink-0 text-[10px] font-bold text-slate-700 dark:text-slate-300">
                             Diskon Live (Rp):
                           </span>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             value={setupDiscounts[p.id] || ''}
+                            onFocus={(e) => {
+                              const el = e.currentTarget
+                              setTimeout(() => {
+                                scrollInputIntoContainer(el)
+                              }, 100)
+                            }}
                             onChange={(e) =>
                               setSetupDiscounts((prev) => ({
                                 ...prev,
-                                [p.id]: e.target.value,
+                                [p.id]: formatPriceInput(e.target.value),
                               }))
                             }
-                            placeholder={`Harga katalog live (Normal: Rp ${p.price.toLocaleString('id-ID')})`}
-                            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                            placeholder={`Harga promo live (Normal: Rp ${p.price.toLocaleString('id-ID')})`}
+                            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           />
                         </div>
-                        <p className="text-[9.5px] text-slate-400">
-                          *Diskon ini untuk katalog siaran biasa. Diskon ekstra
-                          dapat diberikan saat produk disematkan (pin) nanti di
-                          studio.
-                        </p>
                       </div>
                     )}
                   </div>

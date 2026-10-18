@@ -416,7 +416,11 @@ export function MitraMobileView({
         </div>
 
         <div className="mt-2.5">
-          <ReviewList mitraId={mitra.id} maxDisplay={3} />
+          <ReviewList
+            mitraId={mitra.id}
+            maxDisplay={3}
+            initialReviews={mitra.reviews}
+          />
         </div>
 
         {isReviewModalOpen && (

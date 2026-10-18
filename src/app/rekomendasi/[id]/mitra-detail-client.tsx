@@ -247,6 +247,7 @@ export default function MitraDetailClient({
             totalReview={mitra.totalReview}
             userHasReview={userHasReview}
             session={session}
+            initialReviews={mitra.reviews}
             onReviewCreatedOrUpdated={() => setUserHasReview(true)}
             initialIsMobile={initialIsMobile}
           />

@@ -24,10 +24,13 @@ export async function GET(request: NextRequest) {
       if (session.user.storeId) {
         where.OR = [
           { storeId: session.user.storeId },
-          { order: { storeId: session.user.storeId } }
+          { order: { storeId: session.user.storeId } },
         ]
       }
-    } else if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
+    } else if (
+      session.user.role === 'ADMIN' ||
+      session.user.role === 'SUPER_ADMIN'
+    ) {
       // Platform Admin and Superadmin see all requests
     }
 
@@ -51,12 +54,20 @@ export async function GET(request: NextRequest) {
             courierService: true,
             items: {
               include: {
-                product: { select: { id: true, name: true, brand: true, images: true } },
+                product: {
+                  select: { id: true, name: true, brand: true, images: true },
+                },
                 service: { select: { id: true, name: true } },
               },
             },
             store: {
-              select: { id: true, name: true, companyName: true, city: true, phone: true },
+              select: {
+                id: true,
+                name: true,
+                companyName: true,
+                city: true,
+                phone: true,
+              },
             },
           },
         },
@@ -106,9 +117,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (type === 'REFUND' && (!bankName || !bankAccountNumber || !bankAccountName)) {
+    if (
+      type === 'REFUND' &&
+      (!bankName || !bankAccountNumber || !bankAccountName)
+    ) {
       return NextResponse.json(
-        { error: 'Informasi rekening bank (Nama Bank, Nomor Rekening, Atas Nama) wajib diisi untuk pengembalian dana.' },
+        {
+          error:
+            'Informasi rekening bank (Nama Bank, Nomor Rekening, Atas Nama) wajib diisi untuk pengembalian dana.',
+        },
         { status: 400 }
       )
     }
@@ -123,12 +140,18 @@ export async function POST(request: NextRequest) {
     })
 
     if (!order) {
-      return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Pesanan tidak ditemukan' },
+        { status: 404 }
+      )
     }
 
     if (order.userId !== session.user.id) {
       return NextResponse.json(
-        { error: 'Anda hanya dapat mengajukan pengembalian untuk pesanan Anda sendiri' },
+        {
+          error:
+            'Anda hanya dapat mengajukan pengembalian untuk pesanan Anda sendiri',
+        },
         { status: 403 }
       )
     }
@@ -136,20 +159,36 @@ export async function POST(request: NextRequest) {
     // Check if order is completed
     if (order.status !== 'COMPLETED' && order.status !== 'COMPLAINED') {
       return NextResponse.json(
-        { error: 'Pengajuan pengembalian hanya dapat dilakukan untuk pesanan yang telah selesai diterima' },
+        {
+          error:
+            'Pengajuan pengembalian hanya dapat dilakukan untuk pesanan yang telah selesai diterima',
+        },
         { status: 400 }
       )
     }
 
-    // Check 30-day window
-    const completedDate = order.completedAt || order.customerConfirmedAt || order.updatedAt
-    const daysSinceCompleted = Math.floor(
-      (Date.now() - new Date(completedDate).getTime()) / (1000 * 60 * 60 * 24)
-    )
+    // Check 30-day warranty window
+    let isWarrantyOver = false
+    if (order.warrantyExpiryDate) {
+      isWarrantyOver = new Date(order.warrantyExpiryDate).getTime() < Date.now()
+    } else {
+      const completedDate =
+        order.completedAt ||
+        order.customerConfirmedAt ||
+        order.updatedAt ||
+        order.createdAt
+      const daysSinceCompleted = Math.floor(
+        (Date.now() - new Date(completedDate).getTime()) / (1000 * 60 * 60 * 24)
+      )
+      isWarrantyOver = daysSinceCompleted > 30
+    }
 
-    if (daysSinceCompleted > 30) {
+    if (isWarrantyOver) {
       return NextResponse.json(
-        { error: 'Batas waktu pengajuan pengembalian (30 hari sejak penerimaan pesanan) telah berakhir.' },
+        {
+          error:
+            'Batas waktu pengajuan pengembalian (30 hari garansi ganti unit) telah berakhir.',
+        },
         { status: 400 }
       )
     }

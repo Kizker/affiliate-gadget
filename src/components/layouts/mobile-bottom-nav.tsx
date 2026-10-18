@@ -26,10 +26,77 @@ export function MobileBottomNav({
   const pathname = usePathname()
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
+  const [isVisible, setIsVisible] = useState(true)
   const { items } = useCartStore()
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  // Selalu tampilkan navbar saat halaman atau rute berubah
+  useEffect(() => {
+    setIsVisible(true)
+  }, [pathname])
+
+  // Scroll listener: Auto-hide saat scroll jauh ke bawah dan lepas jari,
+  // dan munculkan kembali saat scroll ke atas.
+  // Dilengkapi threshold hysteresis untuk mencegah micro-bounce momentum iOS saat jari dilepas.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    let lastScrollY = window.scrollY
+    let ticking = false
+
+    const SCROLL_DOWN_THRESHOLD = 15 // px ke bawah untuk mulai menutup
+    const SCROLL_UP_THRESHOLD = 20 // px ke atas untuk membuka (mencegah false trigger dari getaran/bounce lepas jari iOS)
+    const TOP_THRESHOLD = 70 // Di dekat puncak halaman selalu tampilkan
+
+    const updateVisibility = () => {
+      const currentScrollY = window.scrollY
+
+      // 1. Dekat puncak halaman atau overscroll atas iOS -> selalu tampilkan
+      if (currentScrollY <= TOP_THRESHOLD) {
+        setIsVisible(true)
+        lastScrollY = Math.max(0, currentScrollY)
+        ticking = false
+        return
+      }
+
+      // 2. Cegah trigger dari pantulan rubber-band di batas bawah halaman
+      const maxScrollY =
+        document.documentElement.scrollHeight - window.innerHeight
+      if (currentScrollY >= maxScrollY - 20) {
+        ticking = false
+        return
+      }
+
+      const diff = currentScrollY - lastScrollY
+
+      // 3. Scroll ke bawah melebihi threshold -> sembunyikan ke bawah
+      if (diff > SCROLL_DOWN_THRESHOLD) {
+        setIsVisible(false)
+        lastScrollY = currentScrollY
+      }
+      // 4. Scroll ke atas melebihi threshold -> munculkan kembali
+      else if (diff < -SCROLL_UP_THRESHOLD) {
+        setIsVisible(true)
+        lastScrollY = currentScrollY
+      }
+
+      ticking = false
+    }
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateVisibility)
+        ticking = true
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
   }, [])
 
   const isLoggedIn = mounted && status === 'authenticated' && !!session?.user
@@ -79,7 +146,9 @@ export function MobileBottomNav({
   return (
     <nav
       aria-label="Mobile Navigation Bar"
-      className="mobile-bottom-nav-fixed fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/80 bg-white/95 px-4 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] shadow-[0_-4px_16px_rgba(0,0,0,0.04)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 md:hidden"
+      className={`mobile-bottom-nav-fixed fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/80 bg-white/95 px-4 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] shadow-[0_-4px_16px_rgba(0,0,0,0.04)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 md:hidden ${
+        isVisible ? 'mobile-bottom-nav-visible' : 'mobile-bottom-nav-hidden'
+      }`}
     >
       {/* iOS Safari Home Indicator & Overscroll Bottom Bleed */}
       <div className="pointer-events-none absolute -bottom-24 left-0 right-0 h-24 bg-white/95 dark:bg-slate-950/95" />

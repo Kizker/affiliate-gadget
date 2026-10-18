@@ -346,7 +346,7 @@ export function MobileCatalogView({
         >
           <div>
             {/* Natural Aspect Ratio Image Box (Dynamic height based on uploaded photo) */}
-            <div className="relative aspect-square w-full max-w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800/60">
+            <div className="relative w-full max-w-full overflow-hidden rounded-xl border border-slate-100/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-800/60">
               <Image
                 src={imgSrc}
                 alt={item.name}
@@ -360,7 +360,7 @@ export function MobileCatalogView({
                   ;(e.currentTarget as HTMLImageElement).src =
                     'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
                 }}
-                className="h-auto w-full max-w-full object-cover transition-transform duration-300 hover:scale-105"
+                className="block h-auto w-full max-w-full object-cover transition-transform duration-300 hover:scale-105"
               />
 
               {/* Condition Badge (Top Left) */}

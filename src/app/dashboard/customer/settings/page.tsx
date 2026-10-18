@@ -50,7 +50,6 @@ import {
   ChevronRight,
   X,
   MessageSquare,
-  ExternalLink,
   Heart,
 } from 'lucide-react'
 import Image from 'next/image'
@@ -884,6 +883,32 @@ function CustomerSettingsContent() {
           transition={{ duration: 0.15 }}
           className="space-y-6"
         >
+          {/* Desktop Header Bar with Quick Save Action (Top Right) */}
+          <div className="hidden items-center justify-between border-b border-slate-100 pb-4 md:flex">
+            <div>
+              <h2 className="text-sm font-bold text-slate-950">
+                Profil & Biodata Diri
+              </h2>
+              <p className="text-xs text-slate-400">
+                Kelola data akun, informasi kontak, dan catatan khusus
+                pengiriman
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveProfile}
+              disabled={saving}
+              className="shadow-xs inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+              <span>{saving ? 'Menyimpan...' : 'Simpan'}</span>
+            </button>
+          </div>
+
           {/* Avatar Inner Box */}
           <div className="shadow-2xs flex flex-col items-start gap-5 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:p-5">
             <div className="relative shrink-0">
@@ -1105,29 +1130,12 @@ function CustomerSettingsContent() {
                 <textarea
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  rows={2}
+                  rows={4}
                   placeholder="Contoh: Jika rumah kosong, paket gadget dapat dititipkan ke security pos depan."
-                  className="focus:shadow-xs w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                  className="focus:shadow-xs min-h-[110px] w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 py-3 pl-10 pr-4 text-xs font-medium leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white sm:min-h-[120px]"
                 />
               </div>
             </div>
-          </div>
-
-          {/* Save Button (Accessible on both Mobile & Desktop) */}
-          <div className="flex items-center justify-end border-t border-slate-100 pt-4">
-            <button
-              type="button"
-              onClick={handleSaveProfile}
-              disabled={saving}
-              className="shadow-xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-orange-500 px-6 py-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50 sm:w-auto"
-            >
-              {saving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Check className="h-3.5 w-3.5" />
-              )}
-              <span>{saving ? 'Menyimpan...' : 'Simpan Profil Biodata'}</span>
-            </button>
           </div>
         </motion.div>
       )}
@@ -1873,11 +1881,11 @@ function CustomerSettingsContent() {
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
                   {otpPurpose === 'CHANGE_PASSWORD'
-                    ? 'Demi keamanan akun, masukkan 6 digit kode OTP WhatsApp:'
+                    ? 'Demi keamanan akun, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'
                     : otpPurpose === 'CHANGE_EMAIL'
-                      ? 'Untuk konfirmasi pergantian email, masukkan 6 digit kode OTP:'
+                      ? 'Untuk konfirmasi pergantian email, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'
                       : otpPurpose === 'CHANGE_PHONE'
-                        ? 'Untuk konfirmasi nomor telepon baru, masukkan 6 digit kode OTP:'
+                        ? 'Untuk konfirmasi nomor telepon baru, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'
                         : 'Masukkan 6 digit kode yang dikirimkan ke nomor WhatsApp:'}{' '}
                   <span className="font-bold text-slate-900">
                     {phone
@@ -1886,20 +1894,6 @@ function CustomerSettingsContent() {
                   </span>
                 </p>
               </div>
-
-              {/* WhatsApp Link CTA */}
-              {otpWhatsappUrl && (
-                <a
-                  href={otpWhatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shadow-xs mt-4 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Buka Pesan OTP WhatsApp</span>
-                  <ExternalLink className="h-3.5 w-3.5 opacity-80" />
-                </a>
-              )}
 
               {/* OTP Input */}
               <div className="mt-5 space-y-2">

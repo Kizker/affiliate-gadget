@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { ReturnModal } from '@/components/customer/return-modal'
 import { MobileOrdersView } from '@/components/customer/mobile-orders-view'
+import { isReturnEligible } from '@/lib/order-return-utils'
 import { toast } from 'sonner'
 import {
   getOrderPaymentRemainingSeconds,
@@ -818,27 +819,23 @@ export default function OrdersClient({
                               )
                             })()}
 
-                            {/* Ajukan Pengembalian for COMPLETED orders */}
-                            {order.status === 'COMPLETED' &&
-                              (!order.returnRequests ||
-                                order.returnRequests.length === 0 ||
-                                order.returnRequests[0].status ===
-                                  'REJECTED') && (
-                                <button
-                                  onClick={() =>
-                                    setReturnModal({
-                                      isOpen: true,
-                                      orderId: order.id,
-                                      orderNumber: order.orderNumber,
-                                      totalAmount: order.total,
-                                    })
-                                  }
-                                  className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3.5 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
-                                >
-                                  <RotateCcw className="h-3.5 w-3.5 text-orange-600" />
-                                  <span>Ajukan Pengembalian</span>
-                                </button>
-                              )}
+                            {/* Ajukan Pengembalian for COMPLETED orders with active 30-day warranty */}
+                            {isReturnEligible(order) && (
+                              <button
+                                onClick={() =>
+                                  setReturnModal({
+                                    isOpen: true,
+                                    orderId: order.id,
+                                    orderNumber: order.orderNumber,
+                                    totalAmount: order.total,
+                                  })
+                                }
+                                className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3.5 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5 text-orange-600" />
+                                <span>Ajukan Pengembalian</span>
+                              </button>
+                            )}
 
                             {order.status === 'PENDING_PAYMENT' ? (
                               <Link

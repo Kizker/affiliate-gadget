@@ -898,12 +898,12 @@ export default function AdminOrdersPage() {
               e.preventDefault()
             }
           }}
-          className="flex max-h-[90vh] max-w-3xl flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+          className="flex max-h-[90vh] w-[calc(100%-3rem)] max-w-3xl flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:w-full"
         >
           {selectedOrder && (
             <div className="flex max-h-[90vh] flex-1 flex-col overflow-hidden">
               {/* 1. Header Dialog: Pinned / Sticky Top Bar */}
-              <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/50 sm:px-7 sm:py-5">
+              <div className="px-4.5 shrink-0 border-b border-slate-100 bg-slate-50/80 py-4 dark:border-slate-800 dark:bg-slate-800/50 sm:px-7 sm:py-5">
                 <DialogHeader className="space-y-0 text-left">
                   <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
                     <div className="space-y-1.5">
@@ -964,7 +964,7 @@ export default function AdminOrdersPage() {
               </div>
 
               {/* 2. Scrollable Body: Bento Grid Details & Live Tracker */}
-              <div className="flex-1 space-y-6 overflow-y-auto p-6 sm:p-7">
+              <div className="p-4.5 flex-1 space-y-5 overflow-y-auto sm:space-y-6 sm:p-7">
                 {/* 2-Column Bento Grid Details */}
                 <div className="grid grid-cols-1 gap-5 text-xs md:grid-cols-2">
                   {/* Column 1: Items List & Financial Summary */}
@@ -1303,7 +1303,7 @@ export default function AdminOrdersPage() {
               </div>
 
               {/* 3. Dialog Footer Actions: Pinned / Sticky Bottom Action Bar */}
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-800/40 sm:px-7">
+              <div className="px-4.5 flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 py-3.5 dark:border-slate-800 dark:bg-slate-800/40 sm:px-7">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Sparkles, Plus, Clock, RefreshCw } from 'lucide-react'
+import { Sparkles, Plus, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePageGuard } from '@/hooks/use-page-guard'
 import {
@@ -767,11 +767,6 @@ export default function AdsManagementPage() {
               ? 'Manajemen & Moderasi Iklan Toko'
               : 'Pengajuan & Manajemen Iklan Toko'}
           </h1>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
-            {isSuperAdmin
-              ? 'Tinjau, setujui, dan kelola slot tayang banner promosi toko cabang di Beranda Mobile & Grid Produk.'
-              : 'Ajukan banner promosi toko Anda untuk tampil di carousel teratas mobile (berdasarkan hari) atau diselipkan di antara katalog gadget (berdasarkan kemunculan & hari).'}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -796,22 +791,6 @@ export default function AdsManagementPage() {
           </button>
         </div>
       </div>
-
-      {/* Toko Callout Info Banner */}
-      {!isSuperAdmin && (
-        <div className="flex items-start gap-3 rounded-2xl border border-blue-200/80 bg-blue-50/70 p-3.5 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200">
-          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-          <div className="space-y-0.5">
-            <p className="font-bold">Ketentuan Pengajuan Iklan Cabang Toko</p>
-            <p className="text-[11px] leading-relaxed text-blue-800/90 dark:text-blue-300/90">
-              Admin toko dapat mengajukan banner promosi dan membatalkan
-              pengajuan selama status masih <strong>Menunggu</strong>.
-              Persetujuan dan pengaktifan iklan dilakukan secara eksklusif oleh{' '}
-              <strong>Super Admin</strong>.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* 2. TAB SWITCHER UTAMA: Level 1 (Hero Carousel) vs Level 2 (In-Feed Grid) & Real-time Slot Banner */}
       <AdsLevelTabs

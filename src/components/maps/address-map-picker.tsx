@@ -232,24 +232,26 @@ export default function AddressMapPicker({
         </div>
 
         {/* Top Control Overlay */}
-        <div className="relative z-10 flex items-center justify-between bg-gradient-to-b from-slate-900/60 via-slate-900/10 to-transparent p-3">
-          <div className="shadow-2xs flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-slate-900 backdrop-blur-md">
-            <Navigation className="h-3 w-3 text-orange-600" />
-            <span>Klik peta untuk pindahkan pin</span>
+        <div className="relative z-10 flex items-center justify-between gap-2 bg-gradient-to-b from-slate-900/60 via-slate-900/10 to-transparent p-2.5 sm:p-3">
+          <div className="shadow-2xs flex shrink-0 items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold text-slate-900 backdrop-blur-md">
+            <Navigation className="h-3 w-3 shrink-0 text-orange-600" />
+            <span className="whitespace-nowrap">Klik Peta</span>
           </div>
 
           <button
             type="button"
             onClick={handleGetCurrentLocation}
             disabled={loading}
-            className="shadow-xs flex cursor-pointer items-center gap-1.5 rounded-full bg-slate-950/90 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur-md transition hover:bg-slate-950 active:scale-95 disabled:opacity-50"
+            className="shadow-xs flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-slate-950/90 px-3 py-1 text-[10.5px] font-bold text-white backdrop-blur-md transition hover:bg-slate-950 active:scale-95 disabled:opacity-50"
           >
             {loading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
             ) : (
-              <Crosshair className="h-3 w-3 text-orange-400" />
+              <Crosshair className="h-3 w-3 shrink-0 text-orange-400" />
             )}
-            <span>{loading ? 'Mendeteksi...' : 'Deteksi GPS Saya'}</span>
+            <span className="whitespace-nowrap">
+              {loading ? 'Mencari...' : 'Deteksi GPS'}
+            </span>
           </button>
         </div>
 

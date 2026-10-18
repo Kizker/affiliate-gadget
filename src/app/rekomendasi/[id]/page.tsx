@@ -73,6 +73,17 @@ export type MitraData = {
     description?: string | null
   }>
   images: Array<{ id: string; url: string }>
+  reviews?: Array<{
+    id: string
+    rating: number
+    comment: string | null
+    createdAt: string
+    user: {
+      id: string
+      name: string | null
+      image: string | null
+    }
+  }>
 }
 
 // Fetch mitra data on server with optimized select
@@ -98,6 +109,28 @@ async function getMitra(id: string): Promise<MitraData | null> {
           },
           orderBy: { createdAt: 'asc' },
         },
+        reviews: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
+        _count: {
+          select: {
+            reviews: true,
+          },
+        },
       },
     })
 
@@ -106,6 +139,19 @@ async function getMitra(id: string): Promise<MitraData | null> {
     }
 
     const isOpen = isMitraCurrentlyOpen(mitra.weekdayHours, mitra.weekendHours)
+    const actualReviewCount = mitra._count?.reviews ?? 0
+    // SINKRONISASI REVIEW COUNT & RATING:
+    // Jika ada ulasan aktual di database, gunakan jumlah riil.
+    // Jika tidak ada ulasan sama sekali di database, jangan tampilkan ulasan fiktif (set 0).
+    const totalReview = actualReviewCount > 0 ? actualReviewCount : 0
+
+    let rating = mitra.rating
+    if (mitra.reviews && mitra.reviews.length > 0) {
+      const sum = mitra.reviews.reduce((acc, r) => acc + r.rating, 0)
+      rating = parseFloat((sum / mitra.reviews.length).toFixed(1))
+    } else if (totalReview === 0) {
+      rating = mitra.rating || 5.0
+    }
 
     return {
       id: mitra.id,
@@ -126,8 +172,8 @@ async function getMitra(id: string): Promise<MitraData | null> {
       latitude: mitra.latitude,
       longitude: mitra.longitude,
       mapsUrl: (mitra as { mapsUrl?: string | null }).mapsUrl || null,
-      rating: mitra.rating,
-      totalReview: mitra.totalReview,
+      rating,
+      totalReview,
       isOpen,
       services: mitra.services.map((s) => ({
         id: s.id,
@@ -139,6 +185,17 @@ async function getMitra(id: string): Promise<MitraData | null> {
       images: mitra.images.map((img) => ({
         id: img.id,
         url: img.url,
+      })),
+      reviews: mitra.reviews.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt.toISOString(),
+        user: {
+          id: r.user.id,
+          name: r.user.name,
+          image: r.user.image,
+        },
       })),
     }
   } catch (error) {

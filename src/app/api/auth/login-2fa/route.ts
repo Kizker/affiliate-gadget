@@ -204,13 +204,17 @@ export async function POST(req: NextRequest) {
           )
         }
 
-        await dispatchOtp({
+        const dispatchResult = await dispatchOtp({
           identifier: user.phone,
           purpose: 'LOGIN',
           channel: 'WHATSAPP',
           userId: user.id,
         })
-        const otpData = createLoginOtp(user.email, user.phone)
+        const otpData = createLoginOtp(
+          user.email,
+          user.phone,
+          dispatchResult.code
+        )
         const masked = user.phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
 
         return NextResponse.json({

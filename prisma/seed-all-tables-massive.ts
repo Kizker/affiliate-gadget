@@ -775,6 +775,47 @@ async function main() {
     }
   }
 
+  // 9.2 SEED MITRA REVIEWS
+  console.log(
+    '⭐ 9.2. Mengisi Ulasan Pelanggan Servis untuk Setiap Mitra Cabang (Review Mitra)...'
+  )
+  const allMitrasList = await prisma.mitra.findMany()
+  const mitraCommentsList = [
+    'Servis ganti LCD iPhone selesai dalam 45 menit! True Tone & 120Hz ProMotion tetap normal. Pemasangan rapi rapat garansi 30 hari.',
+    'Baterai diganti original baru. Ketahanan baterai kembali awet seharian, teknisinya ramah banget.',
+    'Teknisi sangat profesional dan transparan. HP dibongkar di depan saya, dijelaskan kerusakannya di IC charging.',
+    'Layar pecah parah akibat jatuh, estimasi harga sesuai di aplikasi tanpa biaya tambahan.',
+    'Servis Face ID berhasil diperbaiki micro soldering-nya. Pengerjaan cepat dan memuaskan.',
+    'Sangat puas dengan garansi 30 harinya! Sempat ada kendala touch sedikit langsung diganti unit layar baru.',
+    'Pembersihan speaker dan ganti port USB Type-C yang longgar cuma 30 menit. Suara jernih lagi.',
+    'Tempatnya bersih, ber-AC, dan ada ruang tunggu nyaman sambil bisa lihat proses pengerjaan teknisi.',
+    'Ganti kaca kamera belakang mulus seperti baru keluar pabrik. Teknisi teliti bersihkan debu mikro.',
+    'Fast response, harga bersahabat dan kualitas part original. Sangat direkomendasikan.',
+  ]
+
+  for (const m of allMitrasList) {
+    const existingMitraReviews = await prisma.review.count({
+      where: { mitraId: m.id },
+    })
+    const targetReviews = m.totalReview > 0 ? m.totalReview : 15
+    if (existingMitraReviews < targetReviews) {
+      for (let j = 0; j < targetReviews - existingMitraReviews; j++) {
+        const cust = randomElement(customers)
+        await prisma.review.create({
+          data: {
+            userId: cust.id,
+            mitraId: m.id,
+            type: ReviewType.MITRA,
+            rating: randomElement([5, 5, 5, 4]),
+            comment: randomElement(mitraCommentsList),
+            helpfulCount: randomInt(1, 10),
+            createdAt: randomDate(60),
+          },
+        })
+      }
+    }
+  }
+
   // 11. SEED INVOICES & WARRANTIES FOR ORDERS
   console.log(
     '🧾 10. Mengisi Faktur Tagihan (Invoice) & Kartu Garansi (Warranty) untuk Seluruh Pesanan...'

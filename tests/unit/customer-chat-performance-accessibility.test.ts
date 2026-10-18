@@ -138,4 +138,19 @@ describe('Customer Chat Performance & Accessibility Optimization Suite', () => {
     expect(chatRoomsRoute).not.toContain('await prisma.chatRoom.deleteMany')
     expect(chatRoomsRoute).toMatch(/prisma\.chatRoom\s*\.deleteMany/)
   })
+
+  it('7. Mobile Layout Integrity: ChatInputBar dan chat panes memiliki min-w-0 dan w-full untuk mencegah tombol kirim terpotong', () => {
+    const inputContent = fs.readFileSync(chatInputBarPath, 'utf-8')
+    const pageContent = fs.readFileSync(chatPagePath, 'utf-8')
+
+    // ChatInputBar root & flex row memiliki w-full
+    expect(inputContent).toContain('className="w-full shrink-0 border-t')
+    expect(inputContent).toContain('className="flex w-full items-center gap-2"')
+
+    // Input field memiliki min-w-0 flex-1 untuk mencegah blowout WebKit flexbox di mobile
+    expect(inputContent).toContain('className="min-w-0 flex-1')
+
+    // Chat page container memiliki w-full min-w-0
+    expect(pageContent).toContain('grid h-full min-h-0 w-full min-w-0')
+  })
 })

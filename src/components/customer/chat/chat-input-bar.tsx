@@ -21,8 +21,8 @@ export function ChatInputBar({
   sending,
 }: ChatInputBarProps) {
   return (
-    <div className="shrink-0 border-t border-slate-200/80 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] dark:border-slate-800 dark:bg-slate-900 sm:p-3.5 sm:pb-3.5">
-      <div className="flex items-center gap-2">
+    <div className="w-full shrink-0 border-t border-slate-200/80 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] dark:border-slate-800 dark:bg-slate-900 sm:p-3.5 sm:pb-3.5">
+      <div className="flex w-full items-center gap-2">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -50,7 +50,7 @@ export function ChatInputBar({
           }}
           aria-label="Ketik pesan ke admin toko"
           placeholder="Ketik pesan ke admin toko..."
-          className="flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
         />
 
         <button

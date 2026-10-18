@@ -23,7 +23,8 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "deploy:vps": "node scripts/deploy-hostinger.cjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
