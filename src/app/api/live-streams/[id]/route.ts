@@ -164,8 +164,24 @@ export async function PATCH(
     if (description !== undefined) updateData.description = description
     if (coverImage !== undefined) updateData.coverImage = coverImage
     if (streamUrl !== undefined) updateData.streamUrl = streamUrl
-    if (featuredProductIds !== undefined)
-      updateData.featuredProductIds = featuredProductIds
+    if (featuredProductIds !== undefined) {
+      if (
+        Array.isArray(featuredProductIds) &&
+        featuredProductIds.length > 0 &&
+        stream.storeId
+      ) {
+        const validProducts = await prisma.product.findMany({
+          where: {
+            id: { in: featuredProductIds },
+            storeId: stream.storeId,
+          },
+          select: { id: true },
+        })
+        updateData.featuredProductIds = validProducts.map((p) => p.id)
+      } else {
+        updateData.featuredProductIds = featuredProductIds
+      }
+    }
 
     if (status === 'LIVE') {
       updateData.status = 'LIVE'

@@ -27,6 +27,20 @@ export function CustomerWishlistView({
   isStandalonePage = false,
 }: CustomerWishlistViewProps) {
   const { items, removeItem, clearWishlist, mounted } = useWishlistSafe()
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const ITEMS_PER_PAGE = 10
+  const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE))
+
+  React.useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
+
+  const paginatedItems = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    return items.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  }, [items, currentPage])
 
   if (!mounted) {
     return (
@@ -114,7 +128,7 @@ export function CustomerWishlistView({
       ) : (
         /* Items Grid */
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {items.map((item: WishlistItem) => {
+          {paginatedItems.map((item: WishlistItem) => {
             const productHref = item.href || `/gadget/${item.id}`
             const displayPrice =
               typeof item.price === 'number'
@@ -235,6 +249,42 @@ export function CustomerWishlistView({
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Minimalist Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between border-t border-slate-200/80 pt-3.5 dark:border-slate-800">
+          <span className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {paginatedItems.length}/{items.length}
+          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentPage((p) => Math.max(1, p - 1))
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              disabled={currentPage === 1}
+              className="shrink-0 cursor-pointer whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+            >
+              Sebelumnya
+            </button>
+            <span className="shrink-0 whitespace-nowrap px-1 text-xs font-bold text-slate-800 dark:text-slate-200">
+              {currentPage}/{totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentPage((p) => Math.min(totalPages, p + 1))
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              disabled={currentPage === totalPages}
+              className="shrink-0 cursor-pointer whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+            >
+              Selanjutnya
+            </button>
+          </div>
         </div>
       )}
     </div>

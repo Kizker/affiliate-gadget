@@ -312,6 +312,8 @@ export default function OrdersClient({
   const [selectedStatus, setSelectedStatus] = useState(statusParam || 'ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ORDERS_PER_PAGE = 10
   // Prevent SSR/client hydration mismatch on dynamic count badges
   const [isMounted, setIsMounted] = useState(false)
   useEffect(() => {
@@ -324,10 +326,12 @@ export default function OrdersClient({
     } else {
       setSelectedStatus('ALL')
     }
+    setCurrentPage(1)
   }, [statusParam])
 
   const handleStatusChange = (status: string) => {
     setSelectedStatus(status)
+    setCurrentPage(1)
     const newUrl =
       status === 'ALL'
         ? '/dashboard/customer/orders'
@@ -451,6 +455,22 @@ export default function OrdersClient({
     return sortOrdersByLatestProcess(list)
   }, [initialOrders, selectedStatus, searchQuery])
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredOrders.length / ORDERS_PER_PAGE)
+  )
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
+
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * ORDERS_PER_PAGE
+    return filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE)
+  }, [filteredOrders, currentPage])
+
   return (
     <>
       {/* 1. Mobile Shopee/Tokopedia-Style View */}
@@ -516,14 +536,20 @@ export default function OrdersClient({
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setCurrentPage(1)
+                    }}
                     placeholder="Cari pesanan, nomor resi..."
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                   />
                   <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                   {searchQuery && (
                     <button
-                      onClick={() => setSearchQuery('')}
+                      onClick={() => {
+                        setSearchQuery('')
+                        setCurrentPage(1)
+                      }}
                       className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -556,7 +582,7 @@ export default function OrdersClient({
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredOrders.map((order) => {
+                {paginatedOrders.map((order) => {
                   const currentStatus = getStatusMeta(order)
                   const StatusIcon = currentStatus.icon
                   const firstItem = order.items[0]
@@ -860,6 +886,42 @@ export default function OrdersClient({
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {/* Minimalist Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between border-t border-slate-200/80 pt-4 dark:border-slate-800">
+                <span className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  {paginatedOrders.length}/{filteredOrders.length}
+                </span>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentPage((p) => Math.max(1, p - 1))
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    disabled={currentPage === 1}
+                    className="shrink-0 cursor-pointer whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                  >
+                    Sebelumnya
+                  </button>
+                  <span className="shrink-0 whitespace-nowrap px-1 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {currentPage}/{totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    disabled={currentPage === totalPages}
+                    className="shrink-0 cursor-pointer whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                  >
+                    Selanjutnya
+                  </button>
+                </div>
               </div>
             )}
           </div>

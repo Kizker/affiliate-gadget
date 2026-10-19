@@ -94,6 +94,46 @@ export async function POST(
       )
     }
 
+    // Verifikasi bahwa produk live benar-benar milik toko cabang sesi siaran ini
+    const stream = await prisma.liveStream.findUnique({
+      where: { id: streamId },
+      select: { id: true, storeId: true },
+    })
+
+    if (!stream) {
+      return NextResponse.json(
+        { success: false, error: 'Sesi siaran live tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, storeId: true },
+    })
+
+    if (!product) {
+      return NextResponse.json(
+        { success: false, error: 'Produk tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    if (
+      stream.storeId &&
+      product.storeId &&
+      product.storeId !== stream.storeId
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Produk ini bukan milik toko Anda. Anda hanya dapat memberikan diskon live untuk produk toko Anda sendiri.',
+        },
+        { status: 403 }
+      )
+    }
+
     const newDeal = createLiveDeal({
       streamId,
       productId,

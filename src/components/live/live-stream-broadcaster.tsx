@@ -1935,20 +1935,32 @@ export function LiveStreamBroadcaster() {
   // Load existing streams for the current store
   const loadStreams = async () => {
     try {
-      const res = await fetch('/api/live-streams?limit=20')
+      const res = await fetch('/api/live-streams?limit=50')
       const json = await res.json()
       if (json.success && Array.isArray(json.data)) {
-        setStreams(json.data)
+        const myStoreId = (session?.user as any)?.storeId
+        const userRole = (session?.user as any)?.role
+        const filteredStreams =
+          myStoreId && userRole !== 'SUPER_ADMIN'
+            ? json.data.filter(
+                (s: any) => !s.storeId || s.storeId === myStoreId
+              )
+            : json.data
+        setStreams(filteredStreams)
       }
     } catch {
       // Ignore
     }
   }
 
-  // Load store products (semua katalog untuk disematkan saat live)
+  // Load store products (khusus katalog produk milik toko admin yang sedang login)
   const loadProducts = async () => {
     try {
-      const res = await fetch('/api/gadgets?limit=500')
+      const myStoreId = (session?.user as any)?.storeId
+      const url = myStoreId
+        ? `/api/gadgets?limit=500&storeId=${myStoreId}&scoped=true`
+        : '/api/gadgets?limit=500&scoped=true'
+      const res = await fetch(url)
       const json = await res.json()
       if (json.success && Array.isArray(json.data)) {
         setProducts(json.data)
@@ -1961,7 +1973,7 @@ export function LiveStreamBroadcaster() {
   useEffect(() => {
     loadStreams()
     loadProducts()
-  }, [])
+  }, [session?.user])
 
   // Create stream session in DB
   const handleCreateStream = async (e: React.FormEvent) => {

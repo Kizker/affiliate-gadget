@@ -706,7 +706,6 @@ export default function AdminOrdersPage() {
                                   ? `${order.orderNumber.slice(0, 16)}...`
                                   : order.orderNumber}
                               </span>
-                              <span>â€¢</span>
                               <span
                                 suppressHydrationWarning
                                 className="font-medium text-slate-500"
@@ -812,10 +811,6 @@ export default function AdminOrdersPage() {
                                 : 'Menunggu Pick Up'}
                             </span>
                           )}
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-orange-600">
-                            <Gift className="h-3 w-3 text-orange-500" /> Free
-                            Bonus 3-in-1
-                          </span>
                         </div>
                       </td>
 
@@ -848,24 +843,24 @@ export default function AdminOrdersPage() {
         {/* 3. Minimalist Pagination (Identik dengan Manajemen Produk) */}
         {totalPages > 1 && !loading && (
           <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
-            <span className="text-xs text-slate-400">
-              Menampilkan {orders.length} dari {totalCount} pesanan
+            <span className="whitespace-nowrap font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {orders.length}/{totalCount}
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400"
+                className="shrink-0 whitespace-nowrap rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400"
               >
                 Sebelumnya
               </button>
-              <span className="px-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-                {page} / {totalPages}
+              <span className="shrink-0 whitespace-nowrap px-1 text-xs font-bold text-slate-800 dark:text-slate-200">
+                {page}/{totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400"
+                className="shrink-0 whitespace-nowrap rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400"
               >
                 Selanjutnya
               </button>

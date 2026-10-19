@@ -196,6 +196,8 @@ export function MobileOrdersView({
     controlledActiveTab !== undefined ? controlledActiveTab : localActiveTab
 
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const ORDERS_PER_PAGE = 10
   // Prevent SSR/client hydration mismatch on dynamic count badges
   const [isMounted, setIsMounted] = useState(false)
   useEffect(() => {
@@ -208,10 +210,12 @@ export function MobileOrdersView({
     } else if (initialTab) {
       setLocalActiveTab(initialTab)
     }
+    setCurrentPage(1)
   }, [controlledActiveTab, initialTab])
 
   const handleTabClick = (tabKey: string) => {
     setLocalActiveTab(tabKey)
+    setCurrentPage(1)
     if (onTabChange) {
       onTabChange(tabKey)
     } else if (typeof window !== 'undefined') {
@@ -313,6 +317,22 @@ export function MobileOrdersView({
     return sortOrdersByLatestProcess(list)
   }, [orders, activeTab, searchQuery])
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredOrders.length / ORDERS_PER_PAGE)
+  )
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
+
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * ORDERS_PER_PAGE
+    return filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE)
+  }, [filteredOrders, currentPage])
+
   return (
     <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* 1. Universal Mobile Top Nav */}
@@ -364,14 +384,20 @@ export function MobileOrdersView({
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setCurrentPage(1)
+            }}
             placeholder="Cari pesanan, nomor resi, atau produk..."
             className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/90 py-2 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-800"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
+              onClick={() => {
+                setSearchQuery('')
+                setCurrentPage(1)
+              }}
               className="absolute right-2.5 text-slate-400 hover:text-slate-600"
             >
               <X className="h-3.5 w-3.5" />
@@ -403,7 +429,7 @@ export function MobileOrdersView({
             </Link>
           </div>
         ) : (
-          filteredOrders.map((order) => {
+          paginatedOrders.map((order) => {
             const currentStatus = getOrderStatusMeta(order)
             const firstItem = order.items[0]
             const itemImage =
@@ -594,6 +620,42 @@ export function MobileOrdersView({
               </div>
             )
           })
+        )}
+
+        {/* Minimalist Mobile Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between border-t border-slate-200/80 px-1 pt-3.5 dark:border-slate-800">
+            <span className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {paginatedOrders.length}/{filteredOrders.length}
+            </span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentPage((p) => Math.max(1, p - 1))
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                disabled={currentPage === 1}
+                className="shrink-0 cursor-pointer whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+              >
+                Sebelumnya
+              </button>
+              <span className="shrink-0 whitespace-nowrap px-1 text-xs font-bold text-slate-800 dark:text-slate-200">
+                {currentPage}/{totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                disabled={currentPage === totalPages}
+                className="shrink-0 cursor-pointer whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+              >
+                Selanjutnya
+              </button>
+            </div>
+          </div>
         )}
       </main>
 

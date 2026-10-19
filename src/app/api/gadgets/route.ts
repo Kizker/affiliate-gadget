@@ -51,16 +51,18 @@ export async function GET(request: Request) {
 
     if (scoped && !storeId) {
       const session = await auth()
-      if (session?.user?.role === 'STORE_ADMIN') {
+      if (session?.user) {
         let effectiveStoreId = session.user.storeId
         if (!effectiveStoreId && session.user.id) {
           const u = await prisma.user.findUnique({
             where: { id: session.user.id },
-            select: { storeId: true },
+            select: { storeId: true, role: true },
           })
-          effectiveStoreId = u?.storeId || null
+          if (u?.role !== 'SUPER_ADMIN') {
+            effectiveStoreId = u?.storeId || null
+          }
         }
-        if (effectiveStoreId) {
+        if (effectiveStoreId && session.user.role !== 'SUPER_ADMIN') {
           storeId = effectiveStoreId
         }
       }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layouts/navbar'
@@ -73,6 +73,21 @@ export default function TechnicianOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ORDERS_PER_PAGE = 10
+
+  const totalPages = Math.max(1, Math.ceil(orders.length / ORDERS_PER_PAGE))
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
+
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * ORDERS_PER_PAGE
+    return orders.slice(startIndex, startIndex + ORDERS_PER_PAGE)
+  }, [orders, currentPage])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -171,7 +186,7 @@ export default function TechnicianOrdersPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order) => {
+              {paginatedOrders.map((order) => {
                 const statusInfo = statusConfig[
                   order.status as keyof typeof statusConfig
                 ] || {
@@ -295,7 +310,10 @@ export default function TechnicianOrdersPage() {
                                   ...(order.status === 'PAID'
                                     ? [{ value: 'PAID', label: 'Dibayar' }]
                                     : []),
-                                  { value: 'IN_PROGRESS', label: 'Sedang Dikerjakan' },
+                                  {
+                                    value: 'IN_PROGRESS',
+                                    label: 'Sedang Dikerjakan',
+                                  },
                                   { value: 'COMPLETED', label: 'Selesai' },
                                   { value: 'CANCELLED', label: 'Dibatalkan' },
                                 ]}
@@ -311,6 +329,42 @@ export default function TechnicianOrdersPage() {
                   </div>
                 )
               })}
+            </div>
+          )}
+
+          {/* Minimalist Pagination */}
+          {totalPages > 1 && !loading && (
+            <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+              <span className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold text-gray-500">
+                {paginatedOrders.length}/{orders.length}
+              </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentPage((p) => Math.max(1, p - 1))
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  disabled={currentPage === 1}
+                  className="shrink-0 cursor-pointer whitespace-nowrap rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Sebelumnya
+                </button>
+                <span className="shrink-0 whitespace-nowrap px-1 text-xs font-bold text-gray-800">
+                  {currentPage}/{totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  disabled={currentPage === totalPages}
+                  className="shrink-0 cursor-pointer whitespace-nowrap rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Selanjutnya
+                </button>
+              </div>
             </div>
           )}
         </div>
