@@ -1152,8 +1152,8 @@ function CustomerSettingsContent() {
           transition={{ duration: 0.15 }}
           className="space-y-6"
         >
-          {/* Header Bar with Add Address CTA */}
-          <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center">
+          {/* Desktop Header Bar with Add Address CTA */}
+          <div className="hidden flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center md:flex">
             <div>
               <h2 className="text-sm font-bold text-slate-950">
                 Daftar Alamat Pengiriman Saya

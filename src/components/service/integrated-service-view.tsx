@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -27,8 +27,83 @@ export type { MitraData, MitraService }
 
 const DEFAULT_BANNER =
   'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&q=80'
+const NUMBER_EQUIVALENTS: Record<string, string[]> = {
+  '1': ['satu', 'one', 'i'],
+  '2': ['dua', 'two', 'ii'],
+  '3': ['tiga', 'tri', 'three', 'iii'],
+  '4': ['empat', 'four', 'iv'],
+  '5': ['lima', 'five', 'v'],
+  '6': ['enam', 'six', 'vi'],
+  '7': ['tujuh', 'seven', 'vii'],
+  '8': ['delapan', 'eight', 'viii'],
+  '9': ['sembilan', 'nine', 'ix'],
+  '10': ['sepuluh', 'ten', 'x'],
+  tiga: ['3', 'tri'],
+  tri: ['3', 'tiga'],
+  dua: ['2'],
+  satu: ['1'],
+}
 
-// ─── Resilient Image Component with Fallback & LCP Priority ──────────────────
+function normalizeSearchText(str: string | null | undefined): string {
+  if (!str) return ''
+  return str
+    .toLowerCase()
+    .replace(/[-_./,\\#@():;'"+*!?&]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isMitraMatchingQuery(mitra: MitraData, query: string): boolean {
+  const trimmed = query.trim()
+  if (!trimmed) return true
+
+  const rawQ = trimmed.toLowerCase()
+  const normalizedQ = normalizeSearchText(trimmed)
+  const tokens = normalizedQ.split(/\s+/).filter(Boolean)
+
+  const rawCorpusParts = [
+    mitra.businessName,
+    mitra.city,
+    mitra.address,
+    mitra.province,
+    mitra.phone,
+    mitra.whatsapp,
+    mitra.tagline,
+    mitra.description,
+    ...(mitra.features || []),
+    ...(mitra.services || []).map((s) => `${s?.name || ''} ${s?.price || ''}`),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  const normalizedCorpus = normalizeSearchText(rawCorpusParts)
+
+  // Direct exact phrase match (highest speed path)
+  if (rawCorpusParts.includes(rawQ) || normalizedCorpus.includes(normalizedQ)) {
+    return true
+  }
+
+  // Token-level match (all tokens must match directly or via equivalents)
+  if (tokens.length === 0) return true
+  return tokens.every((token) => {
+    if (rawCorpusParts.includes(token) || normalizedCorpus.includes(token)) {
+      return true
+    }
+    // Check number synonyms (e.g. '3' <-> 'tiga', 'tri')
+    const equivalents = NUMBER_EQUIVALENTS[token]
+    if (
+      equivalents &&
+      equivalents.some(
+        (eq) => rawCorpusParts.includes(eq) || normalizedCorpus.includes(eq)
+      )
+    ) {
+      return true
+    }
+    return false
+  })
+}
+
 function MitraBannerImage({
   src,
   alt,
@@ -111,6 +186,41 @@ export function IntegratedServiceView({
   const [selectedCity, setSelectedCity] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
 
+  const mobileSearchRef = useRef<HTMLInputElement | null>(null)
+  const desktopSearchRef = useRef<HTMLInputElement | null>(null)
+
+  const handleSearchSubmit = useCallback((e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault()
+    }
+    if (mobileSearchRef.current) {
+      mobileSearchRef.current.blur()
+    }
+    if (desktopSearchRef.current) {
+      desktopSearchRef.current.blur()
+    }
+    if (
+      typeof document !== 'undefined' &&
+      document.activeElement instanceof HTMLElement
+    ) {
+      document.activeElement.blur()
+    }
+    setTimeout(() => {
+      mobileSearchRef.current?.blur()
+      desktopSearchRef.current?.blur()
+    }, 50)
+  }, [])
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('')
+    if (mobileSearchRef.current) {
+      mobileSearchRef.current.focus()
+    }
+    if (desktopSearchRef.current) {
+      desktopSearchRef.current.focus()
+    }
+  }, [])
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -156,22 +266,26 @@ export function IntegratedServiceView({
     ]
   }, [mitras])
 
-  // Filter mitras based on city and search query
+  // Filter mitras based on city and search query with resilient multi-token & number matching
   const filteredMitras = useMemo(() => {
     return mitras.filter((mitra) => {
-      if (selectedCity !== 'all' && mitra.city !== selectedCity) return false
+      // 1. City filter check
+      if (
+        selectedCity !== 'all' &&
+        mitra.city.toLowerCase() !== selectedCity.toLowerCase()
+      ) {
+        return false
+      }
+      return isMitraMatchingQuery(mitra, searchQuery)
+    })
+  }, [mitras, selectedCity, searchQuery])
 
-      if (!searchQuery.trim()) return true
-      const q = searchQuery.toLowerCase().trim()
-      return (
-        mitra.businessName.toLowerCase().includes(q) ||
-        mitra.city.toLowerCase().includes(q) ||
-        mitra.address.toLowerCase().includes(q) ||
-        (mitra.tagline?.toLowerCase().includes(q) ?? false) ||
-        (mitra.description?.toLowerCase().includes(q) ?? false) ||
-        mitra.services.some((s) => s.name.toLowerCase().includes(q)) ||
-        mitra.features.some((f) => f.toLowerCase().includes(q))
-      )
+  // Detect matches in other cities if current city filter has 0 results
+  const matchesInOtherCities = useMemo(() => {
+    if (selectedCity === 'all' || !searchQuery.trim()) return []
+    return mitras.filter((m) => {
+      if (m.city.toLowerCase() === selectedCity.toLowerCase()) return false
+      return isMitraMatchingQuery(m, searchQuery)
     })
   }, [mitras, selectedCity, searchQuery])
 
@@ -197,27 +311,58 @@ export function IntegratedServiceView({
             {/* Mobile Search & City Filter */}
             <section className="space-y-2.5 px-4 pt-3">
               {/* Quick Search */}
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <form
+                role="search"
+                action=""
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSearchSubmit(e)
+                }}
+                className="relative"
+              >
+                <button
+                  type="submit"
+                  aria-label="Cari nama mitra, layanan, atau kota"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-500 focus:outline-none"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
                 <input
-                  type="text"
+                  ref={mobileSearchRef}
+                  type="search"
+                  name="q"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="off"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === 'Enter' ||
+                      e.keyCode === 13 ||
+                      e.which === 13
+                    ) {
+                      e.currentTarget.blur()
+                      handleSearchSubmit()
+                    }
+                  }}
                   placeholder="Cari nama mitra, layanan, atau kota..."
                   aria-label="Cari nama mitra, layanan, atau kota"
-                  className="shadow-2xs w-full rounded-2xl border border-slate-200/80 bg-white py-2.5 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                  className="shadow-2xs w-full rounded-2xl border border-slate-200/80 bg-white py-2.5 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white [&::-webkit-search-cancel-button]:hidden"
                 />
                 {searchQuery && (
                   <button
                     type="button"
-                    onClick={() => setSearchQuery('')}
+                    onClick={handleClearSearch}
                     aria-label="Hapus pencarian"
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
-              </div>
+              </form>
 
               {/* Dynamic City Filter Tabs */}
               <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto py-0.5">
@@ -285,20 +430,47 @@ export function IntegratedServiceView({
                     Tidak ada mitra ditemukan
                   </h3>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {searchQuery
-                      ? `Tidak ada hasil untuk "${searchQuery}". Coba kata kunci lain.`
-                      : 'Belum ada mitra servis untuk filter kota ini.'}
+                    {matchesInOtherCities.length > 0 ? (
+                      <>
+                        Tidak ada mitra di kota{' '}
+                        <strong className="text-slate-800 dark:text-slate-200">
+                          {selectedCity}
+                        </strong>{' '}
+                        yang cocok dengan &quot;{searchQuery}&quot;. Ditemukan{' '}
+                        {matchesInOtherCities.length} mitra di kota lain.
+                      </>
+                    ) : searchQuery ? (
+                      `Tidak ada mitra yang cocok dengan pencarian "${searchQuery}". Coba gunakan kata kunci lain seperti nama toko, layanan (LCD, baterai), atau nama kota.`
+                    ) : (
+                      `Belum ada mitra servis untuk filter kota ${selectedCity}.`
+                    )}
                   </p>
-                  {(searchQuery || selectedCity !== 'all') && (
+                  {matchesInOtherCities.length > 0 ? (
                     <button
+                      type="button"
                       onClick={() => {
-                        setSearchQuery('')
                         setSelectedCity('all')
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
                       }}
-                      className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-orange-500 bg-orange-50 px-3.5 py-1.5 text-xs font-bold text-orange-600 dark:border-orange-500/40 dark:bg-orange-950/40 dark:text-orange-400"
+                      className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-orange-500 bg-orange-50 px-3.5 py-1.5 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-500/40 dark:bg-orange-950/40 dark:text-orange-400"
                     >
-                      Reset Filter
+                      Lihat di Semua Daerah ({matchesInOtherCities.length}{' '}
+                      Mitra)
                     </button>
+                  ) : (
+                    (searchQuery || selectedCity !== 'all') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('')
+                          setSelectedCity('all')
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }}
+                        className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-orange-500 bg-orange-50 px-3.5 py-1.5 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-500/40 dark:bg-orange-950/40 dark:text-orange-400"
+                      >
+                        Reset Filter
+                      </button>
+                    )
                   )}
                 </div>
               )}
@@ -489,27 +661,58 @@ export function IntegratedServiceView({
             <section className="sm:pt-22 relative mx-auto max-w-7xl px-4 pt-20 sm:px-6 md:mt-5 md:pt-0 lg:px-8">
               <div className="shadow-2xs mb-6 flex flex-col items-stretch justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:p-3 md:rounded-3xl">
                 {/* Search bar */}
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <form
+                  role="search"
+                  action=""
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    handleSearchSubmit(e)
+                  }}
+                  className="relative flex-1"
+                >
+                  <button
+                    type="submit"
+                    aria-label="Cari nama mitra, layanan, atau kota"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-500 focus:outline-none"
+                  >
+                    <Search className="h-4 w-4" />
+                  </button>
                   <input
-                    type="text"
+                    ref={desktopSearchRef}
+                    type="search"
+                    name="q"
+                    inputMode="search"
+                    enterKeyHint="search"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="off"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === 'Enter' ||
+                        e.keyCode === 13 ||
+                        e.which === 13
+                      ) {
+                        e.currentTarget.blur()
+                        handleSearchSubmit()
+                      }
+                    }}
                     placeholder="Cari nama mitra, layanan, atau kota..."
                     aria-label="Cari nama mitra, layanan, atau kota"
-                    className="w-full rounded-xl border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-9 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:text-sm md:rounded-2xl"
+                    className="w-full rounded-xl border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-9 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:text-sm md:rounded-2xl [&::-webkit-search-cancel-button]:hidden"
                   />
                   {searchQuery && (
                     <button
                       type="button"
-                      onClick={() => setSearchQuery('')}
+                      onClick={handleClearSearch}
                       aria-label="Hapus pencarian"
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
                   )}
-                </div>
+                </form>
 
                 {/* City filter — dynamic from DB */}
                 <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto border-t border-slate-100 pt-2 dark:border-slate-800 sm:border-t-0 sm:pt-0">
@@ -575,20 +778,47 @@ export function IntegratedServiceView({
                     Tidak ada mitra ditemukan
                   </h3>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {searchQuery
-                      ? `Tidak ada hasil untuk "${searchQuery}". Coba kata kunci lain.`
-                      : 'Belum ada mitra servis untuk filter kota ini.'}
+                    {matchesInOtherCities.length > 0 ? (
+                      <>
+                        Tidak ada mitra di kota{' '}
+                        <strong className="text-slate-800 dark:text-slate-200">
+                          {selectedCity}
+                        </strong>{' '}
+                        yang cocok dengan &quot;{searchQuery}&quot;. Ditemukan{' '}
+                        {matchesInOtherCities.length} mitra di kota lain.
+                      </>
+                    ) : searchQuery ? (
+                      `Tidak ada mitra yang cocok dengan pencarian "${searchQuery}". Coba gunakan kata kunci lain seperti nama toko, layanan (LCD, baterai), atau nama kota.`
+                    ) : (
+                      `Belum ada mitra servis untuk filter kota ${selectedCity}.`
+                    )}
                   </p>
-                  {(searchQuery || selectedCity !== 'all') && (
+                  {matchesInOtherCities.length > 0 ? (
                     <button
+                      type="button"
                       onClick={() => {
-                        setSearchQuery('')
                         setSelectedCity('all')
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
                       }}
                       className="mt-5 inline-flex items-center gap-2 rounded-xl border border-orange-500 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-500/40 dark:bg-orange-950/40 dark:text-orange-400"
                     >
-                      Reset Filter
+                      Lihat di Semua Daerah ({matchesInOtherCities.length}{' '}
+                      Mitra)
                     </button>
+                  ) : (
+                    (searchQuery || selectedCity !== 'all') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('')
+                          setSelectedCity('all')
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }}
+                        className="mt-5 inline-flex items-center gap-2 rounded-xl border border-orange-500 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-500/40 dark:bg-orange-950/40 dark:text-orange-400"
+                      >
+                        Reset Filter
+                      </button>
+                    )
                   )}
                 </div>
               )}

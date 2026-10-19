@@ -457,31 +457,53 @@ export function ShopeeMobileProductDetail({
           ? 'Second Like New (Mulus 99%)'
           : product.condition || 'Second Teruji'
 
+  const [backHref, setBackHref] = useState('/gadget')
+
+  useEffect(() => {
+    try {
+      const savedBrand = sessionStorage.getItem(
+        'affiliate_gadget_selected_brand'
+      )
+      if (savedBrand && savedBrand !== 'ALL') {
+        setBackHref(`/gadget?brand=${encodeURIComponent(savedBrand)}`)
+      }
+    } catch {}
+  }, [])
+
   const handleBack = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault()
     }
 
     if (typeof window !== 'undefined') {
-      const isFromSameSite =
-        document.referrer &&
-        document.referrer.includes(window.location.host) &&
-        !document.referrer.endsWith(window.location.pathname)
+      const currentPath = window.location.pathname
+      let fallbackUrl = '/gadget'
+      try {
+        const savedBrand = sessionStorage.getItem(
+          'affiliate_gadget_selected_brand'
+        )
+        if (savedBrand && savedBrand !== 'ALL') {
+          fallbackUrl = `/gadget?brand=${encodeURIComponent(savedBrand)}`
+        }
+      } catch {}
 
-      if (isFromSameSite && window.history.length > 1) {
+      if (window.history.length > 1) {
         window.history.back()
 
-        // Fallback: If after 200ms page hasn't navigated away, push to /gadget
+        // Fallback: If after 250ms page hasn't navigated away, push to fallbackUrl
         setTimeout(() => {
           if (
             typeof window !== 'undefined' &&
-            window.location.pathname.startsWith('/gadget/')
+            window.location.pathname === currentPath
           ) {
-            router.push('/gadget')
+            router.push(fallbackUrl)
           }
-        }, 200)
+        }, 250)
         return
       }
+
+      router.push(fallbackUrl)
+      return
     }
 
     // Default guaranteed navigation to catalog
@@ -501,7 +523,7 @@ export function ShopeeMobileProductDetail({
         <div className="flex items-center justify-between px-3">
           {/* Back Button: Guaranteed Link with Smart Fallback */}
           <Link
-            href="/gadget"
+            href={backHref}
             onClick={handleBack}
             className={`relative z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-all active:scale-90 ${
               isScrolled

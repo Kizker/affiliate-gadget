@@ -23,7 +23,7 @@ export function ChatOrderContextBar({
 }: ChatOrderContextBarProps) {
   return (
     <div
-      className={`flex items-center justify-between gap-3 border-t px-4 py-2.5 ${
+      className={`flex shrink-0 items-center justify-between gap-3 border-t px-4 py-2.5 ${
         activeOrderContext.returnRequest
           ? 'border-purple-200/80 bg-gradient-to-r from-purple-50/90 via-orange-50/40 to-white dark:border-purple-900/40 dark:from-purple-950/40 dark:via-slate-900 dark:to-slate-900'
           : 'border-blue-100 bg-blue-50/80 dark:border-blue-900/40 dark:bg-blue-950/30'
@@ -152,7 +152,7 @@ export function ChatServiceContextBar({
   onDismiss,
 }: ChatServiceContextBarProps) {
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-emerald-100 bg-emerald-50/80 px-4 py-2.5 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-emerald-100 bg-emerald-50/80 px-4 py-2.5 dark:border-emerald-900/40 dark:bg-emerald-950/30">
       <div className="flex min-w-0 items-center gap-2.5">
         {activeServiceContext.mitraImage ? (
           <img
@@ -232,7 +232,7 @@ export function ChatProductContextBar({
   onDismiss,
 }: ChatProductContextBarProps) {
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-orange-100 bg-orange-50/80 px-4 py-2.5 dark:border-orange-900/40 dark:bg-orange-950/30">
+    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-orange-100 bg-orange-50/80 px-4 py-2.5 dark:border-orange-900/40 dark:bg-orange-950/30">
       <div className="flex min-w-0 items-center gap-2.5">
         {activeProductContext.productImage ? (
           <img

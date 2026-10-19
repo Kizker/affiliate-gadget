@@ -3,8 +3,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Navbar } from '@/components/layouts/navbar'
-import { Footer } from '@/components/layouts/footer'
+import {
+  Navbar,
+  Footer,
+  MobileTopNav,
+  MobileBottomNav,
+} from '@/components/layouts'
 import {
   MapPin,
   Clock,
@@ -160,8 +164,22 @@ export default function StoreDetailClient({
   const showDesktop = !mounted ? !initialIsMobile : !isMobile
 
   return (
-    <div className="min-h-screen bg-white text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white">
-      <Navbar variant="light" />
+    <div className="min-h-screen bg-white pb-24 text-black selection:bg-neutral-900 selection:text-white dark:bg-neutral-950 dark:text-white md:pb-0">
+      {/* 0A. DESKTOP NAVBAR */}
+      {showDesktop && (
+        <div className="hidden md:block">
+          <Navbar variant="light" />
+        </div>
+      )}
+
+      {/* 0B. MOBILE TOP NAV (Konsisten 100% dengan Halaman Beranda) */}
+      {showMobile && (
+        <div className="block md:hidden">
+          <MobileTopNav
+            chatHref={`/dashboard/customer/chat?storeId=${store.id}`}
+          />
+        </div>
+      )}
 
       {/* ─────────────────────────────────────────────────────────────
           1A. DESKTOP HERO VIEWPORT: EXACTLY 100vh FULL VIEWPORT (pt-16 h-screen)
@@ -240,7 +258,7 @@ export default function StoreDetailClient({
           1B. MOBILE HERO VIEWPORT: LUXURY FLAGSHIP MOBILE EXPERIENCE
       ───────────────────────────────────────────────────────────── */}
       {showMobile && (
-        <section className="relative flex h-[100dvh] min-h-[580px] w-full flex-col justify-between overflow-hidden bg-gradient-to-b from-[#F5F6F8] via-[#FAFBFD] to-white pt-20 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 md:hidden">
+        <section className="relative flex h-[calc(100dvh-61px)] min-h-[520px] w-full flex-col justify-between overflow-hidden bg-gradient-to-b from-[#F5F6F8] via-[#FAFBFD] to-white pt-5 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 md:hidden">
           {/* Top: Clean Editorial Typography */}
           <div className="z-10 shrink-0 space-y-2 px-5 text-center">
             {/* Kicker Tag */}
@@ -351,7 +369,7 @@ export default function StoreDetailClient({
           1D. STICKY MOBILE CATEGORY FILTER BAR (Mobile Only)
       ───────────────────────────────────────────────────────────── */}
       {showMobile && (
-        <div className="no-scrollbar shadow-2xs sticky top-16 z-30 flex items-center gap-2 overflow-x-auto border-b border-neutral-200/70 bg-white/95 px-4 py-2.5 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/95 md:hidden">
+        <div className="no-scrollbar shadow-2xs sticky top-[61px] z-30 flex items-center gap-2 overflow-x-auto border-b border-neutral-200/70 bg-white/95 px-4 py-2.5 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/95 md:hidden">
           {[
             { id: 'ALL', label: `Semua (${filteredProducts.length})` },
             { id: 'PHONE', label: 'Smartphone' },
@@ -904,6 +922,13 @@ export default function StoreDetailClient({
             <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 dark:border-neutral-900" />
           </Link>
         </aside>
+      )}
+
+      {/* Mobile Bottom Navigation Bar (Konsisten dengan Jaringan Toko & Beranda) */}
+      {showMobile && (
+        <div className="block md:hidden">
+          <MobileBottomNav activeTab="toko" />
+        </div>
       )}
 
       <Footer variant="light" />

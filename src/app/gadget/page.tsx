@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
@@ -58,11 +58,38 @@ function GadgetKatalogContent() {
   const [promotedAds, setPromotedAds] = useState<InFeedAdData[]>([])
   const [liveStreams, setLiveStreams] = useState<LiveBannerData[]>([])
   const promotedAd = promotedAds[0] || null
+  const GADGET_BRAND_STORAGE_KEY = 'affiliate_gadget_selected_brand'
+
   const [loading, setLoading] = useState(false)
-  const [brand, setBrand] = useState('ALL')
+  const [brand, setBrandState] = useState<string>(
+    () => searchParams.get('brand') || 'ALL'
+  )
   const [search, setSearch] = useState(() => searchParams.get('search') ?? '')
   const [sortBy, setSortBy] = useState('RELEVANCE')
   const [ignoreCorrection, setIgnoreCorrection] = useState(false)
+
+  const handleBrandChange = useCallback((newBrand: string) => {
+    setBrandState(newBrand)
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(window.location.href)
+        if (newBrand === 'ALL') {
+          sessionStorage.setItem(GADGET_BRAND_STORAGE_KEY, 'ALL')
+          url.searchParams.delete('brand')
+        } else {
+          sessionStorage.setItem(GADGET_BRAND_STORAGE_KEY, newBrand)
+          url.searchParams.set('brand', newBrand)
+        }
+        window.history.replaceState(
+          null,
+          '',
+          url.pathname + (url.search ? url.search : '')
+        )
+      } catch (err) {
+        console.error(err)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -106,10 +133,28 @@ function GadgetKatalogContent() {
     setIgnoreCorrection(false)
   }, [search])
 
-  // Sync search state jika URL param berubah (mis. navigasi dari navbar)
+  // Sync search & brand state jika URL param berubah atau saat kembali dari detail katalog
   useEffect(() => {
     const q = searchParams.get('search') ?? ''
     setSearch(q)
+
+    const urlBrand = searchParams.get('brand')
+    if (urlBrand) {
+      setBrandState(urlBrand)
+      try {
+        sessionStorage.setItem(GADGET_BRAND_STORAGE_KEY, urlBrand)
+      } catch {}
+    } else if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem(GADGET_BRAND_STORAGE_KEY)
+        if (cached && cached !== 'ALL') {
+          setBrandState(cached)
+          const url = new URL(window.location.href)
+          url.searchParams.set('brand', cached)
+          window.history.replaceState(null, '', url.pathname + url.search)
+        }
+      } catch {}
+    }
   }, [searchParams])
 
   useEffect(() => {
@@ -182,7 +227,7 @@ function GadgetKatalogContent() {
     }
   }
 
-  const brands = ['ALL', 'Apple', 'Samsung', 'Xiaomi', 'ASUS']
+  const brands = ['ALL', 'Apple', 'Samsung', 'Xiaomi', 'ASUS', 'Vivo', 'Oppo']
 
   // Smart Search: Analisis Typo Tolerant & Fuzzy Matching (Fuse.js ML-grade)
   const { filtered, smartAnalysis } = useMemo(() => {
@@ -346,7 +391,7 @@ function GadgetKatalogContent() {
             gadgets={sorted}
             loading={loading}
             brand={brand}
-            setBrand={setBrand}
+            setBrand={handleBrandChange}
             search={search}
             setSearch={setSearch}
             sortBy={sortBy}
@@ -384,9 +429,10 @@ function GadgetKatalogContent() {
                     <button
                       key={b}
                       type="button"
-                      onClick={() => setBrand(b)}
+                      onClick={() => handleBrandChange(b)}
                       className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all duration-200 sm:rounded-2xl sm:px-4 sm:py-2 sm:text-xs ${
-                        brand === b
+                        brand.toUpperCase() === b.toUpperCase() ||
+                        (b === 'ALL' && (!brand || brand === 'ALL'))
                           ? 'shadow-xs border border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
                           : 'border border-transparent text-slate-600 hover:bg-slate-100/80 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
                       }`}
@@ -402,12 +448,20 @@ function GadgetKatalogContent() {
                   <div className="relative flex-1 sm:w-64 lg:w-72">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <input
-                      type="text"
+                      type="search"
+                      enterKeyHint="search"
+                      autoCapitalize="none"
+                      autoCorrect="off"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur()
+                        }
+                      }}
                       placeholder="Cari iPhone, Samsung, Xiaomi..."
                       aria-label="Cari iPhone, Samsung, Xiaomi atau model smartphone"
-                      className="w-full rounded-xl border border-slate-200/70 bg-slate-50/80 py-1.5 pl-8 pr-8 text-[11px] font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:rounded-2xl sm:py-2 sm:pl-9 sm:text-xs"
+                      className="w-full rounded-xl border border-slate-200/70 bg-slate-50/80 py-1.5 pl-8 pr-8 text-[11px] font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:rounded-2xl sm:py-2 sm:pl-9 sm:text-xs [&::-webkit-search-cancel-button]:hidden"
                     />
                     {search && (
                       <button
@@ -457,11 +511,22 @@ function GadgetKatalogContent() {
                 <div className="shadow-xs space-y-3 rounded-2xl border border-slate-200/80 bg-white p-6 py-16 text-center dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl sm:p-10 sm:py-20">
                   <Smartphone className="mx-auto h-10 w-10 text-slate-300" />
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Tidak ada produk yang cocok
+                    Tidak ada produk serupa
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Coba gunakan kata kunci lain atau pilih filter Semua Merek.
+                    {search.trim()
+                      ? `Tidak ada produk serupa untuk "${search.trim()}". Coba gunakan kata kunci lain atau pilih filter Semua Merek.`
+                      : 'Tidak ada produk serupa yang tersedia untuk pilihan filter ini.'}
                   </p>
+                  {search.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-orange-600 active:scale-95"
+                    >
+                      Lihat Semua Gadget
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>

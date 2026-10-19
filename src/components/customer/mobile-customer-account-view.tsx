@@ -87,11 +87,28 @@ export function MobileCustomerAccountView({
   }, [activeSubView])
 
   if (activeSubView !== 'overview') {
-    const titles = {
-      profile: 'Profil & Biodata Diri',
-      address: 'Daftar Alamat Pengiriman',
-      security: 'Kata Sandi & Keamanan',
-      wishlist: 'Wishlist Saya',
+    const subViewMeta: Record<string, { title: string; subtitle: string }> = {
+      profile: {
+        title: 'Profil & Biodata Diri',
+        subtitle: 'Kelola data pribadi & info kontak akun',
+      },
+      address: {
+        title: 'Daftar Alamat Pengiriman',
+        subtitle: 'Atur alamat rumah, kantor, & titik kurir',
+      },
+      security: {
+        title: 'Kata Sandi & Keamanan',
+        subtitle: 'Perbarui kata sandi & proteksi akun',
+      },
+      wishlist: {
+        title: 'Wishlist Saya',
+        subtitle: 'Daftar gadget impian yang Anda simpan',
+      },
+    }
+
+    const currentMeta = subViewMeta[activeSubView] || {
+      title: 'Pengaturan Akun',
+      subtitle: 'Kelola preferensi akun Anda',
     }
 
     return (
@@ -108,18 +125,28 @@ export function MobileCustomerAccountView({
           </button>
         ) : (
           <header className="z-50 flex shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 px-3.5 py-2.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
-            <button
-              type="button"
-              onClick={onBack || (() => setActiveSubView('overview'))}
-              className="flex items-center gap-1 text-xs font-bold text-slate-700 transition hover:text-orange-500 active:scale-95 dark:text-slate-300"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Kembali</span>
-            </button>
-            <h1 className="max-w-[170px] truncate text-center text-xs font-bold text-slate-950 dark:text-white sm:max-w-none">
-              {titles[activeSubView]}
-            </h1>
-            <div className="flex min-w-[70px] items-center justify-end">
+            {/* Left: Button Kembali (Arrow Saja Tanpa Teks) & Info Halaman */}
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <button
+                type="button"
+                onClick={onBack || (() => setActiveSubView('overview'))}
+                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200/80 bg-slate-50 text-slate-700 transition-all hover:bg-white hover:text-orange-500 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                aria-label="Kembali"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-xs font-bold leading-tight text-slate-950 dark:text-white sm:text-sm">
+                  {currentMeta.title}
+                </h1>
+                <p className="truncate text-[10.5px] font-medium leading-tight text-slate-500 dark:text-slate-400">
+                  {currentMeta.subtitle}
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Action CTA (Simpan / Tambah) */}
+            <div className="flex min-w-[70px] shrink-0 items-center justify-end">
               {activeSubView === 'profile' && onSaveProfile && (
                 <button
                   type="button"

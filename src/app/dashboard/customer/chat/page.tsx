@@ -398,16 +398,68 @@ function CustomerChatContent() {
     return () => clearTimeout(timeoutId)
   }, [fetchRooms])
 
-  // Auto scroll to bottom
-  useEffect(() => {
-    if (shouldScrollToBottom && messagesEndRef.current) {
-      const container = messagesEndRef.current.parentElement
-      if (container) {
+  // Helper to scroll messages to bottom and reset window scroll
+  const scrollToBottom = useCallback((smooth = false) => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0)
+    }
+    const container = messagesContainerRef.current
+    if (container) {
+      if (smooth) {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+      } else {
         container.scrollTop = container.scrollHeight
       }
+    }
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: smooth ? 'smooth' : 'auto',
+        block: 'end',
+      })
+    }
+  }, [])
+
+  // Auto scroll to bottom
+  useEffect(() => {
+    if (shouldScrollToBottom) {
+      scrollToBottom(false)
       setShouldScrollToBottom(false)
     }
-  }, [messages, shouldScrollToBottom])
+  }, [messages, shouldScrollToBottom, scrollToBottom])
+
+  // Dedicated effect: Whenever room is selected, room finishes initializing, or messages change,
+  // ensure the chat view is instantly pinned to the bottom (latest messages + input bar visible)
+  useEffect(() => {
+    if (!selectedRoom || isInitializingRoom) return
+
+    // Immediate scroll
+    scrollToBottom(false)
+
+    // Repeated ticks for DOM layout / image settlement
+    const rafId = requestAnimationFrame(() => {
+      scrollToBottom(false)
+    })
+    const t1 = setTimeout(() => scrollToBottom(false), 60)
+    const t2 = setTimeout(() => scrollToBottom(false), 200)
+    const t3 = setTimeout(() => scrollToBottom(false), 500)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
+    }
+  }, [
+    selectedRoom?.id,
+    isInitializingRoom,
+    messagesLoading,
+    messages.length,
+    showChatOnMobile,
+    activeServiceContext,
+    activeOrderContext,
+    activeProductContext,
+    scrollToBottom,
+  ])
 
   const handleSelectRoom = useCallback(
     (room: ChatRoom) => {
@@ -1186,7 +1238,7 @@ function CustomerChatContent() {
   }
 
   return (
-    <div className="flex h-[100dvh] h-screen flex-col overflow-hidden bg-white font-sans dark:bg-slate-950">
+    <div className="fixed inset-0 z-20 flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-white font-sans dark:bg-slate-950 md:static md:z-auto md:h-[100dvh]">
       {/* 1. Top Navigation: Desktop Navbar only */}
       <div className="hidden shrink-0 md:block">
         <Navbar variant="light" />
@@ -1208,11 +1260,11 @@ function CustomerChatContent() {
         mounted={mounted}
       />
 
-      <main className="flex flex-1 flex-col overflow-hidden p-0 md:pb-4 md:pt-20">
+      <main className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden p-0 md:pb-4 md:pt-20">
         <h1 className="sr-only">Pusat Pesan & Chat Pelanggan</h1>
-        <div className="flex h-full w-full flex-1 flex-col px-0 md:mx-auto md:max-w-7xl md:px-6 lg:px-8">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col px-0 md:mx-auto md:max-w-7xl md:px-6 lg:px-8">
           {/* Single-Surface Bento Chat Hub Container */}
-          <div className="md:shadow-xs grid h-full min-h-0 w-full min-w-0 flex-1 grid-cols-1 overflow-hidden rounded-none border-0 bg-white dark:bg-slate-900 md:rounded-3xl md:border md:border-slate-200/80 lg:grid-cols-12">
+          <div className="md:shadow-xs flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-white dark:bg-slate-900 md:rounded-3xl md:border md:border-slate-200/80 lg:grid lg:grid-cols-12 lg:grid-rows-1">
             {/* Left Pane: Integrated Control & Conversation List (4 Cols) */}
             <div
               className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:col-span-4 xl:col-span-4 ${

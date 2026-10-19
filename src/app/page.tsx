@@ -23,7 +23,8 @@ export default function HomePage() {
     setMounted(true)
     // Pada mode mobile, halaman beranda ditiadakan karena redundan dengan katalog yang kini menjadi Beranda
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      router.replace('/gadget')
+      const searchStr = window.location.search || ''
+      router.replace(`/gadget${searchStr}`)
     }
   }, [router])
 
