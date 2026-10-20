@@ -31,16 +31,13 @@ describe('Admin Live Studio Desktop Layout Suite (Full-Height Chat & Lower Pinne
     )
   })
 
-  it('3. Pinned Goods Grid: features multi-column responsive grid with spacious discount inputs & pin buttons', () => {
+  it('3. Pinned Goods Grid: features multi-column responsive grid with spacious pin controls', () => {
     // Grid layout for catalog products
     expect(broadcasterCode).toContain(
       'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
     )
-    // Extra discount input field during pin
-    expect(broadcasterCode).toContain(
-      'Diskon Ekstra Saat Sematkan / Diskon (Rp):'
-    )
-    expect(broadcasterCode).toContain('handlePinProduct(p, discountPrice)')
+    // Dedicated pin modal triggers
+    expect(broadcasterCode).toContain('handleOpenPinModal(p)')
     expect(broadcasterCode).toContain('handleUnpinProduct')
   })
 

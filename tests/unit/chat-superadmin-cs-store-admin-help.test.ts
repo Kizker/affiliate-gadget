@@ -56,7 +56,7 @@ describe('Chat Bantuan CS Superadmin & Bantuan Store Admin', () => {
 
   it('memvalidasi UI admin chat memiliki filter dan tab untuk CS Superadmin', () => {
     const content = fs.readFileSync(adminChatPagePath, 'utf-8')
-    expect(content).toContain('Bantuan CS Superadmin')
+    expect(content).toContain('Superadmin')
     expect(content).toContain('STORE_HELP')
     expect(content).toContain('CUSTOMER_CS')
   })

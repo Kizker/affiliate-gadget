@@ -47,10 +47,9 @@ export function MitraHero({
       <section
         id="hero"
         suppressHydrationWarning
-        className="relative hidden w-full overflow-hidden border-b border-neutral-100 bg-[#FBFBFD] px-4 dark:border-neutral-900 dark:bg-neutral-950 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:items-center md:justify-center md:overflow-hidden lg:px-8"
-        style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
+        className="relative hidden w-full overflow-hidden border-b border-neutral-100 bg-[#FBFBFD] px-4 py-12 dark:border-neutral-900 dark:bg-neutral-950 sm:px-6 sm:py-16 md:flex md:items-center md:justify-center lg:px-8"
       >
-        <div className="mx-auto my-auto flex w-full max-w-7xl items-center">
+        <div className="mx-auto flex w-full max-w-7xl items-center">
           {/* Left Column (55%): Workshop/Bengkel Photo Studio Frame */}
           <div className="relative w-[55%] pl-4 lg:pl-8">
             <div

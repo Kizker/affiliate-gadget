@@ -25,6 +25,7 @@ import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { StorePublicProfile } from '@/types/store-public'
 import { resolveStorePageContent } from '@/lib/store-page-content'
 import { useIsMobile } from '@/hooks/use-is-mobile'
+import { StoreReviewsSection } from '@/components/store/store-reviews-section'
 
 function ProductCardImage({ src, alt }: { src: string; alt: string }) {
   const [imgSrc, setImgSrc] = useState(src)
@@ -117,6 +118,21 @@ export default function StoreDetailClient({
       toast.success(`Ditambahkan ke Wishlist: ${item.name}`)
     } else {
       toast.info(`Dihapus dari Wishlist: ${item.name}`)
+    }
+  }
+
+  // Smooth scroll helper for sections
+  const scrollToSection = (id: string) => {
+    if (typeof window === 'undefined') return
+    const el = document.getElementById(id)
+    if (el) {
+      const navOffset = 65
+      const elementTop = el.getBoundingClientRect().top
+      const targetPosition = elementTop + window.scrollY - navOffset
+      window.scrollTo({
+        top: targetPosition,
+        behavior: 'smooth',
+      })
     }
   }
 
@@ -298,13 +314,14 @@ export default function StoreDetailClient({
                   Beli Sekarang
                 </Link>
               ) : (
-                <a
-                  href="#katalog-produk"
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('katalog-produk')}
                   aria-label="Lihat koleksi perangkat toko"
-                  className="rounded-full bg-black px-8 py-3 text-center text-xs font-bold text-white shadow-md transition-transform active:scale-95 dark:bg-white dark:text-black"
+                  className="cursor-pointer rounded-full bg-black px-8 py-3 text-center text-xs font-bold text-white shadow-md transition-transform active:scale-95 dark:bg-white dark:text-black"
                 >
                   Beli Sekarang
-                </a>
+                </button>
               )}
             </div>
           </div>
@@ -354,22 +371,23 @@ export default function StoreDetailClient({
               </div>
             </div>
 
-            <a
-              href="#informasi-gerai"
+            <button
+              type="button"
+              onClick={() => scrollToSection('informasi-gerai')}
               aria-label="Menuju informasi cabang gerai"
-              className="shrink-0 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[11px] font-semibold text-neutral-700 active:scale-95 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+              className="shrink-0 cursor-pointer rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[11px] font-semibold text-neutral-700 active:scale-95 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
             >
               Info Cabang
-            </a>
+            </button>
           </div>
         </section>
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          1D. STICKY MOBILE CATEGORY FILTER BAR (Mobile Only)
+          1D. MOBILE CATEGORY FILTER BAR (Mobile Only - Natural Flow)
       ───────────────────────────────────────────────────────────── */}
       {showMobile && (
-        <div className="no-scrollbar shadow-2xs sticky top-[61px] z-30 flex items-center gap-2 overflow-x-auto border-b border-neutral-200/70 bg-white/95 px-4 py-2.5 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/95 md:hidden">
+        <div className="no-scrollbar shadow-2xs flex items-center gap-2 overflow-x-auto border-b border-neutral-200/70 bg-white px-4 py-2.5 dark:border-neutral-800 dark:bg-neutral-950 md:hidden">
           {[
             { id: 'ALL', label: `Semua (${filteredProducts.length})` },
             { id: 'PHONE', label: 'Smartphone' },
@@ -379,10 +397,13 @@ export default function StoreDetailClient({
             <button
               key={cat.id}
               type="button"
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => {
+                setActiveCategory(cat.id)
+                scrollToSection('katalog-produk')
+              }}
               aria-pressed={activeCategory === cat.id}
               aria-label={`Filter produk kategori ${cat.label}`}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
+              className={`shrink-0 cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
                 activeCategory === cat.id
                   ? 'shadow-xs bg-black text-white dark:bg-white dark:text-black'
                   : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400'
@@ -391,13 +412,14 @@ export default function StoreDetailClient({
               {cat.label}
             </button>
           ))}
-          <a
-            href="#informasi-gerai"
+          <button
+            type="button"
+            onClick={() => scrollToSection('informasi-gerai')}
             aria-label="Menuju informasi gerai cabang"
-            className="shrink-0 rounded-full bg-neutral-100 px-3.5 py-1.5 text-xs font-semibold text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400"
+            className="shrink-0 cursor-pointer rounded-full bg-neutral-100 px-3.5 py-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-200 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800"
           >
             Info Gerai
-          </a>
+          </button>
         </div>
       )}
 
@@ -522,7 +544,7 @@ export default function StoreDetailClient({
       ───────────────────────────────────────────────────────────── */}
       <section
         id="katalog-produk"
-        className="border-y border-neutral-100 bg-[#F8F9FA] px-4 py-14 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 sm:py-20 lg:px-8"
+        className="scroll-mt-16 border-y border-neutral-100 bg-[#F8F9FA] px-4 py-14 dark:border-neutral-900 dark:bg-neutral-950/70 sm:px-6 sm:py-20 lg:px-8"
       >
         <div className="mx-auto max-w-7xl">
           {/* Section Header */}
@@ -698,7 +720,7 @@ export default function StoreDetailClient({
       ───────────────────────────────────────────────────────────── */}
       <section
         id="informasi-gerai"
-        className="border-t border-neutral-100 px-4 py-10 dark:border-neutral-900 sm:px-6 sm:py-16 lg:px-8"
+        className="scroll-mt-16 border-t border-neutral-100 px-4 py-10 dark:border-neutral-900 sm:px-6 sm:py-16 lg:px-8"
       >
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 space-y-2 text-center sm:mb-10">
@@ -870,6 +892,11 @@ export default function StoreDetailClient({
           )}
         </div>
       </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          5B. STORE REVIEWS SECTION (Ulasan Pembeli & Galeri Media)
+      ───────────────────────────────────────────────────────────── */}
+      <StoreReviewsSection storeId={store.id} storeName={store.name} />
 
       {/* ─────────────────────────────────────────────────────────────
           6A. DESKTOP FLOATING SALES SPECIALIST CHAT POPUP

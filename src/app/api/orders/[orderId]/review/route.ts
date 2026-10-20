@@ -84,14 +84,12 @@ export async function POST(
         data: {
           rating: Number(rating),
           comment: comment?.trim() || null,
-          images:
-            sanitizedImages.length > 0
-              ? sanitizedImages
-              : existingReview.images,
-          videos:
-            sanitizedVideos.length > 0
-              ? sanitizedVideos
-              : existingReview.videos,
+          images: Array.isArray(images)
+            ? sanitizedImages
+            : existingReview.images,
+          videos: Array.isArray(videos)
+            ? sanitizedVideos
+            : existingReview.videos,
           productId: productId || existingReview.productId,
           storeId: order.storeId || existingReview.storeId,
           variantName: variantName || existingReview.variantName,

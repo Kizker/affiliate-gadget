@@ -86,16 +86,9 @@ export function ReportsView({
       {/* Panel Rincian Beban Transaksi & Logistik Terproteksi */}
       <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
         <div className="flex flex-col gap-1 border-b border-slate-100 pb-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-              Rincian Beban Transaksi & Logistik Terproteksi
-            </h2>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              {isConsolidated
-                ? 'Transparansi pemotongan komisi platform, beban operasional toko fisik, dan asuransi pengiriman'
-                : 'Biaya operasional penjualan handphone dan status asuransi pengiriman'}
-            </p>
-          </div>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+            Rincian Beban Transaksi & Logistik Terproteksi
+          </h2>
           <span className="text-[11px] font-semibold text-slate-500">
             Total Beban Toko:{' '}
             <strong className="font-mono text-slate-900 dark:text-white">
@@ -189,11 +182,6 @@ export function ReportsView({
                   )}
                 </span>
               </div>
-              <p className="pt-1 text-[11px] leading-relaxed text-blue-700/80 dark:text-blue-300/80">
-                🛡️ Transparan: Biaya logistik dan asuransi penuh dipungut dari
-                customer dan diteruskan ke ekspedisi Biteship. Tidak memotong
-                omzet maupun laba bersih toko.
-              </p>
             </div>
           </div>
         </div>
@@ -241,17 +229,11 @@ export function ReportsView({
       {/* Analitik Tren Penjualan & Laba Finansial (Interactive Bar Chart) */}
       <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
         <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                Analitik Tren Penjualan & Laba Finansial
-              </h2>
-            </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              Visualisasi grafik performa finansial harian, mingguan, dan
-              bulanan (Omzet Kotor vs Laba Bersih)
-            </p>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Analitik Tren Penjualan & Laba Finansial
+            </h2>
           </div>
 
           {/* Legend */}
@@ -441,15 +423,9 @@ export function ReportsView({
       {/* Aktivitas Transaksi Finansial Terbaru (Tabel Pesanan Terperinci) */}
       <div className="shadow-2xs space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-              Aktivitas Transaksi Finansial Terbaru
-            </h2>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              Rincian kalkulasi omzet kotor, modal HPP, beban operasional, dan
-              laba bersih per transaksi
-            </p>
-          </div>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+            Aktivitas Transaksi Finansial Terbaru
+          </h2>
           <span className="text-xs font-semibold text-slate-500">
             {recentOrders.length} Transaksi Terkini
           </span>
@@ -690,14 +666,9 @@ export function ReportsView({
         {/* Produk Terlaris */}
         <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-            <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                Produk Gadget Terlaris
-              </h2>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                Paling banyak terjual di seluruh cabang toko
-              </p>
-            </div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Produk Gadget Terlaris
+            </h2>
           </div>
 
           <div className="divide-y divide-slate-100 pt-1 dark:divide-slate-800/60">
@@ -774,14 +745,9 @@ export function ReportsView({
         {/* Statistik Jaringan Toko */}
         <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-            <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                Statistik Jaringan Toko
-              </h2>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                Status operasional dan performa cabang
-              </p>
-            </div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Statistik Jaringan Toko
+            </h2>
             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               {reportData.stores?.active ??

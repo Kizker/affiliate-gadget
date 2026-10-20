@@ -64,9 +64,7 @@ describe('Live Stream Mobile Host Studio, Clean Pinned Card, Adaptive Desktop & 
     expect(broadcasterCode).toContain('bg-white p-4 text-slate-900')
     // Keyboard avoidance
     expect(broadcasterCode).toContain('useKeyboardInset')
-    expect(broadcasterCode).toContain(
-      'transform: `translateY(-${keyboardInset}px)`'
-    )
+    expect(broadcasterCode).toContain('translateY(-${keyboardInset}px)')
   })
 
   it('3. Desktop Viewer Adaptive View: detects mobile vertical stream and displays uncropped with ambient backdrop', () => {

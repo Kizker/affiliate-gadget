@@ -59,47 +59,41 @@ export function ChatOrderContextBar({
             )}
           </div>
         )}
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`rounded-md px-1.5 py-0.5 text-[9.5px] font-black uppercase tracking-wider ${
-                activeOrderContext.returnRequest
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300'
-                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300'
-              }`}
-            >
-              {activeOrderContext.returnRequest ? 'Pengajuan Retur' : 'Pesanan'}
-            </span>
-            {activeOrderContext.orderNumber && (
-              <span className="truncate font-mono text-[11px] font-bold text-slate-900 dark:text-white">
-                #{activeOrderContext.orderNumber}
-              </span>
-            )}
-          </div>
-          {activeOrderContext.productName && (
-            <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
-              {activeOrderContext.productName}
+        {activeOrderContext.returnRequest ? (
+          <div className="min-w-0">
+            <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+              {activeOrderContext.productName || 'Unit Gadget'}
             </p>
-          )}
-          {activeOrderContext.returnRequest ? (
             <p className="truncate text-[11px] font-medium text-purple-700 dark:text-purple-300">
-              Kendala:{' '}
-              {activeOrderContext.returnRequest.reason || 'Kendala Unit'} •
-              Status:{' '}
-              {activeOrderContext.returnRequest.status === 'APPROVED'
-                ? 'Disetujui'
-                : activeOrderContext.returnRequest.status === 'REJECTED'
-                  ? 'Ditolak'
-                  : activeOrderContext.returnRequest.status === 'COMPLETED'
-                    ? 'Selesai'
-                    : 'Menunggu Verifikasi Toko'}
+              {(activeOrderContext.returnRequest.reason || 'Kendala Unit')
+                .replace(/^(kendala|kerusakan|alasan)\s*:\s*/i, '')
+                .trim()}
             </p>
-          ) : activeOrderContext.total ? (
-            <p className="font-mono text-[11px] font-bold text-orange-600 dark:text-orange-400">
-              Rp {activeOrderContext.total.toLocaleString('id-ID')}
-            </p>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-md bg-blue-100 px-1.5 py-0.5 text-[9.5px] font-black uppercase tracking-wider text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                Pesanan
+              </span>
+              {activeOrderContext.orderNumber && (
+                <span className="truncate font-mono text-[11px] font-bold text-slate-900 dark:text-white">
+                  #{activeOrderContext.orderNumber}
+                </span>
+              )}
+            </div>
+            {activeOrderContext.productName && (
+              <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
+                {activeOrderContext.productName}
+              </p>
+            )}
+            {activeOrderContext.total ? (
+              <p className="font-mono text-[11px] font-bold text-orange-600 dark:text-orange-400">
+                Rp {activeOrderContext.total.toLocaleString('id-ID')}
+              </p>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">

@@ -78,6 +78,8 @@ export type MitraData = {
     rating: number
     comment: string | null
     createdAt: string
+    images?: string[]
+    videos?: string[]
     user: {
       id: string
       name: string | null
@@ -115,6 +117,8 @@ async function getMitra(id: string): Promise<MitraData | null> {
             rating: true,
             comment: true,
             createdAt: true,
+            images: true,
+            videos: true,
             user: {
               select: {
                 id: true,

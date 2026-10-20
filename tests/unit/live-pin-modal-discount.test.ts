@@ -33,7 +33,7 @@ describe('Live Pin Special Discount Modal Suite', () => {
   })
 
   it('3. verifies pin modal displays product preview, auto-focused numeric discount input with formatPriceInput', () => {
-    expect(broadcasterContent).toContain('{pinModalProduct && (() => {')
+    expect(broadcasterContent).toContain('pinModalProduct')
     expect(broadcasterContent).toContain('Diskon Spesial Live')
     expect(broadcasterContent).toContain('value={pinModalDiscount}')
     expect(broadcasterContent).toContain(

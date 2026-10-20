@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Calendar,
   Check,
@@ -22,6 +23,7 @@ import {
   Star,
   MessageCircle,
   Ban,
+  Play,
 } from 'lucide-react'
 import {
   OrderData,
@@ -62,6 +64,7 @@ interface OrderMobileViewProps {
   canRequestReturnOrComplaint: boolean
   isConfirming: boolean
   currentReview: OrderReview | null
+  onOpenMedia?: (index: number) => void
   onPayNow: () => void
   onConfirmReceived: () => void
   onOpenReturn: () => void
@@ -94,6 +97,7 @@ export function OrderMobileView({
   canRequestReturnOrComplaint,
   isConfirming,
   currentReview,
+  onOpenMedia,
   onPayNow,
   onConfirmReceived,
   onOpenReturn,
@@ -749,6 +753,72 @@ export function OrderMobileView({
                   : 'Laporkan Kendala / Komplain'}
               </span>
             </button>
+          )}
+
+          {/* Submitted Review Card */}
+          {currentReview && (
+            <div className="rounded-xl border border-amber-200/80 bg-amber-50/40 p-3.5 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  Ulasan Anda
+                </span>
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      className={`h-3 w-3 ${
+                        s <= currentReview.rating
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-slate-200 dark:text-slate-700'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              {currentReview.comment && (
+                <p className="line-clamp-3 text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
+                  &ldquo;{currentReview.comment}&rdquo;
+                </p>
+              )}
+              {((currentReview.images && currentReview.images.length > 0) ||
+                (currentReview.videos && currentReview.videos.length > 0)) && (
+                <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
+                  {currentReview.images?.map((url, i) => (
+                    <button
+                      key={`rev-img-${i}`}
+                      type="button"
+                      onClick={() => onOpenMedia?.(i)}
+                      className="relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 transition hover:opacity-90 dark:border-slate-800"
+                    >
+                      <Image
+                        src={url}
+                        alt="Foto ulasan"
+                        fill
+                        sizes="44px"
+                        className="object-cover"
+                      />
+                    </button>
+                  ))}
+                  {currentReview.videos?.map((url, i) => {
+                    const mediaIdx = (currentReview.images?.length || 0) + i
+                    return (
+                      <button
+                        key={`rev-vid-${i}`}
+                        type="button"
+                        onClick={() => onOpenMedia?.(mediaIdx)}
+                        className="relative flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-orange-300 bg-slate-950 dark:border-orange-800"
+                      >
+                        <video
+                          src={url}
+                          className="h-full w-full object-cover opacity-60"
+                        />
+                        <Play className="absolute h-3 w-3 fill-white text-white" />
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           )}
 
           {isCompleted && !latestReturnRequest && (

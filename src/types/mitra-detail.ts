@@ -22,6 +22,8 @@ export interface MitraReviewItem {
   rating: number
   comment: string | null
   createdAt: string
+  images?: string[]
+  videos?: string[]
   user: ReviewUser
 }
 

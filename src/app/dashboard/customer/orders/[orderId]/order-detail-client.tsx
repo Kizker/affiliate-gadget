@@ -18,6 +18,10 @@ import { toast } from 'sonner'
 import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
 import { CheckResiModal } from '@/components/shipping/check-resi-modal'
 import {
+  MediaLightboxModal,
+  MediaItem,
+} from '@/components/gadget/media-lightbox-modal'
+import {
   getOrderContextualTimestamp,
   buildOrderAuditTimeline,
 } from '@/lib/order-date-utils'
@@ -90,6 +94,34 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     }
   }, [order.review])
 
+  const reviewMediaList = useMemo<MediaItem[]>(() => {
+    if (!currentReview) return []
+    const list: MediaItem[] = []
+    currentReview.images?.forEach((url) => {
+      list.push({
+        url,
+        type: 'image',
+        authorName: 'Ulasan Anda',
+        rating: currentReview.rating,
+      })
+    })
+    currentReview.videos?.forEach((url) => {
+      list.push({
+        url,
+        type: 'video',
+        authorName: 'Ulasan Anda',
+        rating: currentReview.rating,
+      })
+    })
+    return list
+  }, [currentReview])
+
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  const handleOpenMedia = (index: number) => {
+    setLightboxIndex(index)
+  }
+
   // Rating Modal state
   const [ratingModal, setRatingModal] = useState<{
     isOpen: boolean
@@ -97,6 +129,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     orderNumber: string
     existingRating?: number
     existingComment?: string | null
+    existingImages?: string[]
+    existingVideos?: string[]
   }>({
     isOpen: false,
     orderId: '',
@@ -117,6 +151,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
       orderNumber: order.orderNumber,
       existingRating: currentReview?.rating,
       existingComment: currentReview?.comment,
+      existingImages: currentReview?.images,
+      existingVideos: currentReview?.videos,
     })
   }
 
@@ -417,6 +453,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             canRequestReturnOrComplaint={canRequestReturnOrComplaint}
             isConfirming={isConfirming}
             currentReview={currentReview}
+            onOpenMedia={handleOpenMedia}
             onPayNow={() => setPaymentModalOpen(true)}
             onConfirmReceived={handleConfirmReceived}
             onOpenReturn={() => setReturnModalOpen(true)}
@@ -480,6 +517,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                   isConfirming={isConfirming}
                   latestReturnRequest={latestReturnRequest}
                   currentReview={currentReview}
+                  onOpenMedia={handleOpenMedia}
                   onPayNow={() => setPaymentModalOpen(true)}
                   onConfirmReceived={handleConfirmReceived}
                   onOpenReturn={() => setReturnModalOpen(true)}
@@ -548,6 +586,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         existingComment={
           currentReview?.comment ?? ratingModal.existingComment ?? undefined
         }
+        existingImages={currentReview?.images ?? ratingModal.existingImages}
+        existingVideos={currentReview?.videos ?? ratingModal.existingVideos}
         onSuccess={(updatedReview) => {
           if (updatedReview) {
             setCurrentReview((prev) => ({
@@ -558,6 +598,16 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
           router.refresh()
         }}
       />
+
+      {/* Review Media Lightbox Modal */}
+      {lightboxIndex !== null && reviewMediaList.length > 0 && (
+        <MediaLightboxModal
+          isOpen={lightboxIndex !== null}
+          onClose={() => setLightboxIndex(null)}
+          mediaList={reviewMediaList}
+          initialIndex={lightboxIndex}
+        />
+      )}
 
       {/* 100% Custom In-House Payment Modal */}
       <CustomPaymentModal

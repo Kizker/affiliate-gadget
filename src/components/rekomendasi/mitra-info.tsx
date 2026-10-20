@@ -3,7 +3,6 @@
 import React from 'react'
 import dynamic from 'next/dynamic'
 import { ShieldCheck, MapPin, Compass, ExternalLink, Clock } from 'lucide-react'
-import { useIsMobile } from '@/hooks/use-is-mobile'
 import type { MitraDetail } from '@/types/mitra-detail'
 
 // Dynamic import for heavy Google Maps SDK components (Task 2.3)
@@ -23,22 +22,14 @@ interface MitraInfoProps {
   initialIsMobile?: boolean
 }
 
-export function MitraInfo({
-  mitra,
-  mapsUrl,
-  onBookingChat,
-  initialIsMobile,
-}: MitraInfoProps) {
-  const isMobile = useIsMobile(768, initialIsMobile)
-
+export function MitraInfo({ mitra, mapsUrl, onBookingChat }: MitraInfoProps) {
   return (
     <section
       id="informasi-mitra"
       suppressHydrationWarning
-      className="relative border-t border-neutral-100 px-4 dark:border-neutral-900 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden lg:px-8"
-      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
+      className="relative scroll-mt-16 border-t border-neutral-100 px-4 py-10 dark:border-neutral-900 sm:px-6 sm:py-16 lg:px-8"
     >
-      <div className="mx-auto my-auto w-full max-w-7xl">
+      <div className="mx-auto w-full max-w-7xl">
         <div className="mb-4 space-y-1.5 text-center sm:mb-5">
           <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-2xl lg:text-3xl">
             Informasi Workshop &amp; Lokasi Resmi

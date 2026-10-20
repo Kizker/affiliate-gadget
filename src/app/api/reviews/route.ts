@@ -20,7 +20,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { mitraId, rating, comment } = body
+    const { mitraId, rating, comment, images = [], videos = [] } = body
+
+    const sanitizedImages = Array.isArray(images)
+      ? images.filter((img) => typeof img === 'string')
+      : []
+    const sanitizedVideos = Array.isArray(videos)
+      ? videos.filter((vid) => typeof vid === 'string')
+      : []
 
     // Validation
     if (!mitraId) {
@@ -62,6 +69,12 @@ export async function POST(req: NextRequest) {
         data: {
           rating,
           comment: comment || null,
+          images: Array.isArray(images)
+            ? sanitizedImages
+            : existingReview.images,
+          videos: Array.isArray(videos)
+            ? sanitizedVideos
+            : existingReview.videos,
         },
         include: {
           user: {
@@ -82,6 +95,8 @@ export async function POST(req: NextRequest) {
           type: 'MITRA',
           rating,
           comment: comment || null,
+          images: sanitizedImages,
+          videos: sanitizedVideos,
         },
         include: {
           user: {
@@ -130,26 +145,230 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET - Fetch reviews for a mitra
+// GET - Fetch reviews for a mitra or store
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const mitraId = searchParams.get('mitraId')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '100')
+    const storeId = searchParams.get('storeId')
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+    const limit = Math.min(
+      100,
+      Math.max(
+        1,
+        parseInt(searchParams.get('limit') || (storeId ? '10' : '100'))
+      )
+    )
 
-    if (!mitraId) {
+    if (!mitraId && !storeId) {
       return NextResponse.json(
-        { error: 'Mitra ID is required' },
+        { error: 'mitraId or storeId is required' },
         { status: 400 }
       )
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // STORE REVIEWS BRANCH
+    // ─────────────────────────────────────────────────────────────
+    if (storeId) {
+      const store = await prisma.store.findFirst({
+        where: {
+          OR: [{ id: storeId }, { slug: storeId }],
+        },
+        select: { id: true, name: true, slug: true, companyName: true },
+      })
+
+      if (!store) {
+        return NextResponse.json(
+          { success: false, error: 'Cabang toko tidak ditemukan' },
+          { status: 404 }
+        )
+      }
+
+      const ratingFilter = searchParams.get('rating')
+        ? parseInt(searchParams.get('rating')!)
+        : null
+      const hasMediaFilter = searchParams.get('hasMedia') === 'true'
+      const sort = searchParams.get('sort') || 'newest'
+
+      const baseWhere: any = {
+        OR: [
+          { storeId: store.id },
+          { product: { storeId: store.id } },
+          { order: { storeId: store.id } },
+        ],
+      }
+
+      const filterWhere: any = { ...baseWhere }
+      if (ratingFilter && ratingFilter >= 1 && ratingFilter <= 5) {
+        filterWhere.rating = ratingFilter
+      }
+      if (hasMediaFilter) {
+        filterWhere.AND = [
+          {
+            OR: [
+              { images: { isEmpty: false } },
+              { videos: { isEmpty: false } },
+            ],
+          },
+        ]
+      }
+
+      let orderBy: any = { createdAt: 'desc' }
+      if (sort === 'highest') {
+        orderBy = [{ rating: 'desc' }, { createdAt: 'desc' }]
+      } else if (sort === 'lowest') {
+        orderBy = [{ rating: 'asc' }, { createdAt: 'desc' }]
+      } else if (sort === 'helpful') {
+        orderBy = [{ helpfulCount: 'desc' }, { createdAt: 'desc' }]
+      }
+
+      const skip = (page - 1) * limit
+
+      const [reviews, totalFiltered, allStoreReviews] = await Promise.all([
+        prisma.review.findMany({
+          where: filterWhere,
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+            product: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+                status: true,
+                completedAt: true,
+              },
+            },
+          },
+          orderBy,
+          skip,
+          take: limit,
+        }),
+        prisma.review.count({
+          where: filterWhere,
+        }),
+        prisma.review.findMany({
+          where: baseWhere,
+          select: {
+            id: true,
+            rating: true,
+            images: true,
+            videos: true,
+            createdAt: true,
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        }),
+      ])
+
+      const totalReviews = allStoreReviews.length
+      const starCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+      let sumRating = 0
+      let mediaCount = 0
+
+      const mediaGallery: Array<{
+        url: string
+        type: 'image' | 'video'
+        reviewId: string
+        authorName: string
+        rating: number
+        date: string
+      }> = []
+
+      allStoreReviews.forEach((r) => {
+        sumRating += r.rating
+        if (r.rating >= 1 && r.rating <= 5) {
+          starCounts[r.rating as keyof typeof starCounts]++
+        }
+
+        const hasImages = Array.isArray(r.images) && r.images.length > 0
+        const hasVideos = Array.isArray(r.videos) && r.videos.length > 0
+
+        if (hasImages || hasVideos) {
+          mediaCount++
+        }
+
+        if (hasImages) {
+          r.images.forEach((imgUrl) => {
+            if (imgUrl) {
+              mediaGallery.push({
+                url: imgUrl,
+                type: 'image',
+                reviewId: r.id,
+                authorName: r.user?.name || 'Pembeli',
+                rating: r.rating,
+                date: r.createdAt.toISOString(),
+              })
+            }
+          })
+        }
+
+        if (hasVideos) {
+          r.videos.forEach((vidUrl) => {
+            if (vidUrl) {
+              mediaGallery.push({
+                url: vidUrl,
+                type: 'video',
+                reviewId: r.id,
+                authorName: r.user?.name || 'Pembeli',
+                rating: r.rating,
+                date: r.createdAt.toISOString(),
+              })
+            }
+          })
+        }
+      })
+
+      const averageRating =
+        totalReviews > 0 ? Number((sumRating / totalReviews).toFixed(1)) : 5.0
+
+      return NextResponse.json({
+        success: true,
+        store: {
+          id: store.id,
+          name: store.name,
+          slug: store.slug,
+          companyName: store.companyName,
+        },
+        reviews,
+        statistics: {
+          totalReviews,
+          averageRating,
+          mediaCount,
+          starCounts,
+          mediaGallery,
+        },
+        pagination: {
+          page,
+          limit,
+          totalFiltered,
+          totalPages: Math.ceil(totalFiltered / limit) || 1,
+        },
+      })
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // MITRA REVIEWS BRANCH
+    // ─────────────────────────────────────────────────────────────
     const skip = (page - 1) * limit
 
     const [reviews, total] = await Promise.all([
       prisma.review.findMany({
-        where: { mitraId },
+        where: { mitraId: mitraId! },
         include: {
           user: {
             select: {
@@ -164,7 +383,7 @@ export async function GET(req: NextRequest) {
         take: limit,
       }),
       prisma.review.count({
-        where: { mitraId },
+        where: { mitraId: mitraId! },
       }),
     ])
 

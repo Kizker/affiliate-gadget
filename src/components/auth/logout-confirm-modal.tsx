@@ -20,7 +20,7 @@ export function LogoutConfirmModal({
   onClose,
   onConfirm,
   title = 'Konfirmasi Keluar',
-  description = 'Apakah Anda yakin ingin keluar dari akun? Anda harus masuk kembali untuk mengakses keranjang, pesanan, dan profil Anda.',
+  description,
   confirmText = 'Ya, Keluar',
   cancelText = 'Batal',
   isLoading = false,
@@ -110,9 +110,11 @@ export function LogoutConfirmModal({
           >
             {title}
           </h3>
-          <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400 sm:text-sm">
-            {description}
-          </p>
+          {description && (
+            <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400 sm:text-sm">
+              {description}
+            </p>
+          )}
 
           {/* Action Buttons: Validasi Setuju / Batal */}
           <div className="mt-6 flex w-full flex-col-reverse gap-2.5 sm:flex-row sm:gap-3">

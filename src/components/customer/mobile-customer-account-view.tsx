@@ -399,14 +399,9 @@ export function MobileCustomerAccountView({
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 <User className="h-4 w-4" />
               </div>
-              <div>
-                <span className="block text-xs font-bold text-slate-950 dark:text-white">
-                  Profil & Biodata Diri
-                </span>
-                <span className="block text-[10px] text-slate-400">
-                  Ubah nama, email, WhatsApp, tanggal lahir
-                </span>
-              </div>
+              <span className="text-xs font-bold text-slate-950 dark:text-white">
+                Profil & Biodata Diri
+              </span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-400" />
           </button>
@@ -420,14 +415,9 @@ export function MobileCustomerAccountView({
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 <MapPin className="h-4 w-4" />
               </div>
-              <div>
-                <span className="block text-xs font-bold text-slate-950 dark:text-white">
-                  Daftar Alamat Pengiriman
-                </span>
-                <span className="block text-[10px] text-slate-400">
-                  Kelola alamat rumah dan kantor ({addressesCount} alamat)
-                </span>
-              </div>
+              <span className="text-xs font-bold text-slate-950 dark:text-white">
+                Daftar Alamat Pengiriman
+              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -446,14 +436,9 @@ export function MobileCustomerAccountView({
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 <Lock className="h-4 w-4" />
               </div>
-              <div>
-                <span className="block text-xs font-bold text-slate-950 dark:text-white">
-                  Kata Sandi & Keamanan
-                </span>
-                <span className="block text-[10px] text-slate-400">
-                  Ubah kata sandi dan manajemen sesi aktif
-                </span>
-              </div>
+              <span className="text-xs font-bold text-slate-950 dark:text-white">
+                Kata Sandi & Keamanan
+              </span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-400" />
           </button>
@@ -468,14 +453,9 @@ export function MobileCustomerAccountView({
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-500 dark:bg-rose-950/40 dark:text-rose-400">
                 <Heart className="h-4 w-4 fill-rose-500" />
               </div>
-              <div>
-                <span className="block text-xs font-bold text-slate-950 dark:text-white">
-                  Wishlist Saya
-                </span>
-                <span className="block text-[10px] text-slate-400">
-                  Koleksi produk dan gadget impian Anda
-                </span>
-              </div>
+              <span className="text-xs font-bold text-slate-950 dark:text-white">
+                Wishlist Saya
+              </span>
             </div>
             <div className="flex items-center gap-1.5">
               {wishlistCount > 0 && (
@@ -495,14 +475,9 @@ export function MobileCustomerAccountView({
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
                 <MessageSquare className="h-4 w-4" />
               </div>
-              <div>
-                <span className="block text-xs font-bold text-slate-950 dark:text-white">
-                  Pusat Bantuan CS Superadmin
-                </span>
-                <span className="block text-[10px] text-slate-400">
-                  Layanan kendala transaksi & akun langsung ke Superadmin
-                </span>
-              </div>
+              <span className="text-xs font-bold text-slate-950 dark:text-white">
+                Pusat Bantuan CS Superadmin
+              </span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-400" />
           </Link>
@@ -515,14 +490,9 @@ export function MobileCustomerAccountView({
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
                 <ShieldCheck className="h-4 w-4" />
               </div>
-              <div>
-                <span className="block text-xs font-bold text-slate-950 dark:text-white">
-                  Pusat Garansi 30 Hari
-                </span>
-                <span className="block text-[10px] text-slate-400">
-                  Syarat klaim unit baru & cek garansi resmi
-                </span>
-              </div>
+              <span className="text-xs font-bold text-slate-950 dark:text-white">
+                Pusat Garansi 30 Hari
+              </span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-400" />
           </Link>

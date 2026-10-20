@@ -22,13 +22,9 @@ describe('Customer Chat Fullscreen Mobile & Header Elimination Suite', () => {
 
   it('2. Main container chat di mobile menggunakan fullscreen edge-to-edge tanpa padding atau margin mengambang', () => {
     // p-0 di mobile, hanya md:pb-4 md:pt-20 di desktop
-    expect(content).toContain(
-      'className="flex flex-1 flex-col overflow-hidden p-0 md:pb-4 md:pt-20"'
-    )
+    expect(content).toContain('p-0 md:pb-4 md:pt-20')
     // px-0 di mobile
-    expect(content).toContain(
-      'className="flex h-full w-full flex-1 flex-col px-0 md:mx-auto md:max-w-7xl md:px-6 lg:px-8"'
-    )
+    expect(content).toContain('px-0 md:mx-auto md:max-w-7xl md:px-6 lg:px-8')
     // rounded-none dan border-0 di mobile agar memenuhi layar
     expect(content).toContain('rounded-none border-0')
     expect(content).toContain('md:rounded-3xl md:border')
@@ -41,8 +37,8 @@ describe('Customer Chat Fullscreen Mobile & Header Elimination Suite', () => {
     )
   })
 
-  it('4. Menyediakan header mobile clean pada list room untuk navigasi kembali ke pengaturan', () => {
-    expect(content).toContain('href="/dashboard/customer/settings"')
+  it('4. Menyediakan header mobile clean pada list room untuk navigasi kembali', () => {
+    expect(content).toContain('router.back()')
     expect(content).toContain('Pusat Chat Toko')
   })
 })

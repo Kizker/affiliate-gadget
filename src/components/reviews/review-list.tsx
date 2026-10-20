@@ -11,6 +11,8 @@ interface Review {
   rating: number
   comment: string | null
   createdAt: string
+  images?: string[]
+  videos?: string[]
   user: {
     id: string
     name: string | null
@@ -29,6 +31,8 @@ interface ReviewListProps {
     id: string
     rating: number
     comment: string | null
+    images?: string[]
+    videos?: string[]
   }) => void
 }
 

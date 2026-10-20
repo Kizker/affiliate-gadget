@@ -784,7 +784,6 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
         onClose={() => setShowLogoutModal(false)}
         onConfirm={() => signOut({ callbackUrl: '/' })}
         title="Keluar dari Panel Admin?"
-        description="Apakah Anda yakin ingin keluar dari sesi dashboard manajemen toko? Anda harus masuk kembali untuk mengelola pesanan dan produk."
       />
     </>
   )

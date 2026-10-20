@@ -22,12 +22,11 @@ describe('Admin Live Studio Theme & Neutral Harmonization Suite', () => {
     expect(pageContent).toContain('<LiveStreamBroadcaster />')
   })
 
-  it('removes pitch-black hero banner and neon orange title from idle broadcaster state', () => {
-    // No more pitch-black gradient banner and glowing neon orange labels
+  it('removes pitch-black hero banner and neon gradient title from idle broadcaster state', () => {
+    // No more pitch-black gradient banner and glowing neon gradient labels
     expect(broadcasterContent).not.toContain(
       'from-slate-900 via-slate-800 to-slate-900'
     )
-    expect(broadcasterContent).not.toContain('text-orange-400')
     expect(broadcasterContent).not.toContain('from-orange-500 to-amber-500')
   })
 
@@ -43,13 +42,9 @@ describe('Admin Live Studio Theme & Neutral Harmonization Suite', () => {
     )
   })
 
-  it('includes 3-column informative bento stat strip for SFU infrastructure, catalog, and sessions', () => {
-    expect(broadcasterContent).toContain('Infrastruktur Siaran')
-    expect(broadcasterContent).toContain('LiveKit SFU Cloud')
-    expect(broadcasterContent).toContain('Katalog Toko')
-    expect(broadcasterContent).toContain('Unit Siap Semat')
-    expect(broadcasterContent).toContain('Riwayat Siaran')
-    expect(broadcasterContent).toContain('Total Sesi')
+  it('simplifies idle studio view by removing redundant bento stat strip per user request', () => {
+    expect(broadcasterContent).not.toContain('Infrastruktur Siaran')
+    expect(broadcasterContent).not.toContain('LiveKit SFU Cloud')
   })
 
   it('transforms dark muddy empty state into clean white dashed card with neutral slate typography', () => {

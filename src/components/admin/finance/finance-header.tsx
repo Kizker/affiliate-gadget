@@ -60,19 +60,13 @@ export function FinanceHeader({
     <>
       {/* 1. TOP HEADER BAR */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">
-              Keuangan & Laporan Finansial
-            </h1>
-            <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-extrabold text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
-              {store?.name || store?.companyName || 'Multi-PT Holding'}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Pusat terpadu kelola saldo siap cair, mutasi kas per cabang PT,
-            penarikan dana (withdraw), serta laporan laba rugi & analitik.
-          </p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">
+            Keuangan & Laporan Finansial
+          </h1>
+          <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-extrabold text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
+            {store?.name || store?.companyName || 'Multi-PT Holding'}
+          </span>
         </div>
 
         {/* Quick Top Actions: Withdraw, Export Laporan, Export Pesanan */}

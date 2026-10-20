@@ -2388,60 +2388,6 @@ export function LiveStreamBroadcaster() {
         </div>
       </div>
 
-      {/* Studio Info Bento Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Infrastruktur Siaran
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-              <Radio className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
-            LiveKit SFU Cloud
-          </p>
-          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-            Ultra-low latency streaming
-          </p>
-        </div>
-
-        <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Katalog Toko
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-              <ShoppingBag className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
-            {products.length} Unit Siap Semat
-          </p>
-          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-            Langsung checkout dari live chat
-          </p>
-        </div>
-
-        <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Riwayat Siaran
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-              <Play className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
-            {streams.length} Total Sesi
-          </p>
-          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-            {streams.filter((s) => s.status === 'LIVE').length} sedang mengudara
-          </p>
-        </div>
-      </div>
-
       {/* Streams Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">

@@ -153,10 +153,9 @@ export function MitraFeatures({
     <section
       id="keunggulan"
       suppressHydrationWarning
-      className="px-4 sm:px-6 md:flex md:h-screen md:snap-start md:flex-col md:justify-center md:overflow-hidden lg:px-8"
-      style={!isMobile ? { minHeight: '100vh', height: '100vh' } : undefined}
+      className="scroll-mt-16 px-4 py-10 sm:px-6 sm:py-16 lg:px-8"
     >
-      <div className="mx-auto my-auto w-full max-w-7xl">
+      <div className="mx-auto w-full max-w-7xl">
         {/* Section Header: Bersih, Rapi, Tanpa Ikon */}
         <div className="mx-auto mb-6 max-w-2xl text-center sm:mb-8">
           <h2 className="text-2xl font-black tracking-tight text-neutral-950 dark:text-white sm:text-3xl">

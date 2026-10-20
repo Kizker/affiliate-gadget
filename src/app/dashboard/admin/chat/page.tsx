@@ -1532,6 +1532,12 @@ function AdminChatContent() {
     return true
   })
 
+  const isSelectedStoreHelpChat =
+    !!selectedRoom &&
+    ((selectedRoom.customerId === currentUserId &&
+      selectedRoom.storeId === null) ||
+      !!selectedRoom.isStoreHelpToSuperAdmin)
+
   return (
     <div className="flex h-full max-h-full w-full flex-col font-sans">
       {/* Luxury Fullscreen Portal Lightbox Modal (Escape stacking context & covers 100% viewport) */}
@@ -1600,7 +1606,7 @@ function AdminChatContent() {
         )}
 
       {/* Single-Surface Unified Bento Chat Hub Container */}
-      <div className="shadow-xs grid h-full max-h-full min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-12">
+      <div className="shadow-xs grid h-full max-h-full min-h-0 w-full min-w-0 flex-1 grid-cols-1 overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-12">
         {/* Left Pane: Integrated Control & Customer Chat Rooms List (4 Cols) */}
         <div
           className={`flex h-full min-h-0 flex-col overflow-hidden border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:col-span-4 xl:col-span-4 ${
@@ -1792,7 +1798,7 @@ function AdminChatContent() {
 
         {/* Right Pane: Active Conversation Window (8 Cols) */}
         <div
-          className={`flex h-full min-h-0 flex-col overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 lg:col-span-8 xl:col-span-8 ${
+          className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 lg:col-span-8 xl:col-span-8 ${
             !showChatOnMobile ? 'hidden lg:flex' : 'flex'
           }`}
         >
@@ -1810,8 +1816,7 @@ function AdminChatContent() {
                   </button>
 
                   <div className="relative shrink-0">
-                    {selectedRoom.customerId === currentUserId &&
-                    selectedRoom.storeId === null ? (
+                    {isSelectedStoreHelpChat ? (
                       <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200/60 bg-blue-50 text-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400">
                         <Headphones className="h-5 w-5" />
                       </div>
@@ -1836,20 +1841,18 @@ function AdminChatContent() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="truncate text-xs font-bold text-slate-900 dark:text-white sm:text-sm">
-                        {selectedRoom.customerId === currentUserId &&
-                        selectedRoom.storeId === null
-                          ? 'Customer Service (Superadmin)'
+                        {isSelectedStoreHelpChat
+                          ? 'CS Superadmin'
                           : selectedRoom.customer.role === 'STORE_ADMIN' ||
                               selectedRoom.customer.role === 'STORE_SALES'
                             ? `${selectedRoom.customer.name || 'Admin Toko'} (${selectedRoom.customer.store?.name || 'Toko Cabang'})`
                             : selectedRoom.customer.name ||
                               selectedRoom.customer.email}
                       </h3>
-                      {selectedRoom.customerId === currentUserId &&
-                      selectedRoom.storeId === null ? (
-                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 px-2.5 py-0.5 text-[9.5px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                      {isSelectedStoreHelpChat ? (
+                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 px-2 py-0.5 text-[9.5px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
                           <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                          Superadmin CS
+                          Bantuan
                         </span>
                       ) : selectedRoom.customer.role === 'STORE_ADMIN' ||
                         selectedRoom.customer.role === 'STORE_SALES' ? (
@@ -1870,9 +1873,8 @@ function AdminChatContent() {
                       )}
                     </div>
                     <p className="truncate text-[11px] text-slate-400">
-                      {selectedRoom.customerId === currentUserId &&
-                      selectedRoom.storeId === null
-                        ? 'Pusat Layanan & Bantuan CS Superadmin Platform'
+                      {isSelectedStoreHelpChat
+                        ? 'Pusat Bantuan Layanan Superadmin'
                         : selectedRoom.customer.role === 'STORE_ADMIN' ||
                             selectedRoom.customer.role === 'STORE_SALES'
                           ? `Admin Toko: ${selectedRoom.customer.store?.name || 'Cabang'} • ${selectedRoom.customer.email}`
@@ -1958,14 +1960,21 @@ function AdminChatContent() {
                 ) : messages.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center p-6 text-center">
                     <div className="shadow-2xs mb-2 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
-                      <MessageSquare className="h-6 w-6 text-orange-500" />
+                      {isSelectedStoreHelpChat ? (
+                        <Headphones className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      ) : (
+                        <MessageSquare className="h-6 w-6 text-orange-500" />
+                      )}
                     </div>
                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Mulai Percakapan Langsung
+                      {isSelectedStoreHelpChat
+                        ? 'Pusat Bantuan Superadmin'
+                        : 'Mulai Percakapan Langsung'}
                     </h4>
                     <p className="mt-0.5 max-w-xs text-[11px] text-slate-400">
-                      Balas pertanyaan customer atau kirimkan rekomendasi gadget
-                      cabang.
+                      {isSelectedStoreHelpChat
+                        ? 'Sampaikan kendala sistem, data toko, atau operasional ke Superadmin.'
+                        : 'Balas pertanyaan customer atau kirimkan rekomendasi gadget cabang.'}
                     </p>
                   </div>
                 ) : (
@@ -2161,10 +2170,10 @@ function AdminChatContent() {
               </div>
 
               {/* Bottom Message Input Bar */}
-              <div className="shrink-0 space-y-2 border-t border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-3.5">
+              <div className="w-full max-w-full shrink-0 space-y-2 border-t border-slate-200/80 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] dark:border-slate-800 dark:bg-slate-900 sm:p-3.5 sm:pb-3.5">
                 {/* Contextual Active Order Banner above Input */}
                 {activeOrderContext && (
-                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 p-2.5 dark:border-blue-900/40 dark:bg-blue-950/30">
+                  <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 p-2.5 dark:border-blue-900/40 dark:bg-blue-950/30">
                     <div className="flex min-w-0 items-center gap-2.5">
                       {activeOrderContext.productImage ? (
                         <img
@@ -2229,29 +2238,31 @@ function AdminChatContent() {
                   </div>
                 )}
 
-                {/* Action Shortcuts */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={openCatalogModal}
-                    type="button"
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                  >
-                    <Package className="h-3 w-3 text-orange-500" />
-                    <span>Rekomendasikan Gadget</span>
-                  </button>
+                {/* Action Shortcuts (khusus chat customer, sembunyikan di Bantuan Superadmin) */}
+                {!isSelectedStoreHelpChat && (
+                  <div className="no-scrollbar flex w-full items-center gap-2 overflow-x-auto pb-0.5">
+                    <button
+                      onClick={openCatalogModal}
+                      type="button"
+                      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      <Package className="h-3 w-3 text-orange-500" />
+                      <span>Rekomendasikan Gadget</span>
+                    </button>
 
-                  <button
-                    onClick={openOrderModal}
-                    type="button"
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                  >
-                    <ShoppingBag className="h-3 w-3 text-blue-500" />
-                    <span>Bagikan Order</span>
-                  </button>
-                </div>
+                    <button
+                      onClick={openOrderModal}
+                      type="button"
+                      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      <ShoppingBag className="h-3 w-3 text-blue-500" />
+                      <span>Bagikan Order</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Input & Send Button */}
-                <div className="flex items-center gap-2">
+                <div className="flex w-full min-w-0 items-center gap-2">
                   {/* Hidden File Input for Photo & Video Upload */}
                   <input
                     type="file"
@@ -2286,14 +2297,17 @@ function AdminChatContent() {
                       }
                     }}
                     placeholder={
-                      activeOrderContext
-                        ? `Ketik caption untuk pesanan #${activeOrderContext.orderNumber}... (Enter untuk kirim)`
-                        : 'Tulis balasan untuk customer...'
+                      isSelectedStoreHelpChat
+                        ? 'Tulis pesan bantuan ke Superadmin...'
+                        : activeOrderContext
+                          ? `Ketik caption untuk pesanan #${activeOrderContext.orderNumber}... (Enter untuk kirim)`
+                          : 'Tulis balasan untuk customer...'
                     }
-                    className="flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
 
                   <button
+                    type="button"
                     onClick={() => handleSendMessage('text')}
                     disabled={
                       (!messageInput.trim() && !activeOrderContext) || sending

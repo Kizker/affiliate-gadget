@@ -22,57 +22,55 @@ describe('Mitra Detail Desktop Balanced Layout Suite', () => {
 
   const combinedContent = `${pageContent}\n${clientContent}\n${allSubComponentsContent}`
 
-  it('verifies desktop container has snap-container id and full-screen overflow properties on desktop', () => {
-    expect(clientContent).toContain('id="snap-container"')
-    expect(clientContent).toContain('md:snap-container')
-    expect(clientContent).toContain('md:h-screen')
-    expect(clientContent).toContain('md:overflow-y-scroll')
-    expect(clientContent).toContain('md:snap-y')
-    expect(clientContent).toContain('md:snap-mandatory')
+  it('verifies desktop container uses natural scrolling without snap scroll locks', () => {
+    expect(clientContent).not.toContain('id="snap-container"')
+    expect(clientContent).not.toContain('md:snap-container')
+    expect(clientContent).not.toContain('md:snap-y')
+    expect(clientContent).not.toContain('md:snap-mandatory')
+    expect(clientContent).not.toContain('md:overflow-y-scroll')
+    expect(clientContent).not.toContain('md:overflow-hidden')
+    expect(clientContent).toContain('<main className="w-full">')
   })
 
-  it('verifies all 7 desktop sections have md:h-screen and md:snap-start to fit exactly 1 viewport screen', () => {
+  it('verifies all 7 desktop sections have removed md:snap-start and 100vh height, and use balanced spacing matching store detail standard', () => {
     // 1. Hero
     expect(combinedContent).toContain('id="hero"')
     expect(combinedContent).toContain('max-w-7xl items-center')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
+    expect(combinedContent).toContain('py-12')
+    expect(combinedContent).toContain('sm:py-16')
 
     // 2. Banner Editorial
     expect(combinedContent).toContain('id="banner-editorial"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
+    expect(combinedContent).toContain('py-8')
+    expect(combinedContent).toContain('sm:py-12')
 
     // 3. Katalog Layanan
     expect(combinedContent).toContain('id="katalog-layanan"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
+    expect(combinedContent).toContain('scroll-mt-16')
+    expect(combinedContent).toContain('py-10')
 
     // 4. Keunggulan
     expect(combinedContent).toContain('id="keunggulan"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
+    expect(combinedContent).toContain('scroll-mt-16')
 
     // 5. Galeri Workshop
     expect(combinedContent).toContain('id="galeri-workshop"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
+    expect(combinedContent).toContain('scroll-mt-16')
 
     // 6. Informasi Mitra
     expect(combinedContent).toContain('id="informasi-mitra"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
+    expect(combinedContent).toContain('scroll-mt-16')
 
     // 7. Ulasan Pelanggan
     expect(combinedContent).toContain('id="ulasan-pelanggan"')
-    expect(combinedContent).toContain('md:h-screen')
-    expect(combinedContent).toContain('md:snap-start')
+    expect(combinedContent).toContain('scroll-mt-16')
 
-    // Desktop Fullscreen 100vh dynamic enforcement via useIsMobile
-    expect(allSubComponentsContent).toContain(
+    // Desktop Fullscreen 100vh and snap locks are removed
+    expect(allSubComponentsContent).not.toContain(
       "minHeight: '100vh', height: '100vh'"
     )
-    expect(allSubComponentsContent).toContain('md:snap-start')
+    expect(allSubComponentsContent).not.toContain('md:snap-start')
+    expect(allSubComponentsContent).not.toContain('md:snap-y')
   })
 
   it('verifies Footer is included for desktop and mobile', () => {

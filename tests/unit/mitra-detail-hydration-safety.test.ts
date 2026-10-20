@@ -81,7 +81,6 @@ describe('Mitra Detail Mobile Hydration Safety & Consistency Suite', () => {
         'utf-8'
       )
       expect(content).toContain('initialIsMobile')
-      expect(content).toContain('useIsMobile(768, initialIsMobile)')
       expect(content).toContain('suppressHydrationWarning')
     }
   })

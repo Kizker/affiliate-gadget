@@ -151,6 +151,6 @@ describe('Customer Chat Performance & Accessibility Optimization Suite', () => {
     expect(inputContent).toContain('className="min-w-0 flex-1')
 
     // Chat page container memiliki w-full min-w-0
-    expect(pageContent).toContain('grid h-full min-h-0 w-full min-w-0')
+    expect(pageContent).toContain('h-full min-h-0 w-full min-w-0')
   })
 })

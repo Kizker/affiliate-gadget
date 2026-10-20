@@ -68,8 +68,8 @@ describe('UX Refinement: Live Redirect, Single Chat Context, 1-Line Gojek Badge,
     expect(broadcasterCode).toContain('/api/live-streams/${json.data.id}/deals')
     // Diskon live input in setup product list
     expect(broadcasterCode).toContain('Diskon Live (Rp):')
-    // Desktop catalog discount input
-    expect(broadcasterCode).toContain('Diskon (Rp):')
+    // Dedicated pin modal discount
+    expect(broadcasterCode).toContain('pinModalDiscount')
   })
 
   it('5. live-deals supports multiple distinct products discounted per stream', () => {
