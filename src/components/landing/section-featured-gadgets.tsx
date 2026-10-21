@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -12,16 +12,12 @@ import {
   Smartphone,
   Package,
   Star,
-  Loader2,
-  ChevronDown,
   Heart,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
 
-const MAX_TOP_PHONES = 20
-const INITIAL_COUNT = 20
-const BATCH_SIZE = 8
+const MAX_TOP_PHONES = 4
 
 const FALLBACK_GADGET_IMAGES = [
   'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&q=80',
@@ -71,11 +67,6 @@ export function SectionFeaturedGadgets() {
     }
   }
 
-  // Lazy Loading State (Default 20 items langsung tampil)
-  const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const sentinelRef = useRef<HTMLDivElement | null>(null)
-
   const categories = [
     { id: 'ALL', label: 'Semua' },
     { id: 'Apple', label: 'Apple' },
@@ -105,7 +96,7 @@ export function SectionFeaturedGadgets() {
     }
   }
 
-  // Filter khusus smartphone (HP) saja & urutkan berdasarkan penjualan tertinggi (terlaris) maksimal 20
+  // Filter khusus smartphone (HP) saja & urutkan berdasarkan penjualan tertinggi (terlaris) maksimal 4
   const topSmartphones = useMemo(() => {
     // 1. Ambil produk bertipe Smartphone / HP saja (filter out laptop, tablet, audio, watch)
     const phonesOnly = products.filter((p) => {
@@ -130,64 +121,25 @@ export function SectionFeaturedGadgets() {
       return (Number(b.price) || 0) - (Number(a.price) || 0)
     })
 
-    // 4. Batasi secara ketat hanya Top 20 HP Terlaris
+    // 4. Batasi secara ketat hanya Top 4 HP Terlaris
     return sorted.slice(0, MAX_TOP_PHONES)
   }, [products, selectedCategory])
 
-  // Reset pagination saat brand diganti
-  useEffect(() => {
-    setVisibleCount(INITIAL_COUNT)
-  }, [selectedCategory])
-
-  const displayedProducts = useMemo(() => {
-    return topSmartphones.slice(0, visibleCount)
-  }, [topSmartphones, visibleCount])
-
-  const hasMore = visibleCount < topSmartphones.length
-
-  const loadMore = useCallback(() => {
-    if (isLoadingMore || !hasMore) return
-    setIsLoadingMore(true)
-    setTimeout(() => {
-      setVisibleCount((prev) =>
-        Math.min(prev + BATCH_SIZE, topSmartphones.length)
-      )
-      setIsLoadingMore(false)
-    }, 250)
-  }, [isLoadingMore, hasMore, topSmartphones.length])
-
-  // IntersectionObserver for seamless auto lazy loading
-  useEffect(() => {
-    if (!hasMore || loading) return
-    const el = sentinelRef.current
-    if (!el) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          loadMore()
-        }
-      },
-      { rootMargin: '300px' }
-    )
-
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [hasMore, loading, loadMore])
+  const displayedProducts = topSmartphones
 
   return (
-    <section className="flex h-screen flex-col overflow-hidden bg-white pt-16 dark:bg-slate-950">
-      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-2.5 py-4 sm:px-6 sm:py-8 lg:px-8">
+    <section className="bg-white py-10 dark:bg-slate-950 sm:py-14">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Streamlined Section Header & Action Toolbar */}
-        <div className="mb-4 shrink-0 space-y-3 sm:mb-6 sm:space-y-4">
+        <div className="mb-6 space-y-3 sm:space-y-4">
           {/* Row 1: Crisp Section Title */}
           <div>
             <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
               Smartphone Second Pilihan
             </h2>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-              Top 20 HP terlaris bergaransi toko 30 hari, lolos uji QC 32 titik
-              & siap kirim
+              Top 4 HP terlaris bergaransi toko 30 hari, lolos uji QC 32 titik
+              &amp; siap kirim
             </p>
           </div>
 
@@ -226,11 +178,11 @@ export function SectionFeaturedGadgets() {
           </div>
         </div>
 
-        {/* Product Grid — inner scrollable area */}
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-color:#e2e8f0_transparent] [scrollbar-width:thin]">
+        {/* Product Grid — strictly top 4 items, non-scrollable */}
+        <div className="w-full">
           {loading ? (
             <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
                   className="animate-pulse rounded-2xl border border-slate-200/60 p-2 dark:border-slate-800 sm:p-4"
@@ -406,35 +358,9 @@ export function SectionFeaturedGadgets() {
             </div>
           )}
 
-          {/* Section Footer: Ringkasan Top 20 & Navigasi ke Katalog Penuh */}
+          {/* Section Footer: Ringkasan Top 4 & Navigasi ke Katalog Penuh */}
           {topSmartphones.length > 0 && (
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center sm:mt-12">
-              {isLoadingMore ? (
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                  <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
-                  <span>Memuat lebih banyak smartphone...</span>
-                </div>
-              ) : hasMore ? (
-                <button
-                  type="button"
-                  onClick={loadMore}
-                  className="shadow-xs inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-6 py-2.5 text-xs font-bold text-slate-800 transition hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                  <span>
-                    Tampilkan Lebih Banyak (
-                    {topSmartphones.length - visibleCount} unit tersisa)
-                  </span>
-                </button>
-              ) : (
-                <div className="shadow-2xs inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-slate-50 px-4 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                  <Sparkles className="h-3.5 w-3.5 text-orange-500" />
-                  <span>
-                    Menampilkan Top {displayedProducts.length} HP Terlaris
-                  </span>
-                </div>
-              )}
-
+            <div className="mt-6 flex flex-col items-center justify-center gap-2 text-center sm:mt-8">
               <p className="text-xs text-slate-400">
                 Ingin mencari tipe smartphone atau gadget lainnya?{' '}
                 <Link

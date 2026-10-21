@@ -286,20 +286,6 @@ export function SectionHeroClean() {
               </span>
             </h1>
 
-            {/* Concise Subtitle — shorter on mobile */}
-            <p className="max-w-lg text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              <span className="hidden sm:inline">
-                Marketplace smartphone &amp; gadget second original berbasis
-                jaringan toko fisik se-Indonesia. Jaminan unit like new, 100%
-                fungsi normal teruji teknisi, garansi toko 30 hari tukar unit,
-                dan paket bonus lengkap 3-in-1.
-              </span>
-              <span className="sm:hidden">
-                Gadget second teruji teknisi, garansi toko 30 hari, bonus
-                3-in-1. Jaringan toko resmi se-Indonesia.
-              </span>
-            </p>
-
             {/* Primary Action Pill Buttons */}
             <div className="flex flex-wrap items-center gap-3">
               <Link

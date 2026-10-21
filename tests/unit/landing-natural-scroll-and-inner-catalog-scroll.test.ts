@@ -22,19 +22,20 @@ describe('Landing Page Natural Scroll & Inner Catalog Scroll Verification', () =
     expect(content).toContain('<SectionFeaturedGadgets />')
   })
 
-  it('2. should restore inner scroll (overflow-y-auto) on desktop catalog section (SectionFeaturedGadgets)', () => {
+  it('2. should display top 4 best-selling smartphones without inner scroll (SectionFeaturedGadgets)', () => {
     const content = fs.readFileSync(featuredGadgetsPath, 'utf-8')
 
-    // Verifikasi struktur section h-screen dengan inner scroll
-    expect(content).toContain(
-      '<section className="flex h-screen flex-col overflow-hidden bg-white pt-16 dark:bg-slate-950">'
-    )
-    expect(content).toContain(
-      '<div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-color:#e2e8f0_transparent] [scrollbar-width:thin]">'
-    )
+    // Verifikasi MAX_TOP_PHONES = 4 dan subtitle Top 4 HP terlaris
+    expect(content).toContain('const MAX_TOP_PHONES = 4')
+    expect(content).toContain('Top 4 HP terlaris bergaransi toko 30 hari')
 
-    // Memastikan header tetap sticky/fixed di atas dalam flex-col
-    expect(content).toContain('shrink-0 space-y-3')
+    // Verifikasi tidak lagi menggunakan h-screen maupun inner scrollbar overflow-y-auto
+    expect(content).not.toContain('h-screen flex-col overflow-hidden')
+    expect(content).not.toContain('overflow-y-auto')
+    expect(content).toContain(
+      '<section className="bg-white py-10 sm:py-14 dark:bg-slate-950">'
+    )
+    expect(content).toContain('<div className="w-full">')
   })
 
   it('3. should preserve wishlist toggle, ratings, and stock indicators inside the product cards', () => {

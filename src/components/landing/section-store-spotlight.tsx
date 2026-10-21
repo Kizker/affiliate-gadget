@@ -43,8 +43,8 @@ export function SectionStoreSpotlight() {
   const next = () => setActiveIndex((i) => (i + 1) % total)
 
   return (
-    <section className="flex h-screen flex-col overflow-hidden border-y border-slate-100 bg-slate-50/50 pt-16 dark:border-slate-800/80 dark:bg-slate-900/30">
-      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+    <section className="border-y border-slate-100 bg-slate-50/50 py-10 dark:border-slate-800/80 dark:bg-slate-900/30 sm:py-14">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mb-6 flex shrink-0 items-center justify-between gap-3.5 sm:mb-8">
           <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
@@ -62,7 +62,7 @@ export function SectionStoreSpotlight() {
         {/* Store Content */}
         {loading ? (
           /* Loading skeleton */
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -78,7 +78,7 @@ export function SectionStoreSpotlight() {
         ) : (
           <>
             {/* ── DESKTOP: Grid 3 kolom dengan kartu proper ── */}
-            <div className="hidden min-h-0 flex-1 md:grid md:grid-cols-3 md:gap-5">
+            <div className="hidden md:grid md:grid-cols-3 md:gap-5">
               {visibleStores.map((store) => {
                 const displayImg =
                   store.banner ||
@@ -112,7 +112,7 @@ export function SectionStoreSpotlight() {
                     </div>
 
                     {/* Store Info */}
-                    <div className="flex flex-1 flex-col p-5">
+                    <div className="flex flex-col p-5">
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <span className="inline-block rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
                           {store.city || 'Toko Resmi'}
@@ -127,7 +127,7 @@ export function SectionStoreSpotlight() {
                         {store.name}
                       </h3>
 
-                      <div className="flex flex-1 items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                         <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
                         <p className="line-clamp-2 leading-relaxed">
                           {store.address}
@@ -137,7 +137,7 @@ export function SectionStoreSpotlight() {
                       <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800/80">
                         <Link
                           href={`/toko/${store.slug}`}
-                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 py-2 text-xs font-bold text-white transition-all duration-200 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 py-2.5 text-xs font-bold text-white transition-all duration-200 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
                         >
                           <Store className="h-3.5 w-3.5" />
                           <span>Kunjungi Toko</span>
@@ -151,9 +151,9 @@ export function SectionStoreSpotlight() {
             </div>
 
             {/* ── MOBILE: Carousel satu per satu dengan navigasi ── */}
-            <div className="flex min-h-0 flex-1 flex-col md:hidden">
+            <div className="flex flex-col md:hidden">
               {/* Carousel viewport */}
-              <div className="relative min-h-0 flex-1 overflow-hidden rounded-3xl">
+              <div className="relative h-[370px] w-full overflow-hidden rounded-3xl">
                 {visibleStores.map((store, idx) => {
                   const displayImg =
                     store.banner ||
@@ -196,7 +196,7 @@ export function SectionStoreSpotlight() {
                       </div>
 
                       {/* Info */}
-                      <div className="flex flex-1 flex-col p-5">
+                      <div className="flex flex-col p-5">
                         <div className="mb-2 flex items-center justify-between gap-2">
                           <span className="inline-block rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
                             {store.city || 'Toko Resmi'}
