@@ -11,7 +11,7 @@ interface FooterProps {
 export function Footer({ variant = 'light', className = '' }: FooterProps) {
   return (
     <footer
-      className={`hidden border-t border-slate-200/80 bg-white text-xs text-slate-600 dark:border-slate-800/80 dark:bg-slate-950 dark:text-slate-400 md:block ${className}`}
+      className={`hidden bg-white text-xs text-slate-600 dark:bg-slate-950 dark:text-slate-400 md:block ${className}`}
     >
       {/* Main Footer Links */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">

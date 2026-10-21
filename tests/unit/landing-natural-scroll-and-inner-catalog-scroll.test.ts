@@ -33,7 +33,7 @@ describe('Landing Page Natural Scroll & Inner Catalog Scroll Verification', () =
     expect(content).not.toContain('h-screen flex-col overflow-hidden')
     expect(content).not.toContain('overflow-y-auto')
     expect(content).toContain(
-      '<section className="bg-white py-10 sm:py-14 dark:bg-slate-950">'
+      '<section className="bg-white py-10 dark:bg-slate-950 sm:py-14">'
     )
     expect(content).toContain('<div className="w-full">')
   })

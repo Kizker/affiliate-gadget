@@ -43,7 +43,7 @@ export function SectionStoreSpotlight() {
   const next = () => setActiveIndex((i) => (i + 1) % total)
 
   return (
-    <section className="border-y border-slate-100 bg-slate-50/50 py-10 dark:border-slate-800/80 dark:bg-slate-900/30 sm:py-14">
+    <section className="bg-gradient-to-b from-white via-slate-200/90 via-50% to-white py-16 dark:from-slate-950 dark:via-slate-900/80 dark:to-slate-950 sm:py-24">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mb-6 flex shrink-0 items-center justify-between gap-3.5 sm:mb-8">

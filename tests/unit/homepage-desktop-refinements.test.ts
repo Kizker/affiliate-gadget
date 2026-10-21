@@ -54,10 +54,12 @@ describe('Homepage Desktop Visual Refinements (Screenshots 1 - 4)', () => {
     )
     expect(content).not.toContain('{item.desc}')
 
-    // Verifikasi card dipendekkan (tidak ada h-screen dan flex-1 stretch)
+    // Verifikasi card dipendekkan dan transisi background fading halus tanpa border maupun garis kaku
     expect(content).not.toContain('h-screen flex flex-col')
+    expect(content).not.toContain('border-y border-slate-100')
+    expect(content).not.toContain('bg-gradient-to-r')
     expect(content).toContain(
-      '<section className="border-y border-slate-100 bg-slate-50/50 py-10 sm:py-14'
+      '<section className="bg-gradient-to-b from-white via-slate-200/90 via-50% to-white'
     )
 
     // Verifikasi pilar utama tetap ada
@@ -97,15 +99,27 @@ describe('Homepage Desktop Visual Refinements (Screenshots 1 - 4)', () => {
     expect(content).not.toContain('hidden min-h-0 flex-1 md:grid')
     expect(content).not.toContain('flex flex-1 flex-col p-5')
     expect(content).not.toContain('flex flex-1 items-start gap-1.5')
+    expect(content).not.toContain('border-y border-slate-100')
+    expect(content).not.toContain('bg-gradient-to-r')
 
-    // Card menggunakan wrap ringkas
+    // Card menggunakan wrap ringkas dan transisi background fading berkontras jelas
     expect(content).toContain(
-      '<section className="border-y border-slate-100 bg-slate-50/50 py-10 sm:py-14'
+      '<section className="bg-gradient-to-b from-white via-slate-200/90 via-50% to-white'
     )
     expect(content).toContain('<div className="flex flex-col p-5">')
     expect(content).toContain(
       '<div className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">'
     )
     expect(content).toContain('Kunjungi Toko')
+  })
+
+  it('5. Footer: should eliminate harsh solid top border and separating lines', () => {
+    const footerPath = path.join(
+      process.cwd(),
+      'src/components/layouts/footer.tsx'
+    )
+    const content = fs.readFileSync(footerPath, 'utf-8')
+    expect(content).not.toContain('border-t border-slate-200/80')
+    expect(content).not.toContain('bg-gradient-to-r')
   })
 })
