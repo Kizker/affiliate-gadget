@@ -163,7 +163,9 @@ export const useWishlistStore = create<WishlistStore>()(
             ...persistedState,
             userId: null,
             userWishlists: {
-              guest: Array.isArray(persistedState?.items) ? persistedState.items : [],
+              guest: Array.isArray(persistedState?.items)
+                ? persistedState.items
+                : [],
             },
             items: [], // Start empty for clean authentication session
           }
@@ -208,6 +210,8 @@ export function useWishlistSafe() {
     ...store,
     items: mounted ? store.items : [],
     totalCount: mounted ? store.items.length : 0,
+    isInWishlist: (id: string) => (mounted ? store.isInWishlist(id) : false),
+    getTotalItems: () => (mounted ? store.getTotalItems() : 0),
     mounted,
   }
 }

@@ -20,6 +20,7 @@ interface SearchableComboboxProps {
   className?: string
   required?: boolean
   allowCustomValue?: boolean
+  triggerClassName?: string
 }
 
 export function SearchableCombobox({
@@ -34,6 +35,7 @@ export function SearchableCombobox({
   className = '',
   required = false,
   allowCustomValue = true,
+  triggerClassName,
 }: SearchableComboboxProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -89,7 +91,9 @@ export function SearchableCombobox({
   // Scroll highlighted item into view
   useEffect(() => {
     if (isOpen && listRef.current) {
-      const activeElement = listRef.current.children[highlightedIndex] as HTMLElement
+      const activeElement = listRef.current.children[
+        highlightedIndex
+      ] as HTMLElement
       if (activeElement) {
         activeElement.scrollIntoView({ block: 'nearest' })
       }
@@ -159,21 +163,29 @@ export function SearchableCombobox({
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className={`w-full flex items-center justify-between gap-2 rounded-full border border-slate-200/70 bg-slate-50/80 py-2 px-3.5 text-xs font-medium text-slate-900 outline-none transition duration-150 cursor-pointer ${
-          disabled
-            ? 'opacity-50 cursor-not-allowed bg-slate-100'
-            : 'hover:bg-white hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:shadow-xs'
-        } ${isOpen ? 'bg-white border-slate-400 shadow-xs ring-1 ring-slate-400/20' : ''}`}
+        className={
+          triggerClassName
+            ? `flex w-full cursor-pointer items-center justify-between gap-2 border outline-none transition duration-150 ${triggerClassName} ${
+                disabled
+                  ? 'cursor-not-allowed bg-slate-100 opacity-50'
+                  : 'focus:shadow-xs hover:border-slate-300 hover:bg-white focus:border-slate-400 focus:bg-white'
+              } ${isOpen ? 'shadow-xs border-slate-400 bg-white ring-1 ring-slate-400/20' : ''}`
+            : `flex w-full cursor-pointer items-center justify-between gap-2 rounded-full border border-slate-200/70 bg-slate-50/80 px-3.5 py-2 text-xs font-medium text-slate-900 outline-none transition duration-150 ${
+                disabled
+                  ? 'cursor-not-allowed bg-slate-100 opacity-50'
+                  : 'focus:shadow-xs hover:border-slate-300 hover:bg-white focus:border-slate-400 focus:bg-white'
+              } ${isOpen ? 'shadow-xs border-slate-400 bg-white ring-1 ring-slate-400/20' : ''}`
+        }
       >
         <span
           className={`truncate text-left ${
-            value ? 'text-slate-950 font-bold' : 'text-slate-400 font-medium'
+            value ? 'font-bold text-slate-950' : 'font-medium text-slate-400'
           }`}
         >
           {value || placeholder}
         </span>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center gap-1">
           {isLoading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
           ) : (
@@ -184,7 +196,7 @@ export function SearchableCombobox({
                     e.stopPropagation()
                     onChange('')
                   }}
-                  className="p-0.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                  className="cursor-pointer rounded-full p-0.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                 >
                   <X className="h-3 w-3" />
                 </span>
@@ -201,11 +213,10 @@ export function SearchableCombobox({
 
       {/* Dropdown Menu Popover */}
       {isOpen && (
-        <div className="absolute left-0 right-0 z-50 mt-1.5 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150 max-h-64 flex flex-col">
-          
+        <div className="absolute left-0 right-0 z-50 mt-1.5 flex max-h-64 flex-col rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-xl duration-150 animate-in fade-in zoom-in-95">
           {/* Search Input Box */}
-          <div className="relative mb-1 flex items-center border-b border-slate-100 pb-1.5 px-1">
-            <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+          <div className="relative mb-1 flex items-center border-b border-slate-100 px-1 pb-1.5">
+            <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-slate-400" />
             <input
               ref={searchInputRef}
               type="text"
@@ -216,30 +227,30 @@ export function SearchableCombobox({
               }}
               onKeyDown={handleKeyDown}
               placeholder={searchPlaceholder}
-              className="w-full rounded-xl bg-slate-50 py-1.5 pl-8 pr-2.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:ring-1 focus:ring-slate-300"
+              className="w-full rounded-xl bg-slate-50 py-1.5 pl-8 pr-2.5 text-xs font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:bg-white focus:ring-1 focus:ring-slate-300"
             />
           </div>
 
           {/* Options List */}
           <ul
             ref={listRef}
-            className="flex-1 overflow-y-auto space-y-0.5 max-h-48 text-xs"
+            className="max-h-48 flex-1 space-y-0.5 overflow-y-auto text-xs"
           >
             {isLoading ? (
-              <li className="flex items-center justify-center gap-2 py-4 text-xs text-slate-400 font-medium">
+              <li className="flex items-center justify-center gap-2 py-4 text-xs font-medium text-slate-400">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
                 <span>Memuat daftar wilayah...</span>
               </li>
             ) : filteredOptions.length === 0 ? (
-              <li className="py-2 px-2 text-center text-xs">
-                <p className="text-slate-400 font-medium mb-1.5">
+              <li className="px-2 py-2 text-center text-xs">
+                <p className="mb-1.5 font-medium text-slate-400">
                   Tidak ada hasil ditemukan
                 </p>
                 {allowCustomValue && searchQuery.trim() && (
                   <button
                     type="button"
                     onClick={handleCustomSelect}
-                    className="w-full rounded-xl bg-slate-950 py-1.5 px-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
+                    className="shadow-xs w-full cursor-pointer rounded-xl bg-slate-950 px-2 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800"
                   >
                     Gunakan &quot;{searchQuery.trim()}&quot;
                   </button>
@@ -247,7 +258,8 @@ export function SearchableCombobox({
               </li>
             ) : (
               filteredOptions.map((option, index) => {
-                const isSelected = option.name.toLowerCase() === value.toLowerCase()
+                const isSelected =
+                  option.name.toLowerCase() === value.toLowerCase()
                 const isHighlighted = index === highlightedIndex
 
                 return (
@@ -255,12 +267,12 @@ export function SearchableCombobox({
                     key={option.id + '-' + option.name}
                     onClick={() => handleSelect(option)}
                     onMouseEnter={() => setHighlightedIndex(index)}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${
+                    className={`flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                       isSelected
                         ? 'bg-slate-950 text-white'
                         : isHighlighted
-                        ? 'bg-slate-100/90 text-slate-950'
-                        : 'text-slate-700 hover:bg-slate-50'
+                          ? 'bg-slate-100/90 text-slate-950'
+                          : 'text-slate-700 hover:bg-slate-50'
                     }`}
                   >
                     <span className="truncate">{option.name}</span>
@@ -272,7 +284,6 @@ export function SearchableCombobox({
               })
             )}
           </ul>
-
         </div>
       )}
     </div>

@@ -883,257 +883,454 @@ function CustomerSettingsContent() {
           transition={{ duration: 0.15 }}
           className="space-y-6"
         >
-          {/* Desktop Header Bar with Quick Save Action (Top Right) */}
-          <div className="hidden items-center justify-between border-b border-slate-100 pb-4 md:flex">
-            <div>
-              <h2 className="text-sm font-bold text-slate-950">
-                Profil & Biodata Diri
-              </h2>
-              <p className="text-xs text-slate-400">
-                Kelola data akun, informasi kontak, dan catatan khusus
-                pengiriman
-              </p>
+          {/* 1. Mobile Simplified Profile matching Screenshot 2 */}
+          <div className="space-y-4 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:hidden">
+            {/* Avatar Container */}
+            <div className="flex flex-col items-center justify-center space-y-3 rounded-2xl bg-slate-50/70 p-4 dark:bg-slate-800/60">
+              <div className="relative">
+                <div className="shadow-xs relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-900 text-white">
+                  {avatarPreview ? (
+                    <img
+                      src={avatarPreview}
+                      alt={name || session?.user?.name || 'Avatar'}
+                      className="h-full w-full object-cover"
+                      onError={() => setAvatarPreview(null)}
+                    />
+                  ) : (
+                    <span className="text-xl font-black">
+                      {(name || session?.user?.name || 'U')
+                        .charAt(0)
+                        .toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                {uploadingAvatar && (
+                  <div className="backdrop-blur-2xs absolute inset-0 flex items-center justify-center rounded-full bg-slate-950/60">
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAvatarClick}
+                disabled={uploadingAvatar}
+                className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              >
+                <Camera className="h-3.5 w-3.5 text-orange-500" />
+                <span>{uploadingAvatar ? 'Mengunggah...' : 'Ubah Foto'}</span>
+              </button>
             </div>
+
+            {/* Nama Lengkap */}
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Nama Lengkap <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nama lengkap sesuai KTP"
+                required
+                className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+              />
+            </div>
+
+            {/* Username */}
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Username / Nama Panggilan
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) =>
+                  setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))
+                }
+                placeholder="sitiaminah99"
+                className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+              />
+            </div>
+
+            {/* Alamat Email */}
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Alamat Email <span className="text-red-500">*</span>
+                </label>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-100/80 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <Check className="h-3 w-3" />
+                  Terverifikasi
+                </span>
+              </div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="nama@email.com"
+                required
+                className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+              />
+            </div>
+
+            {/* Nomor Telepon / WhatsApp */}
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Nomor Telepon / WhatsApp{' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-100/80 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <Check className="h-3 w-3" />
+                  Terverifikasi
+                </span>
+              </div>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Contoh: 081234567890"
+                required
+                className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+              />
+            </div>
+
+            {/* Jenis Kelamin */}
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Jenis Kelamin
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {(['Laki-laki', 'Perempuan'] as const).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setGender(item)}
+                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-xs transition-all ${
+                      gender === item
+                        ? 'shadow-2xs border-2 border-orange-500 bg-white font-bold text-orange-500 dark:bg-slate-900'
+                        : 'border border-slate-200/80 bg-white font-semibold text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
+                        gender === item
+                          ? 'bg-orange-500 text-white'
+                          : 'border border-slate-300 dark:border-slate-600'
+                      }`}
+                    >
+                      {gender === item && (
+                        <Check className="h-2.5 w-2.5 stroke-[3]" />
+                      )}
+                    </span>
+                    <span>{item}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tanggal Lahir */}
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Tanggal Lahir
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="w-full cursor-pointer rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 pr-10 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+                />
+                <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-500" />
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Bio / Catatan Khusus Pengiriman
+              </label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                placeholder="Contoh: Jika rumah kosong, paket gadget dapat dititipkan ke security pos depan."
+                className="w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/40 p-4 text-xs font-medium leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+              />
+            </div>
+
+            {/* Bottom Save Action */}
             <button
               type="button"
-              onClick={handleSaveProfile}
+              onClick={() => handleSaveProfile()}
               disabled={saving}
-              className="shadow-xs inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+              className="shadow-xs active:scale-98 mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-sm font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
             >
               {saving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Check className="h-3.5 w-3.5" />
+                <span>Simpan Profil</span>
               )}
-              <span>{saving ? 'Menyimpan...' : 'Simpan'}</span>
             </button>
           </div>
 
-          {/* Avatar Inner Box */}
-          <div className="shadow-2xs flex flex-col items-start gap-5 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:p-5">
-            <div className="relative shrink-0">
-              <div className="shadow-xs relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-900 text-white">
-                {avatarPreview ? (
-                  <img
-                    src={avatarPreview}
-                    alt={name || session?.user?.name || 'Avatar'}
-                    className="h-full w-full object-cover"
-                    onError={() => setAvatarPreview(null)}
-                  />
+          {/* 2. Desktop Profile View */}
+          <div className="hidden space-y-6 md:block">
+            {/* Desktop Header Bar with Quick Save Action (Top Right) */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-sm font-bold text-slate-950">
+                  Profil & Biodata Diri
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Kelola data akun, informasi kontak, dan catatan khusus
+                  pengiriman
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={saving}
+                className="shadow-xs inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <span className="text-xl font-black">
-                    {(name || session?.user?.name || 'U')
-                      .charAt(0)
-                      .toUpperCase()}
-                  </span>
+                  <Check className="h-3.5 w-3.5" />
+                )}
+                <span>{saving ? 'Menyimpan...' : 'Simpan'}</span>
+              </button>
+            </div>
+
+            {/* Avatar Inner Box */}
+            <div className="shadow-2xs flex flex-col items-start gap-5 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:p-5">
+              <div className="relative shrink-0">
+                <div className="shadow-xs relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-900 text-white">
+                  {avatarPreview ? (
+                    <img
+                      src={avatarPreview}
+                      alt={name || session?.user?.name || 'Avatar'}
+                      className="h-full w-full object-cover"
+                      onError={() => setAvatarPreview(null)}
+                    />
+                  ) : (
+                    <span className="text-xl font-black">
+                      {(name || session?.user?.name || 'U')
+                        .charAt(0)
+                        .toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                {uploadingAvatar && (
+                  <div className="backdrop-blur-2xs absolute inset-0 flex items-center justify-center rounded-full bg-slate-950/60">
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  </div>
                 )}
               </div>
-              {uploadingAvatar && (
-                <div className="backdrop-blur-2xs absolute inset-0 flex items-center justify-center rounded-full bg-slate-950/60">
-                  <Loader2 className="h-5 w-5 animate-spin text-white" />
-                </div>
-              )}
-            </div>
 
-            <div className="flex-1 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleAvatarClick}
-                  disabled={uploadingAvatar}
-                  className="shadow-xs inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-slate-950 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
-                >
-                  <Camera className="h-3.5 w-3.5" />
-                  <span>
-                    {uploadingAvatar ? 'Mengunggah...' : 'Ubah Foto Profil'}
-                  </span>
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Format JPG, PNG atau WebP. Ukuran berkas maksimal 5MB.
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
-            </div>
-          </div>
-
-          {/* Shopee Buyer Form Grid */}
-          <div className="space-y-4">
-            {/* Row 1: Nama Lengkap & Username */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700">
-                  Nama Lengkap <span className="text-red-500">*</span>
-                </label>
-                <div className="relative flex items-center">
-                  <User className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Nama lengkap sesuai KTP"
-                    required
-                    className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700">
-                  Username / Nama Panggilan
-                </label>
-                <div className="relative flex items-center">
-                  <AtSign className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) =>
-                      setUsername(
-                        e.target.value.toLowerCase().replace(/\s+/g, '')
-                      )
-                    }
-                    placeholder="sitiaminah99"
-                    className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Row 2: Email & Nomor Telepon WhatsApp */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Alamat Email <span className="text-red-500">*</span>
-                  </label>
-                  {initialEmail &&
-                  email.trim().toLowerCase() !== initialEmail.toLowerCase() ? (
-                    <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-[10px] font-bold text-orange-700">
-                      <ShieldCheck className="h-3 w-3 text-orange-600" />
-                      Perlu OTP WhatsApp
+              <div className="flex-1 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAvatarClick}
+                    disabled={uploadingAvatar}
+                    className="shadow-xs inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-slate-950 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                    <span>
+                      {uploadingAvatar ? 'Mengunggah...' : 'Ubah Foto Profil'}
                     </span>
-                  ) : (
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Format JPG, PNG atau WebP. Ukuran berkas maksimal 5MB.
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            {/* Shopee Buyer Form Grid */}
+            <div className="space-y-4">
+              {/* Row 1: Nama Lengkap & Username */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Nama Lengkap <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <User className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Nama lengkap sesuai KTP"
+                      required
+                      className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Username / Nama Panggilan
+                  </label>
+                  <div className="relative flex items-center">
+                    <AtSign className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) =>
+                        setUsername(
+                          e.target.value.toLowerCase().replace(/\s+/g, '')
+                        )
+                      }
+                      placeholder="sitiaminah99"
+                      className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Email & Nomor Telepon WhatsApp */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Alamat Email <span className="text-red-500">*</span>
+                    </label>
+                    {initialEmail &&
+                    email.trim().toLowerCase() !==
+                      initialEmail.toLowerCase() ? (
+                      <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-[10px] font-bold text-orange-700">
+                        <ShieldCheck className="h-3 w-3 text-orange-600" />
+                        Perlu OTP WhatsApp
+                      </span>
+                    ) : (
+                      <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                        Terverifikasi
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative flex items-center">
+                    <Mail className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="nama@email.com"
+                      required
+                      className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    />
+                  </div>
+                  {initialEmail &&
+                    email.trim().toLowerCase() !==
+                      initialEmail.toLowerCase() && (
+                      <p className="mt-1 text-[11px] font-medium text-orange-600">
+                        Perubahan email memerlukan verifikasi OTP WhatsApp ke{' '}
+                        {phone
+                          ? phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
+                          : 'nomor WA terdaftar'}
+                        .
+                      </p>
+                    )}
+                </div>
+
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Nomor Telepon / WhatsApp{' '}
+                      <span className="text-red-500">*</span>
+                    </label>
                     <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
                       <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                      Terverifikasi
+                      WhatsApp Aktif
                     </span>
-                  )}
+                  </div>
+                  <div className="relative flex items-center">
+                    <Phone className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Contoh: 081234567890"
+                      required
+                      className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Nomor aktif untuk pelacakan resi kurir JNE & konfirmasi
+                    driver Gojek.
+                  </p>
                 </div>
-                <div className="relative flex items-center">
-                  <Mail className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nama@email.com"
-                    required
-                    className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
-                  />
-                </div>
-                {initialEmail &&
-                  email.trim().toLowerCase() !== initialEmail.toLowerCase() && (
-                    <p className="mt-1 text-[11px] font-medium text-orange-600">
-                      Perubahan email memerlukan verifikasi OTP WhatsApp ke{' '}
-                      {phone
-                        ? phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
-                        : 'nomor WA terdaftar'}
-                      .
-                    </p>
-                  )}
               </div>
 
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Nomor Telepon / WhatsApp{' '}
-                    <span className="text-red-500">*</span>
+              {/* Row 3: Jenis Kelamin & Tanggal Lahir */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Jenis Kelamin
                   </label>
-                  <span className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                    WhatsApp Aktif
-                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['Laki-laki', 'Perempuan'] as const).map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setGender(item)}
+                        className={`cursor-pointer rounded-full border px-3 py-2.5 text-xs font-bold transition-all ${
+                          gender === item
+                            ? 'shadow-xs border-orange-500 bg-orange-50/80 font-bold text-orange-600'
+                            : 'border-slate-200/70 bg-white text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="relative flex items-center">
-                  <Phone className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Contoh: 081234567890"
-                    required
-                    className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
-                  />
-                </div>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  Nomor aktif untuk pelacakan resi kurir JNE & konfirmasi driver
-                  Gojek.
-                </p>
-              </div>
-            </div>
 
-            {/* Row 3: Jenis Kelamin & Tanggal Lahir */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Tanggal Lahir
+                  </label>
+                  <div className="relative flex items-center">
+                    <Calendar className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      className="focus:shadow-xs w-full cursor-pointer rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white"
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Dapatkan voucher diskon & hadiah spesial di hari ulang tahun
+                    Anda.
+                  </p>
+                </div>
+              </div>
+
+              {/* Row 4: Bio / Catatan Pembeli */}
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-slate-700">
-                  Jenis Kelamin
+                  Bio / Catatan Khusus Pengiriman
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['Laki-laki', 'Perempuan'] as const).map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setGender(item)}
-                      className={`cursor-pointer rounded-full border px-3 py-2.5 text-xs font-bold transition-all ${
-                        gender === item
-                          ? 'shadow-xs border-orange-500 bg-orange-50/80 font-bold text-orange-600'
-                          : 'border-slate-200/70 bg-white text-slate-600 hover:border-slate-300'
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700">
-                  Tanggal Lahir
-                </label>
-                <div className="relative flex items-center">
-                  <Calendar className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="date"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                    className="focus:shadow-xs w-full cursor-pointer rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white"
+                <div className="relative">
+                  <FileText className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    rows={4}
+                    placeholder="Contoh: Jika rumah kosong, paket gadget dapat dititipkan ke security pos depan."
+                    className="focus:shadow-xs min-h-[110px] w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 py-3 pl-10 pr-4 text-xs font-medium leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white sm:min-h-[120px]"
                   />
                 </div>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  Dapatkan voucher diskon & hadiah spesial di hari ulang tahun
-                  Anda.
-                </p>
-              </div>
-            </div>
-
-            {/* Row 4: Bio / Catatan Pembeli */}
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700">
-                Bio / Catatan Khusus Pengiriman
-              </label>
-              <div className="relative">
-                <FileText className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-                <textarea
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  rows={4}
-                  placeholder="Contoh: Jika rumah kosong, paket gadget dapat dititipkan ke security pos depan."
-                  className="focus:shadow-xs min-h-[110px] w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 py-3 pl-10 pr-4 text-xs font-medium leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white sm:min-h-[120px]"
-                />
               </div>
             </div>
           </div>
@@ -1152,189 +1349,309 @@ function CustomerSettingsContent() {
           transition={{ duration: 0.15 }}
           className="space-y-6"
         >
-          {/* Desktop Header Bar with Add Address CTA */}
-          <div className="hidden flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center md:flex">
-            <div>
-              <h2 className="text-sm font-bold text-slate-950">
-                Daftar Alamat Pengiriman Saya
-              </h2>
-              <p className="text-xs text-slate-400">
-                Kelola alamat Rumah, Kantor, dan titik GPS akurat untuk kurir
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setAddressToEdit(null)
-                setIsAddressModalOpen(true)
-              }}
-              className="shadow-xs inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Tambah Alamat Baru</span>
-            </button>
-          </div>
-
-          {/* Address Cards List */}
-          {loadingAddresses ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
-            </div>
-          ) : addresses.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-12 text-center">
-              <div className="shadow-2xs mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400">
-                <MapPin className="h-6 w-6" />
-              </div>
-              <h3 className="mb-1 text-sm font-bold text-slate-900">
-                Belum Ada Alamat Tersimpan
-              </h3>
-              <p className="mb-4 max-w-sm text-xs text-slate-400">
-                Tambahkan alamat rumah atau kantor Anda untuk mempermudah proses
-                checkout pembelian gadget.
-              </p>
+          {/* 1. Mobile Simplified Address View matching Screenshot 2 */}
+          <div className="space-y-4 md:hidden">
+            {/* Action Bar */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Tersimpan ({addresses.length} Alamat)
+              </span>
               <button
                 type="button"
                 onClick={() => {
                   setAddressToEdit(null)
                   setIsAddressModalOpen(true)
                 }}
-                className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
+                className="shadow-xs cursor-pointer rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
               >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Tambah Alamat Pertama</span>
+                Tambah Baru
               </button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {addresses.map((item) => (
-                <div
-                  key={item.id}
-                  className={`shadow-2xs rounded-2xl border p-5 transition-all ${
-                    item.isDefault
-                      ? 'border-slate-950/30 bg-slate-50/90 ring-1 ring-slate-950/10'
-                      : 'border-slate-200/80 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-                    {/* Left Details */}
-                    <div className="flex-1 space-y-2">
-                      {/* Badges & Recipient */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-black text-slate-950">
+
+            {/* Address Cards */}
+            {loadingAddresses ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
+              </div>
+            ) : addresses.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+                <p className="text-xs text-slate-500">
+                  Belum ada alamat tersimpan
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {addresses.map((item) => (
+                  <div
+                    key={item.id}
+                    className="shadow-xs space-y-2.5 rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="font-bold text-slate-900 dark:text-white">
                           {item.recipientName}
                         </span>
-                        <span className="text-xs font-medium text-slate-400">
-                          •
-                        </span>
-                        <span className="text-xs font-semibold text-slate-600">
+                        <span className="text-slate-400">•</span>
+                        <span className="text-slate-500 dark:text-slate-400">
                           {item.phone}
                         </span>
-
-                        {/* Label Badge (Rumah vs Kantor) */}
-                        <span
-                          className={`shadow-2xs inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
-                            item.label === 'Kantor'
-                              ? 'border-blue-200/80 bg-blue-50 text-blue-700'
-                              : 'border-emerald-200/80 bg-emerald-50 text-emerald-700'
-                          }`}
-                        >
-                          {item.label === 'Kantor' ? (
-                            <Building2 className="h-3 w-3" />
-                          ) : (
-                            <Home className="h-3 w-3" />
-                          )}
-                          {item.label || 'Rumah'}
-                        </span>
-
-                        {/* Default Badge */}
-                        {item.isDefault && (
-                          <span className="shadow-xs inline-flex items-center gap-1 rounded-full bg-slate-950 px-2.5 py-0.5 text-[10px] font-bold text-white">
-                            <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-                            Alamat Utama
-                          </span>
-                        )}
                       </div>
 
-                      {/* Full Address */}
-                      <p className="text-xs font-medium leading-relaxed text-slate-700">
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {item.isDefault && (
+                          <span className="rounded-md bg-slate-950 px-2.5 py-0.5 text-[10px] font-bold text-white dark:bg-white dark:text-slate-950">
+                            Utama
+                          </span>
+                        )}
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                          {item.label || 'Rumah'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         {item.fullAddress}
                       </p>
-
-                      {/* Village, District, City, Province, Postal Code */}
-                      <p className="text-xs text-slate-500">
-                        {[
-                          item.village,
-                          item.district,
-                          item.city,
-                          item.province,
-                          item.postalCode,
-                        ]
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                        {[item.city, item.province, item.postalCode]
                           .filter(Boolean)
                           .join(', ')}
                       </p>
-
-                      {/* GPS Pin Point Indicator */}
-                      {item.latitude && item.longitude && (
-                        <div className="flex items-center gap-1.5 pt-1">
-                          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50/80 px-2 py-0.5 text-[10px] font-bold text-blue-700">
-                            <MapPin className="h-3 w-3 text-blue-600" />
-                            Titik GPS Terpasang
-                          </span>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Right Action Buttons */}
-                    <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 md:border-t-0 md:pt-0">
-                      {!item.isDefault && (
+                    <div className="flex items-center justify-between pt-1">
+                      {item.isDefault ? (
+                        <div />
+                      ) : (
                         <button
                           type="button"
                           onClick={() => handleSetDefaultAddress(item.id)}
                           disabled={settingDefaultId === item.id}
-                          className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                          className="cursor-pointer rounded-xl border border-orange-200 bg-orange-50/50 px-3 py-1.5 text-xs font-semibold text-orange-600 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-400"
                         >
-                          {settingDefaultId === item.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Star className="h-3 w-3 text-amber-500" />
-                          )}
-                          <span>Atur Utama</span>
+                          {settingDefaultId === item.id
+                            ? 'Memproses...'
+                            : 'Jadikan Utama'}
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAddressToEdit(item)
-                          setIsAddressModalOpen(true)
-                        }}
-                        className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                      >
-                        <Edit3 className="h-3 w-3 text-slate-500" />
-                        <span>Ubah</span>
-                      </button>
-
-                      {addresses.length > 1 && (
+                      <div className="ml-auto flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleDeleteAddress(item.id)}
-                          disabled={deletingId === item.id}
-                          className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-rose-200/80 bg-rose-50/50 px-3 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-100/60"
+                          onClick={() => {
+                            setAddressToEdit(item)
+                            setIsAddressModalOpen(true)
+                          }}
+                          className="cursor-pointer rounded-xl bg-slate-100 px-4 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 active:scale-95 dark:bg-slate-800 dark:text-slate-300"
                         >
-                          {deletingId === item.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3" />
-                          )}
-                          <span>Hapus</span>
+                          Ubah
                         </button>
-                      )}
+
+                        {addresses.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAddress(item.id)}
+                            disabled={deletingId === item.id}
+                            className="cursor-pointer rounded-xl bg-rose-50 px-4 py-1.5 text-xs font-semibold text-rose-500 transition hover:bg-rose-100 active:scale-95 dark:bg-rose-950/40 dark:text-rose-400"
+                          >
+                            {deletingId === item.id ? 'Menghapus...' : 'Hapus'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 2. Desktop Address View */}
+          <div className="hidden space-y-6 md:block">
+            {/* Desktop Header Bar with Add Address CTA */}
+            <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center">
+              <div>
+                <h2 className="text-sm font-bold text-slate-950">
+                  Daftar Alamat Pengiriman Saya
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Kelola alamat Rumah, Kantor, dan titik GPS akurat untuk kurir
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddressToEdit(null)
+                  setIsAddressModalOpen(true)
+                }}
+                className="shadow-xs inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Tambah Alamat Baru</span>
+              </button>
             </div>
-          )}
+
+            {/* Address Cards List */}
+            {loadingAddresses ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
+              </div>
+            ) : addresses.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-12 text-center">
+                <div className="shadow-2xs mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400">
+                  <MapPin className="h-6 w-6" />
+                </div>
+                <h3 className="mb-1 text-sm font-bold text-slate-900">
+                  Belum Ada Alamat Tersimpan
+                </h3>
+                <p className="mb-4 max-w-sm text-xs text-slate-400">
+                  Tambahkan alamat rumah atau kantor Anda untuk mempermudah
+                  proses checkout pembelian gadget.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddressToEdit(null)
+                    setIsAddressModalOpen(true)
+                  }}
+                  className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Tambah Alamat Pertama</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {addresses.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`shadow-2xs rounded-2xl border p-5 transition-all ${
+                      item.isDefault
+                        ? 'border-slate-950/30 bg-slate-50/90 ring-1 ring-slate-950/10'
+                        : 'border-slate-200/80 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                      {/* Left Details */}
+                      <div className="flex-1 space-y-2">
+                        {/* Badges & Recipient */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-black text-slate-950">
+                            {item.recipientName}
+                          </span>
+                          <span className="text-xs font-medium text-slate-400">
+                            •
+                          </span>
+                          <span className="text-xs font-semibold text-slate-600">
+                            {item.phone}
+                          </span>
+
+                          {/* Label Badge (Rumah vs Kantor) */}
+                          <span
+                            className={`shadow-2xs inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
+                              item.label === 'Kantor'
+                                ? 'border-blue-200/80 bg-blue-50 text-blue-700'
+                                : 'border-emerald-200/80 bg-emerald-50 text-emerald-700'
+                            }`}
+                          >
+                            {item.label === 'Kantor' ? (
+                              <Building2 className="h-3 w-3" />
+                            ) : (
+                              <Home className="h-3 w-3" />
+                            )}
+                            {item.label || 'Rumah'}
+                          </span>
+
+                          {/* Default Badge */}
+                          {item.isDefault && (
+                            <span className="shadow-xs inline-flex items-center gap-1 rounded-full bg-slate-950 px-2.5 py-0.5 text-[10px] font-bold text-white">
+                              <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                              Alamat Utama
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Full Address */}
+                        <p className="text-xs font-medium leading-relaxed text-slate-700">
+                          {item.fullAddress}
+                        </p>
+
+                        {/* Village, District, City, Province, Postal Code */}
+                        <p className="text-xs text-slate-500">
+                          {[
+                            item.village,
+                            item.district,
+                            item.city,
+                            item.province,
+                            item.postalCode,
+                          ]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </p>
+
+                        {/* GPS Pin Point Indicator */}
+                        {item.latitude && item.longitude && (
+                          <div className="flex items-center gap-1.5 pt-1">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50/80 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                              <MapPin className="h-3 w-3 text-blue-600" />
+                              Titik GPS Terpasang
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Action Buttons */}
+                      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 md:border-t-0 md:pt-0">
+                        {!item.isDefault && (
+                          <button
+                            type="button"
+                            onClick={() => handleSetDefaultAddress(item.id)}
+                            disabled={settingDefaultId === item.id}
+                            className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                          >
+                            {settingDefaultId === item.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Star className="h-3 w-3 text-amber-500" />
+                            )}
+                            <span>Atur Utama</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddressToEdit(item)
+                            setIsAddressModalOpen(true)
+                          }}
+                          className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                        >
+                          <Edit3 className="h-3 w-3 text-slate-500" />
+                          <span>Ubah</span>
+                        </button>
+
+                        {addresses.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAddress(item.id)}
+                            disabled={deletingId === item.id}
+                            className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full border border-rose-200/80 bg-rose-50/50 px-3 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-100/60"
+                          >
+                            {deletingId === item.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                            <span>Hapus</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Modal Component */}
           <AddressModal
@@ -1360,37 +1677,33 @@ function CustomerSettingsContent() {
           transition={{ duration: 0.15 }}
           className="space-y-6"
         >
-          {/* 1. Ubah Kata Sandi */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div className="min-w-0 pr-2">
-                <h2 className="text-sm font-bold text-slate-950">
-                  Ubah Kata Sandi Akun
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Perbarui kata sandi secara berkala untuk menjaga keamanan akun
-                </p>
-              </div>
-              <span className="shadow-2xs inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                <ShieldCheck className="h-3 w-3 shrink-0 text-emerald-600" />
-                Terproteksi
-              </span>
-            </div>
+          {/* 1. Mobile Simplified Security View matching Screenshot 2 */}
+          <div className="space-y-4 md:hidden">
+            {/* Card 1: Ubah Kata Sandi */}
+            <div className="shadow-xs space-y-4 rounded-2xl border border-slate-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Ubah Kata Sandi
+              </h3>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {/* Current Password */}
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700">
-                  Password Saat Ini
-                </label>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Password Saat Ini
+                  </label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs font-semibold text-orange-500 transition hover:text-orange-600"
+                  >
+                    Lupa Kata Sandi?
+                  </Link>
+                </div>
                 <div className="relative flex items-center">
-                  <KeyRound className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                   <input
                     type={showCurrentPassword ? 'text' : 'password'}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Password lama"
-                    className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    placeholder="Masukkan password lama"
+                    className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-3 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                   <button
                     type="button"
@@ -1406,19 +1719,17 @@ function CustomerSettingsContent() {
                 </div>
               </div>
 
-              {/* New Password */}
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                   Password Baru
                 </label>
                 <div className="relative flex items-center">
-                  <Lock className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                   <input
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min. 6 karakter"
-                    className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    placeholder="Minimal 6 karakter"
+                    className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-3 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                   <button
                     type="button"
@@ -1434,19 +1745,17 @@ function CustomerSettingsContent() {
                 </div>
               </div>
 
-              {/* Confirm New Password */}
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                   Konfirmasi Password Baru
                 </label>
                 <div className="relative flex items-center">
-                  <Lock className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Ulangi password baru"
-                    className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-3 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                   <button
                     type="button"
@@ -1461,181 +1770,383 @@ function CustomerSettingsContent() {
                   </button>
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-[11px] text-slate-400">
-                Minimal 6 karakter. Pergantian kata sandi memerlukan verifikasi
-                kode OTP WhatsApp.
-              </div>
               <button
                 type="button"
                 onClick={() => handleChangePassword()}
                 disabled={
                   saving || !currentPassword || !newPassword || !confirmPassword
                 }
-                className="shadow-xs flex w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl bg-orange-500 px-5 py-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50 sm:inline-flex sm:w-auto"
+                className="shadow-xs active:scale-98 mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
               >
                 {saving ? (
-                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Check className="h-3.5 w-3.5 shrink-0" />
+                  <span>Perbarui Kata Sandi</span>
                 )}
-                <span>Perbarui Kata Sandi</span>
               </button>
             </div>
-          </div>
 
-          {/* 2. Shopee-Style Security Verification Settings */}
-          <div className="space-y-4 border-t border-slate-100 pt-6">
+            {/* Card 2: Verifikasi Tambahan */}
             <div>
-              <h2 className="text-sm font-bold text-slate-950">
-                Verifikasi & Keamanan Tambahan
-              </h2>
-              <p className="text-xs text-slate-400">
-                Proteksi transaksi checkout gadget dan akses akun Anda
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {/* 2FA Toggle (WhatsApp OTP) */}
-              <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 transition-all">
-                <div className="space-y-1.5 pr-4">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs font-bold text-slate-900">
-                      Verifikasi 2 Langkah (OTP WhatsApp)
+              <h3 className="mb-2 text-xs font-bold text-slate-900 dark:text-white">
+                Verifikasi Tambahan
+              </h3>
+              <div className="shadow-xs space-y-3 rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">
+                    Verifikasi 2 Langkah
+                  </span>
+                  {twoFactorEnabled ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Aktif
                     </span>
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black text-emerald-700">
-                      DIREKOMENDASIKAN
-                    </span>
-                    {twoFactorEnabled && (
-                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[9px] font-bold text-orange-700">
-                        Aktif
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Minta kode OTP verifikasi WhatsApp saat login dari browser
-                    baru atau transaksi sensitif.
-                  </p>
-                  {phone ? (
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
-                      <MessageSquare className="h-3 w-3" />
-                      <span>
-                        Nomor WA:{' '}
-                        {phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')}
-                      </span>
-                    </div>
                   ) : (
-                    <p className="text-[11px] text-amber-600">
-                      Nomor telepon belum diatur di biodata.
-                    </p>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      Belum Verifikasi
+                    </span>
                   )}
                 </div>
+
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    {phone
+                      ? `WhatsApp: ${phone.startsWith('0') ? '+62 ' + phone.slice(1, 4) + '-' + phone.slice(4, 8) + '-' + phone.slice(8) : phone.startsWith('62') ? '+' + phone.slice(0, 2) + ' ' + phone.slice(2, 5) + '-' + phone.slice(5, 9) + '-' + phone.slice(9) : phone}`
+                      : 'WhatsApp: Belum terhubung'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleToggle2Fa}
+                    disabled={securityLoading || requestingOtp}
+                    className="cursor-pointer font-bold text-orange-500 transition hover:text-orange-600"
+                  >
+                    {twoFactorEnabled ? 'Ganti Nomor' : 'Hubungkan →'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Perangkat Aktif */}
+            <div>
+              <h3 className="mb-2 text-xs font-bold text-slate-900 dark:text-white">
+                Perangkat Aktif
+              </h3>
+              <div className="shadow-xs flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-3">
+                  <div className="shadow-2xs flex h-10 w-7 shrink-0 flex-col items-center justify-between rounded-[7px] border-2 border-orange-500 bg-white py-1 dark:bg-slate-900">
+                    <div className="h-0.5 w-2 rounded-full bg-orange-400" />
+                    <div className="h-1 w-1 rounded-full bg-orange-400" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-slate-900 dark:text-white">
+                      {currentSession?.deviceLabel || 'Chrome di Android'}
+                    </span>
+                    <p className="text-[11px] text-slate-400">
+                      {currentSession?.location || 'Jakarta'} • Baru saja
+                    </p>
+                  </div>
+                </div>
+
                 <button
                   type="button"
-                  disabled={securityLoading || requestingOtp}
-                  onClick={handleToggle2Fa}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
-                    twoFactorEnabled ? 'bg-orange-600' : 'bg-slate-300'
-                  }`}
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="cursor-pointer text-xs font-bold text-rose-500 transition hover:text-rose-600"
                 >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      twoFactorEnabled ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
+                  Keluar
                 </button>
               </div>
             </div>
           </div>
 
-          {/* 3. Daftar Perangkat & Sesi Login Aktif */}
-          <div className="space-y-4 border-t border-slate-100 pt-6">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-              <div>
-                <h2 className="text-sm font-bold text-slate-950">
-                  Perangkat & Sesi Login Aktif
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Daftar perangkat yang saat ini memiliki akses aktif ke akun
-                  Anda
-                </p>
-              </div>
-              {otherSessions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleLogoutOtherDevices}
-                  disabled={loggingOutOther}
-                  className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 self-start rounded-full border border-rose-200 bg-rose-50/70 px-4 py-1.5 text-xs font-bold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 disabled:opacity-50 sm:self-auto"
-                >
-                  {loggingOutOther ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <LogOut className="h-3.5 w-3.5 text-rose-600" />
-                  )}
-                  <span>Keluarkan Perangkat Lain</span>
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              {/* Current Device (Accurately Detected from User-Agent) */}
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3.5 sm:p-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="shadow-xs flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                    {currentSession?.deviceType === 'mobile' ? (
-                      <Smartphone className="h-5 w-5" />
-                    ) : (
-                      <Laptop className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block truncate text-xs font-black text-slate-950">
-                      {currentSession?.deviceLabel ||
-                        'PC / Desktop (Windows 11 / 10)'}
-                    </span>
-                    <p className="truncate text-[11px] text-slate-400">
-                      {currentSession?.browserLabel || 'Google Chrome'} •{' '}
-                      {currentSession?.location || 'Jakarta, Indonesia'} • (Sesi
-                      Saat Ini)
-                    </p>
-                  </div>
+          {/* 2. Desktop Security View */}
+          <div className="hidden space-y-6 md:block">
+            {/* 1. Ubah Kata Sandi */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div className="min-w-0 pr-2">
+                  <h2 className="text-sm font-bold text-slate-950">
+                    Ubah Kata Sandi Akun
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Perbarui kata sandi secara berkala untuk menjaga keamanan
+                    akun
+                  </p>
                 </div>
-
-                <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                  Aktif
+                <span className="shadow-2xs inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-slate-200/70 bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                  <ShieldCheck className="h-3 w-3 shrink-0 text-emerald-600" />
+                  Terproteksi
                 </span>
               </div>
 
-              {/* Other Sessions if any */}
-              {otherSessions.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-3.5 sm:p-4"
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {/* Current Password */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Password Saat Ini
+                  </label>
+                  <div className="relative flex items-center">
+                    <KeyRound className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Password lama"
+                      className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowCurrentPassword(!showCurrentPassword)
+                      }
+                      className="absolute right-3.5 cursor-pointer text-slate-400 transition hover:text-slate-600"
+                    >
+                      {showCurrentPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* New Password */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Password Baru
+                  </label>
+                  <div className="relative flex items-center">
+                    <Lock className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Min. 6 karakter"
+                      className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3.5 cursor-pointer text-slate-400 transition hover:text-slate-600"
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm New Password */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Konfirmasi Password Baru
+                  </label>
+                  <div className="relative flex items-center">
+                    <Lock className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Ulangi password baru"
+                      className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-10 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute right-3.5 cursor-pointer text-slate-400 transition hover:text-slate-600"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-[11px] text-slate-400">
+                  Minimal 6 karakter. Pergantian kata sandi memerlukan
+                  verifikasi kode OTP WhatsApp.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleChangePassword()}
+                  disabled={
+                    saving ||
+                    !currentPassword ||
+                    !newPassword ||
+                    !confirmPassword
+                  }
+                  className="shadow-xs flex w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl bg-orange-500 px-5 py-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50 sm:inline-flex sm:w-auto"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="shadow-2xs flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                      <Smartphone className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-black text-slate-950">
-                        {s.deviceLabel}
+                  {saving ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5 shrink-0" />
+                  )}
+                  <span>Perbarui Kata Sandi</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Shopee-Style Security Verification Settings */}
+            <div className="space-y-4 border-t border-slate-100 pt-6">
+              <div>
+                <h2 className="text-sm font-bold text-slate-950">
+                  Verifikasi & Keamanan Tambahan
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Proteksi transaksi checkout gadget dan akses akun Anda
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {/* 2FA Toggle (WhatsApp OTP) */}
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 transition-all">
+                  <div className="space-y-1.5 pr-4">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900">
+                        Verifikasi 2 Langkah (OTP WhatsApp)
                       </span>
-                      <p className="text-[11px] text-slate-400">
-                        {s.browser} • {s.location} • {s.lastActive}
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black text-emerald-700">
+                        DIREKOMENDASIKAN
+                      </span>
+                      {twoFactorEnabled && (
+                        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[9px] font-bold text-orange-700">
+                          Aktif
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Minta kode OTP verifikasi WhatsApp saat login dari browser
+                      baru atau transaksi sensitif.
+                    </p>
+                    {phone ? (
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                        <MessageSquare className="h-3 w-3" />
+                        <span>
+                          Nomor WA:{' '}
+                          {phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-amber-600">
+                        Nomor telepon belum diatur di biodata.
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={securityLoading || requestingOtp}
+                    onClick={handleToggle2Fa}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+                      twoFactorEnabled ? 'bg-orange-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        twoFactorEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Daftar Perangkat & Sesi Login Aktif */}
+            <div className="space-y-4 border-t border-slate-100 pt-6">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-950">
+                    Perangkat & Sesi Login Aktif
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Daftar perangkat yang saat ini memiliki akses aktif ke akun
+                    Anda
+                  </p>
+                </div>
+                {otherSessions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleLogoutOtherDevices}
+                    disabled={loggingOutOther}
+                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 self-start rounded-full border border-rose-200 bg-rose-50/70 px-4 py-1.5 text-xs font-bold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 disabled:opacity-50 sm:self-auto"
+                  >
+                    {loggingOutOther ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <LogOut className="h-3.5 w-3.5 text-rose-600" />
+                    )}
+                    <span>Keluarkan Perangkat Lain</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {/* Current Device (Accurately Detected from User-Agent) */}
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3.5 sm:p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="shadow-xs flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                      {currentSession?.deviceType === 'mobile' ? (
+                        <Smartphone className="h-5 w-5" />
+                      ) : (
+                        <Laptop className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block truncate text-xs font-black text-slate-950">
+                        {currentSession?.deviceLabel ||
+                          'PC / Desktop (Windows 11 / 10)'}
+                      </span>
+                      <p className="truncate text-[11px] text-slate-400">
+                        {currentSession?.browserLabel || 'Google Chrome'} •{' '}
+                        {currentSession?.location || 'Jakarta, Indonesia'} •
+                        (Sesi Saat Ini)
                       </p>
                     </div>
                   </div>
-                </div>
-              ))}
 
-              {otherSessions.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-slate-200 p-3.5 text-center text-xs text-slate-400">
-                  Hanya perangkat ini yang sedang aktif mengakses akun Anda
+                  <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    Aktif
+                  </span>
                 </div>
-              )}
+
+                {/* Other Sessions if any */}
+                {otherSessions.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-3.5 sm:p-4"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="shadow-2xs flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                        <Smartphone className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-black text-slate-950">
+                          {s.deviceLabel}
+                        </span>
+                        <p className="text-[11px] text-slate-400">
+                          {s.browser} • {s.location} • {s.lastActive}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {otherSessions.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-slate-200 p-3.5 text-center text-xs text-slate-400">
+                    Hanya perangkat ini yang sedang aktif mengakses akun Anda
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>

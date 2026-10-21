@@ -44,11 +44,10 @@ const RATING_LABELS: Record<number, { text: string; color: string }> = {
 }
 
 const QUICK_TAGS = [
-  '⚡ Pengiriman Cepat',
-  '📦 Packing Aman & Asuransi',
-  '📱 Unit 100% Original',
-  '🎁 Bonus 3-in-1 Lengkap',
-  '💬 Respon Toko Ramah',
+  'Pengiriman Cepat',
+  'Packing Aman',
+  'Unit 100% Original',
+  'Respon Ramah',
 ]
 
 export function RatingModal({
@@ -324,12 +323,12 @@ export function RatingModal({
             </span>
           </div>
 
-          {/* Quick Tag Recommendations */}
+          {/* Quick Tag Recommendations: 2 Baris 2 Kolom Tanpa Emot */}
           <div>
             <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Poin Kepuasan Cepat (Opsional):
             </label>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="grid grid-cols-2 gap-2">
               {QUICK_TAGS.map((tag) => {
                 const isSelected = comment.includes(tag)
                 return (
@@ -337,7 +336,7 @@ export function RatingModal({
                     key={tag}
                     type="button"
                     onClick={() => handleAddTag(tag)}
-                    className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                    className={`cursor-pointer whitespace-nowrap rounded-xl border px-2 py-2 text-center text-[11px] font-semibold transition sm:text-xs ${
                       isSelected
                         ? 'shadow-xs border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
                         : 'border-slate-200/70 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'

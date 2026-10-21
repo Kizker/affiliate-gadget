@@ -2,44 +2,28 @@ import { describe, it, expect } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
 
-describe('Mobile Wishlist Subview Floating Back Button & Header Elimination', () => {
+describe('Mobile Subview Clean Header & Centered Navigation Suite', () => {
   const mobileCustomerAccountPath = path.resolve(
     process.cwd(),
     'src/components/customer/mobile-customer-account-view.tsx'
   )
 
-  it('memvalidasi tombol kembali melayang tanpa teks untuk subview wishlist', () => {
+  it('memvalidasi tombol kembali dan judul terpusat untuk semua subview termasuk wishlist', () => {
     const content = fs.readFileSync(mobileCustomerAccountPath, 'utf-8')
 
-    // Kondisi khusus activeSubView === 'wishlist'
-    expect(content).toContain("activeSubView === 'wishlist' ? (")
-
-    // Tombol kembali melayang di kiri atas dengan icon saja
+    // Clean Centered Header matching Screenshot 2
+    expect(content).toContain('Clean Centered Header matching Screenshot 2')
     expect(content).toContain(
-      'fixed left-3.5 top-3.5 z-50 flex h-9 w-9 items-center justify-center rounded-full'
+      '<header className="sticky top-0 z-50 flex shrink-0 items-center justify-between border-b'
     )
-    expect(content).toContain('<ArrowLeft className="h-4 w-4" />')
-
-    // Header div hanya dirender pada else branch ketika bukan wishlist
-    expect(content).toContain(') : (')
-    expect(content).toContain(
-      '<header className="z-50 flex shrink-0 items-center justify-between border-b'
-    )
-
-    // Tombol floating wishlist tidak merender elemen teks apapun
-    const floatingButtonMatch = content.match(
-      /activeSubView === 'wishlist'\s*\?\s*\(\s*<button[\s\S]*?<\/button>\s*\)/
-    )
-    expect(floatingButtonMatch).not.toBeNull()
-    if (floatingButtonMatch) {
-      expect(floatingButtonMatch[0]).not.toContain('<span>')
-      expect(floatingButtonMatch[0]).not.toContain('Wishlist Saya')
-      expect(floatingButtonMatch[0]).toContain('<ArrowLeft')
-    }
+    expect(content).toContain('<ArrowLeft className="h-5 w-5" />')
+    expect(content).toContain('{currentMeta.title}')
   })
 
-  it('memvalidasi penyesuaian margin top untuk kartu wishlist agar tidak tertutup tombol melayang', () => {
+  it('memvalidasi scroll container natural dengan overscroll-contain untuk subview', () => {
     const content = fs.readFileSync(mobileCustomerAccountPath, 'utf-8')
-    expect(content).toContain("activeSubView === 'wishlist' ? 'mt-12' : ''")
+    expect(content).toContain(
+      'min-h-0 flex-1 overflow-y-auto overscroll-contain'
+    )
   })
 })

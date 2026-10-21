@@ -39,12 +39,10 @@ describe('Customer Profile Mobile Subview & Wishlist Back Routing', () => {
     expect(content).toContain("onBack || (() => setActiveSubView('overview'))")
   })
 
-  it('memvalidasi mobile top nav di halaman wishlist mengarahkan kembali ke profil settings', () => {
+  it('memvalidasi mobile header di halaman wishlist mengarahkan kembali ke profil settings', () => {
     const content = fs.readFileSync(wishlistClientPath, 'utf-8')
-    expect(content).toContain('showBack={true}')
-    expect(content).toContain('backHref="/dashboard/customer/settings"')
     expect(content).toContain("router.push('/dashboard/customer/settings')")
-    expect(content).toContain('onBack={handleBackToProfile}')
+    expect(content).toContain('onClick={handleBackToProfile}')
     expect(content).toContain('onBackToOverview={handleBackToProfile}')
   })
 

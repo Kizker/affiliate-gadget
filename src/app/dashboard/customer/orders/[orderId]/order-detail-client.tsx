@@ -397,7 +397,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
           showBack={true}
           onBack={handleNavigateBack}
           backHref={backHref}
-          title={`Pesanan #${order.orderNumber}`}
+          title="Rincian Pesanan"
         />
       </div>
       <div className="hidden md:block">

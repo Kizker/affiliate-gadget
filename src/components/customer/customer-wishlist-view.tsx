@@ -68,34 +68,32 @@ export function CustomerWishlistView({
 
   return (
     <div className="w-full space-y-4 pb-20">
-      {/* Top Bar / Controls (Hanya di tab pengaturan profil, bukan di halaman standalone) */}
-      {!isStandalonePage && (
-        <div className="flex items-center justify-between px-1">
-          <div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">
-              {items.length} Gadget Tersimpan
-            </span>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Daftar produk incaran yang siap Anda bawa pulang
-            </p>
-          </div>
-
-          {items.length > 0 && (
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50 active:scale-95 dark:text-rose-400 dark:hover:bg-rose-950/40"
-            >
-              <Trash2 className="h-3 w-3" />
-              <span>Kosongkan</span>
-            </button>
-          )}
+      {/* Top Header Card matching Screenshot 2 */}
+      <div className="shadow-xs flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            {items.length} Gadget Tersimpan
+          </h3>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            Daftar produk incaran Anda
+          </p>
         </div>
-      )}
+
+        {items.length > 0 && (
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="flex items-center gap-1.5 rounded-full border border-rose-100 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-500 transition hover:bg-rose-100 active:scale-95 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-400"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Kosongkan</span>
+          </button>
+        )}
+      </div>
 
       {/* Empty State */}
       {items.length === 0 ? (
-        <div className="shadow-2xs flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900/60">
+        <div className="shadow-xs flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900/60">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-950/40 dark:text-rose-400">
             <Heart className="h-8 w-8 stroke-[1.5]" />
           </div>
@@ -126,8 +124,8 @@ export function CustomerWishlistView({
           </div>
         </div>
       ) : (
-        /* Items Grid */
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        /* Items List matching Screenshot 2 */
+        <div className="flex flex-col space-y-3.5">
           {paginatedItems.map((item: WishlistItem) => {
             const productHref = item.href || `/gadget/${item.id}`
             const displayPrice =
@@ -150,13 +148,13 @@ export function CustomerWishlistView({
             return (
               <div
                 key={item.id}
-                className="shadow-xs group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+                className="shadow-xs rounded-2xl border border-slate-100 bg-white p-4 transition hover:border-slate-200 dark:border-slate-800 dark:bg-slate-900"
               >
-                <div className="flex gap-3">
-                  {/* Thumbnail Image Box */}
+                <div className="flex gap-3.5">
+                  {/* Clean Thumbnail Image Box */}
                   <Link
                     href={productHref}
-                    className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800"
+                    className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24"
                   >
                     <img
                       src={imgSrc}
@@ -166,85 +164,52 @@ export function CustomerWishlistView({
                         ;(e.currentTarget as HTMLImageElement).src =
                           'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
                       }}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                     />
-
-                    {/* Condition Badge */}
-                    {item.conditionBadge && (
-                      <span className="backdrop-blur-xs absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[8.5px] font-bold text-white">
-                        {item.conditionBadge}
-                      </span>
-                    )}
                   </Link>
 
-                  {/* Product Details */}
+                  {/* Product Details & Actions */}
                   <div className="flex min-w-0 flex-1 flex-col justify-between">
                     <div>
-                      {/* Store & City Tag */}
-                      {(item.storeName || item.originCity) && (
-                        <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                          <MapPin className="h-2.5 w-2.5 shrink-0" />
-                          <span className="truncate">
-                            {item.storeName || item.originCity}
-                          </span>
-                        </div>
-                      )}
-
                       {/* Title */}
                       <Link href={productHref} className="block">
-                        <h4 className="line-clamp-2 text-xs font-bold leading-snug text-slate-900 transition hover:text-orange-600 dark:text-white dark:hover:text-orange-400">
+                        <h4 className="line-clamp-2 text-sm font-bold leading-snug text-slate-900 transition hover:text-orange-600 dark:text-white dark:hover:text-orange-400">
                           {item.name}
                         </h4>
                       </Link>
 
-                      {/* Trust Badges */}
-                      <div className="mt-1 flex items-center gap-1.5">
-                        <span className="py-0.2 inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                          <ShieldCheck className="h-2.5 w-2.5" />
-                          Garansi 30H
+                      {/* Price Row */}
+                      <div className="mt-1 flex items-baseline gap-2">
+                        <span className="text-sm font-bold text-orange-500">
+                          {displayPrice}
                         </span>
-                        {item.rating != null && item.rating > 0 && (
-                          <div className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
-                            <Star className="h-2.5 w-2.5 fill-amber-500" />
-                            <span>{Number(item.rating).toFixed(1)}</span>
-                          </div>
+                        {displayOriginalPrice && (
+                          <span className="text-xs text-slate-400 line-through">
+                            {displayOriginalPrice}
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Price and Action */}
-                    <div className="mt-2 flex items-baseline gap-1.5">
-                      <span className="text-xs font-black text-orange-600 dark:text-orange-400">
-                        {displayPrice}
-                      </span>
-                      {displayOriginalPrice && (
-                        <span className="text-[10px] text-slate-400 line-through">
-                          {displayOriginalPrice}
-                        </span>
-                      )}
+                    {/* Bottom Action Buttons: Hapus & Lihat Produk */}
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => handleRemove(item.id, item.name, e)}
+                        className="cursor-pointer rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        title="Hapus dari Wishlist"
+                      >
+                        Hapus
+                      </button>
+
+                      <Link
+                        href={productHref}
+                        className="shadow-xs flex-1 rounded-xl bg-orange-500 py-1.5 text-center text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
+                      >
+                        Lihat Produk
+                      </Link>
                     </div>
                   </div>
-                </div>
-
-                {/* Bottom Actions Card */}
-                <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800">
-                  <button
-                    type="button"
-                    onClick={(e) => handleRemove(item.id, item.name, e)}
-                    className="flex h-8 items-center gap-1 rounded-xl border border-slate-200 px-2.5 text-[11px] font-medium text-slate-500 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 active:scale-95 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-                    title="Hapus dari Wishlist"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    <span>Hapus</span>
-                  </button>
-
-                  <Link
-                    href={productHref}
-                    className="shadow-2xs flex h-8 flex-1 items-center justify-center gap-1 rounded-xl bg-orange-500 px-3 text-[11px] font-bold text-white transition hover:bg-orange-600 active:scale-95"
-                  >
-                    <span>Lihat Produk</span>
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
                 </div>
               </div>
             )

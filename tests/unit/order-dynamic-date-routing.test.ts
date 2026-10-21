@@ -217,11 +217,17 @@ describe('Dynamic Order Date & Process-Based Timeline Audit Suite', () => {
     expect(detailClient).toContain('{contextualTime.label}:')
     expect(detailClient).toContain('{contextualTime.fullDateTime}')
 
-    // Mobile audit trail section
-    expect(detailClient).toContain(
-      'Bagian Riwayat Waktu Transaksi (Mobile Audit Trail)'
+    // Mobile audit trail section (in order-detail-client or order-mobile-view)
+    const mobileViewPath = path.join(
+      process.cwd(),
+      'src/components/customer/order-detail/order-mobile-view.tsx'
     )
-    expect(detailClient).toContain('auditTimeline.map')
+    const mobileContent = fs.existsSync(mobileViewPath)
+      ? fs.readFileSync(mobileViewPath, 'utf-8')
+      : detailClient
+
+    expect(mobileContent).toContain('RIWAYAT TRANSAKSI')
+    expect(mobileContent).toContain('auditTimeline.map')
 
     // Desktop audit trail bento card
     expect(detailClient).toContain(

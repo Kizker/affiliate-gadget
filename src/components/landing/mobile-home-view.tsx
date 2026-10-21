@@ -21,6 +21,7 @@ import {
   Loader2,
   ArrowLeftRight,
   Sparkles,
+  MapPin,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
@@ -352,11 +353,9 @@ export function MobileHomeView() {
               }}
               className="block h-auto w-full rounded-xl transition-transform duration-300 hover:scale-105"
             />
-            <span
-              className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${item.conditionBadgeColor}`}
-            >
-              <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
-              <span>{item.conditionBadge}</span>
+            <span className="backdrop-blur-xs shadow-xs absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-slate-900 shadow-sm dark:bg-slate-900/90 dark:text-white">
+              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+              <span>{item.rating.toFixed(1)}</span>
             </span>
             <button
               type="button"
@@ -374,26 +373,9 @@ export function MobileHomeView() {
             </button>
           </div>
           <div className="mt-2 space-y-1">
-            <div className="flex items-center gap-1">
-              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-              <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
-                {item.rating.toFixed(1)}
-              </span>
-              <span className="text-[10px] font-medium text-slate-400">
-                ({item.reviewCount})
-              </span>
-            </div>
             <h3 className="line-clamp-2 min-h-[30px] text-xs font-bold leading-tight text-slate-950 dark:text-white">
               {item.name}
             </h3>
-            <div className="flex flex-wrap items-center gap-1 pt-0.5">
-              <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-                Garansi 30 Hari
-              </span>
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                Bonus 3-in-1
-              </span>
-            </div>
             <div className="pt-1">
               <span className="block text-sm font-black leading-tight text-orange-500">
                 {item.price}
@@ -408,7 +390,7 @@ export function MobileHomeView() {
               </div>
             </div>
             <div className="flex items-center gap-1 truncate pt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-              <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+              <MapPin className="h-2.5 w-2.5 shrink-0 text-slate-400" />
               <span className="truncate">
                 {item.locationTag.replace('Affiliate Gadget - ', '')}
               </span>

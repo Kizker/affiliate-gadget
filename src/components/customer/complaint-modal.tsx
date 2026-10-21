@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   X,
   Upload,
   Loader2,
-  ShieldCheck,
-  CheckCircle2,
-  Sparkles,
+  ChevronDown,
+  Check,
   Play,
   Trash2,
 } from 'lucide-react'
@@ -26,31 +25,36 @@ const isVideoUrl = (url?: string | null) => {
   return /\.(mp4|webm|mov|mkv|ogg|3gp)$/i.test(url)
 }
 
-const COMMON_ISSUES = [
+const ISSUE_CATEGORIES = [
   {
     id: 'lcd',
     label: 'Layar & LCD',
-    fullText: 'Kendala Layar LCD / Touchscreen bergaris atau blank',
+    defaultSubject: 'Kendala Layar LCD / Touchscreen',
+    placeholder: 'Contoh: Layar sentuh tidak merespons sebagian',
   },
   {
     id: 'battery',
     label: 'Baterai & Daya',
-    fullText: 'Kendala Baterai / Pengisian Daya tidak masuk',
+    defaultSubject: 'Kendala Baterai / Pengisian Daya',
+    placeholder: 'Contoh: Baterai cepat habis atau tidak bisa diisi daya',
   },
   {
     id: 'hardware',
     label: 'Kamera & Audio',
-    fullText: 'Kamera / Speaker / Mic bermasalah',
+    defaultSubject: 'Kendala Kamera / Speaker / Mic',
+    placeholder: 'Contoh: Kamera blur atau suara speaker kresek-kresek',
   },
   {
     id: 'system',
     label: 'Mati Total / Mesin',
-    fullText: 'Unit Mati Total / Masalah Mesin & Bootloop',
+    defaultSubject: 'Kendala Mati Total / Bootloop Mesin',
+    placeholder: 'Contoh: Unit mati total dan tidak bisa dinyalakan',
   },
   {
     id: 'other',
     label: 'Lainnya / Fisik',
-    fullText: 'Fisik / Tombol / Komponen Unit Tidak Berfungsi',
+    defaultSubject: 'Kendala Fisik / Komponen Unit',
+    placeholder: 'Contoh: Tombol volume atau fingerprint tidak merespons',
   },
 ]
 
@@ -61,17 +65,48 @@ export function ComplaintModal({
   orderNumber,
   onSuccess,
 }: ComplaintModalProps) {
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState(
+    ISSUE_CATEGORIES[0].id
+  )
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [subject, setSubject] = useState('')
   const [description, setDescription] = useState('')
   const [images, setImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleSelectPreset = (preset: (typeof COMMON_ISSUES)[0]) => {
-    setSelectedPreset(preset.id)
-    setSubject(preset.fullText)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsDropdownOpen(false)
+      }
+    }
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isDropdownOpen])
+
+  if (!isOpen) return null
+
+  const currentCategory =
+    ISSUE_CATEGORIES.find((c) => c.id === selectedCategory) ||
+    ISSUE_CATEGORIES[0]
+
+  const handleSelectCategory = (category: (typeof ISSUE_CATEGORIES)[0]) => {
+    setSelectedCategory(category.id)
+    setIsDropdownOpen(false)
+    if (!subject.trim()) {
+      setSubject(category.defaultSubject)
+    }
   }
 
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,8 +161,9 @@ export function ComplaintModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!subject.trim() || !description.trim()) {
-      toast.error('Mohon lengkapi subjek kendala dan rincian klaim garansi')
+    const finalSubject = subject.trim() || currentCategory.defaultSubject
+    if (!finalSubject || !description.trim()) {
+      toast.error('Mohon lengkapi subjek kendala dan rincian masalah')
       return
     }
 
@@ -138,7 +174,7 @@ export function ComplaintModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId,
-          subject,
+          subject: `[${currentCategory.label}] ${finalSubject}`,
           description,
           images,
         }),
@@ -150,7 +186,7 @@ export function ComplaintModal({
         throw new Error(data.error || 'Gagal mengajukan klaim garansi')
       }
 
-      toast.success('Klaim garansi 30 hari berhasil dikirim ke teknisi toko')
+      toast.success('Klaim garansi berhasil dikirim ke teknisi toko')
       onSuccess?.()
       onClose()
 
@@ -158,7 +194,6 @@ export function ComplaintModal({
       setSubject('')
       setDescription('')
       setImages([])
-      setSelectedPreset(null)
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Gagal mengirim klaim garansi'
@@ -168,198 +203,218 @@ export function ComplaintModal({
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="backdrop-blur-xs fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/50 p-3 sm:p-4">
-      {/* Modal Surface */}
-      <div className="relative max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200/80 bg-white p-5 shadow-2xl duration-200 animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+    <div className="backdrop-blur-xs fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/60 p-4 duration-200 animate-in fade-in">
+      <div
+        className="relative flex max-h-[92dvh] w-full max-w-sm flex-col overflow-hidden rounded-[24px] border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+        <div className="flex shrink-0 items-start justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-black tracking-tight text-slate-950 dark:text-white sm:text-lg">
-                Klaim Garansi 30 Hari
-              </h2>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                Tukar Unit
+            <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+              Klaim Garansi
+            </h3>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Pesanan{' '}
+              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                #{orderNumber}
               </span>
-            </div>
-            <p className="mt-0.5 font-mono text-xs text-slate-500">
-              Pesanan #{orderNumber}
             </p>
           </div>
+
           <button
+            type="button"
             onClick={onClose}
-            className="cursor-pointer rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+            aria-label="Tutup"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          {/* Preset Issue Quick Select (Segmented Chips) */}
-          <div>
-            <label className="mb-2 block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Pilih Kategori Kendala:
-            </label>
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-              {COMMON_ISSUES.map((preset) => {
-                const isSelected =
-                  selectedPreset === preset.id || subject === preset.fullText
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleSelectPreset(preset)}
-                    className={`cursor-pointer rounded-xl border px-3 py-2 text-center text-xs font-semibold transition ${
-                      isSelected
-                        ? 'shadow-xs border-orange-500 bg-orange-50/80 font-bold text-orange-600 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400'
-                        : 'border-slate-200/70 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300'
-                    }`}
-                  >
-                    {preset.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Subject Field */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Subjek Kendala <span className="text-orange-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => {
-                setSubject(e.target.value)
-                setSelectedPreset(null)
-              }}
-              placeholder="Contoh: Layar LCD blank setelah 5 hari pemakaian"
-              className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white"
-              required
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Rincian Masalah / Gejala Kerusakan{' '}
-              <span className="text-orange-500">*</span>
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Jelaskan secara singkat kendala yang dialami agar teknisi toko dapat menyiapkan unit pengganti teruji..."
-              rows={3}
-              className="w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs font-medium leading-relaxed text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white"
-              required
-            />
-          </div>
-
-          {/* Media (Photo & Video) Upload */}
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Bukti Foto / Video Kerusakan (Opsional)
+        {/* Scrollable Form Body */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
+          <div className="no-scrollbar flex-1 space-y-4 overflow-y-auto px-5 py-4 pb-12 text-xs">
+            {/* 1. Kategori Kendala (Dropdown) */}
+            <div className="relative" ref={dropdownRef}>
+              <label className="mb-2 block text-xs font-bold text-slate-800 dark:text-white">
+                Kategori Kendala
               </label>
-              <span className="text-[11px] text-slate-400">Maks. 5 file</span>
-            </div>
-
-            {/* Media Preview Grid */}
-            {images.length > 0 && (
-              <div className="mb-2.5 grid grid-cols-5 gap-2">
-                {images.map((url, index) => {
-                  const isVideo = isVideoUrl(url)
-                  return (
-                    <div
-                      key={index}
-                      className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-800"
-                    >
-                      {isVideo ? (
-                        <div className="relative flex h-full w-full items-center justify-center bg-slate-900">
-                          <video
-                            src={url}
-                            className="h-full w-full object-cover opacity-80"
-                          />
-                          <Play className="absolute h-4 w-4 fill-white text-white" />
-                        </div>
-                      ) : (
-                        <img
-                          src={url}
-                          alt={`Bukti ${index + 1}`}
-                          className="h-full w-full object-cover"
-                        />
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute right-1 top-1 z-10 cursor-pointer rounded-full bg-slate-950/80 p-1 text-white opacity-0 transition hover:bg-rose-600 group-hover:opacity-100"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Upload Button */}
-            {images.length < 5 && (
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200/90 bg-slate-50/50 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100/60 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400 dark:hover:bg-slate-800/80"
+                onClick={() => setIsDropdownOpen((prev) => !prev)}
+                className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 transition dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
-                {uploading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
-                    <span>Mengunggah bukti...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Upload Foto / Video Kerusakan</span>
-                  </>
-                )}
+                <span>{currentCategory.label}</span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${
+                    isDropdownOpen ? 'rotate-180 text-orange-500' : ''
+                  }`}
+                />
               </button>
-            )}
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              onChange={handleMediaUpload}
-              className="hidden"
-            />
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                  {ISSUE_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleSelectCategory(cat)}
+                      className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
+                        selectedCategory === cat.id
+                          ? 'bg-orange-50 font-bold text-orange-600 dark:bg-orange-950/50 dark:text-orange-400'
+                          : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <span>{cat.label}</span>
+                      {selectedCategory === cat.id && (
+                        <Check className="h-3.5 w-3.5 text-orange-500" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Subjek Kendala * */}
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-white">
+                Subjek Kendala <span className="text-orange-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder={currentCategory.placeholder}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                required
+              />
+            </div>
+
+            {/* 3. Rincian Masalah * */}
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-white">
+                Rincian Masalah <span className="text-orange-500">*</span>
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Tuliskan kronologi dan kendala yang dialami secara singkat..."
+                rows={3}
+                className="w-full resize-none rounded-2xl border border-slate-200 bg-white p-3.5 text-xs leading-relaxed text-slate-700 placeholder-slate-400 outline-none transition focus:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                required
+              />
+            </div>
+
+            {/* 4. Bukti Foto / Video */}
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 dark:text-white">
+                  Bukti Foto / Video
+                </label>
+                <span className="text-[11px] font-normal text-slate-400">
+                  Opsional (Maks. 5 file)
+                </span>
+              </div>
+
+              {/* Uploaded Media Thumbnails */}
+              {images.length > 0 && (
+                <div className="mb-2.5 grid grid-cols-5 gap-2">
+                  {images.map((url, index) => {
+                    const isVideo = isVideoUrl(url)
+                    return (
+                      <div
+                        key={index}
+                        className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-800"
+                      >
+                        {isVideo ? (
+                          <div className="relative flex h-full w-full items-center justify-center bg-slate-900">
+                            <video
+                              src={url}
+                              className="h-full w-full object-cover opacity-80"
+                            />
+                            <Play className="absolute h-4 w-4 fill-white text-white" />
+                          </div>
+                        ) : (
+                          <img
+                            src={url}
+                            alt={`Bukti ${index + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute right-1 top-1 z-10 cursor-pointer rounded-full bg-slate-950/80 p-1 text-white opacity-0 transition hover:bg-rose-600 group-hover:opacity-100"
+                          title="Hapus"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Upload Trigger Button */}
+              {images.length < 5 && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-3 text-xs font-medium text-slate-600 transition hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                      <span>Mengunggah bukti...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 text-slate-500" />
+                      <span>Unggah Foto atau Video</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={handleMediaUpload}
+                className="hidden"
+              />
+            </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-3">
+          {/* Footer Actions */}
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900">
             <button
               type="button"
               onClick={onClose}
-              className="cursor-pointer rounded-full px-5 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="w-1/2 cursor-pointer rounded-xl bg-slate-100 py-3 text-center text-xs font-bold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               Batal
             </button>
             <button
               type="submit"
-              disabled={submitting || !subject.trim() || !description.trim()}
-              className="shadow-xs inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-950 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+              disabled={submitting}
+              className="w-1/2 cursor-pointer rounded-xl bg-[#0F172A] py-3 text-center text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950"
             >
               {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Mengirim...</span>
-                </>
+                <span className="flex items-center justify-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Mengirim...
+                </span>
               ) : (
-                <span>Ajukan Klaim</span>
+                'Ajukan Klaim'
               )}
             </button>
           </div>
@@ -368,3 +423,5 @@ export function ComplaintModal({
     </div>
   )
 }
+
+export default ComplaintModal

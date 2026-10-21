@@ -79,11 +79,10 @@ describe('Mobile Order Detail Unified & Neutral Palette Suite', () => {
     )
   })
 
-  it('implements mobile courier tracking section as a collapsible dropdown accordion', () => {
-    // Verifikasi fitur dropdown pelacakan kurir mobile
-    expect(fileContent).toContain('isTrackingDropdownOpen')
-    expect(fileContent).toContain('setIsTrackingDropdownOpen')
-    expect(fileContent).toContain('ChevronDown')
-    expect(fileContent).toContain('aria-expanded={isTrackingDropdownOpen}')
+  it('implements mobile courier and order details as clean dedicated cards', () => {
+    // Verifikasi keberadaan bagian pengiriman dan detail pesanan
+    expect(fileContent).toContain('PENGIRIMAN')
+    expect(fileContent).toContain('No. Pesanan')
+    expect(fileContent).toContain('Waktu Transaksi')
   })
 })

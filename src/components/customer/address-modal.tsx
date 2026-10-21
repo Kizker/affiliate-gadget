@@ -560,88 +560,20 @@ export function AddressModal({
           className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* 1. Ultra-Clean Header with Integrated Type Capsule */}
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
-            <div className="flex items-center gap-3">
-              <div className="shadow-2xs flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/60 bg-slate-100 text-slate-900">
-                <MapPin className="h-4 w-4 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-black tracking-tight text-slate-950">
-                  {addressToEdit
-                    ? 'Ubah Alamat Pengiriman'
-                    : 'Tambah Alamat Baru'}
-                </h3>
-              </div>
-            </div>
+          {/* 1. Ultra-Clean Header matching Screenshots 3 & 4 */}
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
+            <h3 className="text-sm font-bold text-slate-900 sm:text-base">
+              {addressToEdit ? 'Ubah Alamat Pengiriman' : 'Tambah Alamat Baru'}
+            </h3>
 
-            <div className="flex items-center gap-3">
-              {/* Sleek Segmented Capsule for Label */}
-              <div className="shadow-2xs hidden gap-1 rounded-full border border-slate-200/70 bg-slate-100/80 p-0.5 sm:flex">
-                <button
-                  type="button"
-                  onClick={() => setLabel('Rumah')}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold transition-all ${
-                    label === 'Rumah'
-                      ? 'shadow-xs border border-orange-200/80 bg-white text-orange-600'
-                      : 'text-slate-600 hover:bg-white/60 hover:text-slate-950'
-                  }`}
-                >
-                  <Home className="h-3 w-3" />
-                  <span>Rumah</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLabel('Kantor')}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold transition-all ${
-                    label === 'Kantor'
-                      ? 'shadow-xs border border-orange-200/80 bg-white text-orange-600'
-                      : 'text-slate-600 hover:bg-white/60 hover:text-slate-950'
-                  }`}
-                >
-                  <Building2 className="h-3 w-3" />
-                  <span>Kantor</span>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Label Selector (Visible only on small screens) */}
-          <div className="border-b border-slate-100 bg-slate-50/50 px-5 pb-0 pt-3 sm:hidden">
-            <div className="mb-3 flex gap-1 rounded-full border border-slate-200/70 bg-slate-100/80 p-0.5">
-              <button
-                type="button"
-                onClick={() => setLabel('Rumah')}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-bold transition-all ${
-                  label === 'Rumah'
-                    ? 'shadow-xs border border-orange-200/80 bg-white text-orange-600'
-                    : 'text-slate-600'
-                }`}
-              >
-                <Home className="h-3 w-3" />
-                <span>Rumah</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setLabel('Kantor')}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-bold transition-all ${
-                  label === 'Kantor'
-                    ? 'shadow-xs border border-orange-200/80 bg-white text-orange-600'
-                    : 'text-slate-600'
-                }`}
-              >
-                <Building2 className="h-3 w-3" />
-                <span>Kantor</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="cursor-pointer p-1 text-slate-400 transition hover:text-slate-700 active:scale-95"
+              aria-label="Tutup"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           {/* 2. Form wrapping scrollable body and sticky footer */}
@@ -654,98 +586,128 @@ export function AddressModal({
             {/* Scrollable Body: Balanced 2-Column Grid on Desktop */}
             <div
               ref={formContainerRef}
-              className="flex-1 overflow-y-auto p-5 sm:p-6"
+              className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6"
             >
-              <GoogleMapsProvider>
-                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
-                  {/* ---------------- LEFT COLUMN: FORM INPUTS (7 Cols) ---------------- */}
-                  <div className="space-y-4 lg:col-span-7">
-                    {/* Recipient Name & Phone in 2-Column Grid */}
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-[11px] font-bold text-slate-700">
-                          Nama Penerima <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative flex items-center">
-                          <User className="pointer-events-none absolute left-3.5 h-3.5 w-3.5 text-slate-400" />
-                          <input
-                            type="text"
-                            value={recipientName}
-                            onChange={(e) => setRecipientName(e.target.value)}
-                            placeholder="Nama lengkap penerima"
-                            className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2 pl-9 pr-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
-                          />
-                        </div>
-                      </div>
+              {/* Type Switcher Capsule (Rumah / Kantor) matching Screenshot 3 */}
+              <div className="flex gap-1 rounded-2xl border border-slate-100 bg-slate-50/80 p-1">
+                <button
+                  type="button"
+                  onClick={() => setLabel('Rumah')}
+                  className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs transition-all ${
+                    label === 'Rumah'
+                      ? 'shadow-2xs border border-orange-200/80 bg-white font-bold text-orange-600'
+                      : 'font-semibold text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Home
+                    className={`h-4 w-4 ${label === 'Rumah' ? 'text-orange-600' : 'text-slate-400'}`}
+                  />
+                  <span>Rumah</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLabel('Kantor')}
+                  className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs transition-all ${
+                    label === 'Kantor'
+                      ? 'shadow-2xs border border-orange-200/80 bg-white font-bold text-orange-600'
+                      : 'font-semibold text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Building2
+                    className={`h-4 w-4 ${label === 'Kantor' ? 'text-orange-600' : 'text-slate-400'}`}
+                  />
+                  <span>Kantor</span>
+                </button>
+              </div>
 
-                      <div>
-                        <label className="mb-1 block text-[11px] font-bold text-slate-700">
-                          Nomor WhatsApp <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative flex items-center">
-                          <Phone className="pointer-events-none absolute left-3.5 h-3.5 w-3.5 text-slate-400" />
-                          <input
-                            type="tel"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="081234567890"
-                            className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2 pl-9 pr-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
-                          />
-                        </div>
-                      </div>
+              <GoogleMapsProvider>
+                <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
+                  {/* ---------------- LEFT COLUMN: FORM INPUTS (7 Cols) ---------------- */}
+                  <div className="space-y-3.5 lg:col-span-7">
+                    {/* Recipient Name */}
+                    <div>
+                      <label className="mb-1 block text-xs font-bold text-slate-700">
+                        Nama Penerima <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={recipientName}
+                        onChange={(e) => setRecipientName(e.target.value)}
+                        placeholder="Nama lengkap penerima"
+                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                      />
+                    </div>
+
+                    {/* Phone Number */}
+                    <div>
+                      <label className="mb-1 block text-xs font-bold text-slate-700">
+                        Nomor WhatsApp <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="081234567890"
+                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                      />
                     </div>
 
                     {/* Full Text Address Details */}
                     <div>
-                      <label className="mb-1 block text-[11px] font-bold text-slate-700">
-                        Detail Alamat Lengkap & Patokan{' '}
+                      <label className="mb-1 block text-xs font-bold text-slate-700">
+                        Detail Alamat Lengkap{' '}
                         <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         value={fullAddress}
                         onChange={(e) => setFullAddress(e.target.value)}
                         rows={2}
-                        placeholder="Nama jalan, nomor rumah/gedung, blok/unit, RT/RW, patokan lokasi..."
-                        className="focus:shadow-xs w-full resize-none rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                        placeholder="Nama jalan, nomor rumah/gedung, RT/RW, blok, patokan spesifik..."
+                        className="w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/40 p-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
                       />
                     </div>
 
-                    {/* 1. Provinsi & Kota / Kabupaten */}
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {/* 1. Provinsi */}
+                    <div>
                       <SearchableCombobox
                         label="Provinsi"
-                        placeholder="Pilih Provinsi..."
+                        placeholder="Cari atau pilih Provinsi..."
                         searchPlaceholder="Cari provinsi se-Indonesia..."
                         options={provinceList}
                         value={province}
                         onChange={handleProvinceChange}
                         isLoading={loadingProvinces}
+                        triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-4 py-2.5 text-xs font-medium"
                         required
                       />
+                    </div>
 
+                    {/* 2. Kota / Kabupaten */}
+                    <div>
                       <SearchableCombobox
                         label="Kota / Kabupaten"
                         placeholder={
                           province
-                            ? 'Pilih Kota/Kab...'
+                            ? 'Cari Kota atau Kabupaten...'
                             : 'Pilih Provinsi dahulu...'
                         }
-                        searchPlaceholder="Cari kota / kabupaten..."
+                        searchPlaceholder="Cari kota atau kabupaten..."
                         options={cityList}
                         value={city}
                         onChange={handleCityChange}
                         isLoading={loadingCities}
                         disabled={!province && cityList.length === 0}
+                        triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-4 py-2.5 text-xs font-medium"
                         required
                       />
                     </div>
 
-                    {/* 2. Kecamatan & Desa / Kelurahan */}
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {/* 3. Kecamatan */}
+                    <div>
                       <SearchableCombobox
                         label="Kecamatan"
                         placeholder={
-                          city ? 'Pilih Kecamatan...' : 'Pilih Kota dahulu...'
+                          city ? 'Cari Kecamatan...' : 'Pilih Kota dahulu...'
                         }
                         searchPlaceholder="Cari kecamatan..."
                         options={districtList}
@@ -753,116 +715,103 @@ export function AddressModal({
                         onChange={handleDistrictChange}
                         isLoading={loadingDistricts}
                         disabled={!city && districtList.length === 0}
+                        triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-4 py-2.5 text-xs font-medium"
                       />
+                    </div>
 
+                    {/* 4. Desa / Kelurahan */}
+                    <div>
                       <SearchableCombobox
                         label="Desa / Kelurahan"
                         placeholder={
                           district
-                            ? 'Pilih Desa/Kelurahan...'
+                            ? 'Cari Desa atau Kelurahan...'
                             : 'Pilih Kecamatan dahulu...'
                         }
-                        searchPlaceholder="Cari desa / kelurahan..."
+                        searchPlaceholder="Cari desa atau kelurahan..."
                         options={villageList}
                         value={village}
                         onChange={handleVillageChange}
                         isLoading={loadingVillages}
                         disabled={!district && villageList.length === 0}
+                        triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-4 py-2.5 text-xs font-medium"
                       />
                     </div>
 
-                    {/* 3. Kode Pos & Alamat Utama */}
-                    <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-12">
-                      <div className="sm:col-span-6">
-                        <label className="mb-1 block text-[11px] font-bold text-slate-700">
-                          Kode Pos <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={postalCode}
-                          onChange={(e) => setPostalCode(e.target.value)}
-                          placeholder="Contoh: 12810"
-                          maxLength={5}
-                          className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 px-3.5 py-2 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
-                        />
-                      </div>
+                    {/* 5. Kode Pos */}
+                    <div>
+                      <label className="mb-1 block text-xs font-bold text-slate-700">
+                        Kode Pos <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
+                        placeholder="Contoh: 12810"
+                        maxLength={5}
+                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                      />
+                    </div>
 
-                      <div className="sm:col-span-6 sm:pt-4">
-                        <label className="group inline-flex cursor-pointer select-none items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={isDefault}
-                            onChange={(e) => setIsDefault(e.target.checked)}
-                            className="h-4 w-4 cursor-pointer rounded border-slate-300 text-slate-950 accent-slate-950"
-                          />
-                          <span className="text-xs font-medium text-slate-700 transition group-hover:text-slate-950">
-                            Atur sebagai alamat utama
-                          </span>
-                        </label>
-                      </div>
+                    {/* Checkbox: Atur sebagai alamat utama */}
+                    <div className="pt-1">
+                      <label className="group inline-flex cursor-pointer select-none items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isDefault}
+                          onChange={(e) => setIsDefault(e.target.checked)}
+                          className="h-4 w-4 cursor-pointer rounded border-slate-300 text-orange-500 accent-orange-500"
+                        />
+                        <span className="text-xs font-medium text-slate-700 transition group-hover:text-slate-950">
+                          Atur sebagai alamat utama
+                        </span>
+                      </label>
                     </div>
                   </div>
 
                   {/* ---------------- RIGHT COLUMN: MAP & PINPOINT GPS (5 Cols) ---------------- */}
-                  <div className="space-y-2 lg:col-span-5">
-                    {/* Embedded Compact Interactive Map with OSM/Google Maps */}
-                    <div className="shadow-2xs relative overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100">
+                  <div className="space-y-2 pt-2 lg:col-span-5 lg:pt-0">
+                    {/* Embedded Compact Interactive Map */}
+                    <div className="shadow-xs relative overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100">
                       <AddressMapPicker
                         onLocationSelect={handleLocationSelect}
                         initialLat={latitude || undefined}
                         initialLng={longitude || undefined}
-                        height="330px"
+                        height="300px"
                       />
                     </div>
 
-                    {latitude && longitude ? (
-                      <div className="flex items-center justify-between px-1 font-mono text-[10px] text-slate-400">
-                        <span>Lat: {latitude.toFixed(5)}</span>
-                        <span>Lng: {longitude.toFixed(5)}</span>
-                      </div>
-                    ) : (
-                      <p className="px-1 text-[11px] text-slate-400">
-                        Klik pada peta atau tombol Deteksi GPS untuk membantu
-                        kurir menemukan alamat Anda secara presisi.
-                      </p>
-                    )}
+                    <p className="px-1 text-[11px] text-slate-400">
+                      Gunakan GPS agar kurir dapat mengantar pesanan lebih cepat
+                      & akurat.
+                    </p>
                   </div>
                 </div>
               </GoogleMapsProvider>
             </div>
 
-            {/* 3. Sticky Footer Actions (Always visible) */}
-            <div className="flex shrink-0 items-center justify-between border-t border-slate-100 bg-slate-50/70 px-6 py-3.5">
-              <div className="flex hidden items-center gap-1.5 text-[11px] text-slate-400 sm:flex">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                <span>
-                  Data alamat terenkripsi & sesuai standar logistik nasional.
-                </span>
-              </div>
-
-              <div className="ml-auto flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={submitting}
-                  className="shadow-2xs cursor-pointer rounded-full border border-slate-200/80 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="shadow-xs inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-6 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Check className="h-3.5 w-3.5" />
-                  )}
-                  <span>{submitting ? 'Menyimpan...' : 'Simpan Alamat'}</span>
-                </button>
-              </div>
+            {/* 3. Sticky Footer Actions matching Screenshot 4 */}
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 bg-white p-4">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitting}
+                className="cursor-pointer rounded-2xl bg-slate-100 px-6 py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-200 active:scale-95"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="shadow-xs flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-orange-500 px-6 py-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <span>Simpan Alamat</span>
+                )}
+              </button>
             </div>
           </form>
         </motion.div>

@@ -41,7 +41,7 @@ describe('Customer Mobile Overview Natural Scroll & Logout Accessibility', () =>
   it('memvalidasi subview memiliki min-h-0 pada scroll container agar fleksibel', () => {
     const content = fs.readFileSync(mobileCustomerAccountPath, 'utf-8')
     expect(content).toContain(
-      'min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]'
+      'min-h-0 flex-1 overflow-y-auto overscroll-contain'
     )
   })
 })

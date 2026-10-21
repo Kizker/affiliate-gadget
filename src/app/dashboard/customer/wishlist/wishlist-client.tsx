@@ -32,30 +32,21 @@ export default function WishlistClient() {
     <div className="min-h-screen bg-slate-50/50 text-slate-900 selection:bg-orange-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
       {/* 1. Mobile Layout */}
       <div className="block md:hidden">
-        <MobileTopNav
-          showBack={true}
-          backHref="/dashboard/customer/settings"
-          title="Wishlist Saya"
-          onBack={handleBackToProfile}
-        />
-
-        {/* Action Bar when items exist */}
-        {totalCount > 0 && (
-          <div className="flex items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 py-2.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {totalCount} produk di Wishlist
-            </span>
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="flex items-center gap-1 text-xs font-bold text-rose-600 transition hover:text-rose-700 active:scale-95 dark:text-rose-400"
-              title="Kosongkan Wishlist"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>Kosongkan</span>
-            </button>
-          </div>
-        )}
+        {/* Clean Top Header matching Screenshot 2 */}
+        <header className="sticky top-0 z-40 flex items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
+          <button
+            type="button"
+            onClick={handleBackToProfile}
+            className="-ml-1 cursor-pointer p-1 text-slate-700 transition hover:text-slate-900 active:scale-95 dark:text-slate-300"
+            aria-label="Kembali"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+            Wishlist Saya
+          </h1>
+          <div className="w-5" />
+        </header>
 
         <main className="p-4">
           <CustomerWishlistView

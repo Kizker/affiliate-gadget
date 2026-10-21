@@ -18,6 +18,7 @@ import {
   Smartphone,
   CheckCircle2,
   Loader2,
+  MapPin,
 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
@@ -428,28 +429,15 @@ export function MobileCatalogView({
                 className="block h-auto w-full max-w-full object-cover transition-transform duration-300 hover:scale-105"
               />
 
-              {/* Condition Badge (Top Left) */}
-              <span
-                className={`backdrop-blur-xs shadow-2xs absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[8.5px] font-bold ${badge.color}`}
-              >
-                <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
-                <span>{badge.label}</span>
+              {/* Rating Badge (Top Left) replacing Like New */}
+              <span className="backdrop-blur-xs shadow-xs absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-slate-900 shadow-sm dark:bg-slate-900/90 dark:text-white">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                <span>{(item.rating || 5.0).toFixed(1)}</span>
               </span>
             </div>
 
             {/* Meta Section */}
             <div className="mt-2 space-y-1">
-              {/* Rating & Review Count */}
-              <div className="flex items-center gap-1">
-                <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                <span className="text-[11px] font-extrabold text-slate-900 dark:text-white">
-                  {(item.rating || 5.0).toFixed(1)}
-                </span>
-                <span className="text-[10px] font-medium text-slate-400">
-                  ({item.totalReview ?? 0})
-                </span>
-              </div>
-
               {/* Product Name (Natural Height, not forced) */}
               <h3 className="line-clamp-2 text-xs font-bold leading-4 text-slate-950 dark:text-white">
                 {item.name}
@@ -472,7 +460,7 @@ export function MobileCatalogView({
             </div>
             {/* Store Location */}
             <div className="flex items-center gap-1 truncate pt-1 text-[10px] text-slate-500 dark:text-slate-400">
-              <Store className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+              <MapPin className="h-2.5 w-2.5 shrink-0 text-slate-400" />
               <span className="truncate">{storeCleanName}</span>
             </div>
           </div>

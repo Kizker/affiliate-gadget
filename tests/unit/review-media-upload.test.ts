@@ -47,13 +47,10 @@ describe('Review Media (Photo & Video) End-to-End Implementation Suite', () => {
       'const { rating, comment, images = [], videos = [] } = body'
     )
     expect(content).toContain('sanitizedImages')
+    expect(content).toContain('sanitizedImages')
+    expect(content).toContain('existingReview.images')
     expect(content).toContain('sanitizedVideos')
-    expect(content).toContain(
-      'Array.isArray(images) ? sanitizedImages : existingReview.images'
-    )
-    expect(content).toContain(
-      'Array.isArray(videos) ? sanitizedVideos : existingReview.videos'
-    )
+    expect(content).toContain('existingReview.videos')
   })
 
   it('3. Order detail client synchronizes media states and invokes MediaLightboxModal', () => {

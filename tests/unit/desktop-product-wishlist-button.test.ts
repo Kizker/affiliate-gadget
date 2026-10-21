@@ -106,7 +106,24 @@ describe('Desktop Product Cards Wishlist Love Button Suite', () => {
     )
     const viewContent = fs.readFileSync(viewPath, 'utf-8')
 
-    // Top Bar must only render when !isStandalonePage
-    expect(viewContent).toContain('!isStandalonePage')
+    // Must support Kosongkan in customer wishlist view matching Screenshot 2
+    expect(viewContent).toContain('Kosongkan')
+    expect(viewContent).toContain('handleClearAll')
+  })
+
+  it('verifies useWishlistSafe guards isInWishlist and getTotalItems with mounted state to prevent hydration mismatch', () => {
+    const storePath = path.join(
+      process.cwd(),
+      'src/lib/store/wishlist-store.ts'
+    )
+    const content = fs.readFileSync(storePath, 'utf-8')
+
+    expect(content).toContain('export function useWishlistSafe()')
+    expect(content).toContain(
+      'isInWishlist: (id: string) => (mounted ? store.isInWishlist(id) : false)'
+    )
+    expect(content).toContain(
+      'getTotalItems: () => (mounted ? store.getTotalItems() : 0)'
+    )
   })
 })

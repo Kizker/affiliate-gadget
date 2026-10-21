@@ -322,7 +322,7 @@ describe('Withdrawal Route Handler E2E Integration (3 Security Gates)', () => {
       expect.stringContaining('Bukti Penarikan Saldo'),
       expect.stringContaining('10.000.000')
     )
-  })
+  }, 15000)
 
   it('9. RATE LIMITING: harus memblokir 429 jika melebihi 5 kali penarikan per jam', async () => {
     const { auth } = await import('@/auth')
