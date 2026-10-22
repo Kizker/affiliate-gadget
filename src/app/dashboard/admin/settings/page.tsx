@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useSession } from 'next-auth/react'
 import { usePageGuard } from '@/hooks/use-page-guard'
+import { validateAndCompressImage } from '@/lib/media-upload-client'
 import {
   User,
   Phone,
@@ -301,20 +302,23 @@ export default function AdminSettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Hanya file foto (JPG, PNG, WebP) yang diperbolehkan')
-      return
-    }
-
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('Ukuran foto maksimal 15MB')
-      return
-    }
-
     setUploadingLogo(true)
     try {
+      let fileToUpload = file
+      try {
+        fileToUpload = await validateAndCompressImage(file)
+        if (file.size > 2 * 1024 * 1024) {
+          toast.info(
+            `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+          )
+        }
+      } catch (valErr: any) {
+        toast.error(valErr.message || 'Format foto harus JPG, JPEG, atau PNG.')
+        return
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', fileToUpload)
       formData.append('folder', 'avatars')
 
       const res = await fetch('/api/upload', {
@@ -352,21 +356,27 @@ export default function AdminSettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Hanya file foto (JPG, PNG, WebP) yang diperbolehkan')
-      return
-    }
-
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('Ukuran banner maksimal 15MB')
-      return
-    }
-
     setUploadingBanner(true)
     const toastId = toast.loading('Mengunggah banner promosi toko...')
     try {
+      let fileToUpload = file
+      try {
+        fileToUpload = await validateAndCompressImage(file)
+        if (file.size > 2 * 1024 * 1024) {
+          toast.info(
+            `Banner "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+          )
+        }
+      } catch (valErr: any) {
+        toast.error(
+          valErr.message || 'Format banner harus JPG, JPEG, atau PNG.',
+          { id: toastId }
+        )
+        return
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', fileToUpload)
       formData.append('folder', 'banners')
 
       const res = await fetch('/api/upload', {
@@ -405,21 +415,27 @@ export default function AdminSettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Hanya file foto (JPG, PNG, WebP) yang diperbolehkan')
-      return
-    }
-
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error(`Ukuran ${label} maksimal 15MB`)
-      return
-    }
-
     setLoadingState(true)
     const toastId = toast.loading(`Mengunggah ${label}...`)
     try {
+      let fileToUpload = file
+      try {
+        fileToUpload = await validateAndCompressImage(file)
+        if (file.size > 2 * 1024 * 1024) {
+          toast.info(
+            `Banner "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+          )
+        }
+      } catch (valErr: any) {
+        toast.error(
+          valErr.message || 'Format banner harus JPG, JPEG, atau PNG.',
+          { id: toastId }
+        )
+        return
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', fileToUpload)
       formData.append('folder', 'banners')
 
       const res = await fetch('/api/upload', {
@@ -453,20 +469,23 @@ export default function AdminSettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Hanya file gambar yang diperbolehkan')
-      return
-    }
-
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('Ukuran foto maksimal 15MB')
-      return
-    }
-
     setUploadingUserImage(true)
     try {
+      let fileToUpload = file
+      try {
+        fileToUpload = await validateAndCompressImage(file)
+        if (file.size > 2 * 1024 * 1024) {
+          toast.info(
+            `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+          )
+        }
+      } catch (valErr: any) {
+        toast.error(valErr.message || 'Format foto harus JPG, JPEG, atau PNG.')
+        return
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', fileToUpload)
       formData.append('folder', 'avatars')
 
       const res = await fetch('/api/upload', {
@@ -618,7 +637,7 @@ export default function AdminSettingsPage() {
                       <input
                         id="store-logo-upload"
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png"
                         className="hidden"
                         disabled={uploadingLogo}
                         onChange={handleStoreLogoUpload}
@@ -1349,7 +1368,7 @@ export default function AdminSettingsPage() {
                       <input
                         id="hero-desktop-upload"
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png"
                         className="hidden"
                         disabled={uploadingHeroDesktop}
                         onChange={(e) =>

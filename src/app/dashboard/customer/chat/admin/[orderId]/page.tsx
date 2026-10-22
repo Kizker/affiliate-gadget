@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { validateAndCompressImage } from '@/lib/media-upload-client'
 
 interface Message {
   id: string
@@ -164,22 +165,28 @@ export default function CustomerAdminChatPage({
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Hanya file gambar yang diperbolehkan')
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ukuran file maksimal 5MB')
-      return
-    }
-
     setUploadingImage(true)
     setShowAttachMenu(false)
 
     try {
+      // Validasi format JPG/PNG dan kompresi otomatis jika > 2 MB
+      let fileToUpload = file
+      try {
+        fileToUpload = await validateAndCompressImage(file)
+        if (file.size > 2 * 1024 * 1024) {
+          toast.info(
+            `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+          )
+        }
+      } catch (valErr: any) {
+        toast.error(valErr.message || 'Format atau ukuran file tidak sesuai.')
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        return
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', fileToUpload)
+      formData.append('folder', 'chat')
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -252,7 +259,7 @@ export default function CustomerAdminChatPage({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png"
           className="hidden"
           onChange={handleImageUpload}
         />

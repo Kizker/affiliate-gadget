@@ -8,9 +8,10 @@ import type { CartItem as CartItemType } from '@/types/cart'
 
 interface CartItemProps {
   item: CartItemType
+  embedded?: boolean
 }
 
-export default function CartItem({ item }: CartItemProps) {
+export default function CartItem({ item, embedded = false }: CartItemProps) {
   const { updateQuantity, removeItem, toggleItemSelection, selectedItems } =
     useCartStore()
   const isSelected = selectedItems.includes(item.id)
@@ -36,10 +37,14 @@ export default function CartItem({ item }: CartItemProps) {
 
   return (
     <div
-      className={`group relative rounded-3xl border transition-all duration-200 ${
-        isSelected
-          ? 'shadow-xs border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'
-          : 'shadow-2xs border-slate-200/80 bg-white/70 opacity-90 hover:opacity-100 dark:border-slate-800/80 dark:bg-slate-900/60'
+      className={`group relative transition-all duration-200 ${
+        embedded
+          ? isSelected
+            ? 'bg-orange-50/15 dark:bg-orange-950/10'
+            : 'bg-white/40 opacity-90 hover:opacity-100 dark:bg-slate-900/40'
+          : isSelected
+            ? 'shadow-xs rounded-3xl border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'
+            : 'shadow-2xs rounded-3xl border border-slate-200/80 bg-white/70 opacity-90 hover:opacity-100 dark:border-slate-800/80 dark:bg-slate-900/60'
       } p-4 sm:p-5`}
     >
       <div className="flex items-start gap-3 sm:gap-4">

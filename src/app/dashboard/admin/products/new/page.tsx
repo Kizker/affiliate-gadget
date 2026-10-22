@@ -25,6 +25,10 @@ import { formatRupiahInput, parseRupiahInput } from '@/lib/utils'
 import { CreatableCombobox } from '@/components/ui/creatable-combobox'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { isVideoMedia } from '@/types/ads'
+import {
+  validateAndCompressImage,
+  validateVideo,
+} from '@/lib/media-upload-client'
 
 const BRAND_OPTIONS = [
   'Apple',
@@ -208,17 +212,24 @@ export default function NewGadgetProductPage() {
   }
 
   const handleVariantImageUpload = async (index: number, file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('File harus berupa format gambar')
-      return
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Maksimal ukuran foto 10MB')
-      return
-    }
     try {
+      let fileToUpload = file
+      try {
+        fileToUpload = await validateAndCompressImage(file)
+        if (file.size > 2 * 1024 * 1024) {
+          toast.info(
+            `Foto varian "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+          )
+        }
+      } catch (valErr: any) {
+        toast.error(
+          valErr.message || 'Format foto varian harus JPG, JPEG, atau PNG.'
+        )
+        return
+      }
+
       const fd = new FormData()
-      fd.append('images', file)
+      fd.append('images', fileToUpload)
       const res = await fetch('/api/products/upload-images', {
         method: 'POST',
         body: fd,
@@ -253,36 +264,40 @@ export default function NewGadgetProductPage() {
         )
       }
 
-      // Validate
+      // Validate and process (compress images > 2MB, validate MP4 video)
+      const processedFiles: File[] = []
       for (const f of toUpload) {
-        const isImg = f.type.startsWith('image/')
         const isVid =
-          f.type.startsWith('video/') ||
-          f.name.endsWith('.mp4') ||
-          f.name.endsWith('.webm') ||
-          f.name.endsWith('.mov')
-        if (!isImg && !isVid) {
-          toast.error(`"${f.name}" bukan format foto atau video yang valid`)
-          return
-        }
-        const maxLimit = isVid ? 60 * 1024 * 1024 : 15 * 1024 * 1024
-        if (f.size > maxLimit) {
-          toast.error(
-            `"${f.name}" terlalu besar (maks. ${isVid ? '60MB untuk video' : '15MB untuk foto'})`
-          )
+          f.type.startsWith('video/') || f.name.toLowerCase().endsWith('.mp4')
+        try {
+          if (isVid) {
+            await validateVideo(f)
+            processedFiles.push(f)
+          } else {
+            const compressed = await validateAndCompressImage(f)
+            if (f.size > 2 * 1024 * 1024) {
+              toast.info(
+                `Foto "${f.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+              )
+            }
+            processedFiles.push(compressed)
+          }
+        } catch (valErr: any) {
+          toast.error(valErr.message || `File "${f.name}" tidak valid`)
+          if (fileInputRef.current) fileInputRef.current.value = ''
           return
         }
       }
 
       // Show instant local previews
-      const blobs = toUpload.map((f) => URL.createObjectURL(f))
+      const blobs = processedFiles.map((f) => URL.createObjectURL(f))
       setImagePreviews((prev) => [...prev, ...blobs])
 
       // Upload to VPS
       setUploadingImages(true)
       try {
         const fd = new FormData()
-        toUpload.forEach((f) => fd.append('images', f))
+        processedFiles.forEach((f) => fd.append('images', f))
         const res = await fetch('/api/products/upload-images', {
           method: 'POST',
           body: fd,
@@ -826,8 +841,8 @@ export default function NewGadgetProductPage() {
                         : 'Seret foto/video ke sini atau klik untuk pilih'}
                     </p>
                     <p className="mt-0.5 text-[10px] text-slate-400">
-                      Foto JPG, PNG, WebP (maks. 15MB) • Video MP4, WebM (maks.
-                      60MB) • Maks. 5 file
+                      Foto JPG, PNG (Maks. 2MB, auto-kompres) • Video MP4 (Maks.
+                      30MB, 10–60 dtk) • Maks. 5 file
                     </p>
                   </div>
                 </button>
@@ -845,7 +860,7 @@ export default function NewGadgetProductPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,video/ogg,video/quicktime"
+              accept="image/jpeg,image/png,video/mp4"
               multiple
               className="hidden"
               onChange={handleFileSelect}
@@ -967,7 +982,7 @@ export default function NewGadgetProductPage() {
                             <span>Upload Foto Varian</span>
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/jpeg,image/png"
                               className="hidden"
                               onChange={(e) => {
                                 const file = e.target.files?.[0]

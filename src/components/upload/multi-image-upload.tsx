@@ -3,6 +3,7 @@
 import { Plus, X, Loader2 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+import { validateAndCompressImage } from '@/lib/media-upload-client'
 
 interface MultiImageUploadProps {
   value: string[]
@@ -34,16 +35,19 @@ export default function MultiImageUpload({
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('Ukuran file terlalu besar. Maksimal 15MB.')
-      return
-    }
-
     setIsUploading(true)
 
     try {
+      // Validasi format JPG/PNG dan kompresi otomatis jika > 2 MB
+      const processedFile = await validateAndCompressImage(file)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.info(
+          `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+        )
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', processedFile)
       formData.append('folder', folder)
 
       const response = await fetch('/api/upload', {
@@ -107,7 +111,7 @@ export default function MultiImageUpload({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
+        accept="image/jpeg,image/png"
         onChange={handleFileChange}
         className="hidden"
       />

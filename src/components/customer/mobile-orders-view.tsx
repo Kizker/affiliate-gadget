@@ -6,6 +6,7 @@ import {
   Package,
   Search,
   ChevronRight,
+  ChevronDown,
   X,
   RotateCcw,
   Clock,
@@ -197,6 +198,17 @@ export function MobileOrdersView({
 
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>(
+    {}
+  )
+
+  const toggleExpandOrder = (orderId: string) => {
+    setExpandedOrders((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }))
+  }
+
   const ORDERS_PER_PAGE = 10
   // Prevent SSR/client hydration mismatch on dynamic count badges
   const [isMounted, setIsMounted] = useState(false)
@@ -458,7 +470,7 @@ export function MobileOrdersView({
                     <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                   </div>
                   <span
-                    className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
+                    className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
                       order,
                       currentStatus
                     )}`}
@@ -467,13 +479,13 @@ export function MobileOrdersView({
                   </span>
                 </div>
 
-                {/* Body: Clickable Item Preview */}
+                {/* Body: Clickable Item Preview (Produk Pertama) */}
                 <Link
                   href={getOrderDetailHref(order.id)}
-                  className="block py-3 transition-opacity active:opacity-75"
+                  className="block py-2.5 transition-opacity active:opacity-75"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-800">
+                  <div className="flex items-start gap-3">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-800">
                       <img
                         src={itemImage}
                         alt={firstItem?.product?.name || 'Gadget'}
@@ -492,24 +504,114 @@ export function MobileOrdersView({
                           'Unit Smartphone Original'}
                       </h3>
 
-                      <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                        Varian:{' '}
-                        {firstItem?.variantName ||
-                          firstItem?.product?.brand ||
-                          'Standar Original'}
-                      </p>
-
-                      <div className="mt-1 flex items-center justify-between text-xs">
-                        <span className="text-slate-400 dark:text-slate-500">
-                          {totalItemCount} barang
+                      <div className="mt-1 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                        <span className="truncate">
+                          {firstItem?.variantName ||
+                            firstItem?.product?.brand ||
+                            'Standar Original'}
                         </span>
-                        <span className="font-bold text-slate-900 dark:text-white">
+                        <span className="shrink-0 font-medium text-slate-700 dark:text-slate-300">
                           x{firstItem?.quantity || 1}
                         </span>
                       </div>
+
+                      {firstItem?.price && (
+                        <div className="mt-1 text-right">
+                          <span className="text-xs font-bold tabular-nums text-slate-900 dark:text-white">
+                            {formatPrice(
+                              firstItem.price * (firstItem.quantity || 1)
+                            )}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Link>
+
+                {/* Daftar Produk Tambahan Ketika Diperluas (Gambar 2 Referensi) */}
+                {order.items.length > 1 && expandedOrders[order.id] && (
+                  <div className="divide-y divide-slate-100/80 border-t border-slate-100 dark:divide-slate-800/60 dark:border-slate-800">
+                    {order.items.slice(1).map((extraItem, extraIdx) => {
+                      const extraImg =
+                        extraItem.product?.images?.[0] ||
+                        extraItem.rentalItem?.images?.[0] ||
+                        DEFAULT_IMAGE
+                      return (
+                        <Link
+                          key={extraItem.id || extraIdx}
+                          href={getOrderDetailHref(order.id)}
+                          className="block py-2.5 transition-opacity active:opacity-75"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-800">
+                              <img
+                                src={extraImg}
+                                alt={extraItem.product?.name || 'Gadget'}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = DEFAULT_IMAGE
+                                }}
+                              />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <h3 className="line-clamp-1 text-xs font-bold leading-snug text-slate-900 dark:text-white">
+                                {extraItem.product?.name ||
+                                  extraItem.service?.name ||
+                                  extraItem.notes ||
+                                  'Item Gadget'}
+                              </h3>
+
+                              <div className="mt-1 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                                <span className="truncate">
+                                  {extraItem.variantName ||
+                                    extraItem.product?.brand ||
+                                    'Standar'}
+                                </span>
+                                <span className="shrink-0 font-medium text-slate-700 dark:text-slate-300">
+                                  x{extraItem.quantity || 1}
+                                </span>
+                              </div>
+
+                              {extraItem.price && (
+                                <div className="mt-1 text-right">
+                                  <span className="text-xs font-bold tabular-nums text-slate-900 dark:text-white">
+                                    {formatPrice(
+                                      extraItem.price *
+                                        (extraItem.quantity || 1)
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Tombol Tengah "Lihat Semua v" / "Sembunyikan ^" (Sesuai Referensi Gambar 1 & 2) */}
+                {order.items.length > 1 && (
+                  <div className="border-t border-slate-100/80 py-1 dark:border-slate-800/80">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpandOrder(order.id)}
+                      className="flex w-full items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:text-slate-900 active:scale-95 dark:text-slate-400 dark:hover:text-white"
+                    >
+                      <span>
+                        {expandedOrders[order.id]
+                          ? 'Sembunyikan'
+                          : 'Lihat Semua'}
+                      </span>
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                          expandedOrders[order.id] ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+                )}
 
                 {/* Limit Waktu Pembayaran Tercepat (Hanya pada Belum Bayar) */}
                 {order.status === 'PENDING_PAYMENT' && (
@@ -522,7 +624,7 @@ export function MobileOrdersView({
                   </div>
                 )}
 
-                {/* Footer: Date & Order Number on top, Total Price below, Action Buttons on right */}
+                {/* Footer: Date on top, Total Price below, Action Buttons on right */}
                 <div className="flex items-center justify-between pt-1">
                   <div className="min-w-0">
                     <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
@@ -530,8 +632,6 @@ export function MobileOrdersView({
                         {contextualTime.label}:{' '}
                       </span>
                       <span>{contextualTime.shortDate}</span>
-                      <span className="mx-1">•</span>
-                      <span className="font-mono">#{order.orderNumber}</span>
                     </div>
                     <div
                       className={`text-sm font-bold sm:text-base ${

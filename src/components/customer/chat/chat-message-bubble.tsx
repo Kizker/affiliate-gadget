@@ -2,13 +2,8 @@
 
 import React from 'react'
 import Link from 'next/link'
-import {
-  RotateCcw,
-  Package,
-  ZoomIn,
-  Maximize2,
-  ExternalLink,
-} from 'lucide-react'
+import { RotateCcw, Package, ZoomIn, ExternalLink } from 'lucide-react'
+import { ChatVideoPlayer } from '@/components/chat/chat-video-player'
 import {
   Message,
   ChatRoom,
@@ -141,33 +136,15 @@ export function ChatMessageBubble({
         /* Full-Bleed Modern Media Bubble (Compact Mobile Friendly) */
         <div className="shadow-xs group relative max-w-[65%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[240px]">
           {isVideo ? (
-            <div className="relative">
-              <video
-                src={msg.mediaUrl!}
-                controls
-                controlsList="nofullscreen nodownload noremoteplayback noplaybackrate"
-                disablePictureInPicture
-                disableRemotePlayback
-                playsInline
-                preload="metadata"
-                className="clean-video-player block max-h-[160px] w-full max-w-[200px] rounded-2xl bg-black object-cover sm:max-h-[220px] sm:max-w-[240px]"
-              />
-              {/* Floating Theater Mode Button */}
-              <button
-                type="button"
-                onClick={() =>
-                  onOpenFullscreenMedia({
-                    url: msg.mediaUrl!,
-                    type: 'video',
-                  })
-                }
-                aria-label="Perbesar layar penuh"
-                title="Perbesar Layar Penuh"
-                className="shadow-xs absolute right-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/85"
-              >
-                <Maximize2 className="h-3 w-3" />
-              </button>
-            </div>
+            <ChatVideoPlayer
+              src={msg.mediaUrl!}
+              onOpenFullscreen={() =>
+                onOpenFullscreenMedia({
+                  url: msg.mediaUrl!,
+                  type: 'video',
+                })
+              }
+            />
           ) : (
             <div
               onClick={() =>

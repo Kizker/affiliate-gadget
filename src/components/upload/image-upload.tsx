@@ -3,6 +3,7 @@
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
 import { useState, useRef } from 'react'
 import { toast } from 'sonner'
+import { validateAndCompressImage } from '@/lib/media-upload-client'
 
 interface ImageUploadProps {
   value?: string
@@ -26,17 +27,19 @@ export default function ImageUpload({
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Quick client-side size check (15MB)
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('Ukuran file terlalu besar. Maksimal 15MB.')
-      return
-    }
-
     setIsUploading(true)
 
     try {
+      // Validasi format JPG/PNG dan kompresi otomatis jika > 2 MB
+      const processedFile = await validateAndCompressImage(file)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.info(
+          `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+        )
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', processedFile)
       formData.append('folder', folder)
 
       const response = await fetch('/api/upload', {
@@ -83,7 +86,7 @@ export default function ImageUpload({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
+        accept="image/jpeg,image/png"
         onChange={handleFileChange}
         className="hidden"
       />
@@ -153,7 +156,8 @@ export default function ImageUpload({
                     Klik untuk Mengunggah Banner Toko
                   </p>
                   <p className="mt-1 text-[11px] text-slate-400">
-                    Format PNG, JPG, atau WebP (Maksimal 15MB)
+                    Format JPG, JPEG, atau PNG (Maksimal 2 MB per foto, otomatis
+                    kompres jika lebih)
                   </p>
                 </div>
               </>

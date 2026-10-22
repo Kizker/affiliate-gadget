@@ -8,6 +8,7 @@ import { Navbar } from '@/components/layouts'
 import { ChevronLeft, Loader2, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { isStoreOperational } from '@/lib/chat-status'
+import { processMediaUploadFile } from '@/lib/media-upload-client'
 
 import dynamic from 'next/dynamic'
 
@@ -102,6 +103,47 @@ function CustomerChatContent() {
   const [searchQuery] = useState('')
   const [messageInput, setMessageInput] = useState('')
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
+  const showChatOnMobileRef = useRef<boolean>(false)
+  const chatRoomPushedRef = useRef<boolean>(false)
+
+  // Sinkronisasi ref showChatOnMobile
+  useEffect(() => {
+    showChatOnMobileRef.current = showChatOnMobile
+  }, [showChatOnMobile])
+
+  // Bersihkan history state chatRoomMobile jika halaman dimuat ulang secara segar
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.history.state?.chatRoomMobile) {
+      window.history.replaceState(null, '', window.location.href)
+    }
+  }, [])
+
+  // Menangani gestur kembali dan maju bawaan handphone (swipe back / Android back gesture)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // Jika percakapan dibuka langsung dari halaman eksternal (mitra, toko, dll),
+      // biarkan browser kembali alami ke halaman pemanggil
+      if (isDirectEntryRef.current) {
+        return
+      }
+
+      if (event.state?.chatRoomMobile) {
+        // Gestur maju kembali ke ruang obrolan
+        chatRoomPushedRef.current = true
+        setShowChatOnMobile(true)
+      } else if (showChatOnMobileRef.current) {
+        // Gestur kembali dari ruang chat ke daftar percakapan (room list)
+        chatRoomPushedRef.current = false
+        setShowChatOnMobile(false)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [])
+
   const [roomFilter, setRoomFilter] = useState<'ALL' | 'UNREAD' | 'ORDER'>(
     'ALL'
   )
@@ -463,6 +505,8 @@ function CustomerChatContent() {
 
   const handleSelectRoom = useCallback(
     (room: ChatRoom) => {
+      // Pemilihan manual dari daftar percakapan menonaktifkan mode direct-entry
+      isDirectEntryRef.current = false
       loadedRoomIdRef.current = room.id
       setActiveProductContext(null)
       setActiveOrderContext(null)
@@ -482,7 +526,18 @@ function CustomerChatContent() {
       fetchMessages(room, false)
 
       if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', '/dashboard/customer/chat')
+        const isMobile = window.innerWidth < 1024
+        if (isMobile) {
+          // Push state ke history browser agar gestur kembali handphone menutup obrolan ke daftar chat
+          window.history.pushState(
+            { chatRoomMobile: true, roomId: room.id },
+            '',
+            '/dashboard/customer/chat'
+          )
+          chatRoomPushedRef.current = true
+        } else {
+          window.history.replaceState(null, '', '/dashboard/customer/chat')
+        }
       }
     },
     [fetchMessages]
@@ -910,6 +965,17 @@ function CustomerChatContent() {
       return
     }
 
+    // Jika pengguna memilih percakapan dari daftar room list di mobile,
+    // pop history entry yang tadi di-push agar sinkron dengan gestur handphone
+    if (chatRoomPushedRef.current) {
+      chatRoomPushedRef.current = false
+      setShowChatOnMobile(false)
+      if (typeof window !== 'undefined') {
+        window.history.back()
+      }
+      return
+    }
+
     // Jika pengguna memilih percakapan dari daftar room list, kembali ke daftar percakapan
     setShowChatOnMobile(false)
   }
@@ -947,7 +1013,15 @@ function CustomerChatContent() {
       setActiveServiceContext(null)
     }
     if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', '/dashboard/customer/chat')
+      if (chatRoomPushedRef.current && selectedRoom) {
+        window.history.replaceState(
+          { chatRoomMobile: true, roomId: selectedRoom.id },
+          '',
+          '/dashboard/customer/chat'
+        )
+      } else {
+        window.history.replaceState(null, '', '/dashboard/customer/chat')
+      }
     }
 
     setMessageInput('')
@@ -1080,16 +1154,9 @@ function CustomerChatContent() {
     const file = e.target.files?.[0]
     if (!file || !selectedRoom) return
 
-    const isImage = file.type.startsWith('image/')
-    const isVideo = file.type.startsWith('video/')
-
-    if (!isImage && !isVideo) {
-      toast.error(
-        'Hanya file foto (JPG, PNG, WebP) dan video (MP4, WebM, MOV) yang diperbolehkan.'
-      )
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      return
-    }
+    const isVideo =
+      file.type.startsWith('video/') || file.name.toLowerCase().endsWith('.mp4')
+    const isImage = !isVideo
 
     const messageType = isVideo ? 'video' : 'image'
     const defaultText = isVideo ? '🎥 Video' : '📷 Foto'
@@ -1097,8 +1164,27 @@ function CustomerChatContent() {
     setUploadingMedia(true)
 
     try {
+      // Validasi spesifikasi media dan kompresi otomatis foto jika > 2MB
+      let fileToUpload = file
+      try {
+        fileToUpload = await processMediaUploadFile(file)
+        if (isImage && file.size > 2 * 1024 * 1024) {
+          toast.info(
+            `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+          )
+        }
+      } catch (validationErr: any) {
+        toast.error(
+          validationErr.message ||
+            'Format atau ukuran file tidak sesuai ketentuan.'
+        )
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        return
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', fileToUpload)
+      formData.append('folder', 'chat')
 
       const uploadRes = await fetch('/api/upload', {
         method: 'POST',
@@ -1248,7 +1334,7 @@ function CustomerChatContent() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,video/*"
+        accept="image/jpeg,image/png,video/mp4"
         className="hidden"
         onChange={handleFileUpload}
       />
@@ -1379,11 +1465,19 @@ function CustomerChatContent() {
                           )
                         setActiveOrderContext(null)
                         if (typeof window !== 'undefined') {
-                          window.history.replaceState(
-                            null,
-                            '',
-                            '/dashboard/customer/chat'
-                          )
+                          if (chatRoomPushedRef.current && selectedRoom) {
+                            window.history.replaceState(
+                              { chatRoomMobile: true, roomId: selectedRoom.id },
+                              '',
+                              '/dashboard/customer/chat'
+                            )
+                          } else {
+                            window.history.replaceState(
+                              null,
+                              '',
+                              '/dashboard/customer/chat'
+                            )
+                          }
                         }
                       }}
                     />

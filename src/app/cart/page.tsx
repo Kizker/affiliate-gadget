@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Navbar, Footer, MobileTopNav } from '@/components/layouts'
 import CartItem from '@/components/cart/cart-item'
 import CartSummary from '@/components/cart/cart-summary'
 import { useCartStore } from '@/lib/store/cart-store'
+import type { CartItem as CartItemType } from '@/types/cart'
 import Link from 'next/link'
 import {
   ShoppingBag,
@@ -16,6 +17,8 @@ import {
   Trash2,
   Check,
   ArrowLeft,
+  Store,
+  MapPin,
 } from 'lucide-react'
 
 export default function CartPage() {
@@ -25,6 +28,9 @@ export default function CartPage() {
   const selectedItems = useCartStore((state) => state.selectedItems)
   const selectAllItems = useCartStore((state) => state.selectAllItems)
   const deselectAllItems = useCartStore((state) => state.deselectAllItems)
+  const toggleStoreSelection = useCartStore(
+    (state) => state.toggleStoreSelection
+  )
   const removeSelectedItems = useCartStore((state) => state.removeSelectedItems)
   const setUserId = useCartStore((state) => state.setUserId)
   const syncFromServer = useCartStore((state) => state.syncFromServer)
@@ -46,6 +52,40 @@ export default function CartPage() {
       selectAllItems()
     }
   }
+
+  // Pengelompokan barang berdasarkan toko fisik cabang
+  const storeGroups = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        storeId: string
+        storeName: string
+        storeCity?: string | null
+        items: CartItemType[]
+      }
+    >()
+
+    for (const item of items) {
+      const storeId = item.storeId || item.store?.id || 'official-store'
+      const rawStoreName = item.store?.name || 'Cabang Resmi Platform'
+      const storeName = rawStoreName
+        .replace(/^Affiliate Gadget\s*-\s*/i, '')
+        .replace(/^AffiliateGadget Store\s*-\s*/i, '')
+      const storeCity = item.store?.city || null
+
+      if (!map.has(storeId)) {
+        map.set(storeId, {
+          storeId,
+          storeName,
+          storeCity,
+          items: [],
+        })
+      }
+      map.get(storeId)!.items.push(item)
+    }
+
+    return Array.from(map.values())
+  }, [items])
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.id) {
@@ -215,11 +255,74 @@ export default function CartPage() {
                   )}
                 </div>
 
-                {/* Items Stack */}
-                <div className="space-y-3">
-                  {items.map((item) => (
-                    <CartItem key={item.id} item={item} />
-                  ))}
+                {/* Grouped Items by Store */}
+                <div className="space-y-4 sm:space-y-5">
+                  {storeGroups.map((group) => {
+                    const groupItemIds = group.items.map((i) => i.id)
+                    const selectedStoreItemIds = groupItemIds.filter((id) =>
+                      selectedItems.includes(id)
+                    )
+                    const isStoreAllSelected =
+                      groupItemIds.length > 0 &&
+                      selectedStoreItemIds.length === groupItemIds.length
+                    const isStoreSomeSelected =
+                      selectedStoreItemIds.length > 0 && !isStoreAllSelected
+
+                    return (
+                      <section
+                        key={group.storeId}
+                        aria-label={`Kelompok Toko ${group.storeName}`}
+                        className="shadow-xs overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900"
+                      >
+                        {/* Store Header Bar: Checkbox Toko, Icon Toko, Nama Toko, Kota Toko */}
+                        <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/75 px-4 py-3 dark:border-slate-800/80 dark:bg-slate-800/40 sm:px-5">
+                          {/* Checkbox Toko */}
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={isStoreAllSelected}
+                            onClick={() => toggleStoreSelection(group.storeId)}
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border transition-all duration-150 ${
+                              isStoreAllSelected
+                                ? 'shadow-xs border-orange-500 bg-orange-500 text-white'
+                                : isStoreSomeSelected
+                                  ? 'border-orange-400 bg-orange-100 text-orange-900 dark:border-orange-600 dark:bg-orange-950/50'
+                                  : 'border-slate-300 bg-slate-50 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800'
+                            }`}
+                            aria-label={`Pilih semua produk dari ${group.storeName}`}
+                          >
+                            {isStoreAllSelected && (
+                              <Check className="h-3.5 w-3.5 stroke-[3]" />
+                            )}
+                            {isStoreSomeSelected && (
+                              <div className="rounded-xs h-2 w-2 bg-slate-700 dark:bg-white" />
+                            )}
+                          </button>
+
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <Store className="h-4 w-4 shrink-0 text-orange-500" />
+                            <span className="truncate text-xs font-bold text-slate-950 dark:text-white sm:text-sm">
+                              {group.storeName}
+                            </span>
+
+                            {group.storeCity && (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-200/60 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                <MapPin className="h-2.5 w-2.5 text-slate-400" />
+                                <span>{group.storeCity}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* List Produk Milik Toko Ini */}
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                          {group.items.map((item) => (
+                            <CartItem key={item.id} item={item} embedded />
+                          ))}
+                        </div>
+                      </section>
+                    )
+                  })}
                 </div>
               </div>
 

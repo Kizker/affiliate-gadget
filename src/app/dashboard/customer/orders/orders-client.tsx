@@ -25,6 +25,7 @@ import {
   X,
   CreditCard,
   ChevronRight,
+  ChevronDown,
   Undo2,
   AlertCircle,
 } from 'lucide-react'
@@ -313,6 +314,17 @@ export default function OrdersClient({
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>(
+    {}
+  )
+
+  const toggleExpandOrder = (orderId: string) => {
+    setExpandedOrders((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }))
+  }
+
   const ORDERS_PER_PAGE = 10
   // Prevent SSR/client hydration mismatch on dynamic count badges
   const [isMounted, setIsMounted] = useState(false)
@@ -655,135 +667,224 @@ export default function OrdersClient({
                         </div>
                       </div>
 
-                      {/* 2. Main Body: Product Item (Left) & Financial + Action (Right) */}
-                      <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
-                        {/* Left: Thumbnail & Gadget Details */}
-                        <div className="flex min-w-0 flex-1 items-start gap-4 sm:items-center">
-                          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24">
-                            <img
-                              src={itemImage}
-                              alt={firstItem?.product?.name || 'Gadget'}
-                              className="h-full w-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.src = DEFAULT_GADGET_IMAGE
-                              }}
-                            />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            {firstItem?.product?.brand && (
-                              <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                                {firstItem.product.brand}
-                              </span>
-                            )}
-                            <h3 className="line-clamp-1 text-base font-bold leading-snug text-slate-900 dark:text-white sm:text-lg">
-                              {firstItem?.product?.name ||
-                                firstItem?.service?.name ||
-                                firstItem?.notes ||
-                                'Unit Smartphone Original'}
-                            </h3>
-
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                              {firstItem?.variantName && (
-                                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                  Varian: {firstItem.variantName}
-                                </span>
-                              )}
-                              <span className="font-medium text-slate-700 dark:text-slate-300">
-                                {firstItem?.quantity || 1} Unit
-                              </span>
-                              {order.items.length > 1 && (
-                                <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
-                                  +{order.items.length - 1} produk lainnya
-                                </span>
-                              )}
-                              <span className="text-slate-300 dark:text-slate-700">
-                                •
-                              </span>
-                              <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
-                                <Sparkles className="h-3 w-3" /> Paket Bonus
-                                3-in-1
-                              </span>
-                            </div>
-
-                            {/* Multi-item breakdown list */}
-                            {order.items.length > 1 && (
-                              <div className="mt-2 space-y-1 rounded-xl bg-slate-50/80 p-2 text-xs text-slate-600 dark:bg-slate-800/40 dark:text-slate-300">
-                                {order.items
-                                  .slice(1)
-                                  .map((extraItem, extraIdx) => (
-                                    <div
-                                      key={extraIdx}
-                                      className="flex items-center justify-between text-[11px]"
-                                    >
-                                      <span className="truncate">
-                                        •{' '}
-                                        {extraItem.product?.name ||
-                                          extraItem.service?.name ||
-                                          extraItem.notes ||
-                                          'Item Gadget'}
-                                        {extraItem.variantName
-                                          ? ` (${extraItem.variantName})`
-                                          : ''}
-                                      </span>
-                                      <span className="ml-2 shrink-0 font-mono text-slate-400">
-                                        x{extraItem.quantity || 1}
-                                      </span>
-                                    </div>
-                                  ))}
+                      {/* 2. Main Body: Product Items List */}
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {/* Primary Item */}
+                        <div className="py-4">
+                          <Link
+                            href={`/dashboard/customer/orders/${order.id}?fromStatus=${selectedStatus}`}
+                            className="group flex items-start justify-between gap-4 transition-opacity active:opacity-75"
+                          >
+                            <div className="flex min-w-0 flex-1 items-start gap-4">
+                              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white transition group-hover:border-slate-200 dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24">
+                                <img
+                                  src={itemImage}
+                                  alt={firstItem?.product?.name || 'Gadget'}
+                                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                  onError={(e) => {
+                                    e.currentTarget.src = DEFAULT_GADGET_IMAGE
+                                  }}
+                                />
                               </div>
-                            )}
 
-                            {/* Badges: Logistics & 30-Day Guarantee */}
-                            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                <Truck className="h-3.5 w-3.5 text-orange-500" />
-                                {order.courierCode || 'JNE'}{' '}
-                                {order.courierService || 'REG'}
-                              </span>
-                              <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                                Garansi 30 Hari Ganti Baru
-                              </span>
-
-                              {/* Return Status Chip if exists */}
-                              {order.returnRequests &&
-                                order.returnRequests.length > 0 && (
-                                  <span
-                                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold ${
-                                      order.returnRequests[0].status ===
-                                        'APPROVED' ||
-                                      order.returnRequests[0].status ===
-                                        'COMPLETED'
-                                        ? 'border border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                        : order.returnRequests[0].status ===
-                                            'REJECTED'
-                                          ? 'border border-rose-200/80 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
-                                          : 'border border-amber-200/80 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                                    }`}
-                                  >
-                                    <RotateCcw className="h-3 w-3" />
-                                    <span>
-                                      {order.returnRequests[0].status ===
-                                      'APPROVED'
-                                        ? 'Retur Disetujui'
-                                        : order.returnRequests[0].status ===
-                                            'COMPLETED'
-                                          ? 'Retur Selesai'
-                                          : order.returnRequests[0].status ===
-                                              'REJECTED'
-                                            ? 'Retur Ditolak'
-                                            : 'Pengajuan Retur Diproses'}
-                                    </span>
+                              <div className="min-w-0 flex-1">
+                                {firstItem?.product?.brand && (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                    {firstItem.product.brand}
                                   </span>
                                 )}
+                                <h3 className="line-clamp-1 text-base font-bold leading-snug text-slate-900 transition group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:text-lg">
+                                  {firstItem?.product?.name ||
+                                    firstItem?.service?.name ||
+                                    firstItem?.notes ||
+                                    'Unit Smartphone Original'}
+                                </h3>
+
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                  {firstItem?.variantName && (
+                                    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                      Varian: {firstItem.variantName}
+                                    </span>
+                                  )}
+                                  <span className="font-medium text-slate-700 dark:text-slate-300">
+                                    {firstItem?.quantity || 1} Unit
+                                  </span>
+                                  <span className="text-slate-300 dark:text-slate-700">
+                                    •
+                                  </span>
+                                  <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                    <Sparkles className="h-3 w-3" /> Paket Bonus
+                                    3-in-1
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
+
+                            {firstItem?.price ? (
+                              <div className="shrink-0 text-right">
+                                <span className="font-mono text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+                                  {formatPrice(
+                                    firstItem.price * (firstItem.quantity || 1)
+                                  )}
+                                </span>
+                              </div>
+                            ) : null}
+                          </Link>
+                        </div>
+
+                        {/* Additional Items when Expanded */}
+                        {order.items.length > 1 && expandedOrders[order.id] && (
+                          <>
+                            {order.items.slice(1).map((extraItem, extraIdx) => {
+                              const extraImg =
+                                extraItem.product?.images?.[0] ||
+                                extraItem.rentalItem?.images?.[0] ||
+                                DEFAULT_GADGET_IMAGE
+                              return (
+                                <div
+                                  key={extraItem.id || extraIdx}
+                                  className="py-4"
+                                >
+                                  <Link
+                                    href={`/dashboard/customer/orders/${order.id}?fromStatus=${selectedStatus}`}
+                                    className="group flex items-start justify-between gap-4 transition-opacity active:opacity-75"
+                                  >
+                                    <div className="flex min-w-0 flex-1 items-start gap-4">
+                                      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white transition group-hover:border-slate-200 dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24">
+                                        <img
+                                          src={extraImg}
+                                          alt={
+                                            extraItem.product?.name || 'Gadget'
+                                          }
+                                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                          onError={(e) => {
+                                            e.currentTarget.src =
+                                              DEFAULT_GADGET_IMAGE
+                                          }}
+                                        />
+                                      </div>
+
+                                      <div className="min-w-0 flex-1">
+                                        {extraItem.product?.brand && (
+                                          <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                            {extraItem.product.brand}
+                                          </span>
+                                        )}
+                                        <h3 className="line-clamp-1 text-base font-bold leading-snug text-slate-900 transition group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:text-lg">
+                                          {extraItem.product?.name ||
+                                            extraItem.service?.name ||
+                                            extraItem.notes ||
+                                            'Item Gadget'}
+                                        </h3>
+
+                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                          {extraItem.variantName && (
+                                            <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                              Varian: {extraItem.variantName}
+                                            </span>
+                                          )}
+                                          <span className="font-medium text-slate-700 dark:text-slate-300">
+                                            {extraItem.quantity || 1} Unit
+                                          </span>
+                                          <span className="text-slate-300 dark:text-slate-700">
+                                            •
+                                          </span>
+                                          <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                            <Sparkles className="h-3 w-3" />{' '}
+                                            Paket Bonus 3-in-1
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {extraItem.price ? (
+                                      <div className="shrink-0 text-right">
+                                        <span className="font-mono text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+                                          {formatPrice(
+                                            extraItem.price *
+                                              (extraItem.quantity || 1)
+                                          )}
+                                        </span>
+                                      </div>
+                                    ) : null}
+                                  </Link>
+                                </div>
+                              )
+                            })}
+                          </>
+                        )}
+                      </div>
+
+                      {/* 3. Centered Multi-Item Toggle Button */}
+                      {order.items.length > 1 && (
+                        <div className="border-t border-slate-100 py-2 dark:border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandOrder(order.id)}
+                            className="flex w-full cursor-pointer items-center justify-center gap-1.5 py-1 text-xs font-semibold text-slate-600 transition-colors hover:text-slate-900 active:scale-95 dark:text-slate-400 dark:hover:text-white"
+                          >
+                            <span>
+                              {expandedOrders[order.id]
+                                ? 'Sembunyikan'
+                                : 'Lihat Semua'}
+                            </span>
+                            <ChevronDown
+                              className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${
+                                expandedOrders[order.id] ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 4. Card Footer: Badges (Left) & Total Price + Actions (Right) */}
+                      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+                        {/* Badges: Logistics & 30-Day Guarantee */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            <Truck className="h-3.5 w-3.5 text-orange-500" />
+                            {order.courierCode || 'JNE'}{' '}
+                            {order.courierService || 'REG'}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                            Garansi 30 Hari Ganti Baru
+                          </span>
+
+                          {/* Return Status Chip if exists */}
+                          {order.returnRequests &&
+                            order.returnRequests.length > 0 && (
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+                                  order.returnRequests[0].status ===
+                                    'APPROVED' ||
+                                  order.returnRequests[0].status === 'COMPLETED'
+                                    ? 'border border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                    : order.returnRequests[0].status ===
+                                        'REJECTED'
+                                      ? 'border border-rose-200/80 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                                      : 'border border-amber-200/80 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                                }`}
+                              >
+                                <RotateCcw className="h-3 w-3" />
+                                <span>
+                                  {order.returnRequests[0].status === 'APPROVED'
+                                    ? 'Retur Disetujui'
+                                    : order.returnRequests[0].status ===
+                                        'COMPLETED'
+                                      ? 'Retur Selesai'
+                                      : order.returnRequests[0].status ===
+                                          'REJECTED'
+                                        ? 'Retur Ditolak'
+                                        : 'Pengajuan Retur Diproses'}
+                                </span>
+                              </span>
+                            )}
                         </div>
 
                         {/* Right: Total Price & Quick Action Buttons */}
-                        <div className="flex w-full shrink-0 items-start justify-between gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:items-center lg:w-auto lg:flex-col lg:items-end lg:border-t-0 lg:pt-0">
-                          <div className="flex flex-col lg:items-end">
+                        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                          <div className="flex items-baseline gap-2">
                             <span className="text-xs font-medium text-slate-400">
                               Total Pembayaran:
                             </span>

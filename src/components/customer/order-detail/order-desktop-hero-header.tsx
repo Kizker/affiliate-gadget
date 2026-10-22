@@ -63,7 +63,7 @@ export function OrderDesktopHeroHeader({
         {/* Status Badge & Tracking Code */}
         <div className="flex flex-col gap-1.5 sm:items-end">
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-xs font-bold ${currentStatus.badgeBg}`}
+            className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1 text-xs font-bold ${currentStatus.badgeBg}`}
           >
             <span
               className={`h-1.5 w-1.5 rounded-full ${currentStatus.dotColor}`}

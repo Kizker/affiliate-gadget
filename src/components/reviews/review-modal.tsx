@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import { processMediaUploadFile } from '@/lib/media-upload-client'
 
 interface ReviewModalProps {
   mitraId: string
@@ -67,15 +68,10 @@ export default function ReviewModal({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
-        const isVideo = file.type.startsWith('video/')
-        const isImage = file.type.startsWith('image/')
-
-        if (!isImage && !isVideo) {
-          toast.error(
-            `File "${file.name}" tidak didukung. Unggah foto atau video saja.`
-          )
-          continue
-        }
+        const isVideo =
+          file.type.startsWith('video/') ||
+          file.name.toLowerCase().endsWith('.mp4')
+        const isImage = !isVideo
 
         if (isVideo && videos.length >= 2) {
           toast.error('Maksimal 2 video yang dapat dilampirkan.')
@@ -87,8 +83,24 @@ export default function ReviewModal({
           continue
         }
 
+        // Validasi dan kompresi otomatis jika melebihi batas ukuran
+        let fileToUpload = file
+        try {
+          fileToUpload = await processMediaUploadFile(file)
+          if (isImage && file.size > 2 * 1024 * 1024) {
+            toast.info(
+              `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+            )
+          }
+        } catch (validationErr: any) {
+          toast.error(
+            validationErr.message || `File "${file.name}" tidak valid`
+          )
+          continue
+        }
+
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('file', fileToUpload)
         formData.append('folder', 'reviews')
 
         const res = await fetch('/api/upload', {
@@ -246,20 +258,24 @@ export default function ReviewModal({
           </div>
 
           {/* Photo & Video Attachment Section */}
-          <div className="space-y-3">
-            <div className="flex items-center">
+          <div className="space-y-2">
+            <div className="flex flex-col gap-0.5">
               <label className="flex items-center gap-1.5 whitespace-nowrap text-xs font-bold text-slate-700 dark:text-slate-300">
                 <span>Lampirkan Foto & Video Servis</span>
                 <span className="text-[11px] font-normal text-slate-400">
                   ({images.length}/5 foto, {videos.length}/2 video)
                 </span>
               </label>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                Foto: JPG/PNG maks 2 MB (otomatis kompres) • Video: MP4 maks 30
+                MB (10–60 dtk, maks 1280x1280px)
+              </p>
             </div>
 
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+              accept="image/jpeg,image/png,video/mp4"
               multiple
               onChange={handleFileUpload}
               className="hidden"

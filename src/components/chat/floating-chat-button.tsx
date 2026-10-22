@@ -26,7 +26,8 @@ import { toast } from 'sonner'
 import OrderReferenceCard from './order-reference-card'
 import { DateSeparator } from './date-separator'
 import { isSameDay } from '@/utils/chat-helpers'
-import { isStoreOperational, getChatTickStatus } from '@/lib/chat-status'
+import { isStoreOperational } from '@/lib/chat-status'
+import { validateAndCompressImage } from '@/lib/media-upload-client'
 
 interface TechnicianChatRoom {
   id: string
@@ -535,23 +536,37 @@ export default function FloatingChatButton() {
     const file = e.target.files?.[0]
     if (!file || !activeRoom) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Hanya file gambar yang diperbolehkan')
-      return
-    }
-
     setUploadingImage(true)
     setShowAttachMenu(false)
 
     try {
+      // Validasi format JPG/PNG dan kompresi otomatis jika > 2 MB
+      let fileToUpload = file
+      try {
+        fileToUpload = await validateAndCompressImage(file)
+        if (file.size > 2 * 1024 * 1024) {
+          toast.info(
+            `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+          )
+        }
+      } catch (valErr: any) {
+        toast.error(valErr.message || 'Format atau ukuran file tidak sesuai.')
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        return
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', fileToUpload)
+      formData.append('folder', 'chat')
 
       const uploadRes = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       })
-      if (!uploadRes.ok) throw new Error('Upload failed')
+      if (!uploadRes.ok) {
+        const errJson = await uploadRes.json().catch(() => ({}))
+        throw new Error(errJson.error || 'Upload failed')
+      }
 
       const uploadData = await uploadRes.json()
 
@@ -1794,6 +1809,15 @@ export default function FloatingChatButton() {
 
                 {/* Input Area */}
                 <div className="safe-area-bottom flex-shrink-0 border-t border-gray-200 bg-white p-3">
+                  {/* Hidden file input for Photo Attachment */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+
                   {showAttachMenu && (
                     <div className="mb-3 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 p-3">
                       <button

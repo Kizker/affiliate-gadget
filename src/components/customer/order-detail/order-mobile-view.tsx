@@ -100,12 +100,12 @@ export function OrderMobileView({
     <div className="block space-y-3.5 pb-6 md:hidden">
       {/* ── CARD 1: IDENTITAS PESANAN ───────────────────────────── */}
       <div className="shadow-xs rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-start justify-between gap-2">
-          <div>
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="min-w-0 flex-1">
             <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
               No. Pesanan
             </span>
-            <div className="mt-0.5 flex items-center gap-2">
+            <div className="mt-0.5 flex flex-wrap items-center gap-2">
               <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">
                 #{order.orderNumber}
               </span>
@@ -120,7 +120,7 @@ export function OrderMobileView({
           </div>
 
           <div
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
               isCompleted
                 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
                 : currentStatus.badgeBg
@@ -265,11 +265,11 @@ export function OrderMobileView({
             )}
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-slate-500 dark:text-slate-400">
               Status Pengiriman
             </span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="shrink-0 whitespace-nowrap font-bold text-emerald-600 dark:text-emerald-400">
               {isCompleted ? 'Telah Diterima' : currentStatus.label}
             </span>
           </div>
@@ -341,7 +341,7 @@ export function OrderMobileView({
               RIWAYAT TRANSAKSI
             </span>
           </div>
-          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+          <span className="shrink-0 whitespace-nowrap text-xs font-bold text-slate-700 dark:text-slate-300">
             {isCompleted ? 'Diterima' : currentStatus.label}
           </span>
         </div>

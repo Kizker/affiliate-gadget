@@ -22,11 +22,8 @@ describe('Mobile Orders Simplified UI Suite (Screenshot 2 Match)', () => {
   })
 
   it('2. Baris produk bersih dengan Varian dan jumlah barang (1 barang x1) tanpa chip/pill berlebihan', () => {
-    // Varian
-    expect(content).toContain('Varian:')
+    // Varian & kuantitas
     expect(content).toContain('firstItem?.variantName')
-    // Jumlah barang di kiri dan quantity di kanan
-    expect(content).toContain('{totalItemCount} barang')
     expect(content).toContain('x{firstItem?.quantity || 1}')
 
     // Tidak ada pill kurir atau garansi yang membuat kartu padat
@@ -34,9 +31,11 @@ describe('Mobile Orders Simplified UI Suite (Screenshot 2 Match)', () => {
     expect(content).not.toContain('<ShieldCheck ')
   })
 
-  it('3. Baris bawah menggabungkan tanggal dan nomor pesanan, total harga tebal, serta tombol aksi pill rounded-full', () => {
-    // Tanggal dan order number
-    expect(content).toContain('#{order.orderNumber}')
+  it('3. Baris bawah menampilkan tanggal transaksi bersih tanpa nomor pesanan panjang, total harga tebal, serta tombol aksi pill rounded-full', () => {
+    // Tanggal bersih tanpa nomor order panjang yang meluber
+    expect(content).not.toContain(
+      '<span className="font-mono">#{order.orderNumber}</span>'
+    )
     expect(content).toContain('{contextualTime.shortDate}')
 
     // Tombol Chat dan Rincian menggunakan rounded-full

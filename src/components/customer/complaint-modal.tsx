@@ -11,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { processMediaUploadFile } from '@/lib/media-upload-client'
 
 interface ComplaintModalProps {
   isOpen: boolean
@@ -121,16 +122,29 @@ export function ComplaintModal({
     setUploading(true)
     try {
       for (const file of Array.from(files)) {
-        const isImage = file.type.startsWith('image/')
-        const isVideo = file.type.startsWith('video/')
+        const isVideo =
+          file.type.startsWith('video/') ||
+          file.name.toLowerCase().endsWith('.mp4')
+        const isImage = !isVideo
 
-        if (!isImage && !isVideo) {
-          toast.error(`File ${file.name} bukan foto atau video.`)
+        // Validasi dan kompresi otomatis jika melebihi batas ukuran
+        let fileToUpload = file
+        try {
+          fileToUpload = await processMediaUploadFile(file)
+          if (isImage && file.size > 2 * 1024 * 1024) {
+            toast.info(
+              `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+            )
+          }
+        } catch (validationErr: any) {
+          toast.error(
+            validationErr.message || `File "${file.name}" tidak valid`
+          )
           continue
         }
 
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('file', fileToUpload)
 
         const res = await fetch('/api/upload', {
           method: 'POST',
@@ -386,11 +400,15 @@ export function ComplaintModal({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,video/*"
+                accept="image/jpeg,image/png,video/mp4"
                 multiple
                 onChange={handleMediaUpload}
                 className="hidden"
               />
+              <p className="mt-1 text-center text-[10px] text-slate-400">
+                Foto: JPG/PNG maks 2 MB (otomatis kompres) • Video: MP4 maks 30
+                MB (10–60 dtk, maks 1280x1280px)
+              </p>
             </div>
           </div>
 

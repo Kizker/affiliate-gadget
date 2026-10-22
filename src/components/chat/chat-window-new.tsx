@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { DateSeparator } from './date-separator'
+import { ChatVideoPlayer } from './chat-video-player'
 import { isSameDay } from '@/utils/chat-helpers'
 import OrderReferenceCard from './order-reference-card'
 interface Message {
@@ -598,12 +599,7 @@ export default function ChatWindow({
     if (mediaTypeValue === 'video') {
       return (
         <div className="mt-2">
-          <video
-            src={message.mediaUrl}
-            controls
-            className="max-w-full rounded-lg"
-            style={{ maxHeight: '300px' }}
-          />
+          <ChatVideoPlayer src={message.mediaUrl!} className="rounded-lg" />
           {message.mediaName && (
             <p className="mt-1 text-xs opacity-75">{message.mediaName}</p>
           )}

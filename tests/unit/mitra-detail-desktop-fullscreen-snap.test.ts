@@ -36,8 +36,8 @@ describe('Mitra Detail Desktop Balanced Layout Suite', () => {
     // 1. Hero
     expect(combinedContent).toContain('id="hero"')
     expect(combinedContent).toContain('max-w-7xl items-center')
-    expect(combinedContent).toContain('py-12')
-    expect(combinedContent).toContain('sm:py-16')
+    expect(combinedContent).toContain('pt-24')
+    expect(combinedContent).toContain('sm:pt-28')
 
     // 2. Banner Editorial
     expect(combinedContent).toContain('id="banner-editorial"')

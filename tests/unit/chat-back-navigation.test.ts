@@ -53,4 +53,23 @@ describe('Customer Chat Back Navigation Suite', () => {
     expect(chatHeaderContent).toContain('onClick={onBackToList}')
     expect(chatHeaderContent).toContain('<ChevronLeft className="h-5 w-5" />')
   })
+
+  it('5. verifies mobile room selection pushes history state and tracks chatRoomPushedRef', () => {
+    expect(chatPageContent).toContain(
+      'chatRoomPushedRef = useRef<boolean>(false)'
+    )
+    expect(chatPageContent).toContain('window.history.pushState(')
+    expect(chatPageContent).toContain('chatRoomMobile: true')
+    expect(chatPageContent).toContain('chatRoomPushedRef.current = true')
+  })
+
+  it('6. verifies popstate listener synchronizes mobile back gestures to room list without leaving chat', () => {
+    expect(chatPageContent).toContain(
+      "window.addEventListener('popstate', handlePopState)"
+    )
+    expect(chatPageContent).toContain('if (event.state?.chatRoomMobile) {')
+    expect(chatPageContent).toContain('setShowChatOnMobile(false)')
+    expect(chatPageContent).toContain('if (chatRoomPushedRef.current) {')
+    expect(chatPageContent).toContain('window.history.back()')
+  })
 })

@@ -33,8 +33,10 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DateSeparator } from '@/components/chat/date-separator'
+import { ChatVideoPlayer } from '@/components/chat/chat-video-player'
 import { isSameDay } from '@/utils/chat-helpers'
 import { getChatTickStatus } from '@/lib/chat-status'
+import { processMediaUploadFile } from '@/lib/media-upload-client'
 import { usePageGuard } from '@/hooks/use-page-guard'
 
 const renderAdminWhatsAppTick = (
@@ -313,6 +315,41 @@ function AdminChatContent() {
   >('ALL')
   const [stats, setStats] = useState({ totalRooms: 0, unreadRooms: 0 })
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
+  const showChatOnMobileRef = useRef<boolean>(false)
+  const chatRoomPushedRef = useRef<boolean>(false)
+
+  // Sinkronisasi ref showChatOnMobile
+  useEffect(() => {
+    showChatOnMobileRef.current = showChatOnMobile
+  }, [showChatOnMobile])
+
+  // Bersihkan history state adminChatRoomMobile jika halaman dimuat ulang
+  useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      window.history.state?.adminChatRoomMobile
+    ) {
+      window.history.replaceState(null, '', window.location.href)
+    }
+  }, [])
+
+  // Menangani gestur kembali dan maju bawaan handphone (swipe back / Android back gesture)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.adminChatRoomMobile) {
+        chatRoomPushedRef.current = true
+        setShowChatOnMobile(true)
+      } else if (showChatOnMobileRef.current) {
+        chatRoomPushedRef.current = false
+        setShowChatOnMobile(false)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [])
   const [activePinnedOrder, setActivePinnedOrder] =
     useState<PinnedOrderContext | null>(null)
 
@@ -607,6 +644,14 @@ function AdminChatContent() {
   const handleSelectRoom = (room: ChatRoom) => {
     setSelectedRoom(room)
     setShowChatOnMobile(true)
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      window.history.pushState(
+        { adminChatRoomMobile: true, roomId: room.id },
+        '',
+        window.location.pathname
+      )
+      chatRoomPushedRef.current = true
+    }
     // Instantly clear unread badge in state
     setRooms((prev) =>
       prev.map((r) =>
@@ -836,6 +881,14 @@ function AdminChatContent() {
 
   // Back to room list on mobile
   const handleBackToList = () => {
+    if (chatRoomPushedRef.current) {
+      chatRoomPushedRef.current = false
+      setShowChatOnMobile(false)
+      if (typeof window !== 'undefined') {
+        window.history.back()
+      }
+      return
+    }
     setShowChatOnMobile(false)
   }
 
@@ -940,16 +993,9 @@ function AdminChatContent() {
     const file = e.target.files?.[0]
     if (!file || !selectedRoom) return
 
-    const isImage = file.type.startsWith('image/')
-    const isVideo = file.type.startsWith('video/')
-
-    if (!isImage && !isVideo) {
-      toast.error(
-        'Hanya file foto (JPG, PNG, WebP) dan video (MP4, WebM, MOV) yang diperbolehkan.'
-      )
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      return
-    }
+    const isVideo =
+      file.type.startsWith('video/') || file.name.toLowerCase().endsWith('.mp4')
+    const isImage = !isVideo
 
     const messageType = isVideo ? 'video' : 'image'
     const defaultContent = isVideo ? '🎥 Video' : '📷 Foto'
@@ -957,8 +1003,27 @@ function AdminChatContent() {
     setUploadingMedia(true)
 
     try {
+      // Validasi spesifikasi media dan kompresi otomatis foto jika > 2MB
+      let fileToUpload = file
+      try {
+        fileToUpload = await processMediaUploadFile(file)
+        if (isImage && file.size > 2 * 1024 * 1024) {
+          toast.info(
+            `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+          )
+        }
+      } catch (validationErr: any) {
+        toast.error(
+          validationErr.message ||
+            'Format atau ukuran file tidak sesuai ketentuan.'
+        )
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        return
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', fileToUpload)
+      formData.append('folder', 'chat')
 
       const uploadRes = await fetch('/api/upload', {
         method: 'POST',
@@ -2054,32 +2119,15 @@ function AdminChatContent() {
                             /* Full-Bleed Modern Media Bubble (Compact Mobile Friendly) */
                             <div className="shadow-xs group relative max-w-[65%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[240px]">
                               {isVideo ? (
-                                <div className="relative">
-                                  <video
-                                    src={message.mediaUrl!}
-                                    controls
-                                    controlsList="nofullscreen nodownload noremoteplayback noplaybackrate"
-                                    disablePictureInPicture
-                                    disableRemotePlayback
-                                    playsInline
-                                    preload="metadata"
-                                    className="clean-video-player block max-h-[160px] w-full max-w-[200px] rounded-2xl bg-black object-cover sm:max-h-[220px] sm:max-w-[240px]"
-                                  />
-                                  {/* Floating Theater Mode Button */}
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setFullscreenMedia({
-                                        url: message.mediaUrl!,
-                                        type: 'video',
-                                      })
-                                    }
-                                    title="Perbesar Layar Penuh"
-                                    className="shadow-xs absolute right-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/85"
-                                  >
-                                    <Maximize2 className="h-3 w-3" />
-                                  </button>
-                                </div>
+                                <ChatVideoPlayer
+                                  src={message.mediaUrl!}
+                                  onOpenFullscreen={() =>
+                                    setFullscreenMedia({
+                                      url: message.mediaUrl!,
+                                      type: 'video',
+                                    })
+                                  }
+                                />
                               ) : (
                                 <div
                                   onClick={() =>
@@ -2268,7 +2316,7 @@ function AdminChatContent() {
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileUpload}
-                    accept="image/*,video/*"
+                    accept="image/jpeg,image/png,video/mp4"
                     className="hidden"
                   />
 

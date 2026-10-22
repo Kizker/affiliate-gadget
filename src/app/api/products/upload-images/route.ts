@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import { existsSync } from 'fs'
+import sharp from 'sharp'
 
 /**
  * POST /api/products/upload-images
@@ -62,33 +63,134 @@ export async function POST(request: NextRequest) {
   }
 
   // Validate each file (supports images & videos)
+  const processedFiles: { buffer: Buffer; filename: string }[] = []
+  const IMAGE_MAX_SIZE = 2 * 1024 * 1024 // 2 MB
+  const IMAGE_HARD_LIMIT = 25 * 1024 * 1024 // 25 MB
+  const VIDEO_MAX_SIZE = 30 * 1024 * 1024 // 30 MB
+  const ALLOWED_IMAGE_EXTS = ['jpg', 'jpeg', 'png']
+
   for (const file of files) {
-    const isImage = file.type.startsWith('image/')
-    const isVideo =
-      file.type.startsWith('video/') ||
-      file.name.endsWith('.mp4') ||
-      file.name.endsWith('.webm') ||
-      file.name.endsWith('.mov')
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || ''
+    const isImage =
+      file.type.startsWith('image/') || ALLOWED_IMAGE_EXTS.includes(fileExt)
+    const isVideo = file.type.startsWith('video/') || fileExt === 'mp4'
 
     if (!isImage && !isVideo) {
       return NextResponse.json(
         {
-          error: `File "${file.name}" bukan format foto (JPG, PNG, WebP) atau video (MP4, WebM, MOV) yang valid`,
+          error: `File "${file.name}" tidak didukung. Foto harus JPG, JPEG, atau PNG, dan video harus MP4.`,
         },
         { status: 400 }
       )
     }
 
-    const maxSize = isVideo ? 60 * 1024 * 1024 : 15 * 1024 * 1024
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        {
-          error: isVideo
-            ? `Video "${file.name}" terlalu besar (Maksimal 60MB per video)`
-            : `Foto "${file.name}" terlalu besar (Maksimal 15MB per foto)`,
-        },
-        { status: 400 }
-      )
+    if (isImage) {
+      if (
+        !ALLOWED_IMAGE_EXTS.includes(fileExt) &&
+        file.type !== 'image/jpeg' &&
+        file.type !== 'image/png'
+      ) {
+        return NextResponse.json(
+          {
+            error: `File "${file.name}" bukan format JPG, JPEG, atau PNG yang valid.`,
+          },
+          { status: 400 }
+        )
+      }
+
+      if (file.size > IMAGE_HARD_LIMIT) {
+        return NextResponse.json(
+          {
+            error: `Foto "${file.name}" terlalu besar. Maksimal 2 MB per foto.`,
+          },
+          { status: 400 }
+        )
+      }
+
+      const bytes = await file.arrayBuffer()
+      let buffer = Buffer.from(bytes)
+
+      if (file.size > IMAGE_MAX_SIZE) {
+        try {
+          const comp1 = await sharp(buffer)
+            .rotate()
+            .flatten({ background: '#ffffff' })
+            .resize({
+              width: 2048,
+              height: 2048,
+              fit: 'inside',
+              withoutEnlargement: true,
+            })
+            .jpeg({ quality: 80, progressive: true })
+            .toBuffer()
+          buffer = Buffer.from(comp1)
+
+          if (buffer.length > IMAGE_MAX_SIZE) {
+            const comp2 = await sharp(buffer)
+              .flatten({ background: '#ffffff' })
+              .resize({
+                width: 1600,
+                height: 1600,
+                fit: 'inside',
+                withoutEnlargement: true,
+              })
+              .jpeg({ quality: 65, progressive: true })
+              .toBuffer()
+            buffer = Buffer.from(comp2)
+          }
+
+          if (buffer.length > IMAGE_MAX_SIZE) {
+            return NextResponse.json(
+              {
+                error: `Foto "${file.name}" terlalu besar. Maksimal 2 MB per foto.`,
+              },
+              { status: 400 }
+            )
+          }
+        } catch {
+          return NextResponse.json(
+            {
+              error: `Foto "${file.name}" terlalu besar atau rusak. Maksimal 2 MB per foto.`,
+            },
+            { status: 400 }
+          )
+        }
+      }
+
+      const timestamp = Date.now()
+      const random = Math.random().toString(36).substring(2, 8)
+      const filename = `product-${timestamp}-${random}.jpg`
+      processedFiles.push({ buffer, filename })
+    } else {
+      const isVp9OrWebm =
+        file.type.toLowerCase().includes('vp9') ||
+        file.type.toLowerCase().includes('webm') ||
+        fileExt === 'webm'
+
+      if (fileExt !== 'mp4' || isVp9OrWebm) {
+        return NextResponse.json(
+          {
+            error: `Format video "${file.name}" harus MP4 (tidak mendukung format VP9).`,
+          },
+          { status: 400 }
+        )
+      }
+
+      if (file.size > VIDEO_MAX_SIZE) {
+        return NextResponse.json(
+          {
+            error: `Video "${file.name}" terlalu besar. Maksimal 30 MB.`,
+          },
+          { status: 400 }
+        )
+      }
+
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const timestamp = Date.now()
+      const random = Math.random().toString(36).substring(2, 8)
+      const filename = `product-${timestamp}-${random}.mp4`
+      processedFiles.push({ buffer, filename })
     }
   }
 
@@ -106,39 +208,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const mimeToExt: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/jpg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp',
-    'image/gif': 'gif',
-    'image/avif': 'avif',
-    'video/mp4': 'mp4',
-    'video/webm': 'webm',
-    'video/ogg': 'ogg',
-    'video/quicktime': 'mov',
-    'video/x-matroska': 'mkv',
-  }
-
   const urls: string[] = []
 
-  for (const file of files) {
-    const fileExt = file.name.split('.').pop()?.toLowerCase()
-    const ext = mimeToExt[file.type] || fileExt || 'jpg'
-    const timestamp = Date.now()
-    const random = Math.random().toString(36).substring(2, 8)
-    const filename = `product-${timestamp}-${random}.${ext}`
-    const filepath = path.join(uploadsDir, filename)
-
+  for (const item of processedFiles) {
+    const filepath = path.join(uploadsDir, item.filename)
     try {
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      await writeFile(filepath, buffer, { mode: 0o644 })
-      urls.push(`/uploads/products/${filename}`)
+      await writeFile(filepath, item.buffer, { mode: 0o644 })
+      urls.push(`/uploads/products/${item.filename}`)
     } catch (err) {
       console.error('[product-images] writeFile failed:', err)
       return NextResponse.json(
-        { error: `Gagal menyimpan foto "${file.name}"` },
+        { error: `Gagal menyimpan file "${item.filename}"` },
         { status: 500 }
       )
     }

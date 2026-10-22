@@ -22,6 +22,9 @@ interface CartStore {
   deselectAllItems: () => void
   getSelectedItems: () => CartItem[]
   getSelectedSummary: () => CartSummary
+  setSelectedItems: (ids: string[]) => void
+  toggleStoreSelection: (storeId: string) => void
+  selectOnlyStore: (storeId: string) => void
   syncFromServer: () => Promise<void>
   setItems: (items: CartItem[]) => void
   buyNowItem: CartItem | null
@@ -118,7 +121,6 @@ export const useCartStore = create<CartStore>()(
           return
         }
 
-        const currentUserId = get().userId
         set({ userId, isLoading: true })
         try {
           const res = await fetch('/api/cart')
@@ -352,6 +354,64 @@ export const useCartStore = create<CartStore>()(
 
       deselectAllItems: () => {
         set({ selectedItems: [] })
+      },
+
+      setSelectedItems: (ids: string[]) => {
+        set({ selectedItems: ids })
+      },
+
+      toggleStoreSelection: (storeId: string) => {
+        const storeItemIds = get()
+          .items.filter(
+            (item) =>
+              (item.storeId || item.store?.id || 'official-store') === storeId
+          )
+          .map((i) => i.id)
+
+        if (storeItemIds.length === 0) return
+
+        const allStoreSelected = storeItemIds.every((id) =>
+          get().selectedItems.includes(id)
+        )
+
+        if (allStoreSelected) {
+          // Batalkan pilihan semua item di toko ini
+          set({
+            selectedItems: get().selectedItems.filter(
+              (id) => !storeItemIds.includes(id)
+            ),
+          })
+        } else {
+          // Centang semua item di toko ini
+          const merged = Array.from(
+            new Set([...get().selectedItems, ...storeItemIds])
+          )
+          set({ selectedItems: merged })
+        }
+      },
+
+      selectOnlyStore: (storeId: string) => {
+        const storeItemIds = get()
+          .items.filter(
+            (item) =>
+              (item.storeId || item.store?.id || 'official-store') === storeId
+          )
+          .map((i) => i.id)
+
+        if (storeItemIds.length === 0) return
+
+        const currentlySelectedInStore = get().selectedItems.filter((id) =>
+          storeItemIds.includes(id)
+        )
+
+        // Jika sudah ada item toko ini yang dipilih, gunakan item yang dipilih tersebut.
+        // Jika belum ada sama sekali, pilih seluruh item di toko ini.
+        const targetIds =
+          currentlySelectedInStore.length > 0
+            ? currentlySelectedInStore
+            : storeItemIds
+
+        set({ selectedItems: targetIds })
       },
 
       getSelectedItems: () => {

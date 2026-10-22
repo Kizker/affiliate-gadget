@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { isVideoMedia } from '@/types/ads'
+import { processMediaUploadFile } from '@/lib/media-upload-client'
 import { InternalAdItem, PRESET_BANNERS } from '../types'
 
 interface ChangeMediaModalProps {
@@ -327,12 +328,12 @@ export function ChangeMediaModal({
                     : 'Pilih File Foto atau Video Baru dari Komputer'}
                 </span>
                 <span className="mt-0.5 text-[10px] text-slate-400">
-                  Format Foto (PNG, JPG, WebP - maks 15MB) atau Video (MP4,
-                  WebM, MOV - maks 60MB)
+                  Foto JPG, PNG (Maks 2MB, auto-kompres) atau Video MP4 (Maks
+                  30MB, 10–60 dtk)
                 </span>
                 <input
                   type="file"
-                  accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime"
+                  accept="image/jpeg,image/png,video/mp4"
                   disabled={uploadingMedia}
                   className="hidden"
                   onChange={async (e) => {
@@ -340,22 +341,27 @@ export function ChangeMediaModal({
                     if (file) {
                       const isVid =
                         file.type.startsWith('video/') ||
-                        file.name.endsWith('.mp4') ||
-                        file.name.endsWith('.webm')
-                      const maxLimit = isVid
-                        ? 60 * 1024 * 1024
-                        : 15 * 1024 * 1024
-                      if (file.size > maxLimit) {
-                        return toast.error(
-                          isVid
-                            ? 'Ukuran video maksimal 60MB'
-                            : 'Ukuran foto maksimal 15MB'
-                        )
-                      }
+                        file.name.toLowerCase().endsWith('.mp4')
+                      setUploadingMedia(true)
                       try {
-                        setUploadingMedia(true)
+                        let fileToUpload = file
+                        try {
+                          fileToUpload = await processMediaUploadFile(file)
+                          if (!isVid && file.size > 2 * 1024 * 1024) {
+                            toast.info(
+                              `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+                            )
+                          }
+                        } catch (validationErr: any) {
+                          toast.error(
+                            validationErr.message ||
+                              'Format atau ukuran file tidak sesuai ketentuan.'
+                          )
+                          return
+                        }
+
                         const fd = new FormData()
-                        fd.append('file', file)
+                        fd.append('file', fileToUpload)
                         fd.append('folder', 'ads')
                         const res = await fetch('/api/upload', {
                           method: 'POST',
@@ -374,15 +380,13 @@ export function ChangeMediaModal({
                           throw new Error(data.error || 'Gagal upload file')
                         }
                       } catch (err: any) {
-                        const reader = new FileReader()
-                        reader.onload = () => {
-                          setNewImageUrl(reader.result as string)
-                          setNewImageLabel(`Upload: ${file.name}`)
-                          toast.success(`Media ${file.name} siap digunakan`)
-                        }
-                        reader.readAsDataURL(file)
+                        console.error('Error uploading ad media:', err)
+                        toast.error(
+                          err.message || 'Gagal mengunggah media ke server'
+                        )
                       } finally {
                         setUploadingMedia(false)
+                        e.target.value = ''
                       }
                     }
                   }}

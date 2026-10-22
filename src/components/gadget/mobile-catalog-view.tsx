@@ -471,8 +471,14 @@ export function MobileCatalogView({
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-md select-none bg-white pb-24 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      {/* 1. TOP HEADER (Komponen Terpisah Reusable) */}
-      <MobileTopNav />
+      {/* 1. TOP HEADER (Komponen Terpisah Reusable dengan Smart Sticky Search saat di-scroll) */}
+      <MobileTopNav
+        searchable
+        searchValue={search}
+        onSearchChange={setSearch}
+        onSearchSubmit={handleSearchSubmit}
+        onClearSearch={handleClearSearch}
+      />
 
       {/* 2. TOP ADVERTISING STORE BANNER (Level 1: Pilihan Tertinggi Iklan Toko) */}
       <section className="px-3.5 pb-1 pt-3">
