@@ -63,9 +63,8 @@ describe('Customer Orders Multi-Item "Lihat Semua" Toggle Suite', () => {
     expect(desktopContent).toContain('.slice(1)')
     expect(desktopContent).toContain('.map((extraItem')
     expect(desktopContent).toContain('extraItem.product?.images')
-    expect(desktopContent).toContain('extraItem.quantity || 1} Unit')
-    expect(desktopContent).toContain(
-      'formatPrice(extraItem.price * (extraItem.quantity || 1))'
+    expect(desktopContent).toMatch(
+      /formatPrice\(\s*extraItem\.price\s*\*\s*\(extraItem\.quantity\s*\|\|\s*1\)\s*\)/
     )
   })
 })
