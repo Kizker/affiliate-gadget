@@ -86,6 +86,7 @@ export interface OrderData {
   voucherCode?: string | null
   discountAmount?: number
   shippingCost?: number
+  tax?: number
   insuranceRate?: number
   insuranceFee?: number
   courierCode?: string | null

@@ -527,7 +527,15 @@ export function ResolutionActionModal({
 
                     <div className="space-y-1.5 rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500">Nominal Refund:</span>
+                        <span className="text-slate-500">Total Pesanan:</span>
+                        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {formatPrice(selectedReturn.order?.total)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500">
+                          Nominal Refund Bersih (Setelah Potongan Operasional):
+                        </span>
                         <span className="font-mono text-sm font-black text-orange-600 dark:text-orange-400">
                           {formatPrice(
                             selectedReturn.refundAmount ||

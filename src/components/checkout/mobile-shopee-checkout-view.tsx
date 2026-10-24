@@ -1009,19 +1009,20 @@ export function MobileShopeeCheckoutView({
               : 'border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-900'
           }`}
         >
-          <label className="flex cursor-pointer items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+          <label className="flex cursor-default items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
             <input
               type="checkbox"
-              checked={termsAccepted}
-              onChange={(e) => {
-                setTermsAccepted(e.target.checked)
-                if (e.target.checked) setTermsWarning(false)
-              }}
-              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-orange-500 accent-orange-500 focus:ring-orange-400"
+              checked={true}
+              disabled={true}
+              readOnly={true}
+              className="mt-0.5 h-4 w-4 shrink-0 cursor-not-allowed rounded border-orange-300 bg-orange-500 text-white accent-orange-500"
             />
             <span className="select-none leading-snug">
-              Saya menyetujui syarat garansi resmi toko 30 hari tukar unit &amp;
-              asuransi kurir terproteksi.
+              <strong className="font-bold text-orange-600 dark:text-orange-400">
+                [Wajib]
+              </strong>{' '}
+              Garansi resmi toko 30 hari tukar unit &amp; asuransi kurir
+              terproteksi 100% otomatis aktif.
             </span>
           </label>
         </div>

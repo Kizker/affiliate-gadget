@@ -361,6 +361,10 @@ export default function OrdersClient({
     orderId: string
     orderNumber: string
     totalAmount?: number
+    subtotal?: number
+    shippingCost?: number
+    tax?: number
+    insuranceFee?: number
   }>({
     isOpen: false,
     orderId: '',
@@ -1038,6 +1042,10 @@ export default function OrdersClient({
         orderId={returnModal.orderId}
         orderNumber={returnModal.orderNumber}
         totalAmount={returnModal.totalAmount}
+        subtotal={returnModal.subtotal}
+        shippingCost={returnModal.shippingCost}
+        tax={returnModal.tax}
+        insuranceFee={returnModal.insuranceFee}
         onSuccess={() => router.refresh()}
       />
     </>

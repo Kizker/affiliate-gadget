@@ -175,7 +175,7 @@ function CheckoutContent() {
   const [paymentMethod, setPaymentMethod] = useState<
     'GATEWAY' | 'MANUAL_TRANSFER'
   >('GATEWAY')
-  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(true)
   const [desktopTermsWarning, setDesktopTermsWarning] = useState(false)
   const desktopTermsRef = useRef<HTMLDivElement>(null)
 
@@ -1971,19 +1971,20 @@ function CheckoutContent() {
                         : 'pt-1'
                     }`}
                   >
-                    <label className="flex cursor-pointer items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <label className="flex cursor-default items-start gap-2.5 text-[11px] text-slate-700 dark:text-slate-300">
                       <input
                         type="checkbox"
-                        checked={termsAccepted}
-                        onChange={(e) => {
-                          setTermsAccepted(e.target.checked)
-                          if (e.target.checked) setDesktopTermsWarning(false)
-                        }}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-950"
+                        checked={true}
+                        disabled={true}
+                        readOnly={true}
+                        className="mt-0.5 h-4 w-4 shrink-0 cursor-not-allowed rounded border-orange-300 bg-orange-500 text-white accent-orange-500"
                       />
                       <span className="leading-snug">
-                        Saya menyetujui syarat garansi resmi toko 30 hari tukar
-                        unit & asuransi kurir terproteksi.
+                        <strong className="font-bold text-orange-600 dark:text-orange-400">
+                          [Wajib]
+                        </strong>{' '}
+                        Garansi resmi toko 30 hari tukar unit &amp; proteksi
+                        asuransi kurir 100% otomatis aktif dan terlindungi.
                       </span>
                     </label>
                   </div>

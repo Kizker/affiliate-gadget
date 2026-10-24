@@ -4,12 +4,18 @@ import { useState, useRef, useEffect } from 'react'
 import { X, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { calculateNetRefundAmount } from '@/lib/returns/refund-calculator'
+
 interface ReturnModalProps {
   isOpen: boolean
   onClose: () => void
   orderId: string
   orderNumber: string
   totalAmount?: number
+  subtotal?: number
+  shippingCost?: number
+  tax?: number
+  insuranceFee?: number
   onSuccess?: () => void
 }
 
@@ -58,6 +64,11 @@ export function ReturnModal({
   onClose,
   orderId,
   orderNumber,
+  totalAmount,
+  subtotal,
+  shippingCost,
+  tax,
+  insuranceFee,
   onSuccess,
 }: ReturnModalProps) {
   const [returnType, setReturnType] = useState<'REFUND' | 'REPLACEMENT'>(
@@ -75,6 +86,17 @@ export function ReturnModal({
   const bankDropdownRef = useRef<HTMLDivElement>(null)
 
   const [submitting, setSubmitting] = useState(false)
+
+  // Estimasi pengembalian dana setelah dipotong biaya operasional (ongkir, pajak, QC)
+  const refundCalc = totalAmount
+    ? calculateNetRefundAmount({
+        total: totalAmount,
+        subtotal,
+        shippingCost,
+        tax,
+        insuranceFee,
+      })
+    : null
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -313,7 +335,73 @@ export function ReturnModal({
 
             {/* 4. Rekening Tujuan Pengembalian (Only for REFUND) */}
             {returnType === 'REFUND' && (
-              <div>
+              <div className="space-y-3">
+                {/* Estimasi Potongan Biaya Operasional & Pengembalian Bersih */}
+                {refundCalc && (
+                  <div>
+                    <label className="mb-2 block text-xs font-bold text-slate-800 dark:text-white">
+                      Rincian Estimasi Pengembalian Dana
+                    </label>
+                    <div className="space-y-2 rounded-2xl border border-orange-100 bg-orange-50/50 p-3.5 dark:border-orange-950/40 dark:bg-orange-950/20">
+                      <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        <span>Total Pembayaran Pesanan</span>
+                        <span className="font-mono">
+                          Rp {refundCalc.originalTotal.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 border-y border-dashed border-orange-200/80 py-2 text-[11px] text-slate-600 dark:border-orange-900/40 dark:text-slate-400">
+                        <div className="flex items-center justify-between">
+                          <span>• Ongkos Kirim Kurir (Hangus):</span>
+                          <span className="font-mono text-rose-600 dark:text-rose-400">
+                            - Rp{' '}
+                            {refundCalc.shippingCost.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                        {refundCalc.taxDeduction > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span>• Pajak PPN:</span>
+                            <span className="font-mono text-rose-600 dark:text-rose-400">
+                              - Rp{' '}
+                              {refundCalc.taxDeduction.toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        )}
+                        {refundCalc.insuranceFee > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span>• Premi Asuransi Kurir Terpakai:</span>
+                            <span className="font-mono text-rose-600 dark:text-rose-400">
+                              - Rp{' '}
+                              {refundCalc.insuranceFee.toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span>• Biaya Operasional &amp; QC Retur:</span>
+                          <span className="font-mono text-rose-600 dark:text-rose-400">
+                            - Rp{' '}
+                            {refundCalc.operationalFee.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-0.5 text-xs">
+                        <span className="font-black text-slate-900 dark:text-white">
+                          Estimasi Dana Bersih Dikembalikan:
+                        </span>
+                        <span className="font-mono text-sm font-black text-orange-600 dark:text-orange-400">
+                          Rp{' '}
+                          {refundCalc.netRefundAmount.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <p className="text-[10px] leading-tight text-slate-400">
+                        *Pengembalian dana dipotong ongkos kirim asli, pajak,
+                        serta biaya operasional pengujian teknis gerai cabang.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <label className="mb-2 block text-xs font-bold text-slate-800 dark:text-white">
                   Rekening Tujuan Pengembalian
                 </label>

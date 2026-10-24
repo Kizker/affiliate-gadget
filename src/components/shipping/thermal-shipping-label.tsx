@@ -83,7 +83,8 @@ export function ThermalShippingLabel({
       const originCity = data.originStore?.city || ''
 
       const firstItem = data.items?.[0]
-      const itemName = firstItem?.name || 'Gadget Smartphone'
+      // Sensor nama produk spesifik demi alasan keamanan pengiriman e-commerce barang bernilai tinggi
+      const packageLabel = 'Paket Segel Elektronik & Aksesoris'
       const itemQty = firstItem?.quantity || 1
       const itemWeight = firstItem?.weightGram || 500
 
@@ -223,7 +224,7 @@ export function ThermalShippingLabel({
       <!-- Section 4: Detail Barang, Asuransi, Fragile, Footer -->
       <div style="padding-top: 12px; font-size: 10px;">
         <div style="display: flex; justify-content: space-between; font-weight: 700; color: #0f172a;">
-          <span>Unit: ${itemName} (${itemQty}x)</span>
+          <span>Isi Paket: ${packageLabel} (${itemQty} unit)</span>
           <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">Berat: ${itemWeight} gr</span>
         </div>
 
@@ -459,8 +460,8 @@ export function ThermalShippingLabel({
             <div className="space-y-2 pt-3 text-[10px]">
               <div className="flex items-center justify-between font-bold">
                 <span>
-                  Unit: {firstItem?.name || 'Gadget Smartphone'} (
-                  {firstItem?.quantity || 1}x)
+                  Isi Paket: Paket Segel Elektronik & Aksesoris (
+                  {firstItem?.quantity || 1} unit)
                 </span>
                 <span className="font-mono">
                   Berat: {firstItem?.weightGram || 500} gr

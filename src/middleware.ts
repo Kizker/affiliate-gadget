@@ -77,9 +77,6 @@ function getCmsDashboardUrl(
   mitraStatus?: string | null,
   storeId?: string | null
 ): string {
-  if (role === 'STORE_ADMIN' && !storeId) {
-    return '/dashboard/admin/settings?setup=required'
-  }
   if (role && ADMIN_STAFF_ROLES.includes(role)) return '/dashboard/admin'
   if (role === 'TECHNICIAN') return '/dashboard/teknisi'
   if (role === 'MITRA') {
@@ -172,18 +169,6 @@ export default auth((req) => {
       // Proteksi rute Admin CMS (/dashboard/admin)
       if (isAdminRoute && !isAdminStaff) {
         return NextResponse.redirect(new URL(destinationCms, req.url))
-      }
-
-      // Sub-Route RBAC: Jika STORE_ADMIN belum melengkapi cabang toko fisik, wajib lengkapi di /dashboard/admin/settings
-      if (
-        isAdminRoute &&
-        userRole === 'STORE_ADMIN' &&
-        !userStoreId &&
-        pathname !== '/dashboard/admin/settings'
-      ) {
-        return NextResponse.redirect(
-          new URL('/dashboard/admin/settings?setup=required', req.url)
-        )
       }
 
       // ✅ Sub-Route RBAC: Blokir akses ke sub-route yang tidak diizinkan untuk role ini

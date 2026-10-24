@@ -149,22 +149,7 @@ export default function AdminDashboardPage() {
     setLoadingData(true)
     try {
       if (isStoreAdmin) {
-        // Cek kelengkapan profil toko untuk admin toko yang baru diangkat
-        const profileRes = await fetch('/api/admin/profile')
-        if (profileRes.ok) {
-          const profileData = await profileRes.json()
-          const s = profileData.store
-          if (
-            !s ||
-            s.isNewlyAppointed ||
-            !s.address ||
-            !s.phone ||
-            !s.bankAccounts?.length
-          ) {
-            router.replace('/dashboard/admin/settings?onboarding=true')
-            return
-          }
-        }
+        // Fetch recent orders (already scoped by storeId in API)
 
         // Fetch recent orders (already scoped by storeId in API)
         const [ordersRes, productsRes] = await Promise.all([

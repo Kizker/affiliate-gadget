@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { useSession } from 'next-auth/react'
@@ -538,44 +539,6 @@ export default function AdminSettingsPage() {
       className="mx-auto max-w-6xl space-y-5 pb-16 pt-1"
       suppressHydrationWarning
     >
-      {/* ONBOARDING HERO BANNER FOR NEW STORE ADMIN */}
-      {isStoreAdmin &&
-        (isOnboarding || !storeForm.address || !storeForm.phone) && (
-          <div className="relative overflow-hidden rounded-3xl border border-orange-200 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-100/60 p-5 shadow-sm dark:border-orange-950 dark:from-orange-950/40 dark:via-amber-950/20 dark:to-orange-900/30 sm:p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-2.5 py-0.5 text-[11px] font-bold text-orange-700 dark:text-orange-300">
-                  <Store className="h-3 w-3 text-orange-500" />
-                  <span>Langkah Pertama Admin Toko Baru</span>
-                </div>
-                <h2 className="text-lg font-black text-slate-900 dark:text-white sm:text-xl">
-                  Lengkapi Profil Cabang Toko Fisik Anda
-                </h2>
-                <p className="max-w-2xl text-xs text-slate-600 dark:text-slate-300 sm:text-sm">
-                  Selamat! Akun Anda telah diangkat sebagai Admin Toko Cabang.
-                  Sebelum mulai mengelola katalog produk, pesanan, dan live
-                  streaming, silakan periksa dan lengkapi identitas badan hukum
-                  PT, alamat cabang, nomor kontak, serta rekening bank pencairan
-                  komisi di bawah ini.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleSave()}
-                disabled={saving}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-xs font-bold text-white shadow-md shadow-orange-500/30 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                <span>Simpan Profil Toko</span>
-              </button>
-            </div>
-          </div>
-        )}
-
       {/* ========================================================================= */}
       {/* 1. TOP CONTROL PANEL (Role-Adaptive Switcher & Save Button)               */}
       {/* ========================================================================= */}
@@ -2173,9 +2136,18 @@ export default function AdminSettingsPage() {
 
               <div className="space-y-3.5 text-xs">
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">
-                    Password Saat Ini
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 dark:text-slate-300">
+                      Password Saat Ini
+                    </label>
+                    <Link
+                      href={`/forgot-password?email=${encodeURIComponent(userForm.email || '')}`}
+                      target="_blank"
+                      className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline dark:text-orange-400"
+                    >
+                      Lupa Password?
+                    </Link>
+                  </div>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
                     <input
@@ -2233,6 +2205,29 @@ export default function AdminSettingsPage() {
                       className="w-full rounded-xl border border-slate-200/80 bg-slate-50 py-2.5 pl-9 pr-3.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-orange-200/80 bg-orange-50/50 p-3.5 dark:border-orange-950/40 dark:bg-orange-950/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <KeyRound className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        Lupa Password Lama?
+                      </span>
+                    </div>
+                    <Link
+                      href={`/forgot-password?email=${encodeURIComponent(userForm.email || '')}`}
+                      target="_blank"
+                      className="rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600"
+                    >
+                      Reset Password
+                    </Link>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                    Jika Anda lupa password lama, gunakan fitur verifikasi OTP
+                    email untuk mengatur ulang kata sandi baru akun pengelola
+                    ini.
+                  </p>
                 </div>
 
                 <div className="mt-2 flex items-start gap-2 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">

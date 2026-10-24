@@ -568,6 +568,10 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         orderId={order.id}
         orderNumber={order.orderNumber}
         totalAmount={order.total}
+        subtotal={order.subtotal}
+        shippingCost={order.shippingCost}
+        tax={order.tax}
+        insuranceFee={order.insuranceFee}
         onSuccess={() => {
           toast.success(
             'Pengajuan pengembalian berhasil dikirim ke pihak toko!'

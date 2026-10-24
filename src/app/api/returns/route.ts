@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
+import { calculateNetRefundAmount } from '@/lib/returns/refund-calculator'
 
 // GET - List return requests
 export async function GET(request: NextRequest) {
@@ -211,6 +212,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Hitung nominal pengembalian dana setelah dipotong biaya operasional (ongkir, pajak, operasional, asuransi)
+    const refundCalc =
+      type === 'REFUND'
+        ? calculateNetRefundAmount({
+            total: order.total,
+            subtotal: order.subtotal,
+            shippingCost: order.shippingCost,
+            tax: order.tax,
+            insuranceFee: order.insuranceFee,
+          })
+        : null
+
+    const initialStoreResponse = refundCalc
+      ? `[ESTIMASI_REFUND] Total: Rp ${refundCalc.originalTotal.toLocaleString('id-ID')}. Potongan: Ongkir Rp ${refundCalc.shippingCost.toLocaleString('id-ID')} + Pajak Rp ${refundCalc.taxDeduction.toLocaleString('id-ID')} + Asuransi Rp ${refundCalc.insuranceFee.toLocaleString('id-ID')} + Operasional & QC Rp ${refundCalc.operationalFee.toLocaleString('id-ID')}. Pengembalian Bersih: Rp ${refundCalc.netRefundAmount.toLocaleString('id-ID')}.`
+      : null
+
     // Create the ReturnRequest in a transaction
     const [returnRequest] = await prisma.$transaction([
       prisma.returnRequest.create({
@@ -227,7 +244,8 @@ export async function POST(request: NextRequest) {
           bankName: type === 'REFUND' ? bankName : null,
           bankAccountNumber: type === 'REFUND' ? bankAccountNumber : null,
           bankAccountName: type === 'REFUND' ? bankAccountName : null,
-          refundAmount: type === 'REFUND' ? order.total : null,
+          refundAmount: refundCalc?.netRefundAmount ?? null,
+          storeResponse: initialStoreResponse,
           status: 'PENDING',
         },
         include: {

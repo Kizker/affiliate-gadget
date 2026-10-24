@@ -272,8 +272,21 @@ export async function PUT(
           },
         })
       } else if (resolutionAction === 'REFUND') {
-        // 2. Kembalikan Duit: Otomatis transfer dari Midtrans (dana tertahan) balik ke customer
-        const refundAmount = existing.refundAmount || existing.order.total
+        // 2. Kembalikan Duit: Otomatis transfer dana bersih balik ke customer (setelah potong ongkir, pajak, operasional)
+        const { calculateNetRefundAmount } =
+          await import('@/lib/returns/refund-calculator')
+        const refundCalc = calculateNetRefundAmount({
+          total: existing.order.total,
+          subtotal: existing.order.subtotal,
+          shippingCost: existing.order.shippingCost,
+          tax: existing.order.tax,
+          insuranceFee: existing.order.insuranceFee,
+        })
+        const refundAmount =
+          existing.refundAmount && existing.refundAmount < existing.order.total
+            ? existing.refundAmount
+            : refundCalc.netRefundAmount
+        updateData.refundAmount = refundAmount
 
         // Trigger Midtrans refund helper for escrow reversal
         try {

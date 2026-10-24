@@ -37,7 +37,7 @@ function DirectCheckoutContent() {
   const rentalDays = parseInt(searchParams.get('days') || '1')
 
   const [item, setItem] = useState<ProductData | RentalData | null>(null)
-  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(true)
   const [loading, setLoading] = useState(true)
   const [itemLoading, setItemLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -45,7 +45,10 @@ function DirectCheckoutContent() {
   // Redirect if not logged in
   useEffect(() => {
     if (status === 'unauthenticated') {
-      const currentPath = typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/checkout/direct'
+      const currentPath =
+        typeof window !== 'undefined'
+          ? window.location.pathname + window.location.search
+          : '/checkout/direct'
       router.push('/login?redirect=' + encodeURIComponent(currentPath))
     } else if (status === 'authenticated') {
       setLoading(false)
@@ -351,15 +354,17 @@ function DirectCheckoutContent() {
 
             {/* Terms */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <label className="flex cursor-pointer items-start gap-3">
+              <label className="flex cursor-default items-start gap-3">
                 <input
                   type="checkbox"
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  checked={true}
+                  disabled={true}
+                  readOnly={true}
+                  className="mt-1 h-4 w-4 shrink-0 cursor-not-allowed rounded border-gray-300 bg-blue-600 text-white accent-blue-600"
                 />
-                <span className="text-sm text-gray-600">
-                  Saya setuju dengan{' '}
+                <span className="text-sm text-gray-700">
+                  <strong className="font-bold text-blue-600">[Wajib]</strong>{' '}
+                  Garansi toko 30 hari &amp; persetujuan{' '}
                   <Link
                     href="/terms"
                     target="_blank"
