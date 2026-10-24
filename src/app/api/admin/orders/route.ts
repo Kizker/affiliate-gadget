@@ -141,6 +141,20 @@ export async function GET(request: Request) {
             city: true,
             province: true,
             postalCode: true,
+            addresses: {
+              orderBy: { isDefault: 'desc' },
+              take: 1,
+              select: {
+                recipientName: true,
+                phone: true,
+                fullAddress: true,
+                city: true,
+                province: true,
+                district: true,
+                village: true,
+                postalCode: true,
+              },
+            },
           },
         },
         store: {

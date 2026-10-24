@@ -21,11 +21,27 @@ export async function GET() {
             totalTechnicians: 0,
             totalMitras: 0,
             totalProducts: 0,
+            totalStock: 0,
             totalOrders: 0,
             pendingMitras: 0,
             byRole: {},
+            orderStatusCounts: {
+              pendingPayment: 0,
+              paid: 0,
+              inProgress: 0,
+              shipped: 0,
+              completed: 0,
+              cancelled: 0,
+              returned: 0,
+            },
+            returnStats: {
+              pendingReturns: 0,
+              totalReturns: 0,
+            },
           },
           recentUsers: [],
+          recentReturns: [],
+          recentCancellations: [],
           charts: {
             monthlyData: {},
             topProducts: [],
@@ -36,9 +52,86 @@ export async function GET() {
       }
 
       const storeId = session.user.storeId
-      const [totalProducts, totalOrders] = await Promise.all([
+      const whereOrder = {
+        OR: [{ storeId }, { items: { some: { product: { storeId } } } }],
+      }
+
+      const [
+        totalProducts,
+        stockAgg,
+        totalOrders,
+        pendingPaymentOrders,
+        paidOrders,
+        inProgressOrders,
+        shippedOrders,
+        completedOrders,
+        cancelledOrders,
+        returnedOrders,
+        pendingReturns,
+        totalReturns,
+        recentReturns,
+        recentCancellations,
+      ] = await Promise.all([
         prisma.product.count({ where: { storeId, isActive: true } }),
-        prisma.order.count({ where: { storeId } }),
+        prisma.product.aggregate({
+          where: { storeId, isActive: true },
+          _sum: { stock: true },
+        }),
+        prisma.order.count({ where: whereOrder }),
+        prisma.order.count({
+          where: { ...whereOrder, status: 'PENDING_PAYMENT' },
+        }),
+        prisma.order.count({ where: { ...whereOrder, status: 'PAID' } }),
+        prisma.order.count({ where: { ...whereOrder, status: 'IN_PROGRESS' } }),
+        prisma.order.count({ where: { ...whereOrder, status: 'SHIPPED' } }),
+        prisma.order.count({ where: { ...whereOrder, status: 'COMPLETED' } }),
+        prisma.order.count({ where: { ...whereOrder, status: 'CANCELLED' } }),
+        prisma.order.count({
+          where: {
+            ...whereOrder,
+            status: { in: ['RETURNED', 'COMPLAINED'] },
+          },
+        }),
+        prisma.returnRequest.count({
+          where: {
+            OR: [{ storeId }, { order: { storeId } }],
+            status: { in: ['PENDING', 'IN_REVIEW'] },
+          },
+        }),
+        prisma.returnRequest.count({
+          where: { OR: [{ storeId }, { order: { storeId } }] },
+        }),
+        prisma.returnRequest.findMany({
+          where: { OR: [{ storeId }, { order: { storeId } }] },
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+                total: true,
+                createdAt: true,
+              },
+            },
+            user: {
+              select: { id: true, name: true, email: true, phone: true },
+            },
+          },
+        }),
+        prisma.order.findMany({
+          where: { ...whereOrder, status: 'CANCELLED' },
+          take: 5,
+          orderBy: { updatedAt: 'desc' },
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+            items: {
+              include: {
+                product: { select: { id: true, name: true } },
+              },
+            },
+          },
+        }),
       ])
 
       return NextResponse.json({
@@ -47,11 +140,27 @@ export async function GET() {
           totalTechnicians: 0,
           totalMitras: 0,
           totalProducts,
+          totalStock: stockAgg._sum.stock ?? 0,
           totalOrders,
           pendingMitras: 0,
           byRole: {},
+          orderStatusCounts: {
+            pendingPayment: pendingPaymentOrders,
+            paid: paidOrders,
+            inProgress: inProgressOrders,
+            shipped: shippedOrders,
+            completed: completedOrders,
+            cancelled: cancelledOrders,
+            returned: returnedOrders,
+          },
+          returnStats: {
+            pendingReturns,
+            totalReturns,
+          },
         },
         recentUsers: [],
+        recentReturns,
+        recentCancellations,
         charts: {
           monthlyData: {},
           topProducts: [],

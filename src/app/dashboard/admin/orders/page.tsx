@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Search,
   Package,
@@ -102,6 +102,16 @@ interface Order {
     city?: string | null
     province?: string | null
     postalCode?: string | null
+    addresses?: Array<{
+      recipientName?: string | null
+      phone?: string | null
+      fullAddress?: string | null
+      city?: string | null
+      province?: string | null
+      district?: string | null
+      village?: string | null
+      postalCode?: string | null
+    }>
   }
   store?: {
     id: string
@@ -212,6 +222,51 @@ function formatDate(dateStr: string, isFull = false) {
   }
 }
 
+function parseRecipientInfo(order: Order) {
+  let recipientName = ''
+  let recipientPhone = ''
+  let deliveryAddress = ''
+
+  if (order.notes) {
+    const nameMatch = order.notes.match(/Penerima:\s*([^|\n\]]+)/i)
+    if (nameMatch && nameMatch[1]?.trim()) {
+      recipientName = nameMatch[1].trim()
+    }
+    const phoneMatch = order.notes.match(/HP:\s*([^|\n\]]+)/i)
+    if (phoneMatch && phoneMatch[1]?.trim()) {
+      recipientPhone = phoneMatch[1].trim()
+    }
+    const addrMatch = order.notes.match(/Alamat:\s*([^|\n\]]+)/i)
+    if (addrMatch && addrMatch[1]?.trim()) {
+      deliveryAddress = addrMatch[1].trim()
+    }
+  }
+
+  const defaultAddr = order.user?.addresses?.[0]
+  if (!recipientName && defaultAddr?.recipientName) {
+    recipientName = defaultAddr.recipientName
+  }
+  if (!recipientPhone && defaultAddr?.phone) {
+    recipientPhone = defaultAddr.phone
+  }
+
+  if (!recipientName) {
+    recipientName = order.user?.name || 'Customer'
+  }
+  if (!recipientPhone) {
+    recipientPhone = order.user?.phone || '-'
+  }
+
+  if (!deliveryAddress) {
+    deliveryAddress =
+      defaultAddr?.fullAddress ||
+      order.user?.address ||
+      'Pengambilan langsung di Toko Cabang'
+  }
+
+  return { recipientName, recipientPhone, deliveryAddress }
+}
+
 export default function AdminOrdersPage() {
   const { isLoading: guardLoading, isAllowed } = usePageGuard(
     '/dashboard/admin/orders'
@@ -219,6 +274,8 @@ export default function AdminOrdersPage() {
   const { data: session } = useSession()
   const isPlatformAdmin =
     session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
+  const searchParams = useSearchParams()
+  const statusParam = searchParams?.get('status')
 
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -226,7 +283,15 @@ export default function AdminOrdersPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState(statusParam || 'ALL')
+
+  useEffect(() => {
+    const qStatus = searchParams?.get('status')
+    if (qStatus && qStatus !== statusFilter) {
+      setStatusFilter(qStatus)
+      setPage(1)
+    }
+  }, [searchParams])
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -1152,26 +1217,83 @@ export default function AdminOrdersPage() {
                       </div>
                     </div>
 
-                    {/* Destination Address Card */}
-                    <div className="space-y-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                    {/* Destination Address & Recipient Card */}
+                    <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
                       <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                        <span>Alamat Tujuan Pengiriman</span>
+                        <span>Penerima & Alamat Pengiriman</span>
                       </span>
 
-                      <p className="text-xs font-semibold leading-relaxed text-slate-800 dark:text-slate-200">
-                        {selectedOrder.user?.address ||
-                          'Pengambilan langsung di Toko Cabang'}
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {[
-                          selectedOrder.user?.city,
-                          selectedOrder.user?.province,
-                          selectedOrder.user?.postalCode,
-                        ]
-                          .filter(Boolean)
-                          .join(', ')}
-                      </p>
+                      {/* Detail Nama dan Nomor Penerima */}
+                      {(() => {
+                        const recipient = parseRecipientInfo(selectedOrder)
+                        return (
+                          <>
+                            <div className="space-y-2 rounded-xl border border-slate-200/90 bg-white p-3 dark:border-slate-700/80 dark:bg-slate-800/80">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                    Nama Penerima
+                                  </span>
+                                  <p className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                                    <User className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                    <span className="truncate">
+                                      {recipient.recipientName}
+                                    </span>
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2 dark:border-slate-700/60">
+                                <div className="min-w-0">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                    Nomor HP Penerima
+                                  </span>
+                                  <p className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-900 dark:text-white">
+                                    <Phone className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    <span>{recipient.recipientPhone}</span>
+                                  </p>
+                                </div>
+                                {recipient.recipientPhone &&
+                                  recipient.recipientPhone !== '-' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(
+                                          recipient.recipientPhone
+                                        )
+                                        toast.success('Nomor penerima disalin!')
+                                      }}
+                                      className="shadow-2xs inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-200"
+                                      title="Salin Nomor HP Penerima"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                      <span>Salin</span>
+                                    </button>
+                                  )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                Alamat Lengkap
+                              </span>
+                              <p className="text-xs font-semibold leading-relaxed text-slate-800 dark:text-slate-200">
+                                {recipient.deliveryAddress}
+                              </p>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                {[
+                                  selectedOrder.user?.city,
+                                  selectedOrder.user?.province,
+                                  selectedOrder.user?.postalCode,
+                                ]
+                                  .filter(Boolean)
+                                  .join(', ')}
+                              </p>
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
 
                     {/* Courier & Logistic Protection Card */}

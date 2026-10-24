@@ -25,6 +25,10 @@ import {
 import { MobileShopeeCheckoutView } from '@/components/checkout/mobile-shopee-checkout-view'
 import { StoreVoucherSelector } from '@/components/checkout/store-voucher-selector'
 import {
+  VoucherPickerModal,
+  AvailableVoucher,
+} from '@/components/checkout/voucher-picker-modal'
+import {
   calculateInsuranceFee,
   INSURANCE_PERCENTAGE,
 } from '@/lib/constants/insurance'
@@ -57,6 +61,7 @@ import {
   Star,
   Edit3,
   Tag,
+  Ticket,
   X,
   AlertCircle,
   CheckCircle2,
@@ -208,6 +213,12 @@ function CheckoutContent() {
   const appliedVoucher = appliedVouchers[0] || null
   const [showAddVoucherInput, setShowAddVoucherInput] = useState(false)
   const [voucherError, setVoucherError] = useState<string | null>(null)
+  const [availableVouchers, setAvailableVouchers] = useState<
+    AvailableVoucher[]
+  >([])
+  const [loadingAvailableVouchers, setLoadingAvailableVouchers] =
+    useState(false)
+  const [isVoucherPickerOpen, setIsVoucherPickerOpen] = useState(false)
 
   // Idempotency Key (LOW-04): unik per payload keranjang atau pesanan langsung
   const idempotencyKeyRef = useRef<string>('')
@@ -685,8 +696,37 @@ function CheckoutContent() {
     }
   }, [computedStorePackages])
 
-  const handleApplyVoucher = async () => {
-    const trimmed = voucherInput.trim().toUpperCase()
+  // Fetch available vouchers whenever checkout subtotal or target store package changes
+  useEffect(() => {
+    const currentSubtotal = activeVoucherStorePackage?.subtotal || subtotal
+    if (currentSubtotal <= 0) return
+
+    let isMounted = true
+    setLoadingAvailableVouchers(true)
+    fetch(`/api/vouchers?subtotal=${currentSubtotal}&orderType=PRODUCT`)
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject('Failed to fetch vouchers')
+      )
+      .then((data) => {
+        if (isMounted && data.vouchers) {
+          setAvailableVouchers(data.vouchers)
+        }
+      })
+      .catch((err) => {
+        console.error('Error loading available vouchers:', err)
+      })
+      .finally(() => {
+        if (isMounted) setLoadingAvailableVouchers(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [activeVoucherStorePackage?.subtotal, subtotal])
+
+  const handleApplyVoucher = async (customCode?: string | unknown) => {
+    const raw = typeof customCode === 'string' ? customCode : voucherInput
+    const trimmed = raw.trim().toUpperCase()
     if (!trimmed) {
       setVoucherError('Silakan masukkan kode voucher terlebih dahulu')
       return
@@ -733,6 +773,7 @@ function CheckoutContent() {
         setVoucherInput('')
         setVoucherError(null)
         setShowAddVoucherInput(false)
+        setIsVoucherPickerOpen(false)
         toast.success(
           `Voucher ${data.voucherCode} berhasil digunakan untuk ${targetPkg.storeName}! Hemat Rp ${data.discountAmount.toLocaleString('id-ID')}`
         )
@@ -1034,6 +1075,9 @@ function CheckoutContent() {
           appliedVoucher={appliedVoucher}
           voucherError={voucherError}
           isValidatingVoucher={isValidatingVoucher}
+          onOpenVoucherPicker={() => setIsVoucherPickerOpen(true)}
+          availableVouchersCount={availableVouchers.length}
+          validVouchersCount={availableVouchers.filter((v) => v.isValid).length}
           selectedVoucherStoreId={activeVoucherStoreId}
           setSelectedVoucherStoreId={setSelectedVoucherStoreId}
           paymentMethod={paymentMethod}
@@ -1885,7 +1929,45 @@ function CheckoutContent() {
 
                     {/* Input form: rendered either when no vouchers applied, or when user clicks Tambah Voucher Lain */}
                     {(appliedVouchers.length === 0 || showAddVoucherInput) && (
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
+                        {/* Interactive Voucher Picker Trigger */}
+                        <button
+                          type="button"
+                          onClick={() => setIsVoucherPickerOpen(true)}
+                          className="shadow-2xs flex w-full cursor-pointer items-center justify-between rounded-xl border border-orange-200 bg-orange-50/70 px-3.5 py-2.5 text-xs font-bold text-orange-700 transition hover:bg-orange-100/80 active:scale-[0.99] dark:border-orange-800/80 dark:bg-orange-950/40 dark:text-orange-300"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Ticket className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                            <span>Pilih Dari Voucher Tersedia</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {availableVouchers.filter((v) => v.isValid).length >
+                            0 ? (
+                              <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-extrabold text-white">
+                                {
+                                  availableVouchers.filter((v) => v.isValid)
+                                    .length
+                                }{' '}
+                                Siap Pakai
+                              </span>
+                            ) : availableVouchers.length > 0 ? (
+                              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                                {availableVouchers.length} Voucher
+                              </span>
+                            ) : null}
+                            <ChevronRight className="h-4 w-4 text-orange-500" />
+                          </div>
+                        </button>
+
+                        <div className="relative flex items-center justify-center">
+                          <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                          </div>
+                          <div className="relative bg-slate-50/80 px-2 text-[10px] font-medium text-slate-400 dark:bg-slate-900/80">
+                            atau ketik kode manual
+                          </div>
+                        </div>
+
                         {/* Store Target Selector if Multi-Store */}
                         {computedStorePackages.length > 1 && (
                           <div className="mb-2">
@@ -1932,7 +2014,7 @@ function CheckoutContent() {
                             disabled={
                               isValidatingVoucher || !voucherInput.trim()
                             }
-                            onClick={handleApplyVoucher}
+                            onClick={() => handleApplyVoucher()}
                             className="shrink-0 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                           >
                             {isValidatingVoucher ? (
@@ -2064,6 +2146,20 @@ function CheckoutContent() {
           (session?.user as any)?.phone ||
           ''
         }
+      />
+
+      {/* Shared Voucher Picker Modal untuk Pemilihan Voucher Valid */}
+      <VoucherPickerModal
+        isOpen={isVoucherPickerOpen}
+        onClose={() => setIsVoucherPickerOpen(false)}
+        vouchers={availableVouchers}
+        loading={loadingAvailableVouchers}
+        targetStoreName={activeVoucherStorePackage?.storeName}
+        subtotal={activeVoucherStorePackage?.subtotal || subtotal}
+        appliedCodes={appliedVouchers.map((v) => v.code)}
+        onSelectVoucher={(code) => {
+          handleApplyVoucher(code)
+        }}
       />
     </>
   )

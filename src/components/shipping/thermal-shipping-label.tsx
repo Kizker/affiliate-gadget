@@ -230,7 +230,7 @@ export function ThermalShippingLabel({
 
         <div style="display: flex; align-items: center; gap: 6px; border: 1px solid #0f172a; background-color: #f1f5f9; border-radius: 8px; padding: 6px 8px; font-size: 9px; font-weight: 700; text-transform: uppercase; color: #0f172a; margin-top: 8px;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-          <span>100% Terlindungi Asuransi Wajib (Ganti Unit Baru)</span>
+          <span>100% Terlindungi Asuransi</span>
         </div>
 
         <div style="display: flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 500; color: #334155; margin-top: 6px;">
@@ -472,7 +472,7 @@ export function ThermalShippingLabel({
               <div className="flex items-center gap-1.5 rounded-lg border border-slate-900 bg-slate-100 p-2 font-bold text-slate-900">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-slate-900" />
                 <span className="text-[9px] uppercase tracking-tight">
-                  100% Terlindungi Asuransi Wajib (Ganti Unit Baru)
+                  100% Terlindungi Asuransi
                 </span>
               </div>
 

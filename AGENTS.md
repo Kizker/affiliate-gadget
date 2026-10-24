@@ -49,6 +49,20 @@
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-10-25 (Pilihan Pemilihan Voucher Interaktif, Tampilan Nama & Nomor HP Penerima Order Detail Admin, Penyesuaian Teks Asuransi AWB, & Redesain Dashboard Admin Toko [`src/app/api/vouchers/route.ts`, `src/components/checkout/voucher-picker-modal.tsx`, `src/app/checkout/page.tsx`, `src/components/checkout/mobile-shopee-checkout-view.tsx`, `src/app/dashboard/admin/orders/page.tsx`, `src/app/api/admin/orders/route.ts`, `src/components/shipping/thermal-shipping-label.tsx`, `src/app/dashboard/admin/page.tsx`, `src/app/api/admin/dashboard/route.ts`, `tests/unit/store-admin-dashboard-and-voucher-picker.test.ts`]):**
+  - **1. Sistem Pemilihan Voucher Interaktif Pelanggan:**
+    - Membuat API `GET /api/vouchers?subtotal={n}&orderType=PRODUCT` untuk mengevaluasi voucher aktif, quota, limit per user, serta menghitung status validitas, selisih kekurangan belanja (`shortfallAmount`), dan proyeksi diskon (`potentialDiscount`).
+    - Membuat komponen `VoucherPickerModal` dengan filter pencarian instan, badge validitas ("Siap Digunakan" vs "Belum Memenuhi Syarat"), visual kupon hemat, dan tombol "Gunakan".
+    - Mengintegrasikan voucher picker ke `src/app/checkout/page.tsx` (desktop & responsive) dan `src/components/checkout/mobile-shopee-checkout-view.tsx` (mobile bottom sheet trigger), memungkinkan user memilih voucher yang valid hanya dengan 1 kali klik tanpa harus mengetik kode manual.
+  - **2. Nama dan Nomor Penerima pada Detail Pesanan Admin Toko:**
+    - Menambahkan ekstraksi nama penerima dan nomor telepon penerima (`parseRecipientInfo`) yang cerdas dari catatan pengiriman order (`order.notes`), master alamat user default (`user.addresses`), serta fallback ke profil user.
+    - Menampilkan kartu bento "Penerima & Alamat Pengiriman" di dialog detail pesanan (`/dashboard/admin/orders`) lengkap dengan Nama Penerima, Nomor HP Penerima, tombol salin instan nomor telepon, dan rincian alamat lengkap.
+    - Memperbarui API `/api/admin/orders` agar menyertakan relasi `addresses` milik pembeli.
+  - **3. Penyesuaian Teks Asuransi Cetak Label / Air Waybill:**
+    - Mengubah label asuransi cetak resi thermal dan preview React di `src/components/shipping/thermal-shipping-label.tsx` dari `"100% Terlindungi Asuransi Wajib (Ganti Unit Baru)"` menjadi `"100% Terlindungi Asuransi"`.
+  - **4. Redesain Dashboard Store Admin:**
+    - Mengeliminasi kartu statis Proteksi & Operasional, memprioritaskan pesanan masuk sebagai panggung operasional utama, merampingkan stok ke opsi ringkas dengan expander, menambahkan pelacakan pengembalian & pembatalan khusus, serta menyematkan strip 6 kartu live status pesanan yang terhubung langsung ke filter `/dashboard/admin/orders`.
+  - **5. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite `tests/unit/store-admin-dashboard-and-voucher-picker.test.ts` dan seluruh test terkait lulus 100%.
 - **2026-10-22 (Audit & Perbaikan Menyeluruh Sistem Upload Media Foto & Video serta Test Case Suite Komprehensif [`src/lib/media-upload-client.ts`, `src/app/api/upload/route.ts`, `src/app/api/products/upload-images/route.ts`, `src/app/dashboard/customer/chat/page.tsx`, `src/app/dashboard/admin/chat/page.tsx`, `src/components/chat/floating-chat-button.tsx`, `src/app/dashboard/customer/chat/admin/[orderId]/page.tsx`, `src/components/admin/ads/modals/create-ad-modal.tsx`, `src/components/admin/ads/modals/change-media-modal.tsx`, `src/app/dashboard/admin/products/new/page.tsx`, `src/app/dashboard/admin/products/[id]/edit/page.tsx`, `src/app/dashboard/admin/settings/page.tsx`, `tests/unit/media-upload-comprehensive-system.test.ts`]):**
   - **1. Standarisasi Ketat Spesifikasi & Batasan File:**
     - **Foto/Gambar:** Maksimal 2 MB per foto, format JPG/JPEG/PNG. File > 2 MB otomatis dikompres via HTML5 Canvas di client & Sharp di server (dengan `flatten: #ffffff` untuk mencegah background hitam pada PNG transparan), batas keras maksimal 25 MB sebelum kompresi.
