@@ -107,7 +107,7 @@ export async function dispatchOtp(params: {
       const text = otpPlainText(code, purposeLabel, expireMinutes)
       sendResult = await sendEmail(
         params.identifier,
-        `Kode Verifikasi OTP - ${purposeLabel}`,
+        `[Affiliate Gadget] ${code} adalah Kode Verifikasi OTP Anda (${purposeLabel})`,
         html,
         text
       )

@@ -61,7 +61,10 @@ export function otpEmailTemplate(
     <p style="color: #64748b; font-size: 13px; text-align: center; margin-bottom: 0;">
       Kode verifikasi ini berlaku selama <strong>${expireMinutes} menit</strong>.
     </p>
-    <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 6px;">
+    <div style="margin-top: 24px; padding: 12px 16px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12px; color: #64748b; line-height: 1.5; text-align: left;">
+      💡 <strong>Tips Pengiriman:</strong> Jika email ini masuk ke folder <em>Spam</em> atau <em>Promosi</em>, tandai sebagai <strong>Bukan Spam</strong> untuk kelancaran notifikasi akun & transaksi berikutnya.
+    </div>
+    <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 14px;">
       Jika Anda tidak melakukan permintaan ini, abaikan email ini. Akun Anda tetap aman.
     </p>
   `

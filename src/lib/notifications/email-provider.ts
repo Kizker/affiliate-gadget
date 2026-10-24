@@ -30,7 +30,9 @@ export async function sendEmail(
   const resend = getResendClient()
   if (!resend) {
     if (process.env.NODE_ENV !== 'production' || isMock) {
-      console.log(`[MOCK/DEV EMAIL - RESEND_API_KEY BELUM DIISI] Kirim ke: ${to} | Subjek: "${subject}"`)
+      console.log(
+        `[MOCK/DEV EMAIL - RESEND_API_KEY BELUM DIISI] Kirim ke: ${to} | Subjek: "${subject}"`
+      )
       return {
         success: true,
         provider: 'MOCK_EMAIL',
@@ -41,13 +43,13 @@ export async function sendEmail(
     return {
       success: false,
       provider: 'RESEND',
-      errorMessage: 'Kredensial Resend belum dikonfigurasi di .env (RESEND_API_KEY)',
+      errorMessage:
+        'Kredensial Resend belum dikonfigurasi di .env (RESEND_API_KEY)',
     }
   }
 
   const fromName = process.env.RESEND_FROM_NAME || 'Affiliate Gadget'
-  const fromEmail =
-    process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
   const from = `${fromName} <${fromEmail}>`
 
   try {
@@ -57,6 +59,10 @@ export async function sendEmail(
       subject,
       html,
       text: text || html.replace(/<[^>]*>?/gm, '').trim(),
+      replyTo: fromEmail,
+      headers: {
+        'X-Entity-Ref-ID': `ag-${Date.now()}`,
+      },
     })
 
     if (error) {

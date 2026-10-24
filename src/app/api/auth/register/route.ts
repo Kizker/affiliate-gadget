@@ -155,14 +155,19 @@ export async function POST(req: NextRequest) {
 
     // 12. Dispatch Email OTP for Registration (Default Channel)
     const { dispatchOtp } = await import('@/lib/notifications')
-    await dispatchOtp({
+    const otpResult = await dispatchOtp({
       identifier: newUser.email,
       purpose: 'REGISTER',
       channel: 'EMAIL',
       userId: newUser.id,
-    }).catch((err) =>
+    }).catch((err) => {
       console.error('[REGISTER OTP EMAIL DISPATCH FAILED]:', err)
-    )
+      return { success: false, errorMessage: String(err) }
+    })
+
+    if (!otpResult?.success) {
+      console.warn('[REGISTER OTP DISPATCH WARNING]:', otpResult?.errorMessage)
+    }
 
     return NextResponse.json(
       {

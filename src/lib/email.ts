@@ -38,8 +38,11 @@ async function getTransporter() {
     })
   }
 
-  // Development fallback: Ethereal test account (emails viewable at ethereal.email)
-  if (process.env.NODE_ENV !== 'production') {
+  // Development fallback: only if USE_ETHEREAL is explicitly enabled
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.USE_ETHEREAL === 'true'
+  ) {
     try {
       const testAccount = await nodemailer.createTestAccount()
       const transporter = nodemailer.createTransport({
@@ -132,33 +135,30 @@ export async function sendVerificationEmail({
   `
 
   try {
-    const transporter = await getTransporter()
+    const subject = 'Verifikasi Akun Anda — Affiliate Gadget'
 
-    if (!transporter) {
-      // No SMTP configured and Ethereal unavailable — log to console (dev only)
+    // 1. Send via Resend Provider (Production & Mock)
+    const sendResult = await sendEmail(to, subject, htmlBody)
+
+    // 2. Optional nodemailer SMTP fallback if configured
+    const transporter = await getTransporter()
+    if (transporter) {
+      await transporter
+        .sendMail({
+          from: fromEmail,
+          to,
+          subject,
+          html: htmlBody,
+        })
+        .catch(() => {})
+    } else if (process.env.NODE_ENV !== 'production' && !sendResult.success) {
       console.info('\n======================================================')
       console.info(`📧 [DEV EMAIL SIMULATION] To: ${to} (${name})`)
       console.info(`🔗 Verification Link (Valid 24h): ${verificationUrl}`)
       console.info('======================================================\n')
-      return { success: true }
     }
 
-    const info = await transporter.sendMail({
-      from: fromEmail,
-      to,
-      subject: 'Verifikasi Akun Anda — Affiliate Gadget',
-      html: htmlBody,
-    })
-
-    // In dev with Ethereal, log the preview URL
-    if (process.env.NODE_ENV !== 'production') {
-      const previewUrl = nodemailer.getTestMessageUrl(info)
-      if (previewUrl) {
-        console.info(`\n📧 [DEV] Email Preview URL: ${previewUrl}\n`)
-      }
-    }
-
-    return { success: true }
+    return { success: sendResult.success, error: sendResult.errorMessage }
   } catch (err) {
     console.error('[Email Error]:', err)
     return { success: false, error: (err as Error).message }
@@ -680,4 +680,3 @@ export async function sendOrderComplainedEmail({
     return { success: false, error: (err as Error).message }
   }
 }
-

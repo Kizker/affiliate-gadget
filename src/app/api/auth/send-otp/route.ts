@@ -10,7 +10,7 @@ import { OtpPurpose, OtpChannel } from '@prisma/client'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { identifier, purpose = 'LOGIN', channel = 'WHATSAPP', userId } = body
+    const { identifier, purpose = 'LOGIN', channel, userId } = body
 
     if (!identifier) {
       return NextResponse.json(
@@ -20,6 +20,8 @@ export async function POST(req: NextRequest) {
     }
 
     const isEmail = String(identifier).includes('@')
+    const otpChannel: OtpChannel =
+      (channel as OtpChannel) || (isEmail ? 'EMAIL' : 'WHATSAPP')
     let normalizedTarget = String(identifier).trim()
 
     if (isEmail) {
@@ -88,7 +90,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Dispatch OTP
-    const otpChannel = channel as OtpChannel
     const otpPurpose = purpose as OtpPurpose
 
     const result = await dispatchOtp({

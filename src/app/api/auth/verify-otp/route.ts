@@ -76,17 +76,24 @@ export async function POST(req: NextRequest) {
     if (validation.otpToken) {
       await consumeOtpRecord(validation.otpToken.id)
 
-      // Jika verifikasi untuk pendaftaran akun atau verifikasi telepon
-      if (purpose === 'REGISTER' || purpose === 'CHANGE_PHONE') {
+      // Jika verifikasi untuk pendaftaran akun, verifikasi email, atau verifikasi telepon
+      if (
+        purpose === 'REGISTER' ||
+        purpose === 'CHANGE_EMAIL' ||
+        purpose === 'CHANGE_PHONE'
+      ) {
         await db.user.updateMany({
           where: {
             OR: [
-              { phone: normalizedTarget },
+              { email: isEmail ? normalizedTarget : undefined },
+              { phone: !isEmail ? normalizedTarget : undefined },
               { id: validation.otpToken.userId || undefined },
             ],
           },
           data: {
-            phoneVerified: new Date(),
+            ...(isEmail
+              ? { emailVerified: new Date() }
+              : { phoneVerified: new Date() }),
           },
         })
       }
