@@ -1012,45 +1012,11 @@ export default function RegisterPage() {
                   </p>
                 </div>
 
-                {/* Guidance for Email Delivery / Spam Check */}
-                {activeOtpChannel === 'EMAIL' && (
-                  <div className="rounded-2xl border border-blue-200/80 bg-blue-50/70 p-3.5 text-left text-xs dark:border-blue-900/40 dark:bg-blue-950/20">
-                    <div className="flex items-start gap-2.5">
-                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white">
-                        i
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-bold text-blue-950 dark:text-blue-200">
-                          Tidak menemukan email verifikasi di Kotak Masuk?
-                        </p>
-                        <p className="text-[11px] leading-relaxed text-blue-800 dark:text-blue-300">
-                          Mohon periksa folder <strong>Spam</strong>,{' '}
-                          <strong>Junk</strong>, atau tab{' '}
-                          <strong>Promosi</strong> di aplikasi email Anda. Email
-                          resmi dikirim oleh{' '}
-                          <span className="font-semibold underline">
-                            noreply@affiliategadget.tech
-                          </span>
-                          .
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Error Banner */}
                 {otpError && (
                   <div className="flex items-center gap-2 rounded-2xl border border-red-200/80 bg-red-50/80 p-3 text-xs text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>{otpError}</span>
-                  </div>
-                )}
-
-                {/* Success Banner */}
-                {otpSuccess && (
-                  <div className="flex items-center gap-2 rounded-2xl border border-emerald-200/80 bg-emerald-50/80 p-3 text-xs text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    <span>{otpSuccess}</span>
                   </div>
                 )}
 

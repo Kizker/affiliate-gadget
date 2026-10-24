@@ -617,17 +617,6 @@ function LoginForm() {
                   </p>
                 </div>
 
-                {/* Guidance for Email Delivery */}
-                {activeChannel === 'EMAIL' && (
-                  <div className="mb-4 rounded-2xl border border-blue-200/80 bg-blue-50/70 p-3 text-left text-xs dark:border-blue-900/40 dark:bg-blue-950/20">
-                    <p className="text-[11px] leading-relaxed text-blue-800 dark:text-blue-300">
-                      💡 Periksa folder <strong>Spam</strong>,{' '}
-                      <strong>Junk</strong>, atau <strong>Promosi</strong> jika
-                      email OTP belum muncul di Kotak Masuk.
-                    </p>
-                  </div>
-                )}
-
                 {/* Error Notification Banner */}
                 {error && (
                   <div className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700 duration-150 animate-in fade-in dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300">
