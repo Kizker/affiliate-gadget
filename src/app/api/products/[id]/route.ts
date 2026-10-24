@@ -159,7 +159,11 @@ export async function PATCH(
                     ? parseFloat(String(costPrice).replace(/\./g, '')) || 0
                     : (existing as any).costPrice || 0,
               stock: parseInt(String(v.stock || stock || existing.stock)) || 0,
-              sku: v.sku || null,
+              sku: v.sku
+                ? String(v.sku).trim()
+                : body.sku
+                  ? String(body.sku).trim()
+                  : null,
             })),
           })
         }

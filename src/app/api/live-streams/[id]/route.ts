@@ -165,10 +165,12 @@ export async function PATCH(
     if (coverImage !== undefined) updateData.coverImage = coverImage
     if (streamUrl !== undefined) updateData.streamUrl = streamUrl
     if (featuredProductIds !== undefined) {
+      const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
       if (
         Array.isArray(featuredProductIds) &&
         featuredProductIds.length > 0 &&
-        stream.storeId
+        stream.storeId &&
+        !isSuperAdmin
       ) {
         const validProducts = await prisma.product.findMany({
           where: {

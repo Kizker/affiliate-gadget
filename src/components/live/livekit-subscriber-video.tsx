@@ -176,7 +176,7 @@ function LiveKitSubscriberVideo({
             ref={videoRef}
             autoPlay
             playsInline
-            muted={isMuted}
+            muted={true}
             aria-label="Siaran langsung video host toko"
             className={`relative z-10 transition-transform duration-300 ${
               isContainMode

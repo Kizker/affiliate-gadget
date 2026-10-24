@@ -96,6 +96,7 @@ export default function NewGadgetProductPage() {
     brand: 'Apple',
     category: 'Smartphone',
     model: '',
+    sku: '',
     condition: 'LIKE_NEW',
     price: '',
     costPrice: '',
@@ -128,6 +129,7 @@ export default function NewGadgetProductPage() {
       price: '',
       costPrice: '',
       stock: '3',
+      sku: '',
     },
     {
       name: '256GB - Natural Titanium',
@@ -138,6 +140,7 @@ export default function NewGadgetProductPage() {
       price: '',
       costPrice: '',
       stock: '2',
+      sku: '',
     },
   ])
 
@@ -195,6 +198,7 @@ export default function NewGadgetProductPage() {
         price: form.price,
         costPrice: form.costPrice || '',
         stock: '1',
+        sku: '',
       },
     ])
   }
@@ -400,6 +404,7 @@ export default function NewGadgetProductPage() {
                 ? parseRupiahInput(form.costPrice)
                 : 0,
             stock: parseInt(String(v.stock), 10) || 0,
+            sku: v.sku?.trim() || form.sku?.trim() || undefined,
           })),
         }),
       })
@@ -472,6 +477,26 @@ export default function NewGadgetProductPage() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Contoh: iPhone 15 Pro Max 256GB Natural Titanium"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
+              />
+            </div>
+
+            {/* Kode SKU Produk (Input Manual) */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <div className="flex h-5 items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Kode SKU Produk (Manual)
+                </label>
+                <span className="text-[10px] text-slate-400">
+                  Kode identifikasi unit / stok fisik toko (contoh:
+                  SKU-IP15PM-256)
+                </span>
+              </div>
+              <input
+                type="text"
+                value={form.sku || ''}
+                onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                placeholder="Contoh: SKU-IP15PM-256-NAT"
                 className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
               />
             </div>
@@ -1037,9 +1062,9 @@ export default function NewGadgetProductPage() {
                     </div>
                   </div>
 
-                  {/* Inputs Grid: Nama, RAM, Storage, Warna, Harga, Modal, Stok */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-8">
-                    <div className="lg:col-span-2">
+                  {/* Inputs Grid: Nama, SKU, RAM, Storage, Warna, Harga, Modal, Stok */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+                    <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
                       <CreatableCombobox
                         label="Nama Varian"
                         placeholder="e.g. 256GB - Natural Titanium"
@@ -1051,6 +1076,22 @@ export default function NewGadgetProductPage() {
                           'Paket Spesial',
                         ].filter(Boolean)}
                         onChange={(val) => updateVariant(i, 'name', val)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Kode SKU
+                      </label>
+                      <input
+                        type="text"
+                        value={v.sku || ''}
+                        onChange={(e) =>
+                          updateVariant(i, 'sku', e.target.value)
+                        }
+                        placeholder="e.g. SKU-256-NAT"
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        title="Kode SKU spesifik varian ini"
                       />
                     </div>
 

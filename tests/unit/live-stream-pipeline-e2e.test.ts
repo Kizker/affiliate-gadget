@@ -165,6 +165,10 @@ describe('Live Streaming Engine — Full End-to-End Pipeline Simulation', () => 
       storeId: 'store-roxy-mas',
     } as any)
 
+    vi.spyOn(prisma.product, 'findMany').mockResolvedValueOnce([
+      { id: 'prod-iphone-15' },
+    ] as any)
+
     const updatedStream = {
       id: createdStreamId,
       status: 'LIVE',

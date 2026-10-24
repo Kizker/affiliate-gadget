@@ -119,7 +119,11 @@ export async function POST(
       )
     }
 
+    const userRole = (session.user as any)?.role
+    const isSuperAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN'
+
     if (
+      !isSuperAdmin &&
       stream.storeId &&
       product.storeId &&
       product.storeId !== stream.storeId

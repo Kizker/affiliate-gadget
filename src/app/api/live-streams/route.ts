@@ -106,6 +106,8 @@ export async function POST(req: NextRequest) {
         select: { storeId: true },
       })
       storeId = user?.storeId || null
+    } else if (body.storeId) {
+      storeId = body.storeId
     }
 
     if (!storeId) {

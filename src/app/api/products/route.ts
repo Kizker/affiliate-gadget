@@ -419,7 +419,11 @@ export async function POST(request: NextRequest) {
                   ? parseFloat(String(costPrice).replace(/\./g, '')) || 0
                   : 0,
             stock: parseInt(String(v.stock || stock)) || 0,
-            sku: v.sku,
+            sku: v.sku
+              ? String(v.sku).trim()
+              : body.sku
+                ? String(body.sku).trim()
+                : null,
           })),
         },
       } as any,
