@@ -38,6 +38,7 @@ import { isSameDay } from '@/utils/chat-helpers'
 import { getChatTickStatus } from '@/lib/chat-status'
 import { processMediaUploadFile } from '@/lib/media-upload-client'
 import { usePageGuard } from '@/hooks/use-page-guard'
+import { playChatNotificationSound } from '@/lib/chat-notification-sound'
 
 const renderAdminWhatsAppTick = (
   isRead?: boolean,
@@ -445,6 +446,7 @@ function AdminChatContent() {
   const messagesPollingRef = useRef<NodeJS.Timeout | null>(null)
   const roomsPollingRef = useRef<NodeJS.Timeout | null>(null)
   const selectedRoomRef = useRef<ChatRoom | null>(null)
+  const prevAdminUnreadRef = useRef<number | null>(null)
 
   const [mounted, setMounted] = useState(false)
 
@@ -514,6 +516,14 @@ function AdminChatContent() {
         const unreadCount = mappedRooms.filter(
           (r) => (r._count?.messages || 0) > 0
         ).length
+        if (
+          prevAdminUnreadRef.current !== null &&
+          unreadCount > prevAdminUnreadRef.current
+        ) {
+          playChatNotificationSound()
+        }
+        prevAdminUnreadRef.current = unreadCount
+
         setStats({
           totalRooms: data.stats?.totalRooms ?? mappedRooms.length,
           unreadRooms: unreadCount,
@@ -575,16 +585,6 @@ function AdminChatContent() {
     fetchRooms(false)
   }, [fetchRooms])
 
-  // Background rooms polling every 3.5s for live conversation updates
-  useEffect(() => {
-    roomsPollingRef.current = setInterval(() => {
-      fetchRooms(true)
-    }, 3500)
-    return () => {
-      if (roomsPollingRef.current) clearInterval(roomsPollingRef.current)
-    }
-  }, [fetchRooms])
-
   // Fetch messages for selected room
   const fetchMessages = useCallback(
     async (roomId: string, isPolling = false) => {
@@ -595,7 +595,19 @@ function AdminChatContent() {
 
         setMessages((prev) => {
           const newMsgs = data.messages || []
-          if (prev.length !== newMsgs.length) return newMsgs
+          if (prev.length !== newMsgs.length) {
+            if (newMsgs.length > prev.length) {
+              const lastMsg = newMsgs[newMsgs.length - 1]
+              if (
+                lastMsg &&
+                (lastMsg.sender?.role === 'CUSTOMER' ||
+                  lastMsg.senderId === selectedRoomRef.current?.customerId)
+              ) {
+                playChatNotificationSound()
+              }
+            }
+            return newMsgs
+          }
           const hasDiff = newMsgs.some(
             (m: any, idx: number) =>
               m.id !== prev[idx]?.id ||
@@ -614,6 +626,27 @@ function AdminChatContent() {
     },
     []
   )
+
+  // Background rooms polling every 2s for live conversation updates
+  useEffect(() => {
+    roomsPollingRef.current = setInterval(() => {
+      fetchRooms(true)
+    }, 2000)
+
+    const handleFocus = () => {
+      fetchRooms(true)
+      if (selectedRoomRef.current?.id) {
+        fetchMessages(selectedRoomRef.current.id, true)
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      if (roomsPollingRef.current) clearInterval(roomsPollingRef.current)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [fetchRooms, fetchMessages])
 
   // Fetch messages on selected room change
   useEffect(() => {

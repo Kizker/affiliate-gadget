@@ -28,6 +28,7 @@ import { DateSeparator } from './date-separator'
 import { isSameDay } from '@/utils/chat-helpers'
 import { isStoreOperational } from '@/lib/chat-status'
 import { validateAndCompressImage } from '@/lib/media-upload-client'
+import { playChatNotificationSound } from '@/lib/chat-notification-sound'
 
 interface TechnicianChatRoom {
   id: string
@@ -359,17 +360,33 @@ export default function FloatingChatButton() {
   }, [])
 
   useEffect(() => {
-    if (isOpen && status === 'authenticated') {
-      fetchRooms()
+    if (status !== 'authenticated') return
+
+    // Background polling for fresh room unread badges every 3s
+    fetchRooms(true)
+    const interval = setInterval(() => {
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState !== 'visible'
+      )
+        return
+      fetchRooms(true)
+    }, 3000)
+
+    const handleFocus = () => fetchRooms(true)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, status])
+  }, [status])
 
   useEffect(() => {
     if (activeRoom) {
       pollingRef.current = setInterval(() => {
         fetchMessages(activeRoom, true)
-      }, 5000)
+      }, 1500)
     }
     return () => {
       if (pollingRef.current) {
@@ -468,7 +485,20 @@ export default function FloatingChatButton() {
 
       if (res.ok) {
         const data = await res.json()
-        setMessages(data.messages || [])
+        const newMsgs = data.messages || []
+        setMessages((prev) => {
+          if (newMsgs.length > prev.length) {
+            const lastMsg = newMsgs[newMsgs.length - 1]
+            if (
+              lastMsg &&
+              session?.user?.id &&
+              lastMsg.senderId !== session.user.id
+            ) {
+              playChatNotificationSound()
+            }
+          }
+          return newMsgs
+        })
       }
     } catch (error) {
       console.error('Error fetching messages:', error)

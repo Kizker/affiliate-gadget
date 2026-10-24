@@ -7,9 +7,11 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
+import { playChatNotificationSound } from '@/lib/chat-notification-sound'
 
 export interface AdminNavCounts {
   orders: number
@@ -115,6 +117,8 @@ export function AdminNotificationsProvider({
       : 'affiliate_admin_read_notifications_global'
   }, [session?.user?.id])
 
+  const prevChatCountRef = useRef<number | null>(null)
+
   // Load persisted read counts on mount
   useEffect(() => {
     setMounted(true)
@@ -190,6 +194,16 @@ export function AdminNotificationsProvider({
       if (res.ok) {
         const data = await res.json()
         if (data.counts) {
+          // Trigger audio chime if incoming unread chat count increased
+          const incomingChat = Number(data.counts.chat) || 0
+          if (
+            prevChatCountRef.current !== null &&
+            incomingChat > prevChatCountRef.current
+          ) {
+            playChatNotificationSound()
+          }
+          prevChatCountRef.current = incomingChat
+
           setRawCounts(data.counts)
 
           // If user is currently on an active section, automatically sync and mark as read
@@ -231,11 +245,11 @@ export function AdminNotificationsProvider({
     }
   }, [pathname, markAsRead])
 
-  // Initial fetch and polling every 15 seconds
+  // Initial fetch and fast polling every 2.5 seconds (reduced from 15s to minimize chat delay)
   useEffect(() => {
     if (status === 'authenticated') {
       fetchCounts()
-      const interval = setInterval(fetchCounts, 15000)
+      const interval = setInterval(fetchCounts, 2500)
 
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
@@ -248,6 +262,7 @@ export function AdminNotificationsProvider({
       }
 
       document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('focus', handleCustomRefresh)
       window.addEventListener(
         'admin-notifications-refresh',
         handleCustomRefresh
@@ -256,6 +271,7 @@ export function AdminNotificationsProvider({
       return () => {
         clearInterval(interval)
         document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('focus', handleCustomRefresh)
         window.removeEventListener(
           'admin-notifications-refresh',
           handleCustomRefresh

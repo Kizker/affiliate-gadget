@@ -13,6 +13,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { playChatNotificationSound } from '@/lib/chat-notification-sound'
 
 interface Message {
   id: string
@@ -148,15 +149,28 @@ export default function CustomerTechnicianChatPage({
         const res = await fetch(`/api/chat/rooms/${roomId}/messages`)
         if (res.ok) {
           const data = await res.json()
-          setMessages(data.messages || [])
+          const newMsgs = data.messages || []
+          setMessages((prev) => {
+            if (newMsgs.length > prev.length) {
+              const lastMsg = newMsgs[newMsgs.length - 1]
+              if (
+                lastMsg &&
+                session?.user?.id &&
+                lastMsg.sender?.id !== session.user.id
+              ) {
+                playChatNotificationSound()
+              }
+            }
+            return newMsgs
+          })
         }
       } catch (error) {
         console.error('Error polling messages:', error)
       }
-    }, 5000)
+    }, 1500)
 
     return () => clearInterval(interval)
-  }, [roomId])
+  }, [roomId, session?.user?.id])
 
   // Scroll to bottom when messages change
   useEffect(() => {

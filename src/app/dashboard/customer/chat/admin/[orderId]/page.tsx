@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { validateAndCompressImage } from '@/lib/media-upload-client'
+import { playChatNotificationSound } from '@/lib/chat-notification-sound'
 
 interface Message {
   id: string
@@ -108,14 +109,27 @@ export default function CustomerAdminChatPage({
         const res = await fetch(`/api/customer/chat/room?orderId=${orderId}`)
         if (res.ok) {
           const data = await res.json()
-          setMessages(data.messages || [])
+          const newMsgs = data.messages || []
+          setMessages((prev) => {
+            if (newMsgs.length > prev.length) {
+              const lastMsg = newMsgs[newMsgs.length - 1]
+              if (
+                lastMsg &&
+                session?.user?.id &&
+                lastMsg.senderId !== session.user.id
+              ) {
+                playChatNotificationSound()
+              }
+            }
+            return newMsgs
+          })
         }
       } catch (error) {
         console.error('Error polling messages:', error)
       }
-    }, 5000)
+    }, 1500)
     return () => clearInterval(interval)
-  }, [roomId, orderId])
+  }, [roomId, orderId, session?.user?.id])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

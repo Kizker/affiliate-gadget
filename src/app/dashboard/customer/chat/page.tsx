@@ -9,6 +9,7 @@ import { ChevronLeft, Loader2, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { isStoreOperational } from '@/lib/chat-status'
 import { processMediaUploadFile } from '@/lib/media-upload-client'
+import { playChatNotificationSound } from '@/lib/chat-notification-sound'
 
 import dynamic from 'next/dynamic'
 
@@ -75,6 +76,7 @@ function CustomerChatContent() {
   const hasAutoSelectedRef = useRef(false)
   const isSendingRef = useRef(false)
   const sentContextsRef = useRef<Set<string>>(new Set())
+  const prevCustomerUnreadRef = useRef<number | null>(null)
 
   // Melacak apakah chat dibuka langsung dari halaman eksternal (mitra servis, toko, produk, pesanan)
   const isDirectEntryRef = useRef<boolean>(
@@ -233,6 +235,19 @@ function CustomerChatContent() {
           new Date(a.lastMessageAt).getTime()
       )
 
+      // Track unread counts for audio notification
+      const totalUnreadNow = allRooms.reduce(
+        (sum, r) => sum + (r._count?.messages || 0),
+        0
+      )
+      if (
+        prevCustomerUnreadRef.current !== null &&
+        totalUnreadNow > prevCustomerUnreadRef.current
+      ) {
+        playChatNotificationSound()
+      }
+      prevCustomerUnreadRef.current = totalUnreadNow
+
       setRooms((prev) => {
         const mappedRooms = allRooms.map((r) =>
           selectedRoomRef.current?.id === r.id
@@ -349,6 +364,14 @@ function CustomerChatContent() {
             if (prev.length !== newMsgs.length) {
               if (newMsgs.length > previousMessagesCountRef.current) {
                 setShouldScrollToBottom(true)
+                const lastMsg = newMsgs[newMsgs.length - 1]
+                if (
+                  lastMsg &&
+                  session?.user?.id &&
+                  lastMsg.senderId !== session.user.id
+                ) {
+                  playChatNotificationSound()
+                }
               }
               return newMsgs
             }
@@ -373,7 +396,7 @@ function CustomerChatContent() {
         if (!isPolling) setMessagesLoading(false)
       }
     },
-    []
+    [session?.user?.id]
   )
 
   // Trigger fetch messages when selectedRoom changes
@@ -394,26 +417,22 @@ function CustomerChatContent() {
     }
   }, [selectedRoom?.id, fetchMessages])
 
-  // Real-time polling for new messages in active room (4s interval, visible tabs only)
+  // Real-time polling for new messages in active room (1.5s interval, visible tabs only)
   useEffect(() => {
     if (selectedRoom?.id) {
-      // 4s initial delay allows page paint and initial hydration to settle cleanly
-      const timeoutId = setTimeout(() => {
-        pollingRef.current = setInterval(() => {
-          if (
-            typeof document !== 'undefined' &&
-            document.visibilityState !== 'visible'
-          ) {
-            return
-          }
-          if (selectedRoomRef.current) {
-            fetchMessages(selectedRoomRef.current, true)
-          }
-        }, 4000)
-      }, 4000)
+      pollingRef.current = setInterval(() => {
+        if (
+          typeof document !== 'undefined' &&
+          document.visibilityState !== 'visible'
+        ) {
+          return
+        }
+        if (selectedRoomRef.current) {
+          fetchMessages(selectedRoomRef.current, true)
+        }
+      }, 1500)
 
       return () => {
-        clearTimeout(timeoutId)
         if (pollingRef.current) {
           clearInterval(pollingRef.current)
         }
@@ -421,24 +440,32 @@ function CustomerChatContent() {
     }
   }, [selectedRoom?.id, fetchMessages])
 
-  // Background room list polling (8s interval, visible tabs only)
+  // Background room list polling (2s interval, visible tabs only)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      const interval = setInterval(() => {
-        if (
-          typeof document !== 'undefined' &&
-          document.visibilityState !== 'visible'
-        ) {
-          return
-        }
-        fetchRooms(true)
-      }, 8000)
+    const interval = setInterval(() => {
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState !== 'visible'
+      ) {
+        return
+      }
+      fetchRooms(true)
+    }, 2000)
 
-      return () => clearInterval(interval)
-    }, 6000)
+    const handleFocus = () => {
+      fetchRooms(true)
+      if (selectedRoomRef.current) {
+        fetchMessages(selectedRoomRef.current, true)
+      }
+    }
 
-    return () => clearTimeout(timeoutId)
-  }, [fetchRooms])
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [fetchRooms, fetchMessages])
 
   // Helper to scroll messages to bottom and reset window scroll
   const scrollToBottom = useCallback((smooth = false) => {

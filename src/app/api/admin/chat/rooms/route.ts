@@ -23,8 +23,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Clean up abandoned empty rooms (older than 30 seconds and 0 messages)
-    await prisma.adminChatRoom
+    // Clean up abandoned empty rooms in background without blocking response
+    prisma.adminChatRoom
       .deleteMany({
         where: {
           messages: { none: {} },
