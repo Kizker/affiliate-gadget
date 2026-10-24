@@ -53,7 +53,7 @@ export async function GET() {
     }
 
     const userStore = (user as any).store
-    const enrichedStore = userStore
+    let enrichedStore = userStore
       ? {
           ...userStore,
           isPkp: userStore.isPkp ?? true,
@@ -62,6 +62,73 @@ export async function GET() {
           taxType: userStore.taxType ?? 'INCLUSIVE',
         }
       : null
+
+    // Jika store admin belum terhubung ke toko, cek data storeApplication untuk prefill form
+    if (
+      !enrichedStore &&
+      (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES')
+    ) {
+      const storeByEmail = await prisma.store.findFirst({
+        where: { email: user.email },
+        include: { bankAccounts: true, schedules: true },
+      })
+      if (storeByEmail) {
+        enrichedStore = {
+          ...storeByEmail,
+          isPkp: storeByEmail.isPkp ?? true,
+          vatRate: storeByEmail.vatRate ?? 11.0,
+          kppName: storeByEmail.kppName ?? 'KPP Pratama Terdaftar',
+          taxType: storeByEmail.taxType ?? 'INCLUSIVE',
+        }
+        await prisma.user
+          .update({
+            where: { id: user.id },
+            data: { storeId: storeByEmail.id },
+          })
+          .catch(() => {})
+      } else {
+        const app = await (prisma as any).storeApplication.findFirst({
+          where: { userId: user.id },
+        })
+        if (app) {
+          enrichedStore = {
+            id: '',
+            name: app.storeName || '',
+            slug: '',
+            companyName: app.companyName || '',
+            tagline: '',
+            description: '',
+            logo: '',
+            banner: '',
+            taxId: app.taxId || '',
+            address: app.address || '',
+            city: app.city || 'Tangerang',
+            province: app.province || 'Banten',
+            postalCode: app.postalCode || '',
+            phone: app.phone || '',
+            whatsapp: app.phone || '',
+            bankAccounts:
+              app.bankName && app.accountNumber
+                ? [
+                    {
+                      id: 'temp-bank',
+                      bankName: app.bankName,
+                      accountNumber: app.accountNumber,
+                      accountName: app.accountName || app.companyName,
+                      isPrimary: true,
+                    },
+                  ]
+                : [],
+            schedules: [],
+            isPkp: true,
+            vatRate: 11.0,
+            kppName: 'KPP Pratama Terdaftar',
+            taxType: 'INCLUSIVE',
+            isNewlyAppointed: true,
+          }
+        }
+      }
+    }
 
     if (
       enrichedStore &&
@@ -209,7 +276,60 @@ export async function PATCH(request: NextRequest) {
       })
 
       let updatedStore: any = null
-      if (storeData && user.storeId) {
+      if (storeData) {
+        let targetStoreId = user.storeId
+        if (!targetStoreId) {
+          const existingStore = await tx.store.findFirst({
+            where: { email: user.email },
+            select: { id: true },
+          })
+          if (existingStore) {
+            targetStoreId = existingStore.id
+          } else {
+            let baseSlug = (storeData.storeName || 'toko-cabang')
+              .toLowerCase()
+              .trim()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+            if (!baseSlug) baseSlug = `toko-${Date.now()}`
+            const existingSlug = await tx.store.findUnique({
+              where: { slug: baseSlug },
+              select: { id: true },
+            })
+            const finalSlug = existingSlug
+              ? `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`
+              : baseSlug
+
+            const createdStore = await tx.store.create({
+              data: {
+                name: storeData.storeName || 'Cabang Toko Fisik',
+                slug: finalSlug,
+                companyName: storeData.companyName || 'PT Cabang Toko',
+                address: storeData.address || 'Alamat Toko',
+                city: storeData.city || 'Tangerang',
+                province: storeData.province || 'Banten',
+                postalCode: storeData.postalCode || null,
+                phone: storeData.phone || user.email || '081200000000',
+                email: user.email,
+                isActive: true,
+                rating: 5.0,
+                commissionRate: 2.0,
+                isPkp: Boolean(storeData.isPkp ?? true),
+                vatRate: parseFloat(String(storeData.vatRate)) || 11.0,
+                kppName: storeData.kppName || null,
+              },
+            })
+            targetStoreId = createdStore.id
+          }
+
+          await tx.user.update({
+            where: { id: session.user.id },
+            data: { storeId: targetStoreId },
+          })
+          updatedUser.storeId = targetStoreId
+        }
+
+        const effectiveStoreId = targetStoreId!
         const {
           storeName,
           companyName,
@@ -246,10 +366,11 @@ export async function PATCH(request: NextRequest) {
         } = storeData
 
         updatedStore = await (tx.store.update as any)({
-          where: { id: user.storeId },
+          where: { id: effectiveStoreId },
           data: {
             ...(storeName && { name: storeName }),
             ...(companyName && { companyName }),
+
             ...(tagline !== undefined && {
               tagline: tagline ? String(tagline).trim().slice(0, 150) : null,
             }),
@@ -345,7 +466,7 @@ export async function PATCH(request: NextRequest) {
         addVisualField('secondaryBannerDesc', secondaryBannerDesc, 500)
 
         if (visualUpdates.length > 0) {
-          visualParams.push(user.storeId)
+          visualParams.push(effectiveStoreId)
           const sql = `UPDATE stores SET ${visualUpdates.join(', ')}, "updatedAt" = NOW() WHERE id = $${paramIdx}`
           await tx.$executeRawUnsafe(sql, ...visualParams)
 
@@ -359,12 +480,12 @@ export async function PATCH(request: NextRequest) {
 
         if (Array.isArray(schedules)) {
           await tx.storeSchedule.deleteMany({
-            where: { storeId: user.storeId },
+            where: { storeId: effectiveStoreId },
           })
           const validSchedules = schedules
             .filter((s: any) => s.day && typeof s.day === 'string')
             .map((s: any) => ({
-              storeId: user.storeId as string,
+              storeId: effectiveStoreId as string,
               day: s.day,
               openTime: String(s.openTime || '09:00').slice(0, 5),
               closeTime: String(s.closeTime || '21:00').slice(0, 5),
@@ -388,7 +509,7 @@ export async function PATCH(request: NextRequest) {
         // Update or create primary bank account
         if (bankName && accountNumber && accountName) {
           const existingBank = await tx.storeBankAccount.findFirst({
-            where: { storeId: user.storeId },
+            where: { storeId: effectiveStoreId },
           })
 
           const isBankChanged =
@@ -409,7 +530,7 @@ export async function PATCH(request: NextRequest) {
           } else {
             await tx.storeBankAccount.create({
               data: {
-                storeId: user.storeId,
+                storeId: effectiveStoreId,
                 bankName,
                 accountNumber,
                 accountName,
@@ -420,7 +541,7 @@ export async function PATCH(request: NextRequest) {
 
           if (isBankChanged) {
             await tx.store.update({
-              where: { id: user.storeId },
+              where: { id: effectiveStoreId },
               data: { bankAccountUpdatedAt: new Date() } as any,
             })
           }

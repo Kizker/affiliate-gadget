@@ -1285,10 +1285,14 @@ function CustomerChatContent() {
   })
 
   const activeStore = selectedRoom?.order?.store || selectedRoom?.store
-  const isStoreOnline = isStoreOperational(
-    activeStore,
-    selectedRoom?.technician
-  )
+  const isStoreOnline =
+    isStoreOperational(activeStore, selectedRoom?.technician) ||
+    Boolean(
+      selectedRoom?.lastMessageAt &&
+      Date.now() - new Date(selectedRoom.lastMessageAt).getTime() <
+        60 * 60 * 1000
+    ) ||
+    Boolean(selectedRoom?.claimedById)
 
   // Support CS Superadmin chat mode
   const isCsActive =

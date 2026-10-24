@@ -128,7 +128,7 @@ describe('WhatsApp Checkmark Status Engine', () => {
       expect(isStoreOperational(store, null, mondayMorningUtc)).toBe(true)
     })
 
-    it('uses standard fallback 09:00-21:00 WIB when no schedules provided', () => {
+    it('defaults to online for active store when no schedules provided', () => {
       // Daytime at 12:00 WIB (05:00 UTC)
       const daytimeUtc = new Date('2026-09-28T05:00:00Z')
       // Midnight at 02:00 WIB (19:00 UTC previous day)
@@ -141,7 +141,7 @@ describe('WhatsApp Checkmark Status Engine', () => {
       }
 
       expect(isStoreOperational(store, null, daytimeUtc)).toBe(true)
-      expect(isStoreOperational(store, null, midnightUtc)).toBe(false)
+      expect(isStoreOperational(store, null, midnightUtc)).toBe(true)
     })
   })
 })

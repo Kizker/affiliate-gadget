@@ -18,7 +18,7 @@ export async function POST(
     // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true, name: true },
+      select: { role: true, name: true, storeId: true },
     })
 
     if (!user || !isAdminStaffRole(user.role)) {
@@ -39,6 +39,24 @@ export async function POST(
 
     if (!room) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
+    }
+
+    // Check store scope for STORE_ADMIN
+    if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
+      let userStoreId = user.storeId
+      if (!userStoreId) {
+        const s = await prisma.store.findFirst({
+          where: { email: session.user.email || undefined },
+          select: { id: true },
+        })
+        userStoreId = s?.id || null
+      }
+      if (room.storeId && userStoreId && room.storeId !== userStoreId) {
+        return NextResponse.json(
+          { error: 'Akses klaim chat toko lain ditolak' },
+          { status: 403 }
+        )
+      }
     }
 
     // Check if room is already claimed
@@ -63,6 +81,9 @@ export async function POST(
       data: {
         claimedById: session.user.id,
         claimedAt: new Date(),
+        ...(user.role === 'STORE_ADMIN' && user.storeId && !room.storeId
+          ? { storeId: user.storeId }
+          : {}),
       },
       include: {
         claimedBy: {

@@ -77,8 +77,8 @@ export function isStoreOperational(
     }
   }
 
-  // Jam operasional standar toko gadget di Indonesia jika belum ada jadwal khusus: 09:00 - 21:00 WIB
-  return hours >= 9 && hours < 21
+  // Layanan chat toko online & CS marketplace aktif: default selalu Online untuk menerima pesan pelanggan
+  return true
 }
 
 export type ChatTickStatus = 'SENT' | 'DELIVERED' | 'READ'

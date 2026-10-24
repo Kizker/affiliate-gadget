@@ -89,6 +89,71 @@ export async function PATCH(
       }
     }
 
+    // Otomatis sinkronisasi toko jika user diangkat menjadi STORE_ADMIN
+    if (targetRole === 'STORE_ADMIN') {
+      const fullUser = await prisma.user.findUnique({
+        where: { id },
+        select: { storeId: true, email: true, name: true },
+      })
+      if (!fullUser?.storeId) {
+        const storeByEmail = await prisma.store.findFirst({
+          where: { email: fullUser?.email || undefined },
+          select: { id: true },
+        })
+        if (storeByEmail) {
+          updateData.storeId = storeByEmail.id
+        } else {
+          const app = await (prisma as any).storeApplication.findFirst({
+            where: { userId: id },
+          })
+          if (app) {
+            let baseSlug = (app.storeName || 'toko-cabang')
+              .toLowerCase()
+              .trim()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+            if (!baseSlug) baseSlug = `toko-${Date.now()}`
+            const existingSlug = await prisma.store.findUnique({
+              where: { slug: baseSlug },
+              select: { id: true },
+            })
+            const finalSlug = existingSlug
+              ? `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`
+              : baseSlug
+
+            const newStore = await prisma.store.create({
+              data: {
+                name: app.storeName || 'Cabang Toko Fisik',
+                slug: finalSlug,
+                companyName: app.companyName || 'PT Cabang Toko',
+                address: app.address || 'Alamat Toko',
+                city: app.city || 'Tangerang',
+                province: app.province || 'Banten',
+                postalCode: app.postalCode || null,
+                phone: app.phone || fullUser?.email || '081200000000',
+                email: fullUser?.email,
+                isActive: true,
+                rating: 5.0,
+                commissionRate: 2.0,
+                bankAccounts:
+                  app.bankName && app.accountNumber
+                    ? {
+                        create: {
+                          bankName: app.bankName,
+                          accountNumber: app.accountNumber,
+                          accountName: app.accountName || app.companyName,
+                          isPrimary: true,
+                        },
+                      }
+                    : undefined,
+              },
+            })
+            updateData.storeId = newStore.id
+          }
+        }
+      }
+    }
+
     // Update user
     const updatedUser = await prisma.user.update({
       where: { id },

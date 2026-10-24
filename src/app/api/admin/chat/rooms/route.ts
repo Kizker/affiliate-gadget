@@ -37,45 +37,61 @@ export async function GET() {
     // Only return rooms that actually have messages (non-empty rooms)
     let whereClause: Record<string, unknown>
 
-    if (
-      (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') &&
-      user.storeId
-    ) {
-      whereClause = {
-        messages: { some: {} },
-        OR: [
-          // Rooms direct chat dengan toko cabang ini
-          { storeId: user.storeId },
-          // Rooms terkait order di toko ini
-          { order: { storeId: user.storeId } },
-          // Rooms terkait order dengan item produk dari toko ini
-          {
-            order: { items: { some: { product: { storeId: user.storeId } } } },
-          },
-          // Rooms tanpa order (general inquiry) yang di-claim admin ini
-          { claimedById: session.user.id },
-          // Rooms bantuan admin toko ini langsung ke Superadmin
-          { customerId: session.user.id, storeId: null },
-        ],
+    if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
+      let effectiveStoreId = user.storeId
+      if (!effectiveStoreId) {
+        const storeByEmail = await prisma.store.findFirst({
+          where: { email: session.user.email || undefined },
+          select: { id: true },
+        })
+        if (storeByEmail) {
+          effectiveStoreId = storeByEmail.id
+          await prisma.user
+            .update({
+              where: { id: session.user.id },
+              data: { storeId: storeByEmail.id },
+            })
+            .catch(() => {})
+        }
       }
-    } else if (user.role === 'SUPER_ADMIN') {
+
+      if (effectiveStoreId) {
+        whereClause = {
+          messages: { some: {} },
+          OR: [
+            // Rooms direct chat dengan toko cabang ini
+            { storeId: effectiveStoreId },
+            // Rooms terkait order di toko ini
+            { order: { storeId: effectiveStoreId } },
+            // Rooms terkait order dengan item produk dari toko ini
+            {
+              order: {
+                items: { some: { product: { storeId: effectiveStoreId } } },
+              },
+            },
+            // Rooms yang di-claim admin ini untuk tokonya
+            { claimedById: session.user.id, storeId: effectiveStoreId },
+            // Rooms bantuan admin toko ini langsung ke Superadmin
+            { customerId: session.user.id, storeId: null },
+          ],
+        }
+      } else {
+        // Toko admin belum terhubung ke cabang fisik: HANYA lihat bantuan langsung ke Superadmin
+        whereClause = {
+          messages: { some: {} },
+          customerId: session.user.id,
+          storeId: null,
+        }
+      }
+    } else if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+      // Superadmin / Platform Admin dapat melihat seluruh chat platform
       whereClause = {
         messages: { some: {} },
-        OR: [
-          // Seluruh percakapan bantuan CS platform (pelanggan & bantuan admin toko)
-          { storeId: null },
-          // Percakapan yang di-claim atau belum di-claim
-          { claimedById: session.user.id },
-          { claimedById: null },
-        ],
       }
     } else {
       whereClause = {
         messages: { some: {} },
-        OR: [
-          { claimedById: session.user.id }, // Rooms claimed by this admin
-          { claimedById: null }, // Unclaimed rooms (new customer chats)
-        ],
+        claimedById: session.user.id,
       }
     }
 

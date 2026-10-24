@@ -74,8 +74,12 @@ function isSubRouteAllowed(pathname: string, role: string): boolean {
 
 function getCmsDashboardUrl(
   role?: string | null,
-  mitraStatus?: string | null
+  mitraStatus?: string | null,
+  storeId?: string | null
 ): string {
+  if (role === 'STORE_ADMIN' && !storeId) {
+    return '/dashboard/admin/settings?setup=required'
+  }
   if (role && ADMIN_STAFF_ROLES.includes(role)) return '/dashboard/admin'
   if (role === 'TECHNICIAN') return '/dashboard/teknisi'
   if (role === 'MITRA') {
@@ -130,6 +134,8 @@ export default auth((req) => {
     const userRole = req.auth.user.role
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mitraStatus = (req.auth.user as any).mitraStatus
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userStoreId = (req.auth.user as any).storeId
     const isAdminStaff = !!(userRole && ADMIN_STAFF_ROLES.includes(userRole))
     const isTechnician = userRole === 'TECHNICIAN'
     const isMitra = userRole === 'MITRA'
@@ -138,7 +144,11 @@ export default auth((req) => {
     // A. Staff / Admin / Sales Toko / Teknisi / Mitra -> otomatis diarahkan langsung ke panel CMS
     // Tidak diperbolehkan berada di view publik root (/), login, register, cart, atau checkout
     if (isStaffOrPartner) {
-      const destinationCms = getCmsDashboardUrl(userRole, mitraStatus)
+      const destinationCms = getCmsDashboardUrl(
+        userRole,
+        mitraStatus,
+        userStoreId
+      )
 
       // Exception: Calon mitra yang baru mendaftar (NEEDS_STORE_DATA) diizinkan tetap di /register untuk mengisi Step 2 (Form Data Toko)
       if (
@@ -164,10 +174,23 @@ export default auth((req) => {
         return NextResponse.redirect(new URL(destinationCms, req.url))
       }
 
+      // Sub-Route RBAC: Jika STORE_ADMIN belum melengkapi cabang toko fisik, wajib lengkapi di /dashboard/admin/settings
+      if (
+        isAdminRoute &&
+        userRole === 'STORE_ADMIN' &&
+        !userStoreId &&
+        pathname !== '/dashboard/admin/settings'
+      ) {
+        return NextResponse.redirect(
+          new URL('/dashboard/admin/settings?setup=required', req.url)
+        )
+      }
+
       // ✅ Sub-Route RBAC: Blokir akses ke sub-route yang tidak diizinkan untuk role ini
       if (isAdminRoute && isAdminStaff && userRole) {
         if (!isSubRouteAllowed(pathname, userRole)) {
           // Redirect ke halaman utama dashboard (bukan login) karena user memang staff yang valid
+
           return NextResponse.redirect(new URL('/dashboard/admin', req.url))
         }
       }

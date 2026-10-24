@@ -20,7 +20,7 @@ export async function GET(
     // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true },
+      select: { role: true, storeId: true },
     })
 
     if (!user || !isAdminStaffRole(user.role)) {
@@ -76,6 +76,31 @@ export async function GET(
 
     if (!room) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
+    }
+
+    if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
+      let userStoreId = user.storeId
+      if (!userStoreId) {
+        const s = await prisma.store.findFirst({
+          where: { email: session.user.email || undefined },
+          select: { id: true },
+        })
+        userStoreId = s?.id || null
+      }
+      const isStoreRoom =
+        (userStoreId && room.storeId === userStoreId) ||
+        (userStoreId && (room as any).order?.storeId === userStoreId) ||
+        (userStoreId &&
+          (room as any).order?.items?.some(
+            (i: any) => i.product?.storeId === userStoreId
+          )) ||
+        room.customerId === session.user.id
+      if (!isStoreRoom) {
+        return NextResponse.json(
+          { error: 'Akses percakapan toko lain ditolak' },
+          { status: 403 }
+        )
+      }
     }
 
     // Get messages
@@ -139,7 +164,7 @@ export async function POST(
     // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true },
+      select: { role: true, storeId: true },
     })
 
     if (!user || !isAdminStaffRole(user.role)) {
@@ -166,6 +191,26 @@ export async function POST(
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
+    let userStoreId = user.storeId
+    if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
+      if (!userStoreId) {
+        const s = await prisma.store.findFirst({
+          where: { email: session.user.email || undefined },
+          select: { id: true },
+        })
+        userStoreId = s?.id || null
+      }
+      const isStoreRoom =
+        (userStoreId && room.storeId === userStoreId) ||
+        room.customerId === session.user.id
+      if (!isStoreRoom) {
+        return NextResponse.json(
+          { error: 'Akses percakapan toko lain ditolak' },
+          { status: 403 }
+        )
+      }
+    }
+
     // Auto-claim room if not claimed yet
     const isRoomCustomer = room.customerId === session.user.id
     const isSuperAdmin = user.role === 'SUPER_ADMIN'
@@ -178,6 +223,7 @@ export async function POST(
           data: {
             claimedById: session.user.id,
             claimedAt: new Date(),
+            ...(userStoreId && !room.storeId ? { storeId: userStoreId } : {}),
           },
         })
       }

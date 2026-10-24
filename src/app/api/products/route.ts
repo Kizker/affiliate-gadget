@@ -277,9 +277,83 @@ export async function POST(request: NextRequest) {
       if (!storeAdminStoreId && session.user.id) {
         const u = await prisma.user.findUnique({
           where: { id: session.user.id },
-          select: { storeId: true },
+          select: { storeId: true, email: true },
         })
         storeAdminStoreId = u?.storeId || null
+
+        // Cek apakah ada toko fisik berdasarkan email toko
+        if (!storeAdminStoreId && u?.email) {
+          const storeByEmail = await prisma.store.findFirst({
+            where: { email: u.email },
+            select: { id: true },
+          })
+          if (storeByEmail) {
+            storeAdminStoreId = storeByEmail.id
+            await prisma.user
+              .update({
+                where: { id: session.user.id },
+                data: { storeId: storeByEmail.id },
+              })
+              .catch(() => {})
+          }
+        }
+
+        // Cek apakah ada storeApplication yang terdaftar untuk akun ini
+        if (!storeAdminStoreId && session.user.id) {
+          const app = await (prisma as any).storeApplication.findFirst({
+            where: { userId: session.user.id },
+          })
+          if (app) {
+            let baseSlug = (app.storeName || 'toko-cabang')
+              .toLowerCase()
+              .trim()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+            if (!baseSlug) baseSlug = `toko-${Date.now()}`
+            const existingSlug = await prisma.store.findUnique({
+              where: { slug: baseSlug },
+              select: { id: true },
+            })
+            const finalSlug = existingSlug
+              ? `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`
+              : baseSlug
+
+            const newStore = await prisma.store.create({
+              data: {
+                name: app.storeName || 'Cabang Toko Fisik',
+                slug: finalSlug,
+                companyName: app.companyName || 'PT Cabang Toko',
+                address: app.address || 'Alamat Toko',
+                city: app.city || 'Tangerang',
+                province: app.province || 'Banten',
+                postalCode: app.postalCode || null,
+                phone: app.phone || session.user.email || '081200000000',
+                email: session.user.email,
+                isActive: true,
+                rating: 5.0,
+                commissionRate: 2.0,
+                bankAccounts:
+                  app.bankName && app.accountNumber
+                    ? {
+                        create: {
+                          bankName: app.bankName,
+                          accountNumber: app.accountNumber,
+                          accountName: app.accountName || app.companyName,
+                          isPrimary: true,
+                        },
+                      }
+                    : undefined,
+              },
+            })
+            storeAdminStoreId = newStore.id
+            await prisma.user
+              .update({
+                where: { id: session.user.id },
+                data: { storeId: newStore.id },
+              })
+              .catch(() => {})
+          }
+        }
       }
       if (!storeAdminStoreId) {
         return NextResponse.json(
