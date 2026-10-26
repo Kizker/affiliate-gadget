@@ -4,54 +4,93 @@ import prisma from '@/lib/db'
 
 import { isAdminStaffRole } from '@/lib/dashboard-utils'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+}
+
 export async function GET() {
   try {
     const session = await auth()
 
     // Only staff and admin roles can access
     if (!session?.user || !isAdminStaffRole(session.user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401, headers: NO_CACHE_HEADERS }
+      )
     }
 
     if (session.user.role === 'STORE_ADMIN') {
-      if (!session.user.storeId) {
-        return NextResponse.json({
-          stats: {
-            totalUsers: 0,
-            totalTechnicians: 0,
-            totalMitras: 0,
-            totalProducts: 0,
-            totalStock: 0,
-            totalOrders: 0,
-            pendingMitras: 0,
-            byRole: {},
-            orderStatusCounts: {
-              pendingPayment: 0,
-              paid: 0,
-              inProgress: 0,
-              shipped: 0,
-              completed: 0,
-              cancelled: 0,
-              returned: 0,
-            },
-            returnStats: {
-              pendingReturns: 0,
-              totalReturns: 0,
-            },
-          },
-          recentUsers: [],
-          recentReturns: [],
-          recentCancellations: [],
-          charts: {
-            monthlyData: {},
-            topProducts: [],
-            topServices: [],
-            topRentals: [],
-          },
+      let storeId = (session.user as any).storeId
+      if (!storeId && session.user.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: { storeId: true },
         })
+        storeId = dbUser?.storeId
       }
 
-      const storeId = session.user.storeId
+      if (!storeId) {
+        return NextResponse.json(
+          {
+            stats: {
+              todayRevenue: 0,
+              todayOrdersCount: 0,
+              totalUsers: 0,
+              totalTechnicians: 0,
+              totalMitras: 0,
+              totalProducts: 0,
+              totalStock: 0,
+              lowStockCount: 0,
+              outOfStockCount: 0,
+              totalOrders: 0,
+              pendingMitras: 0,
+              byRole: {},
+              orderStatusCounts: {
+                pendingPayment: 0,
+                paid: 0,
+                inProgress: 0,
+                shipped: 0,
+                completed: 0,
+                cancelled: 0,
+                returned: 0,
+              },
+              returnStats: {
+                pendingReturns: 0,
+                totalReturns: 0,
+              },
+            },
+            recentUsers: [],
+            recentReturns: [],
+            recentCancellations: [],
+            charts: {
+              monthlyData: {},
+              topProducts: [],
+              topServices: [],
+              topRentals: [],
+            },
+          },
+          { headers: NO_CACHE_HEADERS }
+        )
+      }
+
+      // Hitung awal hari ini berdasarkan Waktu Indonesia Barat (WIB / Asia/Jakarta)
+      const now = new Date()
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })
+      const jakartaDate = formatter.format(now) // Format: "YYYY-MM-DD"
+      const startOfDay = new Date(`${jakartaDate}T00:00:00+07:00`)
+
       const whereOrder = {
         OR: [{ storeId }, { items: { some: { product: { storeId } } } }],
       }
@@ -59,6 +98,10 @@ export async function GET() {
       const [
         totalProducts,
         stockAgg,
+        lowStockProducts,
+        outOfStockProducts,
+        todayRevenueAgg,
+        todayOrdersCount,
         totalOrders,
         pendingPaymentOrders,
         paidOrders,
@@ -76,6 +119,39 @@ export async function GET() {
         prisma.product.aggregate({
           where: { storeId, isActive: true },
           _sum: { stock: true },
+        }),
+        // Alert stok: produk menipis (1 - 2 unit)
+        prisma.product.count({
+          where: { storeId, isActive: true, stock: { gt: 0, lte: 2 } },
+        }),
+        // Alert stok: produk habis (0 unit)
+        prisma.product.count({
+          where: { storeId, isActive: true, stock: { lte: 0 } },
+        }),
+        // Omset toko hari ini (Pesanan lunas/berjalan yang dibuat atau dilunasi hari ini)
+        prisma.order.aggregate({
+          where: {
+            ...whereOrder,
+            status: { in: ['PAID', 'IN_PROGRESS', 'SHIPPED', 'COMPLETED'] },
+            OR: [
+              { createdAt: { gte: startOfDay } },
+              { updatedAt: { gte: startOfDay } },
+            ],
+          },
+          _sum: { total: true },
+        }),
+        // Jumlah pesanan masuk hari ini
+        prisma.order.count({
+          where: {
+            ...whereOrder,
+            OR: [
+              { createdAt: { gte: startOfDay } },
+              {
+                updatedAt: { gte: startOfDay },
+                status: { not: 'PENDING_PAYMENT' },
+              },
+            ],
+          },
         }),
         prisma.order.count({ where: whereOrder }),
         prisma.order.count({
@@ -103,7 +179,7 @@ export async function GET() {
         }),
         prisma.returnRequest.findMany({
           where: { OR: [{ storeId }, { order: { storeId } }] },
-          take: 5,
+          take: 10,
           orderBy: { createdAt: 'desc' },
           include: {
             order: {
@@ -121,7 +197,7 @@ export async function GET() {
         }),
         prisma.order.findMany({
           where: { ...whereOrder, status: 'CANCELLED' },
-          take: 5,
+          take: 10,
           orderBy: { updatedAt: 'desc' },
           include: {
             user: { select: { id: true, name: true, email: true } },
@@ -134,40 +210,47 @@ export async function GET() {
         }),
       ])
 
-      return NextResponse.json({
-        stats: {
-          totalUsers: 0,
-          totalTechnicians: 0,
-          totalMitras: 0,
-          totalProducts,
-          totalStock: stockAgg._sum.stock ?? 0,
-          totalOrders,
-          pendingMitras: 0,
-          byRole: {},
-          orderStatusCounts: {
-            pendingPayment: pendingPaymentOrders,
-            paid: paidOrders,
-            inProgress: inProgressOrders,
-            shipped: shippedOrders,
-            completed: completedOrders,
-            cancelled: cancelledOrders,
-            returned: returnedOrders,
+      return NextResponse.json(
+        {
+          stats: {
+            todayRevenue: todayRevenueAgg._sum.total || 0,
+            todayOrdersCount,
+            totalUsers: 0,
+            totalTechnicians: 0,
+            totalMitras: 0,
+            totalProducts,
+            totalStock: stockAgg._sum.stock ?? 0,
+            lowStockCount: lowStockProducts,
+            outOfStockCount: outOfStockProducts,
+            totalOrders,
+            pendingMitras: 0,
+            byRole: {},
+            orderStatusCounts: {
+              pendingPayment: pendingPaymentOrders,
+              paid: paidOrders,
+              inProgress: inProgressOrders,
+              shipped: shippedOrders,
+              completed: completedOrders,
+              cancelled: cancelledOrders,
+              returned: returnedOrders,
+            },
+            returnStats: {
+              pendingReturns,
+              totalReturns,
+            },
           },
-          returnStats: {
-            pendingReturns,
-            totalReturns,
+          recentUsers: [],
+          recentReturns,
+          recentCancellations,
+          charts: {
+            monthlyData: {},
+            topProducts: [],
+            topServices: [],
+            topRentals: [],
           },
         },
-        recentUsers: [],
-        recentReturns,
-        recentCancellations,
-        charts: {
-          monthlyData: {},
-          topProducts: [],
-          topServices: [],
-          topRentals: [],
-        },
-      })
+        { headers: NO_CACHE_HEADERS }
+      )
     }
 
     // Get all stats in parallel
@@ -345,32 +428,35 @@ export async function GET() {
       })
     )
 
-    return NextResponse.json({
-      stats: {
-        totalUsers,
-        totalTechnicians,
-        totalMitras,
-        totalProducts,
-        totalOrders,
-        totalStores,
-        totalRevenue,
-        totalPlatformCommission,
-        activeComplaints,
-        storesList,
-        pendingMitras,
-        byRole: roleStats.reduce((acc: Record<string, number>, stat) => {
-          acc[stat.role] = stat._count
-          return acc
-        }, {}),
+    return NextResponse.json(
+      {
+        stats: {
+          totalUsers,
+          totalTechnicians,
+          totalMitras,
+          totalProducts,
+          totalOrders,
+          totalStores,
+          totalRevenue,
+          totalPlatformCommission,
+          activeComplaints,
+          storesList,
+          pendingMitras,
+          byRole: roleStats.reduce((acc: Record<string, number>, stat) => {
+            acc[stat.role] = stat._count
+            return acc
+          }, {}),
+        },
+        recentUsers,
+        charts: {
+          monthlyData,
+          topProducts: topProductsDetails,
+          topServices: topServicesDetails,
+          topRentals: topRentalsDetails,
+        },
       },
-      recentUsers,
-      charts: {
-        monthlyData,
-        topProducts: topProductsDetails,
-        topServices: topServicesDetails,
-        topRentals: topRentalsDetails,
-      },
-    })
+      { headers: NO_CACHE_HEADERS }
+    )
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
     return NextResponse.json(

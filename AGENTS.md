@@ -49,6 +49,51 @@
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-10-26 (Navigasi Langsung 6 Kartu Status Pesanan Dashboard ke Halaman Pesanan Per Status [`src/app/dashboard/admin/page.tsx`, `tests/unit/store-admin-kpi-and-operational-orders.test.ts`]):**
+  - **1. Pengalihan Langsung Tanpa Event Intercept (Direct Route Navigation):**
+    - Menghapus intercept `e.preventDefault()` (`handleStatusFilterClick` dan `handleReturnsFilterClick`) pada 6 kartu status pesanan di dashboard ("STATUS PESANAN DI DASHBOARD") dan 2 kartu KPI teratas ("Perlu Proses Cepat" & "Retur & Pembatalan").
+    - Setiap kartu kini berfungsi murni sebagai tautan navigasi langsung ke halaman pesanan (`/dashboard/admin/orders`) yang otomatis memfilter tabel sesuai status kartu yang diklik:
+      - _Perlu Diproses:_ `/dashboard/admin/orders?status=PAID`
+      - _Sedang Diproses:_ `/dashboard/admin/orders?status=IN_PROGRESS`
+      - _Sedang Dikirim:_ `/dashboard/admin/orders?status=SHIPPED`
+      - _Selesai:_ `/dashboard/admin/orders?status=COMPLETED`
+      - _Menunggu Bayar:_ `/dashboard/admin/orders?status=PENDING_PAYMENT`
+      - _Retur & Batal:_ Terhubung langsung ke `/dashboard/admin/orders?status=CANCELLED` (atau `/dashboard/admin/returns` jika ada pengajuan retur aktif).
+  - **2. Pembersihan Efek Border Aktif Redundan:** Menghilangkan styling ring/border aktif yang sebelumnya membingkai kartu status karena disangka sebagai tab switcher lokal, sehingga antarmuka kartu tampil bersih dengan micro-interaction hover standar.
+  - **3. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite `tests/unit/store-admin-kpi-and-operational-orders.test.ts` dan `store-admin-dashboard-and-voucher-picker.test.ts` lulus 100% (34/34 tests pass).
+- **2026-10-26 (Sinkronisasi Real-Time Dinamis Tab Pesanan Masuk Cabang Toko: Semua, Perlu Diproses, Diproses, Dikirim, Selesai, No-Cache Architecture, Limit 100, & Dynamic Empty States [`src/app/api/admin/orders/route.ts`, `src/app/dashboard/admin/page.tsx`, `src/app/dashboard/admin/orders/page.tsx`, `tests/unit/store-admin-kpi-and-operational-orders.test.ts`]):**
+  - **1. Arsitektur No-Cache & force-dynamic Endpoint Pesanan (`/api/admin/orders`):**
+    - Menyematkan `export const dynamic = 'force-dynamic'`, `export const revalidate = 0`, `export const fetchCache = 'force-no-store'`, dan response header anti-cache `NO_CACHE_HEADERS` (`Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0`, `Pragma: no-cache`, `Expires: 0`).
+    - Mengisolasi penghitungan statistik `baseStatsWhere` khusus `STORE_ADMIN` agar tersinkronisasi murni dengan toko cabang terkait (`storeId`), mencegah pencampuran dengan data platform.
+  - **2. Pipeline Pesanan Operasional Riil 100 Item (`page.tsx`):**
+    - Mengubah query fetch pesanan admin toko dari default kecil menjadi `limit=100` (`/api/admin/orders?limit=100&page=1&_t=${Date.now()}`), memastikan seluruh pesanan toko masuk (26 pesanan riil pada toko aktif) termuat utuh.
+    - Menghitung counter tab `Semua` secara presisi (`storeStats?.totalOrders ?? recentOrders.length`) sehingga menampilkan total riil 26 unit pesanan (bukan nilai fallback 10).
+  - **3. Memoized Filter Dinamis (`filteredOrders`) & Empty State Informatif Per-Status:**
+    - Mengintegrasikan hook `useMemo` untuk memfilter status pesanan secara instan (`ALL`, `PAID`, `IN_PROGRESS`, `SHIPPED`, `COMPLETED`).
+    - Menyematkan empty state kontekstual dan elegan ketika tidak ada pesanan pada tab tertentu (misal: saat tab `Diproses` dipilih dan bernilai 0, menampilkan pesan _"Tidak ada pesanan yang sedang diproses - Pesanan yang telah dipacking dan menunggu pickup kurir akan muncul di sini"_).
+    - Memperbaiki badge tombol `Perlu Diproses` agar konsisten menampilkan counter pill (angka 0 dengan badge soft saat kosong, badge oranye menyala saat ada antrian pesanan).
+    - Menghubungkan tombol "Rincian" langsung dengan parameter pencarian spesifik `/dashboard/admin/orders?search=${orderNumber}`.
+  - **4. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite `tests/unit/store-admin-kpi-and-operational-orders.test.ts` dan `store-admin-dashboard-and-voucher-picker.test.ts` lulus 100% (34/34 tests pass).
+- **2026-10-25 (Penyempurnaan Dashboard Toko Cabang: Sinkronisasi Real-Time Dinamis Seluruh Card, KPI Omset WIB, Pesanan Butuh Proses Cepat, Alert Stok Kritis, Retur/Batal, Filter Tab Interaktif, dan Eliminasi Section Stok & Inventori [`src/app/api/admin/dashboard/route.ts`, `src/app/dashboard/admin/page.tsx`, `tests/unit/store-admin-kpi-and-operational-orders.test.ts`, `tests/unit/store-admin-dashboard-and-voucher-picker.test.ts`]):**
+  - **1. 4 Kartu KPI Operasional Esensial Toko Cabang (100% Data Riil & Real-Time):**
+    - _Card 1 (Omset Toko Hari Ini):_ Menghitung akumulasi nominal penjualan lunas cabang hari ini (`todayRevenue`) dan counter transaksi hari ini (`todayOrdersCount`) dengan basis zona waktu resmi Indonesia (Asia/Jakarta, WIB) dan ikon `DollarSign` bernuansa emerald.
+    - _Card 2 (Perlu Proses Cepat):_ Menyorot pesanan berstatus `PAID` yang wajib segera dipacking dan diserahkan ke JNE/Gojek lengkap dengan animasi pulsing ping dot dan link langsung ke `/dashboard/admin/orders?status=PAID`.
+    - _Card 3 (Alert Stok Cabang):_ Menghitung akumulasi unit kritis (habis = 0 unit, menipis $\le 2$ unit) dengan styling amber dinamis saat ada model kritis, serta label status stok aman saat inventori mencukupi. Tautan mengarah langsung ke `/dashboard/admin/products` dengan tampilan ringkas murni jumlah unit kritis tanpa teks redundan.
+    - _Card 4 (Retur & Pembatalan):_ Melacak jumlah pengajuan retur garansi 30 hari aktif dan pembatalan pesanan cabang dengan akses langsung ke menu retur dan scroll halus ke section pengembalian.
+    - _Eliminasi Total Kartu Statis:_ Memastikan kartu marketing statis "Proteksi Garansi" dan "Operasional Toko" 100% dihapus dari dashboard store admin.
+  - **2. 6 Kartu Status Pesanan Bersih (Clean UI) & Interaktivitas Cepat:**
+    - Menyematkan strip 6 status card (Perlu Diproses, Sedang Diproses, Sedang Dikirim, Selesai, Menunggu Bayar, Retur & Batal) yang dapat diklik langsung untuk memfilter tabel pesanan secara instan (`setOrderFilter`) dengan smooth scroll ke `#pesanan-masuk-toko`.
+    - Menghapus badge `"Live Status"` dan paragraf petunjuk `"Klik kartu status untuk memfilter..."` agar antarmuka tampil lapang, ringkas, dan fokus.
+  - **3. Sinkronisasi Data Real-Time & No-Cache Architecture:**
+    - _Backend API (`route.ts`):_ Dikonfigurasi `export const dynamic = 'force-dynamic'`, `export const revalidate = 0`, `export const fetchCache = 'force-no-store'`, dan response header anti-cache (`Cache-Control: no-store, no-cache, must-revalidate`).
+    - _Client Polling & Event Listeners (`page.tsx`):_ Menggunakan timestamp query buster `_t=${Date.now()}` dan `cache: 'no-store'`. Background polling dipangkas menjadi 3.000 ms (3 detik) tanpa reload skeleton, serta tersinkronisasi instan melalui multi-event listener window (`focus`, `visibilitychange`, `admin-notifications-refresh`, `orders-updated`, `storage`).
+  - **4. Eliminasi Total Section Stok & Inventori:**
+    - Menghapus komponen widget `Stok & Inventori (Opsi)` (`#stok-inventori-opsi`), expander toggle, dan icon chevron di kolom samping store admin. Area samping kini khusus dan fokus menampung informasi Pengembalian & Pembatalan garansi toko.
+  - **5. Kartu Pengembalian & Pembatalan Dinamis:**
+    - _Tautan Header Dinamis:_ Arrow link kanan atas otomatis berubah teks dan tujuannya sesuai tab aktif—menjadi `"Dibatalkan"` menuju `/dashboard/admin/orders?status=CANCELLED` saat tab Dibatalkan aktif, dan kembali ke `"Menu Retur"` menuju `/dashboard/admin/returns` saat tab Pengajuan Retur aktif.
+    - _Limit Maksimal 5 Item:_ Daftar di kedua tab dibatasi ketat maksimal 5 item (`.slice(0, 5)`).
+    - _Tautan Footer "Lihat Semua":_ Jika total retur atau pesanan dibatalkan melebihi 5 unit, tautan navigasi langsung ke halaman terkait muncul di bawah list (`"Lihat Semua Pengajuan Retur (X) →"` / `"Lihat Semua Pesanan Dibatalkan (X) →"`).
+  - **6. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite `tests/unit/store-admin-kpi-and-operational-orders.test.ts` dan `store-admin-dashboard-and-voucher-picker.test.ts` lulus 100% (29/29 tests pass).
 - **2026-10-25 (Optimasi Latensi Notifikasi Chat Real-Time & Perbaikan Tampilan Terpotong Header Modal Label Thermal AWB [`src/lib/chat-notification-sound.ts`, `src/context/admin-notifications-context.tsx`, `src/app/dashboard/customer/chat/page.tsx`, `src/app/dashboard/admin/chat/page.tsx`, `src/components/chat/floating-chat-button.tsx`, `src/app/dashboard/customer/chat/admin/[orderId]/page.tsx`, `src/app/dashboard/customer/chat/teknisi/[orderId]/page.tsx`, `src/app/api/admin/chat/rooms/route.ts`, `src/components/shipping/thermal-shipping-label.tsx`, `tests/unit/chat-delay-and-thermal-label-fix.test.ts`]):**
   - **1. Optimasi Drastis Delay Notifikasi Chat Masuk (Sebelumnya ~10–15 Detik):**
     - _Admin Notification Bell & Sidebar Context (`admin-notifications-context.tsx`):_ Memangkas interval polling dari 15.000 ms (15 detik) menjadi 2.500 ms (2,5 detik). Menambahkan tracking kenaikan badge pesan masuk dan pemicu audio chime instan, serta sinkronisasi seketika saat tab window mendapat fokus (`window.addEventListener('focus')`).

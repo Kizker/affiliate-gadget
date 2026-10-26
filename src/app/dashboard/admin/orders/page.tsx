@@ -291,9 +291,19 @@ export default function AdminOrdersPage() {
       setStatusFilter(qStatus)
       setPage(1)
     }
+    const qSearch = searchParams?.get('search')
+    if (qSearch && qSearch !== searchInput) {
+      setSearchInput(qSearch)
+      setSearchQuery(qSearch)
+      setPage(1)
+    }
   }, [searchParams])
-  const [searchInput, setSearchInput] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchInput, setSearchInput] = useState(
+    searchParams?.get('search') || ''
+  )
+  const [searchQuery, setSearchQuery] = useState(
+    searchParams?.get('search') || ''
+  )
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState(false)
   const [copiedAWB, setCopiedAWB] = useState(false)
@@ -328,6 +338,7 @@ export default function AdminOrdersPage() {
       const params = new URLSearchParams()
       params.append('page', page.toString())
       params.append('limit', '10')
+      params.append('_t', Date.now().toString())
 
       if (statusFilter && statusFilter !== 'ALL') {
         params.append('status', statusFilter)
@@ -336,7 +347,13 @@ export default function AdminOrdersPage() {
         params.append('search', searchQuery.trim())
       }
 
-      const res = await fetch(`/api/admin/orders?${params.toString()}`)
+      const res = await fetch(`/api/admin/orders?${params.toString()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      })
       if (!res.ok) throw new Error('Failed to fetch orders')
       const data = await res.json()
 

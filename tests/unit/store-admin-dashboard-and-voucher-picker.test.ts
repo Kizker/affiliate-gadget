@@ -111,8 +111,8 @@ describe('Store Admin Dashboard, Recipient Details, Thermal Label, & Voucher Pic
   })
 
   describe('3. Store Admin Dashboard (Pesanan Penting & Status)', () => {
-    it('verifies Store Admin KPI cards contain Orders, Shipments, Returns, and Stock Opsi', () => {
-      expect(adminDashboardContent).toContain('Stok &amp; Inventori (Opsi)')
+    it('verifies Store Admin KPI cards contain Orders, Shipments, and Returns', () => {
+      expect(adminDashboardContent).not.toContain('id="stok-inventori-opsi"')
       expect(adminDashboardContent).toContain('Retur &amp; Pembatalan')
       expect(adminDashboardContent).toContain('Status Pesanan di Dashboard')
     })

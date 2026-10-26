@@ -3,12 +3,26 @@ import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { isAdminStaffRole } from '@/lib/dashboard-utils'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control':
+    'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+}
+
 // GET - Get all orders for admin with pagination, search, and claim filter
 export async function GET(request: Request) {
   try {
     const session = await auth()
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401, headers: NO_CACHE_HEADERS }
+      )
     }
 
     // Check if user is admin, staff, or technician
@@ -17,7 +31,10 @@ export async function GET(request: Request) {
     })
 
     if (!user || (!isAdminStaffRole(user.role) && user.role !== 'TECHNICIAN')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403, headers: NO_CACHE_HEADERS }
+      )
     }
 
     // Auto-cancel any overdue (>24h) pending orders before querying
@@ -46,23 +63,26 @@ export async function GET(request: Request) {
     // 1. Store Admin scoping (Akun Toko Mandiri)
     if (user.role === 'STORE_ADMIN') {
       if (!user.storeId) {
-        return NextResponse.json({
-          orders: [],
-          pagination: {
-            total: 0,
-            page,
-            limit,
-            totalPages: 0,
+        return NextResponse.json(
+          {
+            orders: [],
+            pagination: {
+              total: 0,
+              page,
+              limit,
+              totalPages: 0,
+            },
+            stats: {
+              total: 0,
+              pendingPayment: 0,
+              paid: 0,
+              inProgress: 0,
+              completed: 0,
+              cancelled: 0,
+            },
           },
-          stats: {
-            total: 0,
-            pendingPayment: 0,
-            paid: 0,
-            inProgress: 0,
-            completed: 0,
-            cancelled: 0,
-          },
-        })
+          { headers: NO_CACHE_HEADERS }
+        )
       }
       andConditions.push({
         OR: [
@@ -242,6 +262,7 @@ export async function GET(request: Request) {
       }
       paymentRequestedById?: { not: null }
       technicianPaymentRequestedById?: { not: null }
+      OR?: import('@prisma/client').Prisma.OrderWhereInput[]
     }
 
     const baseStatsWhere: StatsWhereInput = {}
@@ -250,6 +271,14 @@ export async function GET(request: Request) {
     if (user.role === 'ADMIN') {
       // ADMIN only counts sparepart/rental orders
       baseStatsWhere.items = { some: { serviceId: null } }
+    } else if (user.role === 'STORE_ADMIN') {
+      // STORE_ADMIN only counts their store orders
+      if (user.storeId) {
+        baseStatsWhere.OR = [
+          { storeId: user.storeId },
+          { items: { some: { product: { storeId: user.storeId } } } },
+        ]
+      }
     } else if (user.role === 'TECHNICIAN') {
       // TECHNICIAN only counts their service orders
       const technician = await prisma.technician.findUnique({
@@ -279,29 +308,32 @@ export async function GET(request: Request) {
       }),
     ])
 
-    return NextResponse.json({
-      orders,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
+    return NextResponse.json(
+      {
+        orders,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+        stats: {
+          total: totalOrders,
+          mine: myOrders,
+          unclaimed: unclaimedOrders,
+          pendingPaymentRequests: pendingPaymentRequests,
+          pendingTechnicianPaymentRequests: pendingTechnicianPaymentRequests,
+        },
+        currentUserId: user.id,
+        currentUserRole: user.role,
       },
-      stats: {
-        total: totalOrders,
-        mine: myOrders,
-        unclaimed: unclaimedOrders,
-        pendingPaymentRequests: pendingPaymentRequests,
-        pendingTechnicianPaymentRequests: pendingTechnicianPaymentRequests,
-      },
-      currentUserId: user.id,
-      currentUserRole: user.role,
-    })
+      { headers: NO_CACHE_HEADERS }
+    )
   } catch (error) {
     console.error('Error fetching orders:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: NO_CACHE_HEADERS }
     )
   }
 }
