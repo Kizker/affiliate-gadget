@@ -30,6 +30,7 @@ function ForgotPasswordContent() {
   const [maskedEmail, setMaskedEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [otpPreview, setOtpPreview] = useState<string | null>(null)
+  const [isOtpVerified, setIsOtpVerified] = useState(false)
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -43,11 +44,13 @@ function ForgotPasswordContent() {
   const [cooldown, setCooldown] = useState(0)
   const [countdown, setCountdown] = useState(300)
 
-  // Prefill email from query parameter if present
+  // Prefill email from query parameter if present and auto send OTP
   useEffect(() => {
     const emailParam = searchParams.get('email')
-    if (emailParam) {
+    if (emailParam && emailParam.includes('@')) {
       setEmail(emailParam)
+      // Otomatis kirim kode OTP ketika email tersedia dari parameter
+      handleRequestOtp(undefined, emailParam)
     }
   }, [searchParams])
 
@@ -80,11 +83,15 @@ function ForgotPasswordContent() {
   // ─────────────────────────────────────────────────────────────────────────────
   // 1. SUBMIT STEP 1: REQUEST OTP
   // ─────────────────────────────────────────────────────────────────────────────
-  const handleRequestOtp = async (e?: React.FormEvent) => {
+  const handleRequestOtp = async (
+    e?: React.FormEvent,
+    emailOverride?: string
+  ) => {
     if (e) e.preventDefault()
     setError(null)
 
-    if (!email || !email.includes('@')) {
+    const targetEmail = (emailOverride || email).trim()
+    if (!targetEmail || !targetEmail.includes('@')) {
       setError('Masukkan alamat email yang valid.')
       return
     }
@@ -96,7 +103,7 @@ function ForgotPasswordContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'request-otp',
-          email,
+          email: targetEmail,
         }),
       })
 
@@ -107,7 +114,7 @@ function ForgotPasswordContent() {
         return
       }
 
-      setMaskedEmail(data.maskedEmail || email)
+      setMaskedEmail(data.maskedEmail || targetEmail)
       setCooldown(data.cooldownSeconds || 60)
       setCountdown(data.expiresInSeconds || 300)
       if (data.otpPreview) {
@@ -116,6 +123,7 @@ function ForgotPasswordContent() {
 
       toast.success('Kode OTP berhasil dikirim ke email Anda via Resend!')
       setStep('OTP')
+      setIsOtpVerified(false)
     } catch {
       setError('Terjadi kendala koneksi ke server. Silakan coba lagi.')
     } finally {
@@ -165,11 +173,12 @@ function ForgotPasswordContent() {
   // ─────────────────────────────────────────────────────────────────────────────
   // 2. SUBMIT STEP 2: VERIFY OTP
   // ─────────────────────────────────────────────────────────────────────────────
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleVerifyOtp = async (e?: React.FormEvent, customOtp?: string) => {
+    if (e) e.preventDefault()
     setError(null)
 
-    if (otp.trim().length !== 6) {
+    const codeToVerify = (customOtp || otp).trim()
+    if (codeToVerify.length !== 6) {
       setError('Kode OTP harus terdiri dari 6 digit angka.')
       return
     }
@@ -182,7 +191,7 @@ function ForgotPasswordContent() {
         body: JSON.stringify({
           action: 'verify-otp',
           email,
-          otp: otp.trim(),
+          otp: codeToVerify,
         }),
       })
 
@@ -193,8 +202,10 @@ function ForgotPasswordContent() {
         return
       }
 
-      toast.success('Kode OTP terverifikasi! Silakan buat kata sandi baru.')
-      setStep('NEW_PASSWORD')
+      setIsOtpVerified(true)
+      toast.success(
+        'Kode OTP terverifikasi! Silakan buat kata sandi baru di bawah.'
+      )
     } catch {
       setError('Gagal memverifikasi kode OTP. Silakan periksa koneksi Anda.')
     } finally {
@@ -413,7 +424,7 @@ function ForgotPasswordContent() {
                   </div>
                 )}
 
-                <form onSubmit={handleVerifyOtp} className="space-y-5">
+                <div className="space-y-5">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <label
@@ -435,29 +446,47 @@ function ForgotPasswordContent() {
                       maxLength={6}
                       required
                       autoFocus
+                      disabled={isOtpVerified}
                       placeholder="••••••"
                       value={otp}
-                      onChange={(e) =>
-                        setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
-                      }
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3.5 text-center font-mono text-2xl font-black tracking-[0.5em] text-slate-900 transition-all placeholder:text-slate-300 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800/50 dark:text-white dark:placeholder:text-slate-600 dark:focus:border-white dark:focus:bg-slate-900"
+                      onChange={(e) => {
+                        const val = e.target.value
+                          .replace(/\D/g, '')
+                          .slice(0, 6)
+                        setOtp(val)
+                        if (val.length === 6) {
+                          handleVerifyOtp(undefined, val)
+                        }
+                      }}
+                      className={`w-full rounded-2xl border py-3.5 text-center font-mono text-2xl font-black tracking-[0.5em] outline-none transition-all ${
+                        isOtpVerified
+                          ? 'border-emerald-500 bg-emerald-50/40 text-emerald-700 dark:border-emerald-500/50 dark:bg-emerald-950/20 dark:text-emerald-300'
+                          : 'border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-300 focus:border-slate-900 focus:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:text-white dark:placeholder:text-slate-600 dark:focus:border-white dark:focus:bg-slate-900'
+                      }`}
                     />
                   </div>
 
                   {/* Resend Helper & Switch Email */}
                   <div className="flex items-center justify-between text-xs">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStep('EMAIL')
-                        setOtp('')
-                        setError(null)
-                      }}
-                      className="flex items-center gap-1 font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                    >
-                      <ArrowLeft className="h-3.5 w-3.5" />
-                      Ganti Email
-                    </button>
+                    {isOtpVerified ? (
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Kode OTP Terverifikasi</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStep('EMAIL')
+                          setOtp('')
+                          setError(null)
+                        }}
+                        className="flex items-center gap-1 font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                      >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        Ganti Email
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -474,24 +503,175 @@ function ForgotPasswordContent() {
                     </button>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isLoading || otp.trim().length !== 6}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-3.5 text-xs font-bold text-white transition-all hover:bg-slate-800 focus:outline-none active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        Memverifikasi...
-                      </span>
-                    ) : (
-                      <>
-                        <span>Verifikasi Kode OTP</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </button>
-                </form>
+                  {!isOtpVerified && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleVerifyOtp(e)}
+                      disabled={isLoading || otp.trim().length !== 6}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-3.5 text-xs font-bold text-white transition-all hover:bg-slate-800 focus:outline-none active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center gap-2">
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          Memverifikasi...
+                        </span>
+                      ) : (
+                        <>
+                          <span>Verifikasi Kode OTP</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {/* Jika benar lalu dibawahnya kita menginput password baru */}
+                  {isOtpVerified && (
+                    <form
+                      onSubmit={handleResetPassword}
+                      className="mt-6 space-y-4 border-t border-slate-100 pt-5 duration-200 animate-in fade-in slide-in-from-top-2 dark:border-slate-800"
+                    >
+                      <div className="text-left">
+                        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                          Input Kata Sandi Baru
+                        </h2>
+                        <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                          Silakan buat kata sandi baru untuk akun Anda.
+                        </p>
+                      </div>
+
+                      {/* New Password */}
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="newPassword"
+                          className="block text-xs font-bold text-slate-700 dark:text-slate-300"
+                        >
+                          Kata Sandi Baru
+                        </label>
+                        <div className="relative flex items-center">
+                          <input
+                            id="newPassword"
+                            type={showNewPassword ? 'text' : 'password'}
+                            required
+                            placeholder="Minimal 8 karakter"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3 pl-10 pr-10 text-xs font-medium text-slate-900 transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800/50 dark:text-white dark:hover:border-slate-700 dark:focus:border-white dark:focus:bg-slate-900"
+                          />
+                          <Lock className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                          >
+                            {showNewPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Confirm Password */}
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="confirmPassword"
+                          className="block text-xs font-bold text-slate-700 dark:text-slate-300"
+                        >
+                          Konfirmasi Kata Sandi Baru
+                        </label>
+                        <div className="relative flex items-center">
+                          <input
+                            id="confirmPassword"
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            required
+                            placeholder="Ulangi kata sandi baru"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3 pl-10 pr-10 text-xs font-medium text-slate-900 transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800/50 dark:text-white dark:hover:border-slate-700 dark:focus:border-white dark:focus:bg-slate-900"
+                          />
+                          <Lock className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowConfirmPassword(!showConfirmPassword)
+                            }
+                            className="absolute right-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Requirements checklist */}
+                      <div className="space-y-1.5 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 text-[11px] dark:border-slate-800 dark:bg-slate-800/40">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                              isLengthValid
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+                            }`}
+                          >
+                            ✓
+                          </div>
+                          <span
+                            className={
+                              isLengthValid
+                                ? 'font-medium text-emerald-700 dark:text-emerald-400'
+                                : 'text-slate-500 dark:text-slate-400'
+                            }
+                          >
+                            Minimal 8 karakter
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] ${
+                              isMatchValid
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+                            }`}
+                          >
+                            ✓
+                          </div>
+                          <span
+                            className={
+                              isMatchValid
+                                ? 'font-medium text-emerald-700 dark:text-emerald-400'
+                                : 'text-slate-500 dark:text-slate-400'
+                            }
+                          >
+                            Konfirmasi kata sandi cocok
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isLoading || !isLengthValid || !isMatchValid}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-3.5 text-xs font-bold text-white transition-all hover:bg-slate-800 focus:outline-none active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Menyimpan Kata Sandi...
+                          </span>
+                        ) : (
+                          <>
+                            <span>Simpan Kata Sandi Baru</span>
+                            <CheckCircle2 className="h-4 w-4" />
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  )}
+                </div>
               </>
             )}
 

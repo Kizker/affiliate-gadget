@@ -36,6 +36,10 @@ import {
   Percent,
   ExternalLink,
   Eye,
+  EyeOff,
+  RefreshCw,
+  AlertCircle,
+  ArrowRight,
   Palette,
   Monitor,
   LayoutTemplate,
@@ -86,6 +90,47 @@ export default function AdminSettingsPage() {
     newPassword: '',
     confirmPassword: '',
   })
+
+  // State untuk Reset Password via OTP Akun Pengelola
+  const [resetOtpMode, setResetOtpMode] = useState(false)
+  const [isSendingResetOtp, setIsSendingResetOtp] = useState(false)
+  const [isVerifyingResetOtp, setIsVerifyingResetOtp] = useState(false)
+  const [isSavingNewPassword, setIsSavingNewPassword] = useState(false)
+  const [resetOtp, setResetOtp] = useState('')
+  const [isResetOtpVerified, setIsResetOtpVerified] = useState(false)
+  const [resetNewPassword, setResetNewPassword] = useState('')
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('')
+  const [showResetNewPassword, setShowResetNewPassword] = useState(false)
+  const [showResetConfirmPassword, setShowResetConfirmPassword] =
+    useState(false)
+  const [resetCooldown, setResetCooldown] = useState(0)
+  const [resetCountdown, setResetCountdown] = useState(300)
+  const [resetOtpPreview, setResetOtpPreview] = useState<string | null>(null)
+  const [resetError, setResetError] = useState<string | null>(null)
+
+  // Cooldown timer ticker
+  useEffect(() => {
+    if (resetCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResetCooldown((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resetCooldown])
+
+  // Countdown timer ticker for OTP expiration
+  useEffect(() => {
+    if (!resetOtpMode || resetCountdown <= 0) return
+    const timer = setInterval(() => {
+      setResetCountdown((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resetOtpMode, resetCountdown])
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
 
   // Store Profile Form State (hanya untuk role STORE_ADMIN)
   const [storeForm, setStoreForm] = useState({
@@ -301,6 +346,211 @@ export default function AdminSettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Reset Password via OTP Handlers (Akun Pengelola)
+  // ─────────────────────────────────────────────────────────────────────────────
+  const handleStartResetPassword = async () => {
+    const targetEmail = userForm.email?.trim()
+    if (!targetEmail || !targetEmail.includes('@')) {
+      toast.error('Alamat email akun tidak valid.')
+      return
+    }
+
+    setResetError(null)
+    setIsSendingResetOtp(true)
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'request-otp',
+          email: targetEmail,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        const errMsg = data.error || 'Gagal mengirim kode OTP ke email'
+        setResetError(errMsg)
+        toast.error(errMsg)
+        return
+      }
+
+      setResetOtpMode(true)
+      setIsResetOtpVerified(false)
+      setResetOtp('')
+      setResetNewPassword('')
+      setResetConfirmPassword('')
+      setResetCooldown(data.cooldownSeconds || 60)
+      setResetCountdown(data.expiresInSeconds || 300)
+      if (data.otpPreview) {
+        setResetOtpPreview(data.otpPreview)
+      }
+      toast.success(
+        `Kode OTP berhasil dikirim ke email ${data.maskedEmail || targetEmail}!`
+      )
+    } catch {
+      const connErr = 'Terjadi kendala koneksi saat mengirim kode OTP.'
+      setResetError(connErr)
+      toast.error(connErr)
+    } finally {
+      setIsSendingResetOtp(false)
+    }
+  }
+
+  const handleResendResetOtp = async () => {
+    if (resetCooldown > 0 || isSendingResetOtp) return
+    const targetEmail = userForm.email?.trim()
+    if (!targetEmail) return
+
+    setResetError(null)
+    setIsSendingResetOtp(true)
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'request-otp',
+          email: targetEmail,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        const errMsg = data.error || 'Gagal mengirim ulang kode OTP'
+        setResetError(errMsg)
+        toast.error(errMsg)
+        return
+      }
+
+      setResetCooldown(data.cooldownSeconds || 60)
+      setResetCountdown(data.expiresInSeconds || 300)
+      if (data.otpPreview) {
+        setResetOtpPreview(data.otpPreview)
+      }
+      toast.success('Kode OTP baru telah dikirimkan ke email Anda!')
+    } catch {
+      toast.error('Gagal mengirim ulang kode OTP.')
+    } finally {
+      setIsSendingResetOtp(false)
+    }
+  }
+
+  const handleVerifyResetOtp = async (codeToVerify?: string) => {
+    const code = (codeToVerify || resetOtp).trim()
+    if (code.length !== 6) {
+      setResetError('Kode OTP harus terdiri dari 6 digit angka')
+      return
+    }
+
+    const targetEmail = userForm.email?.trim()
+    if (!targetEmail) return
+
+    setResetError(null)
+    setIsVerifyingResetOtp(true)
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify-otp',
+          email: targetEmail,
+          otp: code,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        const errMsg = data.error || 'Kode OTP tidak valid'
+        setResetError(errMsg)
+        toast.error(errMsg)
+        return
+      }
+
+      setIsResetOtpVerified(true)
+      toast.success(
+        'Kode OTP terverifikasi! Silakan masukkan kata sandi baru di bawah.'
+      )
+    } catch {
+      setResetError('Gagal memverifikasi OTP. Periksa koneksi Anda.')
+    } finally {
+      setIsVerifyingResetOtp(false)
+    }
+  }
+
+  const handleSaveNewPasswordWithOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    setResetError(null)
+
+    if (!isResetOtpVerified) {
+      setResetError('Verifikasi kode OTP terlebih dahulu')
+      return
+    }
+
+    if (resetNewPassword.length < 6) {
+      setResetError('Password baru minimal 6 karakter')
+      return
+    }
+
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetError('Konfirmasi password tidak cocok')
+      return
+    }
+
+    const targetEmail = userForm.email?.trim()
+    if (!targetEmail) return
+
+    setIsSavingNewPassword(true)
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reset-password',
+          email: targetEmail,
+          otp: resetOtp.trim(),
+          newPassword: resetNewPassword,
+          confirmPassword: resetConfirmPassword,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        const errMsg = data.error || 'Gagal memperbarui kata sandi'
+        setResetError(errMsg)
+        toast.error(errMsg)
+        return
+      }
+
+      toast.success('Kata sandi baru berhasil diperbarui!')
+      setResetOtpMode(false)
+      setIsResetOtpVerified(false)
+      setResetOtp('')
+      setResetNewPassword('')
+      setResetConfirmPassword('')
+      setResetOtpPreview(null)
+      setUserForm((prev) => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      }))
+    } catch {
+      setResetError('Terjadi kendala saat menyimpan kata sandi baru.')
+    } finally {
+      setIsSavingNewPassword(false)
+    }
+  }
+
+  const handleCancelResetOtpMode = () => {
+    setResetOtpMode(false)
+    setIsResetOtpVerified(false)
+    setResetOtp('')
+    setResetNewPassword('')
+    setResetConfirmPassword('')
+    setResetError(null)
   }
 
   // Upload Foto / Logo Toko (Store Logo)
@@ -2120,124 +2370,353 @@ export default function AdminSettingsPage() {
 
             {/* Right Bento Card (5 cols): Ganti Password & Keamanan */}
             <div className="shadow-2xs space-y-5 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7 lg:col-span-5">
-              <div className="flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950/50">
-                  <KeyRound className="h-4 w-4" />
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950/50">
+                    <KeyRound className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-950 dark:text-white">
+                      {resetOtpMode
+                        ? 'Reset Kata Sandi via OTP'
+                        : 'Keamanan & Sandi'}
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      {resetOtpMode
+                        ? `Verifikasi untuk ${userForm.email || 'akun Anda'}`
+                        : 'Perbarui kata sandi akun login Anda'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-950 dark:text-white">
-                    Keamanan & Sandi
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Perbarui kata sandi akun login Anda
-                  </p>
-                </div>
+
+                {resetOtpMode && (
+                  <button
+                    type="button"
+                    onClick={handleCancelResetOtpMode}
+                    className="text-xs font-semibold text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    Batal
+                  </button>
+                )}
               </div>
 
-              <div className="space-y-3.5 text-xs">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
+              {resetError && (
+                <div className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+                  <span className="flex-1 leading-relaxed">{resetError}</span>
+                </div>
+              )}
+
+              {!resetOtpMode ? (
+                /* Mode Ganti Password Normal */
+                <div className="space-y-3.5 text-xs">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        Password Saat Ini
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleStartResetPassword}
+                        disabled={isSendingResetOtp}
+                        className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline disabled:opacity-60 dark:text-orange-400"
+                      >
+                        {isSendingResetOtp
+                          ? 'Mengirim OTP...'
+                          : 'Lupa Password?'}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
+                      <input
+                        type="password"
+                        value={userForm.currentPassword}
+                        onChange={(e) =>
+                          setUserForm({
+                            ...userForm,
+                            currentPassword: e.target.value,
+                          })
+                        }
+                        placeholder="••••••••"
+                        className="w-full rounded-xl border border-slate-200/80 bg-slate-50 py-2.5 pl-9 pr-3.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
                     <label className="font-bold text-slate-700 dark:text-slate-300">
-                      Password Saat Ini
+                      Password Baru
                     </label>
-                    <Link
-                      href={`/forgot-password?email=${encodeURIComponent(userForm.email || '')}`}
-                      target="_blank"
-                      className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline dark:text-orange-400"
-                    >
-                      Lupa Password?
-                    </Link>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
+                      <input
+                        type="password"
+                        value={userForm.newPassword}
+                        onChange={(e) =>
+                          setUserForm({
+                            ...userForm,
+                            newPassword: e.target.value,
+                          })
+                        }
+                        placeholder="Minimal 6 karakter"
+                        className="w-full rounded-xl border border-slate-200/80 bg-slate-50 py-2.5 pl-9 pr-3.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
                   </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
-                    <input
-                      type="password"
-                      value={userForm.currentPassword}
-                      onChange={(e) =>
-                        setUserForm({
-                          ...userForm,
-                          currentPassword: e.target.value,
-                        })
-                      }
-                      placeholder="••••••••"
-                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 py-2.5 pl-9 pr-3.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 dark:text-slate-300">
+                      Konfirmasi Password Baru
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
+                      <input
+                        type="password"
+                        value={userForm.confirmPassword}
+                        onChange={(e) =>
+                          setUserForm({
+                            ...userForm,
+                            confirmPassword: e.target.value,
+                          })
+                        }
+                        placeholder="Ulangi password baru"
+                        className="w-full rounded-xl border border-slate-200/80 bg-slate-50 py-2.5 pl-9 pr-3.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Lupa Password Lama Box - Teks keterangan dihapus sesuai instruksi user */}
+                  <div className="rounded-2xl border border-orange-200/80 bg-orange-50/50 p-3.5 dark:border-orange-950/40 dark:bg-orange-950/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <KeyRound className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          Lupa Password Lama?
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleStartResetPassword}
+                          disabled={isSendingResetOtp}
+                          className="rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-60"
+                        >
+                          {isSendingResetOtp ? (
+                            <span className="flex items-center gap-1.5">
+                              <RefreshCw className="h-3 w-3 animate-spin" />
+                              Mengirim OTP...
+                            </span>
+                          ) : (
+                            'Reset Password'
+                          )}
+                        </button>
+                        <Link
+                          href={`/forgot-password?email=${encodeURIComponent(userForm.email || '')}`}
+                          className="sr-only"
+                          tabIndex={-1}
+                          aria-hidden="true"
+                        >
+                          Reset Password
+                        </Link>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">
-                    Password Baru
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
-                    <input
-                      type="password"
-                      value={userForm.newPassword}
-                      onChange={(e) =>
-                        setUserForm({
-                          ...userForm,
-                          newPassword: e.target.value,
-                        })
-                      }
-                      placeholder="Minimal 6 karakter"
-                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 py-2.5 pl-9 pr-3.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">
-                    Konfirmasi Password Baru
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
-                    <input
-                      type="password"
-                      value={userForm.confirmPassword}
-                      onChange={(e) =>
-                        setUserForm({
-                          ...userForm,
-                          confirmPassword: e.target.value,
-                        })
-                      }
-                      placeholder="Ulangi password baru"
-                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50 py-2.5 pl-9 pr-3.5 font-medium outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-orange-200/80 bg-orange-50/50 p-3.5 dark:border-orange-950/40 dark:bg-orange-950/20">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <KeyRound className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
-                        Lupa Password Lama?
+              ) : (
+                /* Mode Reset Password via OTP */
+                <div className="space-y-4 text-xs">
+                  {/* Step 1: Input OTP */}
+                  <div className="space-y-2 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        Kode OTP (6 Digit)
+                      </label>
+                      <span className="font-mono text-[11px] font-bold text-orange-600 dark:text-orange-400">
+                        {formatTimer(resetCountdown)}
                       </span>
                     </div>
-                    <Link
-                      href={`/forgot-password?email=${encodeURIComponent(userForm.email || '')}`}
-                      target="_blank"
-                      className="rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600"
-                    >
-                      Reset Password
-                    </Link>
-                  </div>
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                    Jika Anda lupa password lama, gunakan fitur verifikasi OTP
-                    email untuk mengatur ulang kata sandi baru akun pengelola
-                    ini.
-                  </p>
-                </div>
 
-                <div className="mt-2 flex items-start gap-2 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
-                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                  <span>
-                    Kosongkan kolom sandi jika Anda hanya ingin memperbarui data
-                    nama profil atau kontak.
-                  </span>
+                    {/* Dev OTP preview helper */}
+                    {resetOtpPreview &&
+                      process.env.NODE_ENV !== 'production' && (
+                        <div className="flex items-center justify-between rounded-xl bg-blue-50 px-3 py-1.5 text-[11px] text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                          <span>
+                            Kode OTP (Dev):{' '}
+                            <strong className="font-mono font-bold tracking-wider">
+                              {resetOtpPreview}
+                            </strong>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResetOtp(resetOtpPreview)
+                              handleVerifyResetOtp(resetOtpPreview)
+                            }}
+                            className="rounded-lg bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-blue-700"
+                          >
+                            Gunakan
+                          </button>
+                        </div>
+                      )}
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        disabled={isResetOtpVerified}
+                        value={resetOtp}
+                        onChange={(e) => {
+                          const val = e.target.value
+                            .replace(/\D/g, '')
+                            .slice(0, 6)
+                          setResetOtp(val)
+                          if (val.length === 6) {
+                            handleVerifyResetOtp(val)
+                          }
+                        }}
+                        placeholder="••••••"
+                        className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-center font-mono text-lg font-bold tracking-[0.3em] outline-none transition dark:bg-slate-900 ${
+                          isResetOtpVerified
+                            ? 'border-emerald-500 bg-emerald-50/30 text-emerald-700 dark:border-emerald-500/50 dark:text-emerald-300'
+                            : 'border-slate-200/80 focus:border-orange-500 dark:border-slate-700 dark:text-white'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      {isResetOtpVerified ? (
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span>Kode OTP Terverifikasi</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyResetOtp()}
+                          disabled={
+                            isVerifyingResetOtp || resetOtp.length !== 6
+                          }
+                          className="rounded-xl bg-slate-900 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950"
+                        >
+                          {isVerifyingResetOtp
+                            ? 'Memverifikasi...'
+                            : 'Verifikasi OTP'}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleResendResetOtp}
+                        disabled={resetCooldown > 0 || isSendingResetOtp}
+                        className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-blue-400"
+                      >
+                        <RefreshCw
+                          className={`h-3 w-3 ${isSendingResetOtp ? 'animate-spin' : ''}`}
+                        />
+                        {resetCooldown > 0
+                          ? `Kirim Ulang (${resetCooldown}s)`
+                          : 'Kirim Ulang'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Input Password Baru di bawahnya jika OTP benar */}
+                  {isResetOtpVerified && (
+                    <div className="space-y-3.5 duration-200 animate-in fade-in slide-in-from-top-2">
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-slate-700 dark:text-slate-300">
+                          Password Baru
+                        </label>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
+                          <input
+                            type={showResetNewPassword ? 'text' : 'password'}
+                            value={resetNewPassword}
+                            onChange={(e) =>
+                              setResetNewPassword(e.target.value)
+                            }
+                            placeholder="Minimal 6 karakter"
+                            className="w-full rounded-xl border border-slate-200/80 bg-white py-2.5 pl-9 pr-9 font-medium outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowResetNewPassword(!showResetNewPassword)
+                            }
+                            className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                          >
+                            {showResetNewPassword ? (
+                              <EyeOff className="h-3.5 w-3.5" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-slate-700 dark:text-slate-300">
+                          Konfirmasi Password Baru
+                        </label>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
+                          <input
+                            type={
+                              showResetConfirmPassword ? 'text' : 'password'
+                            }
+                            value={resetConfirmPassword}
+                            onChange={(e) =>
+                              setResetConfirmPassword(e.target.value)
+                            }
+                            placeholder="Ulangi password baru"
+                            className="w-full rounded-xl border border-slate-200/80 bg-white py-2.5 pl-9 pr-9 font-medium outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowResetConfirmPassword(
+                                !showResetConfirmPassword
+                              )
+                            }
+                            className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                          >
+                            {showResetConfirmPassword ? (
+                              <EyeOff className="h-3.5 w-3.5" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSaveNewPasswordWithOtp}
+                        disabled={
+                          isSavingNewPassword ||
+                          resetNewPassword.length < 6 ||
+                          resetNewPassword !== resetConfirmPassword
+                        }
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 py-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        {isSavingNewPassword ? (
+                          <span className="flex items-center gap-1.5">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Menyimpan Password...
+                          </span>
+                        ) : (
+                          <>
+                            <span>Simpan Password Baru</span>
+                            <CheckCircle2 className="h-4 w-4" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
