@@ -178,8 +178,9 @@ describe('Penyempurnaan Lengkap Sistem Voucher (5 Poin Perbaikan)', () => {
     expect(pageContent).not.toContain('Kupon berhasil ditukarkan pembeli')
 
     // Kolom Cakupan Toko hanya tampil untuk Super Admin, dihilangkan untuk Admin Toko
+    expect(pageContent).toContain('!isStoreAdmin')
     expect(pageContent).toContain(
-      '{!isStoreAdmin && <th className="px-5 py-3.5">Cakupan Toko</th>}'
+      '<th className="px-5 py-3.5">Cakupan Toko</th>'
     )
     expect(pageContent).toContain('{!isStoreAdmin && (')
   })

@@ -28,9 +28,9 @@ export async function generateMetadata({
         siteName: 'Affiliate Gadget',
         images: [
           {
-            url: `${baseUrl}/api/vouchers/og`,
-            width: 1200,
-            height: 630,
+            url: `${baseUrl}/api/vouchers/og?v=2`,
+            width: 800,
+            height: 800,
             alt: 'Voucher Promo Affiliate Gadget',
           },
         ],
@@ -61,9 +61,9 @@ export async function generateMetadata({
         siteName: 'Affiliate Gadget',
         images: [
           {
-            url: `${baseUrl}/api/vouchers/og?code=${encodeURIComponent(code)}`,
-            width: 1200,
-            height: 630,
+            url: `${baseUrl}/api/vouchers/og?code=${encodeURIComponent(code)}&v=2`,
+            width: 800,
+            height: 800,
             alt: `Voucher Promo ${code}`,
           },
         ],
@@ -84,7 +84,7 @@ export async function generateMetadata({
 
   const title = `🎟️ ${discountLabel} (Kode: ${voucher.code}) | Affiliate Gadget`
   const description = `Klaim kupon voucher ${voucher.code} sekarang! Dapatkan ${discountLabel}. ${minPurchaseLabel} • Khusus ${storeName}. Garansi 30 Hari Tukar Unit Baru & Proteksi Asuransi Resmi.`
-  const ogImageUrl = `${baseUrl}/api/vouchers/og?code=${encodeURIComponent(voucher.code)}`
+  const ogImageUrl = `${baseUrl}/api/vouchers/og?code=${encodeURIComponent(voucher.code)}&v=2`
 
   return {
     title,
@@ -101,14 +101,14 @@ export async function generateMetadata({
       images: [
         {
           url: ogImageUrl,
-          width: 1200,
-          height: 630,
+          width: 800,
+          height: 800,
           alt: `Voucher Promo ${voucher.code}`,
         },
       ],
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary',
       title,
       description,
       images: [ogImageUrl],
