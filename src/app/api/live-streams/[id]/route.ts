@@ -5,6 +5,7 @@ import {
   getActiveDealForStream,
   getActiveDealsForStream,
 } from '@/lib/live-deals'
+import { checkAndAutoEndSingleStream } from '@/lib/live-stream-auto-end'
 
 // GET /api/live-streams/[id] — Get single live stream detail with featured products
 export async function GET(
@@ -42,6 +43,19 @@ export async function GET(
         { success: false, error: 'Live stream tidak ditemukan' },
         { status: 404 }
       )
+    }
+
+    // Error handle case: jika stream terputus >= 10 menit, otomatis ubah status ke ENDED
+    let currentStream = stream
+    if (stream.status === 'LIVE') {
+      const autoEndCheck = await checkAndAutoEndSingleStream(stream)
+      if (autoEndCheck.ended) {
+        currentStream = {
+          ...stream,
+          status: 'ENDED',
+          endedAt: autoEndCheck.stream.endedAt,
+        }
+      }
     }
 
     // Resolve featured products
@@ -89,7 +103,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: {
-        ...stream,
+        ...currentStream,
         featuredProducts: enrichedFeaturedProducts,
         activeDeal,
         activeDeals,
@@ -188,6 +202,7 @@ export async function PATCH(
     if (status === 'LIVE') {
       updateData.status = 'LIVE'
       if (!stream.startedAt) updateData.startedAt = new Date()
+      updateData.lastPingAt = new Date()
     } else if (status === 'ENDED') {
       updateData.status = 'ENDED'
       updateData.endedAt = new Date()

@@ -9,17 +9,32 @@ export async function GET(
 ) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const role = session.user.role
+    const isSuperAdmin = role === 'SUPER_ADMIN'
+    const isStoreAdmin = role === 'STORE_ADMIN' || role === 'STORE_SALES'
+
+    if (!isSuperAdmin && !isStoreAdmin) {
       return NextResponse.json(
-        { error: 'Akses ditolak. Khusus Super Admin.' },
+        { error: 'Akses ditolak. Khusus Admin.' },
         { status: 403 }
       )
     }
 
     const { id } = await params
-    const voucher = await prisma.voucher.findUnique({
+    const voucher = await (prisma.voucher as any).findUnique({
       where: { id },
       include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
         usages: {
           orderBy: { usedAt: 'desc' },
           include: {
@@ -52,6 +67,14 @@ export async function GET(
       )
     }
 
+    // Scoping check for Store Admin
+    if (isStoreAdmin && (voucher as any).storeId !== session.user.storeId) {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Voucher ini milik cabang lain.' },
+        { status: 403 }
+      )
+    }
+
     return NextResponse.json({
       success: true,
       voucher: {
@@ -74,15 +97,23 @@ export async function PATCH(
 ) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const role = session.user.role
+    const isSuperAdmin = role === 'SUPER_ADMIN'
+    const isStoreAdmin = role === 'STORE_ADMIN' || role === 'STORE_SALES'
+
+    if (!isSuperAdmin && !isStoreAdmin) {
       return NextResponse.json(
-        { error: 'Akses ditolak. Khusus Super Admin.' },
+        { error: 'Akses ditolak. Khusus Admin.' },
         { status: 403 }
       )
     }
 
     const { id } = await params
-    const existing = await prisma.voucher.findUnique({
+    const existing = await (prisma.voucher as any).findUnique({
       where: { id },
     })
 
@@ -93,10 +124,20 @@ export async function PATCH(
       )
     }
 
+    // Scoping check for Store Admin
+    if (isStoreAdmin && (existing as any).storeId !== session.user.storeId) {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Anda tidak berhak mengubah voucher ini.' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const {
       description,
+      discountType,
       discountPercent,
+      discountAmount,
       maxDiscountAmount,
       minimumPurchase,
       totalQuota,
@@ -105,6 +146,7 @@ export async function PATCH(
       validUntil,
       applicableOrderType,
       isActive,
+      storeId,
     } = body
 
     const updateData: Record<string, unknown> = {}
@@ -117,15 +159,38 @@ export async function PATCH(
       updateData.isActive = Boolean(isActive)
     }
 
-    if (discountPercent !== undefined) {
-      const parsedPercent = parseFloat(String(discountPercent))
-      if (isNaN(parsedPercent) || parsedPercent <= 0 || parsedPercent > 99) {
-        return NextResponse.json(
-          { error: 'Persentase diskon harus bernilai 1-99%' },
-          { status: 400 }
-        )
+    const currentType =
+      discountType !== undefined ? discountType : (existing as any).discountType
+
+    if (discountType !== undefined) {
+      updateData.discountType =
+        discountType === 'FIXED_AMOUNT' ? 'FIXED_AMOUNT' : 'PERCENTAGE'
+    }
+
+    if (currentType === 'FIXED_AMOUNT') {
+      if (discountAmount !== undefined) {
+        const parsedAmount = parseFloat(String(discountAmount))
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          return NextResponse.json(
+            { error: 'Nominal potongan diskon harus lebih besar dari Rp 0' },
+            { status: 400 }
+          )
+        }
+        updateData.discountAmount = parsedAmount
       }
-      updateData.discountPercent = parsedPercent
+      updateData.discountPercent = 0
+    } else {
+      if (discountPercent !== undefined) {
+        const parsedPercent = parseFloat(String(discountPercent))
+        if (isNaN(parsedPercent) || parsedPercent <= 0 || parsedPercent > 99) {
+          return NextResponse.json(
+            { error: 'Persentase diskon harus bernilai 1-99%' },
+            { status: 400 }
+          )
+        }
+        updateData.discountPercent = parsedPercent
+      }
+      updateData.discountAmount = null
     }
 
     if (maxDiscountAmount !== undefined) {
@@ -150,7 +215,7 @@ export async function PATCH(
           { status: 400 }
         )
       }
-      if (parsedQuota < existing.usedCount) {
+      if (parsedQuota < (existing as any).usedCount) {
         return NextResponse.json(
           {
             error: `Total kuota tidak boleh kurang dari jumlah yang sudah terpakai (${existing.usedCount})`,
@@ -176,8 +241,13 @@ export async function PATCH(
       updateData.applicableOrderType = applicableOrderType as CartItemType
     }
 
-    let start = existing.validFrom
-    let end = existing.validUntil
+    // Super Admin can reassign storeId, Store Admin cannot
+    if (isSuperAdmin && storeId !== undefined) {
+      updateData.storeId = storeId === 'GLOBAL' ? null : storeId || null
+    }
+
+    let start = (existing as any).validFrom
+    let end = (existing as any).validUntil
 
     if (validFrom !== undefined) {
       const s = new Date(validFrom)
@@ -210,9 +280,18 @@ export async function PATCH(
       )
     }
 
-    const updated = await prisma.voucher.update({
+    const updated = await (prisma.voucher as any).update({
       where: { id },
       data: updateData,
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
     })
 
     return NextResponse.json({
@@ -237,9 +316,17 @@ export async function DELETE(
 ) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const role = session.user.role
+    const isSuperAdmin = role === 'SUPER_ADMIN'
+    const isStoreAdmin = role === 'STORE_ADMIN' || role === 'STORE_SALES'
+
+    if (!isSuperAdmin && !isStoreAdmin) {
       return NextResponse.json(
-        { error: 'Akses ditolak. Khusus Super Admin.' },
+        { error: 'Akses ditolak. Khusus Admin.' },
         { status: 403 }
       )
     }
@@ -253,6 +340,14 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Voucher tidak ditemukan' },
         { status: 404 }
+      )
+    }
+
+    // Scoping check for Store Admin
+    if (isStoreAdmin && (voucher as any).storeId !== session.user.storeId) {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Anda tidak berhak menghapus voucher ini.' },
+        { status: 403 }
       )
     }
 

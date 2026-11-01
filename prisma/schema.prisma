@@ -165,6 +165,7 @@ model Store {
   reviews        Review[]
   returnRequests ReturnRequest[]
   adminChatRooms AdminChatRoom[]
+  vouchers       Voucher[]
 
   @@index([city])
   @@index([isOwnerStore])
@@ -305,6 +306,7 @@ model LiveStream {
   scheduledAt        DateTime?
   startedAt          DateTime?
   endedAt            DateTime?
+  lastPingAt         DateTime?
   viewerCount        Int                 @default(0)
   featuredProductIds String[]            @default([])
   livekitRoomName    String?
@@ -1226,23 +1228,28 @@ model Voucher {
   id                  String         @id @default(cuid())
   code                String         @unique
   description         String?
-  discountPercent     Float          // e.g. 10 for 10%
+  discountType        String         @default("PERCENTAGE") // "PERCENTAGE" or "FIXED_AMOUNT"
+  discountPercent     Float          @default(0) // e.g. 10 for 10%
+  discountAmount      Float?         // Potongan nominal langsung (Rp) jika FIXED_AMOUNT
   maxDiscountAmount   Float?         // Cap maksimal nominal diskon dalam Rupiah
   minimumPurchase     Float          @default(0) // Minimal subtotal order
   totalQuota          Int            // Total kuota voucher tersedia
   usedCount           Int            @default(0) // Jumlah voucher yang sudah dipakai
   usagePerUser        Int            @default(1) // Batas pemakaian per user
   applicableOrderType CartItemType   @default(PRODUCT)
+  storeId             String?        // null = Superadmin Platform Global, string = Toko Cabang Scoped
   isActive            Boolean        @default(true)
   validFrom           DateTime
   validUntil          DateTime
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
+  store               Store?         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   usages              VoucherUsage[]
   orders              Order[]
 
   @@index([isActive])
   @@index([code])
+  @@index([storeId])
   @@map("vouchers")
 }
 

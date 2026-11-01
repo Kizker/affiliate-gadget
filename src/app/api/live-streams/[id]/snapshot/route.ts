@@ -58,11 +58,12 @@ export async function POST(
 
     const coverUrl = `/uploads/live-snapshots/${filename}`
 
-    // Update coverImage in database
+    // Update coverImage and lastPingAt in database
     await prisma.liveStream.update({
       where: { id },
       data: {
         coverImage: coverUrl,
+        lastPingAt: new Date(),
       },
     })
 

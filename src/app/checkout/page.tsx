@@ -703,7 +703,14 @@ function CheckoutContent() {
 
     let isMounted = true
     setLoadingAvailableVouchers(true)
-    fetch(`/api/vouchers?subtotal=${currentSubtotal}&orderType=PRODUCT`)
+    const targetStoreId =
+      activeVoucherStorePackage?.storeId ||
+      (computedStorePackages?.length === 1
+        ? computedStorePackages[0].storeId
+        : '')
+    fetch(
+      `/api/vouchers?subtotal=${currentSubtotal}&orderType=PRODUCT${targetStoreId ? `&storeId=${targetStoreId}` : ''}`
+    )
       .then((res) =>
         res.ok ? res.json() : Promise.reject('Failed to fetch vouchers')
       )

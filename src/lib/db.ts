@@ -26,14 +26,15 @@ declare const globalThis: {
   prismaSchemaVersion: number
 } & typeof global
 
-const CURRENT_SCHEMA_VERSION = 5
+const CURRENT_SCHEMA_VERSION = 6
 
 // Ensure the cached singleton is refreshed if models or fields are missing/outdated
 const isOutdatedSingleton =
   globalThis.prismaGlobal &&
   (globalThis.prismaSchemaVersion !== CURRENT_SCHEMA_VERSION ||
     !(globalThis.prismaGlobal as any).storeWithdrawal ||
-    !('heroImage' in ((globalThis.prismaGlobal as any).store?.fields || {})))
+    !('heroImage' in ((globalThis.prismaGlobal as any).store?.fields || {})) ||
+    !('storeId' in ((globalThis.prismaGlobal as any).voucher?.fields || {})))
 
 const prisma =
   !globalThis.prismaGlobal || isOutdatedSingleton

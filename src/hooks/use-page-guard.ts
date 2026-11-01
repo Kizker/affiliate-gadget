@@ -13,7 +13,7 @@ const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
   '/dashboard/admin/reports': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
   '/dashboard/admin/users': ['SUPER_ADMIN'],
   '/dashboard/admin/technicians': ['SUPER_ADMIN'],
-  '/dashboard/admin/vouchers': ['SUPER_ADMIN'],
+  '/dashboard/admin/vouchers': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
   '/dashboard/admin/mitras': ['SUPER_ADMIN', 'ADMIN'],
   '/dashboard/admin/ads': ['SUPER_ADMIN', 'STORE_ADMIN'],
   '/dashboard/admin/blog': ['SUPER_ADMIN', 'CONTENT_EDITOR'],

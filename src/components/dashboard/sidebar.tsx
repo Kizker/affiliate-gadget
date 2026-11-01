@@ -160,6 +160,7 @@ const storeAdminNavSections: NavSection[] = [
         href: '/dashboard/admin/products',
       },
       { icon: ShoppingCart, label: 'Pesanan', href: '/dashboard/admin/orders' },
+      { icon: Tag, label: 'Voucher Promo', href: '/dashboard/admin/vouchers' },
       { icon: Radio, label: 'Siaran Langsung', href: '/dashboard/admin/live' },
       {
         icon: Wallet,
@@ -225,9 +226,14 @@ const customerNavSections: NavSection[] = [
 interface SidebarProps {
   variant?: 'dark' | 'light'
   forceRole?: string
+  storeSlug?: string | null
 }
 
-export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
+export function Sidebar({
+  variant = 'light',
+  forceRole,
+  storeSlug,
+}: SidebarProps) {
   const sidebarCtx = useSidebarSafe()
   const { counts, markAsRead } = useAdminNotifications()
 
@@ -296,12 +302,40 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
 
   const effectiveRole = forceRole || session?.user?.role || fallbackRole
 
+  const [activeSlug, setActiveSlug] = useState<string | null>(storeSlug || null)
+
+  useEffect(() => {
+    if (storeSlug) {
+      setActiveSlug(storeSlug)
+    } else if (
+      (effectiveRole === 'STORE_ADMIN' || effectiveRole === 'STORE_SALES') &&
+      !activeSlug
+    ) {
+      fetch('/api/admin/profile')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.store?.slug) {
+            setActiveSlug(data.store.slug)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [storeSlug, effectiveRole, activeSlug])
+
+  const isStoreAdminRole =
+    effectiveRole === 'STORE_ADMIN' || effectiveRole === 'STORE_SALES'
+  const publicHref = isStoreAdminRole
+    ? activeSlug
+      ? `/toko/${activeSlug}`
+      : '/toko'
+    : '/'
+
   // Determine sections based on user role
   const navSections = useMemo(() => {
     if (effectiveRole === 'CUSTOMER') {
       return customerNavSections
     }
-    if (effectiveRole === 'STORE_ADMIN') {
+    if (effectiveRole === 'STORE_ADMIN' || effectiveRole === 'STORE_SALES') {
       return storeAdminNavSections
     }
     if (effectiveRole === 'ADMIN') {
@@ -368,7 +402,7 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
         suppressHydrationWarning
         onClick={toggleMobile}
         aria-label={isMobileOpen ? 'Tutup Menu Navigasi' : 'Buka Menu Navigasi'}
-        className={`fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 bg-white/90 text-slate-800 shadow-md backdrop-blur-md transition-all active:scale-95 dark:border-slate-800 dark:bg-slate-900/90 dark:text-white lg:hidden`}
+        className={`fixed left-4 top-2.5 z-50 flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white/90 text-slate-800 shadow-sm backdrop-blur-md transition-all active:scale-95 dark:border-slate-800 dark:bg-slate-900/90 dark:text-white lg:hidden`}
       >
         {isMobileOpen ? (
           <X className="h-5 w-5" />
@@ -618,22 +652,36 @@ export function Sidebar({ variant = 'light', forceRole }: SidebarProps) {
             {/* View Public Storefront Link */}
             {!isCollapsed ? (
               <Link
-                href="/"
+                href={publicHref}
                 target="_blank"
                 rel="noopener noreferrer"
+                title={
+                  isStoreAdminRole
+                    ? 'Buka Tampilan Halaman Toko Cabang Publik'
+                    : 'Buka Halaman Depan Web Publik'
+                }
                 className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
               >
                 <span className="flex items-center gap-2">
                   <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                  <span>Lihat Web Publik</span>
+                  <span>
+                    {isStoreAdminRole
+                      ? 'Lihat Toko Publik'
+                      : 'Lihat Web Publik'}
+                  </span>
                 </span>
                 <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
               </Link>
             ) : (
               <Link
-                href="/"
+                href={publicHref}
                 target="_blank"
                 rel="noopener noreferrer"
+                title={
+                  isStoreAdminRole
+                    ? 'Buka Tampilan Halaman Toko Cabang Publik'
+                    : 'Buka Halaman Depan Web Publik'
+                }
                 className="group relative mx-auto flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
               >
                 <ExternalLink className="h-4 w-4" />

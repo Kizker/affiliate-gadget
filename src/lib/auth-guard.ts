@@ -19,7 +19,7 @@ export const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
   '/dashboard/admin/technicians': ['SUPER_ADMIN'],
 
   // Voucher — SUPER_ADMIN only
-  '/dashboard/admin/vouchers': ['SUPER_ADMIN'],
+  '/dashboard/admin/vouchers': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
 
   // Manajemen Toko/Mitra — SUPER_ADMIN, ADMIN
   '/dashboard/admin/mitras': ['SUPER_ADMIN', 'ADMIN'],

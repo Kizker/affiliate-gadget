@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { SidebarProvider, useSidebar } from '@/context/sidebar-context'
 import { AdminNotificationsProvider } from '@/context/admin-notifications-context'
 import { Sidebar } from '@/components/dashboard/sidebar'
@@ -14,19 +14,45 @@ import { usePathname } from 'next/navigation'
 function AdminLayoutInner({
   children,
   userRole,
+  storeSlug,
 }: {
   children: React.ReactNode
   userRole?: string
+  storeSlug?: string | null
 }) {
-  const { isCollapsed, toggleCollapse, toggleMobile, isMobileOpen } =
-    useSidebar()
+  const { isCollapsed } = useSidebar()
   const pathname = usePathname()
   const isChatPage = pathname?.startsWith('/dashboard/admin/chat')
+
+  const [activeSlug, setActiveSlug] = useState<string | null>(storeSlug || null)
+  const isStoreAdmin = userRole === 'STORE_ADMIN' || userRole === 'STORE_SALES'
+
+  useEffect(() => {
+    if (storeSlug) {
+      setActiveSlug(storeSlug)
+    } else if (isStoreAdmin && !activeSlug) {
+      fetch('/api/admin/profile')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.store?.slug) {
+            setActiveSlug(data.store.slug)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [storeSlug, isStoreAdmin, activeSlug])
+
+  // Superadmin -> Beranda website ('/'), Admin Toko -> Halaman Toko Cabang ('/toko/[slug]')
+  const publicHref = isStoreAdmin
+    ? activeSlug
+      ? `/toko/${activeSlug}`
+      : '/toko'
+    : '/'
 
   return (
     <div className="relative min-h-screen bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
       {/* Sidebar - Shows menu based on actual role */}
-      <Sidebar variant="light" forceRole={userRole} />
+      <Sidebar variant="light" forceRole={userRole} storeSlug={activeSlug} />
 
       {/* Main Content Area with Desktop Left Offset that adjusts dynamically */}
       <div
@@ -45,9 +71,14 @@ function AdminLayoutInner({
             <AdminNotificationBell />
 
             <Link
-              href="/"
+              href={publicHref}
               target="_blank"
               rel="noopener noreferrer"
+              title={
+                isStoreAdmin
+                  ? 'Buka Tampilan Halaman Toko Cabang Publik'
+                  : 'Buka Halaman Depan Web Publik'
+              }
               className="flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-100/80 px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               <Store className="h-3 w-3 text-slate-400" />
@@ -85,14 +116,18 @@ function AdminLayoutInner({
 export function AdminLayoutClient({
   children,
   userRole,
+  storeSlug,
 }: {
   children: React.ReactNode
   userRole?: string
+  storeSlug?: string | null
 }) {
   return (
     <SidebarProvider>
       <AdminNotificationsProvider>
-        <AdminLayoutInner userRole={userRole}>{children}</AdminLayoutInner>
+        <AdminLayoutInner userRole={userRole} storeSlug={storeSlug}>
+          {children}
+        </AdminLayoutInner>
       </AdminNotificationsProvider>
     </SidebarProvider>
   )

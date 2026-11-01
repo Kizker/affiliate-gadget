@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { code, subtotal = 0, orderType = 'PRODUCT' } = body
+    const { code, subtotal = 0, orderType = 'PRODUCT', storeId } = body
 
     if (!code || typeof code !== 'string') {
       return NextResponse.json(
@@ -29,8 +29,16 @@ export async function POST(request: NextRequest) {
     const cleanCode = code.trim().toUpperCase()
     const parsedSubtotal = Math.max(0, parseFloat(String(subtotal)) || 0)
 
-    const voucher = await prisma.voucher.findUnique({
+    const voucher = await (prisma.voucher as any).findUnique({
       where: { code: cleanCode },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     })
 
     if (!voucher) {
@@ -86,10 +94,22 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Store Scoping Check
+    if (
+      (voucher as any).storeId &&
+      storeId &&
+      (voucher as any).storeId !== storeId
+    ) {
+      return NextResponse.json({
+        valid: false,
+        reason: `Voucher "${voucher.code}" hanya berlaku untuk produk dari ${(voucher as any).store?.name || 'toko cabang terkait'}.`,
+      })
+    }
+
     if (parsedSubtotal < voucher.minimumPurchase) {
       return NextResponse.json({
         valid: false,
-        reason: `Syarat minimum belanja Rp ${voucher.minimumPurchase.toLocaleString('id-ID')} belum terpenuhi (Subtotal saat ini: Rp ${parsedSubtotal.toLocaleString('id-ID')}).`,
+        reason: `Belanja Rp ${(voucher.minimumPurchase - parsedSubtotal).toLocaleString('id-ID')} lagi untuk menggunakan voucher "${voucher.code}" (Min. belanja Rp ${voucher.minimumPurchase.toLocaleString('id-ID')}).`,
       })
     }
 
@@ -111,18 +131,24 @@ export async function POST(request: NextRequest) {
     const discountAmount = calculateVoucherDiscountAmount(
       parsedSubtotal,
       voucher.discountPercent,
-      voucher.maxDiscountAmount
+      voucher.maxDiscountAmount,
+      (voucher as any).discountType || 'PERCENTAGE',
+      voucher.discountAmount
     )
 
     return NextResponse.json({
       valid: true,
       voucherId: voucher.id,
       voucherCode: voucher.code,
+      discountType: (voucher as any).discountType || 'PERCENTAGE',
       discountPercent: voucher.discountPercent,
       discountAmount,
       maxDiscountAmount: voucher.maxDiscountAmount,
       minimumPurchase: voucher.minimumPurchase,
       description: voucher.description,
+      storeId: (voucher as any).storeId,
+      storeName: (voucher as any).store?.name || null,
+      isGlobal: !(voucher as any).storeId,
     })
   } catch (error) {
     console.error('Error validating voucher:', error)

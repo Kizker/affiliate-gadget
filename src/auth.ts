@@ -82,6 +82,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             role: true,
             image: true,
             storeId: true,
+            store: { select: { slug: true } },
             mitraStatus: true,
             isActive: true,
             emailVerified: true,
@@ -153,6 +154,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           image: safeImage,
           role: user.role,
           storeId: user.storeId,
+          storeSlug: (user as any).store?.slug || null,
           mitraStatus: user.mitraStatus,
           isTechnician: !!user.technician,
         }
@@ -190,6 +192,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 image: true,
                 role: true,
                 storeId: true,
+                store: { select: { slug: true } },
                 mitraStatus: true,
                 technician: { select: { id: true } },
               },
@@ -198,6 +201,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               token.name = dbUser.name
               token.role = dbUser.role || 'CUSTOMER'
               token.storeId = dbUser.storeId
+              token.storeSlug = dbUser.store?.slug || null
               token.mitraStatus = dbUser.mitraStatus
               token.isTechnician = !!dbUser.technician
               if (
@@ -242,6 +246,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ? user.image
             : null
         token.storeId = user.storeId || null
+        token.storeSlug = (user as any).storeSlug || null
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.isTechnician = (user as any).isTechnician || false
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -253,7 +258,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { storeId: true, role: true },
+            select: {
+              storeId: true,
+              role: true,
+              store: { select: { slug: true } },
+            },
           })
           if (dbUser) {
             token.role = dbUser.role || 'CUSTOMER'
@@ -280,6 +289,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.email = token.email as string
         session.user.image = (token.image as string) || null
         session.user.storeId = token.storeId as string | null
+        session.user.storeSlug = (token.storeSlug as string | null) || null
         session.user.isTechnician = token.isTechnician as boolean
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(session.user as any).mitraStatus = token.mitraStatus as string | null

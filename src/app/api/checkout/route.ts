@@ -733,6 +733,7 @@ export async function POST(request: NextRequest) {
                 for (const cleanCode of activeVoucherCodes) {
                   const dbVoucher = await tx.voucher.findUnique({
                     where: { code: cleanCode },
+                    include: { store: { select: { name: true } } },
                   })
 
                   if (!dbVoucher) {
@@ -782,6 +783,18 @@ export async function POST(request: NextRequest) {
                     },
                   })
 
+                  if (
+                    (dbVoucher as any).storeId &&
+                    packageConfig?.storeId &&
+                    packageConfig.storeId !== (dbVoucher as any).storeId
+                  ) {
+                    throw new CheckoutError(
+                      `Voucher "${cleanCode}" hanya berlaku untuk pesanan dari toko ${(dbVoucher as any).store?.name || 'terkait'}`,
+                      CHECKOUT_ERROR_CODES.VOUCHER_INVALID,
+                      400
+                    )
+                  }
+
                   if (userUsageCount >= dbVoucher.usagePerUser) {
                     throw new CheckoutError(
                       `Anda telah mencapai batas maksimal (${dbVoucher.usagePerUser}x) pemakaian voucher "${cleanCode}"`,
@@ -793,7 +806,9 @@ export async function POST(request: NextRequest) {
                   const singleDisc = calculateVoucherDiscountAmount(
                     subtotal,
                     dbVoucher.discountPercent,
-                    dbVoucher.maxDiscountAmount
+                    dbVoucher.maxDiscountAmount,
+                    (dbVoucher as any).discountType || 'PERCENTAGE',
+                    (dbVoucher as any).discountAmount
                   )
 
                   const voucherUpdate = await tx.voucher.updateMany({

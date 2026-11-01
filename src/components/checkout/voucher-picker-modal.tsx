@@ -11,13 +11,18 @@ import {
   Sparkles,
   ArrowRight,
   Store,
+  Share2,
+  Check,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 export interface AvailableVoucher {
   id: string
   code: string
   description?: string | null
+  discountType?: string
   discountPercent: number
+  discountAmount?: number | null
   maxDiscountAmount?: number | null
   minimumPurchase: number
   totalQuota: number
@@ -27,6 +32,9 @@ export interface AvailableVoucher {
   remainingUserQuota: number
   validFrom: string
   validUntil: string
+  storeId?: string | null
+  storeName?: string | null
+  isGlobal?: boolean
   isValid: boolean
   reason: string | null
   potentialDiscount: number
@@ -54,6 +62,7 @@ export function VoucherPickerModal({
   onSelectVoucher,
 }: VoucherPickerModalProps) {
   const [search, setSearch] = useState('')
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
 
   if (!isOpen) return null
 
@@ -62,7 +71,8 @@ export function VoucherPickerModal({
     const q = search.trim().toLowerCase()
     return (
       v.code.toLowerCase().includes(q) ||
-      (v.description && v.description.toLowerCase().includes(q))
+      (v.description && v.description.toLowerCase().includes(q)) ||
+      (v.storeName && v.storeName.toLowerCase().includes(q))
     )
   })
 
@@ -79,6 +89,21 @@ export function VoucherPickerModal({
     } catch {
       return dateStr
     }
+  }
+
+  const handleShareVoucher = (v: AvailableVoucher, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const url = `${window.location.origin}/voucher/claim?code=${encodeURIComponent(v.code)}`
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setCopiedCode(v.code)
+        toast.success(`Tautan voucher ${v.code} berhasil disalin!`)
+        setTimeout(() => setCopiedCode(null), 2500)
+      })
+      .catch(() => {
+        toast.error('Gagal menyalin tautan voucher')
+      })
   }
 
   return (
@@ -185,6 +210,7 @@ export function VoucherPickerModal({
                   <div className="space-y-2.5">
                     {validVouchers.map((v) => {
                       const isAlreadyApplied = appliedCodes.includes(v.code)
+                      const isFixed = v.discountType === 'FIXED_AMOUNT'
                       return (
                         <div
                           key={v.id}
@@ -204,16 +230,38 @@ export function VoucherPickerModal({
                                   Hemat Rp{' '}
                                   {v.potentialDiscount.toLocaleString('id-ID')}
                                 </span>
-                                {v.discountPercent > 0 && (
-                                  <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                                    Diskon {v.discountPercent}%
+                                {isFixed ? (
+                                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                    Potongan Langsung Rp{' '}
+                                    {(v.discountAmount || 0).toLocaleString(
+                                      'id-ID'
+                                    )}
+                                  </span>
+                                ) : (
+                                  v.discountPercent > 0 && (
+                                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                      Diskon {v.discountPercent}%
+                                    </span>
+                                  )
+                                )}
+
+                                {v.storeName ? (
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                                    <Store className="h-2.5 w-2.5" />
+                                    {v.storeName}
+                                  </span>
+                                ) : (
+                                  <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                                    Global Platform
                                   </span>
                                 )}
                               </div>
 
                               <p className="text-xs font-semibold text-slate-900 dark:text-white">
                                 {v.description ||
-                                  `Diskon belanja gadget hingga ${v.discountPercent}%`}
+                                  (isFixed
+                                    ? `Potongan langsung belanja Rp ${(v.discountAmount || 0).toLocaleString('id-ID')}`
+                                    : `Diskon belanja gadget hingga ${v.discountPercent}%`)}
                               </p>
 
                               <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500">
@@ -222,7 +270,8 @@ export function VoucherPickerModal({
                                   {v.minimumPurchase.toLocaleString('id-ID')}
                                 </span>
                                 {v.maxDiscountAmount &&
-                                  v.maxDiscountAmount > 0 && (
+                                  v.maxDiscountAmount > 0 &&
+                                  !isFixed && (
                                     <>
                                       <span>•</span>
                                       <span>
@@ -241,7 +290,20 @@ export function VoucherPickerModal({
                               </div>
                             </div>
 
-                            <div className="shrink-0 pt-1 sm:pt-0">
+                            <div className="flex shrink-0 items-center gap-2 pt-1 sm:pt-0">
+                              <button
+                                type="button"
+                                onClick={(e) => handleShareVoucher(v, e)}
+                                title="Bagikan Voucher"
+                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                              >
+                                {copiedCode === v.code ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                ) : (
+                                  <Share2 className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+
                               {isAlreadyApplied ? (
                                 <span className="inline-flex items-center gap-1 rounded-xl bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                                   <CheckCircle2 className="h-3.5 w-3.5" />
@@ -285,13 +347,27 @@ export function VoucherPickerModal({
                       >
                         <div className="flex flex-col justify-between gap-2.5 sm:flex-row sm:items-center">
                           <div className="space-y-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span className="rounded-md border border-slate-300 bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
                                 {v.code}
                               </span>
-                              <span className="text-[10px] font-semibold text-slate-400">
-                                Diskon {v.discountPercent}%
-                              </span>
+                              {v.discountType === 'FIXED_AMOUNT' ? (
+                                <span className="text-[10px] font-semibold text-slate-500">
+                                  Potongan Rp{' '}
+                                  {(v.discountAmount || 0).toLocaleString(
+                                    'id-ID'
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold text-slate-400">
+                                  Diskon {v.discountPercent}%
+                                </span>
+                              )}
+                              {v.storeName && (
+                                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] text-slate-500 dark:bg-slate-800">
+                                  {v.storeName}
+                                </span>
+                              )}
                             </div>
                             <p className="text-xs text-slate-600 dark:text-slate-400">
                               {v.description || 'Voucher promo belanja'}
@@ -302,13 +378,23 @@ export function VoucherPickerModal({
                             </p>
                           </div>
 
-                          <button
-                            type="button"
-                            disabled
-                            className="cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-center text-xs font-bold text-slate-400 dark:border-slate-700 dark:bg-slate-800"
-                          >
-                            Belum Memenuhi Syarat
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => handleShareVoucher(v, e)}
+                              title="Bagikan Voucher"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 dark:border-slate-700"
+                            >
+                              <Share2 className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled
+                              className="cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-center text-xs font-bold text-slate-400 dark:border-slate-700 dark:bg-slate-800"
+                            >
+                              Belum Memenuhi Syarat
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

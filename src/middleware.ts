@@ -23,7 +23,7 @@ const ADMIN_SUBROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/admin/reports': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
   '/dashboard/admin/users': ['SUPER_ADMIN'],
   '/dashboard/admin/technicians': ['SUPER_ADMIN'],
-  '/dashboard/admin/vouchers': ['SUPER_ADMIN'],
+  '/dashboard/admin/vouchers': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
   '/dashboard/admin/mitras': ['SUPER_ADMIN', 'ADMIN'],
   '/dashboard/admin/ads': ['SUPER_ADMIN', 'STORE_ADMIN'],
   '/dashboard/admin/live': ['SUPER_ADMIN', 'STORE_ADMIN'],
@@ -157,12 +157,8 @@ export default auth((req) => {
       }
 
       // Redirect dari halaman publik root (/), login, register, cart, checkout, atau generic dashboard
-      if (
-        isRootPublicRoute ||
-        isAuthRoute ||
-        isCartOrCheckout ||
-        isDashboardGenericRoute
-      ) {
+      // Admin staff diizinkan melihat tampilan web publik (beranda, toko publik, dsb)
+      if (isAuthRoute || isDashboardGenericRoute) {
         return NextResponse.redirect(new URL(destinationCms, req.url))
       }
 

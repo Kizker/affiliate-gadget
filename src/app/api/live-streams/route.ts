@@ -1,20 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import {
+  cleanupStaleLiveStreams,
+  LIVE_STREAM_DISCONNECT_TIMEOUT_MS,
+} from '@/lib/live-stream-auto-end'
 
 // GET /api/live-streams — Get all streams (for public hub and grid banner)
 export async function GET(req: NextRequest) {
   try {
+    // 1. Error handle case: otomatis akhiri sesi live yang tidak tersambung >= 10 menit
+    await cleanupStaleLiveStreams()
+
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status') // 'LIVE' | 'SCHEDULED' | 'ENDED' | null (all)
     const limit = parseInt(searchParams.get('limit') || '20', 10)
 
+    const cutoffTime = new Date(Date.now() - LIVE_STREAM_DISCONNECT_TIMEOUT_MS)
+
     const where: any = {}
     if (status) {
       where.status = status
+      // Proteksi tambahan: jika filter status LIVE, wajib aktif dalam 10 menit terakhir
+      if (status === 'LIVE') {
+        where.OR = [
+          { lastPingAt: { gte: cutoffTime } },
+          {
+            lastPingAt: null,
+            startedAt: { gte: cutoffTime },
+          },
+        ]
+      }
     } else {
-      // Default: exclude very old ended streams
+      // Default: exclude very old ended streams, dan pastikan LIVE tidak stale
       where.OR = [
-        { status: 'LIVE' },
+        {
+          status: 'LIVE',
+          OR: [
+            { lastPingAt: { gte: cutoffTime } },
+            {
+              lastPingAt: null,
+              startedAt: { gte: cutoffTime },
+            },
+          ],
+        },
         { status: 'SCHEDULED' },
         {
           status: 'ENDED',
@@ -53,7 +81,7 @@ export async function GET(req: NextRequest) {
       { success: true, data: streams },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
         },
       }
     )
