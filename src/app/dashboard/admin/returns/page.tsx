@@ -22,7 +22,7 @@ import { toast } from 'sonner'
 import { usePageGuard } from '@/hooks/use-page-guard'
 
 // Backward compatibility references for legacy test runners and Biteship logistics
-export const BITESHIP_COURIERS = [
+const BITESHIP_COURIERS = [
   {
     id: 'JNE',
     name: 'JNE Express',
