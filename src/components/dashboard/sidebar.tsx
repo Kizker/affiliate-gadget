@@ -28,6 +28,7 @@ import {
   PanelLeftClose,
   Wallet,
   RotateCcw,
+  Layers,
   Tag,
   Heart,
   Sparkles,
@@ -82,17 +83,17 @@ const superAdminNavSections: NavSection[] = [
       },
       { icon: Radio, label: 'Siaran Langsung', href: '/dashboard/admin/live' },
       { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
-      {
-        icon: RotateCcw,
-        label: 'Pengembalian & Klaim Garansi',
-        href: '/dashboard/admin/returns',
-      },
     ],
   },
   {
     title: 'Sistem',
     items: [
       { icon: Users, label: 'Kelola Pengguna', href: '/dashboard/admin/users' },
+      {
+        icon: Layers,
+        label: 'Grup Cabang & After Sales',
+        href: '/dashboard/admin/groups',
+      },
       {
         icon: Settings,
         label: 'Pengaturan',
@@ -143,6 +144,35 @@ const adminPlatformNavSections: NavSection[] = [
   },
 ]
 
+// After Sales Navigation (Mengelola chat selesai dan retur grup cabang)
+const afterSalesNavSections: NavSection[] = [
+  {
+    title: 'Utama',
+    items: [
+      {
+        icon: LayoutDashboard,
+        label: 'Dashboard',
+        href: '/dashboard/after-sales',
+      },
+    ],
+  },
+  {
+    title: 'Layanan Purna Jual',
+    items: [
+      {
+        icon: MessageSquare,
+        label: 'Live Chat Selesai',
+        href: '/dashboard/after-sales/chat',
+      },
+      {
+        icon: RotateCcw,
+        label: 'Retur & Komplain',
+        href: '/dashboard/after-sales/returns',
+      },
+    ],
+  },
+]
+
 // Store Admin Navigation (Mengelola toko miliknya sendiri sesuai blueprint)
 const storeAdminNavSections: NavSection[] = [
   {
@@ -172,11 +202,6 @@ const storeAdminNavSections: NavSection[] = [
         icon: Headphones,
         label: 'Bantuan Superadmin',
         href: '/dashboard/admin/chat?cs=true',
-      },
-      {
-        icon: RotateCcw,
-        label: 'Pengembalian & Klaim Garansi',
-        href: '/dashboard/admin/returns',
       },
       {
         icon: Sparkles,
@@ -332,6 +357,9 @@ export function Sidebar({
 
   // Determine sections based on user role
   const navSections = useMemo(() => {
+    if (effectiveRole === 'AFTER_SALES') {
+      return afterSalesNavSections
+    }
     if (effectiveRole === 'CUSTOMER') {
       return customerNavSections
     }

@@ -88,6 +88,7 @@ interface ChatRoom {
   lastMessageAt: string
   isStoreHelpToSuperAdmin?: boolean
   isStoreAdminUser?: boolean
+  isCompletedHandover?: boolean
   customer: {
     id: string
     name: string | null
@@ -2343,66 +2344,76 @@ function AdminChatContent() {
                 )}
 
                 {/* Input & Send Button */}
-                <div className="flex w-full min-w-0 items-center gap-2">
-                  {/* Hidden File Input for Photo & Video Upload */}
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept="image/jpeg,image/png,video/mp4"
-                    className="hidden"
-                  />
+                {selectedRoom?.isCompletedHandover && isStoreAdmin ? (
+                  <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
+                    <Headphones className="h-4 w-4 shrink-0 text-orange-600" />
+                    <span>
+                      Pesanan telah berstatus selesai. Komunikasi purna jual
+                      dialihkan ke Admin After Sales.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex w-full min-w-0 items-center gap-2">
+                    {/* Hidden File Input for Photo & Video Upload */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept="image/jpeg,image/png,video/mp4"
+                      className="hidden"
+                    />
 
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingMedia}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                    title="Kirim Foto / Video"
-                  >
-                    {uploadingMedia ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
-                    ) : (
-                      <Plus className="h-4 w-4" />
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingMedia}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      title="Kirim Foto / Video"
+                    >
+                      {uploadingMedia ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                    </button>
 
-                  <input
-                    type="text"
-                    value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSendMessage('text')
+                    <input
+                      type="text"
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          handleSendMessage('text')
+                        }
+                      }}
+                      placeholder={
+                        isSelectedStoreHelpChat
+                          ? 'Tulis pesan bantuan ke Superadmin...'
+                          : activeOrderContext
+                            ? `Ketik caption untuk pesanan #${activeOrderContext.orderNumber}... (Enter untuk kirim)`
+                            : 'Tulis balasan untuk customer...'
                       }
-                    }}
-                    placeholder={
-                      isSelectedStoreHelpChat
-                        ? 'Tulis pesan bantuan ke Superadmin...'
-                        : activeOrderContext
-                          ? `Ketik caption untuk pesanan #${activeOrderContext.orderNumber}... (Enter untuk kirim)`
-                          : 'Tulis balasan untuk customer...'
-                    }
-                    className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  />
+                      className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
 
-                  <button
-                    type="button"
-                    onClick={() => handleSendMessage('text')}
-                    disabled={
-                      (!messageInput.trim() && !activeOrderContext) || sending
-                    }
-                    className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950"
-                    title="Kirim Pesan"
-                  >
-                    {sending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('text')}
+                      disabled={
+                        (!messageInput.trim() && !activeOrderContext) || sending
+                      }
+                      className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-slate-950"
+                      title="Kirim Pesan"
+                    >
+                      {sending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           ) : (

@@ -11,6 +11,7 @@ const ADMIN_STAFF_ROLES = [
   'STORE_SALES',
   'FINANCE_ADMIN',
   'CONTENT_EDITOR',
+  'AFTER_SALES',
 ]
 
 /**
@@ -29,18 +30,10 @@ const ADMIN_SUBROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/admin/live': ['SUPER_ADMIN', 'STORE_ADMIN'],
   '/dashboard/admin/blog': ['SUPER_ADMIN', 'CONTENT_EDITOR'],
   '/dashboard/admin/orders': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
-  '/dashboard/admin/complaints': [
-    'SUPER_ADMIN',
-    'ADMIN',
-    'STORE_ADMIN',
-    'STORE_SALES',
-  ],
-  '/dashboard/admin/returns': [
-    'SUPER_ADMIN',
-    'ADMIN',
-    'STORE_ADMIN',
-    'STORE_SALES',
-  ],
+  '/dashboard/admin/complaints': ['SUPER_ADMIN', 'ADMIN', 'AFTER_SALES'],
+  '/dashboard/admin/returns': ['SUPER_ADMIN', 'ADMIN', 'AFTER_SALES'],
+  '/dashboard/admin/groups': ['SUPER_ADMIN'],
+  '/dashboard/after-sales': ['SUPER_ADMIN', 'AFTER_SALES'],
   '/dashboard/admin/chat': [
     'SUPER_ADMIN',
     'ADMIN',

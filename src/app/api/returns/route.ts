@@ -21,13 +21,22 @@ export async function GET(request: NextRequest) {
     // Role-based access control
     if (session.user.role === 'CUSTOMER') {
       where.userId = session.user.id
-    } else if (session.user.role === 'STORE_ADMIN') {
-      if (session.user.storeId) {
-        where.OR = [
-          { storeId: session.user.storeId },
-          { order: { storeId: session.user.storeId } },
-        ]
-      }
+    } else if (session.user.role === 'AFTER_SALES') {
+      const group = await prisma.storeGroup.findFirst({
+        where: { afterSalesUserId: session.user.id },
+        include: { stores: { select: { id: true } } },
+      })
+      const storeIds = group?.stores.map((s) => s.id) || []
+      where.OR = [
+        { storeId: { in: storeIds } },
+        { order: { storeId: { in: storeIds } } },
+      ]
+    } else if (
+      session.user.role === 'STORE_ADMIN' ||
+      session.user.role === 'STORE_SALES'
+    ) {
+      // Store admin tidak lagi mengelola retur/komplain
+      return NextResponse.json({ success: true, data: [] })
     } else if (
       session.user.role === 'ADMIN' ||
       session.user.role === 'SUPER_ADMIN'

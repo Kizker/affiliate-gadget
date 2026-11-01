@@ -9,63 +9,64 @@ datasource db {
 }
 
 model User {
-  id                     String             @id @default(cuid())
-  name                   String?
-  username               String?
-  email                  String             @unique
-  emailVerified          DateTime?
-  image                  String?
-  password               String?
-  role                   UserRole           @default(CUSTOMER)
-  phone                  String?            @unique
-  gender                 String?            // "Laki-laki" | "Perempuan" | "Lainnya"
-  birthDate              DateTime?
-  bio                    String?
-  address                String?
-  city                   String?
-  province               String?
-  postalCode             String?
-  isActive               Boolean            @default(true)
-  mitraStatus            MitraStatus?
-  storeId                String?
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-  store                  Store?             @relation(fields: [storeId], references: [id])
-  accounts               Account[]
-  addresses              UserAddress[]
-  adminChatMessages      AdminChatMessage[] @relation("AdminChatMessageSender")
-  claimedAdminChats      AdminChatRoom[]    @relation("AdminChatClaims")
-  adminChatRooms         AdminChatRoom[]    @relation("CustomerAdminChats")
-  carts                  Cart[]
-  sentMessages           ChatMessage[]      @relation("ChatMessageSender")
-  chatRooms              ChatRoom[]         @relation("CustomerChatRooms")
-  chats                  chats[]
-  complaints             Complaint[]        @relation("CustomerComplaints")
-  assignedComplaints     Complaint[]        @relation("ComplaintAssignee")
-  messages               messages[]
-  mitra                  Mitra?
-  storeApplication       StoreApplication?
-  notifications          Notification[]
-  claimedOrders                     Order[]            @relation("ClaimedOrders")
-  paymentRequestedOrders             Order[]            @relation("PaymentRequestedOrders")
-  technicianPaymentRequestedOrders   Order[]            @relation("TechnicianPaymentRequestedOrders")
-  orders                             Order[]
-  reviews                Review[]
-  returnRequests         ReturnRequest[]    @relation("CustomerReturnRequests")
-  sessions               Session[]
-  technician             Technician?
-  tickets                Ticket[]
-  hostedLiveStreams      LiveStream[]       @relation("HostLiveStreams")
-  auditLogs              AuditLog[]
-  phoneVerified          DateTime?
-  twoFactorEnabled       Boolean            @default(false)
-  twoFactorMethod        TwoFactorMethod    @default(WHATSAPP)
-  devices                UserDevice[]
-  otpTokens              OtpToken[]
-  notificationLogs       NotificationLog[]
-  emailVerificationTokens EmailVerificationToken[]
-  voucherUsages          VoucherUsage[]
-  liveStreamComments     LiveStreamComment[]
+  id                               String                   @id @default(cuid())
+  name                             String?
+  username                         String?
+  email                            String                   @unique
+  emailVerified                    DateTime?
+  image                            String?
+  password                         String?
+  role                             UserRole                 @default(CUSTOMER)
+  phone                            String?                  @unique
+  gender                           String? // "Laki-laki" | "Perempuan" | "Lainnya"
+  birthDate                        DateTime?
+  bio                              String?
+  address                          String?
+  city                             String?
+  province                         String?
+  postalCode                       String?
+  isActive                         Boolean                  @default(true)
+  mitraStatus                      MitraStatus?
+  storeId                          String?
+  createdAt                        DateTime                 @default(now())
+  updatedAt                        DateTime                 @updatedAt
+  store                            Store?                   @relation(fields: [storeId], references: [id])
+  accounts                         Account[]
+  addresses                        UserAddress[]
+  adminChatMessages                AdminChatMessage[]       @relation("AdminChatMessageSender")
+  claimedAdminChats                AdminChatRoom[]          @relation("AdminChatClaims")
+  adminChatRooms                   AdminChatRoom[]          @relation("CustomerAdminChats")
+  carts                            Cart[]
+  sentMessages                     ChatMessage[]            @relation("ChatMessageSender")
+  chatRooms                        ChatRoom[]               @relation("CustomerChatRooms")
+  chats                            chats[]
+  complaints                       Complaint[]              @relation("CustomerComplaints")
+  assignedComplaints               Complaint[]              @relation("ComplaintAssignee")
+  messages                         messages[]
+  mitra                            Mitra?
+  storeApplication                 StoreApplication?
+  notifications                    Notification[]
+  claimedOrders                    Order[]                  @relation("ClaimedOrders")
+  paymentRequestedOrders           Order[]                  @relation("PaymentRequestedOrders")
+  technicianPaymentRequestedOrders Order[]                  @relation("TechnicianPaymentRequestedOrders")
+  orders                           Order[]
+  reviews                          Review[]
+  returnRequests                   ReturnRequest[]          @relation("CustomerReturnRequests")
+  sessions                         Session[]
+  technician                       Technician?
+  tickets                          Ticket[]
+  hostedLiveStreams                LiveStream[]             @relation("HostLiveStreams")
+  auditLogs                        AuditLog[]
+  phoneVerified                    DateTime?
+  twoFactorEnabled                 Boolean                  @default(false)
+  twoFactorMethod                  TwoFactorMethod          @default(WHATSAPP)
+  devices                          UserDevice[]
+  otpTokens                        OtpToken[]
+  notificationLogs                 NotificationLog[]
+  emailVerificationTokens          EmailVerificationToken[]
+  voucherUsages                    VoucherUsage[]
+  liveStreamComments               LiveStreamComment[]
+  managedGroup                     StoreGroup?              @relation("GroupAfterSalesUser")
 
   @@index([email])
   @@index([phone])
@@ -96,8 +97,8 @@ model UserAddress {
   fullAddress   String
   city          String
   province      String
-  district      String?  // Kecamatan
-  village       String?  // Desa / Kelurahan
+  district      String? // Kecamatan
+  village       String? // Desa / Kelurahan
   postalCode    String
   latitude      Float?
   longitude     Float?
@@ -111,65 +112,68 @@ model UserAddress {
 }
 
 model Store {
-  id             String             @id @default(cuid())
-  name           String             // e.g. "Affiliate Gadget Roxy Mas"
-  slug           String             @unique
-  companyName    String             // e.g. "PT Gadget Jaya Sentosa" (Badan Hukum)
-  taxId          String?            // NPWP Badan Usaha
-  tagline        String?
-  description    String?
-  logo           String?
-  banner         String?
-  heroImage           String?            // Banner Hero Desktop
-  heroMobileImage     String?            // Banner Hero Mobile
-  heroTitle           String?            // Custom Headline Hero
-  heroSubtitle        String?            // Custom Kicker/Subtitle Hero
-  heroDescription     String?            // Custom Deskripsi Hero
-  campaignKicker      String?            // Custom Kicker Editorial 1
-  campaignTitle       String?            // Custom Judul Editorial 1
-  campaignSubtitle    String?            // Custom Subtitle Editorial 1
-  campaignDescription String?            // Custom Deskripsi Editorial 1
-  secondaryBanner     String?            // Banner Editorial 2 (Layanan & Garansi)
-  secondaryBannerTitle String?           // Custom Judul Editorial 2
-  secondaryBannerDesc String?            // Custom Deskripsi Editorial 2
-  address        String
-  city           String
-  province       String
-  postalCode     String?
-  latitude       Float?
-  longitude      Float?
-  phone          String
-  whatsapp       String?
-  email          String?
-  isOwnerStore   Boolean            @default(false) // Unlimited Ads & Internal owner store
-  commissionRate    Float              @default(2.0)   // 1% - 3% platform commission
-  isPkp             Boolean            @default(true)  // Status Pengusaha Kena Pajak (CV/PT wajib PKP)
-  vatRate           Float              @default(11.0)  // Tarif PPN dinamis (default 11%)
-  taxType           String             @default("INCLUSIVE") // Skema pajak (default: INCLUSIVE)
-  kppName           String?                            // Nama KPP Pratama terdaftar
-  defaultPackingFee Float              @default(5000)  // Biaya packing per pesanan (Rp 5.000)
-  rating            Float              @default(5.0)
-  totalReview    Int                @default(0)
-  totalSales     Int                @default(0)
-  isActive       Boolean            @default(true)
+  id                   String             @id @default(cuid())
+  name                 String // e.g. "Affiliate Gadget Roxy Mas"
+  slug                 String             @unique
+  companyName          String // e.g. "PT Gadget Jaya Sentosa" (Badan Hukum)
+  taxId                String? // NPWP Badan Usaha
+  tagline              String?
+  description          String?
+  logo                 String?
+  banner               String?
+  heroImage            String? // Banner Hero Desktop
+  heroMobileImage      String? // Banner Hero Mobile
+  heroTitle            String? // Custom Headline Hero
+  heroSubtitle         String? // Custom Kicker/Subtitle Hero
+  heroDescription      String? // Custom Deskripsi Hero
+  campaignKicker       String? // Custom Kicker Editorial 1
+  campaignTitle        String? // Custom Judul Editorial 1
+  campaignSubtitle     String? // Custom Subtitle Editorial 1
+  campaignDescription  String? // Custom Deskripsi Editorial 1
+  secondaryBanner      String? // Banner Editorial 2 (Layanan & Garansi)
+  secondaryBannerTitle String? // Custom Judul Editorial 2
+  secondaryBannerDesc  String? // Custom Deskripsi Editorial 2
+  address              String
+  city                 String
+  province             String
+  postalCode           String?
+  latitude             Float?
+  longitude            Float?
+  phone                String
+  whatsapp             String?
+  email                String?
+  isOwnerStore         Boolean            @default(false) // Unlimited Ads & Internal owner store
+  commissionRate       Float              @default(2.0) // 1% - 3% platform commission
+  isPkp                Boolean            @default(true) // Status Pengusaha Kena Pajak (CV/PT wajib PKP)
+  vatRate              Float              @default(11.0) // Tarif PPN dinamis (default 11%)
+  taxType              String             @default("INCLUSIVE") // Skema pajak (default: INCLUSIVE)
+  kppName              String? // Nama KPP Pratama terdaftar
+  defaultPackingFee    Float              @default(5000) // Biaya packing per pesanan (Rp 5.000)
+  rating               Float              @default(5.0)
+  totalReview          Int                @default(0)
+  totalSales           Int                @default(0)
+  isActive             Boolean            @default(true)
   bankAccountUpdatedAt DateTime?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  bankAccounts   StoreBankAccount[]
-  schedules      StoreSchedule[]
-  users          User[]
-  products       Product[]
-  orders         Order[]
-  liveStreams    LiveStream[]
-  internalAds    InternalAd[]
-  reviews        Review[]
-  returnRequests ReturnRequest[]
-  adminChatRooms AdminChatRoom[]
-  vouchers       Voucher[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  bankAccounts         StoreBankAccount[]
+  schedules            StoreSchedule[]
+  users                User[]
+  products             Product[]
+  orders               Order[]
+  liveStreams          LiveStream[]
+  internalAds          InternalAd[]
+  reviews              Review[]
+  returnRequests       ReturnRequest[]
+  adminChatRooms       AdminChatRoom[]
+  vouchers             Voucher[]
+  groupId              String?
+  group                StoreGroup?        @relation(fields: [groupId], references: [id])
 
   @@index([city])
   @@index([isOwnerStore])
   @@index([isActive])
+  @@index([groupId])
   @@map("stores")
 }
 
@@ -232,9 +236,9 @@ model Product {
   storeId                 String?
   name                    String
   description             String?
-  category                String           // e.g. "Smartphone", "Tablet", "Sparepart"
-  brand                   String?          // e.g. "Apple", "Samsung", "Xiaomi"
-  model                   String?          // e.g. "iPhone 15 Pro", "Galaxy S24"
+  category                String // e.g. "Smartphone", "Tablet", "Sparepart"
+  brand                   String? // e.g. "Apple", "Samsung", "Xiaomi"
+  model                   String? // e.g. "iPhone 15 Pro", "Galaxy S24"
   condition               String           @default("BARU") // BARU, LIKE_NEW, SECOND_MULUS
   price                   Float
   costPrice               Float            @default(0) // Modal dasar per unit dari supplier
@@ -243,7 +247,7 @@ model Product {
   weightGram              Int              @default(500)
   pricePerKg              Float            @default(20000) // Rp per kg untuk kalkulasi ongkir
   images                  String[]
-  specs                   Json?            // Chipset, Display, Kamera, Baterai, dll
+  specs                   Json? // Chipset, Display, Kamera, Baterai, dll
   warrantyDays            Int              @default(30) // Garansi 30 Hari penuh
   includesCharger         Boolean          @default(true) // Bonus Charger
   includesScreenProtector Boolean          @default(true) // Bonus Antigores
@@ -277,13 +281,13 @@ model Product {
 model ProductVariant {
   id        String   @id @default(cuid())
   productId String
-  name      String   // e.g. "8GB / 256GB - Midnight Black"
+  name      String // e.g. "8GB / 256GB - Midnight Black"
   ram       String?
   storage   String?
   color     String?
   image     String?
   price     Float
-  costPrice Float?   // Modal spesifik varian (opsional, fallback ke Product.costPrice)
+  costPrice Float? // Modal spesifik varian (opsional, fallback ke Product.costPrice)
   stock     Int      @default(0)
   sku       String?
   createdAt DateTime @default(now())
@@ -301,7 +305,7 @@ model LiveStream {
   title              String
   description        String?
   coverImage         String?
-  streamUrl          String              // HLS URL / YouTube Live Embed / Mux Playback URL
+  streamUrl          String // HLS URL / YouTube Live Embed / Mux Playback URL
   status             LiveStreamStatus    @default(SCHEDULED)
   scheduledAt        DateTime?
   startedAt          DateTime?
@@ -323,18 +327,18 @@ model LiveStream {
 }
 
 model LiveStreamComment {
-  id           String     @id @default(cuid())
-  streamId     String
-  userId       String?
-  userName     String
-  userAvatar   String?
-  message      String
-  type         String     @default("CHAT")
-  metadata     Json?
-  isPinned     Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-  liveStream   LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
-  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id         String     @id @default(cuid())
+  streamId   String
+  userId     String?
+  userName   String
+  userAvatar String?
+  message    String
+  type       String     @default("CHAT")
+  metadata   Json?
+  isPinned   Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  liveStream LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([streamId])
   @@index([streamId, createdAt])
@@ -372,9 +376,9 @@ model InternalAd {
 
 model LcdEstimate {
   id             String   @id @default(cuid())
-  brand          String   // e.g. "Apple", "Samsung", "Xiaomi"
-  modelName      String   // e.g. "iPhone 13 Pro Max", "Galaxy S23 Ultra"
-  qualityType    String   // e.g. "Original OLED", "Incell OEM", "Premium High Copy"
+  brand          String // e.g. "Apple", "Samsung", "Xiaomi"
+  modelName      String // e.g. "iPhone 13 Pro Max", "Galaxy S23 Ultra"
+  qualityType    String // e.g. "Original OLED", "Incell OEM", "Premium High Copy"
   estimatedPrice Float
   durationHours  Int      @default(2)
   warrantyDays   Int      @default(30)
@@ -391,8 +395,8 @@ model AuditLog {
   userId     String?
   ipAddress  String?
   userAgent  String?
-  action     String   // e.g. "UPDATE_PRODUCT_PRICE", "CHANGE_ORDER_STATUS", "STORE_SETTINGS_UPDATE"
-  entityType String?  // e.g. "Product", "Order", "Store"
+  action     String // e.g. "UPDATE_PRODUCT_PRICE", "CHANGE_ORDER_STATUS", "STORE_SETTINGS_UPDATE"
+  entityType String? // e.g. "Product", "Order", "Store"
   entityId   String?
   details    Json?
   createdAt  DateTime @default(now())
@@ -471,9 +475,9 @@ model Service {
   name         String
   description  String?
   category     ServiceCategory
-  price        Float           // Base/default price (can use minPrice for display)
-  minPrice     Float?          // Minimum price range
-  maxPrice     Float?          // Maximum price range
+  price        Float // Base/default price (can use minPrice for display)
+  minPrice     Float? // Minimum price range
+  maxPrice     Float? // Maximum price range
   duration     Int?
   isActive     Boolean         @default(true)
   createdAt    DateTime        @default(now())
@@ -542,66 +546,66 @@ model CartItem {
 }
 
 model Order {
-  id                   String         @id @default(cuid())
-  orderNumber          String         @unique
-  userId               String
-  storeId              String?        // Toko/PT yang memproses transaksi
-  technicianId         String?
-  claimedById          String?
-  claimedAt            DateTime?
-  paymentRequestedById            String?
-  paymentRequestedAt              DateTime?
-  technicianPaymentRequestedById  String?
-  technicianPaymentRequestedAt    DateTime?
-  status                          OrderStatus    @default(PENDING_PAYMENT)
-  subtotal                        Float
-  tax                             Float          @default(0)    // Nilai PPN (vatAmount)
-  dppAmount                       Float          @default(0)    // Dasar Pengenaan Pajak
-  vatRate                         Float          @default(0)    // Snapshot tarif PPN saat transaksi (%)
-  taxTypeApplied                  String         @default("INCLUSIVE") // Snapshot skema PPN ("INCLUSIVE")
-  pph23Amount                     Float          @default(0)    // Snapshot nilai PPh 23 komisi platform
-  pph23Rate                       Float          @default(0)    // Snapshot tarif PPh 23 saat transaksi (%)
-  shippingCost                    Float          @default(0)
-  totalWeightGram                 Int?           // Total berat pesanan dalam gram
-  voucherId                       String?
-  voucherCode                     String?
-  discountAmount                  Float          @default(0)    // Potongan diskon voucher promo
-  insuranceRate                   Float          @default(0.2)  // Rate asuransi saat checkout (%, contoh: 0.2 = 0.2%)
-  insuranceFee                    Float          @default(0)    // Asuransi Wajib Pengiriman (insuranceRate% x subtotal)
-  isInsuranceMandatory            Boolean        @default(true)
-  commissionRate                  Float          @default(2.0)  // 1% - 3% platform commission
-  commissionAmount                Float          @default(0)    // Potongan komisi platform
-  courierCode                     String?        // "JNE", "GOJEK"
-  courierService                  String?        // "REG", "YES", "INSTANT", "SAMEDAY"
-  trackingNumber                  String?
-  bonusChargerIncluded            Boolean        @default(true) // Bonus Charger
-  bonusProtectorIncluded          Boolean        @default(true) // Bonus Antigores
-  bonusCaseIncluded               Boolean        @default(true) // Bonus Softcase
-  warrantyExpiryDate              DateTime?      // 30 hari sejak COMPLETED
-  total                           Float
-  notes                           String?
-  completedAt                     DateTime?      // When order was marked completed
-  customerConfirmedAt             DateTime?      // When customer confirms completion
-  createdAt                       DateTime       @default(now())
-  updatedAt                       DateTime       @updatedAt
-  adminChatRoom                   AdminChatRoom?
-  technicianChatRooms             ChatRoom[]     @relation("ChatRoomOrder")
-  complaints                      Complaint[]
-  invoice                         Invoice?
-  items                           OrderItem[]
-  store                           Store?         @relation(fields: [storeId], references: [id])
-  voucher                         Voucher?       @relation(fields: [voucherId], references: [id])
-  voucherUsage                    VoucherUsage?
-  claimedBy                       User?          @relation("ClaimedOrders", fields: [claimedById], references: [id])
-  paymentRequestedBy              User?          @relation("PaymentRequestedOrders", fields: [paymentRequestedById], references: [id])
-  technicianPaymentRequestedBy    User?          @relation("TechnicianPaymentRequestedOrders", fields: [technicianPaymentRequestedById], references: [id])
-  technician                      Technician?    @relation(fields: [technicianId], references: [id])
-  user                            User           @relation(fields: [userId], references: [id])
-  payment                         Payment?
-  reviews                         Review[]
-  tickets                         Ticket[]
-  warranty                        Warranty?
-  returnRequests                  ReturnRequest[]
+  id                             String          @id @default(cuid())
+  orderNumber                    String          @unique
+  userId                         String
+  storeId                        String? // Toko/PT yang memproses transaksi
+  technicianId                   String?
+  claimedById                    String?
+  claimedAt                      DateTime?
+  paymentRequestedById           String?
+  paymentRequestedAt             DateTime?
+  technicianPaymentRequestedById String?
+  technicianPaymentRequestedAt   DateTime?
+  status                         OrderStatus     @default(PENDING_PAYMENT)
+  subtotal                       Float
+  tax                            Float           @default(0) // Nilai PPN (vatAmount)
+  dppAmount                      Float           @default(0) // Dasar Pengenaan Pajak
+  vatRate                        Float           @default(0) // Snapshot tarif PPN saat transaksi (%)
+  taxTypeApplied                 String          @default("INCLUSIVE") // Snapshot skema PPN ("INCLUSIVE")
+  pph23Amount                    Float           @default(0) // Snapshot nilai PPh 23 komisi platform
+  pph23Rate                      Float           @default(0) // Snapshot tarif PPh 23 saat transaksi (%)
+  shippingCost                   Float           @default(0)
+  totalWeightGram                Int? // Total berat pesanan dalam gram
+  voucherId                      String?
+  voucherCode                    String?
+  discountAmount                 Float           @default(0) // Potongan diskon voucher promo
+  insuranceRate                  Float           @default(0.2) // Rate asuransi saat checkout (%, contoh: 0.2 = 0.2%)
+  insuranceFee                   Float           @default(0) // Asuransi Wajib Pengiriman (insuranceRate% x subtotal)
+  isInsuranceMandatory           Boolean         @default(true)
+  commissionRate                 Float           @default(2.0) // 1% - 3% platform commission
+  commissionAmount               Float           @default(0) // Potongan komisi platform
+  courierCode                    String? // "JNE", "GOJEK"
+  courierService                 String? // "REG", "YES", "INSTANT", "SAMEDAY"
+  trackingNumber                 String?
+  bonusChargerIncluded           Boolean         @default(true) // Bonus Charger
+  bonusProtectorIncluded         Boolean         @default(true) // Bonus Antigores
+  bonusCaseIncluded              Boolean         @default(true) // Bonus Softcase
+  warrantyExpiryDate             DateTime? // 30 hari sejak COMPLETED
+  total                          Float
+  notes                          String?
+  completedAt                    DateTime? // When order was marked completed
+  customerConfirmedAt            DateTime? // When customer confirms completion
+  createdAt                      DateTime        @default(now())
+  updatedAt                      DateTime        @updatedAt
+  adminChatRoom                  AdminChatRoom?
+  technicianChatRooms            ChatRoom[]      @relation("ChatRoomOrder")
+  complaints                     Complaint[]
+  invoice                        Invoice?
+  items                          OrderItem[]
+  store                          Store?          @relation(fields: [storeId], references: [id])
+  voucher                        Voucher?        @relation(fields: [voucherId], references: [id])
+  voucherUsage                   VoucherUsage?
+  claimedBy                      User?           @relation("ClaimedOrders", fields: [claimedById], references: [id])
+  paymentRequestedBy             User?           @relation("PaymentRequestedOrders", fields: [paymentRequestedById], references: [id])
+  technicianPaymentRequestedBy   User?           @relation("TechnicianPaymentRequestedOrders", fields: [technicianPaymentRequestedById], references: [id])
+  technician                     Technician?     @relation(fields: [technicianId], references: [id])
+  user                           User            @relation(fields: [userId], references: [id])
+  payment                        Payment?
+  reviews                        Review[]
+  tickets                        Ticket[]
+  warranty                       Warranty?
+  returnRequests                 ReturnRequest[]
 
   @@index([userId])
   @@index([storeId])
@@ -628,7 +632,7 @@ model OrderItem {
   price        Float
   costPrice    Float        @default(0) // Snapshot modal unit saat transaksi dibuat
   subtotal     Float
-  finalPrice   Float?       // Final price set by technician (for services)
+  finalPrice   Float? // Final price set by technician (for services)
   notes        String?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -881,7 +885,7 @@ model ChatRoom {
 }
 
 model ChatMessage {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   roomId    String
   senderId  String
   content   String
@@ -889,13 +893,13 @@ model ChatMessage {
   mediaType String?
   mediaSize Int?
   mediaName String?
-  isRead    Boolean  @default(false)
-  isEdited  Boolean  @default(false)
+  isRead    Boolean   @default(false)
+  isEdited  Boolean   @default(false)
   editedAt  DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  sender    User     @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  room      ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender    User      @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([roomId])
   @@index([senderId])
@@ -1001,6 +1005,7 @@ enum UserRole {
   CONTENT_EDITOR
   TECHNICIAN
   MITRA
+  AFTER_SALES
 }
 
 enum LiveStreamStatus {
@@ -1156,30 +1161,30 @@ enum ComplaintStatus {
 }
 
 model ReturnRequest {
-  id                  String       @id @default(cuid())
-  orderId             String
-  userId              String
-  storeId             String?
-  type                ReturnType   @default(REFUND)
-  reason              String
-  reasonLabel         String?
-  description         String
-  images              String[]
-  videoUrl            String?
-  bankName            String?
-  bankAccountNumber   String?
-  bankAccountName     String?
-  refundAmount        Float?
-  status              ReturnStatus @default(PENDING)
-  storeResponse       String?
-  returnCourier       String?
+  id                   String       @id @default(cuid())
+  orderId              String
+  userId               String
+  storeId              String?
+  type                 ReturnType   @default(REFUND)
+  reason               String
+  reasonLabel          String?
+  description          String
+  images               String[]
+  videoUrl             String?
+  bankName             String?
+  bankAccountNumber    String?
+  bankAccountName      String?
+  refundAmount         Float?
+  status               ReturnStatus @default(PENDING)
+  storeResponse        String?
+  returnCourier        String?
   returnTrackingNumber String?
-  resolvedAt          DateTime?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
-  order               Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user                User         @relation("CustomerReturnRequests", fields: [userId], references: [id])
-  store               Store?       @relation(fields: [storeId], references: [id])
+  resolvedAt           DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  order                Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user                 User         @relation("CustomerReturnRequests", fields: [userId], references: [id])
+  store                Store?       @relation(fields: [storeId], references: [id])
 
   @@index([orderId])
   @@index([userId])
@@ -1202,8 +1207,8 @@ enum ReturnStatus {
 }
 
 model StoreApplication {
-  id              String    @id @default(cuid())
-  userId          String    @unique
+  id              String   @id @default(cuid())
+  userId          String   @unique
   storeName       String
   companyName     String
   taxId           String?
@@ -1216,9 +1221,9 @@ model StoreApplication {
   accountNumber   String?
   accountName     String?
   rejectionReason String?
-  submittedAt     DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submittedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("store_applications")
@@ -1230,14 +1235,14 @@ model Voucher {
   description         String?
   discountType        String         @default("PERCENTAGE") // "PERCENTAGE" or "FIXED_AMOUNT"
   discountPercent     Float          @default(0) // e.g. 10 for 10%
-  discountAmount      Float?         // Potongan nominal langsung (Rp) jika FIXED_AMOUNT
-  maxDiscountAmount   Float?         // Cap maksimal nominal diskon dalam Rupiah
+  discountAmount      Float? // Potongan nominal langsung (Rp) jika FIXED_AMOUNT
+  maxDiscountAmount   Float? // Cap maksimal nominal diskon dalam Rupiah
   minimumPurchase     Float          @default(0) // Minimal subtotal order
-  totalQuota          Int            // Total kuota voucher tersedia
+  totalQuota          Int // Total kuota voucher tersedia
   usedCount           Int            @default(0) // Jumlah voucher yang sudah dipakai
   usagePerUser        Int            @default(1) // Batas pemakaian per user
   applicableOrderType CartItemType   @default(PRODUCT)
-  storeId             String?        // null = Superadmin Platform Global, string = Toko Cabang Scoped
+  storeId             String? // null = Superadmin Platform Global, string = Toko Cabang Scoped
   isActive            Boolean        @default(true)
   validFrom           DateTime
   validUntil          DateTime
@@ -1312,8 +1317,8 @@ enum DeliveryStatus {
 model OtpToken {
   id         String     @id @default(cuid())
   userId     String?
-  identifier String     // Nomor HP (format 628xxx) atau Email tujuan
-  codeHash   String     // Hash Bcrypt dari kode 6-digit
+  identifier String // Nomor HP (format 628xxx) atau Email tujuan
+  codeHash   String // Hash Bcrypt dari kode 6-digit
   purpose    OtpPurpose
   channel    OtpChannel
   attempts   Int        @default(0)
@@ -1321,7 +1326,7 @@ model OtpToken {
   isConsumed Boolean    @default(false)
   createdAt  DateTime   @default(now())
 
-  user       User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([identifier, purpose])
   @@index([expiresAt])
@@ -1332,17 +1337,17 @@ model UserDevice {
   id          String   @id @default(cuid())
   userId      String
   deviceToken String   @unique // Hash identifier perangkat unik
-  deviceType  String   // desktop, mobile, tablet
-  deviceLabel String   // e.g. "PC / Desktop (Windows 11)"
-  browser     String   // e.g. "Google Chrome"
-  os          String   // e.g. "Windows 11"
+  deviceType  String // desktop, mobile, tablet
+  deviceLabel String // e.g. "PC / Desktop (Windows 11)"
+  browser     String // e.g. "Google Chrome"
+  os          String // e.g. "Windows 11"
   ipAddress   String
-  location    String?  // e.g. "Jakarta, Indonesia"
+  location    String? // e.g. "Jakarta, Indonesia"
   isTrusted   Boolean  @default(false)
   lastLoginAt DateTime @default(now())
   createdAt   DateTime @default(now())
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([deviceToken])
@@ -1353,8 +1358,8 @@ model NotificationLog {
   id           String              @id @default(cuid())
   userId       String?
   channel      NotificationChannel
-  provider     String              // "ZENZIVA", "RESEND", "IN_APP", "MOCK"
-  recipient    String              // Target phone atau email
+  provider     String // "ZENZIVA", "RESEND", "IN_APP", "MOCK"
+  recipient    String // Target phone atau email
   subject      String?
   payload      String?             @db.Text
   status       DeliveryStatus      @default(PENDING)
@@ -1362,10 +1367,23 @@ model NotificationLog {
   cost         Float?              @default(0) // Biaya per SMS/WA (jika ada)
   createdAt    DateTime            @default(now())
 
-  user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([recipient])
   @@index([status])
   @@index([channel])
   @@map("notification_logs")
-}
+}
+
+model StoreGroup {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  afterSalesUserId String?  @unique
+  afterSalesUser   User?    @relation("GroupAfterSalesUser", fields: [afterSalesUserId], references: [id])
+  stores           Store[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("store_groups")
+}

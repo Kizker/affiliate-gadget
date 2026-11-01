@@ -78,6 +78,27 @@ export async function GET(
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
+    if (user.role === 'AFTER_SALES') {
+      const group = await prisma.storeGroup.findFirst({
+        where: { afterSalesUserId: session.user.id },
+        include: { stores: { select: { id: true } } },
+      })
+      const storeIds = group?.stores.map((s) => s.id) || []
+      const isGroupRoom =
+        storeIds.includes(room.storeId || '') ||
+        (room.order &&
+          (storeIds.includes((room.order as any).storeId || '') ||
+            (room.order as any).items?.some((i: any) =>
+              storeIds.includes(i.product?.storeId || '')
+            )))
+      if (!isGroupRoom) {
+        return NextResponse.json(
+          { error: 'Akses percakapan grup cabang lain ditolak' },
+          { status: 403 }
+        )
+      }
+    }
+
     if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
       let userStoreId = user.storeId
       if (!userStoreId) {
@@ -189,6 +210,44 @@ export async function POST(
 
     if (!room) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
+    }
+
+    // Cek Handover: Jika pesanan COMPLETED, Admin Toko tidak bisa lagi membalas chat
+    if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
+      const roomOrder = await prisma.adminChatRoom.findUnique({
+        where: { id: roomId },
+        include: { order: { select: { status: true } } },
+      })
+      if (roomOrder?.order?.status === 'COMPLETED') {
+        return NextResponse.json(
+          {
+            error:
+              'Pesanan telah berstatus selesai. Jalur percakapan telah dialihkan ke Admin After Sales.',
+          },
+          { status: 403 }
+        )
+      }
+    }
+
+    if (user.role === 'AFTER_SALES') {
+      const group = await prisma.storeGroup.findFirst({
+        where: { afterSalesUserId: session.user.id },
+        include: { stores: { select: { id: true } } },
+      })
+      const storeIds = group?.stores.map((s) => s.id) || []
+      const roomData = await prisma.adminChatRoom.findUnique({
+        where: { id: roomId },
+        include: { order: { select: { storeId: true } } },
+      })
+      const isGroupStore =
+        storeIds.includes(roomData?.storeId || '') ||
+        storeIds.includes(roomData?.order?.storeId || '')
+      if (!isGroupStore && roomData?.claimedById !== session.user.id) {
+        return NextResponse.json(
+          { error: 'Akses percakapan grup cabang lain ditolak' },
+          { status: 403 }
+        )
+      }
     }
 
     let userStoreId = user.storeId

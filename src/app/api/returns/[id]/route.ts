@@ -74,17 +74,6 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const {
-      status,
-      storeResponse,
-      returnCourier,
-      returnTrackingNumber,
-      resolutionAction, // 'REPLACEMENT' | 'REFUND' | 'REPAIR_IN_PROGRESS' | 'REPAIR_COMPLETED'
-      estimatedRepairDays,
-      repairNotes,
-      replacementCourier,
-      replacementTrackingNumber,
-    } = body
 
     const existing = await prisma.returnRequest.findUnique({
       where: { id },
@@ -119,6 +108,74 @@ export async function PUT(
         { status: 404 }
       )
     }
+
+    // Superadmin Decision Action: APPROVE or REJECT
+    if (body.action === 'APPROVE' || body.action === 'REJECT') {
+      if (session.user.role !== 'SUPER_ADMIN') {
+        return NextResponse.json(
+          {
+            error:
+              'Persetujuan atau penolakan pengembalian hanya dapat dilakukan oleh Superadmin',
+          },
+          { status: 403 }
+        )
+      }
+
+      const isApprove = body.action === 'APPROVE'
+      const updatedReturn = await prisma.returnRequest.update({
+        where: { id },
+        data: {
+          status: isApprove ? 'APPROVED' : 'REJECTED',
+          resolvedAt: new Date(),
+          storeResponse: isApprove
+            ? body.adminNotes ||
+              'Pengajuan pengembalian telah disetujui oleh Superadmin.'
+            : body.rejectionReason ||
+              'Pengajuan pengembalian ditolak oleh Superadmin.',
+        },
+        include: {
+          order: true,
+          user: { select: { id: true, name: true, email: true } },
+        },
+      })
+
+      // Send notification to customer
+      await prisma.notification
+        .create({
+          data: {
+            userId: existing.userId,
+            type: 'COMPLAINT_RESOLVED',
+            title: isApprove
+              ? 'Pengajuan Pengembalian Disetujui'
+              : 'Pengajuan Pengembalian Ditolak',
+            message: isApprove
+              ? `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} telah DISETUJUI oleh Superadmin.`
+              : `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} DITOLAK oleh Superadmin: ${body.rejectionReason || 'Tidak memenuhi kriteria'}`,
+            link: `/dashboard/customer/orders/${existing.orderId}`,
+          },
+        })
+        .catch(() => {})
+
+      return NextResponse.json({
+        success: true,
+        message: isApprove
+          ? 'Pengembalian berhasil disetujui'
+          : 'Pengembalian berhasil ditolak',
+        data: updatedReturn,
+      })
+    }
+
+    const {
+      status,
+      storeResponse,
+      returnCourier,
+      returnTrackingNumber,
+      resolutionAction, // 'REPLACEMENT' | 'REFUND' | 'REPAIR_IN_PROGRESS' | 'REPAIR_COMPLETED'
+      estimatedRepairDays,
+      repairNotes,
+      replacementCourier,
+      replacementTrackingNumber,
+    } = body
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {}

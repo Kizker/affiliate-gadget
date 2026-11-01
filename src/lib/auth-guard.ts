@@ -34,18 +34,10 @@ export const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
   '/dashboard/admin/orders': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
 
   // Klaim Garansi & Pengembalian — semua kecuali FINANCE_ADMIN & CONTENT_EDITOR
-  '/dashboard/admin/complaints': [
-    'SUPER_ADMIN',
-    'ADMIN',
-    'STORE_ADMIN',
-    'STORE_SALES',
-  ],
-  '/dashboard/admin/returns': [
-    'SUPER_ADMIN',
-    'ADMIN',
-    'STORE_ADMIN',
-    'STORE_SALES',
-  ],
+  '/dashboard/admin/complaints': ['SUPER_ADMIN', 'ADMIN', 'AFTER_SALES'],
+  '/dashboard/admin/returns': ['SUPER_ADMIN', 'ADMIN', 'AFTER_SALES'],
+  '/dashboard/admin/groups': ['SUPER_ADMIN'],
+  '/dashboard/after-sales': ['SUPER_ADMIN', 'AFTER_SALES'],
 
   // Chat — semua admin & staff toko
   '/dashboard/admin/chat': [

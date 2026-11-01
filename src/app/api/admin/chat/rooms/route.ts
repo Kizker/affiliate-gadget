@@ -83,8 +83,34 @@ export async function GET() {
           storeId: null,
         }
       }
+    } else if (user.role === 'AFTER_SALES') {
+      // Find the group managed by this After Sales user
+      const group = await prisma.storeGroup.findFirst({
+        where: { afterSalesUserId: session.user.id },
+        include: { stores: { select: { id: true } } },
+      })
+      const storeIds = group?.stores.map((s) => s.id) || []
+
+      if (storeIds.length > 0) {
+        whereClause = {
+          messages: { some: {} },
+          // Purna jual: percakapan pesanan COMPLETED dari toko-toko dalam grup
+          order: {
+            status: 'COMPLETED',
+            OR: [
+              { storeId: { in: storeIds } },
+              { items: { some: { product: { storeId: { in: storeIds } } } } },
+            ],
+          },
+        }
+      } else {
+        whereClause = {
+          messages: { some: {} },
+          claimedById: session.user.id,
+        }
+      }
     } else if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
-      // Superadmin / Platform Admin dapat melihat seluruh chat platform
+      // Superadmin / Platform Admin dapat melihat seluruh chat platform termasuk CS { storeId: null }
       whereClause = {
         messages: { some: {} },
       }
@@ -192,6 +218,7 @@ export async function GET() {
       const isStoreHelpToSuperAdmin =
         room.customerId === session.user.id && room.storeId === null
 
+      const isCompletedHandover = room.order?.status === 'COMPLETED'
       const isStoreAdminUser =
         room.customer.role === 'STORE_ADMIN' ||
         room.customer.role === 'STORE_SALES'

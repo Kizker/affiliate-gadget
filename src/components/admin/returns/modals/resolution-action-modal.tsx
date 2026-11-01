@@ -72,6 +72,8 @@ export function ResolutionActionModal({
   isProcessing,
   onExecuteResolution,
 }: ResolutionActionModalProps) {
+  // Alias for backward compatibility
+  const handleExecuteResolution = onExecuteResolution
   if (!isOpen || !selectedReturn || !actionModalType) return null
 
   const renderCourierDropdown = (theme: 'blue' | 'emerald') => {

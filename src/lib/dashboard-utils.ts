@@ -7,6 +7,7 @@ export const ADMIN_STAFF_ROLES = [
   'STORE_SALES',
   'FINANCE_ADMIN',
   'CONTENT_EDITOR',
+  'AFTER_SALES',
 ] as const
 
 export type AdminStaffRole = (typeof ADMIN_STAFF_ROLES)[number]
@@ -18,11 +19,7 @@ export function isAdminStaffRole(role?: string | null): boolean {
 
 export function isStaffOrPartnerRole(role?: string | null): boolean {
   if (!role) return false
-  return (
-    isAdminStaffRole(role) ||
-    role === 'TECHNICIAN' ||
-    role === 'MITRA'
-  )
+  return isAdminStaffRole(role) || role === 'TECHNICIAN' || role === 'MITRA'
 }
 
 export function getDashboardRoute(
@@ -34,6 +31,8 @@ export function getDashboardRoute(
   if (isAdminStaffRole(role)) {
     return '/dashboard/admin'
   }
+
+  if (role === 'AFTER_SALES') return '/dashboard/after-sales'
 
   switch (role) {
     case 'TECHNICIAN':
