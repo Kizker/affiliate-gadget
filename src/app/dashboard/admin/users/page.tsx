@@ -233,6 +233,13 @@ export default function UsersPage() {
         </span>
       )
     }
+    if (user.role === 'AFTER_SALES') {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full border border-teal-200/60 bg-teal-50 px-2.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:border-teal-800/40 dark:bg-teal-950/40 dark:text-teal-300">
+          After Sales
+        </span>
+      )
+    }
     if (user.role === 'STORE_ADMIN' || user.role === 'MITRA') {
       return (
         <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200/60 bg-indigo-50 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-300">
@@ -386,6 +393,7 @@ export default function UsersPage() {
             { id: 'ALL', label: 'Semua Role' },
             { id: 'SUPER_ADMIN', label: 'Superadmin' },
             { id: 'ADMIN', label: 'Admin Platform' },
+            { id: 'AFTER_SALES', label: 'After Sales' },
             { id: 'STORE_ADMIN', label: 'Admin Toko' },
             { id: 'CUSTOMER', label: 'Customer' },
           ].map((tab) => (

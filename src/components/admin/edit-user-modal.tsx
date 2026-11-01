@@ -41,11 +41,11 @@ export default function EditUserModal({
   onSuccess,
 }: EditUserModalProps) {
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    role: '',
-    isActive: true,
-    mitraStatus: '',
-  })
+  const [formData, setFormData] = useState(() => ({
+    role: user?.role || '',
+    isActive: user?.isActive ?? true,
+    mitraStatus: user?.mitraStatus || '',
+  }))
 
   useEffect(() => {
     if (user) {
@@ -93,7 +93,9 @@ export default function EditUserModal({
       onClose()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Gagal memperbarui akun pengguna'
+        error instanceof Error
+          ? error.message
+          : 'Gagal memperbarui akun pengguna'
       )
     } finally {
       setLoading(false)
@@ -104,7 +106,7 @@ export default function EditUserModal({
 
   const isSuperAdmin = user.role === 'SUPER_ADMIN'
 
-  const roleOptions = [
+  const baseRoleOptions = [
     {
       value: 'CUSTOMER',
       label: 'Customer (Pembeli)',
@@ -116,9 +118,25 @@ export default function EditUserModal({
       description: 'Kelola inventori unit fisik & pesanan cabang toko',
     },
     {
+      value: 'AFTER_SALES',
+      label: 'Admin After Sales (Purna Jual)',
+      description:
+        'Kelola chat pesanan selesai, retur garansi & keluhan pelanggan grup toko',
+    },
+    {
+      value: 'STORE_SALES',
+      label: 'Staff Sales Toko',
+      description: 'Operasional penjualan dan layanan toko cabang',
+    },
+    {
       value: 'ADMIN',
       label: 'Admin Platform (Pengelola)',
       description: 'Master katalog gadget, verifikasi toko & pusat komplain',
+    },
+    {
+      value: 'FINANCE_ADMIN',
+      label: 'Admin Keuangan',
+      description: 'Kelola pencairan dana, rekonsiliasi dan laporan keuangan',
     },
     {
       value: 'SUPER_ADMIN',
@@ -127,19 +145,32 @@ export default function EditUserModal({
     },
   ]
 
+  const fallbackOption =
+    user?.role && !baseRoleOptions.some((r) => r.value === user.role)
+      ? [
+          {
+            value: user.role,
+            label: user.role,
+            description: 'Role akun terdaftar',
+          },
+        ]
+      : []
+
+  const roleOptions = [...baseRoleOptions, ...fallbackOption]
+
   const initial = (user.name || user.email || 'U').charAt(0).toUpperCase()
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="w-full max-w-md sm:max-w-lg rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 duration-150 animate-in fade-in">
+      <div className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl duration-150 animate-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900 sm:max-w-lg">
         {/* Header with Action Orange Accent */}
-        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-800/40 sm:p-6">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-sm shadow-orange-500/25">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-950 dark:text-white">
+              <h2 className="text-base font-bold text-slate-950 dark:text-white sm:text-lg">
                 Edit Hak Akses & Status
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -150,33 +181,33 @@ export default function EditUserModal({
 
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:text-slate-700 dark:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-5 sm:p-6 space-y-5 text-xs">
+        <div className="space-y-5 p-5 text-xs sm:p-6">
           {/* User Profile Card */}
-          <div className="flex items-center gap-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 p-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-100/80 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 font-bold text-sm border border-orange-200/60 dark:border-orange-800/40 shadow-2xs">
+          <div className="flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/50">
+            <div className="shadow-2xs flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-orange-200/60 bg-orange-100/80 text-sm font-bold text-orange-700 dark:border-orange-800/40 dark:bg-orange-950/60 dark:text-orange-300">
               {initial}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-slate-950 dark:text-white truncate">
+              <p className="truncate text-sm font-bold text-slate-950 dark:text-white">
                 {user.name || 'Pengguna Tanpa Nama'}
               </p>
               <div className="mt-0.5 flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                <Mail className="h-3 w-3 text-slate-400 shrink-0" />
-                <span className="truncate text-xs font-mono">{user.email}</span>
+                <Mail className="h-3 w-3 shrink-0 text-slate-400" />
+                <span className="truncate font-mono text-xs">{user.email}</span>
               </div>
             </div>
             <span
-              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold shrink-0 border ${
+              className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
                 formData.isActive
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-400'
-                  : 'bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-400'
+                  ? 'border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                  : 'border-rose-200/60 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
               }`}
             >
               {formData.isActive ? '● Aktif' : '● Nonaktif'}
@@ -184,13 +215,14 @@ export default function EditUserModal({
           </div>
 
           {isSuperAdmin ? (
-            <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-4 dark:border-amber-900/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300">
-              <div className="flex items-center gap-2 font-bold text-xs">
+            <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-4 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+              <div className="flex items-center gap-2 text-xs font-bold">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <span>Akun Super Admin Terproteksi</span>
               </div>
-              <p className="text-[11px] mt-1.5 text-amber-700/90 dark:text-amber-400 leading-relaxed">
-                Hak akses akun Super Admin dilindungi oleh sistem keamanan platform dan tidak dapat diubah maupun dinonaktifkan.
+              <p className="mt-1.5 text-[11px] leading-relaxed text-amber-700/90 dark:text-amber-400">
+                Hak akses akun Super Admin dilindungi oleh sistem keamanan
+                platform dan tidak dapat diubah maupun dinonaktifkan.
               </p>
             </div>
           ) : (
@@ -198,22 +230,22 @@ export default function EditUserModal({
               {/* Role Selector */}
               <div>
                 <label className="mb-1.5 block font-semibold text-slate-700 dark:text-slate-300">
-                  Peran & Hak Akses (Role) <span className="text-orange-500">*</span>
+                  Peran & Hak Akses (Role){' '}
+                  <span className="text-orange-500">*</span>
                 </label>
                 <CustomSelect
                   value={formData.role}
-                  onChange={(val) =>
-                    setFormData({ ...formData, role: val })
-                  }
+                  onChange={(val) => setFormData({ ...formData, role: val })}
                   options={roleOptions.map((opt) => ({
                     value: opt.value,
                     label: opt.label,
                   }))}
+                  placeholder="Pilih Hak Akses (Role)..."
                   icon={<Shield className="h-4 w-4 text-slate-400" />}
                 />
                 <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                  {roleOptions.find((r) => r.value === formData.role)?.description ||
-                    'Pilih hak akses akun pengguna'}
+                  {roleOptions.find((r) => r.value === formData.role)
+                    ?.description || 'Pilih hak akses akun pengguna'}
                 </p>
               </div>
 
@@ -231,7 +263,10 @@ export default function EditUserModal({
                     placeholder="Pilih Status Verifikasi"
                     options={[
                       { value: 'PENDING', label: 'Pending (Menunggu Review)' },
-                      { value: 'APPROVED', label: 'Approved (Terverifikasi & Aktif)' },
+                      {
+                        value: 'APPROVED',
+                        label: 'Approved (Terverifikasi & Aktif)',
+                      },
                       { value: 'REJECTED', label: 'Rejected (Ditolak)' },
                     ]}
                   />
@@ -244,19 +279,21 @@ export default function EditUserModal({
                   onClick={() =>
                     setFormData({ ...formData, isActive: !formData.isActive })
                   }
-                  className={`flex items-center justify-between p-4 rounded-2xl border transition cursor-pointer select-none ${
+                  className={`flex cursor-pointer select-none items-center justify-between rounded-2xl border p-4 transition ${
                     formData.isActive
                       ? 'border-emerald-200/80 bg-emerald-50/30 dark:border-emerald-800/40 dark:bg-emerald-950/20'
-                      : 'border-slate-200/80 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-850'
+                      : 'dark:bg-slate-850 border-slate-200/80 bg-slate-50/70 dark:border-slate-800'
                   }`}
                 >
                   <div className="pr-4">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-slate-900 dark:text-white text-xs">
-                        {formData.isActive ? 'Status Akun Aktif' : 'Status Akun Dinonaktifkan'}
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        {formData.isActive
+                          ? 'Status Akun Aktif'
+                          : 'Status Akun Dinonaktifkan'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                       {formData.isActive
                         ? 'Pengguna dapat masuk dan beraktivitas di platform secara normal.'
                         : 'Pengguna ditangguhkan dan tidak dapat masuk ke sistem.'}
@@ -281,18 +318,18 @@ export default function EditUserModal({
               </div>
 
               {/* Footer Actions */}
-              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-4 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition"
+                  className="dark:hover:bg-slate-750 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 active:scale-95 transition disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
                 >
                   {loading ? (
                     <>

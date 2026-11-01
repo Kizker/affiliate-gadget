@@ -28,11 +28,11 @@ export function getDashboardRoute(
 ): string {
   if (!role) return '/'
 
+  if (role === 'AFTER_SALES') return '/dashboard/after-sales'
+
   if (isAdminStaffRole(role)) {
     return '/dashboard/admin'
   }
-
-  if (role === 'AFTER_SALES') return '/dashboard/after-sales'
 
   switch (role) {
     case 'TECHNICIAN':

@@ -114,6 +114,9 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
     if (!mounted || !session)
       return '/login?callbackUrl=/dashboard/customer/chat'
     const role = (session.user as any)?.role
+    if (role === 'AFTER_SALES') {
+      return '/dashboard/after-sales/chat'
+    }
     if (
       role === 'SUPER_ADMIN' ||
       role === 'ADMIN' ||
@@ -131,6 +134,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   const getDashboardLink = () => {
     if (!mounted || !session) return '/login'
     const role = (session.user as any)?.role
+    if (role === 'AFTER_SALES') return '/dashboard/after-sales'
     if (
       role === 'SUPER_ADMIN' ||
       role === 'ADMIN' ||

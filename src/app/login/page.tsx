@@ -123,28 +123,35 @@ function LoginForm() {
 
         if (userRes.ok) {
           const userData = await userRes.json()
-          const adminStaffRoles = [
-            'SUPER_ADMIN',
-            'ADMIN',
-            'STORE_ADMIN',
-            'STORE_SALES',
-            'FINANCE_ADMIN',
-            'CONTENT_EDITOR',
-          ]
-
-          if (adminStaffRoles.includes(userData.role)) {
-            redirectUrl = '/dashboard/admin'
-          } else if (userData.role === 'TECHNICIAN' || userData.isTechnician) {
-            redirectUrl = '/dashboard/teknisi'
-          } else if (userData.role === 'MITRA') {
-            redirectUrl =
-              userData.mitraStatus === 'PENDING'
-                ? '/dashboard/mitra/pending'
-                : '/dashboard/mitra'
-          } else if (redirectParam && redirectParam.startsWith('/')) {
-            redirectUrl = redirectParam
+          if (userData.role === 'AFTER_SALES') {
+            redirectUrl = '/dashboard/after-sales'
           } else {
-            redirectUrl = '/'
+            const adminStaffRoles = [
+              'SUPER_ADMIN',
+              'ADMIN',
+              'STORE_ADMIN',
+              'STORE_SALES',
+              'FINANCE_ADMIN',
+              'CONTENT_EDITOR',
+            ]
+
+            if (adminStaffRoles.includes(userData.role)) {
+              redirectUrl = '/dashboard/admin'
+            } else if (
+              userData.role === 'TECHNICIAN' ||
+              userData.isTechnician
+            ) {
+              redirectUrl = '/dashboard/teknisi'
+            } else if (userData.role === 'MITRA') {
+              redirectUrl =
+                userData.mitraStatus === 'PENDING'
+                  ? '/dashboard/mitra/pending'
+                  : '/dashboard/mitra'
+            } else if (redirectParam && redirectParam.startsWith('/')) {
+              redirectUrl = redirectParam
+            } else {
+              redirectUrl = '/'
+            }
           }
           break
         } else if (userRes.status === 401) {
