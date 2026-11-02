@@ -19,11 +19,28 @@ async function seed() {
     return;
   }
 
-  const stores = budi.managedGroup.stores;
+  // Ensure Semarang & Surabaya stores are attached to Budi's group if they exist in DB
+  const allStores = await prisma.store.findMany();
+  for (const s of allStores) {
+    if (s.name.includes('Semarang') || s.name.includes('Surabaya') || s.name.includes('Roxy')) {
+      await prisma.store.update({
+        where: { id: s.id },
+        data: { groupId: budi.managedGroup.id },
+      });
+    }
+  }
+
+  // Refetch stores
+  const updatedGroup = await prisma.storeGroup.findUnique({
+    where: { id: budi.managedGroup.id },
+    include: { stores: true },
+  });
+
+  const stores = updatedGroup.stores.length > 0 ? updatedGroup.stores : allStores;
   console.log('Stores in group:', stores.map(s => s.name));
-  const storeRoxy = stores.find(s => s.slug.includes('roxy') || s.name.includes('Roxy'));
-  const storeSemarang = stores.find(s => s.slug.includes('semarang') || s.name.includes('Semarang'));
-  const storeSurabaya = stores.find(s => s.slug.includes('surabaya') || s.name.includes('Surabaya'));
+  const storeRoxy = stores.find(s => s.slug.includes('roxy') || s.name.includes('Roxy')) || stores[0];
+  const storeSemarang = stores.find(s => s.slug.includes('semarang') || s.name.includes('Semarang')) || stores[1] || storeRoxy;
+  const storeSurabaya = stores.find(s => s.slug.includes('surabaya') || s.name.includes('Surabaya')) || stores[2] || storeRoxy;
 
   // Cleanup old test seed orders
   console.log('Cleaning up old test seed orders...');
