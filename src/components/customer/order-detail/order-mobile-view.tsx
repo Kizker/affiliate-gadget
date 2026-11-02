@@ -11,6 +11,12 @@ import {
   Play,
   Ban,
   MessageCircle,
+  ShieldCheck,
+  Truck,
+  MapPin,
+  CheckCircle2,
+  XCircle,
+  MessageSquare,
 } from 'lucide-react'
 import {
   OrderData,
@@ -36,6 +42,8 @@ interface OrderMobileViewProps {
   latestComplaint: OrderComplaint | null
   returnTrackingNumber: string
   setReturnTrackingNumber: (val: string) => void
+  returnCourier?: string
+  setReturnCourier?: (val: string) => void
   handleSaveReturnTracking: () => void
   isSavingReturnTracking: boolean
   onOpenResiModal: (waybill: string, courier: string) => void
@@ -67,6 +75,12 @@ export function OrderMobileView({
   contextualTime,
   latestReturnRequest,
   latestComplaint,
+  returnTrackingNumber,
+  setReturnTrackingNumber,
+  returnCourier = 'JNE',
+  setReturnCourier,
+  handleSaveReturnTracking,
+  isSavingReturnTracking,
   onOpenResiModal,
   auditTimeline,
   chatParams,
@@ -478,7 +492,7 @@ export function OrderMobileView({
 
         {/* Status Pengajuan Retur / Komplain Aktif */}
         {latestReturnRequest && (
-          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+          <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-800/60">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <RotateCcw className="h-4 w-4 text-orange-500" />
@@ -490,13 +504,161 @@ export function OrderMobileView({
                 </span>
               </div>
               <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                {latestReturnRequest.status}
+                {latestReturnRequest.status === 'APPROVED'
+                  ? 'Disetujui'
+                  : latestReturnRequest.status === 'COMPLETED'
+                    ? 'Selesai'
+                    : latestReturnRequest.status === 'REJECTED'
+                      ? 'Ditolak'
+                      : latestReturnRequest.status === 'IN_REVIEW'
+                        ? 'Ditinjau / Menunggu QC'
+                        : 'Menunggu Verifikasi'}
               </span>
             </div>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Kendala:{' '}
-              {latestReturnRequest.reasonLabel || latestReturnRequest.reason}
+              <strong className="text-slate-800 dark:text-slate-200">
+                {latestReturnRequest.reasonLabel || latestReturnRequest.reason}
+              </strong>
             </p>
+
+            {/* If APPROVED: Show Store Return Address & Resi Input */}
+            {latestReturnRequest.status === 'APPROVED' && (
+              <div className="space-y-2.5 border-t border-slate-200/70 pt-2.5 dark:border-slate-700">
+                <div className="rounded-xl border border-blue-200/80 bg-blue-50/60 p-3 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                  <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-100">
+                    <MapPin className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    <span>Alamat Toko Cabang Tujuan Retur</span>
+                  </div>
+                  <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+                    {order.store?.name || 'Toko Cabang Affiliate Gadget'}
+                  </p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                    {order.store?.address || 'Alamat fisik cabang pengirim'}
+                    {order.store?.city ? `, ${order.store.city}` : ''}
+                  </p>
+                  {order.store?.phone && (
+                    <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                      Kontak: {order.store.phone}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-orange-200/80 bg-orange-50/60 p-3 text-xs dark:border-orange-900/60 dark:bg-orange-950/30">
+                  <div className="flex items-center gap-1.5 font-bold text-orange-950 dark:text-orange-100">
+                    <Truck className="h-3.5 w-3.5 text-orange-600" />
+                    <span>Input Resi Pengiriman Balik</span>
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    <select
+                      value={returnCourier || 'JNE'}
+                      onChange={(e) => setReturnCourier?.(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="JNE">JNE Express</option>
+                      <option value="J&T">J&T Express</option>
+                      <option value="SICEPAT">SiCepat</option>
+                      <option value="GOJEK">Gojek Instant</option>
+                      <option value="GRAB">Grab Express</option>
+                      <option value="ANTERAJA">Anteraja</option>
+                      <option value="POS">Pos Indonesia</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Nomor resi balik..."
+                      value={returnTrackingNumber}
+                      onChange={(e) => setReturnTrackingNumber(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-mono text-xs text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                    <button
+                      onClick={handleSaveReturnTracking}
+                      disabled={
+                        isSavingReturnTracking || !returnTrackingNumber.trim()
+                      }
+                      className="w-full rounded-lg bg-orange-600 py-2 text-xs font-bold text-white transition hover:bg-orange-700 disabled:opacity-50"
+                    >
+                      {isSavingReturnTracking
+                        ? 'Menyimpan...'
+                        : 'Kirim Resi Pengembalian'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* If REJECTED: Show rejection reason clearly */}
+            {latestReturnRequest.status === 'REJECTED' && (
+              <div className="space-y-2 border-t border-rose-200/60 pt-2.5 dark:border-rose-900/40">
+                <div className="rounded-xl border border-rose-200/70 bg-rose-50/80 p-3 text-xs text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">
+                  <div className="flex items-start gap-2">
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                    <div className="flex-1">
+                      <p className="font-bold text-rose-950 dark:text-rose-100">
+                        Pengajuan Retur Ditolak
+                      </p>
+                      <p className="mt-1 leading-relaxed text-rose-800/90 dark:text-rose-300/90">
+                        {latestReturnRequest.storeResponse
+                          ? latestReturnRequest.storeResponse.replace(
+                              /\[Ditolak After Sales\]\s*/g,
+                              ''
+                            )
+                          : 'Pengajuan tidak memenuhi syarat verifikasi garansi toko.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href={`/dashboard/customer/chat/admin/${order.id}`}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/70 py-2 text-xs font-bold text-orange-600 transition hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  <span>Hubungi Admin After Sales</span>
+                </a>
+              </div>
+            )}
+
+            {/* If IN_REVIEW & has tracking number */}
+            {latestReturnRequest.status === 'IN_REVIEW' &&
+              latestReturnRequest.returnTrackingNumber && (
+                <div className="rounded-xl border border-blue-200/80 bg-blue-50/70 p-3 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-100">
+                      <Truck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>Unit Sedang Menuju Toko</span>
+                    </div>
+                    <span className="font-mono font-bold text-blue-900 dark:text-blue-200">
+                      {latestReturnRequest.returnCourier || 'JNE'} -{' '}
+                      {latestReturnRequest.returnTrackingNumber}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-blue-800/80 dark:text-blue-300/80">
+                    Paket fisik dalam perjalanan. Tim After Sales & teknisi toko
+                    akan segera melakukan verifikasi fisik (QC) setelah paket
+                    tiba.
+                  </p>
+                </div>
+              )}
+
+            {/* If COMPLETED */}
+            {latestReturnRequest.status === 'COMPLETED' && (
+              <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/70 p-3 text-xs text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
+                <div className="flex items-center gap-1.5 font-bold text-emerald-950 dark:text-emerald-100">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>
+                    {latestReturnRequest.type === 'REFUND'
+                      ? 'Refund Berhasil Dicairkan'
+                      : 'Unit Baru Pengganti Telah Dikirim'}
+                  </span>
+                </div>
+                {order.trackingNumber &&
+                  latestReturnRequest.type !== 'REFUND' && (
+                    <p className="mt-1 font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                      Resi Unit Baru: {order.courierCode || 'JNE'} —{' '}
+                      {order.trackingNumber}
+                    </p>
+                  )}
+              </div>
+            )}
           </div>
         )}
 
@@ -532,36 +694,39 @@ export function OrderMobileView({
           </button>
         )}
 
-        {/* Secondary Action: Klaim Garansi */}
-        {isCompleted && (
+        {/* Primary Action: Ajukan Komplain / Klaim Garansi */}
+        {isCompleted && canRequestReturnOrComplaint && !hasActiveClaim && (
+          <button
+            type="button"
+            onClick={onOpenReturn}
+            className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-orange-500/30 bg-orange-50/70 px-4 py-3 text-sm font-bold text-orange-600 transition hover:bg-orange-100 active:scale-[0.99] dark:border-orange-500/40 dark:bg-orange-950/30 dark:text-orange-400"
+          >
+            <ShieldCheck className="h-4 w-4 text-orange-600 dark:text-orange-500" />
+            <span>Ajukan Komplain / Klaim Garansi</span>
+          </button>
+        )}
+
+        {!isCompleted && canRequestReturnOrComplaint && !hasActiveClaim && (
           <button
             type="button"
             onClick={onOpenComplaint}
             className="shadow-2xs flex w-full cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           >
-            Klaim Garansi
+            Laporkan Kendala Pesanan
           </button>
         )}
 
-        {/* Tertiary Action: Ajukan Pengembalian (Retur) */}
-        {(canRequestReturnOrComplaint || isCompleted) && (
-          <button
-            type="button"
-            onClick={onOpenReturn}
-            className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          >
-            <RotateCcw className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-            <span>Ajukan Pengembalian (Retur)</span>
-          </button>
-        )}
-
-        {/* Chat Toko */}
+        {/* Chat Action */}
         <Link
-          href={`/dashboard/customer/chat?${chatParams.toString()}`}
+          href={`/dashboard/customer/chat?${chatParams.toString()}${
+            isCompleted ? '&type=after_sales' : ''
+          }`}
           className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
         >
           <MessageCircle className="h-3.5 w-3.5 text-slate-500" />
-          <span>Chat Toko Cabang</span>
+          <span>
+            {isCompleted ? 'Chat Admin After Sales' : 'Chat Toko Cabang'}
+          </span>
         </Link>
 
         {/* Cancel Order (if eligible) */}

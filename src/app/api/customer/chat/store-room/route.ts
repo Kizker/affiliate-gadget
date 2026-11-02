@@ -116,13 +116,17 @@ export async function POST(req: NextRequest) {
           } as any,
         })
       } else if (orderId && room.orderId !== orderId) {
-        room = await prisma.adminChatRoom.update({
-          where: { id: room.id },
-          data: {
-            orderId,
-            lastMessageAt: new Date(),
-          },
-        })
+        try {
+          room = await prisma.adminChatRoom.update({
+            where: { id: room.id },
+            data: {
+              orderId,
+              lastMessageAt: new Date(),
+            },
+          })
+        } catch (updateErr) {
+          console.warn('Non-fatal error updating CS room context:', updateErr)
+        }
       }
 
       const messages = await prisma.adminChatMessage.findMany({
@@ -274,7 +278,11 @@ export async function POST(req: NextRequest) {
     const effectiveReturnType = latestReturn?.type || returnType || 'REFUND'
     const effectiveReturnId = latestReturn?.id || returnId || null
     const isReturnInquiry = Boolean(
-      effectiveReturnId || effectiveReturnReason || returnReason
+      effectiveReturnId ||
+      effectiveReturnReason ||
+      returnReason ||
+      reqType === 'after_sales' ||
+      (resolvedOrder?.returnRequests && resolvedOrder.returnRequests.length > 0)
     )
     const isOrderInquiry = Boolean(orderId || effectiveOrderNumber)
 
@@ -317,7 +325,7 @@ export async function POST(req: NextRequest) {
         }
       : null
 
-    // Find active store admin for this store to automatically connect the chat room
+    // Find active store admin for regular store chat
     const storeAdmin = await prisma.user.findFirst({
       where: {
         storeId: store.id,
@@ -329,11 +337,49 @@ export async function POST(req: NextRequest) {
         name: true,
         email: true,
         image: true,
+        role: true,
       },
     })
 
-    // Customer + Store = SINGLE CHAT ROOM
-    // Find existing chat room between this customer and this store
+    // Untuk percakapan retur / klaim garansi / pertukaran barang: Alihkan ke Admin After Sales
+    let assignedAdmin = storeAdmin
+
+    if (isReturnInquiry) {
+      const storeWithGroup = await prisma.store.findUnique({
+        where: { id: store.id },
+        include: {
+          group: {
+            include: {
+              afterSalesUser: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                  role: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      const groupAfterSales = storeWithGroup?.group?.afterSalesUser
+      const fallbackAfterSales = await prisma.user.findFirst({
+        where: { role: 'AFTER_SALES', isActive: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          role: true,
+        },
+      })
+
+      assignedAdmin = groupAfterSales || fallbackAfterSales || storeAdmin
+    }
+
+    // Customer + Store = SINGLE CHAT ROOM (Unified Room: 1 Pelanggan + 1 Toko = 1 Room)
     let room = await prisma.adminChatRoom.findFirst({
       where: {
         customerId: session.user.id,
@@ -342,17 +388,27 @@ export async function POST(req: NextRequest) {
       orderBy: { lastMessageAt: 'desc' },
     })
 
+    if (!room && orderId) {
+      room = await prisma.adminChatRoom.findFirst({
+        where: {
+          customerId: session.user.id,
+          orderId: orderId,
+        },
+        orderBy: { lastMessageAt: 'desc' },
+      })
+    }
+
     const isNew = !room
 
     if (!room) {
-      // Create new direct room connected with store admin
+      // Create new direct room connected with appropriate admin
       room = await prisma.adminChatRoom.create({
         data: {
           customerId: session.user.id,
           storeId: store.id,
           orderId: orderId || null,
-          claimedById: storeAdmin?.id || null,
-          claimedAt: storeAdmin ? new Date() : null,
+          claimedById: assignedAdmin?.id || null,
+          claimedAt: assignedAdmin ? new Date() : null,
           lastMessageAt: new Date(),
         } as any,
       })
@@ -363,16 +419,30 @@ export async function POST(req: NextRequest) {
         updates.orderId = orderId
         updates.lastMessageAt = new Date()
       }
-      if (!room.claimedById && storeAdmin) {
-        updates.claimedById = storeAdmin.id
+      if (
+        isReturnInquiry &&
+        assignedAdmin &&
+        assignedAdmin.role === 'AFTER_SALES'
+      ) {
+        updates.claimedById = assignedAdmin.id
+        updates.claimedAt = new Date()
+      } else if (!room.claimedById && assignedAdmin) {
+        updates.claimedById = assignedAdmin.id
         updates.claimedAt = new Date()
       }
 
       if (Object.keys(updates).length > 0) {
-        room = await prisma.adminChatRoom.update({
-          where: { id: room.id },
-          data: updates,
-        })
+        try {
+          room = await prisma.adminChatRoom.update({
+            where: { id: room.id },
+            data: updates,
+          })
+        } catch (updateErr) {
+          console.warn(
+            'Non-fatal error updating store room context:',
+            updateErr
+          )
+        }
       }
     }
 
@@ -403,18 +473,24 @@ export async function POST(req: NextRequest) {
       roomId: room.id,
       store: {
         id: store.id,
-        name: store.name,
-        companyName: store.companyName,
+        name: isReturnInquiry
+          ? `Layanan Purna Jual (${store.name})`
+          : store.name,
+        companyName: isReturnInquiry
+          ? 'Admin After Sales & Garansi Terpusat'
+          : store.companyName,
         phone: store.phone,
         city: store.city,
         logo: store.logo,
+        isAfterSales: isReturnInquiry,
       },
-      claimedBy: storeAdmin
+      claimedBy: assignedAdmin
         ? {
-            id: storeAdmin.id,
-            name: storeAdmin.name,
-            email: storeAdmin.email,
-            image: storeAdmin.image,
+            id: assignedAdmin.id,
+            name: assignedAdmin.name,
+            email: assignedAdmin.email,
+            image: assignedAdmin.image,
+            role: assignedAdmin.role,
           }
         : null,
       orderId: room.orderId || (resolvedOrder ? resolvedOrder.id : null),

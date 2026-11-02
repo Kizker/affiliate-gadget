@@ -65,7 +65,27 @@ export async function GET(request: NextRequest) {
             items: {
               include: {
                 product: {
-                  select: { id: true, name: true, brand: true, images: true },
+                  select: {
+                    id: true,
+                    name: true,
+                    brand: true,
+                    images: true,
+                    stock: true,
+                    variants: {
+                      select: {
+                        id: true,
+                        name: true,
+                        stock: true,
+                      },
+                    },
+                  },
+                },
+                rentalItem: {
+                  select: {
+                    id: true,
+                    name: true,
+                    images: true,
+                  },
                 },
                 service: { select: { id: true, name: true } },
               },
@@ -76,6 +96,7 @@ export async function GET(request: NextRequest) {
                 name: true,
                 companyName: true,
                 city: true,
+                address: true,
                 phone: true,
               },
             },

@@ -35,6 +35,13 @@ export async function GET(
     const room = await prisma.adminChatRoom.findUnique({
       where: { id: roomId },
       include: {
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
         customer: {
           select: {
             id: true,
@@ -50,11 +57,25 @@ export async function GET(
             orderNumber: true,
             status: true,
             total: true,
+            storeId: true,
             createdAt: true,
+            returnRequests: {
+              select: {
+                id: true,
+                status: true,
+                type: true,
+              },
+            },
             items: {
               include: {
                 product: {
-                  select: { id: true, name: true, images: true, price: true },
+                  select: {
+                    id: true,
+                    name: true,
+                    images: true,
+                    price: true,
+                    storeId: true,
+                  },
                 },
                 rentalItem: {
                   select: {
@@ -84,13 +105,20 @@ export async function GET(
         include: { stores: { select: { id: true } } },
       })
       const storeIds = group?.stores.map((s) => s.id) || []
+      const hasReturn = Boolean(
+        room.order?.returnRequests && room.order.returnRequests.length > 0
+      )
       const isGroupRoom =
+        storeIds.length === 0 ||
         storeIds.includes(room.storeId || '') ||
         (room.order &&
           (storeIds.includes((room.order as any).storeId || '') ||
             (room.order as any).items?.some((i: any) =>
               storeIds.includes(i.product?.storeId || '')
-            )))
+            ))) ||
+        room.claimedById === session.user.id ||
+        hasReturn ||
+        room.claimedBy?.role === 'AFTER_SALES'
       if (!isGroupRoom) {
         return NextResponse.json(
           { error: 'Akses percakapan grup cabang lain ditolak' },
@@ -100,6 +128,24 @@ export async function GET(
     }
 
     if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
+      // Isolasi Purna Jual: Percakapan retur / penukaran barang TIDAK masuk ke Admin Toko
+      const isReturnRelated =
+        Boolean(
+          room.order?.returnRequests && room.order.returnRequests.length > 0
+        ) ||
+        room.claimedBy?.role === 'AFTER_SALES' ||
+        room.order?.status === 'COMPLETED'
+
+      if (isReturnRelated) {
+        return NextResponse.json(
+          {
+            error:
+              'Percakapan retur dan penukaran barang telah dialihkan secara eksklusif ke Admin After Sales Terpusat.',
+          },
+          { status: 403 }
+        )
+      }
+
       let userStoreId = user.storeId
       if (!userStoreId) {
         const s = await prisma.store.findFirst({
@@ -115,6 +161,7 @@ export async function GET(
           (room as any).order?.items?.some(
             (i: any) => i.product?.storeId === userStoreId
           )) ||
+        (userStoreId && room.claimedById === session.user.id) ||
         room.customerId === session.user.id
       if (!isStoreRoom) {
         return NextResponse.json(
@@ -206,23 +253,64 @@ export async function POST(
     // Check room exists
     const room = await prisma.adminChatRoom.findUnique({
       where: { id: roomId },
+      include: {
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            status: true,
+            storeId: true,
+            returnRequests: {
+              select: {
+                id: true,
+                status: true,
+                type: true,
+              },
+            },
+            items: {
+              include: {
+                product: {
+                  select: { storeId: true },
+                },
+              },
+            },
+          },
+        },
+      },
     })
 
     if (!room) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
-    // Cek Handover: Jika pesanan COMPLETED, Admin Toko tidak bisa lagi membalas chat
+    // Cek Handover & Isolasi: Jika pesanan COMPLETED atau dalam proses retur/klaim garansi, Admin Toko tidak bisa membalas chat
     if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
-      const roomOrder = await prisma.adminChatRoom.findUnique({
-        where: { id: roomId },
-        include: { order: { select: { status: true } } },
-      })
-      if (roomOrder?.order?.status === 'COMPLETED') {
+      if (room.order?.status === 'COMPLETED') {
         return NextResponse.json(
           {
             error:
               'Pesanan telah berstatus selesai. Jalur percakapan telah dialihkan ke Admin After Sales.',
+          },
+          { status: 403 }
+        )
+      }
+
+      const isReturnRelated =
+        Boolean(
+          room.order?.returnRequests && room.order.returnRequests.length > 0
+        ) || room.claimedBy?.role === 'AFTER_SALES'
+
+      if (isReturnRelated) {
+        return NextResponse.json(
+          {
+            error:
+              'Percakapan retur dan penukaran barang telah dialihkan secara eksklusif ke Admin After Sales Terpusat.',
           },
           { status: 403 }
         )
@@ -235,14 +323,21 @@ export async function POST(
         include: { stores: { select: { id: true } } },
       })
       const storeIds = group?.stores.map((s) => s.id) || []
-      const roomData = await prisma.adminChatRoom.findUnique({
-        where: { id: roomId },
-        include: { order: { select: { storeId: true } } },
-      })
+      const hasReturn = Boolean(
+        room.order?.returnRequests && room.order.returnRequests.length > 0
+      )
       const isGroupStore =
-        storeIds.includes(roomData?.storeId || '') ||
-        storeIds.includes(roomData?.order?.storeId || '')
-      if (!isGroupStore && roomData?.claimedById !== session.user.id) {
+        storeIds.length === 0 ||
+        storeIds.includes(room.storeId || '') ||
+        (room.order &&
+          (storeIds.includes(room.order.storeId || '') ||
+            room.order.items?.some((i) =>
+              storeIds.includes(i.product?.storeId || '')
+            ))) ||
+        room.claimedById === session.user.id ||
+        hasReturn ||
+        room.claimedBy?.role === 'AFTER_SALES'
+      if (!isGroupStore) {
         return NextResponse.json(
           { error: 'Akses percakapan grup cabang lain ditolak' },
           { status: 403 }
@@ -261,6 +356,10 @@ export async function POST(
       }
       const isStoreRoom =
         (userStoreId && room.storeId === userStoreId) ||
+        (userStoreId && room.order?.storeId === userStoreId) ||
+        (userStoreId &&
+          room.order?.items?.some((i) => i.product?.storeId === userStoreId)) ||
+        (userStoreId && room.claimedById === session.user.id) ||
         room.customerId === session.user.id
       if (!isStoreRoom) {
         return NextResponse.json(

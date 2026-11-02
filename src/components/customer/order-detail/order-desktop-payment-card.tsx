@@ -216,27 +216,23 @@ export function OrderDesktopPaymentCard({
           </button>
         )}
 
-        {canRequestReturnOrComplaint && !hasActiveClaim && (
+        {canRequestReturnOrComplaint && !hasActiveClaim && isCompleted && (
           <button
             onClick={onOpenReturn}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-orange-500/30 bg-orange-50/70 py-3 text-xs font-bold text-orange-600 transition hover:bg-orange-100 active:scale-95 dark:border-orange-500/40 dark:bg-orange-950/30 dark:text-orange-400"
           >
-            <RotateCcw className="h-4 w-4 text-slate-500" />
-            <span>Ajukan Pengembalian (Retur)</span>
+            <ShieldCheck className="h-4 w-4 text-orange-600 dark:text-orange-500" />
+            <span>Ajukan Komplain / Klaim Garansi</span>
           </button>
         )}
 
-        {canRequestReturnOrComplaint && !hasActiveClaim && (
+        {canRequestReturnOrComplaint && !hasActiveClaim && !isCompleted && (
           <button
             onClick={onOpenComplaint}
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
           >
             <ShieldCheck className="h-4 w-4 text-slate-500" />
-            <span>
-              {isCompleted
-                ? 'Klaim Garansi 30 Hari'
-                : 'Laporkan Kendala / Komplain'}
-            </span>
+            <span>Laporkan Kendala Pesanan</span>
           </button>
         )}
 
@@ -320,13 +316,17 @@ export function OrderDesktopPaymentCard({
           </button>
         )}
 
-        {/* Chat Toko Direct Action */}
+        {/* Chat Direct Action */}
         <Link
-          href={`/dashboard/customer/chat?${chatParams.toString()}`}
+          href={`/dashboard/customer/chat?${chatParams.toString()}${
+            isCompleted ? '&type=after_sales' : ''
+          }`}
           className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200"
         >
           <MessageCircle className="h-4 w-4 text-slate-500" />
-          <span>Chat Toko Cabang</span>
+          <span>
+            {isCompleted ? 'Chat Admin After Sales' : 'Chat Toko Cabang'}
+          </span>
         </Link>
 
         {/* Batalkan Pesanan (if canCancel) */}

@@ -588,7 +588,7 @@ model Order {
   customerConfirmedAt            DateTime? // When customer confirms completion
   createdAt                      DateTime        @default(now())
   updatedAt                      DateTime        @updatedAt
-  adminChatRoom                  AdminChatRoom?
+  adminChatRooms                 AdminChatRoom[]
   technicianChatRooms            ChatRoom[]      @relation("ChatRoomOrder")
   complaints                     Complaint[]
   invoice                        Invoice?
@@ -929,7 +929,7 @@ model AdminChatRoom {
   id            String             @id @default(cuid())
   customerId    String
   storeId       String?
-  orderId       String?            @unique
+  orderId       String?
   claimedById   String?
   claimedAt     DateTime?
   lastMessageAt DateTime           @default(now())

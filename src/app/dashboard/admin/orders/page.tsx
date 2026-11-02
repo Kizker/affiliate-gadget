@@ -125,6 +125,17 @@ interface Order {
     provider: string | null
   } | null
   items: OrderItem[]
+  returnRequests?: Array<{
+    id: string
+    status: string
+    type: string
+    reason?: string | null
+    reasonLabel?: string | null
+    returnTrackingNumber?: string | null
+    returnCourier?: string | null
+    storeResponse?: string | null
+    createdAt: string
+  }>
 }
 
 const statusConfig: Record<
@@ -794,6 +805,23 @@ export default function AdminOrdersPage() {
                               >
                                 {formatDate(order.createdAt)}
                               </span>
+                              {order.returnRequests &&
+                                order.returnRequests.length > 0 && (
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                                      order.returnRequests[0].type ===
+                                      'REPLACEMENT'
+                                        ? 'border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300'
+                                        : 'border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/40 dark:bg-purple-950/40 dark:text-purple-300'
+                                    }`}
+                                  >
+                                    <RotateCcw className="h-2.5 w-2.5" />
+                                    {order.returnRequests[0].type ===
+                                    'REPLACEMENT'
+                                      ? 'Tukar Unit'
+                                      : 'Retur/Refund'}
+                                  </span>
+                                )}
                             </div>
                           </div>
                         </div>
@@ -1046,6 +1074,65 @@ export default function AdminOrdersPage() {
                 <div className="grid grid-cols-1 gap-5 text-xs md:grid-cols-2">
                   {/* Column 1: Items List & Financial Summary */}
                   <div className="space-y-4">
+                    {/* Retur / Penukaran Unit Info Banner */}
+                    {selectedOrder.returnRequests &&
+                      selectedOrder.returnRequests.length > 0 && (
+                        <div className="space-y-2 rounded-2xl border border-blue-200/90 bg-blue-50/70 p-4 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
+                              <RotateCcw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              <span>
+                                {selectedOrder.returnRequests[0].type ===
+                                'REPLACEMENT'
+                                  ? 'Klaim Garansi: Penukaran Unit Baru'
+                                  : 'Klaim Garansi: Retur & Refund'}
+                              </span>
+                            </div>
+                            <span className="rounded-md border border-blue-200 bg-white px-2 py-0.5 font-mono text-[10px] font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
+                              {selectedOrder.returnRequests[0].status ===
+                              'COMPLETED'
+                                ? 'TUNTAS'
+                                : selectedOrder.returnRequests[0].status ===
+                                    'APPROVED'
+                                  ? 'DISETUJUI (KIRIM FISIK)'
+                                  : selectedOrder.returnRequests[0].status ===
+                                      'IN_REVIEW'
+                                    ? 'QC / PEMERIKSAAN'
+                                    : selectedOrder.returnRequests[0].status}
+                            </span>
+                          </div>
+                          <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                            <p>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                Kendala:
+                              </span>{' '}
+                              {selectedOrder.returnRequests[0].reasonLabel ||
+                                selectedOrder.returnRequests[0].reason}
+                            </p>
+                            {selectedOrder.returnRequests[0].type ===
+                              'REPLACEMENT' &&
+                              selectedOrder.trackingNumber && (
+                                <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-blue-200/90 bg-white p-2.5 font-mono text-xs font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
+                                  <div className="flex items-center gap-1.5">
+                                    <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    <span>Resi Unit Pengganti:</span>
+                                  </div>
+                                  <span>
+                                    {selectedOrder.courierCode || 'JNE'} —{' '}
+                                    {selectedOrder.trackingNumber}
+                                  </span>
+                                </div>
+                              )}
+                            {selectedOrder.returnRequests[0].storeResponse && (
+                              <p className="mt-1 text-[10.5px] italic text-slate-500 dark:text-slate-400">
+                                Respon:{' '}
+                                {selectedOrder.returnRequests[0].storeResponse}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                     {/* Products Section */}
                     <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
                       <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">

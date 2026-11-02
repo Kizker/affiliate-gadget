@@ -288,6 +288,10 @@ function AdminChatContent() {
   const paramRoomId = searchParams?.get('roomId')
   const paramOrderId = searchParams?.get('orderId')
   const paramCs = searchParams?.get('cs') === 'true'
+  const paramReturnId = searchParams?.get('returnId')
+  const paramReturnReason = searchParams?.get('returnReason')
+  const paramReturnStatus = searchParams?.get('returnStatus')
+  const paramReturnType = searchParams?.get('returnType')
 
   const {
     isLoading: guardLoading,
@@ -420,6 +424,12 @@ function AdminChatContent() {
     productName: string
     productImage?: string | null
     productPrice?: number
+    returnRequest?: {
+      id?: string | null
+      status?: string | null
+      reason?: string | null
+      type?: string | null
+    } | null
   } | null>(null)
 
   // Catalog Modal States
@@ -553,7 +563,7 @@ function AdminChatContent() {
           }
           return null
         })
-      } catch (error) {
+      } catch (error: any) {
         if (!isPolling) {
           console.error('Error fetching rooms:', error)
           toast.error('Gagal memuat daftar pesan')
@@ -591,7 +601,10 @@ function AdminChatContent() {
     async (roomId: string, isPolling = false) => {
       try {
         const res = await fetch(`/api/admin/chat/rooms/${roomId}/messages`)
-        if (!res.ok) throw new Error('Failed to fetch messages')
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.error || 'Failed to fetch messages')
+        }
         const data = await res.json()
 
         setMessages((prev) => {
@@ -617,9 +630,10 @@ function AdminChatContent() {
           )
           return hasDiff ? newMsgs : prev
         })
-      } catch (error) {
+      } catch (error: any) {
         if (!isPolling) {
           console.error('Error fetching messages:', error)
+          toast.error(error?.message || 'Gagal memuat pesan percakapan')
         }
       } finally {
         if (!isPolling) setMessagesLoading(false)
@@ -627,6 +641,65 @@ function AdminChatContent() {
     },
     []
   )
+
+  // Auto-initiate room when accessed via orderId (e.g. from After Sales Returns "Chat Pembeli")
+  const autoInitOrderIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!paramOrderId || !isAllowed) return
+    if (autoInitOrderIdRef.current === paramOrderId) return
+
+    const hasMatch = rooms.some(
+      (r) =>
+        (paramRoomId && r.id === paramRoomId) ||
+        r.orderId === paramOrderId ||
+        r.order?.id === paramOrderId ||
+        r.order?.orderNumber === paramOrderId
+    )
+    if (hasMatch) return
+
+    autoInitOrderIdRef.current = paramOrderId
+    fetch('/api/admin/chat/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: paramOrderId,
+        returnId: paramReturnId || undefined,
+        returnReason: paramReturnReason || undefined,
+        returnStatus: paramReturnStatus || undefined,
+        returnType: paramReturnType || undefined,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.room) {
+          setRooms((prev) => {
+            const exists = prev.some((r) => r.id === data.room.id)
+            if (exists) {
+              return prev.map((r) =>
+                r.id === data.room.id ? { ...r, ...data.room } : r
+              )
+            }
+            return [data.room, ...prev]
+          })
+          setSelectedRoom(data.room)
+          setShowChatOnMobile(true)
+          fetchMessages(data.room.id)
+        }
+      })
+      .catch((err) => {
+        console.warn('Non-fatal error initializing order room from URL:', err)
+      })
+  }, [
+    paramOrderId,
+    paramRoomId,
+    paramReturnId,
+    paramReturnReason,
+    paramReturnStatus,
+    paramReturnType,
+    rooms,
+    isAllowed,
+    fetchMessages,
+  ])
 
   // Background rooms polling every 2s for live conversation updates
   useEffect(() => {
@@ -874,6 +947,16 @@ function AdminChatContent() {
       ) {
         const firstItem = selectedRoom.order.items?.[0]
         const firstProduct = (firstItem as any)?.product
+        const retReq =
+          (selectedRoom.order as any)?.returnRequests?.[0] ||
+          (paramReturnId
+            ? {
+                id: paramReturnId,
+                reason: paramReturnReason,
+                status: paramReturnStatus,
+                type: paramReturnType,
+              }
+            : null)
         setActiveOrderContext({
           orderId: selectedRoom.order.id,
           orderNumber: selectedRoom.order.orderNumber,
@@ -883,6 +966,17 @@ function AdminChatContent() {
             firstProduct?.name || (firstItem as any)?.name || 'Unit Gadget',
           productImage: firstProduct?.images?.[0] || null,
           productPrice: (firstItem as any)?.price || 0,
+          returnRequest: retReq
+            ? {
+                id: retReq.id,
+                status: retReq.status,
+                reason:
+                  retReq.reasonLabel ||
+                  retReq.reason ||
+                  'Klaim Garansi / Retur',
+                type: retReq.type || 'REFUND',
+              }
+            : null,
         })
         return
       }
@@ -900,6 +994,18 @@ function AdminChatContent() {
           productName: match.productName || 'Unit Gadget',
           productImage: null,
           productPrice: match.total || 0,
+          returnRequest:
+            match.isReturn || paramReturnId
+              ? {
+                  id: paramReturnId || undefined,
+                  status: match.returnStatus || paramReturnStatus || 'PENDING',
+                  reason:
+                    match.returnReason ||
+                    paramReturnReason ||
+                    'Klaim Garansi / Retur',
+                  type: paramReturnType || 'REFUND',
+                }
+              : null,
         })
         return
       }
@@ -914,6 +1020,16 @@ function AdminChatContent() {
           if (found) {
             const firstItem = found.items?.[0]
             const firstProduct = (firstItem as any)?.product
+            const retReq =
+              found.returnRequests?.[0] ||
+              (paramReturnId
+                ? {
+                    id: paramReturnId,
+                    reason: paramReturnReason,
+                    status: paramReturnStatus,
+                    type: paramReturnType,
+                  }
+                : null)
             setActiveOrderContext({
               orderId: found.id,
               orderNumber: found.orderNumber,
@@ -923,6 +1039,17 @@ function AdminChatContent() {
                 firstProduct?.name || (firstItem as any)?.name || 'Unit Gadget',
               productImage: firstProduct?.images?.[0] || null,
               productPrice: (firstItem as any)?.price || 0,
+              returnRequest: retReq
+                ? {
+                    id: retReq.id,
+                    status: retReq.status,
+                    reason:
+                      retReq.reasonLabel ||
+                      retReq.reason ||
+                      'Klaim Garansi / Retur',
+                    type: retReq.type || 'REFUND',
+                  }
+                : null,
             })
           }
         })
@@ -931,7 +1058,15 @@ function AdminChatContent() {
       // Navbar access or standard room change without ?orderId= -> No context staged
       setActiveOrderContext(null)
     }
-  }, [paramOrderId, selectedRoom, conversationOrderContexts])
+  }, [
+    paramOrderId,
+    paramReturnId,
+    paramReturnReason,
+    paramReturnStatus,
+    paramReturnType,
+    selectedRoom,
+    conversationOrderContexts,
+  ])
 
   // Back to room list on mobile
   const handleBackToList = () => {
@@ -955,28 +1090,51 @@ function AdminChatContent() {
     if (!selectedRoom) return
     if (type === 'text' && !messageInput.trim() && !activeOrderContext) return
 
-    // If activeOrderContext is present when user sends text/caption, automatically send order card with typed message as caption (note)
+    // If activeOrderContext is present when user sends text/caption, automatically send order / return card with typed message as caption (note)
     if (type === 'text' && activeOrderContext) {
       const caption = messageInput.trim()
-      const payload = {
-        type: 'order_reference',
-        orderId: activeOrderContext.orderId,
-        orderNumber: activeOrderContext.orderNumber,
-        status: activeOrderContext.status,
-        total: activeOrderContext.total,
-        productName: activeOrderContext.productName,
-        productImage: activeOrderContext.productImage,
-        productPrice: activeOrderContext.productPrice,
-        note: caption || undefined,
-      }
+      const isReturn = Boolean(activeOrderContext.returnRequest)
+      const payload = isReturn
+        ? {
+            type: 'return_reference',
+            orderId: activeOrderContext.orderId,
+            orderNumber: activeOrderContext.orderNumber,
+            productName: activeOrderContext.productName,
+            productImage: activeOrderContext.productImage,
+            productPrice: activeOrderContext.productPrice,
+            orderTotal: activeOrderContext.total,
+            returnId: activeOrderContext.returnRequest?.id || null,
+            returnReason:
+              activeOrderContext.returnRequest?.reason ||
+              'Klaim Garansi / Retur',
+            returnStatus: activeOrderContext.returnRequest?.status || 'PENDING',
+            returnType: activeOrderContext.returnRequest?.type || 'REFUND',
+            note: caption || undefined,
+          }
+        : {
+            type: 'order_reference',
+            orderId: activeOrderContext.orderId,
+            orderNumber: activeOrderContext.orderNumber,
+            status: activeOrderContext.status,
+            total: activeOrderContext.total,
+            productName: activeOrderContext.productName,
+            productImage: activeOrderContext.productImage,
+            productPrice: activeOrderContext.productPrice,
+            note: caption || undefined,
+          }
       setActiveOrderContext(null)
       setMessageInput('')
       if (typeof window !== 'undefined' && window.history) {
         const url = new URL(window.location.href)
         url.searchParams.delete('orderId')
+        url.searchParams.delete('returnId')
         window.history.replaceState(null, '', url.toString())
       }
-      return handleSendMessage('order_reference', null, payload)
+      return handleSendMessage(
+        isReturn ? 'return_reference' : 'order_reference',
+        null,
+        payload
+      )
     }
 
     const contentToSend =
@@ -1610,46 +1768,59 @@ function AdminChatContent() {
     )
   }
 
-  // Filtered rooms based on search and status
-  const filteredRooms = rooms.filter((room) => {
-    const matchSearch =
-      searchQuery === '' ||
-      (room.customer.name &&
-        room.customer.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (room.customer.phone && room.customer.phone.includes(searchQuery)) ||
-      (room.order &&
-        room.order.orderNumber
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()))
+  // Filtered rooms based on search and status (with defensive deduplication per customer + store)
+  const filteredRooms = useMemo(() => {
+    const matched = rooms.filter((room) => {
+      const matchSearch =
+        searchQuery === '' ||
+        (room.customer.name &&
+          room.customer.name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())) ||
+        (room.customer.phone && room.customer.phone.includes(searchQuery)) ||
+        (room.order &&
+          room.order.orderNumber
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()))
 
-    if (!matchSearch) return false
+      if (!matchSearch) return false
 
-    if (roomFilter === 'UNREAD') {
-      const incomingUnread = (room._count?.messages || 0) > 0
-      const latestMsgUnread =
-        room.messages?.[0] && room.messages[0].isRead === false
-      const roomTotalUnread = ((room as any).totalUnread || 0) > 0
-      return incomingUnread || latestMsgUnread || roomTotalUnread
-    }
-    if (roomFilter === 'ORDER') {
-      return !!room.order || !!(room as any).hasOrder
-    }
-    if (roomFilter === 'STORE_HELP') {
-      return (
-        room.isStoreAdminUser ||
-        room.customer.role === 'STORE_ADMIN' ||
-        room.customer.role === 'STORE_SALES'
-      )
-    }
-    if (roomFilter === 'CUSTOMER_CS') {
-      return (
-        !room.storeId &&
-        room.customer.role !== 'STORE_ADMIN' &&
-        room.customer.role !== 'STORE_SALES'
-      )
-    }
-    return true
-  })
+      if (roomFilter === 'UNREAD') {
+        const incomingUnread = (room._count?.messages || 0) > 0
+        const latestMsgUnread =
+          room.messages?.[0] && room.messages[0].isRead === false
+        const roomTotalUnread = ((room as any).totalUnread || 0) > 0
+        return incomingUnread || latestMsgUnread || roomTotalUnread
+      }
+      if (roomFilter === 'ORDER') {
+        return !!room.order || !!(room as any).hasOrder
+      }
+      if (roomFilter === 'STORE_HELP') {
+        return (
+          room.isStoreAdminUser ||
+          room.customer.role === 'STORE_ADMIN' ||
+          room.customer.role === 'STORE_SALES'
+        )
+      }
+      if (roomFilter === 'CUSTOMER_CS') {
+        return (
+          !room.storeId &&
+          room.customer.role !== 'STORE_ADMIN' &&
+          room.customer.role !== 'STORE_SALES'
+        )
+      }
+      return true
+    })
+
+    // Deduplikasi defensif: 1 customer + 1 toko/CS context = 1 kartu percakapan di sidebar
+    const seen = new Set<string>()
+    return matched.filter((room) => {
+      const key = `${room.customerId}_${room.storeId || 'CS'}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [rooms, searchQuery, roomFilter])
 
   const isSelectedStoreHelpChat =
     !!selectedRoom &&
@@ -2286,45 +2457,88 @@ function AdminChatContent() {
 
               {/* Bottom Message Input Bar */}
               <div className="w-full max-w-full shrink-0 space-y-2 border-t border-slate-200/80 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] dark:border-slate-800 dark:bg-slate-900 sm:p-3.5 sm:pb-3.5">
-                {/* Contextual Active Order Banner above Input */}
+                {/* Contextual Active Order / Return Banner above Input */}
                 {activeOrderContext && (
-                  <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 p-2.5 dark:border-blue-900/40 dark:bg-blue-950/30">
+                  <div
+                    className={`flex w-full min-w-0 items-center justify-between gap-3 rounded-2xl border p-2.5 ${
+                      activeOrderContext.returnRequest
+                        ? 'border-purple-200/80 bg-gradient-to-r from-purple-50/90 via-orange-50/40 to-white dark:border-purple-900/40 dark:from-purple-950/40 dark:via-slate-900 dark:to-slate-900'
+                        : 'border-blue-100 bg-blue-50/80 dark:border-blue-900/40 dark:bg-blue-950/30'
+                    }`}
+                  >
                     <div className="flex min-w-0 items-center gap-2.5">
                       {activeOrderContext.productImage ? (
                         <img
                           src={activeOrderContext.productImage}
                           alt=""
-                          className="h-10 w-10 shrink-0 rounded-xl border border-blue-200/80 bg-white object-cover"
+                          className={`h-10 w-10 shrink-0 rounded-xl border bg-white object-cover ${
+                            activeOrderContext.returnRequest
+                              ? 'border-purple-200 dark:border-purple-800'
+                              : 'border-blue-200/80 dark:border-blue-800'
+                          }`}
                         />
                       ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/50">
-                          <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                            activeOrderContext.returnRequest
+                              ? 'bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400'
+                              : 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400'
+                          }`}
+                        >
+                          {activeOrderContext.returnRequest ? (
+                            <RotateCcw className="h-5 w-5" />
+                          ) : (
+                            <Package className="h-5 w-5" />
+                          )}
                         </div>
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400">
-                            Membahas Pesanan:
+                          <span
+                            className={`text-[10px] font-black uppercase ${
+                              activeOrderContext.returnRequest
+                                ? 'text-purple-700 dark:text-purple-300'
+                                : 'text-blue-600 dark:text-blue-400'
+                            }`}
+                          >
+                            {activeOrderContext.returnRequest
+                              ? 'Membahas Pengajuan Retur:'
+                              : 'Membahas Pesanan:'}
                           </span>
                           <span className="truncate font-mono text-xs font-bold text-slate-900 dark:text-white">
                             #{activeOrderContext.orderNumber}
                           </span>
-                          {statusConfig[activeOrderContext.status] && (
+                          {activeOrderContext.returnRequest?.status ? (
+                            <span className="py-0.2 rounded bg-purple-100 px-1.5 text-[9.5px] font-bold text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                              {activeOrderContext.returnRequest.status ===
+                              'APPROVED'
+                                ? 'Disetujui'
+                                : activeOrderContext.returnRequest.status ===
+                                    'REJECTED'
+                                  ? 'Ditolak'
+                                  : 'Menunggu Verifikasi'}
+                            </span>
+                          ) : statusConfig[activeOrderContext.status] ? (
                             <span className="py-0.2 rounded bg-blue-100 px-1.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
                               {statusConfig[activeOrderContext.status].label}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                         <div className="flex items-center gap-2 text-[11px]">
                           <span className="truncate text-slate-600 dark:text-slate-300">
                             {activeOrderContext.productName}
                           </span>
-                          {activeOrderContext.total > 0 && (
+                          {activeOrderContext.returnRequest?.reason ? (
+                            <span className="truncate font-semibold text-purple-700 dark:text-purple-300">
+                              • Kendala:{' '}
+                              {activeOrderContext.returnRequest.reason}
+                            </span>
+                          ) : activeOrderContext.total > 0 ? (
                             <span className="font-mono font-bold text-slate-900 dark:text-white">
                               • Rp{' '}
                               {activeOrderContext.total.toLocaleString('id-ID')}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -2332,11 +2546,27 @@ function AdminChatContent() {
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button
                         type="button"
+                        onClick={() => handleSendMessage('text')}
+                        className={`shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-[10.5px] font-bold text-white transition ${
+                          activeOrderContext.returnRequest
+                            ? 'bg-purple-600 hover:bg-purple-700'
+                            : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
+                      >
+                        <span>
+                          {activeOrderContext.returnRequest
+                            ? 'Kirim Kartu Retur'
+                            : 'Kirim Kartu Order'}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => {
                           setActiveOrderContext(null)
                           if (typeof window !== 'undefined' && window.history) {
                             const url = new URL(window.location.href)
                             url.searchParams.delete('orderId')
+                            url.searchParams.delete('returnId')
                             window.history.replaceState(
                               null,
                               '',
@@ -2423,9 +2653,11 @@ function AdminChatContent() {
                       placeholder={
                         isSelectedStoreHelpChat
                           ? 'Tulis pesan bantuan ke Superadmin...'
-                          : activeOrderContext
-                            ? `Ketik caption untuk pesanan #${activeOrderContext.orderNumber}... (Enter untuk kirim)`
-                            : 'Tulis balasan untuk customer...'
+                          : activeOrderContext?.returnRequest
+                            ? `Ketik pesan untuk pengajuan retur #${activeOrderContext.orderNumber}... (Enter untuk kirim)`
+                            : activeOrderContext
+                              ? `Ketik caption untuk pesanan #${activeOrderContext.orderNumber}... (Enter untuk kirim)`
+                              : 'Tulis balasan untuk customer...'
                       }
                       className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />

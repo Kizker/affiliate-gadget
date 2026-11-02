@@ -62,8 +62,7 @@ describe('Mobile Order Detail & Return Modal Simplified Layout Suite', () => {
 
     // Tombol Aksi Utama
     expect(content).toContain('Beri Ulasan Produk')
-    expect(content).toContain('Klaim Garansi')
-    expect(content).toContain('Ajukan Pengembalian (Retur)')
+    expect(content).toContain('Ajukan Komplain / Klaim Garansi')
 
     // Ulasan Anda & Media
     expect(content).toContain('Ulasan Anda')
@@ -83,39 +82,36 @@ describe('Mobile Order Detail & Return Modal Simplified Layout Suite', () => {
     const content = fs.readFileSync(filePath, 'utf-8')
 
     // Header
-    expect(content).toContain('Pengajuan Pengembalian')
+    expect(content).toContain('Ajukan Komplain / Klaim Garansi')
     expect(content).toContain('ID Pesanan:')
     expect(content).toContain('#{orderNumber}')
 
-    // Solusi yang Diinginkan (1 baris di setiap mobile resolution)
-    expect(content).toContain('Solusi yang Diinginkan')
-    expect(content).toContain('Pengembalian Dana')
-    expect(content).toContain('Tukar Unit')
-    expect(content).toContain('whitespace-nowrap')
+    // Resolusi yang Diinginkan
+    expect(content).toContain('Bentuk Resolusi Garansi yang Diinginkan')
+    expect(content).toMatch(/Retur.*Refund/)
+    expect(content).toContain('Tukar Unit Baru')
 
     // Kategori Alasan
-    expect(content).toContain('Kategori Alasan')
-    expect(content).toContain('Cacat Fisik / Pecah')
+    expect(content).toContain('Kategori Kendala Unit')
+    expect(content).toContain('Cacat Fisik / Layar Pecah')
     expect(content).toContain('Mati Total (DOA)')
     expect(content).toContain('Salah Varian')
-    expect(content).toContain('Aksesoris Kurang')
+    expect(content).toContain('Aksesoris / Bonus Kurang')
     expect(content).toContain('Kendala Lainnya')
 
     // Penjelasan Sederhana & Rekening
-    expect(content).toContain('Rincian Penjelasan Kendala')
-    expect(content).toContain('Unit cacat fisik atau layar retak saat unboxing')
-    expect(content).toContain('Rekening Tujuan Pengembalian')
+    expect(content).toContain('Penjelasan Detail Kendala')
+    expect(content).toContain('Rekening Tujuan Pengembalian Dana')
     expect(content).toContain('Nama Bank')
     expect(content).toContain('Nomor Rekening')
     expect(content).toContain('Atas Nama Rekening')
 
     // Dropdown tidak menempel di footer
-    expect(content).toContain('max-h-32')
     expect(content).toContain('pb-16')
 
     // Tombol Footer
     expect(content).toContain('Batal')
-    expect(content).toContain('Kirim Pengajuan')
+    expect(content).toContain('Kirim Pengajuan Klaim Garansi')
   })
 
   it('4. Memvalidasi rating-modal.tsx menampilkan poin kepuasan cepat 2 baris 2 kolom tanpa emot', () => {

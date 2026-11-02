@@ -217,7 +217,9 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
       ? order.returnRequests[0]
       : null
 
-  const [returnCourier] = useState(latestReturnRequest?.returnCourier || 'JNE')
+  const [returnCourier, setReturnCourier] = useState(
+    latestReturnRequest?.returnCourier || 'JNE'
+  )
   const [returnTrackingNumber, setReturnTrackingNumber] = useState(
     latestReturnRequest?.returnTrackingNumber || ''
   )
@@ -439,6 +441,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             latestComplaint={latestComplaint}
             returnTrackingNumber={returnTrackingNumber}
             setReturnTrackingNumber={setReturnTrackingNumber}
+            returnCourier={returnCourier}
+            setReturnCourier={setReturnCourier}
             handleSaveReturnTracking={handleSaveReturnTracking}
             isSavingReturnTracking={isSavingReturnTracking}
             onOpenResiModal={handleOpenResiModal}
@@ -480,6 +484,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 latestReturnRequest={latestReturnRequest}
                 returnTrackingNumber={returnTrackingNumber}
                 setReturnTrackingNumber={setReturnTrackingNumber}
+                returnCourier={returnCourier}
+                setReturnCourier={setReturnCourier}
                 handleSaveReturnTracking={handleSaveReturnTracking}
                 isSavingReturnTracking={isSavingReturnTracking}
                 onOpenResiModal={handleOpenResiModal}

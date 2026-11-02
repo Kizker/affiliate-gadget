@@ -23,7 +23,11 @@ export async function GET(
           include: {
             items: {
               include: {
-                product: true,
+                product: {
+                  include: {
+                    variants: true,
+                  },
+                },
                 service: true,
               },
             },
@@ -92,7 +96,11 @@ export async function PUT(
             },
             items: {
               include: {
-                product: true,
+                product: {
+                  include: {
+                    variants: true,
+                  },
+                },
                 rentalItem: true,
                 service: true,
               },
@@ -199,11 +207,14 @@ export async function PUT(
 
     // Superadmin Decision Action: APPROVE or REJECT
     if (body.action === 'APPROVE' || body.action === 'REJECT') {
-      if (session.user.role !== 'SUPER_ADMIN') {
+      if (
+        session.user.role !== 'SUPER_ADMIN' &&
+        session.user.role !== 'AFTER_SALES'
+      ) {
         return NextResponse.json(
           {
             error:
-              'Persetujuan atau penolakan pengembalian hanya dapat dilakukan oleh Superadmin',
+              'Persetujuan atau penolakan pengembalian hanya dapat dilakukan oleh After Sales atau Superadmin',
           },
           { status: 403 }
         )
@@ -214,12 +225,12 @@ export async function PUT(
         where: { id },
         data: {
           status: isApprove ? 'APPROVED' : 'REJECTED',
-          resolvedAt: new Date(),
+          resolvedAt: isApprove ? null : new Date(),
           storeResponse: isApprove
             ? body.adminNotes ||
-              'Pengajuan pengembalian telah disetujui oleh Superadmin.'
+              'Pengajuan retur telah disetujui After Sales. Silakan kemas unit dan kirimkan ke alamat toko cabang yang tertera.'
             : body.rejectionReason ||
-              'Pengajuan pengembalian ditolak oleh Superadmin.',
+              'Pengajuan pengembalian ditolak oleh After Sales.',
         },
         include: {
           order: true,
@@ -234,11 +245,11 @@ export async function PUT(
             userId: existing.userId,
             type: 'COMPLAINT_RESOLVED',
             title: isApprove
-              ? 'Pengajuan Pengembalian Disetujui'
-              : 'Pengajuan Pengembalian Ditolak',
+              ? 'Pengajuan Retur Disetujui'
+              : 'Pengajuan Retur Ditolak',
             message: isApprove
-              ? `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} telah DISETUJUI oleh Superadmin.`
-              : `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} DITOLAK oleh Superadmin: ${body.rejectionReason || 'Tidak memenuhi kriteria'}`,
+              ? `Pengajuan retur untuk pesanan #${existing.order.orderNumber} telah DISETUJUI oleh After Sales. Silakan kirimkan unit fisik gadget ke alamat toko cabang tujuan yang tertera di detail pesanan.`
+              : `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} DITOLAK oleh After Sales: ${body.rejectionReason || 'Tidak memenuhi kriteria'}`,
             link: `/dashboard/customer/orders/${existing.orderId}`,
           },
         })
@@ -275,11 +286,177 @@ export async function PUT(
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       if (returnCourier !== undefined) updateData.returnCourier = returnCourier
-      if (returnTrackingNumber !== undefined)
+      if (returnTrackingNumber !== undefined) {
         updateData.returnTrackingNumber = returnTrackingNumber
+        updateData.status = 'IN_REVIEW' // Paket retur sedang dalam perjalanan & menunggu penerimaan fisik/QC
+
+        // Kirim notifikasi ke Admin After Sales grup cabang terkait
+        const storeWithGroup = existing.order?.storeId
+          ? await prisma.store.findUnique({
+              where: { id: existing.order.storeId },
+              include: {
+                group: {
+                  include: {
+                    afterSalesUser: { select: { id: true } },
+                  },
+                },
+              },
+            })
+          : null
+
+        const targetAfterSalesId = storeWithGroup?.group?.afterSalesUser?.id
+
+        const allAfterSales = targetAfterSalesId
+          ? [{ id: targetAfterSalesId }]
+          : await prisma.user.findMany({
+              where: { role: 'AFTER_SALES', isActive: true },
+              select: { id: true },
+            })
+
+        for (const asUser of allAfterSales) {
+          await prisma.notification
+            .create({
+              data: {
+                userId: asUser.id,
+                type: 'ORDER_STATUS_CHANGED',
+                title: 'Unit Retur Dikirim oleh Pembeli',
+                message: `Pembeli pesanan #${existing.order.orderNumber} telah menginput nomor resi pengiriman balik: ${returnTrackingNumber} (${returnCourier || 'Ekspedisi'}). Paket fisik sedang menuju Service Center/Toko untuk QC.`,
+                link: `/dashboard/after-sales/returns`,
+              },
+            })
+            .catch(() => {})
+        }
+      }
     } else {
-      // Admins & Store Admins handle functional resolution actions
+      if (
+        session.user.role === 'STORE_ADMIN' ||
+        session.user.role === 'STORE_SALES'
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'Admin Toko Cabang tidak memiliki wewenang mengelola klaim garansi dan retur. Seluruh klaim dieksekusi oleh Admin After Sales.',
+          },
+          { status: 403 }
+        )
+      }
+
+      // After Sales, Superadmin, and Admin handle functional resolution actions
       if (resolutionAction === 'REPLACEMENT') {
+        // 0. Validasi & Pengurangan Stok Unit Pengganti di Toko Cabang Pengirim
+        const productItems = (existing.order?.items || []).filter(
+          (item) => item.productId && item.product
+        )
+
+        for (const item of productItems) {
+          const requiredQty = item.quantity || 1
+          const prod = item.product!
+          let hasStock = false
+          let currentStock = 0
+          let targetVariantName = item.variantName || 'Standar'
+
+          if (
+            item.variantId &&
+            Array.isArray(prod.variants) &&
+            prod.variants.length > 0
+          ) {
+            const matchedVariant = prod.variants.find(
+              (v) => v.id === item.variantId
+            )
+            if (matchedVariant) {
+              currentStock = matchedVariant.stock
+              targetVariantName = matchedVariant.name || targetVariantName
+              hasStock = matchedVariant.stock >= requiredQty
+            } else {
+              currentStock = prod.stock
+              hasStock = prod.stock >= requiredQty
+            }
+          } else {
+            currentStock = prod.stock
+            hasStock = prod.stock >= requiredQty
+          }
+
+          if (!hasStock) {
+            return NextResponse.json(
+              {
+                error: `Stok unit baru "${prod.name} (${targetVariantName})" di toko ${existing.order.store?.name || 'cabang'} tidak mencukupi (Sisa stok: ${currentStock} unit, dibutuhkan: ${requiredQty} unit). Harap lakukan restock unit toko terlebih dahulu atau alihkan ke opsi Retur & Refund.`,
+              },
+              { status: 400 }
+            )
+          }
+
+          // Kurangi stok varian jika ada
+          if (item.variantId) {
+            await prisma.productVariant
+              .update({
+                where: { id: item.variantId },
+                data: { stock: { decrement: requiredQty } },
+              })
+              .catch((err) => {
+                console.warn('Non-fatal variant stock decrement error:', err)
+              })
+          }
+
+          // Kurangi stok master produk
+          await prisma.product.update({
+            where: { id: prod.id },
+            data: { stock: { decrement: requiredQty } },
+          })
+
+          // Catat mutasi inventori di AuditLog
+          await prisma.auditLog
+            .create({
+              data: {
+                userId: session.user.id,
+                action: 'INVENTORY_DEDUCT_REPLACEMENT',
+                entityType: 'ORDER',
+                entityId: existing.orderId,
+                details: {
+                  orderNumber: existing.order.orderNumber,
+                  returnId: existing.id,
+                  storeId: existing.order.storeId,
+                  storeName: existing.order.store?.name,
+                  productId: prod.id,
+                  productName: prod.name,
+                  variantId: item.variantId,
+                  variantName: targetVariantName,
+                  quantityDeducted: requiredQty,
+                  previousStock: currentStock,
+                  remainingStock: currentStock - requiredQty,
+                  reason:
+                    'Pengeluaran unit baru pengganti retur garansi 30 hari',
+                },
+              },
+            })
+            .catch(() => {})
+        }
+
+        // Notifikasi ke staf/admin toko cabang tentang pemotongan stok untuk retur garansi
+        if (existing.order?.storeId) {
+          const storeStaff = await prisma.user.findMany({
+            where: {
+              storeId: existing.order.storeId,
+              role: { in: ['STORE_ADMIN', 'STORE_SALES'] },
+              isActive: true,
+            },
+            select: { id: true },
+          })
+
+          for (const staff of storeStaff) {
+            await prisma.notification
+              .create({
+                data: {
+                  userId: staff.id,
+                  type: 'ORDER_STATUS_CHANGED',
+                  title: 'Stok Berkurang: Unit Pengganti Retur Diproses',
+                  message: `Admin After Sales telah memproses unit baru pengganti untuk pesanan #${existing.order.orderNumber}. 1 unit telah otomatis dipotong dari inventori toko cabang.`,
+                  link: `/dashboard/admin/orders?search=${existing.order.orderNumber}`,
+                },
+              })
+              .catch(() => {})
+          }
+        }
+
         // 1. Ganti Unit Baru: Mulai dari awal pengiriman lagi dan bisa dilacak via Biteship
         const selectedCourier = (
           replacementCourier ||
@@ -747,3 +924,5 @@ export async function PUT(
     )
   }
 }
+
+export const PATCH = PUT

@@ -1,9 +1,20 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, ChevronDown, Check, Loader2 } from 'lucide-react'
+import {
+  X,
+  ChevronDown,
+  Check,
+  Loader2,
+  Upload,
+  Play,
+  Trash2,
+  Image as ImageIcon,
+  ShieldCheck,
+  Video,
+} from 'lucide-react'
 import { toast } from 'sonner'
-
+import { processMediaUploadFile } from '@/lib/media-upload-client'
 import { calculateNetRefundAmount } from '@/lib/returns/refund-calculator'
 
 interface ReturnModalProps {
@@ -22,28 +33,37 @@ interface ReturnModalProps {
 const COMMON_REASONS = [
   {
     id: 'CACAT_FISIK',
-    label: 'Cacat Fisik / Pecah',
-    fullText: 'Unit cacat fisik atau layar retak saat unboxing',
+    label: 'Cacat Fisik / Layar Pecah',
+    fullText:
+      'Unit mengalami cacat fisik, baret dalam, atau layar retak saat unboxing',
   },
   {
     id: 'MATI_TOTAL',
     label: 'Mati Total (DOA)',
-    fullText: 'Unit mati total dan tidak bisa menyala',
+    fullText:
+      'Unit mati total dan tidak bisa dinyalakan atau tidak mengisi daya',
   },
   {
     id: 'SALAH_VARIAN',
-    label: 'Salah Varian',
-    fullText: 'Varian warna atau memori tidak sesuai pesanan',
+    label: 'Salah Varian / Warna / Memori',
+    fullText:
+      'Varian warna, kapasitas RAM, atau memori penyimpanan tidak sesuai pesanan',
+  },
+  {
+    id: 'FUNGSI_RUSAK',
+    label: 'Kerusakan Komponen / Fungsi',
+    fullText:
+      'Kendala fungsi kamera, speaker, wifi, sinyal, atau touchscreen error',
   },
   {
     id: 'AKSESORIS_KURANG',
-    label: 'Aksesoris Kurang',
-    fullText: 'Aksesoris atau bonus tidak lengkap',
+    label: 'Aksesoris / Bonus Kurang',
+    fullText: 'Aksesoris kelengkapan atau paket bonus 3-in-1 tidak lengkap',
   },
   {
     id: 'LAINNYA',
     label: 'Kendala Lainnya',
-    fullText: 'Ada kendala fungsi pada unit',
+    fullText: 'Ada kendala spesifik lainnya pada unit gadget yang diterima',
   },
 ]
 
@@ -77,6 +97,12 @@ export function ReturnModal({
   const [selectedPreset, setSelectedPreset] = useState<string>('CACAT_FISIK')
   const [reasonLabel, setReasonLabel] = useState(COMMON_REASONS[0].label)
   const [description, setDescription] = useState(COMMON_REASONS[0].fullText)
+
+  // Media proof state (Photos & Video)
+  const [images, setImages] = useState<string[]>([])
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Bank details for REFUND
   const [bankName, setBankName] = useState('BCA')
@@ -123,6 +149,79 @@ export function ReturnModal({
     setDescription(preset.fullText)
   }
 
+  // Handle media file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const totalAllowed = 5
+    if (images.length + files.length > totalAllowed) {
+      toast.error(`Maksimal ${totalAllowed} foto bukti yang dapat diunggah.`)
+      return
+    }
+
+    setUploading(true)
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const isVideo =
+          file.type.startsWith('video/') ||
+          file.name.toLowerCase().endsWith('.mp4')
+
+        // Validasi dan kompresi otomatis
+        let fileToUpload = file
+        try {
+          fileToUpload = await processMediaUploadFile(file)
+          if (!isVideo && file.size > 2 * 1024 * 1024) {
+            toast.info(
+              `Foto "${file.name}" otomatis dikompres ke ukuran optimal (< 2 MB).`
+            )
+          }
+        } catch (validationErr: any) {
+          toast.error(
+            validationErr.message || `File "${file.name}" tidak valid`
+          )
+          continue
+        }
+
+        const formData = new FormData()
+        formData.append('file', fileToUpload)
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || 'Upload gagal')
+        }
+
+        const data = await res.json()
+        if (isVideo) {
+          setVideoUrl(data.url)
+          toast.success('Video unboxing berhasil diunggah')
+        } else {
+          setImages((prev) => [...prev, data.url])
+          toast.success('Foto bukti cacat berhasil diunggah')
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal upload media bukti')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const removeVideo = () => {
+    setVideoUrl(null)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -157,6 +256,8 @@ export function ReturnModal({
           reason: selectedPreset,
           reasonLabel,
           description,
+          images,
+          videoUrl,
           bankName: returnType === 'REFUND' ? bankName : null,
           bankAccountNumber: returnType === 'REFUND' ? bankAccountNumber : null,
           bankAccountName: returnType === 'REFUND' ? bankAccountName : null,
@@ -167,11 +268,13 @@ export function ReturnModal({
 
       if (!res.ok) {
         throw new Error(
-          data.error || 'Gagal mengirimkan pengajuan pengembalian'
+          data.error || 'Gagal mengirimkan pengajuan komplain & klaim garansi'
         )
       }
 
-      toast.success('Pengajuan pengembalian berhasil dikirim ke pihak toko!')
+      toast.success(
+        'Pengajuan komplain & klaim garansi berhasil dikirim ke Admin After Sales Terpusat!'
+      )
       if (onSuccess) onSuccess()
       onClose()
     } catch (error: any) {
@@ -190,14 +293,18 @@ export function ReturnModal({
         {/* Header */}
         <div className="flex shrink-0 items-start justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Pengajuan Pengembalian
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4 text-orange-500" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Ajukan Komplain / Klaim Garansi
+              </h3>
+            </div>
             <p className="mt-0.5 text-xs text-slate-400">
               ID Pesanan:{' '}
               <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
                 #{orderNumber}
-              </span>
+              </span>{' '}
+              • Garansi 30 Hari
             </p>
           </div>
 
@@ -217,33 +324,39 @@ export function ReturnModal({
           className="flex flex-1 flex-col overflow-hidden"
         >
           <div className="no-scrollbar flex-1 space-y-4 overflow-y-auto px-5 py-4 pb-16 text-xs">
-            {/* 1. Solusi yang Diinginkan */}
+            {/* 1. Bentuk Resolusi Akhir */}
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-800 dark:text-white">
-                Solusi yang Diinginkan
+                Bentuk Resolusi Garansi yang Diinginkan
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setReturnType('REFUND')}
-                  className={`cursor-pointer whitespace-nowrap rounded-xl px-1 py-2 text-center text-[11px] font-semibold transition sm:text-xs ${
+                  className={`cursor-pointer rounded-xl p-2.5 text-left text-[11px] font-semibold transition sm:text-xs ${
                     returnType === 'REFUND'
-                      ? 'border-2 border-orange-500 bg-white font-bold text-orange-500'
-                      : 'border border-slate-200 bg-white font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      ? 'border-2 border-orange-500 bg-orange-50/40 font-bold text-orange-600 dark:bg-orange-950/20 dark:text-orange-400'
+                      : 'border border-slate-200 bg-white font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
                   }`}
                 >
-                  Pengembalian Dana
+                  <p className="font-bold">1. Retur &amp; Refund</p>
+                  <p className="mt-0.5 text-[10px] font-normal text-slate-500">
+                    Pengembalian dana ke rekening bank
+                  </p>
                 </button>
                 <button
                   type="button"
                   onClick={() => setReturnType('REPLACEMENT')}
-                  className={`cursor-pointer whitespace-nowrap rounded-xl px-1 py-2 text-center text-[11px] font-semibold transition sm:text-xs ${
+                  className={`cursor-pointer rounded-xl p-2.5 text-left text-[11px] font-semibold transition sm:text-xs ${
                     returnType === 'REPLACEMENT'
-                      ? 'border-2 border-orange-500 bg-white font-bold text-orange-500'
-                      : 'border border-slate-200 bg-white font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      ? 'border-2 border-orange-500 bg-orange-50/40 font-bold text-orange-600 dark:bg-orange-950/20 dark:text-orange-400'
+                      : 'border border-slate-200 bg-white font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
                   }`}
                 >
-                  Tukar Unit
+                  <p className="font-bold">2. Tukar Unit Baru</p>
+                  <p className="mt-0.5 text-[10px] font-normal text-slate-500">
+                    Pengiriman unit gadget pengganti
+                  </p>
                 </button>
               </div>
             </div>
@@ -251,159 +364,168 @@ export function ReturnModal({
             {/* 2. Kategori Alasan */}
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-800 dark:text-white">
-                Kategori Alasan
+                Kategori Kendala Unit
               </label>
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPreset(COMMON_REASONS[0])}
-                    className={`cursor-pointer whitespace-nowrap rounded-xl px-1 py-2 text-center text-[11px] font-semibold transition sm:text-xs ${
-                      selectedPreset === COMMON_REASONS[0].id
-                        ? 'border-2 border-orange-500 bg-white font-bold text-orange-500'
-                        : 'border border-slate-200 bg-white font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                    }`}
-                  >
-                    {COMMON_REASONS[0].label}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPreset(COMMON_REASONS[1])}
-                    className={`cursor-pointer whitespace-nowrap rounded-xl px-1 py-2 text-center text-[11px] font-semibold transition sm:text-xs ${
-                      selectedPreset === COMMON_REASONS[1].id
-                        ? 'border-2 border-orange-500 bg-white font-bold text-orange-500'
-                        : 'border border-slate-200 bg-white font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                    }`}
-                  >
-                    {COMMON_REASONS[1].label}
-                  </button>
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
+                  {COMMON_REASONS.slice(0, 4).map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleSelectPreset(preset)}
+                      className={`cursor-pointer rounded-xl px-2.5 py-2 text-center text-[11px] font-semibold transition ${
+                        selectedPreset === preset.id
+                          ? 'border-2 border-orange-500 bg-orange-50 font-bold text-orange-600 dark:bg-orange-950/30 dark:text-orange-400'
+                          : 'border border-slate-200 bg-white font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
                 </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPreset(COMMON_REASONS[2])}
-                    className={`cursor-pointer whitespace-nowrap rounded-xl px-1 py-2 text-center text-[11px] font-semibold transition sm:text-xs ${
-                      selectedPreset === COMMON_REASONS[2].id
-                        ? 'border-2 border-orange-500 bg-white font-bold text-orange-500'
-                        : 'border border-slate-200 bg-white font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                    }`}
-                  >
-                    {COMMON_REASONS[2].label}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPreset(COMMON_REASONS[3])}
-                    className={`cursor-pointer whitespace-nowrap rounded-xl px-1 py-2 text-center text-[11px] font-semibold transition sm:text-xs ${
-                      selectedPreset === COMMON_REASONS[3].id
-                        ? 'border-2 border-orange-500 bg-white font-bold text-orange-500'
-                        : 'border border-slate-200 bg-white font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                    }`}
-                  >
-                    {COMMON_REASONS[3].label}
-                  </button>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {COMMON_REASONS.slice(4).map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleSelectPreset(preset)}
+                      className={`cursor-pointer rounded-xl px-2.5 py-2 text-center text-[11px] font-semibold transition ${
+                        selectedPreset === preset.id
+                          ? 'border-2 border-orange-500 bg-orange-50 font-bold text-orange-600 dark:bg-orange-950/30 dark:text-orange-400'
+                          : 'border border-slate-200 bg-white font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectPreset(COMMON_REASONS[4])}
-                  className={`w-full cursor-pointer whitespace-nowrap rounded-xl px-2 py-2 text-center text-[11px] font-semibold transition sm:text-xs ${
-                    selectedPreset === COMMON_REASONS[4].id
-                      ? 'border-2 border-orange-500 bg-white font-bold text-orange-500'
-                      : 'border border-slate-200 bg-white font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                  }`}
-                >
-                  {COMMON_REASONS[4].label}
-                </button>
               </div>
             </div>
 
-            {/* 3. Rincian Penjelasan Kendala */}
+            {/* 3. Rincian Penjelasan */}
             <div>
-              <label className="mb-2 block text-xs font-bold text-slate-800 dark:text-white">
-                Rincian Penjelasan Kendala
+              <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-white">
+                Penjelasan Detail Kendala
               </label>
               <textarea
-                rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Jelaskan singkat kendala pada unit..."
-                className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-xs leading-relaxed text-slate-700 placeholder-slate-400 outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                placeholder="Jelaskan secara rinci kendala unit cacat fisik, layar, atau fungsi yang terjadi..."
+                className="h-20 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 required
               />
             </div>
 
-            {/* 4. Rekening Tujuan Pengembalian (Only for REFUND) */}
+            {/* 4. Unggah Bukti Cacat Produk (Foto & Video) */}
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 dark:text-white">
+                  Unggah Bukti Cacat Produk (Foto/Video)
+                </label>
+                <span className="text-[10px] text-slate-400">
+                  Maks. 5 Foto &bull; 1 Video
+                </span>
+              </div>
+
+              {/* Upload Trigger Button */}
+              <div className="space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,video/mp4"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                <button
+                  type="button"
+                  disabled={uploading || images.length >= 5}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="active:scale-98 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-orange-300 bg-orange-50/50 py-3 text-xs font-semibold text-orange-600 transition hover:bg-orange-100/60 disabled:opacity-50 dark:border-orange-500/30 dark:bg-orange-950/20 dark:text-orange-400"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Mengunggah bukti cacat...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      <span>Pilih Foto atau Video Bukti Unboxing</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Media Previews Grid */}
+                {(images.length > 0 || videoUrl) && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {/* Images Previews */}
+                    {images.map((imgUrl, idx) => (
+                      <div
+                        key={idx}
+                        className="group relative h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`Bukti ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="absolute right-1 top-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-slate-900/80 text-white transition hover:bg-rose-600"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Video Preview */}
+                    {videoUrl && (
+                      <div className="group relative flex h-16 w-24 items-center justify-center overflow-hidden rounded-xl border border-orange-300 bg-slate-900 text-white">
+                        <Video className="h-5 w-5 text-orange-400" />
+                        <span className="absolute bottom-1 left-1.5 font-mono text-[9px] text-slate-300">
+                          MP4 Video
+                        </span>
+                        <button
+                          type="button"
+                          onClick={removeVideo}
+                          className="absolute right-1 top-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-slate-900/80 text-white transition hover:bg-rose-600"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 5. Rekening Refund (Jika REFUND) */}
             {returnType === 'REFUND' && (
-              <div className="space-y-3">
-                {/* Estimasi Potongan Biaya Operasional & Pengembalian Bersih */}
+              <div className="pt-1">
                 {refundCalc && (
-                  <div>
-                    <label className="mb-2 block text-xs font-bold text-slate-800 dark:text-white">
-                      Rincian Estimasi Pengembalian Dana
-                    </label>
-                    <div className="space-y-2 rounded-2xl border border-orange-100 bg-orange-50/50 p-3.5 dark:border-orange-950/40 dark:bg-orange-950/20">
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        <span>Total Pembayaran Pesanan</span>
-                        <span className="font-mono">
-                          Rp {refundCalc.originalTotal.toLocaleString('id-ID')}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1 border-y border-dashed border-orange-200/80 py-2 text-[11px] text-slate-600 dark:border-orange-900/40 dark:text-slate-400">
-                        <div className="flex items-center justify-between">
-                          <span>• Ongkos Kirim Kurir (Hangus):</span>
-                          <span className="font-mono text-rose-600 dark:text-rose-400">
-                            - Rp{' '}
-                            {refundCalc.shippingCost.toLocaleString('id-ID')}
-                          </span>
-                        </div>
-                        {refundCalc.taxDeduction > 0 && (
-                          <div className="flex items-center justify-between">
-                            <span>• Pajak PPN:</span>
-                            <span className="font-mono text-rose-600 dark:text-rose-400">
-                              - Rp{' '}
-                              {refundCalc.taxDeduction.toLocaleString('id-ID')}
-                            </span>
-                          </div>
+                  <div className="mb-3 rounded-2xl border border-slate-100 bg-[#F8FAFC] p-3 text-xs dark:border-slate-800 dark:bg-slate-800/40">
+                    <p className="font-bold text-slate-800 dark:text-white">
+                      Estimasi Pengembalian Dana:
+                    </p>
+                    <div className="mt-1 flex items-baseline justify-between">
+                      <span className="text-[11px] text-slate-500">
+                        Total Dana Bersih (Escrow):
+                      </span>
+                      <p className="font-mono text-sm font-bold text-orange-600">
+                        Rp{' '}
+                        {Math.round(refundCalc.netRefundAmount).toLocaleString(
+                          'id-ID'
                         )}
-                        {refundCalc.insuranceFee > 0 && (
-                          <div className="flex items-center justify-between">
-                            <span>• Premi Asuransi Kurir Terpakai:</span>
-                            <span className="font-mono text-rose-600 dark:text-rose-400">
-                              - Rp{' '}
-                              {refundCalc.insuranceFee.toLocaleString('id-ID')}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <span>• Biaya Operasional &amp; QC Retur:</span>
-                          <span className="font-mono text-rose-600 dark:text-rose-400">
-                            - Rp{' '}
-                            {refundCalc.operationalFee.toLocaleString('id-ID')}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-0.5 text-xs">
-                        <span className="font-black text-slate-900 dark:text-white">
-                          Estimasi Dana Bersih Dikembalikan:
-                        </span>
-                        <span className="font-mono text-sm font-black text-orange-600 dark:text-orange-400">
-                          Rp{' '}
-                          {refundCalc.netRefundAmount.toLocaleString('id-ID')}
-                        </span>
-                      </div>
-                      <p className="text-[10px] leading-tight text-slate-400">
-                        *Pengembalian dana dipotong ongkos kirim asli, pajak,
-                        serta biaya operasional pengujian teknis gerai cabang.
                       </p>
                     </div>
                   </div>
                 )}
 
                 <label className="mb-2 block text-xs font-bold text-slate-800 dark:text-white">
-                  Rekening Tujuan Pengembalian
+                  Rekening Tujuan Pengembalian Dana
                 </label>
 
                 <div className="space-y-3 rounded-2xl border border-slate-100 bg-[#F8FAFC] p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
@@ -429,7 +551,7 @@ export function ReturnModal({
                     </button>
 
                     {isBankDropdownOpen && (
-                      <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-32 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                      <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-36 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
                         {POPULAR_BANKS.map((b) => (
                           <button
                             key={b.id}
@@ -463,7 +585,7 @@ export function ReturnModal({
                       type="text"
                       value={bankAccountNumber}
                       onChange={(e) => setBankAccountNumber(e.target.value)}
-                      placeholder="1234567890"
+                      placeholder="Contoh: 1234567890"
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-800 outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       required
                     />
@@ -478,7 +600,7 @@ export function ReturnModal({
                       type="text"
                       value={bankAccountName}
                       onChange={(e) => setBankAccountName(e.target.value)}
-                      placeholder="Sesuai buku tabungan"
+                      placeholder="Sesuai nama di buku tabungan"
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       required
                     />
@@ -499,16 +621,16 @@ export function ReturnModal({
             </button>
             <button
               type="submit"
-              disabled={submitting}
-              className="cursor-pointer rounded-xl bg-[#FF5500] px-6 py-2.5 text-xs font-bold text-white transition hover:bg-[#e04a00] active:scale-95 disabled:opacity-50"
+              disabled={submitting || uploading}
+              className="cursor-pointer rounded-xl bg-orange-600 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-orange-700 active:scale-95 disabled:opacity-50"
             >
               {submitting ? (
                 <span className="flex items-center gap-1.5">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Mengirim...
+                  Mengirim Pengajuan...
                 </span>
               ) : (
-                'Kirim Pengajuan'
+                'Kirim Pengajuan Klaim Garansi'
               )}
             </button>
           </div>

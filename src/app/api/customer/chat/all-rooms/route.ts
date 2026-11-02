@@ -326,7 +326,19 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json({ rooms: enrichedRooms })
+    // Deduplikasi defensif: 1 Pelanggan + 1 Toko/CS = 1 Unified Chat Room di antarmuka pembeli
+    const seenStoreKeys = new Set<string>()
+    const deduplicatedRooms: typeof enrichedRooms = []
+
+    for (const room of enrichedRooms) {
+      const key = `${room.customerId}_${room.storeId || room.store?.id || 'cs'}`
+      if (!seenStoreKeys.has(key)) {
+        seenStoreKeys.add(key)
+        deduplicatedRooms.push(room)
+      }
+    }
+
+    return NextResponse.json({ rooms: deduplicatedRooms })
   } catch (error) {
     console.error('Error fetching customer admin chat rooms:', error)
     return NextResponse.json(

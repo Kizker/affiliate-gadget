@@ -939,13 +939,32 @@ export default function OrdersClient({
                                   String(firstItem.price)
                                 )
 
+                              const isReturnOrExchange = Boolean(latestReturn)
+                              if (isReturnOrExchange) {
+                                chatParams.set('type', 'after_sales')
+                              }
+
                               return (
                                 <Link
                                   href={`/dashboard/customer/chat?${chatParams.toString()}`}
-                                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                  className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold transition active:scale-95 ${
+                                    isReturnOrExchange
+                                      ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
+                                      : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                                  }`}
                                 >
-                                  <MessageSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                                  <span>Chat Toko</span>
+                                  <MessageSquare
+                                    className={`h-3.5 w-3.5 ${
+                                      isReturnOrExchange
+                                        ? 'text-orange-600 dark:text-orange-400'
+                                        : 'text-blue-600 dark:text-blue-400'
+                                    }`}
+                                  />
+                                  <span>
+                                    {isReturnOrExchange
+                                      ? 'Chat Admin After Sales'
+                                      : 'Chat Toko'}
+                                  </span>
                                 </Link>
                               )
                             })()}

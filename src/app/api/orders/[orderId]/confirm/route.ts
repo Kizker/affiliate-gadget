@@ -87,6 +87,20 @@ export async function POST(
       },
     })
 
+    // Selesaikan tiket retur / penggantian unit baru yang aktif pada pesanan ini
+    await prisma.returnRequest
+      .updateMany({
+        where: {
+          orderId: order.id,
+          status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED'] },
+        },
+        data: {
+          status: 'COMPLETED',
+          resolvedAt: now,
+        },
+      })
+      .catch(() => {})
+
     // Kirim tanda bukti transaksi selesai via email (Resend) & notifikasi WhatsApp
     try {
       const { dispatchTransactional } = await import('@/lib/notifications')

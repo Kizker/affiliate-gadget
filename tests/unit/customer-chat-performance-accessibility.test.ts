@@ -54,8 +54,8 @@ describe('Customer Chat Performance & Accessibility Optimization Suite', () => {
     const pageContent = fs.readFileSync(chatPagePath, 'utf-8')
     expect(pageContent).toContain("document.visibilityState !== 'visible'")
     expect(pageContent).toContain('setTimeout')
-    expect(pageContent).toContain('4000') // messages poll
-    expect(pageContent).toContain('8000') // rooms poll
+    expect(pageContent).toContain('1500') // messages poll
+    expect(pageContent).toContain('2000') // rooms poll
   })
 
   it('3. CLS Elimination: ChatSidebar dan ChatMessageList menyediakan visual skeleton loading', () => {

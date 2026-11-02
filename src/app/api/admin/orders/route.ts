@@ -247,6 +247,20 @@ export async function GET(request: Request) {
             },
           },
         },
+        returnRequests: {
+          select: {
+            id: true,
+            status: true,
+            type: true,
+            reason: true,
+            reasonLabel: true,
+            returnTrackingNumber: true,
+            returnCourier: true,
+            storeResponse: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     })
 
