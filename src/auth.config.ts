@@ -25,6 +25,7 @@ export const authConfig = {
         '/dashboard/admin',
         '/dashboard/mitra',
         '/dashboard/teknisi',
+        '/dashboard/after-sales',
         '/checkout',
       ]
       const isProtectedRoute = protectedRoutes.some((route) =>

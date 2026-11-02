@@ -39,6 +39,7 @@ const ADMIN_SUBROUTE_ACCESS: Record<string, string[]> = {
     'ADMIN',
     'STORE_ADMIN',
     'STORE_SALES',
+    'AFTER_SALES',
   ],
   '/dashboard/admin/products': [
     'SUPER_ADMIN',
@@ -70,6 +71,7 @@ function getCmsDashboardUrl(
   mitraStatus?: string | null,
   storeId?: string | null
 ): string {
+  if (role === 'AFTER_SALES') return '/dashboard/after-sales'
   if (role && ADMIN_STAFF_ROLES.includes(role)) return '/dashboard/admin'
   if (role === 'TECHNICIAN') return '/dashboard/teknisi'
   if (role === 'MITRA') {
@@ -88,6 +90,7 @@ export default auth((req) => {
   const isAdminRoute = pathname.startsWith('/dashboard/admin')
   const isMitraRoute = pathname.startsWith('/dashboard/mitra')
   const isTechnicianRoute = pathname.startsWith('/dashboard/teknisi')
+  const isAfterSalesRoute = pathname.startsWith('/dashboard/after-sales')
   const isDashboardGenericRoute =
     pathname === '/dashboard' || pathname === '/dashboard/customer'
   const isAuthRoute =
@@ -103,6 +106,7 @@ export default auth((req) => {
     isAdminRoute ||
     isMitraRoute ||
     isTechnicianRoute ||
+    isAfterSalesRoute ||
     pathname.startsWith('/checkout')
 
   // 1. Unauthenticated users accessing protected routes
@@ -156,8 +160,20 @@ export default auth((req) => {
       }
 
       // Proteksi rute Admin CMS (/dashboard/admin)
+      // Khusus role AFTER_SALES dialihkan ke panel khusus after-sales
+      if (isAdminRoute && userRole === 'AFTER_SALES') {
+        return NextResponse.redirect(new URL('/dashboard/after-sales', req.url))
+      }
+
       if (isAdminRoute && !isAdminStaff) {
         return NextResponse.redirect(new URL(destinationCms, req.url))
+      }
+
+      // Proteksi rute After Sales (/dashboard/after-sales)
+      if (isAfterSalesRoute) {
+        if (userRole !== 'AFTER_SALES' && userRole !== 'SUPER_ADMIN') {
+          return NextResponse.redirect(new URL(destinationCms, req.url))
+        }
       }
 
       // ✅ Sub-Route RBAC: Blokir akses ke sub-route yang tidak diizinkan untuk role ini

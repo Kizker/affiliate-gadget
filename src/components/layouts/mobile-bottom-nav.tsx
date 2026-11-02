@@ -109,7 +109,8 @@ export function MobileBottomNav({
 
   const isChatPage =
     pathname?.startsWith('/dashboard/customer/chat') ||
-    pathname?.startsWith('/dashboard/admin/chat')
+    pathname?.startsWith('/dashboard/admin/chat') ||
+    pathname?.startsWith('/dashboard/after-sales/chat')
 
   const isCartPage = pathname?.startsWith('/cart')
   const isOrderConfirmationPage = pathname?.startsWith('/order-confirmation')

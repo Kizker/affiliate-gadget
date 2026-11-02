@@ -111,8 +111,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   }
 
   const getChatLink = () => {
-    if (!mounted || !session)
-      return '/login?callbackUrl=/dashboard/customer/chat'
+    if (!session) return '/login?callbackUrl=/dashboard/customer/chat'
     const role = (session.user as any)?.role
     if (role === 'AFTER_SALES') {
       return '/dashboard/after-sales/chat'
@@ -132,7 +131,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   }
 
   const getDashboardLink = () => {
-    if (!mounted || !session) return '/login'
+    if (!session) return '/login'
     const role = (session.user as any)?.role
     if (role === 'AFTER_SALES') return '/dashboard/after-sales'
     if (
@@ -241,7 +240,8 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
               href={getChatLink()}
               className={`h-8.5 w-8.5 relative flex items-center justify-center rounded-full border transition-all duration-200 active:scale-95 sm:h-9 sm:w-9 ${
                 pathname.startsWith('/dashboard/customer/chat') ||
-                pathname.startsWith('/dashboard/admin/chat')
+                pathname.startsWith('/dashboard/admin/chat') ||
+                pathname.startsWith('/dashboard/after-sales/chat')
                   ? 'shadow-xs border-orange-500 bg-orange-50 text-orange-600 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'
                   : 'shadow-xs border-slate-200/70 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
@@ -369,6 +369,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                       ) : (
                         <Link
                           href={getDashboardLink()}
+                          onClick={() => setUserDropdownOpen(false)}
                           className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
                           <User className="h-3.5 w-3.5 text-slate-400" /> Panel

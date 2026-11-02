@@ -28,6 +28,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState('')
+  const [detectedRole, setDetectedRole] = useState<string | null>(null)
 
   // 2FA Verification States (Email-First Flow with WA/SMS fallback)
   const [step, setStep] = useState<'credentials' | '2fa'>('credentials')
@@ -90,7 +91,7 @@ function LoginForm() {
     }
   }, [searchParams])
 
-  const executeSignIn = async () => {
+  const executeSignIn = async (roleOverride?: string) => {
     setIsLoading(true)
     setError('')
 
@@ -110,8 +111,32 @@ function LoginForm() {
     // Wait for session to be established
     await new Promise((resolve) => setTimeout(resolve, 600))
 
+    const currentRole = roleOverride || detectedRole
+    let defaultDest = '/'
+    if (currentRole === 'AFTER_SALES') {
+      defaultDest = '/dashboard/after-sales'
+    } else if (
+      currentRole &&
+      [
+        'SUPER_ADMIN',
+        'ADMIN',
+        'STORE_ADMIN',
+        'STORE_SALES',
+        'FINANCE_ADMIN',
+        'CONTENT_EDITOR',
+      ].includes(currentRole)
+    ) {
+      defaultDest = '/dashboard/admin'
+    } else if (currentRole === 'TECHNICIAN') {
+      defaultDest = '/dashboard/teknisi'
+    } else if (currentRole === 'MITRA') {
+      defaultDest = '/dashboard/mitra'
+    }
+
     let redirectUrl =
-      redirectParam && redirectParam.startsWith('/') ? redirectParam : '/'
+      redirectParam && redirectParam.startsWith('/')
+        ? redirectParam
+        : defaultDest
     let retries = 3
 
     while (retries > 0) {
@@ -199,6 +224,7 @@ function LoginForm() {
 
       // If user has 2FA enabled:
       if (checkData.requires2FA) {
+        if (checkData.role) setDetectedRole(checkData.role)
         setIsLoading(false)
         setOtpData({
           email: checkData.email,
@@ -221,7 +247,7 @@ function LoginForm() {
       }
 
       // If 2FA not required: proceed with regular signIn
-      await executeSignIn()
+      await executeSignIn(checkData.role || undefined)
     } catch (err) {
       console.error('Login error:', err)
       setError('Terjadi kendala koneksi. Silakan coba lagi.')
@@ -269,7 +295,7 @@ function LoginForm() {
       }
 
       // OTP is valid! Proceed with sign in
-      await executeSignIn()
+      await executeSignIn(verifyData.role || detectedRole || undefined)
     } catch (err) {
       console.error('OTP verify error:', err)
       setError('Gagal memverifikasi kode OTP. Silakan coba lagi.')

@@ -3,7 +3,8 @@ import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl?.origin || process.env.NEXTAUTH_URL || 'http://localhost:3002'
+  const origin =
+    req.nextUrl?.origin || process.env.NEXTAUTH_URL || 'http://localhost:3002'
 
   try {
     const session = await auth()
@@ -26,7 +27,9 @@ export async function GET(req: NextRequest) {
       'CONTENT_EDITOR',
     ]
 
-    if (user?.role && adminStaffRoles.includes(user.role)) {
+    if (user?.role === 'AFTER_SALES') {
+      return NextResponse.redirect(new URL('/dashboard/after-sales', origin))
+    } else if (user?.role && adminStaffRoles.includes(user.role)) {
       return NextResponse.redirect(new URL('/dashboard/admin', origin))
     } else if (user?.role === 'TECHNICIAN') {
       return NextResponse.redirect(new URL('/dashboard/teknisi', origin))

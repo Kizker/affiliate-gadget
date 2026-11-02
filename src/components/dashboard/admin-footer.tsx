@@ -14,7 +14,9 @@ export function AdminFooter({
 }: AdminFooterProps) {
   const pathname = usePathname()
   const isChatPage =
-    propIsChatPage ?? pathname?.startsWith('/dashboard/admin/chat')
+    propIsChatPage ??
+    (pathname?.startsWith('/dashboard/admin/chat') ||
+      pathname?.startsWith('/dashboard/after-sales/chat'))
 
   // Chat page harus 100% full height chat hub tanpa footer
   if (isChatPage) {

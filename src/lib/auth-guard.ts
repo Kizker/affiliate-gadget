@@ -19,7 +19,12 @@ export const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
   '/dashboard/admin/technicians': ['SUPER_ADMIN'],
 
   // Voucher — SUPER_ADMIN only
-  '/dashboard/admin/vouchers': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
+  '/dashboard/admin/vouchers': [
+    'SUPER_ADMIN',
+    'STORE_ADMIN',
+    'STORE_SALES',
+    'AFTER_SALES',
+  ],
 
   // Manajemen Toko/Mitra — SUPER_ADMIN, ADMIN
   '/dashboard/admin/mitras': ['SUPER_ADMIN', 'ADMIN'],
@@ -31,7 +36,12 @@ export const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
   '/dashboard/admin/blog': ['SUPER_ADMIN', 'CONTENT_EDITOR'],
 
   // Pesanan — SUPER_ADMIN, STORE_ADMIN, STORE_SALES
-  '/dashboard/admin/orders': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
+  '/dashboard/admin/orders': [
+    'SUPER_ADMIN',
+    'STORE_ADMIN',
+    'STORE_SALES',
+    'AFTER_SALES',
+  ],
 
   // Klaim Garansi & Pengembalian — semua kecuali FINANCE_ADMIN & CONTENT_EDITOR
   '/dashboard/admin/complaints': ['SUPER_ADMIN', 'ADMIN', 'AFTER_SALES'],
@@ -45,6 +55,7 @@ export const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
     'ADMIN',
     'STORE_ADMIN',
     'STORE_SALES',
+    'AFTER_SALES',
   ],
 
   // Katalog Produk — SUPER_ADMIN, ADMIN, STORE_ADMIN, CONTENT_EDITOR
@@ -87,7 +98,11 @@ export async function requirePageAccess(routePrefix: string): Promise<void> {
 
   if (!allowedRoles.includes(role)) {
     // Redirect to their own default dashboard root
-    redirect('/dashboard/admin')
+    if (role === 'AFTER_SALES') {
+      redirect('/dashboard/after-sales')
+    } else {
+      redirect('/dashboard/admin')
+    }
   }
 }
 

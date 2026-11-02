@@ -21,6 +21,74 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    // Role AFTER_SALES: Khusus memantau percakapan pesanan COMPLETED dan komplain/retur cabang binaan
+    if (user.role === 'AFTER_SALES') {
+      const group = await prisma.storeGroup.findFirst({
+        where: { afterSalesUserId: user.id },
+        include: { stores: { select: { id: true } } },
+      })
+      const storeIds = group?.stores.map((s) => s.id) || []
+
+      const [unreadChat, complaints, returns] = await Promise.all([
+        // 1. Unread chat pesan purna jual pesanan COMPLETED
+        prisma.adminChatMessage.count({
+          where: {
+            isRead: false,
+            senderId: { not: user.id },
+            room: {
+              order: {
+                status: 'COMPLETED',
+                OR: [
+                  { storeId: { in: storeIds } },
+                  {
+                    items: {
+                      some: { product: { storeId: { in: storeIds } } },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+        // 2. Klaim garansi / komplain aktif cabang binaan
+        prisma.complaint.count({
+          where: {
+            status: { in: ['OPEN', 'IN_PROGRESS'] },
+            order: { storeId: { in: storeIds } },
+          },
+        }),
+        // 3. Permohonan retur / refund pending cabang binaan
+        prisma.returnRequest.count({
+          where: {
+            status: { in: ['PENDING', 'IN_REVIEW'] },
+            OR: [
+              { storeId: { in: storeIds } },
+              { order: { storeId: { in: storeIds } } },
+            ],
+          },
+        }),
+      ])
+
+      const counts = {
+        orders: 0,
+        ordersNeedProcessing: 0,
+        ordersPendingPayment: 0,
+        chat: unreadChat,
+        finance: 0,
+        complaints,
+        returns,
+        ads: 0,
+        live: 0,
+        mitras: 0,
+        total: unreadChat + complaints + returns,
+      }
+
+      return NextResponse.json({
+        success: true,
+        counts,
+      })
+    }
+
     const isStoreAdmin = user.role === 'STORE_ADMIN'
     const storeId = isStoreAdmin ? user.storeId : undefined
 

@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         maskedEmail: maskedEmail,
         hasPhone: !!user.phone,
+        role: user.role,
         otpPreview: otpData.code,
         expiresInSeconds: otpData.expiresInSeconds || 300,
       })
@@ -134,6 +135,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           success: true,
           message: 'Verifikasi OTP berhasil',
+          role:
+            (
+              await prisma.user.findUnique({
+                where: { email: cleanEmail },
+                select: { role: true },
+              })
+            )?.role || null,
         })
       }
 
@@ -143,6 +151,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           success: true,
           message: 'Verifikasi OTP berhasil',
+          role:
+            (
+              await prisma.user.findUnique({
+                where: { email: cleanEmail },
+                select: { role: true },
+              })
+            )?.role || null,
         })
       }
 

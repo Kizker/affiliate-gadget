@@ -76,6 +76,12 @@ export async function GET() {
             status: true,
             total: true,
             store: { select: { id: true, name: true, city: true } },
+            items: {
+              select: {
+                product: { select: { name: true } },
+              },
+              take: 1,
+            },
           },
         },
         messages: {
@@ -146,15 +152,40 @@ export async function GET() {
         approvedReturns: approvedReturnsCount,
         totalStoresInGroup: storeIds.length,
       },
-      recentChats: chatRooms.map((r) => ({
-        id: r.id,
-        orderId: r.orderId,
-        orderNumber: r.order?.orderNumber,
-        storeName: r.order?.store?.name,
-        customerName: r.customer.name || r.customer.email,
-        lastMessage: r.messages[0]?.content || '',
-        lastMessageAt: r.lastMessageAt,
-      })),
+      recentChats: chatRooms.map((r) => {
+        const rawMsg = r.messages[0]?.content || ''
+        const productName = r.order?.items?.[0]?.product?.name || null
+
+        let preview = rawMsg
+        const trimmed = rawMsg.trim()
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+          try {
+            const data = JSON.parse(trimmed)
+            if (data.type === 'order_reference' || data.orderNumber) {
+              preview = `📋 Rincian Pesanan: ${productName || data.productName || '#' + (data.orderNumber || r.order?.orderNumber)}`
+            } else if (
+              data.type === 'product_reference' ||
+              data.productName ||
+              data.name
+            ) {
+              preview = `📦 Produk: ${data.productName || data.name}`
+            } else if (data.type === 'return_reference' || data.returnReason) {
+              preview = `🔄 Pengajuan Retur: ${data.reasonLabel || data.returnReason || 'Komplain Unit'}`
+            }
+          } catch {}
+        }
+
+        return {
+          id: r.id,
+          orderId: r.orderId,
+          orderNumber: r.order?.orderNumber,
+          productName,
+          storeName: r.order?.store?.name,
+          customerName: r.customer.name || r.customer.email,
+          lastMessage: preview || 'Mengirim media/foto',
+          lastMessageAt: r.lastMessageAt,
+        }
+      }),
       recentReturns: returnRequests,
     })
   } catch (error) {

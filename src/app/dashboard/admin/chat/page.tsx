@@ -707,6 +707,17 @@ function AdminChatContent() {
     const list: PinnedOrderContext[] = []
     const seenOrderNumbers = new Set<string>()
 
+    // Always prioritize room's primary attached order
+    if (selectedRoom.order) {
+      seenOrderNumbers.add(selectedRoom.order.orderNumber)
+      list.push({
+        orderId: selectedRoom.order.id,
+        orderNumber: selectedRoom.order.orderNumber,
+        total: selectedRoom.order.total,
+        status: selectedRoom.order.status,
+      })
+    }
+
     // Check all messages for order context cards
     for (const msg of messages) {
       const contentTrimmed = msg.content?.trim() || ''
@@ -726,7 +737,16 @@ function AdminChatContent() {
         try {
           const data = JSON.parse(msg.content)
           const num = data.orderNumber || data.orderNum
-          if (num && !seenOrderNumbers.has(num)) {
+          if (
+            num &&
+            selectedRoom.order &&
+            selectedRoom.order.orderNumber === num
+          ) {
+            if (list.length > 0 && !list[0].messageId) {
+              list[0].messageId = msg.id
+              if (data.productName) list[0].productName = data.productName
+            }
+          } else if (num && !seenOrderNumbers.has(num)) {
             seenOrderNumbers.add(num)
             list.push({
               messageId: msg.id,
@@ -2088,10 +2108,23 @@ function AdminChatContent() {
                       index > 0 ? new Date(messages[index - 1].createdAt) : null
                     const showDateSeparator =
                       !previousDate || !isSameDay(currentDate, previousDate)
-                    const isAdmin =
-                      ['ADMIN', 'SUPER_ADMIN', 'STORE_ADMIN'].includes(
-                        message.sender.role
-                      ) || message.senderId === 'me'
+                    const isCurrentUser =
+                      Boolean(
+                        currentUserId && message.senderId === currentUserId
+                      ) ||
+                      message.senderId === 'me' ||
+                      Boolean(
+                        message.sender?.role &&
+                        [
+                          'ADMIN',
+                          'SUPER_ADMIN',
+                          'STORE_ADMIN',
+                          'STORE_SALES',
+                          'AFTER_SALES',
+                        ].includes(message.sender.role) &&
+                        message.senderId !== selectedRoom?.customerId
+                      )
+                    const isAdmin = isCurrentUser
                     const isVideo = isVideoMedia(
                       message.mediaUrl,
                       message.mediaType,

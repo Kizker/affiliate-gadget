@@ -109,6 +109,94 @@ export async function PUT(
       )
     }
 
+    // After Sales Validation Action: FORWARD_TO_SUPERADMIN
+    if (body.action === 'FORWARD_TO_SUPERADMIN') {
+      if (
+        session.user.role !== 'AFTER_SALES' &&
+        session.user.role !== 'SUPER_ADMIN'
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'Validasi dan penerusan ke Superadmin hanya dapat dilakukan oleh After Sales',
+          },
+          { status: 403 }
+        )
+      }
+
+      const note =
+        body.notes ||
+        'Unit telah diperiksa oleh After Sales dan memenuhi syarat garansi 30 hari. Diteruskan ke Superadmin untuk persetujuan akhir.'
+
+      const updatedReturn = await prisma.returnRequest.update({
+        where: { id },
+        data: {
+          status: 'IN_REVIEW',
+          storeResponse: `[Divalidasi After Sales] ${note}`,
+        },
+        include: {
+          order: true,
+          user: { select: { id: true, name: true, email: true } },
+        },
+      })
+
+      await prisma.notification
+        .create({
+          data: {
+            userId: existing.userId,
+            type: 'NEW_COMPLAINT',
+            title: 'Pengajuan Telah Divalidasi After Sales',
+            message: `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} telah divalidasi dan diteruskan ke Superadmin untuk persetujuan akhir.`,
+            link: `/dashboard/customer/orders/${existing.orderId}`,
+          },
+        })
+        .catch(() => {})
+
+      return NextResponse.json({
+        success: true,
+        message: 'Pengajuan berhasil divalidasi dan diteruskan ke Superadmin',
+        data: updatedReturn,
+      })
+    }
+
+    // Rejection by After Sales
+    if (body.action === 'REJECT' && session.user.role === 'AFTER_SALES') {
+      const note =
+        body.rejectionReason ||
+        'Pengajuan pengembalian ditolak oleh After Sales karena tidak memenuhi syarat garansi.'
+
+      const updatedReturn = await prisma.returnRequest.update({
+        where: { id },
+        data: {
+          status: 'REJECTED',
+          resolvedAt: new Date(),
+          storeResponse: `[Ditolak After Sales] ${note}`,
+        },
+        include: {
+          order: true,
+          user: { select: { id: true, name: true, email: true } },
+        },
+      })
+
+      await prisma.notification
+        .create({
+          data: {
+            userId: existing.userId,
+            type: 'COMPLAINT_RESOLVED',
+            title: 'Pengajuan Pengembalian Ditolak After Sales',
+            message: `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} ditolak oleh After Sales: ${note}`,
+            link: `/dashboard/customer/orders/${existing.orderId}`,
+          },
+        })
+        .catch(() => {})
+
+      return NextResponse.json({
+        success: true,
+        message: 'Pengajuan berhasil ditolak oleh After Sales',
+        data: updatedReturn,
+      })
+    }
+
     // Superadmin Decision Action: APPROVE or REJECT
     if (body.action === 'APPROVE' || body.action === 'REJECT') {
       if (session.user.role !== 'SUPER_ADMIN') {

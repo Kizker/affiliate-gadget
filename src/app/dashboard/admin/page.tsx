@@ -276,6 +276,12 @@ export default function AdminDashboardPage() {
     })
   }, [recentOrders, orderFilter])
 
+  useEffect(() => {
+    if (session?.user?.role === 'AFTER_SALES') {
+      router.replace('/dashboard/after-sales')
+    }
+  }, [session?.user?.role, router])
+
   const userRole = session?.user?.role || 'STORE_ADMIN'
   const isSuperAdmin = userRole === 'SUPER_ADMIN'
   const isAdminPlatform = userRole === 'ADMIN'

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   Bell,
   ShoppingCart,
@@ -16,9 +17,15 @@ import {
   CheckCircle2,
   X,
 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { useAdminNotifications } from '@/context/admin-notifications-context'
 
 export function AdminNotificationBell() {
+  const { data: session } = useSession()
+  const pathname = usePathname()
+  const isAfterSales =
+    session?.user?.role === 'AFTER_SALES' ||
+    Boolean(pathname?.startsWith('/dashboard/after-sales'))
   const { counts, loading, refresh, markAsRead, markAllAsRead } =
     useAdminNotifications()
   const [isOpen, setIsOpen] = useState(false)
@@ -45,6 +52,41 @@ export function AdminNotificationBell() {
 
   // Items configuration with counts
   const currentActiveItems = useMemo(() => {
+    if (isAfterSales) {
+      return [
+        {
+          id: 'chat',
+          title: 'Pesan Purna Jual Pelanggan',
+          count: counts.chat,
+          description: 'Pesan pelanggan pesanan selesai',
+          href: '/dashboard/after-sales/chat',
+          icon: MessageSquare,
+          color:
+            'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',
+        },
+        {
+          id: 'returns',
+          title: 'Pengajuan Retur / Refund',
+          count: counts.returns,
+          description: 'Permohonan retur unit cabang binaan',
+          href: '/dashboard/after-sales/returns',
+          icon: RotateCcw,
+          color:
+            'bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400',
+        },
+        {
+          id: 'complaints',
+          title: 'Klaim Garansi 30 Hari',
+          count: counts.complaints,
+          description: 'Klaim garansi pelanggan butuh penanganan',
+          href: '/dashboard/after-sales/returns',
+          icon: ShieldCheck,
+          color:
+            'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400',
+        },
+      ].filter((item) => item.count > 0)
+    }
+
     return [
       {
         id: 'orders',
@@ -127,7 +169,7 @@ export function AdminNotificationBell() {
           'bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400',
       },
     ].filter((item) => item.count > 0)
-  }, [counts])
+  }, [counts, isAfterSales])
 
   // Items currently displayed in dropdown
   const [displayedItems, setDisplayedItems] = useState<
@@ -313,14 +355,25 @@ export function AdminNotificationBell() {
             {/* Footer Quick Links */}
             <div className="border-t border-slate-100 p-2 dark:border-slate-800">
               <Link
-                href="/dashboard/admin/orders"
+                href={
+                  isAfterSales
+                    ? '/dashboard/after-sales'
+                    : '/dashboard/admin/orders'
+                }
                 onClick={() => {
-                  markAsRead('orders')
+                  if (isAfterSales) {
+                    markAsRead('chat')
+                    markAsRead('returns')
+                  } else {
+                    markAsRead('orders')
+                  }
                   setIsOpen(false)
                 }}
                 className="flex w-full items-center justify-center whitespace-nowrap rounded-xl bg-slate-900 py-2 text-xs font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950"
               >
-                Lihat Semua Pesanan
+                {isAfterSales
+                  ? 'Buka Layanan Purna Jual'
+                  : 'Lihat Semua Pesanan'}
               </Link>
             </div>
           </div>

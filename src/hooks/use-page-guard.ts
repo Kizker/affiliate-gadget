@@ -13,11 +13,21 @@ const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
   '/dashboard/admin/reports': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
   '/dashboard/admin/users': ['SUPER_ADMIN'],
   '/dashboard/admin/technicians': ['SUPER_ADMIN'],
-  '/dashboard/admin/vouchers': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
+  '/dashboard/admin/vouchers': [
+    'SUPER_ADMIN',
+    'STORE_ADMIN',
+    'STORE_SALES',
+    'AFTER_SALES',
+  ],
   '/dashboard/admin/mitras': ['SUPER_ADMIN', 'ADMIN'],
   '/dashboard/admin/ads': ['SUPER_ADMIN', 'STORE_ADMIN'],
   '/dashboard/admin/blog': ['SUPER_ADMIN', 'CONTENT_EDITOR'],
-  '/dashboard/admin/orders': ['SUPER_ADMIN', 'STORE_ADMIN', 'STORE_SALES'],
+  '/dashboard/admin/orders': [
+    'SUPER_ADMIN',
+    'STORE_ADMIN',
+    'STORE_SALES',
+    'AFTER_SALES',
+  ],
   '/dashboard/admin/complaints': ['SUPER_ADMIN', 'ADMIN', 'AFTER_SALES'],
   '/dashboard/admin/returns': ['SUPER_ADMIN', 'ADMIN', 'AFTER_SALES'],
   '/dashboard/admin/groups': ['SUPER_ADMIN'],
@@ -27,6 +37,7 @@ const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
     'ADMIN',
     'STORE_ADMIN',
     'STORE_SALES',
+    'AFTER_SALES',
   ],
   '/dashboard/admin/products': [
     'SUPER_ADMIN',
@@ -70,7 +81,11 @@ export function usePageGuard(routePrefix: string) {
 
     const allowedRoles = ROUTE_ACCESS_MATRIX[routePrefix]
     if (allowedRoles && !allowedRoles.includes(role)) {
-      router.replace('/dashboard/admin')
+      if (role === 'AFTER_SALES') {
+        router.replace('/dashboard/after-sales')
+      } else {
+        router.replace('/dashboard/admin')
+      }
     }
   }, [status, session, router, routePrefix])
 

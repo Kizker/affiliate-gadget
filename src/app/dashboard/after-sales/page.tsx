@@ -34,6 +34,7 @@ interface AfterSalesData {
     id: string
     orderId?: string | null
     orderNumber?: string
+    productName?: string | null
     storeName?: string
     customerName: string
     lastMessage: string
@@ -55,6 +56,29 @@ interface AfterSalesData {
       email: string
     }
   }>
+}
+
+function formatChatMessagePreview(
+  rawContent: string,
+  productName?: string | null
+): string {
+  if (!rawContent) return 'Mengirim media/foto'
+  const trimmed = rawContent.trim()
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const data = JSON.parse(trimmed)
+      if (data.type === 'order_reference' || data.orderNumber) {
+        return `📋 Rincian Pesanan: ${productName || data.productName || '#' + data.orderNumber}`
+      }
+      if (data.type === 'product_reference' || data.productName || data.name) {
+        return `📦 Produk: ${data.productName || data.name}`
+      }
+      if (data.type === 'return_reference' || data.returnReason) {
+        return `🔄 Pengajuan Retur: ${data.reasonLabel || data.returnReason || 'Komplain Unit'}`
+      }
+    } catch {}
+  }
+  return rawContent
 }
 
 export default function AfterSalesDashboardPage() {
@@ -231,7 +255,10 @@ export default function AfterSalesDashboardPage() {
                       )}
                     </div>
                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                      {chat.lastMessage || 'Mengirim media/foto'}
+                      {formatChatMessagePreview(
+                        chat.lastMessage,
+                        chat.productName
+                      )}
                     </p>
                   </div>
                   <span className="shrink-0 text-[10px] text-slate-400">

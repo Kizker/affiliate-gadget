@@ -22,7 +22,9 @@ function AdminLayoutInner({
 }) {
   const { isCollapsed } = useSidebar()
   const pathname = usePathname()
-  const isChatPage = pathname?.startsWith('/dashboard/admin/chat')
+  const isChatPage =
+    pathname?.startsWith('/dashboard/admin/chat') ||
+    pathname?.startsWith('/dashboard/after-sales/chat')
 
   const [activeSlug, setActiveSlug] = useState<string | null>(storeSlug || null)
   const isStoreAdmin = userRole === 'STORE_ADMIN' || userRole === 'STORE_SALES'
