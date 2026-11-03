@@ -60,7 +60,7 @@ function AdminLayoutInner({
       <div
         className={`flex min-h-screen min-w-0 flex-1 flex-col transition-all duration-300 ease-in-out ${
           isCollapsed ? 'lg:pl-16' : 'lg:pl-64'
-        } ${isChatPage ? 'h-screen max-h-screen overflow-hidden' : ''}`}
+        } ${isChatPage ? 'h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden' : ''}`}
       >
         {/* Top Control Bar (Desktop & Mobile) */}
         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-900/80 sm:px-6 lg:px-8">
@@ -72,21 +72,23 @@ function AdminLayoutInner({
           <div className="flex items-center gap-2.5">
             <AdminNotificationBell />
 
-            <Link
-              href={publicHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={
-                isStoreAdmin
-                  ? 'Buka Tampilan Halaman Toko Cabang Publik'
-                  : 'Buka Halaman Depan Web Publik'
-              }
-              className="flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-100/80 px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              <Store className="h-3 w-3 text-slate-400" />
-              <span>Lihat Toko Publik</span>
-              <ExternalLink className="h-2.5 w-2.5 opacity-60" />
-            </Link>
+            {userRole !== 'AFTER_SALES' && (
+              <Link
+                href={publicHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={
+                  isStoreAdmin
+                    ? 'Buka Tampilan Halaman Toko Cabang Publik'
+                    : 'Buka Halaman Depan Web Publik'
+                }
+                className="flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-100/80 px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <Store className="h-3 w-3 text-slate-400" />
+                <span>Lihat Toko Publik</span>
+                <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+              </Link>
+            )}
           </div>
         </header>
 
@@ -94,7 +96,7 @@ function AdminLayoutInner({
         <main
           className={`relative z-10 w-full overflow-x-hidden ${
             isChatPage
-              ? 'flex h-[calc(100dvh-3.5rem)] min-h-0 flex-1 flex-col overflow-hidden p-0'
+              ? 'flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 flex-1 flex-col overflow-hidden p-0'
               : 'min-h-[calc(100vh-3.5rem)] pb-12 pt-4 sm:pt-6'
           }`}
         >

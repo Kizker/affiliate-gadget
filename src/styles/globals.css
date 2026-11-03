@@ -424,6 +424,16 @@ body.thermal-modal-open .fixed.left-4.top-4.z-50 {
   display: none !important;
 }
 
+/* Sembunyikan top navbar & burger button di mobile (< 1024px) saat ruang percakapan admin/after-sales sedang dibuka fullscreen */
+@media screen and (max-width: 1023px) {
+  body.admin-chat-mobile-open header,
+  body.admin-chat-mobile-open button[aria-label*='Menu Navigasi'],
+  body.admin-chat-mobile-open button[aria-label*='Buka Menu Navigasi'],
+  body.admin-chat-mobile-open button[aria-label*='Tutup Menu Navigasi'] {
+    display: none !important;
+  }
+}
+
 /* ==========================================================================
    DESKTOP 1 SECTION 1 HALAMAN FULLSCREEN SNAP (GLOBAL OVERRIDE)
    ========================================================================== */

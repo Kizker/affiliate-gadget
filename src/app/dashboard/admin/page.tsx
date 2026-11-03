@@ -56,45 +56,24 @@ interface DashboardProduct {
   isActive: boolean
 }
 
-interface DashboardReturn {
+interface TopSellingProduct {
   id: string
-  orderId: string
-  reason: string
-  reasonLabel?: string | null
-  description?: string
-  type: string
-  status: string
-  refundAmount?: number | null
-  createdAt: string
-  order?: {
-    id: string
-    orderNumber: string
-    total: number
-    createdAt: string
-  } | null
-  user?: {
-    id?: string
-    name: string | null
-    email: string
-    phone?: string | null
-  } | null
+  name: string
+  brand: string | null
+  price: number
+  stock: number
+  image: string | null
+  soldCount: number
+  revenue: number
 }
 
-interface DashboardCancelledOrder {
+interface CriticalStockProduct {
   id: string
-  orderNumber: string
-  total: number
-  updatedAt: string
-  createdAt: string
-  user: {
-    name: string | null
-    email: string
-  }
-  items: {
-    product?: {
-      name: string
-    } | null
-  }[]
+  name: string
+  brand: string | null
+  price: number
+  stock: number
+  images?: string[]
 }
 
 interface OrderStatusCounts {
@@ -247,19 +226,28 @@ export default function AdminDashboardPage() {
   // Real data state
   const [recentOrders, setRecentOrders] = useState<DashboardOrder[]>([])
   const [inventory, setInventory] = useState<DashboardProduct[]>([])
-  const [recentReturns, setRecentReturns] = useState<DashboardReturn[]>([])
-  const [recentCancellations, setRecentCancellations] = useState<
-    DashboardCancelledOrder[]
+  const [topSellingProducts, setTopSellingProducts] = useState<
+    TopSellingProduct[]
+  >([])
+  const [criticalStockList, setCriticalStockList] = useState<
+    CriticalStockProduct[]
   >([])
   const [storeStats, setStoreStats] = useState<StoreAdminStats | null>(null)
   const [superStats, setSuperStats] = useState<SuperAdminStats | null>(null)
   const [loadingData, setLoadingData] = useState(true)
-  const [returnTab, setReturnTab] = useState<'RETURNS' | 'CANCELLATIONS'>(
-    'RETURNS'
-  )
+  const [productInsightTab, setProductInsightTab] = useState<
+    'TOP_SELLING' | 'CRITICAL_STOCK'
+  >('TOP_SELLING')
   const [orderFilter, setOrderFilter] = useState<
     'ALL' | 'PAID' | 'IN_PROGRESS' | 'SHIPPED' | 'COMPLETED'
-  >('ALL')
+  >('PAID')
+  const [orderPage, setOrderPage] = useState(1)
+  const ORDERS_PER_PAGE = 5
+
+  // Reset pagination ke halaman 1 setiap kali filter tab berubah
+  useEffect(() => {
+    setOrderPage(1)
+  }, [orderFilter])
 
   const filteredOrders = useMemo(() => {
     return recentOrders.filter((order) => {
@@ -275,6 +263,16 @@ export default function AdminDashboardPage() {
       return true
     })
   }, [recentOrders, orderFilter])
+
+  const totalOrderPages = Math.max(
+    1,
+    Math.ceil(filteredOrders.length / ORDERS_PER_PAGE)
+  )
+  const safeOrderPage = Math.min(orderPage, totalOrderPages)
+  const paginatedOrders = useMemo(() => {
+    const startIdx = (safeOrderPage - 1) * ORDERS_PER_PAGE
+    return filteredOrders.slice(startIdx, startIdx + ORDERS_PER_PAGE)
+  }, [filteredOrders, safeOrderPage])
 
   useEffect(() => {
     if (session?.user?.role === 'AFTER_SALES') {
@@ -338,8 +336,8 @@ export default function AdminDashboardPage() {
           if (dashRes.ok) {
             const dash = await dashRes.json()
             const stats = dash.stats || {}
-            setRecentReturns(dash.recentReturns || [])
-            setRecentCancellations(dash.recentCancellations || [])
+            setTopSellingProducts(dash.topSellingProducts || [])
+            setCriticalStockList(dash.criticalProductsList || [])
             setStoreStats({
               todayRevenue: stats.todayRevenue ?? 0,
               todayOrdersCount: stats.todayOrdersCount ?? 0,
@@ -656,21 +654,17 @@ export default function AdminDashboardPage() {
               </div>
             </Link>
 
-            {/* 4. Retur & Pembatalan */}
+            {/* 4. Katalog & Inventori Aktif */}
             <Link
-              href={
-                (storeStats?.pendingReturns ?? 0) > 0
-                  ? '/dashboard/admin/returns'
-                  : '/dashboard/admin/orders?status=CANCELLED'
-              }
-              className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-rose-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5"
+              href="/dashboard/admin/products"
+              className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-blue-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Retur &amp; Pembatalan
+                  Katalog &amp; Inventori
                 </span>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
-                  <RotateCcw className="h-4 w-4" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                  <Smartphone className="h-4 w-4" />
                 </div>
               </div>
               <div className="mt-2.5">
@@ -678,18 +672,17 @@ export default function AdminDashboardPage() {
                   <div className="h-6 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
                 ) : (
                   <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
-                    {(storeStats?.pendingReturns ?? 0) +
-                      (storeStats?.orderStatusCounts?.cancelled ?? 0)}{' '}
-                    Kasus Perhatian
+                    {storeStats?.totalProducts ?? 0} Model Gadget
                   </p>
                 )}
                 <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-                  <span className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                    {storeStats?.pendingReturns ?? 0} Pengajuan Retur
+                  <span className="inline-flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                    {(storeStats?.totalStock ?? 0).toLocaleString('id-ID')} Unit
+                    Ready
                   </span>
                   <span className="text-slate-400 dark:text-slate-500">
-                    · {storeStats?.orderStatusCounts?.cancelled ?? 0} Batal
+                    · Etalase Aktif
                   </span>
                 </div>
               </div>
@@ -800,31 +793,24 @@ export default function AdminDashboardPage() {
                 </p>
               </Link>
 
-              {/* 6. Retur & Batal (RETURNS & CANCELLED) */}
+              {/* 6. Dibatalkan (CANCELLED) */}
               <Link
-                href={
-                  (storeStats?.pendingReturns ?? 0) > 0
-                    ? '/dashboard/admin/returns'
-                    : '/dashboard/admin/orders?status=CANCELLED'
-                }
+                href="/dashboard/admin/orders?status=CANCELLED"
                 className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-rose-100 bg-rose-50/40 p-3 transition-all hover:border-rose-300 hover:bg-rose-50/70 dark:border-rose-900/40 dark:bg-rose-950/20"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
-                    Retur &amp; Batal
+                    Dibatalkan
                   </span>
-                  {((storeStats?.pendingReturns ?? 0) > 0 ||
-                    (storeStats?.orderStatusCounts?.cancelled ?? 0) > 0) && (
+                  {(storeStats?.orderStatusCounts?.cancelled ?? 0) > 0 && (
                     <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                   )}
                 </div>
                 <p className="mt-2 text-xl font-black tabular-nums text-rose-950 dark:text-rose-200">
-                  {(storeStats?.pendingReturns ?? 0) +
-                    (storeStats?.orderStatusCounts?.cancelled ?? 0)}
+                  {storeStats?.orderStatusCounts?.cancelled ?? 0}
                 </p>
                 <p className="mt-0.5 text-[10px] text-rose-600 dark:text-rose-400">
-                  {storeStats?.pendingReturns ?? 0} retur ·{' '}
-                  {storeStats?.orderStatusCounts?.cancelled ?? 0} batal
+                  Transaksi batal
                 </p>
               </Link>
             </div>
@@ -1104,19 +1090,8 @@ export default function AdminDashboardPage() {
               </Link>
             </div>
 
-            {/* Quick Filter Status Tabs */}
+            {/* Quick Filter Status Tabs (Default: Perlu Diproses / Prioritas) */}
             <div className="mb-2 flex flex-wrap items-center gap-1.5 pb-2">
-              <button
-                type="button"
-                onClick={() => setOrderFilter('ALL')}
-                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                  orderFilter === 'ALL'
-                    ? 'shadow-2xs bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
-                }`}
-              >
-                Semua ({storeStats?.totalOrders ?? recentOrders.length})
-              </button>
               <button
                 type="button"
                 onClick={() => setOrderFilter('PAID')}
@@ -1182,6 +1157,17 @@ export default function AdminDashboardPage() {
               >
                 Selesai ({storeStats?.orderStatusCounts?.completed ?? 0})
               </button>
+              <button
+                type="button"
+                onClick={() => setOrderFilter('ALL')}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                  orderFilter === 'ALL'
+                    ? 'shadow-2xs bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                }`}
+              >
+                Semua ({storeStats?.totalOrders ?? recentOrders.length})
+              </button>
             </div>
 
             {loadingData ? (
@@ -1226,296 +1212,292 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 pt-2 dark:divide-slate-800/60">
-                {filteredOrders.map((order) => {
-                  const { label, type } = getOrderStatusLabel(order.status)
-                  return (
-                    <div
-                      key={order.id}
-                      className="group flex flex-col justify-between gap-3 py-3.5 transition-colors sm:flex-row sm:items-center"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-mono text-[11px] font-bold text-slate-900 dark:text-white">
-                            #{order.orderNumber.slice(0, 18)}
-                          </span>
-                          <span className="text-[11px] text-slate-300 dark:text-slate-600">
-                            ·
-                          </span>
-                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                            {order.user.name ?? order.user.email}
-                          </span>
+              <>
+                <div className="divide-y divide-slate-100 pt-2 dark:divide-slate-800/60">
+                  {paginatedOrders.map((order) => {
+                    const { label, type } = getOrderStatusLabel(order.status)
+                    return (
+                      <div
+                        key={order.id}
+                        className="group flex flex-col justify-between gap-3 py-3.5 transition-colors sm:flex-row sm:items-center"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-mono text-[11px] font-bold text-slate-900 dark:text-white">
+                              #{order.orderNumber.slice(0, 18)}
+                            </span>
+                            <span className="text-[11px] text-slate-300 dark:text-slate-600">
+                              ·
+                            </span>
+                            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              {order.user.name ?? order.user.email}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs font-medium text-slate-600 dark:text-slate-300">
+                            {getFirstItemName(order)}
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {timeAgo(order.createdAt)}
+                            </span>
+                            <span>·</span>
+                            <span className="font-medium text-slate-500 dark:text-slate-400">
+                              Kurir: {order.courierCode ?? 'JNE'} (
+                              {order.courierService ?? 'REG'})
+                            </span>
+                            <span>·</span>
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              Asuransi 100%
+                            </span>
+                          </div>
                         </div>
-                        <p className="mt-0.5 truncate text-xs font-medium text-slate-600 dark:text-slate-300">
-                          {getFirstItemName(order)}
-                        </p>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
-                          <span className="inline-flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {timeAgo(order.createdAt)}
-                          </span>
-                          <span>·</span>
-                          <span className="font-medium text-slate-500 dark:text-slate-400">
-                            Kurir: {order.courierCode ?? 'JNE'} (
-                            {order.courierService ?? 'REG'})
-                          </span>
-                          <span>·</span>
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            Asuransi 100%
-                          </span>
-                        </div>
-                      </div>
 
-                      <div className="flex shrink-0 items-center justify-between gap-3 sm:flex-col sm:items-end sm:text-right">
-                        <p className="font-mono text-xs font-bold tabular-nums text-slate-950 dark:text-white sm:text-sm">
-                          Rp {order.total.toLocaleString('id-ID')}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                              type === 'danger'
-                                ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                                : type === 'warning'
-                                  ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                                  : type === 'success'
-                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                    : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
-                            }`}
-                          >
-                            ● {label}
-                          </span>
-                          <Link
-                            href={`/dashboard/admin/orders?search=${encodeURIComponent(order.orderNumber)}`}
-                            className="rounded-lg border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:border-orange-500 hover:text-orange-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-orange-400"
-                          >
-                            Rincian
-                          </Link>
+                        <div className="flex shrink-0 items-center justify-between gap-3 sm:flex-col sm:items-end sm:text-right">
+                          <p className="font-mono text-xs font-bold tabular-nums text-slate-950 dark:text-white sm:text-sm">
+                            Rp {order.total.toLocaleString('id-ID')}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
+                                type === 'danger'
+                                  ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                                  : type === 'warning'
+                                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                                    : type === 'success'
+                                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                      : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
+                              }`}
+                            >
+                              ● {label}
+                            </span>
+                            <Link
+                              href={`/dashboard/admin/orders?search=${encodeURIComponent(order.orderNumber)}`}
+                              className="rounded-lg border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:border-orange-500 hover:text-orange-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-orange-400"
+                            >
+                              Rincian
+                            </Link>
+                          </div>
                         </div>
                       </div>
+                    )
+                  })}
+                </div>
+
+                {/* Pagination Controls when filteredOrders > ORDERS_PER_PAGE */}
+                {filteredOrders.length > ORDERS_PER_PAGE && (
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3.5 text-xs dark:border-slate-800/80">
+                    <span className="font-mono text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                      {(safeOrderPage - 1) * ORDERS_PER_PAGE + 1}–
+                      {Math.min(
+                        safeOrderPage * ORDERS_PER_PAGE,
+                        filteredOrders.length
+                      )}{' '}
+                      dari {filteredOrders.length} pesanan
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+                        disabled={safeOrderPage <= 1}
+                        className="shrink-0 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        Sebelumnya
+                      </button>
+                      <span className="shrink-0 whitespace-nowrap px-2 font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        {safeOrderPage}/{totalOrderPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOrderPage((p) => Math.min(totalOrderPages, p + 1))
+                        }
+                        disabled={safeOrderPage >= totalOrderPages}
+                        className="shrink-0 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        Selanjutnya
+                      </button>
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {/* Right: Informasi Pengembalian & Pembatalan */}
+          {/* Right: Performa Produk & Peringatan Stok Kritis */}
           <div className="lg:col-span-5">
-            {/* Informasi Pengembalian atau Pembatalan */}
             <div
-              id="pengembalian-pembatalan"
+              id="performa-produk-toko"
               className="shadow-2xs flex flex-col rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7"
             >
               <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800/80">
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm font-bold tracking-tight text-slate-950 dark:text-white sm:text-base">
-                      Pengembalian &amp; Pembatalan
+                      Performa &amp; Stok Produk
                     </h2>
-                    {((storeStats?.pendingReturns ?? 0) > 0 ||
-                      (storeStats?.orderStatusCounts?.cancelled ?? 0) > 0) && (
-                      <span className="flex h-2 w-2 rounded-full bg-rose-500" />
+                    {(storeStats?.lowStockCount ?? 0) +
+                      (storeStats?.outOfStockCount ?? 0) >
+                      0 && (
+                      <span className="flex h-2 w-2 rounded-full bg-amber-500" />
                     )}
                   </div>
                   <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                    Retur unit garansi 30 hari &amp; pembatalan
+                    Unit gadget terlaris &amp; pemantauan stok kritis cabang
                   </p>
                 </div>
                 <Link
-                  href={
-                    returnTab === 'RETURNS'
-                      ? '/dashboard/admin/returns'
-                      : '/dashboard/admin/orders?status=CANCELLED'
-                  }
+                  href="/dashboard/admin/products"
                   className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 transition hover:text-orange-700 dark:text-orange-400"
                 >
-                  <span>
-                    {returnTab === 'RETURNS' ? 'Menu Retur' : 'Dibatalkan'}
-                  </span>
+                  <span>Kelola Produk</span>
                   <ChevronRight className="h-3.5 w-3.5 stroke-[2.5]" />
                 </Link>
               </div>
 
-              {/* Sub-tabs: Pengajuan Retur vs Dibatalkan */}
+              {/* Sub-tabs: Produk Terlaris vs Stok Kritis */}
               <div className="mb-3 flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
                 <button
                   type="button"
-                  onClick={() => setReturnTab('RETURNS')}
+                  onClick={() => setProductInsightTab('TOP_SELLING')}
                   className={`flex-1 rounded-lg py-1.5 text-[11px] font-bold transition ${
-                    returnTab === 'RETURNS'
+                    productInsightTab === 'TOP_SELLING'
                       ? 'shadow-2xs bg-white text-slate-900 dark:bg-slate-900 dark:text-white'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
-                  Pengajuan Retur ({recentReturns.length})
+                  Produk Terlaris ({topSellingProducts.length})
                 </button>
                 <button
                   type="button"
-                  onClick={() => setReturnTab('CANCELLATIONS')}
+                  onClick={() => setProductInsightTab('CRITICAL_STOCK')}
                   className={`flex-1 rounded-lg py-1.5 text-[11px] font-bold transition ${
-                    returnTab === 'CANCELLATIONS'
+                    productInsightTab === 'CRITICAL_STOCK'
                       ? 'shadow-2xs bg-white text-slate-900 dark:bg-slate-900 dark:text-white'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
-                  Dibatalkan ({recentCancellations.length})
+                  Stok Perlu Restock ({criticalStockList.length})
                 </button>
               </div>
 
-              {/* Content tab: RETURNS */}
-              {returnTab === 'RETURNS' && (
+              {/* Content tab: TOP_SELLING */}
+              {productInsightTab === 'TOP_SELLING' && (
                 <div>
-                  {recentReturns.length === 0 ? (
+                  {topSellingProducts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <RotateCcw className="mb-2.5 h-8 w-8 text-slate-200 dark:text-slate-700" />
+                      <Smartphone className="mb-2.5 h-8 w-8 text-slate-200 dark:text-slate-700" />
                       <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                        Tidak ada pengajuan retur aktif
+                        Belum ada data penjualan produk
                       </p>
                       <p className="mt-0.5 text-[11px] text-slate-400">
-                        Semua transaksi pelanggan saat ini aman dan terlindungi
+                        Produk yang paling sering dibeli pelanggan akan muncul
+                        di sini
                       </p>
                     </div>
                   ) : (
                     <div>
                       <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                        {recentReturns.slice(0, 5).map((ret) => {
-                          const { label, badgeClass } = getReturnStatusBadge(
-                            ret.status
-                          )
-                          return (
-                            <div
-                              key={ret.id}
-                              className="py-3 first:pt-0 last:pb-0"
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-mono text-[11px] font-bold text-slate-900 dark:text-white">
-                                  #
-                                  {ret.order?.orderNumber?.slice(0, 16) ??
-                                    'Pesanan'}
-                                </span>
-                                <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeClass}`}
-                                >
-                                  {label}
-                                </span>
-                              </div>
-                              <p className="mt-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                {ret.user?.name ??
-                                  ret.user?.email ??
-                                  'Customer'}{' '}
-                                ·{' '}
-                                <span className="font-semibold text-orange-600 dark:text-orange-400">
-                                  {ret.type === 'REFUND'
-                                    ? 'Pengembalian Dana'
-                                    : 'Ganti Unit Baru'}
-                                </span>
-                              </p>
-                              <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-500 dark:text-slate-400">
-                                Alasan: {ret.reasonLabel || ret.reason}
-                              </p>
-                              <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400">
-                                <span>{timeAgo(ret.createdAt)}</span>
-                                <Link
-                                  href="/dashboard/admin/returns"
-                                  className="font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400"
-                                >
-                                  Tinjau Retur →
-                                </Link>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-
-                      {/* Link jika total pengajuan retur > 5 */}
-                      {((storeStats?.pendingReturns ?? 0) > 5 ||
-                        (storeStats?.totalReturns ?? 0) > 5 ||
-                        recentReturns.length > 5) && (
-                        <Link
-                          href="/dashboard/admin/returns"
-                          className="mt-3 block text-center text-[11px] font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400"
-                        >
-                          Lihat Semua Pengajuan Retur (
-                          {storeStats?.totalReturns ||
-                            storeStats?.pendingReturns ||
-                            recentReturns.length}
-                          ) →
-                        </Link>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Content tab: CANCELLATIONS */}
-              {returnTab === 'CANCELLATIONS' && (
-                <div>
-                  {recentCancellations.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <XCircle className="mb-2.5 h-8 w-8 text-slate-200 dark:text-slate-700" />
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                        Tidak ada pesanan yang dibatalkan
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-slate-400">
-                        Tidak ada riwayat pembatalan transaksi di cabang ini
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                        {recentCancellations.slice(0, 5).map((canc) => (
+                        {topSellingProducts.slice(0, 5).map((prod, idx) => (
                           <div
-                            key={canc.id}
-                            className="py-3 first:pt-0 last:pb-0"
+                            key={prod.id}
+                            className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono text-[11px] font-bold text-slate-900 dark:text-white">
-                                #{canc.orderNumber.slice(0, 16)}
-                              </span>
-                              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
-                                Dibatalkan
-                              </span>
-                            </div>
-                            <p className="mt-0.5 text-xs text-slate-700 dark:text-slate-300">
-                              {canc.user?.name ??
-                                canc.user?.email ??
-                                'Customer'}{' '}
-                              ·{' '}
-                              <span className="font-mono font-bold text-slate-900 dark:text-white">
-                                Rp {canc.total.toLocaleString('id-ID')}
-                              </span>
-                            </p>
-                            <p className="mt-0.5 truncate text-[11px] text-slate-400">
-                              {canc.items?.[0]?.product?.name ?? 'Item pesanan'}
-                            </p>
-                            <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
-                              <span>
-                                {timeAgo(canc.updatedAt || canc.createdAt)}
-                              </span>
-                              <Link
-                                href="/dashboard/admin/orders?status=CANCELLED"
-                                className="font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div
+                                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-black ${
+                                  idx === 0
+                                    ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300'
+                                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                }`}
                               >
-                                Lihat Rincian →
+                                #{idx + 1}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                                  {prod.name}
+                                </p>
+                                <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
+                                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                    {prod.soldCount} terjual
+                                  </span>
+                                  <span>·</span>
+                                  <span>Stok: {prod.stock} unit</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 text-right">
+                              <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                                Rp {prod.price.toLocaleString('id-ID')}
+                              </p>
+                              <Link
+                                href={`/dashboard/admin/products/${prod.id}/edit`}
+                                className="text-[10px] font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400"
+                              >
+                                Detail →
                               </Link>
                             </div>
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
-                      {/* Link jika total pesanan dibatalkan > 5 */}
-                      {((storeStats?.orderStatusCounts?.cancelled ?? 0) > 5 ||
-                        recentCancellations.length > 5) && (
-                        <Link
-                          href="/dashboard/admin/orders?status=CANCELLED"
-                          className="mt-3 block text-center text-[11px] font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400"
-                        >
-                          Lihat Semua Pesanan Dibatalkan (
-                          {storeStats?.orderStatusCounts?.cancelled ||
-                            recentCancellations.length}
-                          ) →
-                        </Link>
-                      )}
+              {/* Content tab: CRITICAL_STOCK */}
+              {productInsightTab === 'CRITICAL_STOCK' && (
+                <div>
+                  {criticalStockList.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <CheckCircle2 className="mb-2.5 h-8 w-8 text-emerald-400 dark:text-emerald-600" />
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        Seluruh stok produk aman
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-slate-400">
+                        Tidak ada produk dengan stok habis atau menipis saat ini
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {criticalStockList.slice(0, 5).map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                                {item.name}
+                              </p>
+                              <p className="mt-0.5 font-mono text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                Rp {item.price.toLocaleString('id-ID')}
+                              </p>
+                            </div>
+
+                            <div className="flex shrink-0 flex-col items-end gap-1">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  item.stock <= 0
+                                    ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                                    : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                                }`}
+                              >
+                                {item.stock <= 0
+                                  ? 'Habis (0 Unit)'
+                                  : `Sisa ${item.stock} Unit`}
+                              </span>
+                              <Link
+                                href={`/dashboard/admin/products/${item.id}/edit`}
+                                className="text-[10px] font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400"
+                              >
+                                Update Stok →
+                              </Link>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

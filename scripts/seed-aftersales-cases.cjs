@@ -395,6 +395,8 @@ async function seed() {
             productId: product.id,
             quantity: 1,
             price: tc.productPrice,
+            costPrice:
+              product.costPrice || Math.round(tc.productPrice * 0.85),
             subtotal: tc.productPrice,
           },
         },

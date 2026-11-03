@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
 import { Navbar, Footer } from '@/components/layouts'
 import { SectionHeroClean } from '@/components/landing/section-hero-clean'
@@ -16,17 +17,26 @@ const GadgetKatalogPage = dynamic(() => import('@/app/gadget/page'), {
 
 export default function HomePage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const isMobile = useIsMobile(768)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    if (session?.user?.role === 'AFTER_SALES') {
+      router.replace('/dashboard/after-sales')
+      return
+    }
+  }, [session?.user?.role, router])
+
+  useEffect(() => {
     setMounted(true)
+    if (session?.user?.role === 'AFTER_SALES') return
     // Pada mode mobile, halaman beranda ditiadakan karena redundan dengan katalog yang kini menjadi Beranda
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       const searchStr = window.location.search || ''
       router.replace(`/gadget${searchStr}`)
     }
-  }, [router])
+  }, [router, session?.user?.role])
 
   return (
     <>

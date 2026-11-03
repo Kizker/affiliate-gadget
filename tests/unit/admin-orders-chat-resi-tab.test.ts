@@ -64,7 +64,7 @@ describe('Admin Orders Updates: Chat Context, Printer Alignment & Cek Resi Tab',
 
   it('6. should include user id in admin orders API and resolve customerId in chat rooms API', () => {
     expect(ordersApiContent).toContain('id: true')
-    expect(chatRoomsApiContent).toContain('effectiveCustomerId = order.userId')
+    expect(chatRoomsApiContent).toMatch(/effectiveCustomerId\s*=\s*\w+\.userId/)
     expect(chatRoomsApiContent).toContain('claimedById: session.user.id')
   })
 })

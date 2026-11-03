@@ -1,6 +1,55 @@
 import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import path from 'path'
 
 describe('After Sales Portal & Notifications System', () => {
+  it('should enforce strict alignment of own messages to the right in Admin/AfterSales chat', () => {
+    const chatPagePath = path.join(
+      process.cwd(),
+      'src/app/dashboard/admin/chat/page.tsx'
+    )
+    const content = fs.readFileSync(chatPagePath, 'utf8')
+
+    expect(content).toContain('message.senderId !== selectedRoom.customerId')
+    expect(content).toContain(
+      "justifyContent: isAdmin ? 'flex-end' : 'flex-start'"
+    )
+    expect(content).toContain("isAdmin ? 'ml-auto' : 'mr-auto'")
+  })
+
+  it('should display Admin After Sales label in sidebar profile footer for AFTER_SALES role', () => {
+    const sidebarPath = path.join(
+      process.cwd(),
+      'src/components/dashboard/sidebar.tsx'
+    )
+    const content = fs.readFileSync(sidebarPath, 'utf8')
+
+    expect(content).toContain(
+      "if (pathname.startsWith('/dashboard/after-sales')) return 'AFTER_SALES'"
+    )
+    expect(content).toContain("'Admin After Sales'")
+  })
+
+  it('should render active chat conversation in fullscreen on mobile hiding the top navbar until user presses back', () => {
+    const chatPagePath = path.join(
+      process.cwd(),
+      'src/app/dashboard/admin/chat/page.tsx'
+    )
+    const cssPath = path.join(process.cwd(), 'src/styles/globals.css')
+    const chatContent = fs.readFileSync(chatPagePath, 'utf8')
+    const cssContent = fs.readFileSync(cssPath, 'utf8')
+
+    expect(chatContent).toContain(
+      "document.body.classList.add('admin-chat-mobile-open')"
+    )
+    expect(chatContent).toContain(
+      "document.body.classList.remove('admin-chat-mobile-open')"
+    )
+    expect(chatContent).toContain(
+      'fixed inset-0 z-50 h-[100dvh] max-h-[100dvh] rounded-none border-0'
+    )
+    expect(cssContent).toContain('body.admin-chat-mobile-open header')
+  })
   it('should format raw JSON chat previews into clean human readable text', () => {
     function formatChatMessagePreview(raw: string, productName?: string) {
       if (!raw) return 'Belum ada pesan'

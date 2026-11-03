@@ -1851,7 +1851,15 @@ function CustomerSettingsContent() {
 
                 <button
                   type="button"
-                  onClick={() => signOut({ callbackUrl: '/' })}
+                  onClick={async () => {
+                    await fetch('/api/auth/logout', {
+                      method: 'POST',
+                      cache: 'no-store',
+                      credentials: 'include',
+                    }).catch(() => {})
+                    await signOut({ redirect: false }).catch(() => {})
+                    window.location.replace('/')
+                  }}
                   className="cursor-pointer text-xs font-bold text-rose-500 transition hover:text-rose-600"
                 >
                   Keluar
@@ -2199,7 +2207,9 @@ function CustomerSettingsContent() {
           setActiveSubView={handleSelectSubView}
           onBack={handleBackFromSubView}
           onAvatarClick={handleAvatarClick}
-          onSignOut={() => signOut({ callbackUrl: '/' })}
+          onSignOut={async () => {
+            await signOut({ redirect: false })
+          }}
           onSaveProfile={handleSaveProfile}
           onSavePassword={handleChangePassword}
           onAddAddress={() => {

@@ -55,7 +55,9 @@ describe('After Sales Login, Middleware & Navigation Redirection', () => {
     )
     // requiresAuth
     expect(content).toContain('isAfterSalesRoute')
-    // redirect AFTER_SALES away from /dashboard/admin
+    // redirect AFTER_SALES away from public root (/), customer pages, and /dashboard/admin
+    expect(content).toContain("if (userRole === 'AFTER_SALES')")
+    expect(content).toContain('isRootPublicRoute')
     expect(content).toContain("isAdminRoute && userRole === 'AFTER_SALES'")
     expect(content).toContain("new URL('/dashboard/after-sales', req.url)")
     // protect /dashboard/after-sales

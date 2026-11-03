@@ -110,10 +110,10 @@ describe('Store Admin Dashboard, Recipient Details, Thermal Label, & Voucher Pic
     })
   })
 
-  describe('3. Store Admin Dashboard (Pesanan Penting & Status)', () => {
-    it('verifies Store Admin KPI cards contain Orders, Shipments, and Returns', () => {
+  describe('3. Store Admin Dashboard (Pesanan Penting & Performa Produk)', () => {
+    it('verifies Store Admin KPI cards contain Orders, Shipments, and Catalog Inventory (no returns)', () => {
       expect(adminDashboardContent).not.toContain('id="stok-inventori-opsi"')
-      expect(adminDashboardContent).toContain('Retur &amp; Pembatalan')
+      expect(adminDashboardContent).toContain('Katalog &amp; Inventori')
       expect(adminDashboardContent).toContain('Status Pesanan di Dashboard')
     })
 
@@ -122,11 +122,10 @@ describe('Store Admin Dashboard, Recipient Details, Thermal Label, & Voucher Pic
       expect(adminDashboardContent).toContain('Prioritas Operasional')
     })
 
-    it('verifies dedicated return and cancellation tracking is rendered', () => {
-      expect(adminDashboardContent).toContain(
-        'Informasi Pengembalian atau Pembatalan'
-      )
-      expect(adminDashboardContent).toContain('Pengajuan Retur')
+    it('verifies Performa & Stok Produk replaces return tracking on store admin dashboard', () => {
+      expect(adminDashboardContent).toContain('Performa &amp; Stok Produk')
+      expect(adminDashboardContent).toContain('Produk Terlaris')
+      expect(adminDashboardContent).toContain('Stok Perlu Restock')
     })
   })
 

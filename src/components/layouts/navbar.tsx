@@ -427,10 +427,10 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
       <LogoutConfirmModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        onConfirm={() => {
+        onConfirm={async () => {
           cartSetUserId(null)
           wishlistSetUserId(null)
-          signOut({ callbackUrl: '/' })
+          await signOut({ redirect: false })
         }}
       />
     </header>

@@ -2,7 +2,32 @@
 
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { signOut } from 'next-auth/react'
 import { LogOut, X, Loader2 } from 'lucide-react'
+import { useCartStore } from '@/lib/store/cart-store'
+import { useWishlistStore } from '@/lib/store/wishlist-store'
+
+export async function performHardSignOut(targetUrl = '/') {
+  try {
+    useCartStore.getState().setUserId(null)
+    useWishlistStore.getState().setUserId(null)
+  } catch {}
+
+  try {
+    await Promise.allSettled([
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+      signOut({ redirect: false }),
+    ])
+  } catch {}
+
+  if (typeof window !== 'undefined') {
+    window.location.replace(targetUrl)
+  }
+}
 
 export interface LogoutConfirmModalProps {
   isOpen: boolean
@@ -63,7 +88,19 @@ export function LogoutConfirmModal({
   const handleConfirmAction = async () => {
     try {
       setIsSubmitting(true)
+      try {
+        useCartStore.getState().setUserId(null)
+        useWishlistStore.getState().setUserId(null)
+      } catch {}
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'include',
+      }).catch(() => {})
       await onConfirm()
+      if (typeof window !== 'undefined') {
+        window.location.replace('/')
+      }
     } finally {
       setIsSubmitting(false)
     }

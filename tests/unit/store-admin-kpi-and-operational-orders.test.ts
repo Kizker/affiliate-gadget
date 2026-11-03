@@ -61,11 +61,11 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
       expect(dashboardPageContent).toContain('Stok Aman')
     })
 
-    it('verifies "Retur & Pembatalan" is rendered as Card 4 linking to returns menu', () => {
-      expect(dashboardPageContent).toContain('Retur &amp; Pembatalan')
-      expect(dashboardPageContent).toContain('/dashboard/admin/returns')
-      expect(dashboardPageContent).toContain('Kasus Perhatian')
-      expect(dashboardPageContent).toContain('Pengajuan Retur')
+    it('verifies "Katalog & Inventori" is rendered as Card 4 instead of returns (which are handled by After Sales)', () => {
+      expect(dashboardPageContent).toContain('Katalog &amp; Inventori')
+      expect(dashboardPageContent).toContain('Model Gadget')
+      expect(dashboardPageContent).toContain('Unit')
+      expect(dashboardPageContent).not.toContain('Retur &amp; Pembatalan')
     })
 
     it('verifies static Proteksi Garansi and Operasional Toko cards are eliminated from store admin KPI', () => {
@@ -81,7 +81,7 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
   })
 
   describe('2. Status Pesanan di Dashboard (Clean UI)', () => {
-    it('verifies 6 order pipeline status cards are rendered without clutter subtitles or badges', () => {
+    it('verifies 6 order pipeline status cards are rendered without clutter subtitles or return references', () => {
       expect(dashboardPageContent).toContain('Status Pesanan di Dashboard')
       expect(dashboardPageContent).not.toContain('Live Status')
       expect(dashboardPageContent).not.toContain(
@@ -92,7 +92,8 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
       expect(dashboardPageContent).toContain('Sedang Dikirim')
       expect(dashboardPageContent).toContain('Selesai')
       expect(dashboardPageContent).toContain('Menunggu Bayar')
-      expect(dashboardPageContent).toContain('Retur &amp; Batal')
+      expect(dashboardPageContent).toContain('Dibatalkan')
+      expect(dashboardPageContent).not.toContain('Retur &amp; Batal')
     })
   })
 
@@ -102,13 +103,18 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
       expect(dashboardPageContent).toContain('Prioritas Operasional')
     })
 
-    it('verifies orderFilter tabs are present for instant in-page filtering', () => {
+    it('verifies orderFilter defaults to PAID (Perlu Diproses) and includes pagination', () => {
       expect(dashboardPageContent).toContain('orderFilter')
-      expect(dashboardPageContent).toContain("setOrderFilter('ALL')")
+      expect(dashboardPageContent).toContain(
+        "useState<\n    'ALL' | 'PAID' | 'IN_PROGRESS' | 'SHIPPED' | 'COMPLETED'\n  >('PAID')"
+      )
       expect(dashboardPageContent).toContain("setOrderFilter('PAID')")
       expect(dashboardPageContent).toContain("setOrderFilter('IN_PROGRESS')")
       expect(dashboardPageContent).toContain("setOrderFilter('SHIPPED')")
       expect(dashboardPageContent).toContain("setOrderFilter('COMPLETED')")
+      expect(dashboardPageContent).toContain("setOrderFilter('ALL')")
+      expect(dashboardPageContent).toContain('ORDERS_PER_PAGE = 5')
+      expect(dashboardPageContent).toContain('paginatedOrders.map')
     })
 
     it('verifies filteredOrders useMemo hook and status-based empty states', () => {
@@ -180,30 +186,24 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
     })
   })
 
-  describe('6. Dynamic Header Link, 5 Items Limit & "Lihat Semua" Footer on Returns & Cancellations', () => {
-    it('verifies header arrow link changes dynamically between Menu Retur and Dibatalkan', () => {
-      expect(dashboardPageContent).toContain("returnTab === 'RETURNS'")
-      expect(dashboardPageContent).toContain('/dashboard/admin/returns')
-      expect(dashboardPageContent).toContain(
-        '/dashboard/admin/orders?status=CANCELLED'
-      )
-      expect(dashboardPageContent).toContain(
-        "returnTab === 'RETURNS' ? 'Menu Retur' : 'Dibatalkan'"
+  describe('6. Product Performance & Critical Stock Insights (Replaces Returns on Store Admin)', () => {
+    it('verifies Performa & Stok Produk card replaces Pengembalian & Pembatalan on store admin dashboard', () => {
+      expect(dashboardPageContent).toContain('Performa &amp; Stok Produk')
+      expect(dashboardPageContent).toContain('Produk Terlaris')
+      expect(dashboardPageContent).toContain('Stok Perlu Restock')
+      expect(dashboardPageContent).not.toContain(
+        'Pengembalian &amp; Pembatalan'
       )
     })
 
-    it('verifies list is limited to max 5 items for both returns and cancellations', () => {
-      expect(dashboardPageContent).toContain('recentReturns.slice(0, 5)')
-      expect(dashboardPageContent).toContain('recentCancellations.slice(0, 5)')
+    it('verifies list is limited to max 5 items for both top selling and critical stock products', () => {
+      expect(dashboardPageContent).toContain('topSellingProducts.slice(0, 5)')
+      expect(dashboardPageContent).toContain('criticalStockList.slice(0, 5)')
     })
 
-    it('verifies "Lihat Semua" footer link appears when returns or cancellations exceed 5', () => {
-      expect(dashboardPageContent).toContain('Lihat Semua Pengajuan Retur')
-      expect(dashboardPageContent).toContain('Lihat Semua Pesanan Dibatalkan')
-      expect(dashboardPageContent).toContain('storeStats?.totalReturns')
-      expect(dashboardPageContent).toContain(
-        'storeStats?.orderStatusCounts?.cancelled'
-      )
+    it('verifies dashboard API provides topSellingProducts and criticalProductsList', () => {
+      expect(dashboardApiContent).toContain('topSellingProducts')
+      expect(dashboardApiContent).toContain('criticalProductsList')
     })
 
     it('verifies real-time background sync via 3s polling and multi-event listeners', () => {

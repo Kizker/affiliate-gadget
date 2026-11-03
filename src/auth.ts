@@ -253,8 +253,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.mitraStatus = (user as any).mitraStatus || null
       }
 
-      // If token is missing role or storeId, check if database now has it linked
-      if (token.id && (!token.role || !token.storeId)) {
+      // If token is missing role or storeId (only for store roles), check if database now has it linked
+      if (
+        token.id &&
+        (!token.role ||
+          (!token.storeId &&
+            (token.role === 'STORE_ADMIN' || token.role === 'STORE_SALES')))
+      ) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },

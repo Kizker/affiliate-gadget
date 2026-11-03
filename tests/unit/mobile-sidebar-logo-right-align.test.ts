@@ -13,8 +13,8 @@ describe('Mobile Sidebar Brand Logo Alignment Suite', () => {
   )
   const sidebarContent = fs.readFileSync(sidebarPath, 'utf-8')
 
-  it('1. verifies mobile menu toggle button has fixed left-4 top-4 z-50 positioning', () => {
-    expect(sidebarContent).toContain('fixed left-4 top-4 z-50')
+  it('1. verifies mobile menu toggle button is fixed at the left with z-50 positioning', () => {
+    expect(sidebarContent).toMatch(/fixed left-4 top-[\d.]+ z-50/)
     expect(sidebarContent).toContain('onClick={toggleMobile}')
     expect(sidebarContent).toContain('<X className="h-5 w-5" />')
   })

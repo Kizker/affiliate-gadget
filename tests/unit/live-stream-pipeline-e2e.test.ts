@@ -30,6 +30,22 @@ vi.mock('@/lib/livekit', () => ({
   isLiveKitConfigured: vi.fn().mockReturnValue(true),
 }))
 
+// GET /api/live-streams memanggil cleanupStaleLiveStreams() yang juga memakai
+// prisma.liveStream.findMany; di-mock agar mock findMany sekali-pakai pada tes
+// tidak habis terpakai oleh pembersihan stream.
+vi.mock('@/lib/live-stream-auto-end', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/live-stream-auto-end')>()
+  return {
+    ...actual,
+    cleanupStaleLiveStreams: vi.fn().mockResolvedValue({
+      endedStreamIds: [],
+      totalChecked: 0,
+      totalEnded: 0,
+    }),
+  }
+})
+
 import { auth } from '@/auth'
 
 describe('Live Streaming Engine — Full End-to-End Pipeline Simulation', () => {

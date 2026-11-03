@@ -38,6 +38,7 @@ import { isSameDay } from '@/utils/chat-helpers'
 import { getChatTickStatus } from '@/lib/chat-status'
 import { processMediaUploadFile } from '@/lib/media-upload-client'
 import { usePageGuard } from '@/hooks/use-page-guard'
+import { useKeyboardInset } from '@/hooks/use-keyboard-inset'
 import { playChatNotificationSound } from '@/lib/chat-notification-sound'
 
 const renderAdminWhatsAppTick = (
@@ -302,6 +303,7 @@ function AdminChatContent() {
   const userRole = session?.user?.role as string | undefined
   const isSuperAdmin = userRole === 'SUPER_ADMIN'
   const isStoreAdmin = userRole === 'STORE_ADMIN' || userRole === 'STORE_SALES'
+  const { keyboardInset } = useKeyboardInset(true)
 
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
@@ -324,10 +326,22 @@ function AdminChatContent() {
   const showChatOnMobileRef = useRef<boolean>(false)
   const chatRoomPushedRef = useRef<boolean>(false)
 
-  // Sinkronisasi ref showChatOnMobile
+  // Sinkronisasi ref showChatOnMobile & class fullscreen pada body (mobile)
   useEffect(() => {
     showChatOnMobileRef.current = showChatOnMobile
-  }, [showChatOnMobile])
+    if (typeof document !== 'undefined') {
+      if (showChatOnMobile && selectedRoom) {
+        document.body.classList.add('admin-chat-mobile-open')
+      } else {
+        document.body.classList.remove('admin-chat-mobile-open')
+      }
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('admin-chat-mobile-open')
+      }
+    }
+  }, [showChatOnMobile, selectedRoom])
 
   // Bersihkan history state adminChatRoomMobile jika halaman dimuat ulang
   useEffect(() => {
@@ -493,6 +507,13 @@ function AdminChatContent() {
   useEffect(() => {
     scrollToBottom()
   }, [messages, scrollToBottom])
+
+  // Auto-scroll messages container to bottom when mobile keyboard rises
+  useEffect(() => {
+    if (keyboardInset > 0) {
+      scrollToBottom(true)
+    }
+  }, [keyboardInset, scrollToBottom])
 
   // Fetch all chat rooms
   const fetchRooms = useCallback(
@@ -1158,9 +1179,9 @@ function AdminChatContent() {
       createdAt: new Date().toISOString(),
       sender: {
         id: 'me',
-        name: 'Admin',
-        image: null,
-        role: 'STORE_ADMIN',
+        name: session?.user?.name || 'Admin',
+        image: session?.user?.image || null,
+        role: userRole || 'STORE_ADMIN',
       },
     }
     setMessages((prev) => [...prev, optimisticMsg])
@@ -1526,7 +1547,11 @@ function AdminChatContent() {
           data.storeName || selectedRoom?.store?.name || 'Affiliate Gadget'
 
         return (
-          <div className="shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px]">
+          <div
+            className={`shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px] ${
+              isAdmin ? 'ml-auto' : 'mr-auto'
+            }`}
+          >
             {/* Top Header Info Pill */}
             <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
               <span
@@ -1672,7 +1697,11 @@ function AdminChatContent() {
         const prodId = data.productId || data.id
 
         return (
-          <div className="shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px]">
+          <div
+            className={`shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px] ${
+              isAdmin ? 'ml-auto' : 'mr-auto'
+            }`}
+          >
             {/* Top Header Info Pill */}
             <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
               <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
@@ -1829,7 +1858,7 @@ function AdminChatContent() {
       !!selectedRoom.isStoreHelpToSuperAdmin)
 
   return (
-    <div className="flex h-full max-h-full w-full flex-col font-sans">
+    <div className="flex h-full max-h-full min-h-0 w-full flex-1 flex-col overflow-hidden font-sans">
       {/* Luxury Fullscreen Portal Lightbox Modal (Escape stacking context & covers 100% viewport) */}
       {mounted &&
         fullscreenMedia &&
@@ -1896,10 +1925,16 @@ function AdminChatContent() {
         )}
 
       {/* Single-Surface Unified Bento Chat Hub Container */}
-      <div className="shadow-xs grid h-full max-h-full min-h-0 w-full min-w-0 flex-1 grid-cols-1 overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-12">
+      <div
+        className={`shadow-xs flex h-full max-h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-white dark:bg-slate-900 lg:grid lg:grid-cols-12 lg:grid-rows-1 lg:rounded-3xl lg:border lg:border-slate-200/80 dark:lg:border-slate-800 ${
+          showChatOnMobile && selectedRoom
+            ? 'fixed inset-0 z-50 h-[100dvh] max-h-[100dvh] rounded-none border-0 lg:static lg:z-auto lg:h-full lg:max-h-full'
+            : 'rounded-3xl border border-slate-200/80 dark:border-slate-800'
+        }`}
+      >
         {/* Left Pane: Integrated Control & Customer Chat Rooms List (4 Cols) */}
         <div
-          className={`flex h-full min-h-0 flex-col overflow-hidden border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:col-span-4 xl:col-span-4 ${
+          className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:col-span-4 xl:col-span-4 ${
             showChatOnMobile ? 'hidden lg:flex' : 'flex'
           }`}
         >
@@ -2088,14 +2123,27 @@ function AdminChatContent() {
 
         {/* Right Pane: Active Conversation Window (8 Cols) */}
         <div
-          className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 lg:col-span-8 xl:col-span-8 ${
+          style={
+            keyboardInset > 0
+              ? {
+                  paddingBottom: `${keyboardInset}px`,
+                  transition:
+                    'padding-bottom 200ms cubic-bezier(0.2, 0.9, 0.3, 1)',
+                }
+              : {
+                  paddingBottom: '0px',
+                  transition:
+                    'padding-bottom 200ms cubic-bezier(0.2, 0.9, 0.3, 1)',
+                }
+          }
+          className={`flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 lg:col-span-8 xl:col-span-8 ${
             !showChatOnMobile ? 'hidden lg:flex' : 'flex'
           }`}
         >
           {selectedRoom ? (
             <>
               {/* Active Room Header */}
-              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-3.5">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 bg-white p-3 pt-[max(0.75rem,env(safe-area-inset-top,12px))] dark:border-slate-800 dark:bg-slate-900 sm:p-3.5 lg:pt-3.5">
                 <div className="flex min-w-0 items-center gap-3">
                   {/* Mobile Back Button */}
                   <button
@@ -2285,6 +2333,11 @@ function AdminChatContent() {
                       ) ||
                       message.senderId === 'me' ||
                       Boolean(
+                        selectedRoom?.customerId &&
+                        message.senderId &&
+                        message.senderId !== selectedRoom.customerId
+                      ) ||
+                      Boolean(
                         message.sender?.role &&
                         [
                           'ADMIN',
@@ -2292,8 +2345,7 @@ function AdminChatContent() {
                           'STORE_ADMIN',
                           'STORE_SALES',
                           'AFTER_SALES',
-                        ].includes(message.sender.role) &&
-                        message.senderId !== selectedRoom?.customerId
+                        ].includes(message.sender.role)
                       )
                     const isAdmin = isCurrentUser
                     const isVideo = isVideoMedia(
@@ -2351,11 +2403,18 @@ function AdminChatContent() {
                               ? `chat-context-msg-${message.id}`
                               : undefined
                           }
-                          className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
+                          style={{
+                            justifyContent: isAdmin ? 'flex-end' : 'flex-start',
+                          }}
+                          className={`flex w-full ${isAdmin ? 'justify-end' : 'justify-start'}`}
                         >
                           {isMedia ? (
                             /* Full-Bleed Modern Media Bubble (Compact Mobile Friendly) */
-                            <div className="shadow-xs group relative max-w-[65%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[240px]">
+                            <div
+                              className={`shadow-xs group relative max-w-[65%] overflow-hidden rounded-2xl border border-slate-200/80 bg-black dark:border-slate-800 sm:max-w-[240px] ${
+                                isAdmin ? 'ml-auto' : 'mr-auto'
+                              }`}
+                            >
                               {isVideo ? (
                                 <ChatVideoPlayer
                                   src={message.mediaUrl!}
@@ -2413,8 +2472,8 @@ function AdminChatContent() {
                             <div
                               className={`shadow-2xs max-w-[80%] rounded-2xl px-4 py-2.5 text-xs sm:max-w-[70%] ${
                                 isAdmin
-                                  ? 'rounded-tr-xs bg-blue-600 text-white shadow-blue-500/10'
-                                  : 'rounded-tl-xs border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100'
+                                  ? 'rounded-tr-xs ml-auto bg-blue-600 text-white shadow-blue-500/10'
+                                  : 'rounded-tl-xs mr-auto border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100'
                               }`}
                             >
                               {!isAdmin && (
@@ -2644,6 +2703,9 @@ function AdminChatContent() {
                       type="text"
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
+                      onFocus={() => {
+                        setTimeout(() => scrollToBottom(true), 120)
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()

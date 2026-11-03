@@ -45,12 +45,13 @@ export function useKeyboardInset(enabled = true) {
     // Only listen to actual viewport changes (opening/closing keyboard) to avoid forced reflow on initial mount
     vv.addEventListener('resize', update)
     vv.addEventListener('scroll', update)
+    window.addEventListener('focusin', update)
 
     const handleFocusOut = () => {
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
       }
-      update()
+      setTimeout(update, 50)
     }
     window.addEventListener('focusout', handleFocusOut)
 
@@ -58,6 +59,7 @@ export function useKeyboardInset(enabled = true) {
       if (rafId) cancelAnimationFrame(rafId)
       vv.removeEventListener('resize', update)
       vv.removeEventListener('scroll', update)
+      window.removeEventListener('focusin', update)
       window.removeEventListener('focusout', handleFocusOut)
     }
   }, [enabled])

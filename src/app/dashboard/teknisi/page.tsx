@@ -349,7 +349,9 @@ const Header = ({
       <LogoutConfirmModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        onConfirm={() => signOut({ callbackUrl: '/login' })}
+        onConfirm={async () => {
+          await signOut({ redirect: false })
+        }}
       />
     </motion.div>
   )

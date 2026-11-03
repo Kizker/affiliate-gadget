@@ -319,6 +319,7 @@ export function Sidebar({
   }
 
   const fallbackRole = useMemo(() => {
+    if (pathname.startsWith('/dashboard/after-sales')) return 'AFTER_SALES'
     if (pathname.startsWith('/dashboard/mitra')) return 'STORE_ADMIN'
     if (pathname.startsWith('/dashboard/customer')) return 'CUSTOMER'
     if (pathname.startsWith('/dashboard/teknisi')) return 'TECHNICIAN'
@@ -376,7 +377,11 @@ export function Sidebar({
 
   // Helper to check if item is active
   const checkIsActive = (href: string) => {
-    if (href === '/dashboard/admin' || href === '/dashboard/mitra') {
+    if (
+      href === '/dashboard/admin' ||
+      href === '/dashboard/mitra' ||
+      href === '/dashboard/after-sales'
+    ) {
       return pathname === href
     }
     return (
@@ -387,9 +392,16 @@ export function Sidebar({
   // Helper to get real-time actionable notification badge count per nav item
   const getItemBadgeCount = (href: string): number => {
     if (href === '/dashboard/admin/orders') return counts.orders
-    if (href === '/dashboard/admin/chat') return counts.chat
+    if (
+      href === '/dashboard/admin/chat' ||
+      href === '/dashboard/after-sales/chat'
+    )
+      return counts.chat
     if (href === '/dashboard/admin/finance') return counts.finance
-    if (href === '/dashboard/admin/returns')
+    if (
+      href === '/dashboard/admin/returns' ||
+      href === '/dashboard/after-sales/returns'
+    )
       return counts.returns + counts.complaints
     if (href === '/dashboard/admin/complaints') return counts.complaints
     if (href === '/dashboard/admin/ads') return counts.ads
@@ -401,10 +413,18 @@ export function Sidebar({
   // Helper to get notification key from href
   const getSectionKeyFromHref = (href: string): string | null => {
     if (href === '/dashboard/admin/orders') return 'orders'
-    if (href === '/dashboard/admin/chat') return 'chat'
+    if (
+      href === '/dashboard/admin/chat' ||
+      href === '/dashboard/after-sales/chat'
+    )
+      return 'chat'
     if (href === '/dashboard/admin/finance') return 'finance'
     if (href === '/dashboard/admin/complaints') return 'complaints'
-    if (href === '/dashboard/admin/returns') return 'returns'
+    if (
+      href === '/dashboard/admin/returns' ||
+      href === '/dashboard/after-sales/returns'
+    )
+      return 'returns'
     if (href === '/dashboard/admin/ads') return 'ads'
     if (href === '/dashboard/admin/live') return 'live'
     if (href === '/dashboard/admin/mitras') return 'mitras'
@@ -678,47 +698,48 @@ export function Sidebar({
             }`}
           >
             {/* View Public Storefront Link */}
-            {!isCollapsed ? (
-              <Link
-                href={publicHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={
-                  isStoreAdminRole
-                    ? 'Buka Tampilan Halaman Toko Cabang Publik'
-                    : 'Buka Halaman Depan Web Publik'
-                }
-                className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-              >
-                <span className="flex items-center gap-2">
-                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                  <span>
-                    {isStoreAdminRole
-                      ? 'Lihat Toko Publik'
-                      : 'Lihat Web Publik'}
+            {effectiveRole !== 'AFTER_SALES' &&
+              (!isCollapsed ? (
+                <Link
+                  href={publicHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={
+                    isStoreAdminRole
+                      ? 'Buka Tampilan Halaman Toko Cabang Publik'
+                      : 'Buka Halaman Depan Web Publik'
+                  }
+                  className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                >
+                  <span className="flex items-center gap-2">
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                    <span>
+                      {isStoreAdminRole
+                        ? 'Lihat Toko Publik'
+                        : 'Lihat Web Publik'}
+                    </span>
                   </span>
-                </span>
-                <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
-              </Link>
-            ) : (
-              <Link
-                href={publicHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={
-                  isStoreAdminRole
-                    ? 'Buka Tampilan Halaman Toko Cabang Publik'
-                    : 'Buka Halaman Depan Web Publik'
-                }
-                className="group relative mx-auto flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-              >
-                <ExternalLink className="h-4 w-4" />
-                {/* Tooltip */}
-                <div className="pointer-events-none invisible absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 scale-95 whitespace-nowrap rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:scale-100 group-hover:opacity-100 dark:bg-white dark:text-slate-950">
-                  Lihat Toko Publik
-                </div>
-              </Link>
-            )}
+                  <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
+                </Link>
+              ) : (
+                <Link
+                  href={publicHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={
+                    isStoreAdminRole
+                      ? 'Buka Tampilan Halaman Toko Cabang Publik'
+                      : 'Buka Halaman Depan Web Publik'
+                  }
+                  className="group relative mx-auto flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {/* Tooltip */}
+                  <div className="pointer-events-none invisible absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 scale-95 whitespace-nowrap rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:scale-100 group-hover:opacity-100 dark:bg-white dark:text-slate-950">
+                    Lihat Toko Publik
+                  </div>
+                </Link>
+              ))}
 
             {/* User Profile Section */}
             {!isCollapsed ? (
@@ -775,9 +796,11 @@ export function Sidebar({
                           ? 'Superadmin Platform'
                           : effectiveRole === 'ADMIN'
                             ? 'Admin Platform'
-                            : effectiveRole === 'TECHNICIAN'
-                              ? 'Teknisi Servis'
-                              : 'Customer'}
+                            : effectiveRole === 'AFTER_SALES'
+                              ? 'Admin After Sales'
+                              : effectiveRole === 'TECHNICIAN'
+                                ? 'Teknisi Servis'
+                                : 'Customer'}
                     </span>
                   </div>
                 </div>
@@ -858,7 +881,9 @@ export function Sidebar({
       <LogoutConfirmModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        onConfirm={() => signOut({ callbackUrl: '/' })}
+        onConfirm={async () => {
+          await signOut({ redirect: false })
+        }}
         title="Keluar dari Panel Admin?"
       />
     </>

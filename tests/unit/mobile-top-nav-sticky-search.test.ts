@@ -42,7 +42,7 @@ describe('Mobile Top Nav Non-Sticky Logo & Smart Sticky Search on Scroll Suite',
       // Search form has magnifier button on the left
       expect(mobileTopNavContent).toMatch(/<Search className="h-4 w-4" \/>/)
       // Search input takes up all available width
-      expect(mobileTopNavContent).toContain('flex-1 min-w-0')
+      expect(mobileTopNavContent).toMatch(/min-w-0 flex-1|flex-1 min-w-0/)
       expect(mobileTopNavContent).toContain('type="search"')
       expect(mobileTopNavContent).toContain('placeholder={searchPlaceholder}')
     })

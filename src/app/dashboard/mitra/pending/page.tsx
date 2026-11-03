@@ -444,7 +444,9 @@ export default function MitraPendingPage() {
       <LogoutConfirmModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        onConfirm={() => signOut({ callbackUrl: '/' })}
+        onConfirm={async () => {
+          await signOut({ redirect: false })
+        }}
       />
     </div>
   )

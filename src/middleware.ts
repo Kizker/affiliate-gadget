@@ -154,9 +154,25 @@ export default auth((req) => {
       }
 
       // Redirect dari halaman publik root (/), login, register, cart, checkout, atau generic dashboard
-      // Admin staff diizinkan melihat tampilan web publik (beranda, toko publik, dsb)
       if (isAuthRoute || isDashboardGenericRoute) {
         return NextResponse.redirect(new URL(destinationCms, req.url))
+      }
+
+      // Khusus role AFTER_SALES: default selalu menuju ke dashboardnya (/dashboard/after-sales),
+      // tidak diperbolehkan berada di halaman utama customer (/), katalog, cart, checkout, atau halaman customer lainnya
+      if (userRole === 'AFTER_SALES') {
+        if (
+          isRootPublicRoute ||
+          isCartOrCheckout ||
+          pathname.startsWith('/gadget') ||
+          pathname.startsWith('/toko') ||
+          pathname.startsWith('/servis') ||
+          pathname.startsWith('/dashboard/customer')
+        ) {
+          return NextResponse.redirect(
+            new URL('/dashboard/after-sales', req.url)
+          )
+        }
       }
 
       // Proteksi rute Admin CMS (/dashboard/admin)

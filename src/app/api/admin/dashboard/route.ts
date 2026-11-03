@@ -114,6 +114,8 @@ export async function GET() {
         totalReturns,
         recentReturns,
         recentCancellations,
+        criticalProductsList,
+        topOrderedItems,
       ] = await Promise.all([
         prisma.product.count({ where: { storeId, isActive: true } }),
         prisma.product.aggregate({
@@ -208,7 +210,70 @@ export async function GET() {
             },
           },
         }),
+        prisma.product.findMany({
+          where: { storeId, isActive: true, stock: { lte: 5 } },
+          take: 5,
+          orderBy: [{ stock: 'asc' }, { updatedAt: 'desc' }],
+          select: {
+            id: true,
+            name: true,
+            brand: true,
+            price: true,
+            stock: true,
+            images: true,
+          },
+        }),
+        prisma.orderItem.groupBy({
+          by: ['productId'],
+          where: {
+            productId: { not: null },
+            product: { storeId, isActive: true },
+            order: {
+              status: { in: ['PAID', 'IN_PROGRESS', 'SHIPPED', 'COMPLETED'] },
+            },
+          },
+          _sum: { quantity: true, price: true },
+          orderBy: { _sum: { quantity: 'desc' } },
+          take: 5,
+        }),
       ])
+
+      const topProductIds = topOrderedItems
+        .map((i) => i.productId)
+        .filter((id): id is string => Boolean(id))
+
+      const topProductDetails =
+        topProductIds.length > 0
+          ? await prisma.product.findMany({
+              where: { id: { in: topProductIds } },
+              select: {
+                id: true,
+                name: true,
+                brand: true,
+                price: true,
+                stock: true,
+                images: true,
+              },
+            })
+          : []
+
+      const topSellingProducts = topOrderedItems
+        .map((item) => {
+          const prod = topProductDetails.find((p) => p.id === item.productId)
+          if (!prod) return null
+          const soldQty = item._sum.quantity || 0
+          return {
+            id: prod.id,
+            name: prod.name,
+            brand: prod.brand,
+            price: prod.price,
+            stock: prod.stock,
+            image: prod.images?.[0] || null,
+            soldCount: soldQty,
+            revenue: soldQty * prod.price,
+          }
+        })
+        .filter(Boolean)
 
       return NextResponse.json(
         {
@@ -242,9 +307,11 @@ export async function GET() {
           recentUsers: [],
           recentReturns,
           recentCancellations,
+          topSellingProducts,
+          criticalProductsList,
           charts: {
             monthlyData: {},
-            topProducts: [],
+            topProducts: topSellingProducts,
             topServices: [],
             topRentals: [],
           },

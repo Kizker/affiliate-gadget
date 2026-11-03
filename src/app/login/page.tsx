@@ -134,9 +134,11 @@ function LoginForm() {
     }
 
     let redirectUrl =
-      redirectParam && redirectParam.startsWith('/')
-        ? redirectParam
-        : defaultDest
+      currentRole === 'AFTER_SALES'
+        ? '/dashboard/after-sales'
+        : redirectParam && redirectParam.startsWith('/')
+          ? redirectParam
+          : defaultDest
     let retries = 3
 
     while (retries > 0) {

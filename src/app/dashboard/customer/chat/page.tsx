@@ -9,6 +9,7 @@ import { ChevronLeft, Loader2, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { isStoreOperational } from '@/lib/chat-status'
 import { processMediaUploadFile } from '@/lib/media-upload-client'
+import { useKeyboardInset } from '@/hooks/use-keyboard-inset'
 import { playChatNotificationSound } from '@/lib/chat-notification-sound'
 
 import dynamic from 'next/dynamic'
@@ -42,6 +43,7 @@ function CustomerChatContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { keyboardInset } = useKeyboardInset(true)
 
   const paramOrderId = searchParams.get('orderId')
   const paramOrderNumber = searchParams.get('orderNumber')
@@ -182,6 +184,16 @@ function CustomerChatContent() {
   useEffect(() => {
     previousMessagesCountRef.current = messages.length
   }, [messages])
+
+  // Auto-scroll messages container to bottom when mobile keyboard rises
+  useEffect(() => {
+    if (keyboardInset > 0 && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      })
+    }
+  }, [keyboardInset])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -1431,7 +1443,20 @@ function CustomerChatContent() {
 
             {/* Right Pane: Active Conversation Window (8 Cols) */}
             <div
-              className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 lg:col-span-8 xl:col-span-8 ${
+              style={
+                keyboardInset > 0
+                  ? {
+                      paddingBottom: `${keyboardInset}px`,
+                      transition:
+                        'padding-bottom 200ms cubic-bezier(0.2, 0.9, 0.3, 1)',
+                    }
+                  : {
+                      paddingBottom: '0px',
+                      transition:
+                        'padding-bottom 200ms cubic-bezier(0.2, 0.9, 0.3, 1)',
+                    }
+              }
+              className={`flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 lg:col-span-8 xl:col-span-8 ${
                 !showChatOnMobile ? 'hidden lg:flex' : 'flex'
               }`}
             >

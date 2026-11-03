@@ -18,10 +18,11 @@ describe('Admin Chat: No Navbar Context & Auto-Send Card with Typed Caption', ()
     expect(chatContent).toContain('setActiveOrderContext(null)')
   })
 
-  it('2. should eliminate "Kirim Kartu" button from contextual order banner', () => {
-    // Banner konteks pesanan di atas kolom chat tidak boleh lagi memiliki tombol "Kirim Kartu"
+  it('2. should eliminate generic "Kirim Kartu" button from contextual order banner', () => {
+    // Tombol generik "Kirim Kartu" tidak boleh ada; hanya varian kontekstual
+    // "Kirim Kartu Retur" / "Kirim Kartu Order" yang diizinkan.
     expect(chatContent).not.toContain('<span>Kirim Kartu</span>')
-    expect(chatContent).not.toContain('Kirim Kartu')
+    expect(chatContent).not.toMatch(/Kirim Kartu(?! (Retur|Order))/)
   })
 
   it('3. should auto-bundle typed text as caption (note) in order_reference and clean context upon send', () => {

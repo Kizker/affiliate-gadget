@@ -27,6 +27,24 @@
 
 ---
 
+## ⚡ Dynamic Model Routing Protocol — `9router-go` (Active)
+
+Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegasikan tugas ke subagent (`subagent_ide`) dengan parameter `model` yang sesuai berdasarkan tingkat kompleksitas tugas:
+
+| Tier                                | Bobot Tugas                                                                                                                                  | Contoh Pekerjaan                                                                     | Subagent & Model ID (`9router-go`)                                                                                                                                        |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Tier 1 (Ringan / Cepat)**         | Eksplorasi codebase, cari file/grep, ganti teks/copywriting, ubah class Tailwind minor, cek log                                              | Cari referensi fungsi, ubah warna/padding, baca struktur folder                      | Kerjakan langsung di Main Session ATAU spawn `agent: "explore"` dengan `model: "9router-go/cc/claude-haiku-4-5-20251001"` / `"9router-go/cmc/deepseek/deepseek-v4-flash"` |
+| **Tier 2 (Menengah / Balanced)**    | Pembuatan komponen UI standar, CRUD API route, form validation, penulisan unit test                                                          | Buat modal baru, tambah endpoint GET/POST sederhana, update test Vitest              | Main Session (`9router-go/ag/gemini-4-argon`) ATAU spawn `agent: "general"` dengan `model: "9router-go/cc/claude-sonnet-5"`                                               |
+| **Tier 3 (Berat / Deep Reasoning)** | Arsitektur kompleks, refactor multi-file, sinkronisasi stok/escrow/keuangan, debugging race-condition / hydration pelik, optimasi Lighthouse | Alur bisnis End-to-End, mutasi database atomik, dekomposisi monolith, audit keamanan | Spawn `agent: "general"` dengan `model: "9router-go/cc/claude-opus-5-5"` atau `"9router-go/cursor/gpt-5.2-codex"`                                                         |
+
+### Aturan Eksekusi Dinamis:
+
+1. **Jangan Overkill:** Untuk tugas Tier 1 & 2 yang bisa diselesaikan langsung dalam 1–2 tool call, eksekusi langsung tanpa overhead subagent.
+2. **Parallel Subagents untuk Eksplorasi Luas:** Jika perlu menelusuri banyak area kode sekaligus, jalankan beberapa subagent `explore` (Tier 1) secara paralel.
+3. **Delegasi Tugas Berat:** Jika prompt meminta perombakan arsitektur besar, analisis root-cause bug rumit, atau pembuatan fitur berlapis (DB + API + UI + Test), delegasikan ke subagent `general` menggunakan model **Tier 3 (`9router-go/cc/claude-opus-5-5` atau `9router-go/cursor/gpt-5.2-codex`)**.
+
+---
+
 ## 🚀 Local Development Setup & Status
 
 ### 1. Environment Configuration (`.env`)

@@ -63,7 +63,9 @@ describe('End-to-End Return, QC, Replacement & Review Flow Verification', () => 
     expect(apiRoute).toContain('returnCourier: true')
 
     // Page UI tabel & modal
-    expect(page).toContain("order.returnRequests[0].type === 'REPLACEMENT'")
+    expect(page).toMatch(
+      /order\.returnRequests\[0\]\.type\s*===\s*'REPLACEMENT'/
+    )
     expect(page).toContain('Tukar Unit')
     expect(page).toContain('Klaim Garansi: Penukaran Unit Baru')
     expect(page).toContain('Resi Unit Pengganti:')
