@@ -25,12 +25,12 @@ export const AWB_PATTERNS: Record<
   { pattern: RegExp; example: string; label: string }
 > = {
   JNE: {
-    pattern: /^(JNE-?|AGY)\d{6,18}(ID)?$|^[0-9]{10,20}$/i,
+    pattern: /^(JNE-?|AGY-?)\d{6,18}(ID)?$|^[0-9]{10,20}$/i,
     example: 'JNE260923123456 atau AGY154879552ID',
     label: 'JNE Express',
   },
   GOJEK: {
-    pattern: /^(GK-|GOJEK-|AGY)\d{6,16}(ID)?$|^GK-\d{12}$/i,
+    pattern: /^(GK-|GOJEK-|AGY-?)\d{6,16}(ID)?$|^GK-\d{12}$/i,
     example: 'GK-260923123456 atau GOJEK-81980576',
     label: 'Gojek Instant',
   },
@@ -88,7 +88,7 @@ export function validateAWB(
   }
 
   // 3. Dukungan resi internal Affiliate Gadget (AGY...ID)
-  if (/^AGY\d{6,16}(ID)?$/i.test(cleaned)) {
+  if (/^AGY-?\d{6,16}(ID)?$/i.test(cleaned)) {
     return {
       valid: true,
       courierCode: courierCode || 'JNE',
@@ -105,7 +105,9 @@ export function validateAWB(
         ? 'GOJEK'
         : cleaned.startsWith('AGY')
           ? 'JNE'
-          : undefined)
+          : /^[0-9]{10,20}$/.test(cleaned)
+            ? 'JNE'
+            : undefined)
 
   if (!detectedCourier) {
     return {

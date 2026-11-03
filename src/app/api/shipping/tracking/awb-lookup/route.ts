@@ -47,6 +47,104 @@ export async function GET(request: NextRequest) {
     // 1. Look up in shipping store (Biteship simulation / records)
     let record: ShippingBookingRecord | null = getTrackingByAWB(cleanInput)
 
+    // 1b. Check ReturnRequest tracking (Pengiriman balik dari pembeli ke toko)
+    if (!record) {
+      const returnReq = await prisma.returnRequest.findFirst({
+        where: {
+          returnTrackingNumber: { equals: cleanInput, mode: 'insensitive' },
+        },
+        include: {
+          order: {
+            include: {
+              store: true,
+              user: true,
+              items: {
+                include: { product: true, rentalItem: true, service: true },
+              },
+            },
+          },
+          user: true,
+        },
+      })
+
+      if (returnReq && returnReq.order) {
+        const order = returnReq.order
+        const isGojek = (returnReq.returnCourier || '')
+          .toUpperCase()
+          .includes('GOJEK')
+        const trackingNumber = returnReq.returnTrackingNumber || cleanInput
+
+        record = {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          courierCode: isGojek ? 'GOJEK' : 'JNE',
+          courierService: isGojek ? 'INSTANT' : 'REG',
+          trackingNumber,
+          status:
+            returnReq.status === 'COMPLETED' ? 'DELIVERED' : 'DROPPING_OFF',
+          statusLabel:
+            returnReq.status === 'COMPLETED'
+              ? 'Paket Retur Telah Diterima Toko Cabang'
+              : isGojek
+                ? 'Driver Gojek Sedang Mengantar Paket Retur ke Toko Cabang'
+                : 'Paket Retur Dalam Pengiriman ke Toko Cabang',
+          driver: isGojek
+            ? {
+                name: 'Andi Saputra (Kurir Retur)',
+                phone: '0812-8877-6655',
+                plateNumber: 'B 3912 KZZ',
+                vehicleModel: 'Honda Vario 160 Hitam',
+              }
+            : undefined,
+          originStore: {
+            name: `${returnReq.user?.name || 'Pembeli'} (Pengirim Retur)`,
+            companyName: 'Pelanggan Retur',
+            address: returnReq.user?.address || 'Alamat Pelanggan',
+            city: returnReq.user?.city || 'Alamat Pembeli',
+            phone: returnReq.user?.phone || '081289901122',
+          },
+          destinationCustomer: {
+            name: `${order.store?.name || 'Toko Cabang'} (Penerima Retur)`,
+            address: order.store?.address || 'Alamat Toko Cabang',
+            city: order.store?.city || 'Toko Cabang',
+            province: order.store?.city || 'Indonesia',
+            phone: order.store?.phone || '081234567890',
+          },
+          checkpoints: [
+            {
+              id: 'CP-RET-1',
+              status: 'PICKED_UP',
+              description: `Paket retur diserahkan oleh pembeli (${returnReq.user?.name || 'Customer'}) ke kurir ${returnReq.returnCourier || 'Ekspedisi'}.`,
+              location: 'Gerai Ekspedisi / Lokasi Penjemputan',
+              timestamp: new Date(returnReq.createdAt).toISOString(),
+            },
+            {
+              id: 'CP-RET-2',
+              status:
+                returnReq.status === 'COMPLETED' ? 'DELIVERED' : 'DROPPING_OFF',
+              description:
+                returnReq.status === 'COMPLETED'
+                  ? `Paket retur tiba di ${order.store?.name || 'Toko Cabang'} dan telah diterima untuk verifikasi fisik / QC.`
+                  : `Paket retur sedang dalam perjalanan menuju alamat ${order.store?.name || 'Toko Cabang'} (${order.store?.city || ''}).`,
+              location: order.store?.city || 'Pusat Logistik',
+              timestamp: new Date().toISOString(),
+            },
+          ],
+          bookedAt: new Date(returnReq.createdAt).toISOString(),
+          estimatedDelivery: isGojek ? '1-2 Jam' : '2-3 Hari',
+          items: (order.items || []).map((i) => ({
+            name:
+              i.product?.name ||
+              i.rentalItem?.name ||
+              i.service?.name ||
+              'Unit Gadget',
+            quantity: i.quantity || 1,
+            weightGram: i.product?.weightGram || 500,
+          })),
+        }
+      }
+    }
+
     // 2. If not found in shipping store, check Prisma database
     if (!record) {
       const order = await prisma.order.findFirst({

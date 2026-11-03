@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePageGuard } from '@/hooks/use-page-guard'
+import { CheckResiModal } from '@/components/shipping/check-resi-modal'
 
 // Backward compatibility references for legacy test runners and Biteship logistics
 const BITESHIP_COURIERS = [
@@ -62,7 +63,13 @@ interface ReturnItem {
   refundAmount?: number | null
   status: 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'COMPLETED'
   storeResponse?: string | null
+  returnTrackingNumber?: string | null
+  returnCourier?: string | null
+  packageReceivedAt?: string | null
+  qcStatus?: string | null
+  qcNotes?: string | null
   createdAt: string
+  updatedAt?: string
   resolvedAt?: string | null
   order: {
     orderNumber: string
@@ -99,7 +106,6 @@ export default function SuperAdminReturnsPage() {
   >('ALL')
   const [processingId, setProcessingId] = useState<string | null>(null)
 
-  // Rejection & Approval Modals
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
@@ -108,9 +114,54 @@ export default function SuperAdminReturnsPage() {
   const [approveTarget, setApproveTarget] = useState<ReturnItem | null>(null)
   const [approveNotes, setApproveNotes] = useState('')
 
-  // Media preview modal
   const [activeImage, setActiveImage] = useState<string | null>(null)
-  const [activeVideo, setActiveVideo] = useState<string | null>(null)
+  const [resiModalOpen, setResiModalOpen] = useState(false)
+  const [activeTrackingQuery, setActiveTrackingQuery] = useState('')
+  const [confirmingReceivedId, setConfirmingReceivedId] = useState<
+    string | null
+  >(null)
+
+  const handleConfirmReceivedAtStore = async (returnId: string) => {
+    setConfirmingReceivedId(returnId)
+    try {
+      const res = await fetch(`/api/returns/${returnId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'CONFIRM_PACKAGE_RECEIVED',
+          qcNotes:
+            'Paket fisik telah tiba di cabang toko. Teknisi mulai pemeriksaan fisik (QC).',
+          qcStatus: 'IN_QC',
+        }),
+      })
+      const json = await res.json()
+      if (res.ok) {
+        toast.success('Penerimaan paket fisik retur berhasil dikonfirmasi!')
+        const nowIso = new Date().toISOString()
+        setReturns((prev) =>
+          prev.map((item) =>
+            item.id === returnId
+              ? {
+                  ...item,
+                  packageReceivedAt: nowIso,
+                  qcStatus: 'IN_QC',
+                  qcNotes:
+                    'Paket fisik telah tiba di cabang toko. Teknisi mulai pemeriksaan fisik (QC).',
+                  storeResponse: `${item.storeResponse || ''}\n\n[Paket Fisik Tiba di Cabang] Dikonfirmasi oleh Superadmin.`,
+                }
+              : item
+          )
+        )
+        fetchReturns()
+      } else {
+        toast.error(json.error || 'Gagal mengonfirmasi penerimaan paket')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan jaringan')
+    } finally {
+      setConfirmingReceivedId(null)
+    }
+  }
 
   const fetchReturns = useCallback(async () => {
     try {
@@ -176,7 +227,6 @@ export default function SuperAdminReturnsPage() {
     }
   }
 
-  // Backward compatible quick approve
   const handleApprove = async (id: string) => {
     const item = returns.find((r) => r.id === id)
     if (item) openApproveModal(item)
@@ -275,7 +325,6 @@ export default function SuperAdminReturnsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-12">
-      {/* Header */}
       <div>
         <h1 className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
           <RotateCcw className="h-6 w-6 text-orange-600" />
@@ -287,15 +336,10 @@ export default function SuperAdminReturnsPage() {
         </p>
       </div>
 
-      {/* Metric Cards / Filter Tabs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <button
           onClick={() => setStatusFilter('ALL')}
-          className={`rounded-2xl border p-3.5 text-left transition ${
-            statusFilter === 'ALL'
-              ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20'
-              : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-          }`}
+          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'ALL' ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
           <span className="text-[11px] font-semibold text-slate-500">
             Semua Pengajuan
@@ -304,14 +348,9 @@ export default function SuperAdminReturnsPage() {
             {counts.all}
           </p>
         </button>
-
         <button
           onClick={() => setStatusFilter('IN_REVIEW')}
-          className={`rounded-2xl border p-3.5 text-left transition ${
-            statusFilter === 'IN_REVIEW'
-              ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20'
-              : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-          }`}
+          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'IN_REVIEW' ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
           <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400">
             Menunggu ACC Superadmin
@@ -320,14 +359,9 @@ export default function SuperAdminReturnsPage() {
             {counts.inReview}
           </p>
         </button>
-
         <button
           onClick={() => setStatusFilter('PENDING')}
-          className={`rounded-2xl border p-3.5 text-left transition ${
-            statusFilter === 'PENDING'
-              ? 'border-amber-500 bg-amber-50/70 dark:border-amber-500 dark:bg-amber-950/20'
-              : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-          }`}
+          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'PENDING' ? 'border-amber-500 bg-amber-50/70 dark:border-amber-500 dark:bg-amber-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
           <span className="text-[11px] font-semibold text-amber-600">
             Baru / Belum Ditelaah
@@ -336,14 +370,9 @@ export default function SuperAdminReturnsPage() {
             {counts.pending}
           </p>
         </button>
-
         <button
           onClick={() => setStatusFilter('APPROVED')}
-          className={`rounded-2xl border p-3.5 text-left transition ${
-            statusFilter === 'APPROVED'
-              ? 'border-emerald-500 bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/20'
-              : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-          }`}
+          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'APPROVED' ? 'border-emerald-500 bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
           <span className="text-[11px] font-semibold text-emerald-600">
             Disetujui Final
@@ -352,14 +381,9 @@ export default function SuperAdminReturnsPage() {
             {counts.approved}
           </p>
         </button>
-
         <button
           onClick={() => setStatusFilter('REJECTED')}
-          className={`rounded-2xl border p-3.5 text-left transition ${
-            statusFilter === 'REJECTED'
-              ? 'border-rose-500 bg-rose-50/70 dark:border-rose-500 dark:bg-rose-950/20'
-              : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-          }`}
+          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'REJECTED' ? 'border-rose-500 bg-rose-50/70 dark:border-rose-500 dark:bg-rose-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
           <span className="text-[11px] font-semibold text-rose-600">
             Ditolak Final
@@ -370,7 +394,6 @@ export default function SuperAdminReturnsPage() {
         </button>
       </div>
 
-      {/* Search Input */}
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
@@ -382,7 +405,6 @@ export default function SuperAdminReturnsPage() {
         />
       </div>
 
-      {/* Return Requests List */}
       {filteredReturns.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-3xl border border-slate-200/80 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
           <RotateCcw className="h-10 w-10 text-slate-300 dark:text-slate-600" />
@@ -418,7 +440,6 @@ export default function SuperAdminReturnsPage() {
                 key={item.id}
                 className="hover:shadow-xs overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 transition dark:border-slate-800 dark:bg-slate-900 sm:p-6"
               >
-                {/* Header row: Order # and Status */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white">
@@ -430,8 +451,6 @@ export default function SuperAdminReturnsPage() {
                       {item.order.store?.name || 'Cabang Resmi'} (
                       {item.order.store?.city || '-'})
                     </span>
-
-                    {/* Unit Gadget Nama Barang Header Pill */}
                     {item.order.items?.[0] && (
                       <>
                         <span className="hidden text-slate-300 sm:inline">
@@ -456,14 +475,9 @@ export default function SuperAdminReturnsPage() {
                     )}
                   </div>
 
-                  {/* Status Badge */}
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                        item.type === 'REFUND'
-                          ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300'
-                          : 'border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300'
-                      }`}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${item.type === 'REFUND' ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300'}`}
                     >
                       {item.type === 'REFUND' ? (
                         <CreditCard className="h-3 w-3" />
@@ -474,7 +488,6 @@ export default function SuperAdminReturnsPage() {
                         ? 'Refund Dana'
                         : 'Tukar Unit Baru'}
                     </span>
-
                     {item.status === 'IN_REVIEW' && (
                       <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-xs font-bold text-orange-700 dark:border-orange-900/40 dark:bg-orange-950/40 dark:text-orange-300">
                         <Clock className="h-3.5 w-3.5 text-orange-600" />{' '}
@@ -502,9 +515,7 @@ export default function SuperAdminReturnsPage() {
                   </div>
                 </div>
 
-                {/* Content Details Grid (3 Kolom: Pembeli, Unit Gadget/Barang, Alasan & Bukti) */}
                 <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  {/* Info Pembeli */}
                   <div className="space-y-2">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       Informasi Pembeli
@@ -516,7 +527,6 @@ export default function SuperAdminReturnsPage() {
                       <p className="text-slate-500">{item.user.email}</p>
                       <p className="text-slate-500">{item.user.phone || '-'}</p>
                     </div>
-
                     <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                         Nominal Transaksi
@@ -528,7 +538,6 @@ export default function SuperAdminReturnsPage() {
                     </div>
                   </div>
 
-                  {/* Unit Gadget / Nama Barang Dipesan */}
                   <div className="space-y-2">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       Unit Gadget / Barang Dipesan
@@ -546,7 +555,6 @@ export default function SuperAdminReturnsPage() {
                             prod?.images?.[0] ||
                             orderItem.rentalItem?.images?.[0] ||
                             'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
-
                           return (
                             <div
                               key={idx}
@@ -589,7 +597,6 @@ export default function SuperAdminReturnsPage() {
                     )}
                   </div>
 
-                  {/* Alasan & Bukti Pelanggan */}
                   <div className="space-y-1.5">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       Alasan &amp; Keterangan Kendala
@@ -600,8 +607,6 @@ export default function SuperAdminReturnsPage() {
                     <p className="text-xs text-slate-600 dark:text-slate-300">
                       &ldquo;{item.description}&rdquo;
                     </p>
-
-                    {/* Bukti Foto / Media */}
                     {item.images && item.images.length > 0 && (
                       <div className="pt-1">
                         <div className="flex flex-wrap gap-1.5">
@@ -622,8 +627,6 @@ export default function SuperAdminReturnsPage() {
                         </div>
                       </div>
                     )}
-
-                    {/* Detail Rekening jika Refund */}
                     {item.type === 'REFUND' && item.bankName && (
                       <div className="mt-2 rounded-xl border border-orange-100 bg-orange-50/60 p-2 text-xs dark:border-slate-800 dark:bg-slate-800/40">
                         <div className="flex items-center gap-1 font-bold text-orange-900 dark:text-orange-300">
@@ -647,14 +650,141 @@ export default function SuperAdminReturnsPage() {
                   </div>
                 </div>
 
-                {/* Banner Rekomendasi Admin After Sales */}
+                {/* Banner Unit Retur Sedang Dikirim Balik oleh Pembeli (Biteship Tracking) */}
+                {(item.returnTrackingNumber ||
+                  item.packageReceivedAt ||
+                  item.storeResponse?.includes(
+                    '[Paket Fisik Tiba di Cabang]'
+                  )) &&
+                  (item.packageReceivedAt ||
+                  item.storeResponse?.includes(
+                    '[Paket Fisik Tiba di Cabang]'
+                  ) ? (
+                    <div className="mt-3 rounded-xl border border-indigo-200/90 bg-indigo-50/70 p-3 text-xs text-indigo-950 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-200">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 font-bold text-indigo-950 dark:text-indigo-100">
+                          <CheckCircle2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          <span>
+                            Paket Fisik Telah Diterima di Cabang &bull; Sedang
+                            QC
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md border border-indigo-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-indigo-800 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-200">
+                            Diterima:{' '}
+                            {item.packageReceivedAt
+                              ? new Date(
+                                  item.packageReceivedAt
+                                ).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : item.updatedAt
+                                ? new Date(item.updatedAt).toLocaleDateString(
+                                    'id-ID',
+                                    {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    }
+                                  )
+                                : 'Dikonfirmasi Tiba'}
+                          </span>
+                          {item.returnTrackingNumber && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTrackingQuery(
+                                  item.returnTrackingNumber || ''
+                                )
+                                setResiModalOpen(true)
+                              }}
+                              className="shadow-2xs inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-0.5 text-[10.5px] font-semibold text-indigo-800 hover:bg-indigo-200 dark:bg-slate-800 dark:text-indigo-300"
+                            >
+                              <Search className="h-3 w-3" />
+                              <span>Lacak Biteship</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {(item.qcNotes ||
+                        item.storeResponse?.match(
+                          /Catatan QC:\s*([^\n]+)/
+                        )?.[1]) && (
+                        <p className="mt-1 text-[11px] leading-relaxed text-indigo-900/80 dark:text-indigo-200/80">
+                          <strong>Catatan QC:</strong> &ldquo;
+                          {item.qcNotes ||
+                            item.storeResponse
+                              ?.match(/Catatan QC:\s*([^\n]+)/)?.[1]
+                              ?.trim()}
+                          &rdquo;
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded-xl border border-blue-200/90 bg-blue-50/70 p-3 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
+                          <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <span>
+                            Unit Retur Sedang Dikirim Balik oleh Pembeli
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md border border-blue-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
+                            {item.returnCourier || 'Ekspedisi'} —{' '}
+                            {item.returnTrackingNumber}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveTrackingQuery(
+                                item.returnTrackingNumber || ''
+                              )
+                              setResiModalOpen(true)
+                            }}
+                            className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 active:scale-95"
+                          >
+                            <Search className="h-3.5 w-3.5" />
+                            <span>Lacak Biteship</span>
+                          </button>
+                          {item.status !== 'COMPLETED' &&
+                            item.status !== 'REJECTED' && (
+                              <button
+                                type="button"
+                                disabled={confirmingReceivedId === item.id}
+                                onClick={() =>
+                                  handleConfirmReceivedAtStore(item.id)
+                                }
+                                className="shadow-2xs inline-flex items-center gap-1 rounded-lg border border-indigo-600 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300"
+                              >
+                                {confirmingReceivedId === item.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Package className="h-3.5 w-3.5" />
+                                )}
+                                <span>Konfirmasi Paket Tiba di Toko</span>
+                              </button>
+                            )}
+                        </div>
+                      </div>
+                      <p className="mt-1 text-[11px] leading-relaxed text-blue-800/80 dark:text-blue-300/80">
+                        Paket fisik sedang menuju{' '}
+                        {item.order.store?.name || 'Toko Cabang'}. Silakan
+                        lakukan verifikasi fisik (QC) setelah paket tiba di toko
+                        sebelum memproses unit pengganti atau pencairan refund.
+                      </p>
+                    </div>
+                  ))}
+
                 {hasRecommendation ? (
                   <div
-                    className={`mt-4 rounded-xl border p-3.5 text-xs transition ${
-                      isRecApproved
-                        ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200'
-                        : 'border-rose-200 bg-rose-50/70 text-rose-950 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200'
-                    }`}
+                    className={`mt-4 rounded-xl border p-3.5 text-xs transition ${isRecApproved ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200' : 'border-rose-200 bg-rose-50/70 text-rose-950 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200'}`}
                   >
                     <div className="flex items-center gap-2 font-bold">
                       {isRecApproved ? (
@@ -693,7 +823,6 @@ export default function SuperAdminReturnsPage() {
                   </div>
                 ) : null}
 
-                {/* Decision Actions Bar for Superadmin */}
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
                   <span className="text-[11px] text-slate-400">
                     Diajukan pada{' '}
@@ -705,7 +834,6 @@ export default function SuperAdminReturnsPage() {
                       minute: '2-digit',
                     })}
                   </span>
-
                   {isPendingDecision && (
                     <div className="flex items-center gap-2">
                       <button
@@ -750,7 +878,6 @@ export default function SuperAdminReturnsPage() {
               Konfirmasi persetujuan akhir pengembalian pesanan #
               {approveTarget.order.orderNumber}.
             </p>
-
             <form onSubmit={handleConfirmApprove} className="mt-4 space-y-3">
               <textarea
                 rows={3}
@@ -759,7 +886,6 @@ export default function SuperAdminReturnsPage() {
                 placeholder="Catatan persetujuan final untuk pembeli dan toko..."
                 className="w-full rounded-xl border border-slate-200 p-3 text-xs font-medium text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
               />
-
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -795,7 +921,6 @@ export default function SuperAdminReturnsPage() {
               Berikan alasan penolakan yang jelas agar pembeli mengetahui dasar
               keputusan ini.
             </p>
-
             <form onSubmit={handleConfirmReject} className="mt-4 space-y-3">
               <textarea
                 required
@@ -805,7 +930,6 @@ export default function SuperAdminReturnsPage() {
                 placeholder="Contoh: Unit tidak terbukti cacat pabrik atau kerusakan disebabkan oleh kelalaian pemakaian..."
                 className="w-full rounded-xl border border-slate-200 p-3 text-xs font-medium text-slate-900 outline-none focus:border-rose-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
               />
-
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -829,6 +953,13 @@ export default function SuperAdminReturnsPage() {
           </div>
         </div>
       )}
+
+      {/* Biteship Tracking Modal */}
+      <CheckResiModal
+        isOpen={resiModalOpen}
+        onClose={() => setResiModalOpen(false)}
+        initialQuery={activeTrackingQuery}
+      />
 
       {/* Media Lightbox */}
       {activeImage && (

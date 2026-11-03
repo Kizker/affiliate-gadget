@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { isAdminStaffRole } from '@/lib/dashboard-utils'
@@ -150,6 +153,16 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          returnRequests: {
+            where: { status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED'] } },
+            select: {
+              id: true,
+              status: true,
+              type: true,
+              refundAmount: true,
+              reason: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -168,6 +181,11 @@ export async function GET(request: NextRequest) {
       prisma.order.aggregate({
         where: {
           status: 'COMPLETED',
+          returnRequests: {
+            none: {
+              status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED'] },
+            },
+          },
           ...storeWhereClause,
         },
         _sum: {
@@ -275,7 +293,10 @@ export async function GET(request: NextRequest) {
       const isCreatedInPeriod =
         !s || !e || (order.createdAt >= s && order.createdAt <= e)
 
-      if (order.status === 'COMPLETED') {
+      const activeReturn = (order as any).returnRequests?.[0]
+      const isUnderReturnDispute = Boolean(activeReturn)
+
+      if (order.status === 'COMPLETED' && !isUnderReturnDispute) {
         if (!isCompletedInPeriod) return
 
         grossRevenue += orderTotal
@@ -411,7 +432,10 @@ export async function GET(request: NextRequest) {
             orderStatus: order.status,
           })
         }
-      } else if (ESCROW_STATUSES.includes(order.status as any)) {
+      } else if (
+        ESCROW_STATUSES.includes(order.status as any) ||
+        isUnderReturnDispute
+      ) {
         if (!isCreatedInPeriod) return
 
         escrowBalance += netStoreAmount
@@ -420,7 +444,14 @@ export async function GET(request: NextRequest) {
         let statusLabel = 'Dana Tertahan'
         let subtitleStatus = 'Menunggu Proses'
 
-        if (order.status === 'SHIPPED') {
+        if (isUnderReturnDispute || order.status === 'COMPLAINED') {
+          courierBreakdown.complainedCount += 1
+          statusLabel = 'Ditahan Retur'
+          subtitleStatus =
+            activeReturn?.type === 'REFUND'
+              ? 'Klaim Retur & Refund'
+              : 'Klaim Tukar Unit Baru'
+        } else if (order.status === 'SHIPPED') {
           courierBreakdown.shippedCount += 1
           statusLabel = 'Kurir Perjalanan'
           subtitleStatus = 'Sedang Dikirim Kurir'
@@ -432,10 +463,6 @@ export async function GET(request: NextRequest) {
           courierBreakdown.paidCount += 1
           statusLabel = 'Perlu Diproses'
           subtitleStatus = 'Pembayaran Terverifikasi'
-        } else if (order.status === 'COMPLAINED') {
-          courierBreakdown.complainedCount += 1
-          statusLabel = 'Dalam Investigasi'
-          subtitleStatus = 'Komplain Garansi'
         }
 
         const formattedDate = new Intl.DateTimeFormat('id-ID', {

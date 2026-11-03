@@ -109,7 +109,52 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json({ success: true, data: returns })
+    // Query data QC & kedatangan fisik langsung dari PostgreSQL table return_requests untuk memastikan data selalu ada
+    let rawQcData: any[] = []
+    try {
+      rawQcData = await prisma.$queryRawUnsafe(
+        `SELECT id, "packageReceivedAt", "qcStatus", "qcNotes" FROM "return_requests"`
+      )
+    } catch {
+      rawQcData = []
+    }
+
+    const qcMap = new Map(rawQcData.map((q: any) => [q.id, q]))
+
+    const enrichedReturns = returns.map((r: any) => {
+      const qc = qcMap.get(r.id)
+      const hasArrivalMarker = r.storeResponse?.includes(
+        '[Paket Fisik Tiba di Cabang]'
+      )
+
+      const effectivePackageReceivedAt = r.packageReceivedAt
+        ? new Date(r.packageReceivedAt).toISOString()
+        : qc?.packageReceivedAt
+          ? new Date(qc.packageReceivedAt).toISOString()
+          : hasArrivalMarker
+            ? r.updatedAt.toISOString()
+            : null
+
+      const effectiveQcStatus =
+        r.qcStatus || qc?.qcStatus || (hasArrivalMarker ? 'IN_QC' : null)
+
+      const effectiveQcNotes =
+        r.qcNotes ||
+        qc?.qcNotes ||
+        (hasArrivalMarker
+          ? r.storeResponse?.match(/Catatan QC:\s*([^\n]+)/)?.[1]?.trim() ||
+            null
+          : null)
+
+      return {
+        ...r,
+        packageReceivedAt: effectivePackageReceivedAt,
+        qcStatus: effectiveQcStatus,
+        qcNotes: effectiveQcNotes,
+      }
+    })
+
+    return NextResponse.json({ success: true, data: enrichedReturns })
   } catch (error) {
     console.error('Error fetching return requests:', error)
     return NextResponse.json(

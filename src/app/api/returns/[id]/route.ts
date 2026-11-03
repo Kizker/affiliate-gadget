@@ -332,6 +332,181 @@ export async function PUT(
       })
     }
 
+    // Action: CONFIRM_PACKAGE_RECEIVED (Barang Retur Fisik Tiba di Toko Cabang & Mulai QC)
+    if (body.action === 'CONFIRM_PACKAGE_RECEIVED') {
+      if (
+        session.user.role !== 'AFTER_SALES' &&
+        session.user.role !== 'SUPER_ADMIN' &&
+        session.user.role !== 'ADMIN'
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'Konfirmasi penerimaan barang retur di cabang hanya dapat dilakukan oleh After Sales atau Superadmin',
+          },
+          { status: 403 }
+        )
+      }
+
+      if (existing.status === 'COMPLETED' || existing.status === 'REJECTED') {
+        return NextResponse.json(
+          {
+            error:
+              'Tiket retur sudah tuntas atau ditolak sehingga tidak dapat dikonfirmasi penerimaan kembali.',
+          },
+          { status: 400 }
+        )
+      }
+
+      const receivedNotes = (
+        body.qcNotes ||
+        body.notes ||
+        'Unit fisik barang retur telah tiba di cabang toko. Teknisi sedang melakukan pemeriksaan fisik dan pengujian fungsi (QC).'
+      ).trim()
+
+      const receivedAt = new Date()
+      const formattedDate = receivedAt.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+
+      const recipientRole =
+        session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN'
+          ? 'Superadmin'
+          : 'After Sales'
+
+      const arrivalLog = `[Paket Fisik Tiba di Cabang] Dikonfirmasi oleh ${recipientRole} pada ${formattedDate}. Catatan QC: ${receivedNotes}`
+      const newStoreResponse = existing.storeResponse
+        ? `${existing.storeResponse}\n\n${arrivalLog}`
+        : arrivalLog
+
+      // Cek apakah client runtime mendukung field packageReceivedAt di model in-memory
+      const hasQcSupport =
+        (prisma as any)._runtimeDataModel?.models?.ReturnRequest?.fields?.some(
+          (f: any) => f.name === 'packageReceivedAt'
+        ) ?? false
+
+      let updatedReturn: any
+
+      if (hasQcSupport) {
+        try {
+          updatedReturn = await prisma.returnRequest.update({
+            where: { id },
+            data: {
+              packageReceivedAt: receivedAt,
+              qcStatus: body.qcStatus || 'IN_QC',
+              qcNotes: receivedNotes,
+              storeResponse: newStoreResponse,
+            },
+            include: {
+              order: {
+                include: {
+                  store: true,
+                },
+              },
+              user: { select: { id: true, name: true, email: true } },
+            },
+          })
+        } catch {
+          updatedReturn = null
+        }
+      }
+
+      if (!updatedReturn) {
+        // Fallback update SQL langsung ke PostgreSQL agar tidak memicu PrismaClientValidationError
+        await prisma.$executeRawUnsafe(
+          `UPDATE "return_requests" 
+           SET "packageReceivedAt" = $1, "qcStatus" = $2, "qcNotes" = $3, "storeResponse" = $4, "updatedAt" = $5 
+           WHERE "id" = $6`,
+          receivedAt,
+          body.qcStatus || 'IN_QC',
+          receivedNotes,
+          newStoreResponse,
+          new Date(),
+          id
+        )
+
+        await prisma.returnRequest
+          .update({
+            where: { id },
+            data: {
+              storeResponse: newStoreResponse,
+            },
+          })
+          .catch(() => {})
+
+        updatedReturn = await prisma.returnRequest.findUnique({
+          where: { id },
+          include: {
+            order: {
+              include: {
+                store: true,
+              },
+            },
+            user: { select: { id: true, name: true, email: true } },
+          },
+        })
+
+        if (updatedReturn) {
+          updatedReturn.packageReceivedAt = receivedAt.toISOString()
+          updatedReturn.qcStatus = body.qcStatus || 'IN_QC'
+          updatedReturn.qcNotes = receivedNotes
+          updatedReturn.storeResponse = newStoreResponse
+        }
+      }
+
+      // Kirim notifikasi ke pembeli
+      await prisma.notification
+        .create({
+          data: {
+            userId: existing.userId,
+            type: 'ORDER_STATUS_CHANGED',
+            title: 'Paket Retur Telah Tiba di Toko Cabang',
+            message: `Paket unit retur untuk pesanan #${existing.order.orderNumber} telah diterima dengan baik di ${
+              existing.order.store?.name || 'toko cabang'
+            }. Teknisi saat ini sedang melakukan pemeriksaan fisik (QC).`,
+            link: `/dashboard/customer/orders/${existing.orderId}`,
+          },
+        })
+        .catch(() => {})
+
+      // Notifikasi ke seluruh staf After Sales dan Superadmin lain
+      const notifyUsers = await prisma.user.findMany({
+        where: {
+          role: { in: ['SUPER_ADMIN', 'AFTER_SALES'] },
+          id: { not: session.user.id },
+          isActive: true,
+        },
+        select: { id: true },
+      })
+
+      for (const u of notifyUsers) {
+        await prisma.notification
+          .create({
+            data: {
+              userId: u.id,
+              type: 'ORDER_STATUS_CHANGED',
+              title: 'Unit Retur Tiba di Cabang (Mulai QC)',
+              message: `Paket retur pesanan #${existing.order.orderNumber} telah dikonfirmasi tiba di ${
+                existing.order.store?.name || 'cabang'
+              } oleh ${recipientRole}. Status: Sedang QC Fisik.`,
+              link: '/dashboard/admin/returns',
+            },
+          })
+          .catch(() => {})
+      }
+
+      return NextResponse.json({
+        success: true,
+        message:
+          'Konfirmasi paket retur tiba di cabang berhasil dicatat. Status beralih ke QC Fisik.',
+        data: updatedReturn,
+      })
+    }
+
     const {
       status,
       storeResponse,
@@ -407,6 +582,24 @@ export async function PUT(
           },
           { status: 403 }
         )
+      }
+
+      // Validasi perlindungan ganda: Barang wajib dikonfirmasi telah tiba di cabang sebelum dieksekusi QC & kirim unit / refund
+      if (resolutionAction === 'REPLACEMENT' || resolutionAction === 'REFUND') {
+        const isPackageArrived = Boolean(
+          existing.packageReceivedAt ||
+          existing.storeResponse?.includes('[Paket Fisik Tiba di Cabang]')
+        )
+
+        if (existing.returnTrackingNumber && !isPackageArrived) {
+          return NextResponse.json(
+            {
+              error:
+                'Paket fisik barang retur dari pembeli belum dikonfirmasi tiba di toko cabang. Anda wajib mengonfirmasi penerimaan fisik dan melakukan QC terlebih dahulu.',
+            },
+            { status: 400 }
+          )
+        }
       }
 
       // After Sales, Superadmin, and Admin handle functional resolution actions

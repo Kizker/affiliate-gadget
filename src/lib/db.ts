@@ -1,14 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
-  // Optimize database URL for serverless
   let dbUrl = process.env.DATABASE_URL || ''
 
-  // Add connection pooling params for Neon serverless
-  // Use lower connection limit to prevent "too many clients" during build
-  if (dbUrl.includes('neon.tech') && !dbUrl.includes('connection_limit')) {
+  // Batasi pool koneksi agar tidak melebihi batas PostgreSQL lokal / serverless
+  if (!dbUrl.includes('connection_limit')) {
     const separator = dbUrl.includes('?') ? '&' : '?'
-    dbUrl = `${dbUrl}${separator}connection_limit=3&pool_timeout=30&connect_timeout=15`
+    dbUrl = `${dbUrl}${separator}connection_limit=5&pool_timeout=20&connect_timeout=10`
   }
 
   return new PrismaClient({
@@ -22,30 +20,14 @@ const prismaClientSingleton = () => {
 }
 
 declare const globalThis: {
-  prismaGlobal: ReturnType<typeof prismaClientSingleton>
-  prismaSchemaVersion: number
+  prismaGlobal: ReturnType<typeof prismaClientSingleton> | undefined
 } & typeof global
 
-const CURRENT_SCHEMA_VERSION = 8
-
-// Ensure the cached singleton is refreshed if models or fields are missing/outdated
-const isOutdatedSingleton =
-  globalThis.prismaGlobal &&
-  (globalThis.prismaSchemaVersion !== CURRENT_SCHEMA_VERSION ||
-    !(globalThis.prismaGlobal as any).storeWithdrawal ||
-    !(globalThis.prismaGlobal as any).storeGroup ||
-    !('heroImage' in ((globalThis.prismaGlobal as any).store?.fields || {})) ||
-    !('storeId' in ((globalThis.prismaGlobal as any).voucher?.fields || {})))
-
-const prisma =
-  !globalThis.prismaGlobal || isOutdatedSingleton
-    ? prismaClientSingleton()
-    : globalThis.prismaGlobal
+const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
 
 export const db = prisma
 export default prisma
 
 if (process.env.NODE_ENV !== 'production') {
   globalThis.prismaGlobal = prisma
-  globalThis.prismaSchemaVersion = CURRENT_SCHEMA_VERSION
 }

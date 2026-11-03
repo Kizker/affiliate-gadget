@@ -23,9 +23,11 @@ import {
   ChevronDown,
   Check,
   Package,
+  Lock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePageGuard } from '@/hooks/use-page-guard'
+import { CheckResiModal } from '@/components/shipping/check-resi-modal'
 
 interface ReturnItem {
   id: string
@@ -43,9 +45,13 @@ interface ReturnItem {
   refundAmount?: number | null
   returnCourier?: string | null
   returnTrackingNumber?: string | null
+  packageReceivedAt?: string | null
+  qcStatus?: string | null
+  qcNotes?: string | null
   status: 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'COMPLETED'
   storeResponse?: string | null
   createdAt: string
+  updatedAt?: string
   order: {
     orderNumber: string
     total: number
@@ -135,8 +141,69 @@ export default function AfterSalesReturnsPage() {
   const [recommendRejectTarget, setRecommendRejectTarget] =
     useState<ReturnItem | null>(null)
   const [recommendRejectNotes, setRecommendRejectNotes] = useState('')
+  const [resiModalOpen, setResiModalOpen] = useState(false)
+  const [activeTrackingQuery, setActiveTrackingQuery] = useState('')
+
+  // Konfirmasi Barang Retur Tiba di Cabang & Mulai QC Fisik
+  const [receivingPackageTarget, setReceivingPackageTarget] =
+    useState<ReturnItem | null>(null)
+  const [packageReceivedNotes, setPackageReceivedNotes] = useState('')
+  const [isReceivingPackage, setIsReceivingPackage] = useState(false)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleConfirmPackageReceived = async () => {
+    if (!receivingPackageTarget) return
+    setIsReceivingPackage(true)
+    try {
+      const res = await fetch(`/api/returns/${receivingPackageTarget.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'CONFIRM_PACKAGE_RECEIVED',
+          qcNotes:
+            packageReceivedNotes.trim() ||
+            'Unit fisik barang retur telah tiba di cabang toko dan masuk tahap pemeriksaan teknis (QC).',
+          qcStatus: 'IN_QC',
+        }),
+      })
+      const json = await res.json()
+      if (res.ok) {
+        toast.success(
+          'Paket fisik berhasil dikonfirmasi tiba di cabang! Status beralih ke QC Fisik.'
+        )
+        const targetId = receivingPackageTarget.id
+        const nowIso = new Date().toISOString()
+        const qcNotesText =
+          packageReceivedNotes.trim() ||
+          'Unit fisik barang retur telah tiba di cabang toko dan masuk tahap pemeriksaan teknis (QC).'
+
+        setReturns((prev) =>
+          prev.map((item) =>
+            item.id === targetId
+              ? {
+                  ...item,
+                  packageReceivedAt: nowIso,
+                  qcStatus: 'IN_QC',
+                  qcNotes: qcNotesText,
+                  storeResponse: `${item.storeResponse || ''}\n\n[Paket Fisik Tiba di Cabang] Dikonfirmasi oleh After Sales. Catatan QC: ${qcNotesText}`,
+                }
+              : item
+          )
+        )
+
+        setReceivingPackageTarget(null)
+        setPackageReceivedNotes('')
+        fetchReturns()
+      } else {
+        toast.error(json.error || 'Gagal mengonfirmasi penerimaan paket')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan jaringan saat konfirmasi penerimaan paket')
+    } finally {
+      setIsReceivingPackage(false)
+    }
+  }
 
   const fetchReturns = useCallback(async () => {
     try {
@@ -829,28 +896,119 @@ export default function AfterSalesReturnsPage() {
                     ))}
 
                   {/* Status Resi Pengiriman Balik dari Pembeli */}
-                  {item.returnTrackingNumber && (
-                    <div className="mt-2.5 rounded-xl border border-blue-200/90 bg-blue-50/70 p-3 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
-                          <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <span>
-                            Unit Retur Sedang Dikirim Balik oleh Pembeli
-                          </span>
+                  {(item.returnTrackingNumber ||
+                    item.packageReceivedAt ||
+                    item.storeResponse?.includes(
+                      '[Paket Fisik Tiba di Cabang]'
+                    )) &&
+                    (item.packageReceivedAt ||
+                    item.storeResponse?.includes(
+                      '[Paket Fisik Tiba di Cabang]'
+                    ) ? (
+                      <div className="mt-2.5 rounded-xl border border-indigo-200/90 bg-indigo-50/70 p-3 text-xs text-indigo-950 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-200">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 font-bold text-indigo-950 dark:text-indigo-100">
+                            <CheckCircle2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>
+                              Paket Fisik Telah Diterima di Cabang &bull; Sedang
+                              QC
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-md border border-indigo-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-indigo-800 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-200">
+                              Diterima:{' '}
+                              {item.packageReceivedAt
+                                ? new Date(
+                                    item.packageReceivedAt
+                                  ).toLocaleDateString('id-ID', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })
+                                : item.updatedAt
+                                  ? new Date(item.updatedAt).toLocaleDateString(
+                                      'id-ID',
+                                      {
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      }
+                                    )
+                                  : 'Dikonfirmasi Tiba'}
+                            </span>
+                            {item.returnTrackingNumber && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveTrackingQuery(
+                                    item.returnTrackingNumber || ''
+                                  )
+                                  setResiModalOpen(true)
+                                }}
+                                className="shadow-2xs inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-0.5 text-[10.5px] font-semibold text-indigo-800 hover:bg-indigo-200 dark:bg-slate-800 dark:text-indigo-300"
+                              >
+                                <Search className="h-3 w-3" />
+                                <span>Lacak Biteship</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <span className="rounded-md border border-blue-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
-                          {item.returnCourier || 'Ekspedisi'} —{' '}
-                          {item.returnTrackingNumber}
-                        </span>
+                        {(item.qcNotes ||
+                          item.storeResponse?.match(
+                            /Catatan QC:\s*([^\n]+)/
+                          )?.[1]) && (
+                          <p className="mt-1 text-[11px] leading-relaxed text-indigo-900/80 dark:text-indigo-200/80">
+                            <strong>Catatan QC Awal:</strong> &ldquo;
+                            {item.qcNotes ||
+                              item.storeResponse
+                                ?.match(/Catatan QC:\s*([^\n]+)/)?.[1]
+                                ?.trim()}
+                            &rdquo;
+                          </p>
+                        )}
                       </div>
-                      <p className="mt-1 text-[11px] leading-relaxed text-blue-800/80 dark:text-blue-300/80">
-                        Paket fisik sedang menuju{' '}
-                        {item.order.store?.name || 'Toko Cabang'}. Silakan
-                        lakukan verifikasi fisik (QC) setelah paket tiba di toko
-                        sebelum memproses unit pengganti atau pencairan refund.
-                      </p>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="mt-2.5 rounded-xl border border-blue-200/90 bg-blue-50/70 p-3 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
+                            <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <span>
+                              Unit Retur Sedang Dikirim Balik oleh Pembeli
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-md border border-blue-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
+                              {item.returnCourier || 'Ekspedisi'} —{' '}
+                              {item.returnTrackingNumber}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTrackingQuery(
+                                  item.returnTrackingNumber || ''
+                                )
+                                setResiModalOpen(true)
+                              }}
+                              className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 active:scale-95"
+                            >
+                              <Search className="h-3.5 w-3.5" />
+                              <span>Lacak Biteship</span>
+                            </button>
+                          </div>
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-blue-800/80 dark:text-blue-300/80">
+                          Paket fisik sedang menuju{' '}
+                          {item.order.store?.name || 'Toko Cabang'}. Silakan
+                          lakukan verifikasi fisik (QC) setelah paket tiba di
+                          toko sebelum memproses unit pengganti atau pencairan
+                          refund.
+                        </p>
+                      </div>
+                    ))}
                 </div>
               </div>
 
@@ -937,47 +1095,125 @@ export default function AfterSalesReturnsPage() {
                       </button>
                     )}
 
-                    {/* Direct or QC-verified resolution */}
-                    {item.type === 'REFUND' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRefundModalTarget(item)
-                          setRefundNotes(
-                            `Pengembalian dana klaim garansi sebesar Rp ${Math.round(
-                              item.refundAmount || item.order.total
-                            ).toLocaleString(
-                              'id-ID'
-                            )} telah disetujui dan dicairkan oleh Admin After Sales.`
-                          )
-                        }}
-                        className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700"
-                      >
-                        <CreditCard className="h-3.5 w-3.5" />
-                        {item.status === 'IN_REVIEW' &&
-                        item.returnTrackingNumber
-                          ? 'Konfirmasi QC & Cairkan Dana'
-                          : 'Setujui & Cairkan Dana'}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReplacementModalTarget(item)
-                          setReplacementTracking('')
-                          setReplacementNotes(
-                            `Unit baru pengganti pesanan #${item.order.orderNumber} telah disiapkan dan dikirimkan oleh Admin After Sales.`
-                          )
-                        }}
-                        className="flex items-center gap-1.5 rounded-xl bg-orange-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-orange-700"
-                      >
-                        <Truck className="h-3.5 w-3.5" />
-                        {item.status === 'IN_REVIEW' &&
-                        item.returnTrackingNumber
-                          ? 'Konfirmasi QC & Kirim Unit Pengganti'
-                          : 'Setujui & Terbitkan Resi Unit Baru'}
-                      </button>
-                    )}
+                    {/* Intermediate Step: Konfirmasi Paket Retur Tiba di Cabang & Mulai QC Fisik */}
+                    {item.returnTrackingNumber &&
+                      !(
+                        item.packageReceivedAt ||
+                        item.storeResponse?.includes(
+                          '[Paket Fisik Tiba di Cabang]'
+                        )
+                      ) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReceivingPackageTarget(item)
+                            setPackageReceivedNotes(
+                              `Paket fisik retur pesanan #${item.order.orderNumber} telah diterima oleh staf cabang. Kondisi kardus utuh, memulai pengujian teknis (QC).`
+                            )
+                          }}
+                          className="shadow-2xs flex items-center gap-1.5 rounded-xl border border-indigo-600 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300"
+                        >
+                          <Package className="h-3.5 w-3.5" />
+                          <span>
+                            Konfirmasi Paket Tiba di Cabang &amp; Mulai QC
+                          </span>
+                        </button>
+                      )}
+
+                    {/* Direct or QC-verified resolution — Terkunci jika paket fisik belum dikonfirmasi tiba */}
+                    {(() => {
+                      const isArrived = Boolean(
+                        item.packageReceivedAt ||
+                        item.storeResponse?.includes(
+                          '[Paket Fisik Tiba di Cabang]'
+                        )
+                      )
+
+                      return (
+                        <div className="flex flex-col gap-1.5">
+                          {item.type === 'REFUND' ? (
+                            <button
+                              type="button"
+                              disabled={!isArrived}
+                              onClick={() => {
+                                if (!isArrived) return
+                                setRefundModalTarget(item)
+                                setRefundNotes(
+                                  `Pengembalian dana klaim garansi sebesar Rp ${Math.round(
+                                    item.refundAmount || item.order.total
+                                  ).toLocaleString(
+                                    'id-ID'
+                                  )} telah disetujui dan dicairkan oleh Admin After Sales.`
+                                )
+                              }}
+                              className={`flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold transition ${
+                                isArrived
+                                  ? 'shadow-2xs bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
+                                  : 'cursor-not-allowed border border-slate-300 bg-slate-200/80 text-slate-500 opacity-60 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400'
+                              }`}
+                              title={
+                                !isArrived
+                                  ? 'Tombol terkunci: Anda wajib mengonfirmasi kedatangan fisik paket di toko cabang terlebih dahulu sebelum dapat mencairkan dana.'
+                                  : undefined
+                              }
+                            >
+                              {isArrived ? (
+                                <CreditCard className="h-3.5 w-3.5" />
+                              ) : (
+                                <Lock className="h-3.5 w-3.5" />
+                              )}
+                              <span>
+                                {isArrived
+                                  ? 'QC Lulus: Cairkan Dana'
+                                  : 'QC Lulus: Cairkan Dana (Terkunci)'}
+                              </span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={!isArrived}
+                              onClick={() => {
+                                if (!isArrived) return
+                                setReplacementModalTarget(item)
+                                setReplacementTracking('')
+                                setReplacementNotes(
+                                  `Unit baru pengganti pesanan #${item.order.orderNumber} telah disiapkan dan dikirimkan oleh Admin After Sales.`
+                                )
+                              }}
+                              className={`flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold transition ${
+                                isArrived
+                                  ? 'shadow-2xs bg-orange-600 text-white hover:bg-orange-700 active:scale-95'
+                                  : 'cursor-not-allowed border border-slate-300 bg-slate-200/80 text-slate-500 opacity-60 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400'
+                              }`}
+                              title={
+                                !isArrived
+                                  ? 'Tombol terkunci: Anda wajib mengonfirmasi kedatangan fisik paket di toko cabang terlebih dahulu sebelum dapat mengirim unit baru.'
+                                  : undefined
+                              }
+                            >
+                              {isArrived ? (
+                                <Truck className="h-3.5 w-3.5" />
+                              ) : (
+                                <Lock className="h-3.5 w-3.5" />
+                              )}
+                              <span>
+                                {isArrived
+                                  ? 'QC Lulus: Kirim Unit Pengganti'
+                                  : 'QC Lulus: Kirim Unit Pengganti (Terkunci)'}
+                              </span>
+                            </button>
+                          )}
+                          {!isArrived && (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                              <Lock className="h-2.5 w-2.5 shrink-0" />
+                              <span>
+                                Terkunci hingga paket retur dikonfirmasi tiba
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
@@ -1549,6 +1785,90 @@ export default function AfterSalesReturnsPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Konfirmasi Paket Retur Tiba di Cabang & Mulai QC */}
+      {receivingPackageTarget && (
+        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-indigo-600" />
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Konfirmasi Paket Retur Tiba di Toko Cabang
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReceivingPackageTarget(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/70 p-3 text-xs dark:border-indigo-900/60 dark:bg-indigo-950/30">
+                <p className="font-bold text-indigo-950 dark:text-indigo-200">
+                  Pesanan #{receivingPackageTarget.order.orderNumber}
+                </p>
+                <p className="text-[11px] text-indigo-800/90 dark:text-indigo-300/90">
+                  Kurir &amp; Resi:{' '}
+                  {receivingPackageTarget.returnCourier || 'JNE'} —{' '}
+                  {receivingPackageTarget.returnTrackingNumber}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">
+                  Konfirmasi ini akan memberitahukan pembeli dan Superadmin
+                  bahwa paket fisik telah sampai di toko cabang dan teknisi
+                  mulai melakukan pemeriksaan fisik (QC).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  Catatan Kondisi Fisik Paket Saat Tiba (QC Awal)
+                </label>
+                <textarea
+                  value={packageReceivedNotes}
+                  onChange={(e) => setPackageReceivedNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Contoh: Paket diterima staf toko, kardus utuh, segel toko masih menempel. Memulai pengujian touchscreen dan baterai."
+                  className="mt-1.5 w-full rounded-xl border border-slate-200/80 bg-white p-3 text-xs text-slate-900 outline-none transition focus:border-indigo-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setReceivingPackageTarget(null)}
+                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={isReceivingPackage}
+                  onClick={handleConfirmPackageReceived}
+                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {isReceivingPackage ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )}
+                  <span>Konfirmasi Tiba &amp; Mulai QC</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Biteship Tracking Modal */}
+      <CheckResiModal
+        isOpen={resiModalOpen}
+        onClose={() => setResiModalOpen(false)}
+        initialQuery={activeTrackingQuery}
+      />
 
       {/* Video Lightbox Modal */}
       {activeVideo && (

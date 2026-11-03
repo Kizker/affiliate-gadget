@@ -29,6 +29,7 @@ import {
   RefreshCw,
   AlertTriangle,
   MessageSquare,
+  Banknote,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -134,6 +135,14 @@ interface Order {
     returnTrackingNumber?: string | null
     returnCourier?: string | null
     storeResponse?: string | null
+    bankName?: string | null
+    bankAccountNumber?: string | null
+    bankAccountName?: string | null
+    refundAmount?: number | null
+    packageReceivedAt?: string | null
+    qcStatus?: string | null
+    qcNotes?: string | null
+    resolvedAt?: string | null
     createdAt: string
   }>
 }
@@ -178,6 +187,92 @@ const statusConfig: Record<
       'bg-rose-50 text-rose-800 border border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/80',
     dotClass: 'bg-rose-500',
   },
+}
+
+function getReturnStatusInfo(ret: {
+  status: string
+  type: string
+  returnTrackingNumber?: string | null
+  packageReceivedAt?: string | null
+  storeResponse?: string | null
+}) {
+  if (ret.status === 'PENDING') {
+    return {
+      label: 'Menunggu Telaah After Sales',
+      shortLabel: 'Telaah After Sales',
+      badgeClass:
+        'border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300',
+      dotClass: 'bg-amber-500',
+    }
+  }
+  if (ret.status === 'IN_REVIEW') {
+    if (
+      ret.packageReceivedAt ||
+      ret.storeResponse?.includes('[Paket Fisik Tiba di Cabang]')
+    ) {
+      return {
+        label: 'Paket Tiba di Toko (Sedang QC Fisik)',
+        shortLabel: 'Tiba di Toko (QC)',
+        badgeClass:
+          'border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-300',
+        dotClass: 'bg-emerald-500',
+      }
+    }
+    if (ret.returnTrackingNumber) {
+      return {
+        label: 'Paket Menuju Toko (QC Fisik)',
+        shortLabel: 'Paket Dikirim (QC)',
+        badgeClass:
+          'border border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-800/80 dark:bg-indigo-950/40 dark:text-indigo-300',
+        dotClass: 'bg-indigo-500',
+      }
+    }
+    return {
+      label: 'Menunggu ACC Superadmin',
+      shortLabel: 'Menunggu ACC Superadmin',
+      badgeClass:
+        'border border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800/80 dark:bg-blue-950/40 dark:text-blue-300',
+      dotClass: 'bg-blue-500',
+    }
+  }
+  if (ret.status === 'APPROVED') {
+    return {
+      label: 'ACC Disetujui (Kirim Barang Balik)',
+      shortLabel: 'ACC Disetujui',
+      badgeClass:
+        'border border-cyan-200 bg-cyan-50 text-cyan-800 dark:border-cyan-800/80 dark:bg-cyan-950/40 dark:text-cyan-300',
+      dotClass: 'bg-cyan-500',
+    }
+  }
+  if (ret.status === 'COMPLETED') {
+    return {
+      label:
+        ret.type === 'REFUND'
+          ? 'Refund Selesai Dicairkan'
+          : 'Tukar Unit Selesai Diterima',
+      shortLabel:
+        ret.type === 'REFUND' ? 'Refund Selesai' : 'Tukar Unit Selesai',
+      badgeClass:
+        'border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-300',
+      dotClass: 'bg-emerald-500',
+    }
+  }
+  if (ret.status === 'REJECTED') {
+    return {
+      label: 'Klaim Retur Ditolak',
+      shortLabel: 'Klaim Ditolak',
+      badgeClass:
+        'border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800/80 dark:bg-rose-950/40 dark:text-rose-300',
+      dotClass: 'bg-rose-500',
+    }
+  }
+  return {
+    label: ret.status,
+    shortLabel: ret.status,
+    badgeClass:
+      'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300',
+    dotClass: 'bg-slate-500',
+  }
 }
 
 const STATUS_TABS = [
@@ -328,6 +423,53 @@ export default function AdminOrdersPage() {
   const [taxInvoiceOrder, setTaxInvoiceOrder] = useState<Order | null>(null)
   const [showCheckResiModal, setShowCheckResiModal] = useState(false)
   const [checkResiQuery, setCheckResiQuery] = useState('')
+  const [confirmingArrivalId, setConfirmingArrivalId] = useState<string | null>(
+    null
+  )
+
+  const handleConfirmPackageArrivalInOrdersDrawer = async (
+    returnId: string
+  ) => {
+    setConfirmingArrivalId(returnId)
+    try {
+      const res = await fetch(`/api/returns/${returnId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'CONFIRM_PACKAGE_RECEIVED',
+          qcNotes:
+            'Paket fisik telah diterima di cabang toko via konfirmasi Super Admin. Memulai pemeriksaan fisik (QC).',
+          qcStatus: 'IN_QC',
+        }),
+      })
+      const json = await res.json()
+      if (res.ok) {
+        toast.success('Penerimaan paket fisik retur berhasil dikonfirmasi!')
+        fetchOrders()
+        if (selectedOrder && selectedOrder.returnRequests) {
+          const updated = {
+            ...selectedOrder,
+            returnRequests: selectedOrder.returnRequests.map((r) =>
+              r.id === returnId
+                ? {
+                    ...r,
+                    packageReceivedAt: new Date().toISOString(),
+                    qcStatus: 'IN_QC',
+                  }
+                : r
+            ),
+          }
+          setSelectedOrder(updated)
+        }
+      } else {
+        toast.error(json.error || 'Gagal mengonfirmasi penerimaan paket')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan jaringan')
+    } finally {
+      setConfirmingArrivalId(null)
+    }
+  }
 
   const [syncingStatusId, setSyncingStatusId] = useState<string | null>(null)
   const [isConnectingChat, setIsConnectingChat] = useState(false)
@@ -806,22 +948,38 @@ export default function AdminOrdersPage() {
                                 {formatDate(order.createdAt)}
                               </span>
                               {order.returnRequests &&
-                                order.returnRequests.length > 0 && (
-                                  <span
-                                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold ${
-                                      order.returnRequests[0].type ===
-                                      'REPLACEMENT'
-                                        ? 'border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300'
-                                        : 'border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/40 dark:bg-purple-950/40 dark:text-purple-300'
-                                    }`}
-                                  >
-                                    <RotateCcw className="h-2.5 w-2.5" />
-                                    {order.returnRequests[0].type ===
-                                    'REPLACEMENT'
-                                      ? 'Tukar Unit'
-                                      : 'Retur/Refund'}
-                                  </span>
-                                )}
+                                order.returnRequests.length > 0 &&
+                                (() => {
+                                  const activeReturn = order.returnRequests[0]
+                                  const retMeta =
+                                    getReturnStatusInfo(activeReturn)
+                                  return (
+                                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                                          order.returnRequests[0].type ===
+                                          'REPLACEMENT'
+                                            ? 'border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300'
+                                            : 'border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/40 dark:bg-purple-950/40 dark:text-purple-300'
+                                        }`}
+                                      >
+                                        <RotateCcw className="h-2.5 w-2.5" />
+                                        {order.returnRequests[0].type ===
+                                        'REPLACEMENT'
+                                          ? 'Tukar Unit'
+                                          : 'Retur/Refund'}
+                                      </span>
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold ${retMeta.badgeClass}`}
+                                      >
+                                        <span
+                                          className={`h-1.5 w-1.5 rounded-full ${retMeta.dotClass}`}
+                                        />
+                                        <span>{retMeta.shortLabel}</span>
+                                      </span>
+                                    </div>
+                                  )
+                                })()}
                             </div>
                           </div>
                         </div>
@@ -883,36 +1041,48 @@ export default function AdminOrdersPage() {
 
                       {/* Kolom 5: Proteksi & Kurir */}
                       <td className="px-3 py-4 align-middle">
-                        <div className="flex flex-col gap-1 text-[11px]">
+                        <div className="flex flex-col gap-1.5 text-[11px]">
                           <span className="inline-flex items-center gap-1 font-semibold text-blue-700 dark:text-blue-400">
                             <Truck className="h-3.5 w-3.5 text-blue-600" />{' '}
                             {courierDisplay}
                           </span>
                           {order.trackingNumber ? (
-                            <div className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setCheckResiQuery(order.trackingNumber || '')
-                                  setShowCheckResiModal(true)
-                                }}
-                                title="Klik untuk Lacak Resi Ini"
-                                className="cursor-pointer rounded bg-slate-100 px-1 py-0.5 transition hover:bg-blue-100 hover:text-blue-700 dark:bg-slate-800 dark:hover:bg-blue-950/60 dark:hover:text-blue-300"
-                              >
-                                {order.trackingNumber}
-                              </button>
-                              <button
-                                type="button"
-                                title="Cetak Label Thermal"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleOpenThermalLabel(order)
-                                }}
-                                className="rounded p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
-                              >
-                                <Printer className="h-3 w-3" />
-                              </button>
+                            <div className="flex flex-col gap-0.5">
+                              {order.returnRequests &&
+                                order.returnRequests.length > 0 &&
+                                order.returnRequests[0].type ===
+                                  'REPLACEMENT' && (
+                                  <span className="text-[9.5px] font-bold text-blue-700 dark:text-blue-300">
+                                    Resi Unit Pengganti:
+                                  </span>
+                                )}
+                              <div className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setCheckResiQuery(
+                                      order.trackingNumber || ''
+                                    )
+                                    setShowCheckResiModal(true)
+                                  }}
+                                  title="Klik untuk Lacak Resi Ini"
+                                  className="cursor-pointer rounded bg-slate-100 px-1 py-0.5 transition hover:bg-blue-100 hover:text-blue-700 dark:bg-slate-800 dark:hover:bg-blue-950/60 dark:hover:text-blue-300"
+                                >
+                                  {order.trackingNumber}
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Cetak Label Thermal"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleOpenThermalLabel(order)
+                                  }}
+                                  className="rounded p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
+                                >
+                                  <Printer className="h-3 w-3" />
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <span className="text-[10px] text-slate-400">
@@ -921,6 +1091,62 @@ export default function AdminOrdersPage() {
                                 : 'Menunggu Pick Up'}
                             </span>
                           )}
+
+                          {/* Resi Pengiriman Balik Pembeli (Tracking Retur) */}
+                          {order.returnRequests &&
+                            order.returnRequests.length > 0 &&
+                            order.returnRequests[0].returnTrackingNumber && (
+                              <div className="mt-0.5 rounded-lg border border-purple-200/90 bg-purple-50/70 p-1.5 dark:border-purple-900/60 dark:bg-purple-950/30">
+                                <div className="flex items-center justify-between gap-1 text-[9.5px] font-bold text-purple-950 dark:text-purple-200">
+                                  <span className="inline-flex items-center gap-1">
+                                    <RotateCcw className="h-2.5 w-2.5 text-purple-600" />
+                                    Resi Kirim Balik:
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setCheckResiQuery(
+                                        order.returnRequests![0]
+                                          .returnTrackingNumber || ''
+                                      )
+                                      setShowCheckResiModal(true)
+                                    }}
+                                    title="Lacak Resi Pengiriman Balik Pembeli via Biteship"
+                                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded bg-white px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-purple-700 hover:bg-purple-100 dark:bg-slate-900 dark:text-purple-300"
+                                  >
+                                    <Search className="h-2.5 w-2.5 text-purple-600" />
+                                    <span>
+                                      {
+                                        order.returnRequests[0]
+                                          .returnTrackingNumber
+                                      }
+                                    </span>
+                                  </button>
+                                </div>
+                                <span className="mt-0.5 block text-[8.5px] text-purple-600 dark:text-purple-400">
+                                  Kurir:{' '}
+                                  {order.returnRequests[0].returnCourier ||
+                                    'JNE'}
+                                </span>
+                              </div>
+                            )}
+
+                          {/* Info Rekening & Nominal Refund untuk jenis REFUND */}
+                          {order.returnRequests &&
+                            order.returnRequests.length > 0 &&
+                            order.returnRequests[0].type === 'REFUND' &&
+                            !order.returnRequests[0].returnTrackingNumber && (
+                              <div className="rounded-md border border-purple-200/80 bg-purple-50/50 px-1.5 py-0.5 text-[9.5px] font-semibold text-purple-800 dark:border-purple-900/60 dark:bg-purple-950/30 dark:text-purple-300">
+                                <span>
+                                  Refund: Rp{' '}
+                                  {(
+                                    order.returnRequests[0].refundAmount ||
+                                    order.total
+                                  ).toLocaleString('id-ID')}
+                                </span>
+                              </div>
+                            )}
                         </div>
                       </td>
 
@@ -1074,64 +1300,303 @@ export default function AdminOrdersPage() {
                 <div className="grid grid-cols-1 gap-5 text-xs md:grid-cols-2">
                   {/* Column 1: Items List & Financial Summary */}
                   <div className="space-y-4">
-                    {/* Retur / Penukaran Unit Info Banner */}
+                    {/* Retur / Penukaran Unit Info Banner & Pelacakan Komprehensif */}
                     {selectedOrder.returnRequests &&
-                      selectedOrder.returnRequests.length > 0 && (
-                        <div className="space-y-2 rounded-2xl border border-blue-200/90 bg-blue-50/70 p-4 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
-                              <RotateCcw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                              <span>
-                                {selectedOrder.returnRequests[0].type ===
-                                'REPLACEMENT'
-                                  ? 'Klaim Garansi: Penukaran Unit Baru'
-                                  : 'Klaim Garansi: Retur & Refund'}
-                              </span>
+                      selectedOrder.returnRequests.length > 0 &&
+                      (() => {
+                        const ret = selectedOrder.returnRequests[0]
+                        const returnInfo = getReturnStatusInfo(ret)
+                        const isReplacement = ret.type === 'REPLACEMENT'
+
+                        return (
+                          <div className="space-y-3 rounded-2xl border border-blue-200/90 bg-blue-50/70 p-4 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                            {/* Header Retur / Garansi */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/60 pb-2.5 dark:border-blue-900/60">
+                              <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
+                                <RotateCcw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                <span className="text-sm font-bold">
+                                  {isReplacement
+                                    ? 'Klaim Garansi: Penukaran Unit Baru'
+                                    : 'Klaim Garansi: Retur & Refund Dana'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${returnInfo.badgeClass}`}
+                                >
+                                  <span
+                                    className={`h-1.5 w-1.5 rounded-full ${returnInfo.dotClass}`}
+                                  />
+                                  <span>{returnInfo.label.toUpperCase()}</span>
+                                </span>
+                                <Link
+                                  href={`/dashboard/admin/returns?search=${selectedOrder.orderNumber}`}
+                                  className="shadow-2xs inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-white px-2 py-1 text-[10.5px] font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800"
+                                >
+                                  <span>Meja Kerja Retur</span>
+                                  <ExternalLink className="h-3 w-3" />
+                                </Link>
+                              </div>
                             </div>
-                            <span className="rounded-md border border-blue-200 bg-white px-2 py-0.5 font-mono text-[10px] font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
-                              {selectedOrder.returnRequests[0].status ===
-                              'COMPLETED'
-                                ? 'TUNTAS'
-                                : selectedOrder.returnRequests[0].status ===
-                                    'APPROVED'
-                                  ? 'DISETUJUI (KIRIM FISIK)'
-                                  : selectedOrder.returnRequests[0].status ===
-                                      'IN_REVIEW'
-                                    ? 'QC / PEMERIKSAAN'
-                                    : selectedOrder.returnRequests[0].status}
-                            </span>
-                          </div>
-                          <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
-                            <p>
-                              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                Kendala:
-                              </span>{' '}
-                              {selectedOrder.returnRequests[0].reasonLabel ||
-                                selectedOrder.returnRequests[0].reason}
-                            </p>
-                            {selectedOrder.returnRequests[0].type ===
-                              'REPLACEMENT' &&
-                              selectedOrder.trackingNumber && (
-                                <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-blue-200/90 bg-white p-2.5 font-mono text-xs font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
-                                  <div className="flex items-center gap-1.5">
-                                    <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                    <span>Resi Unit Pengganti:</span>
-                                  </div>
-                                  <span>
-                                    {selectedOrder.courierCode || 'JNE'} —{' '}
-                                    {selectedOrder.trackingNumber}
+
+                            {/* Detail Kendala & Catatan Telaah */}
+                            <div className="space-y-1.5 rounded-xl bg-white/70 p-3 text-[11px] text-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                              <div className="flex items-start gap-1.5">
+                                <span className="shrink-0 font-bold text-slate-900 dark:text-white">
+                                  Kendala Cacat Fisik:
+                                </span>
+                                <span className="text-slate-700 dark:text-slate-300">
+                                  {ret.reasonLabel ||
+                                    ret.reason ||
+                                    'Klaim Garansi Toko'}
+                                </span>
+                              </div>
+                              {ret.storeResponse && (
+                                <div className="flex items-start gap-1.5 border-t border-slate-100 pt-1 text-[10.5px] dark:border-slate-800">
+                                  <span className="shrink-0 font-bold text-blue-700 dark:text-blue-400">
+                                    Telaah After Sales:
+                                  </span>
+                                  <span className="italic text-slate-600 dark:text-slate-400">
+                                    {ret.storeResponse}
                                   </span>
                                 </div>
                               )}
-                            {selectedOrder.returnRequests[0].storeResponse && (
-                              <p className="mt-1 text-[10.5px] italic text-slate-500 dark:text-slate-400">
-                                Respon:{' '}
-                                {selectedOrder.returnRequests[0].storeResponse}
-                              </p>
+                            </div>
+
+                            {/* Pelacakan 1: Resi Kirim Balik Pembeli */}
+                            <div className="space-y-1.5 rounded-xl border border-purple-200/80 bg-white p-3 dark:border-purple-900/60 dark:bg-slate-900">
+                              <div className="flex items-center justify-between">
+                                <span className="inline-flex items-center gap-1.5 font-bold text-purple-950 dark:text-purple-200">
+                                  <Package className="h-3.5 w-3.5 text-purple-600" />
+                                  Pengiriman Balik dari Pembeli (Retur)
+                                </span>
+                                {ret.packageReceivedAt ? (
+                                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9.5px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                    Paket Telah Tiba di Toko (QC)
+                                  </span>
+                                ) : ret.returnTrackingNumber ? (
+                                  <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[9.5px] font-bold text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                                    Paket Dalam Pengiriman
+                                  </span>
+                                ) : (
+                                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                    Menunggu Resi Pembeli
+                                  </span>
+                                )}
+                              </div>
+
+                              {ret.returnTrackingNumber ? (
+                                <div className="space-y-2 pt-1 text-xs">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="font-mono">
+                                      <span className="text-[10px] text-slate-400">
+                                        Kurir & Resi:{' '}
+                                      </span>
+                                      <span className="font-bold text-slate-900 dark:text-white">
+                                        {ret.returnCourier || 'JNE'} —{' '}
+                                        {ret.returnTrackingNumber}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setCheckResiQuery(
+                                          ret.returnTrackingNumber || ''
+                                        )
+                                        setShowCheckResiModal(true)
+                                      }}
+                                      className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-purple-700 active:scale-95"
+                                    >
+                                      <Search className="h-3 w-3" />
+                                      <span>Lacak Resi Pembeli (Biteship)</span>
+                                    </button>
+                                  </div>
+
+                                  {/* Tombol Aksi Konfirmasi Tiba di Toko untuk Super Admin */}
+                                  {ret.packageReceivedAt ||
+                                  ret.storeResponse?.includes(
+                                    '[Paket Fisik Tiba di Cabang]'
+                                  ) ? (
+                                    <div className="rounded-lg bg-emerald-50 p-2 text-[10.5px] text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                      <span className="font-bold">
+                                        Diterima di Cabang:{' '}
+                                      </span>
+                                      <span>
+                                        {ret.packageReceivedAt
+                                          ? new Date(
+                                              ret.packageReceivedAt
+                                            ).toLocaleDateString('id-ID', {
+                                              day: 'numeric',
+                                              month: 'short',
+                                              year: 'numeric',
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                            })
+                                          : ret.createdAt
+                                            ? new Date(
+                                                ret.createdAt
+                                              ).toLocaleDateString('id-ID', {
+                                                day: 'numeric',
+                                                month: 'short',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                              })
+                                            : 'Dikonfirmasi Tiba'}{' '}
+                                        &bull; Sedang QC Fisik
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    ret.status !== 'COMPLETED' &&
+                                    ret.status !== 'REJECTED' && (
+                                      <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 p-2 text-[10.5px] dark:bg-slate-800/50">
+                                        <span className="text-slate-500">
+                                          Barang sudah diterima staf cabang?
+                                        </span>
+                                        <button
+                                          type="button"
+                                          disabled={
+                                            confirmingArrivalId === ret.id
+                                          }
+                                          onClick={() =>
+                                            handleConfirmPackageArrivalInOrdersDrawer(
+                                              ret.id
+                                            )
+                                          }
+                                          className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-indigo-600 bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300"
+                                        >
+                                          {confirmingArrivalId === ret.id ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <Check className="h-3 w-3" />
+                                          )}
+                                          <span>
+                                            Konfirmasi Paket Tiba di Toko (Mulai
+                                            QC)
+                                          </span>
+                                        </button>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                                  Pembeli belum menginput nomor resi pengiriman
+                                  balik ke toko cabang.
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Pelacakan 2 (Khusus REPLACEMENT): Resi Unit Baru Pengganti */}
+                            {isReplacement && (
+                              <div className="space-y-1.5 rounded-xl border border-blue-200/80 bg-white p-3 dark:border-blue-900/60 dark:bg-slate-900">
+                                <div className="flex items-center justify-between">
+                                  <span className="inline-flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-200">
+                                    <Truck className="h-3.5 w-3.5 text-blue-600" />
+                                    Resi Unit Pengganti:
+                                  </span>
+                                  {selectedOrder.trackingNumber ? (
+                                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9.5px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                      Unit Baru Dikirim
+                                    </span>
+                                  ) : (
+                                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                      Menunggu Hasil QC Toko
+                                    </span>
+                                  )}
+                                </div>
+
+                                {selectedOrder.trackingNumber ? (
+                                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                                    <div className="font-mono">
+                                      <span className="text-[10px] text-slate-400">
+                                        Kurir & Resi:{' '}
+                                      </span>
+                                      <span className="font-bold text-slate-900 dark:text-white">
+                                        {selectedOrder.courierCode || 'JNE'} —{' '}
+                                        {selectedOrder.trackingNumber}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setCheckResiQuery(
+                                          selectedOrder.trackingNumber || ''
+                                        )
+                                        setShowCheckResiModal(true)
+                                      }}
+                                      className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-blue-700 active:scale-95"
+                                    >
+                                      <Search className="h-3 w-3" />
+                                      <span>
+                                        Lacak Unit Pengganti (Biteship)
+                                      </span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                                    Nomor resi unit baru pengganti akan
+                                    diterbitkan toko setelah pemeriksaan fisik
+                                    (QC) selesai dan dinyatakan lolos.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Pelacakan 3 (Khusus REFUND): Rincian Rekening & Pengembalian Dana */}
+                            {!isReplacement && (
+                              <div className="space-y-1.5 rounded-xl border border-emerald-200/80 bg-white p-3 dark:border-emerald-900/60 dark:bg-slate-900">
+                                <div className="flex items-center justify-between">
+                                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-950 dark:text-emerald-200">
+                                    <Banknote className="h-3.5 w-3.5 text-emerald-600" />
+                                    Rincian Pengembalian Dana (Refund Escrow)
+                                  </span>
+                                  <span
+                                    className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold ${
+                                      ret.status === 'COMPLETED'
+                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                    }`}
+                                  >
+                                    {ret.status === 'COMPLETED'
+                                      ? 'DANA TELAH DICAIRKAN'
+                                      : 'DANA ESCROW DITAHAN'}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-2 pt-1 text-[11px] sm:grid-cols-2">
+                                  <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/60">
+                                    <span className="text-[10px] text-slate-400">
+                                      Nominal Refund:
+                                    </span>
+                                    <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">
+                                      Rp{' '}
+                                      {(
+                                        ret.refundAmount || selectedOrder.total
+                                      ).toLocaleString('id-ID')}
+                                    </p>
+                                  </div>
+                                  <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/60">
+                                    <span className="text-[10px] text-slate-400">
+                                      Rekening Tujuan:
+                                    </span>
+                                    <p className="font-bold text-slate-800 dark:text-slate-200">
+                                      {ret.bankName || 'Bank Pembeli'} —{' '}
+                                      {ret.bankAccountNumber || '-'}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500">
+                                      a.n.{' '}
+                                      {ret.bankAccountName ||
+                                        selectedOrder.user?.name ||
+                                        '-'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
                             )}
                           </div>
-                        </div>
-                      )}
+                        )
+                      })()}
 
                     {/* Products Section */}
                     <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">

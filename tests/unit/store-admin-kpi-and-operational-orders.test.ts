@@ -32,7 +32,9 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
     'route.ts'
   )
 
-  const dashboardPageContent = fs.readFileSync(adminDashboardPagePath, 'utf-8')
+  const dashboardPageContent = fs
+    .readFileSync(adminDashboardPagePath, 'utf-8')
+    .replace(/\r\n/g, '\n')
   const dashboardApiContent = fs.readFileSync(adminDashboardApiPath, 'utf-8')
   const ordersApiContent = fs.readFileSync(adminOrdersApiPath, 'utf-8')
 

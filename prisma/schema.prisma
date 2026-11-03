@@ -1179,6 +1179,9 @@ model ReturnRequest {
   storeResponse        String?
   returnCourier        String?
   returnTrackingNumber String?
+  packageReceivedAt    DateTime?
+  qcStatus             String?
+  qcNotes              String?
   resolvedAt           DateTime?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt

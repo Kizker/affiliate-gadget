@@ -280,7 +280,9 @@ describe('Penyempurnaan Lengkap Sistem Voucher (5 Poin Perbaikan)', () => {
 
     // Endpoint OpenGraph generator gambar PNG voucher tersedia (/api/vouchers/og)
     expect(fs.existsSync(ogApiPath)).toBe(true)
-    const ogApiContent = fs.readFileSync(ogApiPath, 'utf8')
+    const ogApiContent = fs
+      .readFileSync(ogApiPath, 'utf8')
+      .replace(/\r\n/g, '\n')
     expect(ogApiContent).toContain(
       "headers: {\n        'Content-Type': 'image/png'"
     )

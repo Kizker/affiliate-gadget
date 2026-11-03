@@ -15,6 +15,7 @@ import {
   Truck,
   MapPin,
   CheckCircle2,
+  Search,
   XCircle,
   MessageSquare,
 } from 'lucide-react'
@@ -619,7 +620,33 @@ export function OrderMobileView({
 
             {/* If IN_REVIEW & has tracking number */}
             {latestReturnRequest.status === 'IN_REVIEW' &&
-              latestReturnRequest.returnTrackingNumber && (
+              latestReturnRequest.returnTrackingNumber &&
+              (latestReturnRequest.packageReceivedAt ||
+              latestReturnRequest.storeResponse?.includes(
+                '[Paket Fisik Tiba di Cabang]'
+              ) ? (
+                <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/70 p-3 text-xs text-indigo-950 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-200">
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5 font-bold text-indigo-950 dark:text-indigo-100">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>Paket Tiba di Toko Cabang &bull; Sedang QC</span>
+                    </div>
+                    <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[9.5px] font-bold text-indigo-700 dark:bg-slate-900 dark:text-indigo-200">
+                      QC Fisik
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-indigo-800/90 dark:text-indigo-300/90">
+                    Unit telah diterima di toko cabang dan sedang menjalani
+                    pemeriksaan teknis (QC) sebelum solusi akhir diproses.
+                  </p>
+                  {latestReturnRequest.qcNotes && (
+                    <p className="mt-1.5 rounded-lg bg-white/70 p-2 text-[10px] italic text-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                      Catatan Teknisi: &ldquo;{latestReturnRequest.qcNotes}
+                      &rdquo;
+                    </p>
+                  )}
+                </div>
+              ) : (
                 <div className="rounded-xl border border-blue-200/80 bg-blue-50/70 p-3 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
                   <div className="flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-100">
@@ -636,8 +663,23 @@ export function OrderMobileView({
                     akan segera melakukan verifikasi fisik (QC) setelah paket
                     tiba.
                   </p>
+                  <div className="mt-2.5 flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenResiModal(
+                          latestReturnRequest.returnTrackingNumber!,
+                          latestReturnRequest.returnCourier || 'JNE'
+                        )
+                      }
+                      className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-blue-700 active:scale-95"
+                    >
+                      <Search className="h-3.5 w-3.5" />
+                      <span>Lacak Kiriman Retur</span>
+                    </button>
+                  </div>
                 </div>
-              )}
+              ))}
 
             {/* If COMPLETED */}
             {latestReturnRequest.status === 'COMPLETED' && (

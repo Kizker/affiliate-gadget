@@ -67,6 +67,41 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-04 (Arsitektur Penguncian Tombol QC & Kirim Barang Pengganti / Pencairan Refund Terproteksi Kedatangan Fisik Paket, Eliminasi Prisma Error, Resolusi Connection Leak Pool, dan Sinkronisasi End-to-End [`src/lib/db.ts`, `src/app/api/returns/[id]/route.ts`, `src/app/api/returns/route.ts`, `src/app/api/admin/orders/route.ts`, `src/app/dashboard/after-sales/returns/page.tsx`, `src/app/dashboard/admin/returns/page.tsx`, `src/app/dashboard/admin/orders/page.tsx`, `tests/unit/return-package-arrival-qc-flow.test.ts`]):**
+  - **1. Penguncian Tombol Eksekusi Solusi (Locked Resolution Buttons):**
+    - Tombol "QC Lulus: Kirim Unit Pengganti" dan "QC Lulus: Cairkan Dana" di meja kerja After Sales (`/dashboard/after-sales/returns`) otomatis terkunci (`disabled={!isArrived}`) dengan indikator gembok `<Lock />`, styling redup abu-abu, dan label peringatan `🔒 Terkunci hingga paket retur dikonfirmasi tiba` selama barang fisik retur dari pembeli belum dikonfirmasi sampai di toko cabang.
+    - Begitu tombol "Konfirmasi Paket Tiba di Cabang & Mulai QC" dikonfirmasi tiba, tombol eksekusi terbuka seketika (Oranye untuk tukar unit, Emerald untuk pencairan dana).
+    - Proteksi backend di `PUT /api/returns/[id]`: Memvalidasi `isPackageArrived` sebelum mengeksekusi `REPLACEMENT` atau `REFUND`. Jika paket belum tiba, API menolak dengan HTTP 400.
+  - **2. Resolusi Kebocoran Koneksi PostgreSQL (Prisma Connection Pool Optimization):**
+    - Memulihkan singleton pattern resmi `globalThis.prismaGlobal ?? prismaClientSingleton()` di `src/lib/db.ts`, mengeliminasi re-instansiasi `PrismaClient` tak terbatas pada setiap impor modul.
+    - Menetapkan batas ketat pool `connection_limit=5&pool_timeout=20&connect_timeout=10` pada PostgreSQL URL, mencegah `FATAL: sorry, too many clients already`.
+  - **3. Eliminasi Total `prisma:error` & Sinkronisasi Respons Real-Time:**
+    - Menyematkan pengecekan `hasQcSupport` di `src/app/api/returns/[id]/route.ts` sebelum memanggil update Prisma, serta fallback SQL query langsung ke tabel `return_requests` di PostgreSQL tanpa memicu log error di console dev server.
+    - Data enrichment pada `GET /api/returns` dan `GET /api/admin/orders` dengan query raw SQL dan parsing marker `[Paket Fisik Tiba di Cabang]` memastikan field `packageReceivedAt`, `qcStatus`, dan `qcNotes` selalu tersaji secara utuh ke frontend.
+    - Optimistic UI updates di Super Admin Returns, After Sales Returns, dan Admin Orders Drawer memastikan banner dan status kartu langsung berganti tanpa jeda.
+  - **4. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), seluruh unit test suite lulus 100% (51/51 tests pass).
+- **2026-11-04 (Arsitektur Konfirmasi Paket Retur Tiba di Cabang & Alur QC Fisik Terpadu [Dual-Actor: After Sales & Super Admin] [`prisma/schema.prisma`, `src/app/api/returns/[id]/route.ts`, `src/app/dashboard/after-sales/returns/page.tsx`, `src/app/dashboard/admin/returns/page.tsx`, `src/app/dashboard/admin/orders/page.tsx`, `src/components/customer/order-detail/order-desktop-return-card.tsx`, `src/components/customer/order-detail/order-mobile-view.tsx`, `tests/unit/return-package-arrival-qc-flow.test.ts`]):**
+  - **1. Skema Database & Audit Trail Status Kedatangan Fisik:**
+    - Menambahkan kolom `packageReceivedAt DateTime?`, `qcStatus String?`, dan `qcNotes String?` pada model `ReturnRequest` di PostgreSQL (`prisma db push` sinkron, schema version 9 di `src/lib/db.ts`).
+    - Endpoint `PUT /api/returns/[id]` mendukung `action: 'CONFIRM_PACKAGE_RECEIVED'`: mencatat timestamp kedatangan fisik, status QC, dan secara otomatis mengirimkan notifikasi interaktif ke pembeli dan seluruh staf purna jual.
+  - **2. Meja Kerja Admin After Sales (`/dashboard/after-sales/returns`):**
+    - Saat paket dalam perjalanan kurir (`returnTrackingNumber`), After Sales melihat tombol `Konfirmasi Paket Tiba di Cabang & Mulai QC` lengkap dengan modal input catatan kondisi fisik paket tiba.
+    - Setelah dikonfirmasi tiba, banner beralih ke `✓ Paket Fisik Telah Diterima di Cabang (Waktu) • Sedang QC`, dan mengaktifkan tombol eksekusi akhir: `QC Lulus: Cairkan Dana` (Refund) atau `QC Lulus: Kirim Unit Pengganti` (Replacement).
+  - **3. Meja Kerja Super Admin (`/dashboard/admin/returns`) & Halaman Pesanan (`/dashboard/admin/orders`):**
+    - Super Admin dapat melihat banner status kedatangan fisik real-time, serta memiliki wewenang tombol `Konfirmasi Paket Tiba di Toko (Mulai QC)` langsung dari kartu retur maupun modal drawer pesanan.
+    - Status alur pada tabel pesanan Super Admin otomatis menampilkan badge `Paket Tiba di Toko (Sedang QC Fisik)`.
+  - **4. Pengalaman Transparan Pembeli (Desktop & Mobile):**
+    - Antarmuka pembeli secara live menampilkan banner `Paket Telah Tiba di Toko Cabang • Sedang Pemeriksaan Fisik (QC)` beserta catatan pengujian teknisi toko, menghilangkan ketidakpastian pelanggan.
+  - **5. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), seluruh 12 test suites (80/80 tests) lulus 100%.
+- **2026-11-04 (Arsitektur Keterangan Jelas & Pelacakan Komprehensif Retur, Refund, dan Tukar Unit di Halaman Pesanan Super Admin [`src/app/dashboard/admin/orders/page.tsx`, `src/app/api/admin/orders/route.ts`, `src/app/api/admin/finance/route.ts`, `tests/unit/admin-orders-returns-tracking-display.test.ts`]):**
+  - **1. Visualisasi Keterangan & Tahapan Retur di Tabel Pesanan Admin:**
+    - _Kolom 1 (Identitas Gadget & Order):_ Badge jenis purna jual jelas (`Tukar Unit Baru` [Biru] vs `Retur & Refund` [Ungu]), dipadukan dengan badge tahapan dinamis (`Menunggu Telaah After Sales`, `Paket Menuju Toko [QC]`, `Menunggu ACC Superadmin`, `ACC Disetujui`, `Refund Selesai Dicairkan`, `Tukar Unit Selesai`, atau `Klaim Ditolak`).
+    - _Kolom 5 (Proteksi & Kurir):_ Menampilkan box pelacakan interaktif `Resi Kirim Balik: [Kurir] [Resi]` dengan tombol lacak langsung ke modal pelacakan Biteship (`CheckResiModal`), pembedaan label `Resi Unit Pengganti` untuk klaim REPLACEMENT, serta nominal `Refund: Rp ...` untuk klaim REFUND.
+  - **2. Panel Detail Komprehensif di Modal Drawer Pesanan:**
+    - Menyediakan panel terpadu: (a) Header klaim garansi dengan link langsung ke Meja Kerja Retur Super Admin (`/dashboard/admin/returns?search=...`), (b) Rincian kendala cacat fisik & telaah catatan After Sales, (c) Box pelacakan paket kirim balik pembeli dengan tombol _"Lacak Resi Pembeli (Biteship)"_, (d) Box pelacakan resi unit pengganti baru dengan tombol _"Lacak Unit Pengganti (Biteship)"_ untuk REPLACEMENT, dan (e) Rincian rekening tujuan refund beserta status pencairan dana Escrow untuk REFUND.
+  - **3. Sinkronisasi Real-Time Escrow & Keuangan:**
+    - Pesanan dengan tiket retur aktif otomatis dibekukan dari saldo siap tarik toko dan diklasifikasikan ke saldo Escrow berstatus _"Ditahan Komplain Retur"_ (`src/app/api/admin/finance/route.ts`).
+  - **4. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), seluruh 10 test suites purna jual & pesanan (52/52 tests) lulus 100%.
 - **2026-11-03 (Arsitektur Dual-Tier Approval Pengajuan Retur & Garansi: Konfirmasi Rekomendasi Admin After Sales, Penerusan ke Superadmin, Alasan Detail & Meja Kerja ACC Final Superadmin [`src/app/api/returns/[id]/route.ts`, `src/app/dashboard/after-sales/returns/page.tsx`, `src/app/dashboard/admin/returns/page.tsx`, `src/components/dashboard/sidebar.tsx`, `tests/unit/aftersales-superadmin-approval-workflow.test.ts`]):**
   - **1. Alur Verifikasi Bertingkat (Dual-Tier Approval Flow):**
     - _Tahap 1 (Konfirmasi Rekomendasi After Sales):_ Admin After Sales menelaah bukti foto/video unboxing dan mengonfirmasi persetujuan (`decision: 'APPROVE'`) atau penolakan (`decision: 'REJECT'`) via aksi `AFTER_SALES_CONFIRM`. Wajib menyertakan catatan/alasan detail minimal 5 karakter yang tercatat rapi di `storeResponse` dengan tag `[Rekomendasi After Sales: DISETUJUI]` atau `[Rekomendasi After Sales: DITOLAK]`.

@@ -81,25 +81,6 @@ export default async function CustomerOrderDetailPage({
         orderBy: { createdAt: 'desc' },
       },
       returnRequests: {
-        select: {
-          id: true,
-          type: true,
-          reason: true,
-          reasonLabel: true,
-          description: true,
-          images: true,
-          videoUrl: true,
-          bankName: true,
-          bankAccountNumber: true,
-          bankAccountName: true,
-          refundAmount: true,
-          status: true,
-          storeResponse: true,
-          returnCourier: true,
-          returnTrackingNumber: true,
-          createdAt: true,
-          resolvedAt: true,
-        },
         orderBy: { createdAt: 'desc' },
       },
       reviews: {
@@ -241,6 +222,11 @@ export default async function CustomerOrderDetailPage({
       storeResponse: r.storeResponse,
       returnCourier: r.returnCourier,
       returnTrackingNumber: r.returnTrackingNumber,
+      packageReceivedAt: (r as any).packageReceivedAt
+        ? new Date((r as any).packageReceivedAt).toISOString()
+        : null,
+      qcStatus: (r as any).qcStatus ?? null,
+      qcNotes: (r as any).qcNotes ?? null,
       createdAt: r.createdAt.toISOString(),
       resolvedAt: r.resolvedAt?.toISOString() ?? null,
     })),

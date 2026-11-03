@@ -145,124 +145,175 @@ export async function GET(request: Request) {
     const totalPages = Math.ceil(total / limit)
 
     // Get orders with pagination
-    const orders = await prisma.order.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            address: true,
-            city: true,
-            province: true,
-            postalCode: true,
-            addresses: {
-              orderBy: { isDefault: 'desc' },
-              take: 1,
-              select: {
-                recipientName: true,
-                phone: true,
-                fullAddress: true,
-                city: true,
-                province: true,
-                district: true,
-                village: true,
-                postalCode: true,
-              },
+    let orders: any[]
+    const orderIncludeBase = {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          address: true,
+          city: true,
+          province: true,
+          postalCode: true,
+          addresses: {
+            orderBy: { isDefault: 'desc' as const },
+            take: 1,
+            select: {
+              recipientName: true,
+              phone: true,
+              fullAddress: true,
+              city: true,
+              province: true,
+              district: true,
+              village: true,
+              postalCode: true,
             },
           },
-        },
-        store: {
-          select: {
-            id: true,
-            name: true,
-            companyName: true,
-            city: true,
-          },
-        },
-        payment: {
-          select: {
-            status: true,
-            method: true,
-            amount: true,
-          },
-        },
-        claimedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        paymentRequestedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        technicianPaymentRequestedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        technician: {
-          include: {
-            user: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                brand: true,
-                images: true,
-                category: true,
-                price: true,
-              },
-            },
-            service: {
-              select: {
-                name: true,
-              },
-            },
-            rentalItem: {
-              select: {
-                name: true,
-                images: true,
-              },
-            },
-          },
-        },
-        returnRequests: {
-          select: {
-            id: true,
-            status: true,
-            type: true,
-            reason: true,
-            reasonLabel: true,
-            returnTrackingNumber: true,
-            returnCourier: true,
-            storeResponse: true,
-            createdAt: true,
-          },
-          orderBy: { createdAt: 'desc' },
         },
       },
-    })
+      store: {
+        select: {
+          id: true,
+          name: true,
+          companyName: true,
+          city: true,
+        },
+      },
+      payment: {
+        select: {
+          status: true,
+          method: true,
+          amount: true,
+        },
+      },
+      claimedBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      paymentRequestedBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      technicianPaymentRequestedBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      technician: {
+        include: {
+          user: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+      items: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              brand: true,
+              images: true,
+              category: true,
+              price: true,
+            },
+          },
+          service: {
+            select: {
+              name: true,
+            },
+          },
+          rentalItem: {
+            select: {
+              name: true,
+              images: true,
+            },
+          },
+        },
+      },
+    }
+
+    try {
+      orders = await prisma.order.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          ...orderIncludeBase,
+          returnRequests: {
+            select: {
+              id: true,
+              status: true,
+              type: true,
+              reason: true,
+              reasonLabel: true,
+              returnTrackingNumber: true,
+              returnCourier: true,
+              storeResponse: true,
+              packageReceivedAt: true,
+              qcStatus: true,
+              qcNotes: true,
+              bankName: true,
+              bankAccountNumber: true,
+              bankAccountName: true,
+              refundAmount: true,
+              resolvedAt: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      })
+    } catch (findOrdersErr: any) {
+      if (
+        findOrdersErr?.message?.includes('packageReceivedAt') ||
+        findOrdersErr?.name === 'PrismaClientValidationError'
+      ) {
+        orders = await prisma.order.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            ...orderIncludeBase,
+            returnRequests: {
+              select: {
+                id: true,
+                status: true,
+                type: true,
+                reason: true,
+                reasonLabel: true,
+                returnTrackingNumber: true,
+                returnCourier: true,
+                storeResponse: true,
+                bankName: true,
+                bankAccountNumber: true,
+                bankAccountName: true,
+                refundAmount: true,
+                resolvedAt: true,
+                createdAt: true,
+              },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        })
+      } else {
+        throw findOrdersErr
+      }
+    }
 
     // Get stats for tabs - filtered by role
     // Build base stats filter based on role
@@ -322,9 +373,49 @@ export async function GET(request: Request) {
       }),
     ])
 
+    // Enrich returnRequests dengan data kedatangan fisik & status QC langsung dari PostgreSQL
+    let rawQcData: any[] = []
+    try {
+      rawQcData = await prisma.$queryRawUnsafe(
+        `SELECT id, "packageReceivedAt", "qcStatus", "qcNotes" FROM "return_requests"`
+      )
+    } catch {
+      rawQcData = []
+    }
+    const qcMap = new Map(rawQcData.map((q: any) => [q.id, q]))
+
+    const enrichedOrders = orders.map((o: any) => ({
+      ...o,
+      returnRequests: (o.returnRequests || []).map((r: any) => {
+        const qc = qcMap.get(r.id)
+        const hasArrivalMarker = r.storeResponse?.includes(
+          '[Paket Fisik Tiba di Cabang]'
+        )
+        return {
+          ...r,
+          packageReceivedAt: r.packageReceivedAt
+            ? new Date(r.packageReceivedAt).toISOString()
+            : qc?.packageReceivedAt
+              ? new Date(qc.packageReceivedAt).toISOString()
+              : hasArrivalMarker
+                ? r.createdAt
+                : null,
+          qcStatus:
+            r.qcStatus || qc?.qcStatus || (hasArrivalMarker ? 'IN_QC' : null),
+          qcNotes:
+            r.qcNotes ||
+            qc?.qcNotes ||
+            (hasArrivalMarker
+              ? r.storeResponse?.match(/Catatan QC:\s*([^\n]+)/)?.[1]?.trim() ||
+                null
+              : null),
+        }
+      }),
+    }))
+
     return NextResponse.json(
       {
-        orders,
+        orders: enrichedOrders,
         pagination: {
           page,
           limit,

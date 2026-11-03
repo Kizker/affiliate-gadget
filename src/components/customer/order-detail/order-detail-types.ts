@@ -65,6 +65,9 @@ export interface OrderReturnRequest {
   storeResponse?: string | null
   returnCourier?: string | null
   returnTrackingNumber?: string | null
+  packageReceivedAt?: string | null
+  qcStatus?: string | null
+  qcNotes?: string | null
   createdAt: string
   resolvedAt?: string | null
 }
