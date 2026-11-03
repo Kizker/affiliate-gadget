@@ -33,7 +33,19 @@ export async function POST(
         courierService: true,
         trackingNumber: true,
         user: true,
-        store: { select: { name: true, companyName: true } },
+        storeId: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            group: {
+              select: {
+                afterSalesUserId: true,
+              },
+            },
+          },
+        },
         items: {
           select: {
             id: true,
@@ -100,6 +112,37 @@ export async function POST(
         },
       })
       .catch(() => {})
+
+    // Handover otomatis ruang chat ke Admin After Sales yang menaungi toko cabang ini
+    try {
+      const targetStoreId = order.storeId || order.store?.id
+      if (targetStoreId) {
+        let afterSalesUserId = order.store?.group?.afterSalesUserId || null
+        if (!afterSalesUserId) {
+          const fallbackAfterSales = await prisma.user.findFirst({
+            where: { role: 'AFTER_SALES', isActive: true },
+            select: { id: true },
+          })
+          afterSalesUserId = fallbackAfterSales?.id || null
+        }
+
+        if (afterSalesUserId) {
+          await prisma.adminChatRoom.updateMany({
+            where: {
+              customerId: order.userId,
+              OR: [{ storeId: targetStoreId }, { orderId: order.id }],
+            },
+            data: {
+              orderId: order.id,
+              claimedById: afterSalesUserId,
+              claimedAt: now,
+            },
+          })
+        }
+      }
+    } catch (handoverErr) {
+      console.warn('Non-fatal chat room handover error:', handoverErr)
+    }
 
     // Kirim tanda bukti transaksi selesai via email (Resend) & notifikasi WhatsApp
     try {

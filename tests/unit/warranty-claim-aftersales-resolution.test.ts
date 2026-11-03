@@ -92,7 +92,8 @@ describe('Spesifikasi Terpadu: Klaim Garansi, Resolusi Refund & Replacement, dan
 
   it('6. Kartu Status Retur Pembeli memuat Live Chat terintegrasi langsung ke After Sales', () => {
     const content = fs.readFileSync(returnDesktopCardPath, 'utf8')
-    expect(content).toContain('/dashboard/customer/chat/admin/')
+    expect(content).toContain('/dashboard/customer/chat?')
+    expect(content).toContain('type=after_sales')
     expect(content).toContain('Chat Admin After Sales')
   })
 })

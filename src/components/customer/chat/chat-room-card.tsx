@@ -15,20 +15,29 @@ export function ChatRoomCard({
   isSelected,
   onSelectRoom,
 }: ChatRoomCardProps) {
-  const storeObj = room.order?.store || room.store
+  const storeObj = room.store || room.order?.store
   const roomIsOnline = isStoreOperational(storeObj, room.technician)
-  const storeLogo =
-    room.claimedBy?.image ||
-    storeObj?.logo ||
-    room.order?.claimedBy?.image ||
-    null
+  const claimedByName = room.claimedBy?.name
+  const storeLogo = room.claimedBy
+    ? room.claimedBy.image || null
+    : storeObj?.logo || room.order?.claimedBy?.image || null
+  const avatarInitialSource = room.claimedBy ? claimedByName || '' : ''
   const firstProduct = room.order?.items?.[0]?.product?.name
   const isCsRoom =
     (storeObj as any)?.isCs ||
     (room.type === 'admin' && !room.storeId && !room.technician)
+  const isAfterSalesRoom =
+    (storeObj as any)?.isAfterSales ||
+    (room.claimedBy as any)?.role === 'AFTER_SALES' ||
+    room.order?.status === 'COMPLETED' ||
+    room.order?.status === 'RETURNED'
+  const rawTitle =
+    storeObj?.name || firstProduct || room.technician?.user?.name || 'CS Toko'
   const title = isCsRoom
     ? 'Customer Service (Superadmin)'
-    : storeObj?.name || firstProduct || room.technician?.user?.name || 'CS Toko'
+    : isAfterSalesRoom && !rawTitle.startsWith('Layanan Purna Jual')
+      ? `Layanan Purna Jual (${rawTitle})`
+      : rawTitle
   const orderNumber = room.order?.orderNumber
   const lastMsg = formatMessagePreview(room.messages?.[0])
 
@@ -118,13 +127,17 @@ export function ChatRoomCard({
               className={`truncate text-[10px] font-semibold ${
                 (room.claimedBy as any)?.role === 'MITRA'
                   ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-blue-600 dark:text-blue-400'
+                  : (room.claimedBy as any)?.role === 'AFTER_SALES'
+                    ? 'text-orange-600 dark:text-orange-400'
+                    : 'text-blue-600 dark:text-blue-400'
               }`}
             >
               •{' '}
               {(room.claimedBy as any)?.role === 'MITRA'
                 ? 'Mitra Servis'
-                : 'Admin'}
+                : (room.claimedBy as any)?.role === 'AFTER_SALES'
+                  ? 'After Sales'
+                  : 'Admin'}
               : {room.claimedBy.name}
             </span>
           </div>

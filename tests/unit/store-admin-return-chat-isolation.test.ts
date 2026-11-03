@@ -60,7 +60,8 @@ describe('Isolasi Chat Toko Cabang vs Admin After Sales: Retur & Pertukaran Prod
   it('5. Halaman Pesanan Saya (orders-client.tsx): Tombol chat pada tab retur menampilkan "Chat Admin After Sales"', () => {
     const content = fs.readFileSync(ordersClientPath, 'utf8')
 
-    expect(content).toContain('isReturnOrExchange')
+    expect(content).toContain('isAfterSales')
+    expect(content).toContain("order.status === 'COMPLETED'")
     expect(content).toContain('Chat Admin After Sales')
     expect(content).toContain("chatParams.set('type', 'after_sales')")
   })

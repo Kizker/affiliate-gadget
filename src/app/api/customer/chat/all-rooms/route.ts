@@ -60,6 +60,19 @@ export async function GET() {
             city: true,
             logo: true,
             isActive: true,
+            group: {
+              select: {
+                afterSalesUser: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    image: true,
+                    role: true,
+                  },
+                },
+              },
+            },
             schedules: {
               select: {
                 day: true,
@@ -114,6 +127,10 @@ export async function GET() {
                   },
                 },
               },
+            },
+            returnRequests: {
+              select: { id: true, status: true, type: true },
+              take: 1,
             },
             items: {
               select: {
@@ -241,6 +258,10 @@ export async function GET() {
                 },
               },
             },
+            returnRequests: {
+              select: { id: true, status: true, type: true },
+              take: 1,
+            },
             items: {
               select: {
                 type: true,
@@ -288,15 +309,63 @@ export async function GET() {
     })
     const unreadMap = new Map(unreadStats.map((s) => [s.roomId, s._count.id]))
 
+    const defaultAfterSalesUser = await prisma.user.findFirst({
+      where: { role: 'AFTER_SALES', isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+        role: true,
+      },
+    })
+
     const enrichedRooms = rooms.map((room) => {
       const resolvedOrder = room.order || orderLookupMap[room.id] || null
       const totalUnreadCount = unreadMap.get(room.id) || 0
       const hasOrder = !!resolvedOrder
 
-      const mitra = (room.claimedBy as any)?.mitra
-      const resolvedStore =
-        room.store ||
-        (mitra
+      const isAfterSalesRoom = Boolean(
+        resolvedOrder?.status === 'COMPLETED' ||
+        resolvedOrder?.status === 'RETURNED' ||
+        (resolvedOrder?.returnRequests &&
+          resolvedOrder.returnRequests.length > 0) ||
+        room.claimedBy?.role === 'AFTER_SALES'
+      )
+
+      const storeGroupAfterSales = (room.store as any)?.group?.afterSalesUser
+      let resolvedClaimedBy = room.claimedBy
+      if (isAfterSalesRoom && resolvedClaimedBy?.role !== 'AFTER_SALES') {
+        const targetAfterSales = storeGroupAfterSales || defaultAfterSalesUser
+        if (targetAfterSales) {
+          resolvedClaimedBy = targetAfterSales as any
+          // Auto-sync DB in background so room is permanently handed over to After Sales
+          prisma.adminChatRoom
+            .update({
+              where: { id: room.id },
+              data: {
+                claimedById: targetAfterSales.id,
+                claimedAt: new Date(),
+              },
+            })
+            .catch(() => {})
+        }
+      }
+
+      const mitra = (resolvedClaimedBy as any)?.mitra
+      const baseStore = room.store || resolvedOrder?.store || null
+      const resolvedStore = baseStore
+        ? {
+            ...baseStore,
+            name: isAfterSalesRoom
+              ? `Layanan Purna Jual (${baseStore.name})`
+              : baseStore.name,
+            companyName: isAfterSalesRoom
+              ? 'Admin After Sales & Garansi Terpusat'
+              : baseStore.companyName,
+            isAfterSales: isAfterSalesRoom,
+          }
+        : mitra
           ? {
               id: mitra.id,
               name: mitra.businessName,
@@ -315,10 +384,12 @@ export async function GET() {
               logo: null,
               isActive: true,
               isCs: true,
-            })
+            }
 
       return {
         ...room,
+        claimedBy: resolvedClaimedBy,
+        claimedById: resolvedClaimedBy?.id || room.claimedById,
         store: resolvedStore,
         order: resolvedOrder,
         hasOrder,

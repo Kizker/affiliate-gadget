@@ -672,12 +672,24 @@ export function MobileOrdersView({
                       if (firstItem?.price)
                         chatParams.set('productPrice', String(firstItem.price))
 
+                      const isAfterSales =
+                        Boolean(latestReturn) ||
+                        order.status === 'COMPLETED' ||
+                        order.status === 'RETURNED'
+                      if (isAfterSales) {
+                        chatParams.set('type', 'after_sales')
+                      }
+
                       return (
                         <Link
                           href={`/dashboard/customer/chat?${chatParams.toString()}`}
-                          className="shadow-2xs rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                          className={`shadow-2xs rounded-full border px-4 py-1.5 text-xs font-semibold transition active:scale-95 ${
+                            isAfterSales
+                              ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
+                              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                          }`}
                         >
-                          Chat
+                          {isAfterSales ? 'Chat After Sales' : 'Chat'}
                         </Link>
                       )
                     })()}

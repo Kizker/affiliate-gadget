@@ -481,7 +481,7 @@ export function OrderDesktopReturnCard({
                 ini?
               </span>
               <Link
-                href={`/dashboard/customer/chat/admin/${order.id}`}
+                href={`/dashboard/customer/chat?orderId=${order.id}&storeId=${order.store?.id || ''}&type=after_sales`}
                 className="inline-flex items-center gap-1 font-bold text-orange-600 hover:underline dark:text-orange-500"
               >
                 <span>Chat Admin After Sales &rarr;</span>
@@ -594,7 +594,7 @@ export function OrderDesktopReturnCard({
             Perlu koordinasi langsung seputar status klaim unit?
           </span>
           <Link
-            href={`/dashboard/customer/chat/admin/${order.id}`}
+            href={`/dashboard/customer/chat?orderId=${order.id}&storeId=${order.store?.id || ''}&type=after_sales`}
             className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/70 px-3 py-1.5 text-xs font-bold text-orange-600 transition hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400"
           >
             <MessageSquare className="h-3.5 w-3.5 text-orange-600 dark:text-orange-500" />

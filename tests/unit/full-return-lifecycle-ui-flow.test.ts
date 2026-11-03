@@ -40,13 +40,15 @@ describe('End-to-End Return, QC, Replacement & Review Flow Verification', () => 
     expect(desktop).toContain("latestReturnRequest.status === 'REJECTED'")
     expect(desktop).toContain('Pengajuan Retur / Klaim Garansi Ditolak')
     expect(desktop).toContain('Ditolak After Sales')
-    expect(desktop).toContain('/dashboard/customer/chat/admin/')
+    expect(desktop).toContain('/dashboard/customer/chat?')
+    expect(desktop).toContain('type=after_sales')
 
     // Mobile
     expect(mobile).toContain("latestReturnRequest.status === 'REJECTED'")
     expect(mobile).toContain('Pengajuan Retur Ditolak')
     expect(mobile).toContain('Ditolak After Sales')
-    expect(mobile).toContain('/dashboard/customer/chat/admin/')
+    expect(mobile).toContain('/dashboard/customer/chat?')
+    expect(mobile).toContain('type=after_sales')
   })
 
   it('2. Admin Toko Cabang: Endpoint API memuat returnRequests & UI menampilkan badge Tukar Unit & rincian banner', () => {

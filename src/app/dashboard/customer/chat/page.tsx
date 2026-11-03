@@ -845,6 +845,7 @@ function CustomerChatContent() {
               returnStatus: resolvedReturnStatus || undefined,
               returnType: resolvedReturnType || undefined,
               storeId: paramStoreId || undefined,
+              type: paramType || undefined,
               productId: paramProductId || undefined,
               productName: resolvedProductName,
               productPrice: resolvedProductPrice,
@@ -1323,7 +1324,7 @@ function CustomerChatContent() {
     return true
   })
 
-  const activeStore = selectedRoom?.order?.store || selectedRoom?.store
+  const activeStore = selectedRoom?.store || selectedRoom?.order?.store
   const isStoreOnline =
     isStoreOperational(activeStore, selectedRoom?.technician) ||
     Boolean(
@@ -1340,18 +1341,27 @@ function CustomerChatContent() {
       !selectedRoom?.storeId &&
       !selectedRoom?.technician)
 
+  const isAfterSalesActive =
+    (activeStore as any)?.isAfterSales ||
+    (selectedRoom?.claimedBy as any)?.role === 'AFTER_SALES' ||
+    selectedRoom?.order?.status === 'COMPLETED' ||
+    selectedRoom?.order?.status === 'RETURNED'
+
+  const rawStoreName =
+    activeStore?.name ||
+    selectedRoom?.order?.items?.[0]?.product?.name ||
+    selectedRoom?.technician?.user?.name ||
+    'CS Toko'
+
   const activeStoreTitle = isCsActive
     ? 'Customer Service (Superadmin)' // CS Superadmin
-    : activeStore?.name ||
-      selectedRoom?.order?.items?.[0]?.product?.name ||
-      selectedRoom?.technician?.user?.name ||
-      'CS Toko'
+    : isAfterSalesActive && !rawStoreName.startsWith('Layanan Purna Jual')
+      ? `Layanan Purna Jual (${rawStoreName})`
+      : rawStoreName
 
-  const activeStoreLogo =
-    selectedRoom?.claimedBy?.image ||
-    activeStore?.logo ||
-    selectedRoom?.order?.claimedBy?.image ||
-    null
+  const activeStoreLogo = selectedRoom?.claimedBy
+    ? selectedRoom.claimedBy.image || null
+    : activeStore?.logo || selectedRoom?.order?.claimedBy?.image || null
 
   if (status === 'loading' || loading) {
     return (
@@ -1561,6 +1571,13 @@ function CustomerChatContent() {
                     setMessageInput={setMessageInput}
                     onSendMessage={() => handleSendMessage()}
                     sending={sending}
+                    placeholder={
+                      (selectedRoom?.claimedBy as any)?.role === 'AFTER_SALES'
+                        ? 'Ketik pesan ke Admin After Sales...'
+                        : isCsActive
+                          ? 'Ketik pesan ke CS Superadmin...'
+                          : 'Ketik pesan ke admin toko...'
+                    }
                   />
                 </>
               ) : (

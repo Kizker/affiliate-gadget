@@ -39,8 +39,8 @@ describe('Mobile Orders Simplified UI Suite (Screenshot 2 Match)', () => {
     expect(content).toContain('{contextualTime.shortDate}')
 
     // Tombol Chat dan Rincian menggunakan rounded-full
-    expect(content).toContain('rounded-full border border-slate-200 bg-white')
-    expect(content).toMatch(/Chat\s*<\/Link>/)
+    expect(content).toContain('rounded-full border px-4 py-1.5')
+    expect(content).toMatch(/Chat After Sales' : 'Chat'\}\s*<\/Link>/)
     expect(content).toContain(
       'rounded-full border border-slate-900 bg-slate-900'
     )

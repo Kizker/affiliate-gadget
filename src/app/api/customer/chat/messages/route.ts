@@ -57,6 +57,19 @@ export async function GET(req: NextRequest) {
             city: true,
             logo: true,
             isActive: true,
+            group: {
+              select: {
+                afterSalesUser: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    image: true,
+                    role: true,
+                  },
+                },
+              },
+            },
             schedules: {
               select: {
                 day: true,
@@ -73,6 +86,10 @@ export async function GET(req: NextRequest) {
             orderNumber: true,
             status: true,
             total: true,
+            returnRequests: {
+              select: { id: true, status: true, type: true },
+              take: 1,
+            },
             store: {
               select: {
                 id: true,
@@ -141,7 +158,7 @@ export async function GET(req: NextRequest) {
       data: { isRead: true },
     })
 
-    let resolvedOrder = room.order
+    let resolvedOrder: any = room.order
     if (!resolvedOrder) {
       const orderRefMsg = messages.find(
         (m) =>
@@ -236,10 +253,58 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const mitra = (room.claimedBy as any)?.mitra
-    const resolvedStore =
-      room.store ||
-      (mitra
+    const isAfterSalesRoom = Boolean(
+      resolvedOrder?.status === 'COMPLETED' ||
+      resolvedOrder?.status === 'RETURNED' ||
+      ((resolvedOrder as any)?.returnRequests &&
+        (resolvedOrder as any).returnRequests.length > 0) ||
+      room.claimedBy?.role === 'AFTER_SALES'
+    )
+
+    let resolvedClaimedBy = room.claimedBy
+    if (isAfterSalesRoom && resolvedClaimedBy?.role !== 'AFTER_SALES') {
+      const storeGroupAfterSales = (room.store as any)?.group?.afterSalesUser
+      let targetAfterSales = storeGroupAfterSales
+      if (!targetAfterSales) {
+        targetAfterSales = await prisma.user.findFirst({
+          where: { role: 'AFTER_SALES', isActive: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        })
+      }
+      if (targetAfterSales) {
+        resolvedClaimedBy = targetAfterSales as any
+        await prisma.adminChatRoom
+          .update({
+            where: { id: room.id },
+            data: {
+              claimedById: targetAfterSales.id,
+              claimedAt: new Date(),
+            },
+          })
+          .catch(() => {})
+      }
+    }
+
+    const mitra = (resolvedClaimedBy as any)?.mitra
+    const baseStore = room.store || resolvedOrder?.store || null
+    const resolvedStore = baseStore
+      ? {
+          ...baseStore,
+          name: isAfterSalesRoom
+            ? `Layanan Purna Jual (${baseStore.name})`
+            : baseStore.name,
+          companyName: isAfterSalesRoom
+            ? 'Admin After Sales & Garansi Terpusat'
+            : baseStore.companyName,
+          isAfterSales: isAfterSalesRoom,
+        }
+      : mitra
         ? {
             id: mitra.id,
             name: mitra.businessName,
@@ -258,11 +323,13 @@ export async function GET(req: NextRequest) {
             logo: null,
             isActive: true,
             isCs: true,
-          })
+          }
 
     return NextResponse.json({
       room: {
         ...room,
+        claimedBy: resolvedClaimedBy,
+        claimedById: resolvedClaimedBy?.id || room.claimedById,
         store: resolvedStore,
         order: resolvedOrder,
         hasOrder: !!resolvedOrder,

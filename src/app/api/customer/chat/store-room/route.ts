@@ -34,13 +34,19 @@ export async function POST(req: NextRequest) {
       reqStoreId === 'superadmin' ||
       reqStoreId === 'cs'
 
-    // If orderId is provided, look up the order and its store
+    // If orderId or orderNumber is provided, look up the order and its store
     let resolvedOrder: any = null
-    if (orderId && typeof orderId === 'string') {
+    if (
+      (orderId && typeof orderId === 'string') ||
+      (orderNumber && typeof orderNumber === 'string')
+    ) {
       resolvedOrder = await prisma.order.findFirst({
         where: {
-          id: orderId,
           userId: session.user.id,
+          OR: [
+            ...(orderId ? [{ id: orderId }] : []),
+            ...(orderNumber ? [{ orderNumber: orderNumber }] : []),
+          ],
         },
         include: {
           store: {
@@ -282,6 +288,7 @@ export async function POST(req: NextRequest) {
       effectiveReturnReason ||
       returnReason ||
       reqType === 'after_sales' ||
+      resolvedOrder?.status === 'COMPLETED' ||
       (resolvedOrder?.returnRequests && resolvedOrder.returnRequests.length > 0)
     )
     const isOrderInquiry = Boolean(orderId || effectiveOrderNumber)
@@ -380,10 +387,33 @@ export async function POST(req: NextRequest) {
     }
 
     // Customer + Store = SINGLE CHAT ROOM (Unified Room: 1 Pelanggan + 1 Toko = 1 Room)
-    let room = await prisma.adminChatRoom.findFirst({
+    let room: any = await prisma.adminChatRoom.findFirst({
       where: {
         customerId: session.user.id,
         storeId: store.id,
+      },
+      include: {
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            total: true,
+            returnRequests: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
       },
       orderBy: { lastMessageAt: 'desc' },
     })
@@ -394,11 +424,78 @@ export async function POST(req: NextRequest) {
           customerId: session.user.id,
           orderId: orderId,
         },
+        include: {
+          claimedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              role: true,
+            },
+          },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              total: true,
+              returnRequests: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          },
+        },
         orderBy: { lastMessageAt: 'desc' },
       })
     }
 
+    // Jika room yang ditemukan sudah memiliki order berstatus COMPLETED atau di-claim oleh AFTER_SALES,
+    // pastikan percakapan tetap berada di jalur After Sales
+    const isExistingRoomAfterSales = Boolean(
+      room?.order?.status === 'COMPLETED' ||
+      room?.order?.status === 'RETURNED' ||
+      (room?.order?.returnRequests && room.order.returnRequests.length > 0) ||
+      room?.claimedBy?.role === 'AFTER_SALES'
+    )
+    const effectiveIsReturnInquiry = isReturnInquiry || isExistingRoomAfterSales
+
+    if (effectiveIsReturnInquiry && assignedAdmin?.role !== 'AFTER_SALES') {
+      const storeWithGroup = await prisma.store.findUnique({
+        where: { id: store.id },
+        include: {
+          group: {
+            include: {
+              afterSalesUser: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                  role: true,
+                },
+              },
+            },
+          },
+        },
+      })
+      const groupAfterSales = storeWithGroup?.group?.afterSalesUser
+      const fallbackAfterSales = await prisma.user.findFirst({
+        where: { role: 'AFTER_SALES', isActive: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          role: true,
+        },
+      })
+      assignedAdmin = groupAfterSales || fallbackAfterSales || storeAdmin
+    }
+
     const isNew = !room
+    let effectiveClaimedBy = assignedAdmin
 
     if (!room) {
       // Create new direct room connected with appropriate admin
@@ -420,15 +517,19 @@ export async function POST(req: NextRequest) {
         updates.lastMessageAt = new Date()
       }
       if (
-        isReturnInquiry &&
+        effectiveIsReturnInquiry &&
         assignedAdmin &&
         assignedAdmin.role === 'AFTER_SALES'
       ) {
         updates.claimedById = assignedAdmin.id
         updates.claimedAt = new Date()
+        effectiveClaimedBy = assignedAdmin
       } else if (!room.claimedById && assignedAdmin) {
         updates.claimedById = assignedAdmin.id
         updates.claimedAt = new Date()
+        effectiveClaimedBy = assignedAdmin
+      } else if (room.claimedBy) {
+        effectiveClaimedBy = room.claimedBy
       }
 
       if (Object.keys(updates).length > 0) {
@@ -473,24 +574,24 @@ export async function POST(req: NextRequest) {
       roomId: room.id,
       store: {
         id: store.id,
-        name: isReturnInquiry
+        name: effectiveIsReturnInquiry
           ? `Layanan Purna Jual (${store.name})`
           : store.name,
-        companyName: isReturnInquiry
+        companyName: effectiveIsReturnInquiry
           ? 'Admin After Sales & Garansi Terpusat'
           : store.companyName,
         phone: store.phone,
         city: store.city,
         logo: store.logo,
-        isAfterSales: isReturnInquiry,
+        isAfterSales: effectiveIsReturnInquiry,
       },
-      claimedBy: assignedAdmin
+      claimedBy: effectiveClaimedBy
         ? {
-            id: assignedAdmin.id,
-            name: assignedAdmin.name,
-            email: assignedAdmin.email,
-            image: assignedAdmin.image,
-            role: assignedAdmin.role,
+            id: effectiveClaimedBy.id,
+            name: effectiveClaimedBy.name,
+            email: effectiveClaimedBy.email,
+            image: effectiveClaimedBy.image,
+            role: effectiveClaimedBy.role,
           }
         : null,
       orderId: room.orderId || (resolvedOrder ? resolvedOrder.id : null),

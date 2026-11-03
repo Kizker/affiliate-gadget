@@ -1665,10 +1665,11 @@ function AdminChatContent() {
                   href={`/dashboard/admin/orders?search=${orderNum || data.orderId}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="shadow-2xs inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                  aria-label="Lihat Pesanan"
+                  title="Lihat Pesanan"
+                  className="shadow-2xs inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                 >
-                  <span>Lihat Pesanan</span>
-                  <ExternalLink className="h-2.5 w-2.5" />
+                  <ExternalLink className="h-3 w-3" />
                 </a>
               )}
             </div>

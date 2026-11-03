@@ -46,7 +46,9 @@ export function ChatHeader({
           />
         ) : (
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-100 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-            {activeStoreTitle.charAt(0).toUpperCase()}
+            {(selectedRoom.claimedBy?.name || activeStoreTitle)
+              .charAt(0)
+              .toUpperCase()}
           </div>
         )}
 
@@ -68,9 +70,7 @@ export function ChatHeader({
             )}
           </div>
           <p className="truncate text-[11px] text-slate-400">
-            {activeOrderContext?.orderNumber ? (
-              `Pesanan #${activeOrderContext.orderNumber}`
-            ) : isCsActive ? (
+            {isCsActive ? (
               <span className="font-semibold text-blue-600 dark:text-blue-400">
                 Pusat Layanan & Bantuan CS Superadmin Platform
               </span>
@@ -79,6 +79,18 @@ export function ChatHeader({
                 Mitra Servis Resmi:{' '}
                 {selectedRoom.store?.name || selectedRoom.claimedBy?.name}
               </span>
+            ) : (selectedRoom.claimedBy as any)?.role === 'AFTER_SALES' ||
+              (selectedRoom.store as any)?.isAfterSales ||
+              selectedRoom.order?.status === 'COMPLETED' ? (
+              <span className="font-semibold text-orange-600 dark:text-orange-400">
+                Admin After Sales:{' '}
+                {selectedRoom.claimedBy?.name || 'Tim Purna Jual Terpusat'}
+                {activeOrderContext?.orderNumber
+                  ? ` • #${activeOrderContext.orderNumber}`
+                  : ''}
+              </span>
+            ) : activeOrderContext?.orderNumber ? (
+              `Pesanan #${activeOrderContext.orderNumber}`
             ) : selectedRoom.claimedBy?.name ? (
               <span className="font-semibold text-blue-600 dark:text-blue-400">
                 {(selectedRoom.claimedBy as any)?.role === 'SUPER_ADMIN'
