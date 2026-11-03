@@ -117,30 +117,58 @@ export async function PUT(
       )
     }
 
-    // After Sales Validation Action: FORWARD_TO_SUPERADMIN
-    if (body.action === 'FORWARD_TO_SUPERADMIN') {
+    // After Sales Recommendation Action: AFTER_SALES_CONFIRM or FORWARD_TO_SUPERADMIN
+    if (
+      body.action === 'AFTER_SALES_CONFIRM' ||
+      body.action === 'FORWARD_TO_SUPERADMIN'
+    ) {
       if (
         session.user.role !== 'AFTER_SALES' &&
-        session.user.role !== 'SUPER_ADMIN'
+        session.user.role !== 'SUPER_ADMIN' &&
+        session.user.role !== 'ADMIN'
       ) {
         return NextResponse.json(
           {
             error:
-              'Validasi dan penerusan ke Superadmin hanya dapat dilakukan oleh After Sales',
+              'Konfirmasi dan penerusan rekomendasi ke Superadmin hanya dapat dilakukan oleh After Sales',
           },
           { status: 403 }
         )
       }
 
-      const note =
+      const decision = String(
+        body.decision ||
+          (body.action === 'FORWARD_TO_SUPERADMIN' ? 'APPROVE' : '')
+      ).toUpperCase()
+      const rawNotes = (
         body.notes ||
-        'Unit telah diperiksa oleh After Sales dan memenuhi syarat garansi 30 hari. Diteruskan ke Superadmin untuk persetujuan akhir.'
+        body.reason ||
+        body.rejectionReason ||
+        ''
+      ).trim()
+
+      if (!rawNotes || rawNotes.length < 5) {
+        return NextResponse.json(
+          {
+            error:
+              'Alasan konfirmasi After Sales wajib diisi dengan jelas dan detail (minimal 5 karakter).',
+          },
+          { status: 400 }
+        )
+      }
+
+      const formattedStoreResponse =
+        decision === 'APPROVE' || decision === 'ACCEPT'
+          ? `[Rekomendasi After Sales: DISETUJUI] ${rawNotes}`
+          : decision === 'REJECT'
+            ? `[Rekomendasi After Sales: DITOLAK] ${rawNotes}`
+            : `[Divalidasi After Sales] ${rawNotes}`
 
       const updatedReturn = await prisma.returnRequest.update({
         where: { id },
         data: {
           status: 'IN_REVIEW',
-          storeResponse: `[Divalidasi After Sales] ${note}`,
+          storeResponse: formattedStoreResponse,
         },
         include: {
           order: true,
@@ -148,13 +176,38 @@ export async function PUT(
         },
       })
 
+      // Kirim notifikasi ke semua Superadmin agar ditinjau & di-ACC final
+      const superAdmins = await prisma.user.findMany({
+        where: { role: 'SUPER_ADMIN', isActive: true },
+        select: { id: true },
+      })
+
+      for (const sa of superAdmins) {
+        await prisma.notification
+          .create({
+            data: {
+              userId: sa.id,
+              type: 'NEW_COMPLAINT',
+              title: `Rekomendasi Retur Baru (${
+                decision === 'REJECT' ? 'Ditolak' : 'Disetujui'
+              })`,
+              message: `After Sales merekomendasikan ${
+                decision === 'REJECT' ? 'PENOLAKAN' : 'PERSETUJUAN'
+              } untuk pesanan #${existing.order.orderNumber}. Catatan: ${rawNotes}`,
+              link: '/dashboard/admin/returns',
+            },
+          })
+          .catch(() => {})
+      }
+
+      // Notifikasi ke pembeli
       await prisma.notification
         .create({
           data: {
             userId: existing.userId,
             type: 'NEW_COMPLAINT',
-            title: 'Pengajuan Telah Divalidasi After Sales',
-            message: `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} telah divalidasi dan diteruskan ke Superadmin untuk persetujuan akhir.`,
+            title: 'Pengajuan Telah Dikonfirmasi After Sales',
+            message: `Pengajuan retur/klaim garansi pesanan #${existing.order.orderNumber} telah ditelaah oleh tim After Sales dan diteruskan ke Superadmin untuk persetujuan akhir.`,
             link: `/dashboard/customer/orders/${existing.orderId}`,
           },
         })
@@ -162,12 +215,13 @@ export async function PUT(
 
       return NextResponse.json({
         success: true,
-        message: 'Pengajuan berhasil divalidasi dan diteruskan ke Superadmin',
+        message:
+          'Konfirmasi rekomendasi After Sales berhasil dikirimkan ke Superadmin untuk ACC Final',
         data: updatedReturn,
       })
     }
 
-    // Rejection by After Sales
+    // Rejection by After Sales (Direct legacy fallback)
     if (body.action === 'REJECT' && session.user.role === 'AFTER_SALES') {
       const note =
         body.rejectionReason ||
@@ -205,10 +259,11 @@ export async function PUT(
       })
     }
 
-    // Superadmin Decision Action: APPROVE or REJECT
+    // Superadmin & After Sales Final Decision Action: APPROVE or REJECT
     if (body.action === 'APPROVE' || body.action === 'REJECT') {
       if (
         session.user.role !== 'SUPER_ADMIN' &&
+        session.user.role !== 'ADMIN' &&
         session.user.role !== 'AFTER_SALES'
       ) {
         return NextResponse.json(
@@ -221,16 +276,25 @@ export async function PUT(
       }
 
       const isApprove = body.action === 'APPROVE'
+      const isSuperAdmin =
+        session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN'
+
+      const defaultApproveNote = isSuperAdmin
+        ? '[Disetujui Superadmin] Pengajuan retur telah disetujui Superadmin. Silakan kemas unit dan kirimkan ke alamat toko cabang yang tertera.'
+        : 'Pengajuan retur telah disetujui After Sales. Silakan kemas unit dan kirimkan ke alamat toko cabang yang tertera.'
+
+      const defaultRejectNote = isSuperAdmin
+        ? '[Ditolak Superadmin] Pengajuan pengembalian ditolak oleh Superadmin.'
+        : 'Pengajuan pengembalian ditolak oleh After Sales.'
+
       const updatedReturn = await prisma.returnRequest.update({
         where: { id },
         data: {
           status: isApprove ? 'APPROVED' : 'REJECTED',
           resolvedAt: isApprove ? null : new Date(),
           storeResponse: isApprove
-            ? body.adminNotes ||
-              'Pengajuan retur telah disetujui After Sales. Silakan kemas unit dan kirimkan ke alamat toko cabang yang tertera.'
-            : body.rejectionReason ||
-              'Pengajuan pengembalian ditolak oleh After Sales.',
+            ? body.adminNotes || defaultApproveNote
+            : body.rejectionReason || defaultRejectNote,
         },
         include: {
           order: true,
@@ -245,11 +309,15 @@ export async function PUT(
             userId: existing.userId,
             type: 'COMPLAINT_RESOLVED',
             title: isApprove
-              ? 'Pengajuan Retur Disetujui'
-              : 'Pengajuan Retur Ditolak',
+              ? isSuperAdmin
+                ? 'Pengajuan Retur Disetujui Superadmin'
+                : 'Pengajuan Retur Disetujui'
+              : isSuperAdmin
+                ? 'Pengajuan Retur Ditolak Superadmin'
+                : 'Pengajuan Retur Ditolak',
             message: isApprove
-              ? `Pengajuan retur untuk pesanan #${existing.order.orderNumber} telah DISETUJUI oleh After Sales. Silakan kirimkan unit fisik gadget ke alamat toko cabang tujuan yang tertera di detail pesanan.`
-              : `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} DITOLAK oleh After Sales: ${body.rejectionReason || 'Tidak memenuhi kriteria'}`,
+              ? `Pengajuan retur untuk pesanan #${existing.order.orderNumber} telah DISETUJUI oleh ${isSuperAdmin ? 'Superadmin' : 'After Sales'}. Silakan kirimkan unit fisik gadget ke alamat toko cabang tujuan yang tertera di detail pesanan.`
+              : `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} DITOLAK oleh ${isSuperAdmin ? 'Superadmin' : 'After Sales'}: ${body.rejectionReason || 'Tidak memenuhi kriteria'}`,
             link: `/dashboard/customer/orders/${existing.orderId}`,
           },
         })
