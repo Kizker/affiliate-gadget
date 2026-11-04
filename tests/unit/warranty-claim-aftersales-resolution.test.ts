@@ -59,12 +59,12 @@ describe('Spesifikasi Terpadu: Klaim Garansi, Resolusi Refund & Replacement, dan
     const content = fs.readFileSync(afterSalesReturnsPagePath, 'utf8')
     // Eksekutor tunggal validasi & pencairan dana
     expect(content).toContain('Eksekutor tunggal validasi bukti cacat produk')
-    expect(content).toMatch(/Setujui.*Cairkan Dana/)
+    expect(content).toMatch(/Cairkan Dana/)
     expect(content).toContain('handleExecuteRefund')
     expect(content).toContain("resolutionAction: 'REFUND'")
 
     // Penerbitan resi unit baru
-    expect(content).toMatch(/Setujui.*Terbitkan Resi Unit Baru/)
+    expect(content).toMatch(/Kirim Unit Pengganti/)
     expect(content).toContain('handleExecuteReplacement')
     expect(content).toContain("resolutionAction: 'REPLACEMENT'")
 

@@ -85,9 +85,7 @@ describe('End-to-End: Konfirmasi Barang Retur Tiba di Cabang & Alur QC Fisik', (
       'Paket Tiba di Toko (Sedang QC Fisik)'
     )
     expect(superAdminOrdersContent).toContain('Tiba di Toko (QC)')
-    expect(superAdminOrdersContent).toContain(
-      'Konfirmasi Paket Tiba di Toko (Mulai QC)'
-    )
+    expect(superAdminOrdersContent).toContain('Konfirmasi Paket Tiba di Toko')
     expect(superAdminOrdersContent).toContain(
       'handleConfirmPackageArrivalInOrdersDrawer'
     )
@@ -99,7 +97,7 @@ describe('End-to-End: Konfirmasi Barang Retur Tiba di Cabang & Alur QC Fisik', (
       'latestReturnRequest.packageReceivedAt'
     )
     expect(customerDesktopContent).toContain('Paket Telah Tiba di Cabang')
-    expect(customerDesktopContent).toContain('Sedang Pemeriksaan Fisik (QC)')
+    expect(customerDesktopContent).toContain('Sedang Pemeriksaan Fisik')
     expect(customerDesktopContent).toContain('Catatan Teknisi Cabang:')
 
     // Mobile

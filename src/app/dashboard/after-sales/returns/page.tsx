@@ -24,10 +24,19 @@ import {
   Check,
   Package,
   Lock,
+  MoreVertical,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePageGuard } from '@/hooks/use-page-guard'
 import { CheckResiModal } from '@/components/shipping/check-resi-modal'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu'
 
 interface ReturnItem {
   id: string
@@ -1032,108 +1041,131 @@ export default function AfterSalesReturnsPage() {
                 {/* Operational Execution Actions on Active items (PENDING, APPROVED, IN_REVIEW) */}
                 {(item.status === 'PENDING' ||
                   item.status === 'APPROVED' ||
-                  item.status === 'IN_REVIEW') && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRejectModalTarget(item)
-                        setRejectReason('')
-                      }}
-                      className="rounded-xl border border-rose-200 bg-white px-3.5 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/40 dark:bg-slate-900 dark:text-rose-400"
-                    >
-                      Tolak Pengajuan
-                    </button>
-
-                    {/* Dual-Tier Workflow: Rekomendasi Setuju / Tolak ke Superadmin */}
-                    {item.status === 'PENDING' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecommendApproveTarget(item)
-                            setRecommendApproveNotes(
-                              item.type === 'REFUND'
-                                ? `Pengajuan pengembalian dana telah diverifikasi After Sales. Bukti unboxing valid dan memenuhi kriteria garansi. Direkomendasikan untuk disetujui (ACC Final Refund).`
-                                : `Pengajuan penukaran unit baru telah diverifikasi After Sales. Bukti cacat fisik saat unboxing valid. Direkomendasikan untuk disetujui (ACC Final Replacement).`
-                            )
-                          }}
-                          className="flex items-center gap-1.5 rounded-xl border border-emerald-600 bg-emerald-50 px-3.5 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Rekomendasikan Setuju (Kirim ke Superadmin)
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecommendRejectTarget(item)
-                            setRecommendRejectNotes('')
-                          }}
-                          className="flex items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3.5 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-300"
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                          Rekomendasikan Tolak (Kirim ke Superadmin)
-                        </button>
-                      </>
-                    )}
-
-                    {/* Step 1 for PENDING: Approve for Physical Return */}
-                    {item.status === 'PENDING' && (
-                      <button
-                        type="button"
-                        disabled={approvingId === item.id}
-                        onClick={() => handleApproveForReturn(item)}
-                        className="flex items-center gap-1.5 rounded-xl border border-blue-600 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300"
-                      >
-                        {approvingId === item.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                        )}
-                        Setujui Retur &amp; Minta Kirim Barang
-                      </button>
-                    )}
-
-                    {/* Intermediate Step: Konfirmasi Paket Retur Tiba di Cabang & Mulai QC Fisik */}
-                    {item.returnTrackingNumber &&
+                  item.status === 'IN_REVIEW') &&
+                  (() => {
+                    const isArrived = Boolean(
+                      item.packageReceivedAt ||
+                      item.storeResponse?.includes(
+                        '[Paket Fisik Tiba di Cabang]'
+                      )
+                    )
+                    const isPending = item.status === 'PENDING'
+                    const needsArrivalConfirmation = Boolean(
+                      item.returnTrackingNumber &&
                       !(
                         item.packageReceivedAt ||
                         item.storeResponse?.includes(
                           '[Paket Fisik Tiba di Cabang]'
                         )
-                      ) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReceivingPackageTarget(item)
-                            setPackageReceivedNotes(
-                              `Paket fisik retur pesanan #${item.order.orderNumber} telah diterima oleh staf cabang. Kondisi kardus utuh, memulai pengujian teknis (QC).`
-                            )
-                          }}
-                          className="shadow-2xs flex items-center gap-1.5 rounded-xl border border-indigo-600 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300"
-                        >
-                          <Package className="h-3.5 w-3.5" />
-                          <span>
-                            Konfirmasi Paket Tiba di Cabang &amp; Mulai QC
-                          </span>
-                        </button>
-                      )}
-
-                    {/* Direct or QC-verified resolution — Terkunci jika paket fisik belum dikonfirmasi tiba */}
-                    {(() => {
-                      const isArrived = Boolean(
-                        item.packageReceivedAt ||
-                        item.storeResponse?.includes(
-                          '[Paket Fisik Tiba di Cabang]'
-                        )
                       )
+                    )
 
-                      return (
-                        <div className="flex flex-col gap-1.5">
+                    return (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="shadow-2xs flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                          >
+                            <span>Pilihan Tindakan</span>
+                            <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-64 rounded-2xl p-1.5 shadow-xl"
+                        >
+                          {/* 1. Rekomendasi Alur Dual-Tier (Khusus Status PENDING) */}
+                          {isPending && (
+                            <>
+                              <DropdownMenuLabel className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Rekomendasi ke Superadmin
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setRecommendApproveTarget(item)
+                                  setRecommendApproveNotes(
+                                    item.type === 'REFUND'
+                                      ? `Pengajuan pengembalian dana telah diverifikasi After Sales. Bukti unboxing valid dan memenuhi kriteria garansi. Direkomendasikan untuk disetujui (ACC Final Refund).`
+                                      : `Pengajuan penukaran unit baru telah diverifikasi After Sales. Bukti cacat fisik saat unboxing valid. Direkomendasikan untuk disetujui (ACC Final Replacement).`
+                                  )
+                                }}
+                                className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-emerald-700 focus:bg-emerald-50 focus:text-emerald-800 dark:text-emerald-400 dark:focus:bg-emerald-950/40"
+                              >
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                                <span>
+                                  Rekomendasikan Setuju (Kirim ke Superadmin)
+                                </span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setRecommendRejectTarget(item)
+                                  setRecommendRejectNotes('')
+                                }}
+                                className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-rose-700 focus:bg-rose-50 focus:text-rose-800 dark:text-rose-400 dark:focus:bg-rose-950/40"
+                              >
+                                <XCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                                <span>
+                                  Rekomendasikan Tolak (Kirim ke Superadmin)
+                                </span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator className="my-1" />
+
+                              <DropdownMenuLabel className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Persetujuan Langsung
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                disabled={approvingId === item.id}
+                                onClick={() => handleApproveForReturn(item)}
+                                className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-blue-700 focus:bg-blue-50 focus:text-blue-800 dark:text-blue-400 dark:focus:bg-blue-950/40"
+                              >
+                                {approvingId === item.id ? (
+                                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600" />
+                                ) : (
+                                  <CheckCircle2 className="h-4 w-4 shrink-0 text-blue-600" />
+                                )}
+                                <span>
+                                  Setujui Retur &amp; Minta Kirim Barang
+                                </span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="my-1" />
+                            </>
+                          )}
+
+                          {/* 2. Konfirmasi Paket Tiba di Cabang (Jika dalam pengiriman kurir) */}
+                          {needsArrivalConfirmation && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setReceivingPackageTarget(item)
+                                  setPackageReceivedNotes(
+                                    `Paket fisik retur pesanan #${item.order.orderNumber} telah diterima oleh staf cabang. Kondisi kardus utuh, memulai pengujian teknis (QC).`
+                                  )
+                                }}
+                                className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-indigo-700 focus:bg-indigo-50 focus:text-indigo-800 dark:text-indigo-400 dark:focus:bg-indigo-950/40"
+                              >
+                                <Package className="h-4 w-4 shrink-0 text-indigo-600" />
+                                <span>
+                                  Konfirmasi Paket Tiba di Cabang &amp; Mulai QC
+                                </span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="my-1" />
+                            </>
+                          )}
+
+                          {/* 3. Eksekusi Hasil QC (Cairkan Dana / Kirim Unit Pengganti) */}
+                          <DropdownMenuLabel className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Eksekusi Solusi (Setelah QC)
+                          </DropdownMenuLabel>
+                          {!isArrived && (
+                            <div className="mx-2 mb-1 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                              🔒 Terkunci hingga paket retur dikonfirmasi tiba
+                            </div>
+                          )}
                           {item.type === 'REFUND' ? (
-                            <button
-                              type="button"
+                            <DropdownMenuItem
                               disabled={!isArrived}
                               onClick={() => {
                                 if (!isArrived) return
@@ -1146,31 +1178,32 @@ export default function AfterSalesReturnsPage() {
                                   )} telah disetujui dan dicairkan oleh Admin After Sales.`
                                 )
                               }}
-                              className={`flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold transition ${
+                              className={`flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold ${
                                 isArrived
-                                  ? 'shadow-2xs bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
-                                  : 'cursor-not-allowed border border-slate-300 bg-slate-200/80 text-slate-500 opacity-60 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400'
+                                  ? 'cursor-pointer text-emerald-700 focus:bg-emerald-50 focus:text-emerald-800 dark:text-emerald-400 dark:focus:bg-emerald-950/40'
+                                  : 'cursor-not-allowed opacity-50'
                               }`}
-                              title={
-                                !isArrived
-                                  ? 'Tombol terkunci: Anda wajib mengonfirmasi kedatangan fisik paket di toko cabang terlebih dahulu sebelum dapat mencairkan dana.'
-                                  : undefined
-                              }
                             >
-                              {isArrived ? (
-                                <CreditCard className="h-3.5 w-3.5" />
-                              ) : (
-                                <Lock className="h-3.5 w-3.5" />
-                              )}
-                              <span>
-                                {isArrived
-                                  ? 'QC Lulus: Cairkan Dana'
-                                  : 'QC Lulus: Cairkan Dana (Terkunci)'}
+                              <span className="flex items-center gap-2">
+                                {isArrived ? (
+                                  <CreditCard className="h-4 w-4 shrink-0 text-emerald-600" />
+                                ) : (
+                                  <Lock className="h-4 w-4 shrink-0 text-slate-400" />
+                                )}
+                                <span>
+                                  {isArrived
+                                    ? 'QC Lulus: Cairkan Dana'
+                                    : 'QC Lulus: Cairkan Dana'}
+                                </span>
                               </span>
-                            </button>
+                              {!isArrived && (
+                                <span className="rounded bg-amber-50 px-1 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                  Terkunci
+                                </span>
+                              )}
+                            </DropdownMenuItem>
                           ) : (
-                            <button
-                              type="button"
+                            <DropdownMenuItem
                               disabled={!isArrived}
                               onClick={() => {
                                 if (!isArrived) return
@@ -1180,42 +1213,49 @@ export default function AfterSalesReturnsPage() {
                                   `Unit baru pengganti pesanan #${item.order.orderNumber} telah disiapkan dan dikirimkan oleh Admin After Sales.`
                                 )
                               }}
-                              className={`flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold transition ${
+                              className={`flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold ${
                                 isArrived
-                                  ? 'shadow-2xs bg-orange-600 text-white hover:bg-orange-700 active:scale-95'
-                                  : 'cursor-not-allowed border border-slate-300 bg-slate-200/80 text-slate-500 opacity-60 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400'
+                                  ? 'cursor-pointer text-orange-700 focus:bg-orange-50 focus:text-orange-800 dark:text-orange-400 dark:focus:bg-orange-950/40'
+                                  : 'cursor-not-allowed opacity-50'
                               }`}
-                              title={
-                                !isArrived
-                                  ? 'Tombol terkunci: Anda wajib mengonfirmasi kedatangan fisik paket di toko cabang terlebih dahulu sebelum dapat mengirim unit baru.'
-                                  : undefined
-                              }
                             >
-                              {isArrived ? (
-                                <Truck className="h-3.5 w-3.5" />
-                              ) : (
-                                <Lock className="h-3.5 w-3.5" />
+                              <span className="flex items-center gap-2">
+                                {isArrived ? (
+                                  <Truck className="h-4 w-4 shrink-0 text-orange-600" />
+                                ) : (
+                                  <Lock className="h-4 w-4 shrink-0 text-slate-400" />
+                                )}
+                                <span>
+                                  {isArrived
+                                    ? 'QC Lulus: Kirim Unit Pengganti'
+                                    : 'QC Lulus: Kirim Unit Pengganti'}
+                                </span>
+                              </span>
+                              {!isArrived && (
+                                <span className="rounded bg-amber-50 px-1 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                  Terkunci
+                                </span>
                               )}
-                              <span>
-                                {isArrived
-                                  ? 'QC Lulus: Kirim Unit Pengganti'
-                                  : 'QC Lulus: Kirim Unit Pengganti (Terkunci)'}
-                              </span>
-                            </button>
+                            </DropdownMenuItem>
                           )}
-                          {!isArrived && (
-                            <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                              <Lock className="h-2.5 w-2.5 shrink-0" />
-                              <span>
-                                Terkunci hingga paket retur dikonfirmasi tiba
-                              </span>
-                            </span>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
+
+                          <DropdownMenuSeparator className="my-1" />
+
+                          {/* 4. Tolak Pengajuan */}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setRejectModalTarget(item)
+                              setRejectReason('')
+                            }}
+                            className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-rose-600 focus:bg-rose-50 focus:text-rose-700 dark:text-rose-400 dark:focus:bg-rose-950/40"
+                          >
+                            <XCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                            <span>Tolak Pengajuan</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )
+                  })()}
               </div>
             </div>
           ))}

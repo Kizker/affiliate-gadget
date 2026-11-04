@@ -73,15 +73,15 @@ describe('Dual-Tier Return Approval: After Sales Confirmation & Superadmin Final
     // Modal rekomendasi setuju & tolak
     expect(page).toMatch(/Konfirmasi Setujui Klaim.*Kirim ke Superadmin/)
     expect(page).toMatch(/Konfirmasi Tolak Klaim.*Kirim ke Superadmin/)
-    expect(page).toContain(
-      'Alasan &amp; Catatan Rekomendasi Persetujuan After Sales (Wajib)'
+    expect(page).toMatch(
+      /Alasan &amp; Catatan Rekomendasi Persetujuan After Sales[\s\S]*\(Wajib\)/
     )
     expect(page).toContain('Alasan &amp; Catatan Rekomendasi Penolakan (Wajib)')
 
     // Banner status rekomendasi
     expect(page).toContain('Rekomendasi After Sales: DISETUJUI')
     expect(page).toContain('Rekomendasi After Sales: DITOLAK')
-    expect(page).toContain('Menunggu ACC Final Superadmin')
+    expect(page).toMatch(/Menunggu ACC[\s\S]*Final Superadmin/)
   })
 
   it('5. Meja Kerja Superadmin: Menampilkan tab Menunggu ACC Superadmin, nama barang lengkap, banner rekomendasi AS, dan tombol ACC Final', () => {
