@@ -67,6 +67,56 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-05 (Resolusi Error Akses Chat Pesanan Selesai Store Admin & Penguatan Dashboard After Sales [`src/app/api/admin/chat/rooms/[roomId]/messages/route.ts`, `src/app/api/after-sales/dashboard/route.ts`, `src/app/dashboard/after-sales/page.tsx`, `tests/unit/store-admin-return-chat-isolation.test.ts`, `tests/unit/after-sales-dashboard-integrity.test.ts`]):**
+  - **1. Resolusi Error 403 Chat Pesanan Selesai Admin Toko:**
+    - Menghilangkan pemblokiran `room.order?.status === 'COMPLETED'` pada handler `GET /api/admin/chat/rooms/[roomId]/messages`.
+    - Admin Toko kini dapat membuka dan membaca riwayat percakapan pesanan berstatus selesai (`COMPLETED`) tanpa terblokir pesan error _"Percakapan retur dan penukaran barang telah dialihkan secara eksklusif ke Admin After Sales Terpusat"_.
+    - Jalur pengiriman pesan baru (`POST`) tetap diproteksi secara tepat dengan banner handover bahwa komunikasi purna jual diteruskan ke After Sales.
+  - **2. Resolusi Error "Gagal memuat data after sales" Dashboard:**
+    - Memasang fallback grup toko binaan otomatis (`!group`) agar akun After Sales dan Superadmin selalu terhubung ke grup toko aktif platform.
+    - Menambahkan _optional chaining_ defensif pada seluruh serialisasi data dashboard (`r.customer?.name`, `r.order?.orderNumber`, `r.order?.store?.name`), mengeliminasi `TypeError` fatal.
+    - Menerapkan header anti-cache `NO_CACHE_HEADERS` (`no-store, no-cache, must-revalidate`) serta query buster `?_t=${Date.now()}` dan `cache: 'no-store'` di client.
+  - **3. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite lulus 100% (20/20 tests pass).
+- **2026-11-05 (Fitur Chat Template Kustom, Indikator Online/Offline Presisi, Header Purna Jual Ramping, & Link Interaktif Rincian Pesanan [`src/components/chat/chat-template-modal.tsx`, `src/app/api/admin/chat/templates/route.ts`, `src/app/dashboard/admin/chat/page.tsx`, `src/components/customer/chat/chat-header.tsx`, `src/components/customer/chat/chat-room-card.tsx`, `src/components/customer/chat/chat-message-bubble.tsx`, `src/app/dashboard/customer/chat/page.tsx`, `tests/unit/chat-templates-online-status-and-order-link.test.ts`]):**
+  - **1. Image 1 — Fitur Template Balasan Cepat Kustom (Quick Replies):**
+    - Menyediakan tombol "Template Chat" (`Zap`) di bilah kontrol input pesan admin toko, superadmin, dan after sales.
+    - Menghadirkan modal `ChatTemplateModal` bergaya simpel (pencarian instan, tambah template baru, edit, hapus, dan tombol kirim 1-klik) dengan persistensi database `/api/admin/chat/templates` dan daftar default template resmi platform.
+  - **2. Image 2 — Indikator Status Online/Offline Akurat:**
+    - Memperbaiki kalkulasi status online: lawan bicara hanya ditampilkan `● Online` (hijau) jika aktif membalas/mengirim pesan dalam kurun waktu 10 menit terakhir. Jika tidak aktif, badge dan dot status otomatis berubah menjadi abu-abu netral `● Offline` (`bg-slate-400`).
+  - **3. Image 3 — Penamaan Header Chat Purna Jual Langsung:**
+    - Menghapus deskripsi ganda yang bertele-tele pada header dan sidebar chat. Judul percakapan purna jual kini langsung menampilkan nama penanggung jawab: `Budi Santoso (After Sales Roxy Group)`.
+  - **4. Image 4 — Link Interaktif Tombol "Rincian Pesanan" di Bubble Chat:**
+    - Mengonversi elemen pill `Rincian Pesanan` di dalam bubble chat menjadi link navigasi interaktif `<Link href="/dashboard/customer/orders/[orderId]">`, sehingga pengguna dapat langsung menuju ke halaman detail pesanan terkait dengan sekali klik.
+  - **5. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite lulus 100% (35/35 tests pass).
+- **2026-11-05 (Isolasi Ketat Chat Customer-Mitra, Click-Outside Dropdown Profil, Unified Room Purna Jual per Grup Cabang, & Fitur Bagikan Pesanan Toko Terisolasi [`src/components/customer/chat/chat-input-bar.tsx`, `src/components/customer/chat/customer-order-picker-modal.tsx`, `src/app/api/customer/chat/orders/route.ts`, `src/app/dashboard/customer/chat/page.tsx`, `src/components/customer/chat/chat-room-card.tsx`, `src/components/layouts/navbar.tsx`, `src/app/api/customer/chat/all-rooms/route.ts`, `src/app/api/customer/chat/store-room/route.ts`, `tests/unit/chat-customer-isolation-and-order-sharing.test.ts`]):**
+  - **1. Image 1 — Resolusi Judul Chat Mitra & Isolasi Chat:**
+    - Memperbaiki bug label `CS Superadmin` pada chat konsultasi Mitra Servis (`room.claimedBy.role === 'MITRA'`). Judul room dan badge kini otomatis menampilkan identitas resmi Mitra Servis (`Mitra Servis` warna hijau emerald), dan chat customer hanya menampilkan percakapan miliknya sendiri.
+  - **2. Image 2 — Auto-Close Dropdown Profil Navbar (Click Outside):**
+    - Menyematkan `userDropdownRef` dan event listener global `mousedown` & `touchstart` pada container profil navbar. Pop-up menu profil kini otomatis tertutup seketika saat pengguna menekan area mana saja di luar dropdown.
+  - **3. Image 3 — Konsolidasi 1 Unified Room Chat Purna Jual per Grup Cabang:**
+    - Mengeliminasi duplikasi room purna jual antar-cabang yang berada di bawah grup After Sales yang sama (`Budi Santoso (After Sales Roxy Group)`). Percakapan retur dan garansi berbagai order pada cabang-cabang satu rumpun disatukan ke dalam 1 room terpadu.
+  - **4. Image 4 — Tombol (+) & Modal "Bagikan Order" dengan Scoping Toko Cabang Ketat:**
+    - Mengintegrasikan modal `CustomerOrderPickerModal` pada tombol `+` chat pembeli dengan aturan scoping cabang yang ketat:
+      - Chat dengan Admin Toko: Murni **HANYA** menampilkan pesanan yang sedang berlangsung (`PAID`, `IN_PROGRESS`, `SHIPPED`, `PENDING_PAYMENT`) yang dibeli di toko cabang tersebut (`storeId: { in: [activeStoreId] }`). Pesanan dari toko cabang lain **100% disembunyikan** demi kerahasiaan transaksi antar-cabang.
+      - Chat dengan Layanan Purna Jual: Hanya menampilkan pesanan yang sudah berstatus selesai atau retur (`COMPLETED`, `RETURNED`) pada grup toko cabang tersebut.
+      - Memilih pesanan otomatis mengirimkan kartu referensi pesanan terstruktur (`order_reference`) ke dalam chat.
+  - **5. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite lulus 100% (35/35 tests pass).
+- **2026-11-05 (Penyempurnaan Total Simpel UI Retur, Isolasi Hak Balas Chat Superadmin [Mode Pantau], & Menu Sidebar Mandiri Persetujuan Retur ACC [`src/app/api/admin/chat/rooms/[roomId]/messages/route.ts`, `src/app/dashboard/admin/chat/page.tsx`, `src/components/dashboard/sidebar.tsx`, `src/app/dashboard/after-sales/returns/page.tsx`, `src/app/dashboard/admin/returns/page.tsx`, `src/app/api/returns/[id]/route.ts`]):**
+  - **1. Penyederhanaan Ekstrem Tampilan Retur After Sales (Zero Clutter):**
+    - _Screenshot 1 (Modal Paket Tiba):_ Menghapus box info biru berlebihan di dalam modal konfirmasi barang tiba; menyajikan modal ringkas langsung nomor pesanan dan input catatan QC awal.
+    - _Screenshot 2 & 4 (Kartu Retur):_ Menghapus box panjang berulang "Catatan Respon After Sales" dan box hijau keterangan rekomendasi yang redundan. Kartu kini bersih murni hanya menyajikan box waktu tiba, catatan QC, foto bukti QC, dan badge status.
+    - _Screenshot 3 (Modal Setujui):_ Menghapus catatan teks footnote berlebihan di bawah upload foto bukti QC.
+  - **2. Isolasi Hak Balas Chat Superadmin & Mode Pantau Read-Only (Screenshot 5):**
+    - Superadmin hanya memiliki wewenang membalas percakapan yang memang ditujukan untuk CS Platform (`storeId: null`) atau Bantuan Toko ke Superadmin (`isStoreHelpToSuperAdmin`).
+    - Untuk percakapan internal antara Customer dengan Toko Cabang / After Sales: Superadmin **TIDAK DAPAT MEMBALAS** (input bar, upload foto, dan tombol kirim digantikan oleh banner informatif `🔒 Mode Pantau: Percakapan ini ditangani langsung oleh Admin Toko / After Sales`). Proteksi ganda di backend `POST /api/admin/chat/rooms/[roomId]/messages` menolak pengiriman dengan HTTP 403 Forbidden.
+    - Default view percakapan yang terbuka otomatis untuk Superadmin diset ke tab `🎧 CS Saya` (bukan membuka chat toko).
+  - **3. Menu Sidebar Mandiri Superadmin Persetujuan Retur & Notifikasi Badge (Screenshot 6):**
+    - Menghadirkan seksi mandiri baru **`Purna Jual & Retur`** di sidebar Superadmin dengan menu **`Persetujuan Retur (ACC)`** (`/dashboard/admin/returns`) yang terhubung langsung ke penghitung badge notifikasi aktif (`counts.returns`).
+  - **4. Putusan 1-Klik Superadmin & Isolasi Alur After Sales (Screenshot 1, 2, 3):**
+    - _Screenshot 1 (Eliminasi Modal Konfirmasi Superadmin):_ Menghapus popup modal konfirmasi ACC Final dan Tolak. Putusan Superadmin kini dieksekusi langsung 1-klik (`[ ✓ ACC Final ]` atau `[ ✕ Tolak & Kembalikan ]`).
+    - _Screenshot 2 (Isolasi Tiket Belum Ditelaah):_ Tiket yang masih berstatus `PENDING` ("Menunggu Telaah After Sales") diblokir dari antarmuka Superadmin dan tidak dapat melangkahi After Sales. Superadmin hanya menerima tiket yang sudah diperiksa dan diteruskan After Sales (`status: IN_REVIEW`), serta riwayat putusan.
+    - _Screenshot 3 (Pembersihan Banner Ekspedisi):_ Menghapus banner biru pelacakan pengiriman kurir yang redundan dari kartu Persetujuan Retur Superadmin. Rincian pengiriman kurir terpusat di menu Pesanan (`/dashboard/admin/orders`).
+  - **5. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), seluruh unit test suite terkait lulus 100% (23/23 tests pass).
 - **2026-11-04 (Arsitektur Penguncian Tombol QC & Kirim Barang Pengganti / Pencairan Refund Terproteksi Kedatangan Fisik Paket, Eliminasi Prisma Error, Resolusi Connection Leak Pool, dan Sinkronisasi End-to-End [`src/lib/db.ts`, `src/app/api/returns/[id]/route.ts`, `src/app/api/returns/route.ts`, `src/app/api/admin/orders/route.ts`, `src/app/dashboard/after-sales/returns/page.tsx`, `src/app/dashboard/admin/returns/page.tsx`, `src/app/dashboard/admin/orders/page.tsx`, `tests/unit/return-package-arrival-qc-flow.test.ts`]):**
   - **1. Penguncian Tombol Eksekusi Solusi (Locked Resolution Buttons):**
     - Tombol "QC Lulus: Kirim Unit Pengganti" dan "QC Lulus: Cairkan Dana" di meja kerja After Sales (`/dashboard/after-sales/returns`) otomatis terkunci (`disabled={!isArrived}`) dengan indikator gembok `<Lock />`, styling redup abu-abu, dan label peringatan `🔒 Terkunci hingga paket retur dikonfirmasi tiba` selama barang fisik retur dari pembeli belum dikonfirmasi sampai di toko cabang.

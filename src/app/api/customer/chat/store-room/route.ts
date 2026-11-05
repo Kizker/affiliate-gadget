@@ -386,37 +386,75 @@ export async function POST(req: NextRequest) {
       assignedAdmin = groupAfterSales || fallbackAfterSales || storeAdmin
     }
 
-    // Customer + Store = SINGLE CHAT ROOM (Unified Room: 1 Pelanggan + 1 Toko = 1 Room)
-    let room: any = await prisma.adminChatRoom.findFirst({
-      where: {
-        customerId: session.user.id,
-        storeId: store.id,
-      },
-      include: {
-        claimedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            role: true,
-          },
+    // Customer + Store / After Sales Group = SINGLE CHAT ROOM
+    let room: any = null
+
+    // Jika percakapan purna jual (retur/garansi), gunakan 1 room terpadu per customer + grup after sales
+    if (isReturnInquiry && assignedAdmin?.role === 'AFTER_SALES') {
+      room = await prisma.adminChatRoom.findFirst({
+        where: {
+          customerId: session.user.id,
+          claimedById: assignedAdmin.id,
         },
-        order: {
-          select: {
-            id: true,
-            orderNumber: true,
-            status: true,
-            total: true,
-            returnRequests: {
-              orderBy: { createdAt: 'desc' },
-              take: 1,
+        include: {
+          claimedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              role: true,
+            },
+          },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              total: true,
+              returnRequests: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
             },
           },
         },
-      },
-      orderBy: { lastMessageAt: 'desc' },
-    })
+        orderBy: { lastMessageAt: 'desc' },
+      })
+    }
+
+    if (!room) {
+      room = await prisma.adminChatRoom.findFirst({
+        where: {
+          customerId: session.user.id,
+          storeId: store.id,
+        },
+        include: {
+          claimedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              role: true,
+            },
+          },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              total: true,
+              returnRequests: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          },
+        },
+        orderBy: { lastMessageAt: 'desc' },
+      })
+    }
 
     if (!room && orderId) {
       room = await prisma.adminChatRoom.findFirst({

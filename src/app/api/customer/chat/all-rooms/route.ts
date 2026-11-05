@@ -339,52 +339,63 @@ export async function GET() {
         const targetAfterSales = storeGroupAfterSales || defaultAfterSalesUser
         if (targetAfterSales) {
           resolvedClaimedBy = targetAfterSales as any
-          // Auto-sync DB in background so room is permanently handed over to After Sales
-          prisma.adminChatRoom
-            .update({
-              where: { id: room.id },
-              data: {
-                claimedById: targetAfterSales.id,
-                claimedAt: new Date(),
-              },
-            })
-            .catch(() => {})
         }
       }
 
+      const isMitraChat =
+        (resolvedClaimedBy as any)?.role === 'MITRA' ||
+        Boolean((resolvedClaimedBy as any)?.mitra)
       const mitra = (resolvedClaimedBy as any)?.mitra
       const baseStore = room.store || resolvedOrder?.store || null
-      const resolvedStore = baseStore
+
+      const resolvedStore = isAfterSalesRoom
         ? {
-            ...baseStore,
-            name: isAfterSalesRoom
+            id: (resolvedClaimedBy as any)?.id || 'aftersales-group',
+            name: baseStore
               ? `Layanan Purna Jual (${baseStore.name})`
-              : baseStore.name,
-            companyName: isAfterSalesRoom
-              ? 'Admin After Sales & Garansi Terpusat'
-              : baseStore.companyName,
-            isAfterSales: isAfterSalesRoom,
+              : 'Layanan Purna Jual Resmi',
+            companyName: 'Admin After Sales & Garansi Terpusat',
+            phone: '0812-3456-7890',
+            city: 'Pusat Garansi',
+            logo: (resolvedClaimedBy as any)?.image || null,
+            isAfterSales: true,
           }
-        : mitra
+        : baseStore
           ? {
-              id: mitra.id,
-              name: mitra.businessName,
-              companyName: mitra.businessName,
-              phone: mitra.phone,
-              city: mitra.city,
-              logo: mitra.banner || mitra.images?.[0]?.url || null,
-              isActive: mitra.isActive,
+              ...baseStore,
+              name: baseStore.name,
+              companyName: baseStore.companyName,
+              isAfterSales: false,
             }
-          : {
-              id: 'superadmin',
-              name: 'Customer Service (Superadmin)',
-              companyName: 'Pusat Bantuan CS Platform',
-              phone: '0812-3456-7890',
-              city: 'Kantor Pusat',
-              logo: null,
-              isActive: true,
-              isCs: true,
-            }
+          : isMitraChat
+            ? {
+                id: mitra?.id || (resolvedClaimedBy as any)?.id || 'mitra',
+                name:
+                  mitra?.businessName ||
+                  (resolvedClaimedBy as any)?.name ||
+                  'Mitra Servis',
+                companyName:
+                  mitra?.businessName || 'Mitra Servis Resmi Platform',
+                phone: mitra?.phone || '0812-3456-7890',
+                city: mitra?.city || 'Workshop',
+                logo:
+                  mitra?.banner ||
+                  mitra?.images?.[0]?.url ||
+                  (resolvedClaimedBy as any)?.image ||
+                  null,
+                isActive: true,
+                isMitra: true,
+              }
+            : {
+                id: 'superadmin',
+                name: 'Customer Service (Superadmin)',
+                companyName: 'Pusat Bantuan CS Platform',
+                phone: '0812-3456-7890',
+                city: 'Kantor Pusat',
+                logo: null,
+                isActive: true,
+                isCs: true,
+              }
 
       return {
         ...room,
@@ -397,12 +408,25 @@ export async function GET() {
       }
     })
 
-    // Deduplikasi defensif: 1 Pelanggan + 1 Toko/CS = 1 Unified Chat Room di antarmuka pembeli
+    // Deduplikasi defensif:
+    // 1. After Sales: 1 Pelanggan + 1 After Sales Grup Cabang = 1 Room
+    // 2. Mitra: 1 Pelanggan + 1 Mitra Servis = 1 Room
+    // 3. Toko: 1 Pelanggan + 1 Toko = 1 Room
+    // 4. CS: 1 Pelanggan + CS = 1 Room
     const seenStoreKeys = new Set<string>()
     const deduplicatedRooms: typeof enrichedRooms = []
 
     for (const room of enrichedRooms) {
-      const key = `${room.customerId}_${room.storeId || room.store?.id || 'cs'}`
+      const isAfterSales = (room.store as any)?.isAfterSales
+      const isMitra =
+        (room.store as any)?.isMitra ||
+        (room.claimedBy as any)?.role === 'MITRA'
+      const key = isAfterSales
+        ? `${room.customerId}_aftersales_${room.claimedById || 'group'}`
+        : isMitra
+          ? `${room.customerId}_mitra_${room.claimedById || room.store?.id}`
+          : `${room.customerId}_${room.storeId || room.store?.id || 'cs'}`
+
       if (!seenStoreKeys.has(key)) {
         seenStoreKeys.add(key)
         deduplicatedRooms.push(room)

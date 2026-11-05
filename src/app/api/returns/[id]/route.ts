@@ -147,34 +147,64 @@ export async function PUT(
         ''
       ).trim()
 
-      if (!rawNotes || rawNotes.length < 5) {
+      const qcImages = Array.isArray(body.qcImages)
+        ? body.qcImages
+            .filter((img: any) => typeof img === 'string' && img.trim())
+            .slice(0, 5)
+        : []
+
+      // Fleksibel: wajib menyertakan minimal salah satu dari alasan atau foto bukti QC
+      if (!rawNotes && qcImages.length === 0) {
         return NextResponse.json(
           {
             error:
-              'Alasan konfirmasi After Sales wajib diisi dengan jelas dan detail (minimal 5 karakter).',
+              'Mohon sertakan deskripsi alasan pemeriksaan atau lampirkan minimal 1 foto bukti QC.',
           },
           { status: 400 }
         )
       }
 
+      const defaultDecisionNote =
+        decision === 'APPROVE' || decision === 'ACCEPT'
+          ? 'Pemeriksaan fisik (QC) selesai dan memenuhi syarat garansi.'
+          : 'Pemeriksaan fisik (QC) tidak memenuhi kriteria klaim garansi.'
+      const noteContent = rawNotes || defaultDecisionNote
+      const imagesMarker =
+        qcImages.length > 0 ? ` [Foto QC: ${qcImages.join(',')}]` : ''
+
       const formattedStoreResponse =
         decision === 'APPROVE' || decision === 'ACCEPT'
-          ? `[Rekomendasi After Sales: DISETUJUI] ${rawNotes}`
+          ? `[Rekomendasi After Sales: DISETUJUI] ${noteContent}${imagesMarker}`
           : decision === 'REJECT'
-            ? `[Rekomendasi After Sales: DITOLAK] ${rawNotes}`
-            : `[Divalidasi After Sales] ${rawNotes}`
+            ? `[Rekomendasi After Sales: DITOLAK] ${noteContent}${imagesMarker}`
+            : `[Divalidasi After Sales] ${noteContent}${imagesMarker}`
 
       const updatedReturn = await prisma.returnRequest.update({
         where: { id },
         data: {
           status: 'IN_REVIEW',
           storeResponse: formattedStoreResponse,
+          qcStatus:
+            decision === 'APPROVE' || decision === 'ACCEPT'
+              ? 'PASSED'
+              : 'FAILED',
+          qcNotes: noteContent,
         },
         include: {
           order: true,
           user: { select: { id: true, name: true, email: true } },
         },
       })
+
+      // Update aktivitas order agar naik ke urutan paling atas di tabel pesanan
+      if (existing.orderId) {
+        await prisma.order
+          .update({
+            where: { id: existing.orderId },
+            data: { updatedAt: new Date() },
+          })
+          .catch(() => {})
+      }
 
       // Kirim notifikasi ke semua Superadmin agar ditinjau & di-ACC final
       const superAdmins = await prisma.user.findMany({
@@ -193,7 +223,11 @@ export async function PUT(
               })`,
               message: `After Sales merekomendasikan ${
                 decision === 'REJECT' ? 'PENOLAKAN' : 'PERSETUJUAN'
-              } untuk pesanan #${existing.order.orderNumber}. Catatan: ${rawNotes}`,
+              } untuk pesanan #${existing.order.orderNumber}. Catatan: ${noteContent}${
+                qcImages.length > 0
+                  ? ` (${qcImages.length} foto QC dilampirkan)`
+                  : ''
+              }`,
               link: '/dashboard/admin/returns',
             },
           })
@@ -216,7 +250,7 @@ export async function PUT(
       return NextResponse.json({
         success: true,
         message:
-          'Konfirmasi rekomendasi After Sales berhasil dikirimkan ke Superadmin untuk ACC Final',
+          'Konfirmasi keputusan After Sales berhasil dikirimkan ke Superadmin untuk ACC Final',
         data: updatedReturn,
       })
     }
@@ -279,6 +313,438 @@ export async function PUT(
       const isSuperAdmin =
         session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN'
 
+      // Jika Superadmin menolak pengajuan yang sedang dalam tahap rekomendasi After Sales:
+      // Status dikembalikan ke After Sales agar After Sales dapat menelaah dan memutuskan ulang
+      if (isSuperAdmin && !isApprove) {
+        const rejectReason = (
+          body.rejectionReason ||
+          body.adminNotes ||
+          'Ditolak oleh Superadmin untuk ditinjau ulang oleh tim After Sales.'
+        ).trim()
+
+        const updatedReturn = await prisma.returnRequest.update({
+          where: { id },
+          data: {
+            status: 'IN_REVIEW',
+            storeResponse: `[Dikembalikan Superadmin ke After Sales] ${rejectReason}`,
+            qcStatus: 'NEEDS_REVISION',
+          },
+          include: {
+            order: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
+        })
+
+        // Kirim notifikasi ke tim After Sales bahwa tiket dikembalikan
+        const afterSalesStaff = await prisma.user.findMany({
+          where: { role: 'AFTER_SALES', isActive: true },
+          select: { id: true },
+        })
+
+        for (const staff of afterSalesStaff) {
+          await prisma.notification
+            .create({
+              data: {
+                userId: staff.id,
+                type: 'NEW_COMPLAINT',
+                title: 'Tiket Retur Dikembalikan oleh Superadmin',
+                message: `Pengajuan retur pesanan #${existing.order.orderNumber} telah ditolak Superadmin dan dikembalikan ke After Sales untuk ditinjau ulang: ${rejectReason}`,
+                link: '/dashboard/after-sales/returns',
+              },
+            })
+            .catch(() => {})
+        }
+
+        return NextResponse.json({
+          success: true,
+          message:
+            'Pengajuan retur ditolak oleh Superadmin dan dikembalikan ke After Sales untuk ditinjau ulang',
+          data: updatedReturn,
+        })
+      }
+
+      // Jika Superadmin menyetujui (ACC Final) dan barang fisik telah tiba / tiket dalam IN_REVIEW After Sales:
+      // Lakukan eksekusi otomatis: potong stok & kirim unit baru (REPLACEMENT) atau cairkan escrow Midtrans (REFUND)
+      const isPackageArrived = Boolean(
+        existing.packageReceivedAt ||
+        existing.storeResponse?.includes('[Paket Fisik Tiba di Cabang]')
+      )
+      const hasAfterSalesRecommendation = Boolean(
+        existing.storeResponse?.includes(
+          '[Rekomendasi After Sales: DISETUJUI]'
+        ) || existing.status === 'IN_REVIEW'
+      )
+
+      if (
+        isSuperAdmin &&
+        isApprove &&
+        (isPackageArrived || hasAfterSalesRecommendation)
+      ) {
+        const resolutionType = existing.type || 'REPLACEMENT'
+
+        if (resolutionType === 'REPLACEMENT') {
+          // 1. Validasi & Pengurangan Stok Unit Pengganti di Toko Cabang Pengirim
+          const productItems = (existing.order?.items || []).filter(
+            (item: any) => item.productId && item.product
+          )
+
+          for (const item of productItems) {
+            const requiredQty = item.quantity || 1
+            const prod = item.product!
+            let hasStock = false
+            let currentStock = 0
+            let targetVariantName = item.variantName || 'Standar'
+
+            if (
+              item.variantId &&
+              Array.isArray(prod.variants) &&
+              prod.variants.length > 0
+            ) {
+              const matchedVariant = prod.variants.find(
+                (v: any) => v.id === item.variantId
+              )
+              if (matchedVariant) {
+                currentStock = matchedVariant.stock
+                targetVariantName = matchedVariant.name || targetVariantName
+                hasStock = matchedVariant.stock >= requiredQty
+              } else {
+                currentStock = prod.stock
+                hasStock = prod.stock >= requiredQty
+              }
+            } else {
+              currentStock = prod.stock
+              hasStock = prod.stock >= requiredQty
+            }
+
+            if (!hasStock) {
+              return NextResponse.json(
+                {
+                  error: `Stok unit baru "${prod.name} (${targetVariantName})" di toko ${existing.order.store?.name || 'cabang'} tidak mencukupi (Sisa stok: ${currentStock} unit, dibutuhkan: ${requiredQty} unit). Harap lakukan restock unit toko terlebih dahulu atau alihkan ke opsi Retur & Refund.`,
+                },
+                { status: 400 }
+              )
+            }
+
+            if (item.variantId) {
+              await prisma.productVariant
+                .update({
+                  where: { id: item.variantId },
+                  data: { stock: { decrement: requiredQty } },
+                })
+                .catch(() => {})
+            }
+
+            await prisma.product.update({
+              where: { id: prod.id },
+              data: { stock: { decrement: requiredQty } },
+            })
+
+            await prisma.auditLog
+              .create({
+                data: {
+                  userId: session.user.id,
+                  action: 'INVENTORY_DEDUCT_REPLACEMENT',
+                  entityType: 'ORDER',
+                  entityId: existing.orderId,
+                  details: {
+                    orderNumber: existing.order.orderNumber,
+                    returnId: existing.id,
+                    storeId: existing.order.storeId,
+                    storeName: existing.order.store?.name,
+                    productId: prod.id,
+                    productName: prod.name,
+                    variantId: item.variantId,
+                    variantName: targetVariantName,
+                    quantityDeducted: requiredQty,
+                    previousStock: currentStock,
+                    remainingStock: currentStock - requiredQty,
+                    reason:
+                      'Pengeluaran unit baru pengganti retur garansi 30 hari (ACC Final Superadmin)',
+                  },
+                },
+              })
+              .catch(() => {})
+          }
+
+          // 2. Terbitkan nomor resi otomatis via Biteship / auto waybill
+          const courierCode = 'JNE'
+          const courierService = 'REG'
+          let tracking = ''
+
+          if (existing.order) {
+            const originStore = {
+              name: existing.order.store?.name || 'Toko Gadget Pusat',
+              companyName:
+                existing.order.store?.companyName ||
+                existing.order.store?.name ||
+                'PT Gadget Jaya Sentosa',
+              address:
+                existing.order.store?.address || 'ITC Roxy Mas Lt. 2 No. 15',
+              city: existing.order.store?.city || 'Jakarta',
+              phone: existing.order.store?.phone || '081234567890',
+              latitude: existing.order.store?.latitude,
+              longitude: existing.order.store?.longitude,
+              postalCode: existing.order.store?.postalCode,
+            }
+
+            const defaultAddress = existing.order.user?.addresses?.[0]
+            const destinationCustomer = {
+              name: existing.order.user?.name || 'Customer',
+              address:
+                defaultAddress?.fullAddress ||
+                existing.order.user?.address ||
+                'Alamat Lengkap Customer',
+              city:
+                defaultAddress?.city || existing.order.user?.city || 'Jakarta',
+              province:
+                defaultAddress?.province ||
+                existing.order.user?.province ||
+                'DKI Jakarta',
+              postalCode:
+                defaultAddress?.postalCode || existing.order.user?.postalCode,
+              phone:
+                defaultAddress?.phone ||
+                existing.order.user?.phone ||
+                '081298765432',
+              latitude: defaultAddress?.latitude,
+              longitude: defaultAddress?.longitude,
+            }
+
+            const items =
+              existing.order.items && existing.order.items.length > 0
+                ? existing.order.items.map((item: any) => ({
+                    name:
+                      item.product?.name ||
+                      item.rentalItem?.name ||
+                      item.service?.name ||
+                      'Gadget Replacement Unit',
+                    quantity: item.quantity,
+                    weightGram: item.product?.weightGram || 500,
+                    price: item.price,
+                  }))
+                : [
+                    {
+                      name: 'Unit Baru Pengganti (Garansi 30 Hari)',
+                      quantity: 1,
+                      weightGram: 500,
+                      price: existing.order.total,
+                    },
+                  ]
+
+            try {
+              const bookedShippingRecord = await bookShippingPickup({
+                orderId: existing.order.id,
+                orderNumber: existing.order.orderNumber,
+                courierCode,
+                courierService,
+                originStore,
+                destinationCustomer,
+                items,
+              })
+              tracking = bookedShippingRecord.trackingNumber
+            } catch {
+              const { generateWaybill } =
+                await import('@/lib/shipping/biteship-client')
+              tracking = generateWaybill(courierCode)
+            }
+          }
+
+          const adminNote =
+            body.adminNotes?.trim() ||
+            '[Disetujui Superadmin] ACC Final Tukar Unit Baru disetujui.'
+          const updatedReturn = await prisma.returnRequest.update({
+            where: { id },
+            data: {
+              status: 'COMPLETED',
+              type: 'REPLACEMENT',
+              returnCourier: courierCode,
+              returnTrackingNumber: tracking,
+              storeResponse: `${adminNote} Unit baru pengganti otomatis dikirim via Biteship (${courierCode} ${courierService}) dengan resi ${tracking}. Garansi toko 30 hari aktif kembali.`,
+              resolvedAt: new Date(),
+            },
+            include: {
+              order: true,
+              user: { select: { id: true, name: true, email: true } },
+            },
+          })
+
+          if (existing.orderId) {
+            await prisma.order.update({
+              where: { id: existing.orderId },
+              data: {
+                status: 'SHIPPED',
+                courierCode,
+                courierService,
+                trackingNumber: tracking,
+                customerConfirmedAt: null,
+                completedAt: null,
+                updatedAt: new Date(),
+              },
+            })
+          }
+
+          // Notifikasi ke pembeli
+          await prisma.notification
+            .create({
+              data: {
+                userId: existing.userId,
+                type: 'ORDER_SHIPPED',
+                title: 'Unit Baru Pengganti Telah Dikirim (ACC Superadmin)',
+                message: `Pengajuan tukar unit baru pesanan #${existing.order.orderNumber} telah disetujui Superadmin. Unit baru pengganti telah dikirim via Biteship (${courierCode} ${courierService}) dengan resi ${tracking}. Lacak pengiriman Anda sekarang.`,
+                link: `/dashboard/customer/orders/${existing.orderId}`,
+              },
+            })
+            .catch(() => {})
+
+          // Notifikasi ke After Sales
+          const afterSalesStaff = await prisma.user.findMany({
+            where: { role: 'AFTER_SALES', isActive: true },
+            select: { id: true },
+          })
+          for (const staff of afterSalesStaff) {
+            await prisma.notification
+              .create({
+                data: {
+                  userId: staff.id,
+                  type: 'COMPLAINT_RESOLVED',
+                  title: 'ACC Final Retur Disetujui Superadmin (Tukar Unit)',
+                  message: `Superadmin telah menyetujui ACC Final tukar unit untuk pesanan #${existing.order.orderNumber}. Stok cabang telah dipotong dan resi pengganti ${tracking} telah terbit.`,
+                  link: '/dashboard/after-sales/returns',
+                },
+              })
+              .catch(() => {})
+          }
+
+          return NextResponse.json({
+            success: true,
+            message: `ACC Final berhasil disetujui Superadmin. Unit pengganti baru otomatis diproses kirim dengan nomor resi ${tracking}.`,
+            data: updatedReturn,
+          })
+        } else {
+          // REFUND: Otomatis transfer dana bersih balik ke customer (Escrow Midtrans)
+          const { calculateNetRefundAmount } =
+            await import('@/lib/returns/refund-calculator')
+          const refundCalc = calculateNetRefundAmount({
+            total: existing.order.total,
+            subtotal: existing.order.subtotal,
+            shippingCost: existing.order.shippingCost,
+            tax: existing.order.tax,
+            insuranceFee: existing.order.insuranceFee,
+          })
+          const refundAmount =
+            existing.refundAmount &&
+            existing.refundAmount < existing.order.total
+              ? existing.refundAmount
+              : refundCalc.netRefundAmount
+
+          try {
+            const { refundMidtransTransaction } = await import('@/lib/midtrans')
+            await refundMidtransTransaction(
+              existing.order.orderNumber,
+              existing.id,
+              refundAmount,
+              body.adminNotes ||
+                'Garansi 30 Hari Pengembalian Dana ACC Superadmin'
+            )
+          } catch (midtransErr) {
+            console.warn('[MIDTRANS_REFUND_FAIL]:', midtransErr)
+          }
+
+          if (existing.bankAccountNumber && existing.bankName) {
+            try {
+              const { createIrisPayout } = await import('@/lib/midtrans-iris')
+              await createIrisPayout({
+                referenceNo: `REFUND-${existing.order.orderNumber}`,
+                beneficiaryName:
+                  existing.bankAccountName || existing.order.orderNumber,
+                beneficiaryAccount: existing.bankAccountNumber,
+                beneficiaryBank: existing.bankName,
+                amount: refundAmount,
+                notes: `Refund Pesanan #${existing.order.orderNumber} (ACC Superadmin)`,
+              })
+            } catch (irisErr) {
+              console.warn('[MIDTRANS_IRIS_REFUND_FAIL]:', irisErr)
+            }
+          }
+
+          const adminNote =
+            body.adminNotes?.trim() ||
+            '[Disetujui Superadmin] ACC Final Refund disetujui.'
+          const updatedReturn = await prisma.returnRequest.update({
+            where: { id },
+            data: {
+              status: 'COMPLETED',
+              type: 'REFUND',
+              refundAmount,
+              storeResponse: `${adminNote} Dana escrow sebesar Rp ${Math.round(refundAmount).toLocaleString('id-ID')} telah otomatis dicairkan kembali ke rekening tujuan pembeli.`,
+              resolvedAt: new Date(),
+            },
+            include: {
+              order: true,
+              user: { select: { id: true, name: true, email: true } },
+            },
+          })
+
+          if (existing.orderId) {
+            await prisma.order.update({
+              where: { id: existing.orderId },
+              data: {
+                status: 'RETURNED',
+                updatedAt: new Date(),
+              },
+            })
+
+            if (existing.order.payment) {
+              await prisma.payment.update({
+                where: { id: existing.order.payment.id },
+                data: {
+                  notes: `Refund Midtrans diproses otomatis pasca-ACC Superadmin pada ${new Date().toLocaleString('id-ID')}`,
+                },
+              })
+            }
+          }
+
+          // Notifikasi ke pembeli
+          await prisma.notification
+            .create({
+              data: {
+                userId: existing.userId,
+                type: 'COMPLAINT_RESOLVED',
+                title: 'Dana Refund Berhasil Dicairkan (ACC Superadmin)',
+                message: `Pengembalian dana sebesar Rp ${Math.round(refundAmount).toLocaleString('id-ID')} untuk pesanan #${existing.order.orderNumber} telah di-ACC oleh Superadmin dan ditransfer kembali ke rekening ${existing.bankName || 'bank Anda'}.`,
+                link: `/dashboard/customer/orders/${existing.orderId}`,
+              },
+            })
+            .catch(() => {})
+
+          // Notifikasi ke After Sales
+          const afterSalesStaff = await prisma.user.findMany({
+            where: { role: 'AFTER_SALES', isActive: true },
+            select: { id: true },
+          })
+          for (const staff of afterSalesStaff) {
+            await prisma.notification
+              .create({
+                data: {
+                  userId: staff.id,
+                  type: 'COMPLAINT_RESOLVED',
+                  title: 'ACC Final Retur Disetujui Superadmin (Refund)',
+                  message: `Superadmin telah menyetujui ACC Final refund untuk pesanan #${existing.order.orderNumber}. Dana sebesar Rp ${Math.round(refundAmount).toLocaleString('id-ID')} telah berhasil dicairkan.`,
+                  link: '/dashboard/after-sales/returns',
+                },
+              })
+              .catch(() => {})
+          }
+
+          return NextResponse.json({
+            success: true,
+            message: `ACC Final berhasil disetujui Superadmin. Dana refund sebesar Rp ${Math.round(refundAmount).toLocaleString('id-ID')} telah otomatis dicairkan.`,
+            data: updatedReturn,
+          })
+        }
+      }
+
+      // Default approval / reject note untuk alur standar awal
       const defaultApproveNote = isSuperAdmin
         ? '[Disetujui Superadmin] Pengajuan retur telah disetujui Superadmin. Silakan kemas unit dan kirimkan ke alamat toko cabang yang tertera.'
         : 'Pengajuan retur telah disetujui After Sales. Silakan kemas unit dan kirimkan ke alamat toko cabang yang tertera.'
@@ -456,6 +922,16 @@ export async function PUT(
           updatedReturn.qcNotes = receivedNotes
           updatedReturn.storeResponse = newStoreResponse
         }
+      }
+
+      // Update aktivitas order agar naik ke urutan paling atas di tabel pesanan
+      if (existing.orderId) {
+        await prisma.order
+          .update({
+            where: { id: existing.orderId },
+            data: { updatedAt: new Date() },
+          })
+          .catch(() => {})
       }
 
       // Kirim notifikasi ke pembeli

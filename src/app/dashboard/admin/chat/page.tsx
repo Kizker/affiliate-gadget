@@ -30,8 +30,11 @@ import {
   Maximize2,
   Play,
   Headphones,
+  Lock,
+  Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ChatTemplateModal } from '@/components/chat/chat-template-modal'
 import { DateSeparator } from '@/components/chat/date-separator'
 import { ChatVideoPlayer } from '@/components/chat/chat-video-player'
 import { isSameDay } from '@/utils/chat-helpers'
@@ -321,6 +324,13 @@ function AdminChatContent() {
   const [roomFilter, setRoomFilter] = useState<
     'ALL' | 'UNREAD' | 'ORDER' | 'STORE_HELP' | 'CUSTOMER_CS'
   >('ALL')
+
+  // Superadmin default ke CS miliknya sendiri agar tidak langsung membuka chat customer toko
+  useEffect(() => {
+    if (isSuperAdmin && roomFilter === 'ALL' && !searchQuery) {
+      setRoomFilter('CUSTOMER_CS')
+    }
+  }, [isSuperAdmin])
   const [stats, setStats] = useState({ totalRooms: 0, unreadRooms: 0 })
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
   const showChatOnMobileRef = useRef<boolean>(false)
@@ -457,6 +467,7 @@ function AdminChatContent() {
 
   // Order Modal States
   const [showOrderModal, setShowOrderModal] = useState(false)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [orderItems, setOrderItems] = useState<any[]>([])
   const [orderLoading, setOrderLoading] = useState(false)
   const [orderSearch, setOrderSearch] = useState('')
@@ -580,6 +591,16 @@ function AdminChatContent() {
             window.innerWidth >= 1024 &&
             mappedRooms.length > 0
           ) {
+            // Untuk Superadmin, default buka chat CS miliknya atau yang bisa dibalas
+            if (isSuperAdmin) {
+              const myCsRoom = mappedRooms.find(
+                (r) =>
+                  !r.storeId ||
+                  Boolean(r.isStoreHelpToSuperAdmin) ||
+                  r.claimedById === currentUserId
+              )
+              if (myCsRoom) return myCsRoom
+            }
             return mappedRooms[0]
           }
           return null
@@ -1858,6 +1879,17 @@ function AdminChatContent() {
       selectedRoom.storeId === null) ||
       !!selectedRoom.isStoreHelpToSuperAdmin)
 
+  // Hak membalas: Superadmin hanya boleh membalas chat CS Platform atau Bantuan Toko ke Superadmin
+  const canReply = useMemo(() => {
+    if (!selectedRoom) return false
+    if (!isSuperAdmin) return true
+    return (
+      selectedRoom.storeId === null ||
+      Boolean(selectedRoom.isStoreHelpToSuperAdmin) ||
+      selectedRoom.claimedById === currentUserId
+    )
+  }, [selectedRoom, isSuperAdmin, currentUserId])
+
   return (
     <div className="flex h-full max-h-full min-h-0 w-full flex-1 flex-col overflow-hidden font-sans">
       {/* Luxury Fullscreen Portal Lightbox Modal (Escape stacking context & covers 100% viewport) */}
@@ -1957,9 +1989,9 @@ function AdminChatContent() {
             <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
               {(isSuperAdmin
                 ? [
-                    { id: 'ALL', label: 'Semua' },
-                    { id: 'STORE_HELP', label: '🏢 Toko' },
-                    { id: 'CUSTOMER_CS', label: '🎧 CS' },
+                    { id: 'CUSTOMER_CS', label: '🎧 CS Saya' },
+                    { id: 'STORE_HELP', label: '🏢 Bantuan Toko' },
+                    { id: 'ALL', label: 'Semua (Pantau)' },
                     {
                       id: 'UNREAD',
                       label: `Belum Dibaca (${stats.unreadRooms})`,
@@ -2643,8 +2675,8 @@ function AdminChatContent() {
                   </div>
                 )}
 
-                {/* Action Shortcuts (khusus chat customer, sembunyikan di Bantuan Superadmin) */}
-                {!isSelectedStoreHelpChat && (
+                {/* Action Shortcuts (khusus chat yang bisa dibalas, sembunyikan di Bantuan Superadmin & Mode Pantau) */}
+                {!isSelectedStoreHelpChat && canReply && (
                   <div className="no-scrollbar flex w-full items-center gap-2 overflow-x-auto pb-0.5">
                     <button
                       onClick={openCatalogModal}
@@ -2663,11 +2695,29 @@ function AdminChatContent() {
                       <ShoppingBag className="h-3 w-3 text-blue-500" />
                       <span>Bagikan Order</span>
                     </button>
+
+                    <button
+                      onClick={() => setShowTemplateModal(true)}
+                      type="button"
+                      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      <Zap className="h-3 w-3 text-amber-500" />
+                      <span>Template Chat</span>
+                    </button>
                   </div>
                 )}
 
-                {/* Input & Send Button */}
-                {selectedRoom?.isCompletedHandover && isStoreAdmin ? (
+                {/* Input & Send Button or Mode Pantau Banner */}
+                {!canReply ? (
+                  <div className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
+                    <Lock className="h-4 w-4 shrink-0 text-slate-400" />
+                    <span>
+                      Mode Pantau: Percakapan ini ditangani langsung oleh Admin
+                      Toko / After Sales. Superadmin hanya memiliki akses pantau
+                      (read-only) dan tidak dapat membalas.
+                    </span>
+                  </div>
+                ) : selectedRoom?.isCompletedHandover && isStoreAdmin ? (
                   <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
                     <Headphones className="h-4 w-4 shrink-0 text-orange-600" />
                     <span>
@@ -2963,6 +3013,15 @@ function AdminChatContent() {
           </div>
         </div>
       )}
+
+      {/* 5. Chat Template Modal (Balasan Cepat Custom: Tambah, Edit, Hapus, Kirim) */}
+      <ChatTemplateModal
+        isOpen={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        onSelectTemplate={(text) => {
+          setMessageInput((prev) => (prev ? `${prev} ${text}` : text))
+        }}
+      />
     </div>
   )
 }

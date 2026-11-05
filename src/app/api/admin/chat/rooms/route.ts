@@ -92,13 +92,23 @@ export async function GET() {
           customerId: session.user.id,
           storeId: null,
           NOT: [
-            { order: { returnRequests: { some: {} } } },
-            { order: { complaints: { some: {} } } },
-            { messages: { some: { messageType: 'return_reference' } } },
             {
-              messages: { some: { content: { contains: 'return_reference' } } },
+              order: {
+                returnRequests: {
+                  some: {
+                    status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED'] },
+                  },
+                },
+              },
             },
-            { claimedBy: { role: 'AFTER_SALES' } },
+            {
+              order: {
+                complaints: {
+                  some: { status: { in: ['OPEN', 'IN_PROGRESS'] } },
+                },
+              },
+            },
+            { messages: { some: { messageType: 'return_reference' } } },
           ],
         }
       }

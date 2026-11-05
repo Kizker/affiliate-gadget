@@ -132,9 +132,7 @@ export async function GET(
       const isReturnRelated =
         Boolean(
           room.order?.returnRequests && room.order.returnRequests.length > 0
-        ) ||
-        room.claimedBy?.role === 'AFTER_SALES' ||
-        room.order?.status === 'COMPLETED'
+        ) || room.claimedBy?.role === 'AFTER_SALES'
 
       if (isReturnRelated) {
         return NextResponse.json(
@@ -287,6 +285,24 @@ export async function POST(
 
     if (!room) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
+    }
+
+    // Hak Akses Superadmin: Superadmin hanya dapat membalas chat CS Platform atau Bantuan Toko ke Superadmin
+    if (user.role === 'SUPER_ADMIN') {
+      const isCsOrSuperAdminRoom =
+        room.storeId === null ||
+        Boolean((room as any).isStoreHelpToSuperAdmin) ||
+        room.claimedById === session.user.id
+
+      if (!isCsOrSuperAdminRoom) {
+        return NextResponse.json(
+          {
+            error:
+              'Superadmin hanya memiliki hak pantau (read-only) pada percakapan toko atau after sales.',
+          },
+          { status: 403 }
+        )
+      }
     }
 
     // Cek Handover & Isolasi: Jika pesanan COMPLETED atau dalam proses retur/klaim garansi, Admin Toko tidak bisa membalas chat

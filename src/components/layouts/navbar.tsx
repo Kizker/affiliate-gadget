@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -32,6 +32,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const userDropdownRef = useRef<HTMLDivElement>(null)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -102,6 +103,27 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
   useEffect(() => {
     setUserDropdownOpen(false)
   }, [pathname])
+
+  // Menutup dropdown menu profil saat pengguna menekan di luar field
+  useEffect(() => {
+    if (!userDropdownOpen) return
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (
+        userDropdownRef.current &&
+        !userDropdownRef.current.contains(event.target as Node)
+      ) {
+        setUserDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [userDropdownOpen])
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -274,7 +296,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
             {!mounted || status === 'loading' ? (
               <div className="h-8 w-14 animate-pulse rounded-full bg-slate-100 dark:bg-slate-800 sm:w-16" />
             ) : session?.user ? (
-              <div className="relative">
+              <div ref={userDropdownRef} className="relative">
                 <button
                   type="button"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}

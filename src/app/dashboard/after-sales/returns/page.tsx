@@ -24,19 +24,14 @@ import {
   Check,
   Package,
   Lock,
-  MoreVertical,
+  Upload,
+  ImageIcon,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePageGuard } from '@/hooks/use-page-guard'
 import { CheckResiModal } from '@/components/shipping/check-resi-modal'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu'
+import { processMediaUploadFile } from '@/lib/media-upload-client'
 
 interface ReturnItem {
   id: string
@@ -106,6 +101,24 @@ const COURIER_OPTIONS = [
   { id: 'GOJEK SAMEDAY', name: 'Gojek - Same Day' },
 ]
 
+const extractQcImages = (storeResponse?: string | null): string[] => {
+  if (!storeResponse) return []
+  const match = storeResponse.match(/\[Foto QC:\s*([^\]]+)\]/)
+  if (!match) return []
+  return match[1]
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean)
+}
+
+const cleanRecommendationNote = (storeResponse?: string | null): string => {
+  if (!storeResponse) return ''
+  return storeResponse
+    .replace(/\[Rekomendasi After Sales: (DISETUJUI|DITOLAK)\]\s*/g, '')
+    .replace(/\[Foto QC:\s*[^\]]+\]/g, '')
+    .trim()
+}
+
 export default function AfterSalesReturnsPage() {
   const { isLoading: guardLoading, isAllowed } = usePageGuard(
     '/dashboard/after-sales'
@@ -124,32 +137,16 @@ export default function AfterSalesReturnsPage() {
   const [activeImage, setActiveImage] = useState<string | null>(null)
   const [activeVideo, setActiveVideo] = useState<string | null>(null)
 
-  // Resolution Action Modals State
-  const [refundModalTarget, setRefundModalTarget] = useState<ReturnItem | null>(
-    null
+  // Keputusan After Sales (Hanya 2 Opsi: Setujui atau Tolak Permintaan)
+  const [decisionModalTarget, setDecisionModalTarget] =
+    useState<ReturnItem | null>(null)
+  const [decisionType, setDecisionType] = useState<'APPROVE' | 'REJECT'>(
+    'APPROVE'
   )
-  const [refundNotes, setRefundNotes] = useState('')
+  const [decisionNotes, setDecisionNotes] = useState('')
+  const [decisionImages, setDecisionImages] = useState<string[]>([])
+  const [isUploadingImages, setIsUploadingImages] = useState(false)
 
-  const [replacementModalTarget, setReplacementModalTarget] =
-    useState<ReturnItem | null>(null)
-  const [replacementCourier, setReplacementCourier] = useState('JNE REG')
-  const [replacementTracking, setReplacementTracking] = useState('')
-  const [replacementNotes, setReplacementNotes] = useState('')
-  const [courierDropdownOpen, setCourierDropdownOpen] = useState(false)
-
-  const [rejectModalTarget, setRejectModalTarget] = useState<ReturnItem | null>(
-    null
-  )
-  const [rejectReason, setRejectReason] = useState('')
-
-  // Dual-Tier Recommendation Modals State (Kirim ke Superadmin)
-  const [recommendApproveTarget, setRecommendApproveTarget] =
-    useState<ReturnItem | null>(null)
-  const [recommendApproveNotes, setRecommendApproveNotes] = useState('')
-
-  const [recommendRejectTarget, setRecommendRejectTarget] =
-    useState<ReturnItem | null>(null)
-  const [recommendRejectNotes, setRecommendRejectNotes] = useState('')
   const [resiModalOpen, setResiModalOpen] = useState(false)
   const [activeTrackingQuery, setActiveTrackingQuery] = useState('')
 
@@ -311,150 +308,93 @@ export default function AfterSalesReturnsPage() {
     }
   }
 
-  // Execute REFUND Resolution
-  const handleExecuteRefund = async () => {
-    if (!refundModalTarget) return
-    setIsSubmitting(true)
-    try {
-      const res = await fetch(`/api/returns/${refundModalTarget.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resolutionAction: 'REFUND',
-          storeResponse:
-            refundNotes.trim() ||
-            `Pengembalian dana sebesar Rp ${Math.round(
-              refundModalTarget.refundAmount || refundModalTarget.order.total
-            ).toLocaleString(
-              'id-ID'
-            )} telah diverifikasi dan disetujui pencairannya oleh Admin After Sales.`,
-        }),
-      })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        toast.success(
-          'Pencairan dana refund berhasil dieksekusi oleh After Sales!'
-        )
-        setRefundModalTarget(null)
-        setRefundNotes('')
-        fetchReturns()
-      } else {
-        toast.error(json.error || 'Gagal memproses refund')
-      }
-    } catch {
-      toast.error('Terjadi kesalahan koneksi')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  // Execute REPLACEMENT Resolution
-  const handleExecuteReplacement = async () => {
-    if (!replacementModalTarget) return
-    setIsSubmitting(true)
-    try {
-      const res = await fetch(`/api/returns/${replacementModalTarget.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resolutionAction: 'REPLACEMENT',
-          replacementCourier,
-          replacementTrackingNumber: replacementTracking.trim() || 'AUTO',
-          storeResponse:
-            replacementNotes.trim() ||
-            `Unit baru pengganti telah disiapkan dan dikirimkan oleh Admin After Sales via ${replacementCourier} (Resi: ${
-              replacementTracking.trim() || 'AUTO'
-            }).`,
-        }),
-      })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        toast.success('Resi unit baru berhasil diterbitkan oleh After Sales!')
-        setReplacementModalTarget(null)
-        setReplacementTracking('')
-        setReplacementNotes('')
-        fetchReturns()
-      } else {
-        toast.error(json.error || 'Gagal menerbitkan resi pengganti')
-      }
-    } catch {
-      toast.error('Terjadi kesalahan koneksi')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  // Handle REJECT Action
-  // Handle Submit Dual-Tier Recommendation to Superadmin
-  const handleConfirmRecommendation = async (
-    target: ReturnItem,
-    decision: 'APPROVE' | 'REJECT',
-    notes: string
+  // Handle Upload Foto Bukti QC (Maksimal 5 Foto)
+  const handleUploadQcImages = async (
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    if (!notes.trim() || notes.trim().length < 5) {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const remainingSlots = 5 - decisionImages.length
+    if (remainingSlots <= 0) {
+      toast.error('Maksimal 5 foto bukti QC.')
+      return
+    }
+
+    const filesToUpload = Array.from(files).slice(0, remainingSlots)
+    setIsUploadingImages(true)
+    try {
+      for (const file of filesToUpload) {
+        let fileToUpload = file
+        try {
+          fileToUpload = await processMediaUploadFile(file)
+        } catch (valErr: any) {
+          toast.error(valErr.message || `File ${file.name} tidak valid`)
+          continue
+        }
+
+        const formData = new FormData()
+        formData.append('file', fileToUpload)
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        if (!res.ok) {
+          const errJson = await res.json()
+          throw new Error(errJson.error || 'Upload gagal')
+        }
+        const data = await res.json()
+        setDecisionImages((prev) => [...prev, data.url])
+      }
+      toast.success('Foto bukti QC berhasil dilampirkan.')
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengunggah foto')
+    } finally {
+      setIsUploadingImages(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleRemoveQcImage = (indexToRemove: number) => {
+    setDecisionImages((prev) => prev.filter((_, idx) => idx !== indexToRemove))
+  }
+
+  // Handle Kirim Keputusan (Setujui atau Tolak) ke Superadmin
+  const handleSubmitDecision = async () => {
+    if (!decisionModalTarget) return
+    const notesTrimmed = decisionNotes.trim()
+    if (!notesTrimmed && decisionImages.length === 0) {
       toast.error(
-        'Alasan rekomendasi After Sales wajib diisi dengan jelas dan detail (minimal 5 karakter)'
+        'Mohon sertakan deskripsi alasan atau lampirkan minimal 1 foto bukti QC.'
       )
       return
     }
 
     setIsSubmitting(true)
     try {
-      const res = await fetch(`/api/returns/${target.id}`, {
+      const res = await fetch(`/api/returns/${decisionModalTarget.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'AFTER_SALES_CONFIRM',
-          decision,
-          notes: notes.trim(),
+          decision: decisionType,
+          notes: notesTrimmed,
+          qcImages: decisionImages,
         }),
       })
       const json = await res.json()
       if (res.ok && json.success) {
         toast.success(
-          decision === 'APPROVE'
-            ? 'Rekomendasi persetujuan klaim berhasil dikirimkan ke Superadmin untuk ACC Final!'
-            : 'Rekomendasi penolakan klaim berhasil dikirimkan ke Superadmin untuk ACC Final!'
+          decisionType === 'APPROVE'
+            ? 'Keputusan persetujuan berhasil dikirim ke Superadmin untuk ACC Final!'
+            : 'Keputusan penolakan berhasil dikirim ke Superadmin!'
         )
-        setRecommendApproveTarget(null)
-        setRecommendApproveNotes('')
-        setRecommendRejectTarget(null)
-        setRecommendRejectNotes('')
+        setDecisionModalTarget(null)
+        setDecisionNotes('')
+        setDecisionImages([])
         fetchReturns()
       } else {
-        toast.error(json.error || 'Gagal mengirim rekomendasi ke Superadmin')
-      }
-    } catch {
-      toast.error('Terjadi kesalahan koneksi')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleRejectByAfterSales = async () => {
-    if (!rejectModalTarget) return
-    if (!rejectReason.trim()) {
-      toast.error('Alasan penolakan wajib diisi')
-      return
-    }
-    setIsSubmitting(true)
-    try {
-      const res = await fetch(`/api/returns/${rejectModalTarget.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'REJECT',
-          rejectionReason: rejectReason.trim(),
-        }),
-      })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        toast.success('Pengajuan klaim garansi berhasil ditolak')
-        setRejectModalTarget(null)
-        setRejectReason('')
-        fetchReturns()
-      } else {
-        toast.error(json.error || 'Gagal menolak pengajuan')
+        toast.error(json.error || 'Gagal mengirimkan keputusan ke Superadmin')
       }
     } catch {
       toast.error('Terjadi kesalahan koneksi')
@@ -857,53 +797,6 @@ export default function AfterSalesReturnsPage() {
                     </div>
                   )}
 
-                  {/* Banner Rekomendasi Dual-Tier & Catatan Respon */}
-                  {item.storeResponse &&
-                    (item.storeResponse.includes(
-                      '[Rekomendasi After Sales: DISETUJUI]'
-                    ) ? (
-                      <div className="mt-2 rounded-xl border border-emerald-200/90 bg-emerald-50/70 p-3 text-xs text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
-                        <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-100">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          <span>
-                            Rekomendasi After Sales: DISETUJUI &bull; Menunggu
-                            ACC Final Superadmin
-                          </span>
-                        </div>
-                        <p className="mt-1 leading-relaxed text-emerald-800/90 dark:text-emerald-300/90">
-                          {item.storeResponse.replace(
-                            '[Rekomendasi After Sales: DISETUJUI] ',
-                            ''
-                          )}
-                        </p>
-                      </div>
-                    ) : item.storeResponse.includes(
-                        '[Rekomendasi After Sales: DITOLAK]'
-                      ) ? (
-                      <div className="mt-2 rounded-xl border border-rose-200/90 bg-rose-50/70 p-3 text-xs text-rose-950 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
-                        <div className="flex items-center gap-1.5 font-bold text-rose-900 dark:text-rose-100">
-                          <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-                          <span>
-                            Rekomendasi After Sales: DITOLAK &bull; Menunggu ACC
-                            Final Superadmin
-                          </span>
-                        </div>
-                        <p className="mt-1 leading-relaxed text-rose-800/90 dark:text-rose-300/90">
-                          {item.storeResponse.replace(
-                            '[Rekomendasi After Sales: DITOLAK] ',
-                            ''
-                          )}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="mt-2 rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300">
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          Catatan Respon After Sales:
-                        </span>{' '}
-                        {item.storeResponse}
-                      </div>
-                    ))}
-
                   {/* Status Resi Pengiriman Balik dari Pembeli */}
                   {(item.returnTrackingNumber ||
                     item.packageReceivedAt ||
@@ -1018,10 +911,61 @@ export default function AfterSalesReturnsPage() {
                         </p>
                       </div>
                     ))}
+
+                  {/* Banner jika tiket dikembalikan oleh Superadmin */}
+                  {item.storeResponse?.includes(
+                    '[Dikembalikan Superadmin ke After Sales]'
+                  ) && (
+                    <div className="mt-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
+                        <AlertCircle className="h-4 w-4 text-amber-600" />
+                        <span>
+                          ⚠️ Dikembalikan oleh Superadmin untuk Ditinjau Ulang
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] leading-relaxed">
+                        <strong>Catatan Superadmin:</strong> &ldquo;
+                        {item.storeResponse.replace(
+                          /.*\[Dikembalikan Superadmin ke After Sales\]\s*/,
+                          ''
+                        )}
+                        &rdquo;
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Foto Bukti QC yang telah dilampirkan */}
+                  {(() => {
+                    const qcImages = extractQcImages(item.storeResponse)
+                    if (qcImages.length === 0) return null
+                    return (
+                      <div className="mt-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-2.5 text-xs dark:border-slate-800 dark:bg-slate-800/40">
+                        <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                          📸 Foto Bukti Pemeriksaan QC ({qcImages.length} Foto):
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap gap-2">
+                          {qcImages.map((imgUrl, qIdx) => (
+                            <button
+                              key={qIdx}
+                              type="button"
+                              onClick={() => setActiveImage(imgUrl)}
+                              className="shadow-2xs group relative h-12 w-12 overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:scale-105 hover:border-indigo-500 dark:border-slate-700 dark:bg-slate-800"
+                            >
+                              <img
+                                src={imgUrl}
+                                alt={`Bukti QC ${qIdx + 1}`}
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
 
-              {/* Action Buttons: Unified Executor Actions + Live Chat */}
+              {/* Action Buttons: Dual Decision (Setuju / Tolak) + Live Chat */}
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
                 {/* Live Chat Purna Jual Button */}
                 <button
@@ -1038,10 +982,18 @@ export default function AfterSalesReturnsPage() {
                   <span>Chat Pembeli (Purna Jual)</span>
                 </button>
 
-                {/* Operational Execution Actions on Active items (PENDING, APPROVED, IN_REVIEW) */}
-                {(item.status === 'PENDING' ||
-                  item.status === 'APPROVED' ||
-                  item.status === 'IN_REVIEW') &&
+                {/* Tombol Keputusan After Sales */}
+                {item.status === 'COMPLETED' ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    Tiket Garansi Selesai
+                  </span>
+                ) : item.status === 'REJECTED' ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+                    <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                    Klaim Ditolak
+                  </span>
+                ) : (
                   (() => {
                     const isArrived = Boolean(
                       item.packageReceivedAt ||
@@ -1049,762 +1001,271 @@ export default function AfterSalesReturnsPage() {
                         '[Paket Fisik Tiba di Cabang]'
                       )
                     )
-                    const isPending = item.status === 'PENDING'
-                    const needsArrivalConfirmation = Boolean(
-                      item.returnTrackingNumber &&
-                      !(
-                        item.packageReceivedAt ||
-                        item.storeResponse?.includes(
-                          '[Paket Fisik Tiba di Cabang]'
-                        )
+                    const isWaitingSuperadmin =
+                      item.status === 'IN_REVIEW' &&
+                      item.storeResponse?.includes(
+                        '[Rekomendasi After Sales'
+                      ) &&
+                      !item.storeResponse?.includes(
+                        '[Dikembalikan Superadmin ke After Sales]'
                       )
-                    )
 
-                    return (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className="shadow-2xs flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                          >
-                            <span>Pilihan Tindakan</span>
-                            <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-64 rounded-2xl p-1.5 shadow-xl"
+                    if (isWaitingSuperadmin) {
+                      return (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300">
+                          <Clock className="h-3.5 w-3.5 animate-pulse text-indigo-600" />
+                          Rekomendasi Terkirim &bull; Menunggu ACC Final
+                          Superadmin
+                        </span>
+                      )
+                    }
+
+                    // 1. Jika barang belum dikonfirmasi tiba di cabang toko: Tombol penerimaan barang
+                    if (!isArrived) {
+                      return (
+                        <button
+                          type="button"
+                          disabled={
+                            isReceivingPackage &&
+                            receivingPackageTarget?.id === item.id
+                          }
+                          onClick={() => {
+                            setReceivingPackageTarget(item)
+                            setPackageReceivedNotes(
+                              `Paket fisik retur pesanan #${item.order.orderNumber} telah diterima oleh staf cabang. Kondisi kardus utuh, memulai pengujian teknis (QC).`
+                            )
+                          }}
+                          className="shadow-xs flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
                         >
-                          {/* 1. Rekomendasi Alur Dual-Tier (Khusus Status PENDING) */}
-                          {isPending && (
-                            <>
-                              <DropdownMenuLabel className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                Rekomendasi ke Superadmin
-                              </DropdownMenuLabel>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setRecommendApproveTarget(item)
-                                  setRecommendApproveNotes(
-                                    item.type === 'REFUND'
-                                      ? `Pengajuan pengembalian dana telah diverifikasi After Sales. Bukti unboxing valid dan memenuhi kriteria garansi. Direkomendasikan untuk disetujui (ACC Final Refund).`
-                                      : `Pengajuan penukaran unit baru telah diverifikasi After Sales. Bukti cacat fisik saat unboxing valid. Direkomendasikan untuk disetujui (ACC Final Replacement).`
-                                  )
-                                }}
-                                className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-emerald-700 focus:bg-emerald-50 focus:text-emerald-800 dark:text-emerald-400 dark:focus:bg-emerald-950/40"
-                              >
-                                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                                <span>
-                                  Rekomendasikan Setuju (Kirim ke Superadmin)
-                                </span>
-                              </DropdownMenuItem>
+                          <Package className="h-3.5 w-3.5" />
+                          <span>Barang Diterima &amp; Mulai QC</span>
+                        </button>
+                      )
+                    }
 
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setRecommendRejectTarget(item)
-                                  setRecommendRejectNotes('')
-                                }}
-                                className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-rose-700 focus:bg-rose-50 focus:text-rose-800 dark:text-rose-400 dark:focus:bg-rose-950/40"
-                              >
-                                <XCircle className="h-4 w-4 shrink-0 text-rose-600" />
-                                <span>
-                                  Rekomendasikan Tolak (Kirim ke Superadmin)
-                                </span>
-                              </DropdownMenuItem>
+                    // 2. Jika barang sudah tiba di cabang: HANYA ADA 2 PILIHAN (SETUJUI ATAU TOLAK)
+                    return (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDecisionModalTarget(item)
+                            setDecisionType('APPROVE')
+                            setDecisionNotes(
+                              item.type === 'REFUND'
+                                ? 'Pemeriksaan fisik (QC) selesai: Barang retur lengkap dan memenuhi syarat garansi. Direkomendasikan untuk disetujui (ACC Final Refund).'
+                                : 'Pemeriksaan fisik (QC) selesai: Cacat fisik / fungsi terbukti dan memenuhi syarat garansi. Direkomendasikan untuk disetujui (ACC Final Replacement).'
+                            )
+                            setDecisionImages([])
+                          }}
+                          className="shadow-xs flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>Setujui Permintaan</span>
+                        </button>
 
-                              <DropdownMenuSeparator className="my-1" />
-
-                              <DropdownMenuLabel className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                Persetujuan Langsung
-                              </DropdownMenuLabel>
-                              <DropdownMenuItem
-                                disabled={approvingId === item.id}
-                                onClick={() => handleApproveForReturn(item)}
-                                className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-blue-700 focus:bg-blue-50 focus:text-blue-800 dark:text-blue-400 dark:focus:bg-blue-950/40"
-                              >
-                                {approvingId === item.id ? (
-                                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600" />
-                                ) : (
-                                  <CheckCircle2 className="h-4 w-4 shrink-0 text-blue-600" />
-                                )}
-                                <span>
-                                  Setujui Retur &amp; Minta Kirim Barang
-                                </span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator className="my-1" />
-                            </>
-                          )}
-
-                          {/* 2. Konfirmasi Paket Tiba di Cabang (Jika dalam pengiriman kurir) */}
-                          {needsArrivalConfirmation && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setReceivingPackageTarget(item)
-                                  setPackageReceivedNotes(
-                                    `Paket fisik retur pesanan #${item.order.orderNumber} telah diterima oleh staf cabang. Kondisi kardus utuh, memulai pengujian teknis (QC).`
-                                  )
-                                }}
-                                className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-indigo-700 focus:bg-indigo-50 focus:text-indigo-800 dark:text-indigo-400 dark:focus:bg-indigo-950/40"
-                              >
-                                <Package className="h-4 w-4 shrink-0 text-indigo-600" />
-                                <span>
-                                  Konfirmasi Paket Tiba di Cabang &amp; Mulai QC
-                                </span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator className="my-1" />
-                            </>
-                          )}
-
-                          {/* 3. Eksekusi Hasil QC (Cairkan Dana / Kirim Unit Pengganti) */}
-                          <DropdownMenuLabel className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            Eksekusi Solusi (Setelah QC)
-                          </DropdownMenuLabel>
-                          {!isArrived && (
-                            <div className="mx-2 mb-1 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                              🔒 Terkunci hingga paket retur dikonfirmasi tiba
-                            </div>
-                          )}
-                          {item.type === 'REFUND' ? (
-                            <DropdownMenuItem
-                              disabled={!isArrived}
-                              onClick={() => {
-                                if (!isArrived) return
-                                setRefundModalTarget(item)
-                                setRefundNotes(
-                                  `Pengembalian dana klaim garansi sebesar Rp ${Math.round(
-                                    item.refundAmount || item.order.total
-                                  ).toLocaleString(
-                                    'id-ID'
-                                  )} telah disetujui dan dicairkan oleh Admin After Sales.`
-                                )
-                              }}
-                              className={`flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold ${
-                                isArrived
-                                  ? 'cursor-pointer text-emerald-700 focus:bg-emerald-50 focus:text-emerald-800 dark:text-emerald-400 dark:focus:bg-emerald-950/40'
-                                  : 'cursor-not-allowed opacity-50'
-                              }`}
-                            >
-                              <span className="flex items-center gap-2">
-                                {isArrived ? (
-                                  <CreditCard className="h-4 w-4 shrink-0 text-emerald-600" />
-                                ) : (
-                                  <Lock className="h-4 w-4 shrink-0 text-slate-400" />
-                                )}
-                                <span>
-                                  {isArrived
-                                    ? 'QC Lulus: Cairkan Dana'
-                                    : 'QC Lulus: Cairkan Dana'}
-                                </span>
-                              </span>
-                              {!isArrived && (
-                                <span className="rounded bg-amber-50 px-1 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                                  Terkunci
-                                </span>
-                              )}
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              disabled={!isArrived}
-                              onClick={() => {
-                                if (!isArrived) return
-                                setReplacementModalTarget(item)
-                                setReplacementTracking('')
-                                setReplacementNotes(
-                                  `Unit baru pengganti pesanan #${item.order.orderNumber} telah disiapkan dan dikirimkan oleh Admin After Sales.`
-                                )
-                              }}
-                              className={`flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold ${
-                                isArrived
-                                  ? 'cursor-pointer text-orange-700 focus:bg-orange-50 focus:text-orange-800 dark:text-orange-400 dark:focus:bg-orange-950/40'
-                                  : 'cursor-not-allowed opacity-50'
-                              }`}
-                            >
-                              <span className="flex items-center gap-2">
-                                {isArrived ? (
-                                  <Truck className="h-4 w-4 shrink-0 text-orange-600" />
-                                ) : (
-                                  <Lock className="h-4 w-4 shrink-0 text-slate-400" />
-                                )}
-                                <span>
-                                  {isArrived
-                                    ? 'QC Lulus: Kirim Unit Pengganti'
-                                    : 'QC Lulus: Kirim Unit Pengganti'}
-                                </span>
-                              </span>
-                              {!isArrived && (
-                                <span className="rounded bg-amber-50 px-1 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                                  Terkunci
-                                </span>
-                              )}
-                            </DropdownMenuItem>
-                          )}
-
-                          <DropdownMenuSeparator className="my-1" />
-
-                          {/* 4. Tolak Pengajuan */}
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setRejectModalTarget(item)
-                              setRejectReason('')
-                            }}
-                            className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-rose-600 focus:bg-rose-50 focus:text-rose-700 dark:text-rose-400 dark:focus:bg-rose-950/40"
-                          >
-                            <XCircle className="h-4 w-4 shrink-0 text-rose-600" />
-                            <span>Tolak Pengajuan</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDecisionModalTarget(item)
+                            setDecisionType('REJECT')
+                            setDecisionNotes('')
+                            setDecisionImages([])
+                          }}
+                          className="shadow-xs flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          <span>Tolak Permintaan</span>
+                        </button>
+                      </div>
                     )
-                  })()}
+                  })()
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modal 1: Konfirmasi Pencairan Dana (REFUND) */}
-      {refundModalTarget && (
+      {/* Modal Keputusan After Sales (Setujui atau Tolak Permintaan) */}
+      {decisionModalTarget && (
         <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-emerald-600" />
+                {decisionType === 'APPROVE' ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-rose-600" />
+                )}
                 <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Eksekusi Pencairan Dana Refund (After Sales)
+                  {decisionType === 'APPROVE'
+                    ? 'Setujui Permintaan Retur (Kirim ke Superadmin)'
+                    : 'Tolak Permintaan Retur (Kirim ke Superadmin)'}
                 </h2>
               </div>
               <button
                 type="button"
-                onClick={() => setRefundModalTarget(null)}
+                onClick={() => setDecisionModalTarget(null)}
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 text-xs">
-              {/* Info Pesanan & Rekening */}
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+            <div className="mt-4 space-y-3.5 text-xs">
+              {/* Info Pesanan */}
+              <div
+                className={`rounded-xl border p-3 ${
+                  decisionType === 'APPROVE'
+                    ? 'border-emerald-100 bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/20'
+                    : 'border-rose-100 bg-rose-50/60 dark:border-rose-900/40 dark:bg-rose-950/20'
+                }`}
+              >
                 <p className="font-bold text-slate-900 dark:text-white">
-                  Pesanan #{refundModalTarget.order.orderNumber}
+                  Pesanan #{decisionModalTarget.order.orderNumber} &bull;{' '}
+                  {decisionModalTarget.user.name || 'Pembeli'}
                 </p>
-                {refundModalTarget.order.items?.[0] && (
+                {decisionModalTarget.order.items?.[0] && (
                   <p className="mt-0.5 text-slate-700 dark:text-slate-200">
                     Unit:{' '}
                     <strong>
-                      {refundModalTarget.order.items[0].product?.name ||
-                        refundModalTarget.order.items[0].rentalItem?.name ||
-                        refundModalTarget.order.items[0].service?.name ||
+                      {decisionModalTarget.order.items[0].product?.name ||
                         'Unit Gadget'}
                     </strong>
-                    {refundModalTarget.order.items[0].variantName
-                      ? ` (${refundModalTarget.order.items[0].variantName})`
+                    {decisionModalTarget.order.items[0].variantName
+                      ? ` (${decisionModalTarget.order.items[0].variantName})`
                       : ''}
                   </p>
                 )}
-                <p className="mt-1 text-slate-600 dark:text-slate-300">
-                  Pembeli: <strong>{refundModalTarget.user.name}</strong> (
-                  {refundModalTarget.user.email})
-                </p>
-                <div className="mt-2 border-t border-emerald-200/60 pt-2 text-slate-700 dark:text-slate-300">
-                  <p className="font-semibold text-slate-900 dark:text-white">
-                    Rekening Tujuan:
-                  </p>
-                  <p className="font-mono font-bold text-emerald-700 dark:text-emerald-300">
-                    {refundModalTarget.bankName} -{' '}
-                    {refundModalTarget.bankAccountNumber}
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    a.n. {refundModalTarget.bankAccountName}
-                  </p>
-                </div>
-                <div className="mt-2 flex items-baseline justify-between border-t border-emerald-200/60 pt-2">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    Total Dana Dicairkan:
-                  </span>
-                  <span className="font-mono text-base font-black text-emerald-600 dark:text-emerald-400">
-                    Rp{' '}
-                    {Math.round(
-                      refundModalTarget.refundAmount ||
-                        refundModalTarget.order.total
-                    ).toLocaleString('id-ID')}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Catatan Konfirmasi Pencairan Dana
-                </label>
-                <textarea
-                  rows={2}
-                  value={refundNotes}
-                  onChange={(e) => setRefundNotes(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-slate-200/80 bg-white p-3 text-xs text-slate-900 outline-none transition focus:border-emerald-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => setRefundModalTarget(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={handleExecuteRefund}
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                )}
-                Konfirmasi Pencairan Dana
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 2: Penerbitan Resi Unit Baru (REPLACEMENT) */}
-      {replacementModalTarget && (
-        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <Truck className="h-5 w-5 text-orange-600" />
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Terbitkan Resi Pengiriman Unit Baru (Replacement)
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReplacementModalTarget(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3 text-xs">
-              <div className="rounded-xl border border-orange-100 bg-orange-50/60 p-3 dark:border-orange-900/40 dark:bg-orange-950/20">
-                <p className="font-bold text-slate-900 dark:text-white">
-                  Pesanan #{replacementModalTarget.order.orderNumber}
-                </p>
-                {replacementModalTarget.order.items?.[0] && (
-                  <p className="mt-0.5 text-slate-700 dark:text-slate-200">
-                    Unit Pengganti:{' '}
-                    <strong>
-                      {replacementModalTarget.order.items[0].product?.name ||
-                        replacementModalTarget.order.items[0].rentalItem
-                          ?.name ||
-                        replacementModalTarget.order.items[0].service?.name ||
-                        'Unit Gadget'}
-                    </strong>
-                    {replacementModalTarget.order.items[0].variantName
-                      ? ` (${replacementModalTarget.order.items[0].variantName})`
-                      : ''}
-                  </p>
-                )}
-                <p className="mt-0.5 text-slate-600 dark:text-slate-300">
-                  Penerima: <strong>{replacementModalTarget.user.name}</strong>{' '}
-                  ({replacementModalTarget.user.phone})
-                </p>
-                <p className="mt-0.5 text-slate-500">
-                  Toko Pengirim: {replacementModalTarget.order.store?.name}
-                </p>
-                {replacementModalTarget.returnTrackingNumber && (
-                  <p className="mt-1 font-mono text-[11px] font-bold text-blue-700 dark:text-blue-300">
-                    📦 Unit Retur Diterima:{' '}
-                    {replacementModalTarget.returnCourier || 'Ekspedisi'} —{' '}
-                    {replacementModalTarget.returnTrackingNumber} (Lolos QC)
-                  </p>
-                )}
-              </div>
-
-              {/* Kurir Selector */}
-              <div className="relative">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Ekspedisi Pengiriman Unit Pengganti
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setCourierDropdownOpen((prev) => !prev)}
-                  className="mt-1.5 flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 transition dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                <p
+                  className={`mt-1 font-semibold ${
+                    decisionType === 'APPROVE'
+                      ? 'text-emerald-800 dark:text-emerald-300'
+                      : 'text-rose-800 dark:text-rose-300'
+                  }`}
                 >
-                  <span>
-                    {COURIER_OPTIONS.find((c) => c.id === replacementCourier)
-                      ?.name || replacementCourier}
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
-                      courierDropdownOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-
-                {courierDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                    {COURIER_OPTIONS.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setReplacementCourier(c.id)
-                          setCourierDropdownOpen(false)
-                        }}
-                        className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
-                          replacementCourier === c.id
-                            ? 'bg-orange-50 font-bold text-orange-600 dark:bg-orange-950/50 dark:text-orange-400'
-                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        <span>{c.name}</span>
-                        {replacementCourier === c.id && (
-                          <Check className="h-3.5 w-3.5 text-orange-500" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Nomor Resi */}
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nomor Resi / AWB Pengiriman Unit Baru
-                </label>
-                <input
-                  type="text"
-                  value={replacementTracking}
-                  onChange={(e) => setReplacementTracking(e.target.value)}
-                  placeholder="Ketik nomor resi atau ketik 'AUTO' untuk booking otomatis Biteship"
-                  className="mt-1.5 w-full rounded-xl border border-slate-200/80 bg-white px-3 py-2 font-mono text-xs text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-                />
-              </div>
-
-              {/* Catatan */}
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Catatan untuk Pembeli
-                </label>
-                <textarea
-                  rows={2}
-                  value={replacementNotes}
-                  onChange={(e) => setReplacementNotes(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-slate-200/80 bg-white p-3 text-xs text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => setReplacementModalTarget(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={handleExecuteReplacement}
-                className="flex items-center gap-1.5 rounded-xl bg-orange-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-700 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Truck className="h-3.5 w-3.5" />
-                )}
-                Kirim Unit Pengganti
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Rekomendasi Disetujui ke Superadmin */}
-      {recommendApproveTarget && (
-        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Konfirmasi Setujui Klaim &bull; Kirim ke Superadmin
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRecommendApproveTarget(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3 text-xs">
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-                <p className="font-bold text-slate-900 dark:text-white">
-                  Pesanan #{recommendApproveTarget.order.orderNumber} &bull;{' '}
-                  {recommendApproveTarget.user.name || 'Pembeli'}
-                </p>
-                {recommendApproveTarget.order.items?.[0] && (
-                  <p className="mt-0.5 text-slate-700 dark:text-slate-200">
-                    Unit:{' '}
-                    <strong>
-                      {recommendApproveTarget.order.items[0].product?.name ||
-                        'Unit Gadget'}
-                    </strong>
-                    {recommendApproveTarget.order.items[0].variantName
-                      ? ` (${recommendApproveTarget.order.items[0].variantName})`
-                      : ''}
-                  </p>
-                )}
-                <p className="mt-1 font-semibold text-emerald-800 dark:text-emerald-300">
-                  Bentuk Resolusi:{' '}
-                  {recommendApproveTarget.type === 'REFUND'
+                  Bentuk Komplain:{' '}
+                  {decisionModalTarget.type === 'REFUND'
                     ? 'Pengembalian Dana (Refund)'
                     : 'Tukar Unit Baru (Replacement)'}
                 </p>
               </div>
 
+              {/* Input Deskripsi / Alasan */}
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  Alasan &amp; Catatan Rekomendasi Persetujuan After Sales
-                  (Wajib)
-                </label>
-                <textarea
-                  required
-                  rows={4}
-                  value={recommendApproveNotes}
-                  onChange={(e) => setRecommendApproveNotes(e.target.value)}
-                  placeholder="Jelaskan secara jelas dan detail alasan mengapa klaim ini layak disetujui (misal: verifikasi video unboxing utuh membuktikan cacat pabrik, segel fisik utuh, kelengkapan unit lengkap)..."
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-xs font-medium text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-                />
-                <p className="mt-1 text-[10.5px] text-slate-400">
-                  *Catatan ini akan dikirimkan ke meja kerja Superadmin sebagai
-                  bahan pertimbangan ACC Final.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setRecommendApproveTarget(null)}
-                  className="rounded-xl px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={
-                    isSubmitting || recommendApproveNotes.trim().length < 5
-                  }
-                  onClick={() =>
-                    handleConfirmRecommendation(
-                      recommendApproveTarget,
-                      'APPROVE',
-                      recommendApproveNotes
-                    )
-                  }
-                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  <span>Kirim Rekomendasi Setuju</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Rekomendasi Ditolak ke Superadmin */}
-      {recommendRejectTarget && (
-        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <XCircle className="h-5 w-5 text-rose-600" />
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Konfirmasi Tolak Klaim &bull; Kirim ke Superadmin
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRecommendRejectTarget(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3 text-xs">
-              <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-3 dark:border-rose-900/40 dark:bg-rose-950/20">
-                <p className="font-bold text-slate-900 dark:text-white">
-                  Pesanan #{recommendRejectTarget.order.orderNumber} &bull;{' '}
-                  {recommendRejectTarget.user.name || 'Pembeli'}
-                </p>
-                {recommendRejectTarget.order.items?.[0] && (
-                  <p className="mt-0.5 text-slate-700 dark:text-slate-200">
-                    Unit:{' '}
-                    <strong>
-                      {recommendRejectTarget.order.items[0].product?.name ||
-                        'Unit Gadget'}
-                    </strong>
-                    {recommendRejectTarget.order.items[0].variantName
-                      ? ` (${recommendRejectTarget.order.items[0].variantName})`
-                      : ''}
-                  </p>
-                )}
-                <p className="mt-1 font-semibold text-rose-800 dark:text-rose-300">
-                  Kendala Dilaporkan:{' '}
-                  {recommendRejectTarget.reasonLabel ||
-                    recommendRejectTarget.reason}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  Alasan &amp; Catatan Rekomendasi Penolakan (Wajib)
-                </label>
-                <textarea
-                  required
-                  rows={4}
-                  value={recommendRejectNotes}
-                  onChange={(e) => setRecommendRejectNotes(e.target.value)}
-                  placeholder="Jelaskan secara jelas dan detail alasan mengapa klaim ini direkomendasikan untuk ditolak (misal: indikasi kelalaian pemakaian akibat benturan/jatuh, segel toko rusak, rekaman unboxing terpotong)..."
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-xs font-medium text-slate-900 outline-none focus:border-rose-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-                />
-                <p className="mt-1 text-[10.5px] text-slate-400">
-                  *Alasan detail ini akan diteruskan ke Superadmin sebagai
-                  rekomendasi dasar penolakan klaim.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setRecommendRejectTarget(null)}
-                  className="rounded-xl px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={
-                    isSubmitting || recommendRejectNotes.trim().length < 5
-                  }
-                  onClick={() =>
-                    handleConfirmRecommendation(
-                      recommendRejectTarget,
-                      'REJECT',
-                      recommendRejectNotes
-                    )
-                  }
-                  className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  <span>Kirim Rekomendasi Tolak</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 3: Penolakan Pengajuan Garansi */}
-      {rejectModalTarget && (
-        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                Tolak Pengajuan Klaim Garansi
-              </h2>
-              <button
-                type="button"
-                onClick={() => setRejectModalTarget(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50 p-3 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300">
-                <p className="font-bold text-slate-900 dark:text-white">
-                  Pesanan #{rejectModalTarget.order.orderNumber}
-                </p>
-                {rejectModalTarget.order.items?.[0] && (
-                  <p className="mt-0.5 text-slate-700 dark:text-slate-200">
-                    Unit:{' '}
-                    <strong>
-                      {rejectModalTarget.order.items[0].product?.name ||
-                        rejectModalTarget.order.items[0].rentalItem?.name ||
-                        rejectModalTarget.order.items[0].service?.name ||
-                        'Unit Gadget'}
-                    </strong>
-                    {rejectModalTarget.order.items[0].variantName
-                      ? ` (${rejectModalTarget.order.items[0].variantName})`
-                      : ''}
-                  </p>
-                )}
-                <p className="mt-0.5 text-slate-500">
-                  Alasan pembeli:{' '}
-                  {rejectModalTarget.reasonLabel || rejectModalTarget.reason}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Alasan Penolakan <span className="text-orange-600">*</span>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  {decisionType === 'APPROVE'
+                    ? 'Deskripsi / Alasan Persetujuan (Opsional)'
+                    : 'Deskripsi / Alasan Penolakan (Opsional)'}
                 </label>
                 <textarea
                   rows={3}
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="Contoh: Kerusakan fisik akibat kelalaian pemakaian (terbentur/kemasukan air) tidak termasuk cakupan garansi unit baru..."
-                  className="mt-1.5 w-full rounded-xl border border-slate-200/80 bg-white p-3 text-xs text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                  value={decisionNotes}
+                  onChange={(e) => setDecisionNotes(e.target.value)}
+                  placeholder={
+                    decisionType === 'APPROVE'
+                      ? 'Contoh: Pemeriksaan fisik telah selesai. Cacat pabrik terverifikasi, segel utuh dan memenuhi syarat garansi...'
+                      : 'Contoh: Pemeriksaan fisik membuktikan kerusakan disebabkan benturan keras / kemasukan cairan di luar garansi pabrik...'
+                  }
+                  className="mt-1.5 w-full rounded-xl border border-slate-200/90 bg-white p-3 text-xs font-medium text-slate-900 outline-none transition focus:border-indigo-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
                 />
               </div>
-            </div>
 
-            <div className="mt-5 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => setRejectModalTarget(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={handleRejectByAfterSales}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  'Konfirmasi Tolak'
+              {/* Upload Foto Bukti QC (Maksimal 5) */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Foto Bukti Pemeriksaan QC (Maksimal 5)
+                  </label>
+                  <span className="font-mono text-[10.5px] font-bold text-slate-500">
+                    {decisionImages.length}/5 Foto
+                  </span>
+                </div>
+
+                {/* Grid Preview Foto QC */}
+                {decisionImages.length > 0 && (
+                  <div className="mt-2 grid grid-cols-5 gap-2">
+                    {decisionImages.map((imgUrl, idx) => (
+                      <div
+                        key={idx}
+                        className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`Bukti QC ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveQcImage(idx)}
+                          className="absolute right-1 top-1 rounded-full bg-rose-600 p-1 text-white opacity-85 transition hover:scale-105 hover:opacity-100"
+                          title="Hapus foto"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              </button>
+
+                {/* Tombol Input File Upload */}
+                {decisionImages.length < 5 && (
+                  <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-3 text-center transition hover:border-indigo-500 hover:bg-indigo-50/30 dark:border-slate-700 dark:bg-slate-800/40">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleUploadQcImages}
+                      disabled={isUploadingImages}
+                      className="hidden"
+                    />
+                    {isUploadingImages ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                    ) : (
+                      <Upload className="h-4 w-4 text-indigo-600" />
+                    )}
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {isUploadingImages
+                        ? 'Mengunggah & Mengompres Foto...'
+                        : '+ Tambah Foto Bukti QC'}
+                    </span>
+                  </label>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setDecisionModalTarget(null)}
+                  disabled={isSubmitting || isUploadingImages}
+                  className="rounded-xl border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmitting || isUploadingImages}
+                  onClick={handleSubmitDecision}
+                  className={`flex items-center gap-1.5 rounded-xl px-4 py-2 font-bold text-white transition disabled:opacity-50 ${
+                    decisionType === 'APPROVE'
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-rose-600 hover:bg-rose-700'
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  <span>
+                    {decisionType === 'APPROVE'
+                      ? 'Kirim Persetujuan ke Superadmin'
+                      : 'Kirim Penolakan ke Superadmin'}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1847,19 +1308,29 @@ export default function AfterSalesReturnsPage() {
             </div>
 
             <div className="mt-4 space-y-3">
-              <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/70 p-3 text-xs dark:border-indigo-900/60 dark:bg-indigo-950/30">
-                <p className="font-bold text-indigo-950 dark:text-indigo-200">
-                  Pesanan #{receivingPackageTarget.order.orderNumber}
+              {/* Ringkasan Simpel: Barang Dipesan, Nama Pemesan, dan Deskripsi Komplain */}
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 text-xs dark:border-slate-800 dark:bg-slate-800/40">
+                <p className="font-bold text-slate-900 dark:text-white">
+                  {receivingPackageTarget.order.items?.[0]?.product?.name ||
+                    receivingPackageTarget.order.items?.[0]?.rentalItem?.name ||
+                    receivingPackageTarget.order.items?.[0]?.service?.name ||
+                    'Unit Gadget'}
+                  {receivingPackageTarget.order.items?.[0]?.variantName
+                    ? ` (${receivingPackageTarget.order.items[0].variantName})`
+                    : ''}
                 </p>
-                <p className="text-[11px] text-indigo-800/90 dark:text-indigo-300/90">
-                  Kurir &amp; Resi:{' '}
-                  {receivingPackageTarget.returnCourier || 'JNE'} —{' '}
-                  {receivingPackageTarget.returnTrackingNumber}
+                <p className="mt-1 text-slate-600 dark:text-slate-300">
+                  Pemesan:{' '}
+                  <strong>
+                    {receivingPackageTarget.user.name || 'Pembeli'}
+                  </strong>
                 </p>
-                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">
-                  Konfirmasi ini akan memberitahukan pembeli dan Superadmin
-                  bahwa paket fisik telah sampai di toko cabang dan teknisi
-                  mulai melakukan pemeriksaan fisik (QC).
+                <p className="mt-1 text-slate-600 dark:text-slate-300">
+                  Kendala: &ldquo;
+                  {receivingPackageTarget.description ||
+                    receivingPackageTarget.reasonLabel ||
+                    receivingPackageTarget.reason}
+                  &rdquo;
                 </p>
               </div>
 

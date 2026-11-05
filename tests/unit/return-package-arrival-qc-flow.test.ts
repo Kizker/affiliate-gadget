@@ -51,30 +51,26 @@ describe('End-to-End: Konfirmasi Barang Retur Tiba di Cabang & Alur QC Fisik', (
     )
   })
 
-  it('2. Meja Kerja After Sales: Menampilkan tombol "Konfirmasi Paket Tiba di Cabang & Mulai QC" dan tombol QC Lulus terkunci jika belum tiba', () => {
+  it('2. Meja Kerja After Sales: Menampilkan tombol konfirmasi barang diterima dan hanya 2 tombol keputusan (Setujui atau Tolak)', () => {
     expect(afterSalesContent).toContain('packageReceivedAt?: string | null')
-    expect(afterSalesContent).toContain('Konfirmasi Paket Tiba di Cabang')
-    expect(afterSalesContent).toContain('Mulai QC')
+    expect(afterSalesContent).toContain('Barang Diterima &amp; Mulai QC')
     expect(afterSalesContent).toContain('handleConfirmPackageReceived')
     expect(afterSalesContent).toContain("action: 'CONFIRM_PACKAGE_RECEIVED'")
     expect(afterSalesContent).toContain('Paket Fisik Telah Diterima di Cabang')
-    expect(afterSalesContent).toContain('QC Lulus: Cairkan Dana')
-    expect(afterSalesContent).toContain('QC Lulus: Kirim Unit Pengganti')
-    expect(afterSalesContent).toContain('disabled={!isArrived}')
+    expect(afterSalesContent).toContain('Setujui Permintaan')
+    expect(afterSalesContent).toContain('Tolak Permintaan')
     expect(afterSalesContent).toContain(
-      'Terkunci hingga paket retur dikonfirmasi tiba'
+      'Foto Bukti Pemeriksaan QC (Maksimal 5)'
     )
   })
 
-  it('3. Meja Kerja Super Admin: Menampilkan status tiba di cabang dan tombol aksi konfirmasi paket sampai', () => {
+  it('3. Meja Kerja Super Admin: Fokus pada putusan rekomendasi ACC Final dan Tolak & Kembalikan tanpa banner ekspedisi berulang', () => {
     expect(superAdminReturnsContent).toContain(
       'packageReceivedAt?: string | null'
     )
-    expect(superAdminReturnsContent).toContain(
-      'Paket Fisik Telah Diterima di Cabang'
-    )
-    expect(superAdminReturnsContent).toContain('Konfirmasi Paket Tiba di Toko')
-    expect(superAdminReturnsContent).toContain('handleConfirmReceivedAtStore')
+    expect(superAdminReturnsContent).toContain('handleDirectApprove')
+    expect(superAdminReturnsContent).toContain('handleDirectRejectAndReturn')
+    expect(superAdminReturnsContent).toContain('Menunggu ACC Superadmin')
   })
 
   it('4. Halaman Pesanan Super Admin: Menampilkan status "Paket Tiba di Toko (Sedang QC Fisik)" di tabel dan drawer', () => {

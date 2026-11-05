@@ -259,20 +259,41 @@ export function ChatMessageBubble({
               <div className="shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px]">
                 {/* Top Header Info Pill */}
                 <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                      isReturn
-                        ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400'
-                        : 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
-                    }`}
-                  >
-                    {isReturn ? (
-                      <RotateCcw className="h-2.5 w-2.5" />
-                    ) : (
-                      <Package className="h-2.5 w-2.5" />
-                    )}
-                    {isReturn ? 'Pengajuan Retur' : 'Rincian Pesanan'}
-                  </span>
+                  {orderId || orderNumber ? (
+                    <Link
+                      href={`/dashboard/customer/orders/${orderId || orderNumber}`}
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold transition hover:opacity-80 active:scale-95 ${
+                        isReturn
+                          ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400'
+                          : 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
+                      }`}
+                    >
+                      {isReturn ? (
+                        <RotateCcw className="h-2.5 w-2.5" />
+                      ) : (
+                        <Package className="h-2.5 w-2.5" />
+                      )}
+                      <span>
+                        {isReturn ? 'Pengajuan Retur' : 'Rincian Pesanan'}
+                      </span>
+                      <ExternalLink className="ml-0.5 h-2 w-2" />
+                    </Link>
+                  ) : (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                        isReturn
+                          ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400'
+                          : 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
+                      }`}
+                    >
+                      {isReturn ? (
+                        <RotateCcw className="h-2.5 w-2.5" />
+                      ) : (
+                        <Package className="h-2.5 w-2.5" />
+                      )}
+                      {isReturn ? 'Pengajuan Retur' : 'Rincian Pesanan'}
+                    </span>
+                  )}
                   <div className="flex items-center gap-1 text-[9px] text-slate-400">
                     <span>{formattedTime}</span>
                     {isMe &&

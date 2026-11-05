@@ -55,23 +55,16 @@ describe('Spesifikasi Terpadu: Klaim Garansi, Resolusi Refund & Replacement, dan
     expect(content).toContain('Admin After Sales Terpusat')
   })
 
-  it('4. Meja Kerja Admin After Sales: Bertindak sebagai eksekutor tunggal (Pencairan Dana, Terbitkan Resi Baru, Tolak, dan Live Chat)', () => {
+  it('4. Meja Kerja Admin After Sales: Bertindak sebagai pemeriksa QC (Konfirmasi Paket Tiba, Setujui Permintaan, Tolak Permintaan, Lampiran Foto QC, dan Live Chat)', () => {
     const content = fs.readFileSync(afterSalesReturnsPagePath, 'utf8')
-    // Eksekutor tunggal validasi & pencairan dana
+    // Eksekutor tunggal validasi fisik QC
     expect(content).toContain('Eksekutor tunggal validasi bukti cacat produk')
-    expect(content).toMatch(/Cairkan Dana/)
-    expect(content).toContain('handleExecuteRefund')
-    expect(content).toContain("resolutionAction: 'REFUND'")
-
-    // Penerbitan resi unit baru
-    expect(content).toMatch(/Kirim Unit Pengganti/)
-    expect(content).toContain('handleExecuteReplacement')
-    expect(content).toContain("resolutionAction: 'REPLACEMENT'")
-
-    // Penolakan
-    expect(content).toContain('Tolak Pengajuan')
-    expect(content).toContain('handleRejectByAfterSales')
-    expect(content).toContain("action: 'REJECT'")
+    expect(content).toContain('Barang Diterima &amp; Mulai QC')
+    expect(content).toContain('Setujui Permintaan')
+    expect(content).toContain('Tolak Permintaan')
+    expect(content).toContain('Foto Bukti Pemeriksaan QC (Maksimal 5)')
+    expect(content).toContain('handleSubmitDecision')
+    expect(content).toContain("action: 'AFTER_SALES_CONFIRM'")
 
     // Live chat terintegrasi purna jual
     expect(content).toContain('Chat Pembeli (Purna Jual)')

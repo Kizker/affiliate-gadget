@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     const [orders, allStores, allTimeCompletedAgg] = await Promise.all([
       prisma.order.findMany({
         where: {
-          status: { in: [...ACTIVE_ORDER_STATUSES] },
+          status: { in: [...ACTIVE_ORDER_STATUSES, 'RETURNED'] },
           ...storeWhereClause,
           ...dateWhereClause,
         },
@@ -154,13 +154,18 @@ export async function GET(request: NextRequest) {
             },
           },
           returnRequests: {
-            where: { status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED'] } },
+            where: {
+              status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED', 'COMPLETED'] },
+            },
             select: {
               id: true,
               status: true,
               type: true,
               refundAmount: true,
               reason: true,
+              bankName: true,
+              bankAccountNumber: true,
+              bankAccountName: true,
             },
           },
         },
@@ -487,6 +492,37 @@ export async function GET(request: NextRequest) {
           rawDate: order.createdAt,
           status: 'PENDING',
           statusLabel: statusLabel,
+          orderStatus: order.status,
+          courierInfo: courierDesc,
+          trackingNumber: order.trackingNumber,
+        })
+      } else if (order.status === 'RETURNED') {
+        // Transaksi Retur Selesai (Refund Dana Berhasil Dikembalikan ke Customer via Escrow Midtrans)
+        const effectiveDate = order.updatedAt || order.createdAt
+        const formattedDate = new Intl.DateTimeFormat('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(new Date(effectiveDate))
+
+        const refundRequest = (order as any).returnRequests?.[0]
+        const refundAmount = refundRequest?.refundAmount || order.total || 0
+
+        mutations.push({
+          id: `refund-${order.id}`,
+          refNumber: `REFUND-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+          title: `Pengembalian Dana Refund (${firstProductName})`,
+          subtitle: `Dana escrow dikembalikan ke rekening ${refundRequest?.bankName || 'bank'} ${refundRequest?.bankAccountNumber ? `${refundRequest.bankAccountNumber} ` : ''}a.n. ${refundRequest?.bankAccountName || customerName} (#${order.orderNumber})`,
+          type: 'PAYOUT',
+          category: 'ESCROW',
+          categoryLabel: 'Pencairan Refund',
+          amount: refundAmount,
+          date: formattedDate,
+          rawDate: effectiveDate,
+          status: 'SUCCESS',
+          statusLabel: 'Dana Dikembalikan ke Pembeli',
           orderStatus: order.status,
           courierInfo: courierDesc,
           trackingNumber: order.trackingNumber,

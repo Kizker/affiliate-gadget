@@ -83,8 +83,7 @@ export function ChatHeader({
               (selectedRoom.store as any)?.isAfterSales ||
               selectedRoom.order?.status === 'COMPLETED' ? (
               <span className="font-semibold text-orange-600 dark:text-orange-400">
-                Admin After Sales:{' '}
-                {selectedRoom.claimedBy?.name || 'Tim Purna Jual Terpusat'}
+                Layanan Purna Jual &amp; Garansi Terpusat
                 {activeOrderContext?.orderNumber
                   ? ` • #${activeOrderContext.orderNumber}`
                   : ''}

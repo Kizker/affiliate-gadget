@@ -16,28 +16,57 @@ export function ChatRoomCard({
   onSelectRoom,
 }: ChatRoomCardProps) {
   const storeObj = room.store || room.order?.store
-  const roomIsOnline = isStoreOperational(storeObj, room.technician)
+  const firstProduct = room.order?.items?.[0]?.product?.name
+  const isMitraRoom =
+    (room.claimedBy as any)?.role === 'MITRA' ||
+    Boolean((room.claimedBy as any)?.mitra) ||
+    Boolean((room as any).mitra)
+  const isCsRoom =
+    !isMitraRoom &&
+    ((storeObj as any)?.isCs ||
+      (room.type === 'admin' && !room.storeId && !room.technician))
+  const isAfterSalesRoom =
+    !isMitraRoom &&
+    ((storeObj as any)?.isAfterSales ||
+      (room.claimedBy as any)?.role === 'AFTER_SALES' ||
+      room.order?.status === 'COMPLETED' ||
+      room.order?.status === 'RETURNED')
+
+  // Online status akurat: Hanya hijau jika lawan bicara aktif mengirim pesan < 10 menit terakhir
+  const roomIsOnline = (() => {
+    const latestMsg = room.messages?.[0]
+    if (
+      latestMsg &&
+      latestMsg.senderId !== room.customerId &&
+      latestMsg.createdAt
+    ) {
+      const diffMs = Date.now() - new Date(latestMsg.createdAt).getTime()
+      if (diffMs < 10 * 60 * 1000) return true
+    }
+    if (storeObj && !isAfterSalesRoom && !isMitraRoom && !isCsRoom) {
+      return isStoreOperational(storeObj, room.technician)
+    }
+    return false
+  })()
+
   const claimedByName = room.claimedBy?.name
   const storeLogo = room.claimedBy
     ? room.claimedBy.image || null
     : storeObj?.logo || room.order?.claimedBy?.image || null
   const avatarInitialSource = room.claimedBy ? claimedByName || '' : ''
-  const firstProduct = room.order?.items?.[0]?.product?.name
-  const isCsRoom =
-    (storeObj as any)?.isCs ||
-    (room.type === 'admin' && !room.storeId && !room.technician)
-  const isAfterSalesRoom =
-    (storeObj as any)?.isAfterSales ||
-    (room.claimedBy as any)?.role === 'AFTER_SALES' ||
-    room.order?.status === 'COMPLETED' ||
-    room.order?.status === 'RETURNED'
-  const rawTitle =
-    storeObj?.name || firstProduct || room.technician?.user?.name || 'CS Toko'
-  const title = isCsRoom
-    ? 'Customer Service (Superadmin)'
-    : isAfterSalesRoom && !rawTitle.startsWith('Layanan Purna Jual')
-      ? `Layanan Purna Jual (${rawTitle})`
-      : rawTitle
+
+  const rawTitle = isMitraRoom
+    ? (room.claimedBy as any)?.mitra?.businessName ||
+      room.claimedBy?.name ||
+      'Mitra Servis'
+    : isAfterSalesRoom
+      ? room.claimedBy?.name || 'Budi Santoso (After Sales Roxy Group)'
+      : storeObj?.name ||
+        firstProduct ||
+        room.technician?.user?.name ||
+        'CS Toko'
+
+  const title = isCsRoom ? 'Customer Service (Superadmin)' : rawTitle
   const orderNumber = room.order?.orderNumber
   const lastMsg = formatMessagePreview(room.messages?.[0])
 
@@ -113,13 +142,19 @@ export function ChatRoomCard({
           </div>
         )}
 
-        {isCsRoom && (
+        {isMitraRoom ? (
+          <div className="mt-0.5 flex items-center gap-1">
+            <span className="rounded bg-emerald-50 px-1 text-[9px] font-bold text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+              Mitra Servis
+            </span>
+          </div>
+        ) : isCsRoom ? (
           <div className="mt-0.5 flex items-center gap-1">
             <span className="rounded bg-blue-50 px-1 text-[9px] font-bold text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
               CS Superadmin
             </span>
           </div>
-        )}
+        ) : null}
 
         {!isCsRoom && !orderNumber && room.claimedBy?.name && (
           <div className="mt-0.5 flex items-center gap-1">

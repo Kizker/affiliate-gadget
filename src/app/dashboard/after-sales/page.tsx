@@ -92,7 +92,12 @@ export default function AfterSalesDashboardPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/after-sales/dashboard')
+      const res = await fetch(`/api/after-sales/dashboard?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      })
       const json = await res.json()
       if (res.ok && json.success) {
         setData(json)

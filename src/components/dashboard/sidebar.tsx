@@ -83,9 +83,14 @@ const superAdminNavSections: NavSection[] = [
       },
       { icon: Radio, label: 'Siaran Langsung', href: '/dashboard/admin/live' },
       { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
+    ],
+  },
+  {
+    title: 'Purna Jual & Retur',
+    items: [
       {
         icon: RotateCcw,
-        label: 'Persetujuan Retur & Garansi',
+        label: 'Persetujuan Retur (ACC)',
         href: '/dashboard/admin/returns',
       },
     ],

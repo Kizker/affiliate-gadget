@@ -92,6 +92,24 @@ interface ReturnItem {
   user: { id: string; name: string | null; email: string; phone: string | null }
 }
 
+const extractQcImages = (storeResponse?: string | null): string[] => {
+  if (!storeResponse) return []
+  const match = storeResponse.match(/\[Foto QC:\s*([^\]]+)\]/)
+  if (!match) return []
+  return match[1]
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean)
+}
+
+const cleanRecommendationNote = (storeResponse?: string | null): string => {
+  if (!storeResponse) return ''
+  return storeResponse
+    .replace(/\[Rekomendasi After Sales: (DISETUJUI|DITOLAK)\]\s*/g, '')
+    .replace(/\[Foto QC:\s*[^\]]+\]/g, '')
+    .trim()
+}
+
 export default function SuperAdminReturnsPage() {
   const { isLoading: guardLoading, isAllowed } = usePageGuard(
     '/dashboard/admin/returns'
@@ -102,66 +120,13 @@ export default function SuperAdminReturnsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<
-    'ALL' | 'IN_REVIEW' | 'PENDING' | 'APPROVED' | 'REJECTED'
-  >('ALL')
+    'ALL' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED'
+  >('IN_REVIEW')
   const [processingId, setProcessingId] = useState<string | null>(null)
-
-  const [rejectModalOpen, setRejectModalOpen] = useState(false)
-  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
-  const [rejectionReason, setRejectionReason] = useState('')
-
-  const [approveModalOpen, setApproveModalOpen] = useState(false)
-  const [approveTarget, setApproveTarget] = useState<ReturnItem | null>(null)
-  const [approveNotes, setApproveNotes] = useState('')
 
   const [activeImage, setActiveImage] = useState<string | null>(null)
   const [resiModalOpen, setResiModalOpen] = useState(false)
   const [activeTrackingQuery, setActiveTrackingQuery] = useState('')
-  const [confirmingReceivedId, setConfirmingReceivedId] = useState<
-    string | null
-  >(null)
-
-  const handleConfirmReceivedAtStore = async (returnId: string) => {
-    setConfirmingReceivedId(returnId)
-    try {
-      const res = await fetch(`/api/returns/${returnId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'CONFIRM_PACKAGE_RECEIVED',
-          qcNotes:
-            'Paket fisik telah tiba di cabang toko. Teknisi mulai pemeriksaan fisik (QC).',
-          qcStatus: 'IN_QC',
-        }),
-      })
-      const json = await res.json()
-      if (res.ok) {
-        toast.success('Penerimaan paket fisik retur berhasil dikonfirmasi!')
-        const nowIso = new Date().toISOString()
-        setReturns((prev) =>
-          prev.map((item) =>
-            item.id === returnId
-              ? {
-                  ...item,
-                  packageReceivedAt: nowIso,
-                  qcStatus: 'IN_QC',
-                  qcNotes:
-                    'Paket fisik telah tiba di cabang toko. Teknisi mulai pemeriksaan fisik (QC).',
-                  storeResponse: `${item.storeResponse || ''}\n\n[Paket Fisik Tiba di Cabang] Dikonfirmasi oleh Superadmin.`,
-                }
-              : item
-          )
-        )
-        fetchReturns()
-      } else {
-        toast.error(json.error || 'Gagal mengonfirmasi penerimaan paket')
-      }
-    } catch {
-      toast.error('Terjadi kesalahan jaringan')
-    } finally {
-      setConfirmingReceivedId(null)
-    }
-  }
 
   const fetchReturns = useCallback(async () => {
     try {
@@ -182,40 +147,28 @@ export default function SuperAdminReturnsPage() {
     if (isAllowed) fetchReturns()
   }, [isAllowed, fetchReturns])
 
-  const openApproveModal = (item: ReturnItem) => {
-    setApproveTarget(item)
-    const asNote =
-      item.storeResponse?.replace(
-        /\[Rekomendasi After Sales: (DISETUJUI|DITOLAK)\]\s*/g,
-        ''
-      ) || ''
-    setApproveNotes(
-      item.type === 'REFUND'
-        ? `[Disetujui Superadmin] ACC Final Refund disetujui. ${asNote ? `(Rekomendasi AS: ${asNote})` : ''}`.trim()
-        : `[Disetujui Superadmin] ACC Final Tukar Unit disetujui. ${asNote ? `(Rekomendasi AS: ${asNote})` : ''}`.trim()
-    )
-    setApproveModalOpen(true)
-  }
-
-  const handleConfirmApprove = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!approveTarget) return
+  // Langsung ACC Final (1-Klik Tanpa Modal Konfirmasi)
+  const handleDirectApprove = async (item: ReturnItem) => {
     try {
-      setProcessingId(approveTarget.id)
-      const res = await fetch(`/api/returns/${approveTarget.id}`, {
+      setProcessingId(item.id)
+      const res = await fetch(`/api/returns/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'APPROVE',
           adminNotes:
-            approveNotes.trim() ||
-            '[Disetujui Superadmin] Pengajuan retur telah disetujui Superadmin.',
+            item.type === 'REFUND'
+              ? '[Disetujui Superadmin] ACC Final Refund disetujui.'
+              : '[Disetujui Superadmin] ACC Final Tukar Unit disetujui.',
         }),
       })
       const json = await res.json()
       if (res.ok && json.success) {
-        toast.success('Keputusan ACC Final berhasil disetujui Superadmin!')
-        setApproveModalOpen(false)
+        toast.success(
+          item.type === 'REFUND'
+            ? 'ACC Final berhasil! Dana refund otomatis dicairkan.'
+            : 'ACC Final berhasil! Unit baru otomatis diproses kirim.'
+        )
         fetchReturns()
       } else {
         toast.error(json.error || 'Gagal menyetujui pengembalian')
@@ -227,46 +180,24 @@ export default function SuperAdminReturnsPage() {
     }
   }
 
-  const handleApprove = async (id: string) => {
-    const item = returns.find((r) => r.id === id)
-    if (item) openApproveModal(item)
-  }
-
-  const openRejectModal = (id: string) => {
-    setRejectTargetId(id)
-    const item = returns.find((r) => r.id === id)
-    const asNote =
-      item?.storeResponse?.replace(
-        /\[Rekomendasi After Sales: (DISETUJUI|DITOLAK)\]\s*/g,
-        ''
-      ) || ''
-    setRejectionReason(
-      asNote ? `Berdasarkan rekomendasi After Sales: ${asNote}` : ''
-    )
-    setRejectModalOpen(true)
-  }
-
-  const handleConfirmReject = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!rejectTargetId) return
-    if (!rejectionReason.trim()) {
-      toast.error('Alasan penolakan wajib diisi')
-      return
-    }
+  // Langsung Tolak & Kembalikan ke After Sales (1-Klik Tanpa Modal Konfirmasi)
+  const handleDirectRejectAndReturn = async (item: ReturnItem) => {
     try {
-      setProcessingId(rejectTargetId)
-      const res = await fetch(`/api/returns/${rejectTargetId}`, {
+      setProcessingId(item.id)
+      const res = await fetch(`/api/returns/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'REJECT',
-          rejectionReason: rejectionReason.trim(),
+          rejectionReason:
+            'Ditolak oleh Superadmin dan dikembalikan ke meja kerja After Sales untuk ditinjau ulang.',
         }),
       })
       const json = await res.json()
       if (res.ok && json.success) {
-        toast.success('Pengajuan pengembalian berhasil ditolak secara final')
-        setRejectModalOpen(false)
+        toast.success(
+          'Pengajuan retur berhasil ditolak dan dikembalikan ke After Sales!'
+        )
         fetchReturns()
       } else {
         toast.error(json.error || 'Gagal menolak pengembalian')
@@ -278,8 +209,12 @@ export default function SuperAdminReturnsPage() {
     }
   }
 
+  // Filtered returns: Pengajuan yang masih PENDING After Sales TIDAK BOLEH masuk ke Superadmin dahulu
   const filteredReturns = useMemo(() => {
     return returns.filter((item) => {
+      // Wajib sudah diproses/diteruskan After Sales
+      if (item.status === 'PENDING') return false
+
       const q = searchQuery.toLowerCase()
       const matchQuery =
         item.order.orderNumber.toLowerCase().includes(q) ||
@@ -295,7 +230,6 @@ export default function SuperAdminReturnsPage() {
       if (!matchQuery) return false
       if (statusFilter === 'ALL') return true
       if (statusFilter === 'IN_REVIEW') return item.status === 'IN_REVIEW'
-      if (statusFilter === 'PENDING') return item.status === 'PENDING'
       if (statusFilter === 'APPROVED')
         return item.status === 'APPROVED' || item.status === 'COMPLETED'
       if (statusFilter === 'REJECTED') return item.status === 'REJECTED'
@@ -304,14 +238,15 @@ export default function SuperAdminReturnsPage() {
   }, [returns, searchQuery, statusFilter])
 
   const counts = useMemo(() => {
+    const superAdminReturns = returns.filter((r) => r.status !== 'PENDING')
     return {
-      all: returns.length,
-      inReview: returns.filter((r) => r.status === 'IN_REVIEW').length,
-      pending: returns.filter((r) => r.status === 'PENDING').length,
-      approved: returns.filter(
+      all: superAdminReturns.length,
+      inReview: superAdminReturns.filter((r) => r.status === 'IN_REVIEW')
+        .length,
+      approved: superAdminReturns.filter(
         (r) => r.status === 'APPROVED' || r.status === 'COMPLETED'
       ).length,
-      rejected: returns.filter((r) => r.status === 'REJECTED').length,
+      rejected: superAdminReturns.filter((r) => r.status === 'REJECTED').length,
     }
   }, [returns])
 
@@ -336,13 +271,13 @@ export default function SuperAdminReturnsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <button
           onClick={() => setStatusFilter('ALL')}
           className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'ALL' ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
           <span className="text-[11px] font-semibold text-slate-500">
-            Semua Pengajuan
+            Semua Pengajuan Masuk
           </span>
           <p className="mt-1 text-xl font-black text-slate-900 dark:text-white">
             {counts.all}
@@ -357,17 +292,6 @@ export default function SuperAdminReturnsPage() {
           </span>
           <p className="mt-1 text-xl font-black text-orange-600">
             {counts.inReview}
-          </p>
-        </button>
-        <button
-          onClick={() => setStatusFilter('PENDING')}
-          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'PENDING' ? 'border-amber-500 bg-amber-50/70 dark:border-amber-500 dark:bg-amber-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
-        >
-          <span className="text-[11px] font-semibold text-amber-600">
-            Baru / Belum Ditelaah
-          </span>
-          <p className="mt-1 text-xl font-black text-amber-600">
-            {counts.pending}
           </p>
         </button>
         <button
@@ -650,138 +574,6 @@ export default function SuperAdminReturnsPage() {
                   </div>
                 </div>
 
-                {/* Banner Unit Retur Sedang Dikirim Balik oleh Pembeli (Biteship Tracking) */}
-                {(item.returnTrackingNumber ||
-                  item.packageReceivedAt ||
-                  item.storeResponse?.includes(
-                    '[Paket Fisik Tiba di Cabang]'
-                  )) &&
-                  (item.packageReceivedAt ||
-                  item.storeResponse?.includes(
-                    '[Paket Fisik Tiba di Cabang]'
-                  ) ? (
-                    <div className="mt-3 rounded-xl border border-indigo-200/90 bg-indigo-50/70 p-3 text-xs text-indigo-950 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-200">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 font-bold text-indigo-950 dark:text-indigo-100">
-                          <CheckCircle2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                          <span>
-                            Paket Fisik Telah Diterima di Cabang &bull; Sedang
-                            QC
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-md border border-indigo-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-indigo-800 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-200">
-                            Diterima:{' '}
-                            {item.packageReceivedAt
-                              ? new Date(
-                                  item.packageReceivedAt
-                                ).toLocaleDateString('id-ID', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : item.updatedAt
-                                ? new Date(item.updatedAt).toLocaleDateString(
-                                    'id-ID',
-                                    {
-                                      day: 'numeric',
-                                      month: 'short',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    }
-                                  )
-                                : 'Dikonfirmasi Tiba'}
-                          </span>
-                          {item.returnTrackingNumber && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveTrackingQuery(
-                                  item.returnTrackingNumber || ''
-                                )
-                                setResiModalOpen(true)
-                              }}
-                              className="shadow-2xs inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-0.5 text-[10.5px] font-semibold text-indigo-800 hover:bg-indigo-200 dark:bg-slate-800 dark:text-indigo-300"
-                            >
-                              <Search className="h-3 w-3" />
-                              <span>Lacak Biteship</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {(item.qcNotes ||
-                        item.storeResponse?.match(
-                          /Catatan QC:\s*([^\n]+)/
-                        )?.[1]) && (
-                        <p className="mt-1 text-[11px] leading-relaxed text-indigo-900/80 dark:text-indigo-200/80">
-                          <strong>Catatan QC:</strong> &ldquo;
-                          {item.qcNotes ||
-                            item.storeResponse
-                              ?.match(/Catatan QC:\s*([^\n]+)/)?.[1]
-                              ?.trim()}
-                          &rdquo;
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mt-3 rounded-xl border border-blue-200/90 bg-blue-50/70 p-3 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
-                          <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <span>
-                            Unit Retur Sedang Dikirim Balik oleh Pembeli
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-md border border-blue-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
-                            {item.returnCourier || 'Ekspedisi'} —{' '}
-                            {item.returnTrackingNumber}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveTrackingQuery(
-                                item.returnTrackingNumber || ''
-                              )
-                              setResiModalOpen(true)
-                            }}
-                            className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 active:scale-95"
-                          >
-                            <Search className="h-3.5 w-3.5" />
-                            <span>Lacak Biteship</span>
-                          </button>
-                          {item.status !== 'COMPLETED' &&
-                            item.status !== 'REJECTED' && (
-                              <button
-                                type="button"
-                                disabled={confirmingReceivedId === item.id}
-                                onClick={() =>
-                                  handleConfirmReceivedAtStore(item.id)
-                                }
-                                className="shadow-2xs inline-flex items-center gap-1 rounded-lg border border-indigo-600 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300"
-                              >
-                                {confirmingReceivedId === item.id ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Package className="h-3.5 w-3.5" />
-                                )}
-                                <span>Konfirmasi Paket Tiba di Toko</span>
-                              </button>
-                            )}
-                        </div>
-                      </div>
-                      <p className="mt-1 text-[11px] leading-relaxed text-blue-800/80 dark:text-blue-300/80">
-                        Paket fisik sedang menuju{' '}
-                        {item.order.store?.name || 'Toko Cabang'}. Silakan
-                        lakukan verifikasi fisik (QC) setelah paket tiba di toko
-                        sebelum memproses unit pengganti atau pencairan refund.
-                      </p>
-                    </div>
-                  ))}
-
                 {hasRecommendation ? (
                   <div
                     className={`mt-4 rounded-xl border p-3.5 text-xs transition ${isRecApproved ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200' : 'border-rose-200 bg-rose-50/70 text-rose-950 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200'}`}
@@ -807,19 +599,46 @@ export default function SuperAdminReturnsPage() {
                     </div>
                     <p className="mt-1 leading-relaxed">
                       <strong>Catatan Telaah After Sales:</strong> &ldquo;
-                      {item.storeResponse?.replace(
-                        /\[Rekomendasi After Sales: (DISETUJUI|DITOLAK)\]\s*/g,
-                        ''
-                      )}
+                      {cleanRecommendationNote(item.storeResponse) || '-'}
                       &rdquo;
                     </p>
+
+                    {/* Galeri Foto Bukti QC dari After Sales */}
+                    {(() => {
+                      const qcImages = extractQcImages(item.storeResponse)
+                      if (qcImages.length === 0) return null
+                      return (
+                        <div className="mt-2.5 border-t border-slate-200/60 pt-2 dark:border-slate-800">
+                          <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            📸 Lampiran Foto Bukti QC After Sales (
+                            {qcImages.length} Foto):
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap gap-2">
+                            {qcImages.map((imgUrl, qIdx) => (
+                              <button
+                                key={qIdx}
+                                type="button"
+                                onClick={() => setActiveImage(imgUrl)}
+                                className="shadow-2xs group relative h-14 w-14 overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:scale-105 hover:border-indigo-500 dark:border-slate-700 dark:bg-slate-800"
+                              >
+                                <img
+                                  src={imgUrl}
+                                  alt={`Bukti QC ${qIdx + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 ) : item.storeResponse ? (
                   <div className="mt-4 rounded-xl bg-slate-50 p-2.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                     <span className="font-semibold text-slate-700 dark:text-slate-200">
                       Catatan Putusan:{' '}
                     </span>
-                    {item.storeResponse}
+                    {cleanRecommendationNote(item.storeResponse)}
                   </div>
                 ) : null}
 
@@ -839,16 +658,20 @@ export default function SuperAdminReturnsPage() {
                       <button
                         type="button"
                         disabled={processingId === item.id}
-                        onClick={() => openRejectModal(item.id)}
-                        className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300"
+                        onClick={() => handleDirectRejectAndReturn(item)}
+                        className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300"
                       >
-                        <X className="h-3.5 w-3.5" />
-                        Tolak
+                        {processingId === item.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <X className="h-3.5 w-3.5" />
+                        )}
+                        <span>Tolak &amp; Kembalikan</span>
                       </button>
                       <button
                         type="button"
                         disabled={processingId === item.id}
-                        onClick={() => openApproveModal(item)}
+                        onClick={() => handleDirectApprove(item)}
                         className="shadow-xs inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
                       >
                         {processingId === item.id ? (
@@ -856,7 +679,11 @@ export default function SuperAdminReturnsPage() {
                         ) : (
                           <Check className="h-3.5 w-3.5" />
                         )}
-                        Setujui Pengembalian
+                        <span>
+                          {item.type === 'REFUND'
+                            ? 'ACC Final: Cairkan Dana'
+                            : 'ACC Final: Kirim Unit Baru'}
+                        </span>
                       </button>
                     </div>
                   )}
@@ -864,93 +691,6 @@ export default function SuperAdminReturnsPage() {
               </div>
             )
           })}
-        </div>
-      )}
-
-      {/* Approve Modal for ACC Final */}
-      {approveModalOpen && approveTarget && (
-        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Setujui Final (ACC Retur &amp; Garansi)
-            </h3>
-            <p className="mt-1 text-xs text-slate-500">
-              Konfirmasi persetujuan akhir pengembalian pesanan #
-              {approveTarget.order.orderNumber}.
-            </p>
-            <form onSubmit={handleConfirmApprove} className="mt-4 space-y-3">
-              <textarea
-                rows={3}
-                value={approveNotes}
-                onChange={(e) => setApproveNotes(e.target.value)}
-                placeholder="Catatan persetujuan final untuk pembeli dan toko..."
-                className="w-full rounded-xl border border-slate-200 p-3 text-xs font-medium text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-              />
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setApproveModalOpen(false)}
-                  className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={Boolean(processingId)}
-                  className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {processingId && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  )}
-                  Konfirmasi ACC Final
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Reject Modal */}
-      {rejectModalOpen && (
-        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Tolak Pengajuan Pengembalian
-            </h3>
-            <p className="mt-1 text-xs text-slate-500">
-              Berikan alasan penolakan yang jelas agar pembeli mengetahui dasar
-              keputusan ini.
-            </p>
-            <form onSubmit={handleConfirmReject} className="mt-4 space-y-3">
-              <textarea
-                required
-                rows={3}
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Contoh: Unit tidak terbukti cacat pabrik atau kerusakan disebabkan oleh kelalaian pemakaian..."
-                className="w-full rounded-xl border border-slate-200 p-3 text-xs font-medium text-slate-900 outline-none focus:border-rose-500 dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-              />
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setRejectModalOpen(false)}
-                  className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={Boolean(processingId)}
-                  className="inline-flex items-center gap-1 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
-                >
-                  {processingId && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  )}
-                  Konfirmasi Tolak
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
 

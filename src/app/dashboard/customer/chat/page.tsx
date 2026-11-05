@@ -30,6 +30,7 @@ import {
   ChatProductContextBar,
   ChatInputBar,
 } from '@/components/customer/chat'
+import { CustomerOrderPickerModal } from '@/components/customer/chat/customer-order-picker-modal'
 
 const ChatMediaModal = dynamic(
   () =>
@@ -161,6 +162,7 @@ function CustomerChatContent() {
 
   const [activePinnedOrder, setActivePinnedOrder] =
     useState<PinnedOrderContext | null>(null)
+  const [orderPickerOpen, setOrderPickerOpen] = useState(false)
 
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -1189,6 +1191,84 @@ function CustomerChatContent() {
     }
   }
 
+  // Handle sharing scoped order into chat conversation
+  const handleShareOrderFromPicker = async (order: any) => {
+    if (!selectedRoom) return
+    const firstItem = order.items?.[0]
+    const prodName = firstItem?.product?.name || 'Unit Gadget'
+    const prodImage = firstItem?.product?.images?.[0] || null
+    const variantName = firstItem?.variantName || null
+    const isReturn = Boolean(
+      order.returnRequests && order.returnRequests.length > 0
+    )
+    const returnReq = order.returnRequests?.[0]
+
+    const messageType = isReturn ? 'return_reference' : 'order_reference'
+    const contentToSend = JSON.stringify({
+      type: messageType,
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      productName: prodName,
+      productPrice: order.total,
+      productImage: prodImage,
+      variantName,
+      orderTotal: order.total,
+      orderStatus: order.status,
+      ...(isReturn && returnReq
+        ? {
+            returnId: returnReq.id,
+            returnReason: returnReq.reason,
+            returnStatus: returnReq.status,
+            returnType: returnReq.type,
+          }
+        : {}),
+      note: isAfterSalesActive
+        ? 'Halo, saya ingin menanyakan terkait garansi / purna jual pesanan ini.'
+        : 'Halo, saya ingin menanyakan terkait pesanan saya ini.',
+    })
+
+    const tempId = `temp-${Date.now()}`
+    const optimisticMsg: Message = {
+      id: tempId,
+      content: contentToSend,
+      messageType,
+      mediaUrl: null,
+      createdAt: new Date().toISOString(),
+      sender: {
+        id: session?.user?.id || 'me',
+        name: session?.user?.name || 'Saya',
+        role: 'CUSTOMER',
+      },
+    }
+    setMessages((prev) => [...prev, optimisticMsg])
+    setShouldScrollToBottom(true)
+
+    try {
+      const res = await fetch('/api/customer/chat/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: selectedRoom.id,
+          content: contentToSend,
+          messageType,
+        }),
+      })
+
+      if (!res.ok) throw new Error('Gagal membagikan pesanan')
+
+      const data = await res.json()
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? data.message : m))
+      )
+      toast.success(
+        `Pesanan #${order.orderNumber} berhasil dibagikan ke percakapan!`
+      )
+    } catch {
+      toast.error('Gagal membagikan pesanan ke percakapan')
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+    }
+  }
+
   // Media upload handler
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1298,65 +1378,112 @@ function CustomerChatContent() {
   const unreadRoomsCount = rooms.filter(checkIsRoomUnread).length
   const orderRoomsCount = rooms.filter(checkIsRoomOrder).length
 
-  const filteredRooms = rooms.filter((room) => {
-    const orderNumber = room.order?.orderNumber || ''
-    const storeName = room.order?.store?.name || room.store?.name || ''
-    const itemName =
-      room.order?.items?.[0]?.product?.name ||
-      room.order?.items?.[0]?.rentalItem?.name ||
-      room.technician?.user?.name ||
-      ''
+  const filteredRooms = useMemo(() => {
+    const matched = rooms.filter((room) => {
+      const orderNumber = room.order?.orderNumber || ''
+      const storeName = room.order?.store?.name || room.store?.name || ''
+      const itemName =
+        room.order?.items?.[0]?.product?.name ||
+        room.order?.items?.[0]?.rentalItem?.name ||
+        room.technician?.user?.name ||
+        ''
 
-    const matchQuery =
-      searchQuery === '' ||
-      orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      storeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      itemName.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchQuery =
+        searchQuery === '' ||
+        orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        storeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        itemName.toLowerCase().includes(searchQuery.toLowerCase())
 
-    if (!matchQuery) return false
+      if (!matchQuery) return false
 
-    if (roomFilter === 'UNREAD') {
-      return checkIsRoomUnread(room)
-    }
-    if (roomFilter === 'ORDER') {
-      return checkIsRoomOrder(room)
-    }
-    return true
-  })
+      if (roomFilter === 'UNREAD') {
+        return checkIsRoomUnread(room)
+      }
+      if (roomFilter === 'ORDER') {
+        return checkIsRoomOrder(room)
+      }
+      return true
+    })
+
+    // Deduplikasi defensif: 1 Customer + 1 Grup After Sales / Toko / Mitra / CS = 1 Kartu Room
+    const seenKeys = new Set<string>()
+    return matched.filter((room) => {
+      const isAfterSales =
+        (room.store as any)?.isAfterSales ||
+        (room.claimedBy as any)?.role === 'AFTER_SALES' ||
+        room.order?.status === 'COMPLETED' ||
+        room.order?.status === 'RETURNED'
+      const isMitra =
+        (room.store as any)?.isMitra ||
+        (room.claimedBy as any)?.role === 'MITRA'
+
+      const key = isAfterSales
+        ? `${room.customerId}_aftersales_${room.claimedById || 'group'}`
+        : isMitra
+          ? `${room.customerId}_mitra_${room.claimedById || room.store?.id}`
+          : `${room.customerId}_${room.storeId || room.store?.id || 'cs'}`
+
+      if (seenKeys.has(key)) return false
+      seenKeys.add(key)
+      return true
+    })
+  }, [rooms, searchQuery, roomFilter])
 
   const activeStore = selectedRoom?.store || selectedRoom?.order?.store
-  const isStoreOnline =
-    isStoreOperational(activeStore, selectedRoom?.technician) ||
-    Boolean(
-      selectedRoom?.lastMessageAt &&
-      Date.now() - new Date(selectedRoom.lastMessageAt).getTime() <
-        60 * 60 * 1000
-    ) ||
-    Boolean(selectedRoom?.claimedById)
 
-  // Support CS Superadmin chat mode
+  const isMitraActive =
+    (selectedRoom?.claimedBy as any)?.role === 'MITRA' ||
+    Boolean((selectedRoom?.claimedBy as any)?.mitra) ||
+    Boolean((selectedRoom as any)?.mitra)
+
+  // Support CS Superadmin chat mode (Hanya jika bukan mitra servis)
   const isCsActive =
-    (activeStore as any)?.isCs ||
-    (selectedRoom?.type === 'admin' &&
-      !selectedRoom?.storeId &&
-      !selectedRoom?.technician)
+    !isMitraActive &&
+    ((activeStore as any)?.isCs ||
+      (selectedRoom?.type === 'admin' &&
+        !selectedRoom?.storeId &&
+        !selectedRoom?.technician))
 
   const isAfterSalesActive =
-    (activeStore as any)?.isAfterSales ||
-    (selectedRoom?.claimedBy as any)?.role === 'AFTER_SALES' ||
-    selectedRoom?.order?.status === 'COMPLETED' ||
-    selectedRoom?.order?.status === 'RETURNED'
+    !isMitraActive &&
+    ((activeStore as any)?.isAfterSales ||
+      (selectedRoom?.claimedBy as any)?.role === 'AFTER_SALES' ||
+      selectedRoom?.order?.status === 'COMPLETED' ||
+      selectedRoom?.order?.status === 'RETURNED')
 
-  const rawStoreName =
-    activeStore?.name ||
-    selectedRoom?.order?.items?.[0]?.product?.name ||
-    selectedRoom?.technician?.user?.name ||
-    'CS Toko'
+  // Online status akurat: Hanya hijau jika lawan bicara aktif mengirim pesan < 10 menit terakhir
+  const isStoreOnline = (() => {
+    if (!selectedRoom) return false
+    const latestStaffMsg = messages
+      .slice()
+      .reverse()
+      .find((m) => (m.sender?.id || (m as any).senderId) !== session?.user?.id)
 
-  const activeStoreTitle = isCsActive
-    ? 'Customer Service (Superadmin)' // CS Superadmin
-    : isAfterSalesActive && !rawStoreName.startsWith('Layanan Purna Jual')
-      ? `Layanan Purna Jual (${rawStoreName})`
+    if (latestStaffMsg?.createdAt) {
+      const diffMs = Date.now() - new Date(latestStaffMsg.createdAt).getTime()
+      if (diffMs < 10 * 60 * 1000) return true
+    }
+    if (activeStore && !isAfterSalesActive && !isMitraActive && !isCsActive) {
+      return isStoreOperational(activeStore, selectedRoom?.technician)
+    }
+    return false
+  })()
+
+  const rawStoreName = isMitraActive
+    ? (selectedRoom?.claimedBy as any)?.mitra?.businessName ||
+      selectedRoom?.claimedBy?.name ||
+      'Mitra Servis'
+    : isAfterSalesActive
+      ? selectedRoom?.claimedBy?.name || 'Budi Santoso (After Sales Roxy Group)'
+      : activeStore?.name ||
+        selectedRoom?.order?.items?.[0]?.product?.name ||
+        selectedRoom?.technician?.user?.name ||
+        'CS Toko'
+
+  const activeStoreTitle = isMitraActive
+    ? rawStoreName
+    : isCsActive
+      ? 'Customer Service (Superadmin)' // CS Superadmin
       : rawStoreName
 
   const activeStoreLogo = selectedRoom?.claimedBy
@@ -1571,6 +1698,9 @@ function CustomerChatContent() {
                     setMessageInput={setMessageInput}
                     onSendMessage={() => handleSendMessage()}
                     sending={sending}
+                    onOpenOrderPicker={
+                      !isCsActive ? () => setOrderPickerOpen(true) : undefined
+                    }
                     placeholder={
                       (selectedRoom?.claimedBy as any)?.role === 'AFTER_SALES'
                         ? 'Ketik pesan ke Admin After Sales...'
@@ -1578,6 +1708,21 @@ function CustomerChatContent() {
                           ? 'Ketik pesan ke CS Superadmin...'
                           : 'Ketik pesan ke admin toko...'
                     }
+                  />
+
+                  {/* Modal Bagikan Pesanan (Strict Scoping Toko Cabang / Grup Purna Jual) */}
+                  <CustomerOrderPickerModal
+                    isOpen={orderPickerOpen}
+                    onClose={() => setOrderPickerOpen(false)}
+                    storeId={
+                      selectedRoom?.storeId ||
+                      selectedRoom?.order?.store?.id ||
+                      (selectedRoom?.order as any)?.storeId ||
+                      null
+                    }
+                    storeName={activeStoreTitle}
+                    isAfterSales={isAfterSalesActive}
+                    onSelectOrder={handleShareOrderFromPicker}
                   />
                 </>
               ) : (

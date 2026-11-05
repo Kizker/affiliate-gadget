@@ -65,4 +65,18 @@ describe('Isolasi Chat Toko Cabang vs Admin After Sales: Retur & Pertukaran Prod
     expect(content).toContain('Chat Admin After Sales')
     expect(content).toContain("chatParams.set('type', 'after_sales')")
   })
+
+  it('6. Endpoint messages API: Store Admin dapat membaca riwayat chat pesanan COMPLETED biasa, tapi diblokir membalas', () => {
+    const content = fs.readFileSync(messagesRoutePath, 'utf8')
+
+    // GET handler tidak memblokir order status COMPLETED biasa
+    expect(content).not.toMatch(
+      /isReturnRelated\s*=\s*Boolean\([^)]*\)\s*\|\|\s*room\.order\?\.status === 'COMPLETED'/
+    )
+
+    // POST handler memblokir pengiriman balasan baru untuk pesanan COMPLETED
+    expect(content).toContain(
+      'Pesanan telah berstatus selesai. Jalur percakapan telah dialihkan ke Admin After Sales.'
+    )
+  })
 })
