@@ -266,6 +266,7 @@ export async function POST(request: Request) {
     let skuIndukCol = -1
     let skuCol = -1
     let hargaCol = -1
+    let costPriceCol = -1
     let gtinCol = -1
     let stokCol = -1
     let minBeliCol = -1
@@ -314,6 +315,14 @@ export async function POST(request: Request) {
           foundHeaderCount++
         } else if (text === 'harga' || text.includes('harga')) {
           hargaCol = colNumber
+          foundHeaderCount++
+        } else if (
+          text === 'hpp' ||
+          text.includes('hpp') ||
+          text.includes('harga modal') ||
+          text === 'cost_price'
+        ) {
+          costPriceCol = colNumber
           foundHeaderCount++
         } else if (text === 'stok' || text.includes('stok')) {
           stokCol = colNumber
@@ -377,10 +386,11 @@ export async function POST(request: Request) {
       if (skuIndukCol === -1) skuIndukCol = 5
       if (skuCol === -1) skuCol = 6
       if (hargaCol === -1) hargaCol = 7
-      if (gtinCol === -1) gtinCol = 8
-      if (stokCol === -1) stokCol = 9
-      if (minBeliCol === -1) minBeliCol = 10
-      if (maksBeliCol === -1) maksBeliCol = 11
+      if (costPriceCol === -1) costPriceCol = 8
+      if (gtinCol === -1) gtinCol = 9
+      if (stokCol === -1) stokCol = 10
+      if (minBeliCol === -1) minBeliCol = 11
+      if (maksBeliCol === -1) maksBeliCol = 12
     } else {
       // Legacy format fallbacks
       if (skuCol === -1) skuCol = 1
@@ -435,6 +445,7 @@ export async function POST(request: Request) {
       skuInduk: string
       sku: string
       harga: number
+      costPrice?: number | null
       stok: number
       // Optional/Extended fields for legacy support
       ram?: string
@@ -462,14 +473,21 @@ export async function POST(request: Request) {
 
       const rawHargaStr = parseCellString(row.getCell(hargaCol))
 
-      // Check if this is an instruction/guideline row (Shopee Row 2)
+      // Check if this is an instruction/guideline row (Shopee Row 2 - Row 6)
       if (
         rawHargaStr.includes('Mohon masukkan') ||
         rawHargaStr.includes('Batas harga') ||
         rawHargaStr.includes('untuk harga produk') ||
+        rawHargaStr === 'float' ||
+        rawHargaStr === 'Harga' ||
+        rawHargaStr === 'Wajib' ||
+        rawHargaStr.includes('Min Rp 99') ||
         parseCellString(row.getCell(namaProdukCol)).includes(
           'Min. jumlah pembelian'
-        )
+        ) ||
+        parseCellString(row.getCell(namaProdukCol)) === 'string' ||
+        parseCellString(row.getCell(namaProdukCol)) === 'Hanya Baca' ||
+        parseCellString(row.getCell(namaProdukCol)).includes('Maks 255')
       ) {
         return // Skip instruction row!
       }
@@ -487,6 +505,8 @@ export async function POST(request: Request) {
       )
       const sku = parseCellString(row.getCell(skuCol))
       const price = parseCellNumber(row.getCell(hargaCol))
+      const costPrice =
+        costPriceCol !== -1 ? parseCellNumber(row.getCell(costPriceCol)) : null
 
       const isMeaningful = (s: string) =>
         s && s.trim() !== '' && s.trim() !== '-' && !s.startsWith('AUTO-')
@@ -577,6 +597,7 @@ export async function POST(request: Request) {
         skuInduk,
         sku,
         harga: price,
+        costPrice,
         stok: Math.floor(stock),
         ram,
         storage,
@@ -1155,6 +1176,30 @@ export async function POST(request: Request) {
       if (unchangedCount > 0) parts.push(`${unchangedCount} unit sama`)
       if (skippedCount > 0) parts.push(`${skippedCount} baris dilewati`)
       summaryMsg += ' ' + parts.join(', ') + '.'
+    }
+
+    // Record upload task history in PostgreSQL
+    if (session?.user?.id) {
+      await prisma.massUpdateTask
+        .create({
+          data: {
+            type: 'UPLOAD',
+            templateType: 'SALES_INFO',
+            storeId: storeScope !== 'ALL' ? storeScope : null,
+            userId: session.user.id,
+            status:
+              errors.length > 0 && updatedCount === 0 && createdCount === 0
+                ? 'FAILED'
+                : 'COMPLETED',
+            fileName: file.name || `mass_update_${Date.now()}.xlsx`,
+            totalCount: rowsToProcess.length + errors.length,
+            processedCount: rowsToProcess.length,
+            successCount: updatedCount + createdCount + unchangedCount,
+            failedCount: errors.length,
+            summaryMessage: summaryMsg,
+          },
+        })
+        .catch((e) => console.error('Failed to log mass update task:', e))
     }
 
     return NextResponse.json({

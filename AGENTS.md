@@ -67,6 +67,22 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-06 (Rancang Ulang Besar-Besaran Menu Katalog Gadget Bergaya Shopee Seller Centre & Alur Mass Update 2-Tab [`src/app/dashboard/admin/products/page.tsx`, `src/lib/shopee-product-utils.ts`, `src/app/api/admin/products/variants/sync-sku-stock/route.ts`, `src/components/admin/bulk-price-update-modal.tsx`, `src/app/api/admin/products/export-excel/route.ts`, `src/app/api/admin/products/import-excel/route.ts`, `src/app/api/admin/products/mass-update/tasks/route.ts`, `prisma/schema.prisma`, `tests/unit/shopee-catalog-page.test.ts`, `tests/unit/shopee-product-utils.test.ts`, `tests/unit/shopee-mass-update-flow.test.ts`]):**
+  - **1. Struktur Antarmuka Shopee Seller Centre ("Produk Saya"):**
+    - Judul halaman "Katalog Gadget" disertai nama cabang yang sedang dikelola.
+    - 4 Tab Status Shopee: **Semua**, **Live**, **Perlu tindakan** (badge merah dinamis), dan **Disembunyikan**.
+    - Logika cerdas tab _Perlu tindakan_: mendeteksi otomatis variasi tanpa SKU, harga jual di bawah HPP (`price < costPrice`), rasio harga termahal / termurah melebihi 7x, produk aktif dengan total stok 0, serta stok berbeda untuk kode SKU yang sama (desync).
+    - Hierarki informasi bertahap: di permukaan hanya menampilkan nama produk, rentang harga oranye tebal (`formatPriceDisplay`), total stok, jumlah variasi, dan satu indikator status. Detail sekunder (ID, SKU Induk, kondisi, rincian issue) muncul saat produk dibuka. Aksi sekunder (Lihat di Web Publik, Toggle Aktif/Sembunyi, Hapus) dipindahkan ke menu `MoreVertical` (`...`).
+  - **2. Dua Mode Tampilan Konsisten 100%:**
+    - _Mode Daftar (Shopee Style):_ Setiap baris produk diikuti baris-baris variasinya, dengan tombol expandable _"Lihat X variasi lainnya"_ bila > 3 variasi. Dilengkapi input inline untuk mengedit harga, HPP, stok, dan SKU secara instan.
+    - _Mode Per merek (Hierarki):_ Struktur 4-level (Merek ➔ Seri ➔ Kapasitas ➔ Warna) dengan fitur _"Terapkan ke semua warna"_, toggle PPN per produk, dan multi-select sticky bottom action bar.
+    - Menghilangkan diskrepansi stok: kedua mode ditenagai oleh fungsi evaluasi tunggal `evaluateProduct`, memastikan total stok dan variasi selalu sama persis.
+    - Fitur 1-klik _"Samakan stok SKU"_ (`POST /api/admin/products/variants/sync-sku-stock`) untuk menyamakan stok variasi ber-SKU sama secara atomik.
+  - **3. Alur Update Massal Shopee (Mass Update Flow) 2-Tab:**
+    - _Tab Download:_ Pilihan jenis template (Informasi Penjualan / Informasi Dasar), filter cabang, merek, dan status; mengekspor spreadsheet dengan format 6 baris header resmi Shopee + 1 kolom HPP modal khusus Affiliate Gadget.
+    - _Tab Upload:_ Pencocokan baris berdasarkan Kode Produk dan Kode Variasi (bukan SKU), validasi rentang harga & rasio 7x Shopee, atomic rollback per produk, penguncian sementara produk (`isBatchLocked: true`), dan deteksi duplikasi unggahan.
+    - _Tabel Riwayat Dokumen:_ Tersimpan permanen di database PostgreSQL (`model MassUpdateTask`), menampilkan tanggal proses, rasio sukses/total, status, dan rincian kegagalan per baris.
+  - **4. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), 3 test suite Shopee lulus 100% (17/17 tests pass).
 - **2026-11-06 (Penutupan Total Celah IDOR Produk & Turunannya [Baca, Edit, Hapus, Varian, Stok]: Penegakan Kepemilikan Server-Side `where: { id, storeId: session.user.storeId }` & Response 404 [`src/app/api/products/[id]/route.ts`, `src/app/api/admin/products/[id]/route.ts`, `src/app/api/admin/products/variants/bulk-color-update/route.ts`, `src/app/dashboard/admin/products/[id]/edit/page.tsx`, `src/app/dashboard/admin/products/[id]/page.tsx`, `tests/unit/product-idor-store-isolation.test.ts`]):**
   - **1. Penegakan Kepemilikan Server-Side di Endpoint Publik/Admin Produk (`/api/products/[id]`):**
     - `GET`: Jika diakses oleh akun `STORE_ADMIN` atau `STORE_SALES`, sistem secara ketat membatasi query menggunakan `where: { id, storeId: userStoreId }`. Jika produk milik toko cabang lain, sistem seketika menolak dan mengembalikan status **HTTP 404** (`Product not found`) sehingga data rahasia produk toko lain (harga modal HPP `costPrice`, varian, inventori) 100% tidak pernah terkirim ke browser.

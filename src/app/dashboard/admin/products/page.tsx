@@ -2,34 +2,32 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { usePageGuard } from '@/hooks/use-page-guard'
 import {
-  Smartphone,
   Search,
   Plus,
   Loader2,
   ExternalLink,
-  ShieldCheck,
-  Gift,
   Edit,
   Trash2,
   AlertTriangle,
   X,
-  Download,
   FileSpreadsheet,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
-  ArrowUpDown,
+  ChevronUp,
   Layers,
-  Table as TableIcon,
+  List,
+  Check,
+  Eye,
+  EyeOff,
+  MoreVertical,
   CheckSquare,
   Square,
-  Sparkles,
-  Check,
   RotateCcw,
-  Store,
+  Sparkles,
+  Percent,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -38,92 +36,66 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { BulkPriceUpdateModal } from '@/components/admin/bulk-price-update-modal'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { BulkPriceUpdateModal } from '@/components/admin/bulk-price-update-modal'
+import { buildCatalogHierarchy, BrandGroup } from '@/lib/catalog-hierarchy'
 import {
-  buildCatalogHierarchy,
-  BrandGroup,
-  SeriesGroup,
-  CapacityGroup,
-  ColorVariantItem,
-} from '@/lib/catalog-hierarchy'
+  evaluateProduct,
+  categorizeProductsByTab,
+  formatPriceDisplay,
+  EvaluatedProduct,
+  ProductIssue,
+} from '@/lib/shopee-product-utils'
 
-interface ProductVariant {
-  id?: string
-  name: string
-  ram: string
-  storage: string
-  color: string
-  price: number | string
-  costPrice?: number | string | null
-  stock: number | string
-  sku?: string | null
-}
-
-interface ProductItem {
-  id: string
-  name: string
-  brand: string | null
-  model: string | null
-  category: string
-  condition: string
-  price: number
-  costPrice?: number | null
-  originalPrice: number | null
-  stock: number
-  weightGram?: number
-  pricePerKg?: number
-  description: string | null
-  images: string[]
-  specs?: any
-  warrantyDays: number
-  includesCharger: boolean
-  includesScreenProtector: boolean
-  includesCase: boolean
-  isActive: boolean
-  isTaxable?: boolean
-  createdAt?: string | Date
-  storeId?: string | null
-  store?: {
-    id: string
-    name: string
-    city: string
-    companyName?: string
-    isPkp?: boolean
-    vatRate?: number
-  } | null
-  variants?: ProductVariant[]
-}
+type ShopeeTab = 'ALL' | 'LIVE' | 'ACTION_REQUIRED' | 'HIDDEN'
+type ViewMode = 'list' | 'hierarchy'
+type IssueFilter =
+  | 'ALL_ISSUES'
+  | 'NO_SKU'
+  | 'PRICE_BELOW_COST'
+  | 'PRICE_RATIO_EXCEEDED'
+  | 'OUT_OF_STOCK_ACTIVE'
+  | 'SKU_STOCK_DESYNC'
 
 export default function ProductsPage() {
+  const router = useRouter()
   const { isLoading: guardLoading, isAllowed } = usePageGuard(
     '/dashboard/admin/products'
   )
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
-  const [products, setProducts] = useState<ProductItem[]>([])
+
+  // Data states
+  const [rawProducts, setRawProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [stores, setStores] = useState<
+    Array<{ id: string; name: string; city?: string }>
+  >([])
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('ALL')
+
+  // Shopee Navigation & Filters
+  const [activeTab, setActiveTab] = useState<ShopeeTab>('ALL')
+  const [activeIssueFilter, setActiveIssueFilter] =
+    useState<IssueFilter>('ALL_ISSUES')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [search, setSearch] = useState('')
   const [selectedBrand, setSelectedBrand] = useState('ALL')
-  const [statusFilter, setStatusFilter] = useState<
-    'ALL' | 'AKTIF' | 'NONAKTIF'
-  >('ALL')
   const [sortBy, setSortBy] = useState<
     | 'latest'
-    | 'oldest'
     | 'price_desc'
     | 'price_asc'
     | 'stock_desc'
     | 'stock_asc'
     | 'name_asc'
   >('latest')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  // View Mode: 'hierarchy' (Nested Dropdown: Merek -> Seri -> RAM -> Warna) vs 'flat' (Table)
-  const [viewMode, setViewMode] = useState<'hierarchy' | 'flat'>('hierarchy')
-
-  // Accordion state for Hierarchy View
+  // Accordion & Multi-select states
+  const [expandedProductIds, setExpandedProductIds] = useState<
+    Record<string, boolean>
+  >({})
+  const [showAllVariantsMap, setShowAllVariantsMap] = useState<
+    Record<string, boolean>
+  >({})
   const [expandedBrands, setExpandedBrands] = useState<Record<string, boolean>>(
     {}
   )
@@ -134,13 +106,22 @@ export default function ProductsPage() {
     Record<string, boolean>
   >({})
 
-  // Inline Bulk Price Updates for capacity tiers
+  // Inline edit state for variants/products in list view
+  const [editingVariant, setEditingVariant] = useState<
+    Record<
+      string,
+      { price: string; costPrice: string; stock: string; sku: string }
+    >
+  >({})
+  const [savingVariantId, setSavingVariantId] = useState<string | null>(null)
+
+  // Capacity price update in hierarchy mode
   const [capacityPriceInputs, setCapacityPriceInputs] = useState<
     Record<string, string>
   >({})
   const [updatingCapacity, setUpdatingCapacity] = useState<string | null>(null)
 
-  // Multi-variant checkbox selection
+  // Multi-select for bulk updates
   const [selectedVariantIds, setSelectedVariantIds] = useState<Set<string>>(
     new Set()
   )
@@ -148,163 +129,193 @@ export default function ProductsPage() {
   const [bulkNewStock, setBulkNewStock] = useState<string>('')
   const [bulkUpdating, setBulkUpdating] = useState<boolean>(false)
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Delete Modal State
+  // Delete modal state
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [productToDelete, setProductToDelete] = useState<ProductItem | null>(
-    null
-  )
+  const [productToDelete, setProductToDelete] = useState<any | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Action menu popover
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
+
+  // Syncing SKU Master state
+  const [syncingSku, setSyncingSku] = useState<string | null>(null)
+
+  // Mass Update Modal (Phase 2 integration)
+  const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const isStoreAdmin = session?.user?.role === 'STORE_ADMIN'
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
   const userStoreId = session?.user?.storeId
 
-  // Stores list & Export Modal State
-  const [stores, setStores] = useState<
-    Array<{ id: string; name: string; city?: string }>
-  >([])
-  const [isExportStoreModalOpen, setIsExportStoreModalOpen] = useState(false)
-  const [selectedExportStoreId, setSelectedExportStoreId] = useState<string>('')
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-  // Bulk Excel Update Modal State (Superadmin and Store Admin)
-  const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false)
-  const [isExporting, setIsExporting] = useState(false)
-
+  // Load stores list
   useEffect(() => {
     fetch('/api/stores?scoped=true')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data) {
           setStores(data.data)
-          if (data.data.length > 0) {
-            setSelectedExportStoreId(data.data[0].id)
+          if (isStoreAdmin && userStoreId) {
+            setSelectedStoreId(userStoreId)
           }
         }
       })
       .catch((e) => console.error('Failed to load stores:', e))
-  }, [])
+  }, [isStoreAdmin, userStoreId])
 
-  const onExportExcelClick = () => {
-    if (isSuperAdmin) {
-      if (stores.length > 0 && !selectedExportStoreId) {
-        setSelectedExportStoreId(stores[0].id)
-      }
-      setIsExportStoreModalOpen(true)
-    } else {
-      handleExportExcel(userStoreId || undefined)
-    }
-  }
-
-  const handleExportExcel = async (targetStoreId?: string) => {
-    setIsExporting(true)
-    try {
-      let url = '/api/admin/products/export-excel'
-      if (targetStoreId) {
-        url += `?storeId=${encodeURIComponent(targetStoreId)}`
-      } else if (isStoreAdmin && userStoreId) {
-        url += `?storeId=${encodeURIComponent(userStoreId)}`
-      }
-
-      const res = await fetch(url)
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Gagal mengunduh file katalog Excel.')
-      }
-      const blob = await res.blob()
-      const downloadUrl = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = downloadUrl
-      const nowStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-      const targetStoreObj = stores.find((s) => s.id === targetStoreId)
-      const slug = targetStoreObj
-        ? targetStoreObj.name.toLowerCase().replace(/[^a-z0-9]/g, '_')
-        : 'catalog'
-      a.download = `mass_update_sales_info_${slug}_${nowStr}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(downloadUrl)
-      document.body.removeChild(a)
-      toast.success('Data katalog format Shopee berhasil diekspor!')
-      setIsExportStoreModalOpen(false)
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal mengekspor file Excel.')
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
-  const brands = ['ALL', 'Samsung', 'Apple', 'Xiaomi', 'ASUS', 'Vivo', 'Oppo']
-
+  // Fetch all products (active & inactive)
   const fetchProducts = useCallback(async () => {
     if (status === 'loading') return
     setLoading(true)
     try {
-      let url = '/api/gadgets?scoped=true&'
-      if (selectedBrand !== 'ALL')
-        url += `brand=${encodeURIComponent(selectedBrand)}&`
-      if (isStoreAdmin && userStoreId)
-        url += `storeId=${encodeURIComponent(userStoreId)}&`
+      const params = new URLSearchParams()
+      params.set('limit', '500')
+      params.set('_t', String(Date.now()))
 
-      const res = await fetch(url)
+      if (isStoreAdmin && userStoreId) {
+        params.set('storeId', userStoreId)
+      } else if (selectedStoreId && selectedStoreId !== 'ALL') {
+        params.set('storeId', selectedStoreId)
+      }
+
+      const res = await fetch(`/api/admin/products?${params.toString()}`, {
+        cache: 'no-store',
+      })
       const data = await res.json()
-      if (data.success) {
-        setProducts(data.data || [])
+      if (res.ok && data.products) {
+        setRawProducts(data.products)
+      } else {
+        // Fallback to gadgets API if admin products fails
+        const fbRes = await fetch(
+          `/api/gadgets?scoped=true&${isStoreAdmin && userStoreId ? `storeId=${userStoreId}&` : ''}limit=200`
+        )
+        const fbData = await fbRes.json()
+        if (fbData.success) {
+          setRawProducts(fbData.data || [])
+        }
       }
     } catch (e) {
       console.error(e)
-      toast.error('Gagal memuat inventori produk')
+      toast.error('Gagal memuat katalog gadget')
     } finally {
       setLoading(false)
     }
-  }, [selectedBrand, isStoreAdmin, userStoreId, status])
+  }, [selectedStoreId, isStoreAdmin, userStoreId, status])
 
   useEffect(() => {
     fetchProducts()
   }, [fetchProducts])
 
-  // Filter products by search and status
-  const filtered = useMemo(() => {
-    return products.filter((p) => {
-      if (statusFilter === 'AKTIF' && !p.isActive) return false
-      if (statusFilter === 'NONAKTIF' && p.isActive) return false
+  // Evaluated products with unified stats and issue detection
+  const evaluatedProducts = useMemo(() => {
+    return rawProducts.map((p) => evaluateProduct(p, rawProducts))
+  }, [rawProducts])
 
-      if (!search) return true
-      const q = search.toLowerCase()
+  // Tab counts
+  const tabCounts = useMemo(() => {
+    return categorizeProductsByTab(evaluatedProducts)
+  }, [evaluatedProducts])
+
+  // Active store display name
+  const currentStoreName = useMemo(() => {
+    if (isStoreAdmin) {
+      const myStore = stores.find((s) => s.id === userStoreId)
+      return myStore ? myStore.name : 'Cabang Toko Anda'
+    }
+    if (selectedStoreId === 'ALL') {
+      return 'Semua Cabang Toko (Konsolidasi)'
+    }
+    const targetStore = stores.find((s) => s.id === selectedStoreId)
+    return targetStore ? targetStore.name : 'Semua Cabang'
+  }, [isStoreAdmin, userStoreId, selectedStoreId, stores])
+
+  // Filter products by Shopee Tab, Search, Brand, and Issues
+  const filteredProducts = useMemo(() => {
+    return evaluatedProducts.filter((p) => {
+      // 1. Tab filter
+      if (activeTab === 'LIVE') {
+        if (!p.isActive || p.totalStock <= 0 || p.issues.length > 0)
+          return false
+      } else if (activeTab === 'ACTION_REQUIRED') {
+        if (p.issues.length === 0) return false
+        if (activeIssueFilter !== 'ALL_ISSUES') {
+          const hasSpecific = p.issues.some((i) => i.type === activeIssueFilter)
+          if (!hasSpecific) return false
+        }
+      } else if (activeTab === 'HIDDEN') {
+        if (p.isActive) return false
+      }
+
+      // 2. Brand filter
+      if (
+        selectedBrand !== 'ALL' &&
+        p.brand.toLowerCase() !== selectedBrand.toLowerCase()
+      ) {
+        return false
+      }
+
+      // 3. Search query
+      if (search.trim()) {
+        const q = search.toLowerCase().trim()
+        const matchName = p.name.toLowerCase().includes(q)
+        const matchBrand = p.brand.toLowerCase().includes(q)
+        const matchModel = p.model?.toLowerCase().includes(q) || false
+        const matchStore = p.storeName?.toLowerCase().includes(q) || false
+        const matchVariant = p.variants.some(
+          (v) =>
+            v.name?.toLowerCase().includes(q) ||
+            v.color?.toLowerCase().includes(q) ||
+            v.sku?.toLowerCase().includes(q)
+        )
+        if (
+          !matchName &&
+          !matchBrand &&
+          !matchModel &&
+          !matchStore &&
+          !matchVariant
+        ) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [evaluatedProducts, activeTab, activeIssueFilter, selectedBrand, search])
+
+  // Sorting
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      if (sortBy === 'price_desc') return b.minPrice - a.minPrice
+      if (sortBy === 'price_asc') return a.minPrice - b.minPrice
+      if (sortBy === 'stock_desc') return b.totalStock - a.totalStock
+      if (sortBy === 'stock_asc') return a.totalStock - b.totalStock
+      if (sortBy === 'name_asc') return a.name.localeCompare(b.name)
+      // latest
       return (
-        p.name.toLowerCase().includes(q) ||
-        (p.brand && p.brand.toLowerCase().includes(q)) ||
-        (p.model && p.model.toLowerCase().includes(q)) ||
-        (p.store && p.store.name.toLowerCase().includes(q)) ||
-        (p.variants &&
-          p.variants.some(
-            (v) =>
-              v.name.toLowerCase().includes(q) ||
-              v.color?.toLowerCase().includes(q) ||
-              v.sku?.toLowerCase().includes(q)
-          ))
+        new Date(b.raw.createdAt || 0).getTime() -
+        new Date(a.raw.createdAt || 0).getTime()
       )
     })
-  }, [products, statusFilter, search])
+  }, [filteredProducts, sortBy])
 
-  // Build 4-Level Hierarchy Tree (Brand -> Series -> Capacity -> Color Variants)
-  const hierarchy = useMemo(() => {
-    return buildCatalogHierarchy(filtered)
-  }, [filtered])
+  // Hierarchy Tree from filtered products (100% consistent)
+  const hierarchyTree = useMemo(() => {
+    return buildCatalogHierarchy(filteredProducts.map((p) => p.raw))
+  }, [filteredProducts])
 
-  // Automatically expand brand when brand filter is chosen or when searching
+  // Auto-expand brands on search
   useEffect(() => {
     if (selectedBrand !== 'ALL') {
       setExpandedBrands((prev) => ({ ...prev, [selectedBrand]: true }))
     }
     if (search.trim()) {
-      // Expand all brands and series during active search
       const allB: Record<string, boolean> = {}
       const allS: Record<string, boolean> = {}
-      hierarchy.forEach((b) => {
+      hierarchyTree.forEach((b) => {
         allB[b.brand] = true
         b.series.forEach((s) => {
           allS[`${b.brand}-${s.seriesName}`] = true
@@ -313,190 +324,252 @@ export default function ProductsPage() {
       setExpandedBrands(allB)
       setExpandedSeries(allS)
     }
-  }, [selectedBrand, search, hierarchy])
+  }, [selectedBrand, search, hierarchyTree])
 
-  // Flat table sorting & pagination
-  const sortedProducts = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      if (sortBy === 'latest') {
-        return (
-          new Date(b.createdAt || 0).getTime() -
-          new Date(a.createdAt || 0).getTime()
-        )
-      }
-      if (sortBy === 'oldest') {
-        return (
-          new Date(a.createdAt || 0).getTime() -
-          new Date(b.createdAt || 0).getTime()
-        )
-      }
-      if (sortBy === 'price_desc') {
-        return (Number(b.price) || 0) - (Number(a.price) || 0)
-      }
-      if (sortBy === 'price_asc') {
-        return (Number(a.price) || 0) - (Number(b.price) || 0)
-      }
-      if (sortBy === 'stock_desc') {
-        return (Number(b.stock) || 0) - (Number(a.stock) || 0)
-      }
-      if (sortBy === 'stock_asc') {
-        return (Number(a.stock) || 0) - (Number(b.stock) || 0)
-      }
-      if (sortBy === 'name_asc') {
-        return a.name.localeCompare(b.name)
-      }
-      return 0
-    })
-  }, [filtered, sortBy])
-
-  const totalItems = sortedProducts.length
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage))
-  const safeCurrentPage = Math.min(currentPage, totalPages)
-  const startIndex = (safeCurrentPage - 1) * itemsPerPage
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems)
-  const paginatedProducts = sortedProducts.slice(startIndex, endIndex)
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [search, selectedBrand, statusFilter, sortBy, itemsPerPage])
-
-  const getPageNumbers = () => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1)
-    }
-    if (safeCurrentPage <= 4) {
-      return [1, 2, 3, 4, 5, '...', totalPages]
-    }
-    if (safeCurrentPage >= totalPages - 3) {
-      return [
-        1,
-        '...',
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-        totalPages,
-      ]
-    }
-    return [
-      1,
-      '...',
-      safeCurrentPage - 1,
-      safeCurrentPage,
-      safeCurrentPage + 1,
-      '...',
-      totalPages,
-    ]
-  }
-
-  // Toggle Accordions
-  const toggleBrand = (brandName: string) => {
-    setExpandedBrands((prev) => ({
-      ...prev,
-      [brandName]: !prev[brandName],
-    }))
-  }
-
-  const toggleSeries = (key: string) => {
-    setExpandedSeries((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }))
-  }
-
-  const toggleCapacity = (key: string) => {
-    setExpandedCapacities((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }))
-  }
-
-  // Multi-variant checkbox toggling
-  const toggleVariantSelection = (variantId: string) => {
-    setSelectedVariantIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(variantId)) {
-        next.delete(variantId)
-      } else {
-        next.add(variantId)
-      }
-      return next
-    })
-  }
-
-  const selectAllCapacityVariants = (capacity: CapacityGroup) => {
-    const allSelected = capacity.variants.every((v) =>
-      selectedVariantIds.has(v.id)
-    )
-    setSelectedVariantIds((prev) => {
-      const next = new Set(prev)
-      capacity.variants.forEach((v) => {
-        if (allSelected) {
-          next.delete(v.id)
-        } else {
-          next.add(v.id)
-        }
-      })
-      return next
-    })
-  }
-
-  // Direct Inline Bulk Update for an entire Capacity Group (All Colors)
-  const handleUpdateCapacityColors = async (
-    capacityKeyIdentifier: string,
-    capacity: CapacityGroup
+  // Toggle single product active/hidden
+  const handleToggleProductActive = async (
+    productId: string,
+    currentActive: boolean
   ) => {
-    const inputVal = capacityPriceInputs[capacityKeyIdentifier]
-    const priceNum = inputVal
-      ? Number(inputVal)
-      : capacity.commonPrice || capacity.minPrice
-
-    if (!priceNum || isNaN(priceNum) || priceNum <= 0) {
-      toast.error('Masukkan nominal harga baru yang valid (> Rp 0)')
-      return
-    }
-
-    const variantIds = capacity.variants.map((v) => v.id)
-    setUpdatingCapacity(capacityKeyIdentifier)
-
     try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !currentActive }),
+      })
+      if (!res.ok) throw new Error('Gagal memperbarui status produk')
+      toast.success(
+        !currentActive
+          ? 'Produk berhasil diaktifkan ke etalase Live!'
+          : 'Produk berhasil disembunyikan dari etalase publik.'
+      )
+      fetchProducts()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengubah status produk')
+    }
+  }
+
+  // Toggle single product taxability (PPN)
+  const handleToggleProductTaxable = async (
+    productId: string,
+    currentTaxable: boolean
+  ) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isTaxable: !currentTaxable }),
+      })
+      if (!res.ok) throw new Error('Gagal memperbarui status pajak produk')
+      toast.success(
+        !currentTaxable
+          ? 'PPN 11% berhasil diaktifkan untuk produk ini'
+          : 'PPN dinonaktifkan untuk produk ini'
+      )
+      fetchProducts()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengubah status PPN')
+    }
+  }
+
+  // Delete product action
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return
+    setDeleteLoading(true)
+    try {
+      const res = await fetch(`/api/products/${productToDelete.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.error || 'Gagal menghapus produk')
+      }
+      toast.success(`Produk "${productToDelete.name}" berhasil dihapus.`)
+      setIsDeleteOpen(false)
+      setProductToDelete(null)
+      fetchProducts()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menghapus produk')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  // Inline edit save for variant (List Mode)
+  const handleSaveInlineVariant = async (
+    productId: string,
+    variantId: string
+  ) => {
+    const editData = editingVariant[variantId]
+    if (!editData) return
+
+    setSavingVariantId(variantId)
+    try {
+      const numPrice = parseFloat(editData.price.replace(/\./g, ''))
+      const numCostPrice = editData.costPrice
+        ? parseFloat(editData.costPrice.replace(/\./g, ''))
+        : null
+      const numStock = parseInt(editData.stock) || 0
+
+      // Call bulk color update / single variant update
       const res = await fetch(
         '/api/admin/products/variants/bulk-color-update',
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            variantIds,
-            newPrice: priceNum,
+            variantIds: [variantId],
+            newPrice: numPrice,
+            newStock: numStock,
           }),
         }
       )
-
-      const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.error || 'Gagal memperbarui harga varian warna.')
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Gagal menyimpan perubahan variasi')
       }
 
-      toast.success(
-        `Berhasil! ${data.updatedCount} varian warna kapasitas "${capacity.capacityKey}" diubah menjadi Rp ${priceNum.toLocaleString('id-ID')}`
-      )
-      await fetchProducts()
+      // Also update SKU and costPrice via product PATCH if supported
+      if (editData.sku !== undefined || numCostPrice !== null) {
+        const prod = rawProducts.find((p) => p.id === productId)
+        if (prod && Array.isArray(prod.variants)) {
+          const updatedVars = prod.variants.map((v: any) => {
+            if (v.id === variantId) {
+              return {
+                ...v,
+                price: numPrice,
+                stock: numStock,
+                costPrice: numCostPrice,
+                sku: editData.sku?.trim() || null,
+              }
+            }
+            return v
+          })
+
+          await fetch(`/api/products/${productId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ variants: updatedVars }),
+          })
+        }
+      }
+
+      toast.success('Variasi berhasil diperbarui')
+      // Remove from editing state
+      setEditingVariant((prev) => {
+        const next = { ...prev }
+        delete next[variantId]
+        return next
+      })
+      fetchProducts()
     } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan saat update harga.')
+      toast.error(err.message || 'Gagal memperbarui variasi')
+    } finally {
+      setSavingVariantId(null)
+    }
+  }
+
+  // Apply one price to all color variants in a capacity group (Hierarchy Mode)
+  const handleApplyCapacityPrice = async (cap: any, targetPriceStr: string) => {
+    if (!targetPriceStr) {
+      toast.error('Masukkan nominal harga terlebih dahulu')
+      return
+    }
+    const cleanPrice = parseFloat(targetPriceStr.replace(/\./g, ''))
+    if (isNaN(cleanPrice) || cleanPrice <= 0) {
+      toast.error('Nominal harga tidak valid')
+      return
+    }
+
+    setUpdatingCapacity(cap.capacityKey)
+    try {
+      const varIds = cap.variants.map((v: any) => v.id)
+      const res = await fetch(
+        '/api/admin/products/variants/bulk-color-update',
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            variantIds: varIds,
+            newPrice: cleanPrice,
+          }),
+        }
+      )
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Gagal menerapkan harga kapasitas')
+      }
+      toast.success(
+        `Harga Rp ${cleanPrice.toLocaleString('id-ID')} diterapkan ke ${varIds.length} variasi warna!`
+      )
+      fetchProducts()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menerapkan harga')
     } finally {
       setUpdatingCapacity(null)
     }
   }
 
-  // Multi-variant bulk update (from floating action bar)
-  const handleApplySelectedBulkUpdate = async () => {
+  // 1-Click Master SKU stock sync
+  const handleSyncSkuStock = async (sku: string, targetStock: number) => {
+    setSyncingSku(sku)
+    try {
+      const res = await fetch('/api/admin/products/variants/sync-sku-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sku, targetStock }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Gagal menyamakan stok SKU')
+      toast.success(
+        json.message || `Stok seluruh variasi SKU "${sku}" berhasil disamakan!`
+      )
+      fetchProducts()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menyamakan stok SKU')
+    } finally {
+      setSyncingSku(null)
+    }
+  }
+
+  // Multi-select actions
+  const toggleSelectAll = () => {
+    const allVarIds: string[] = []
+    filteredProducts.forEach((p) => {
+      if (p.variants.length > 0) {
+        p.variants.forEach((v) => {
+          if (v.id) allVarIds.push(v.id)
+        })
+      } else {
+        allVarIds.push(`prod-only-${p.id}`)
+      }
+    })
+
+    if (selectedVariantIds.size >= allVarIds.length && allVarIds.length > 0) {
+      setSelectedVariantIds(new Set())
+    } else {
+      setSelectedVariantIds(new Set(allVarIds))
+    }
+  }
+
+  const toggleSelectVariant = (id: string) => {
+    setSelectedVariantIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleBulkUpdateSelected = async () => {
     if (selectedVariantIds.size === 0) return
+    const numPrice = bulkNewPrice
+      ? parseFloat(bulkNewPrice.replace(/\./g, ''))
+      : undefined
+    const numStock = bulkNewStock ? parseInt(bulkNewStock) : undefined
 
-    const priceNum = bulkNewPrice ? Number(bulkNewPrice) : null
-    const stockNum = bulkNewStock ? Number(bulkNewStock) : null
-
-    if (!priceNum && stockNum === null) {
-      toast.error('Masukkan setidaknya harga baru atau stok baru.')
+    if (numPrice === undefined && numStock === undefined) {
+      toast.error('Masukkan harga atau stok baru terlebih dahulu')
       return
     }
 
@@ -509,824 +582,1109 @@ export default function ProductsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             variantIds: Array.from(selectedVariantIds),
-            newPrice: priceNum,
-            newStock: stockNum,
+            newPrice: numPrice,
+            newStock: numStock,
           }),
         }
       )
-
-      const data = await res.json()
       if (!res.ok) {
-        throw new Error(
-          data.error || 'Gagal memperbarui varian warna terpilih.'
-        )
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Gagal memperbarui variasi terpilih')
       }
-
       toast.success(
-        `Sukses! ${data.updatedCount} varian warna terpilih berhasil diperbarui massal.`
+        `Berhasil memperbarui ${selectedVariantIds.size} variasi terpilih!`
       )
       setSelectedVariantIds(new Set())
       setBulkNewPrice('')
       setBulkNewStock('')
-      await fetchProducts()
+      fetchProducts()
     } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan saat pembaruan massal.')
+      toast.error(err.message || 'Gagal memperbarui massal')
     } finally {
       setBulkUpdating(false)
     }
   }
 
-  // Delete Handlers
-  const handleOpenDelete = (product: ProductItem) => {
-    setProductToDelete(product)
-    setIsDeleteOpen(true)
-  }
+  const brandsList = [
+    'ALL',
+    'Samsung',
+    'Apple',
+    'Xiaomi',
+    'ASUS',
+    'Vivo',
+    'Oppo',
+    'Realme',
+  ]
 
-  const handleConfirmDelete = async () => {
-    if (!productToDelete) return
-
-    setDeleteLoading(true)
-    try {
-      const res = await fetch(`/api/products/${productToDelete.id}`, {
-        method: 'DELETE',
-      })
-
-      const result = await res.json()
-      if (res.ok && result.success) {
-        toast.success(`Produk "${productToDelete.name}" berhasil dihapus!`)
-        setIsDeleteOpen(false)
-        setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id))
-      } else {
-        toast.error(result.error || 'Gagal menghapus produk')
-      }
-    } catch (error) {
-      console.error('Error deleting product:', error)
-      toast.error('Terjadi kesalahan saat menghapus')
-    } finally {
-      setDeleteLoading(false)
-    }
-  }
-
-  // Toggle product taxable status directly from catalog table/hierarchy
-  const [updatingTaxId, setUpdatingTaxId] = useState<string | null>(null)
-
-  const handleToggleProductTaxable = async (
-    productId: string,
-    currentIsTaxable: boolean,
-    productName?: string
-  ) => {
-    setUpdatingTaxId(productId)
-    try {
-      const nextIsTaxable = !currentIsTaxable
-      const res = await fetch(`/api/products/${productId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isTaxable: nextIsTaxable }),
-      })
-      const data = await res.json()
-      if (!res.ok || (data.success === false && data.error)) {
-        throw new Error(data.error || 'Gagal memperbarui status PPN')
-      }
-
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === productId ? { ...p, isTaxable: nextIsTaxable } : p
-        )
-      )
-
-      toast.success(
-        nextIsTaxable
-          ? `${productName || 'Gadget'} sekarang DIKENAKAN PPN (Inklusif)`
-          : `${productName || 'Gadget'} sekarang BEBAS PPN (PPN Rp 0)`
-      )
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal mengubah status PPN produk')
-    } finally {
-      setUpdatingTaxId(null)
-    }
-  }
-
-  if (!mounted || status === 'loading') {
+  if (guardLoading || !isAllowed) {
     return (
-      <div className="mx-auto max-w-7xl animate-pulse space-y-5 pb-16">
-        <div className="shadow-2xs h-14 w-full rounded-3xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900" />
-        <div className="space-y-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="shadow-xs h-24 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
-            />
-          ))}
-        </div>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 pb-24">
-      {/* 1. Unified Control Panel: Brand Filter, Status Filter, View Toggle, Search & Actions */}
-      <div className="shadow-2xs flex flex-col items-stretch justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:p-3 xl:flex-row xl:items-center">
-        {/* Left: Brand Pills & Status Filter */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Brand Pills */}
-          <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
-            {brands.map((b) => (
-              <button
-                key={b}
-                onClick={() => setSelectedBrand(b)}
-                className={`whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 ${
-                  selectedBrand === b
-                    ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
-                    : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
-                }`}
-              >
-                {b === 'ALL' ? 'Semua Merek' : b}
-              </button>
-            ))}
-          </div>
-
-          {/* Status Filter Pills */}
-          <div className="flex items-center gap-1 rounded-2xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
-            {(['ALL', 'AKTIF', 'NONAKTIF'] as const).map((st) => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`whitespace-nowrap rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all duration-200 ${
-                  statusFilter === st
-                    ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
-                    : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
-                }`}
-              >
-                {st === 'ALL'
-                  ? 'Semua Status'
-                  : st === 'AKTIF'
-                    ? 'Aktif'
-                    : 'Nonaktif'}
-              </button>
-            ))}
-          </div>
-
-          {/* View Mode Toggle: Mode Hirarki vs Mode Tabel Datar */}
-          <div className="flex items-center gap-1 rounded-2xl border border-slate-200/90 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800">
-            <button
-              onClick={() => setViewMode('hierarchy')}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                viewMode === 'hierarchy'
-                  ? 'shadow-xs bg-orange-500 text-white'
-                  : 'text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
-              }`}
-              title="Tampilan Hirarki: Merek -> Seri -> RAM/Storage -> Varian Warna"
-            >
-              <Layers className="h-3.5 w-3.5" />
-              <span>Hirarki Dropdown</span>
-            </button>
-            <button
-              onClick={() => setViewMode('flat')}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                viewMode === 'flat'
-                  ? 'shadow-xs bg-orange-500 text-white'
-                  : 'text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
-              }`}
-              title="Tampilan Tabel Tradisional Datar"
-            >
-              <TableIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Tabel Datar</span>
-            </button>
+    <div className="mx-auto max-w-7xl space-y-5 pb-24 text-slate-900 dark:text-slate-100">
+      {/* 1. Header Shopee Style: Judul + Nama Cabang + Aksi Utama */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+            Katalog Gadget
+          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span>Mengelola:</span>
+            {isSuperAdmin ? (
+              <div className="w-56">
+                <CustomSelect
+                  value={selectedStoreId}
+                  onChange={(val) => setSelectedStoreId(val)}
+                  options={[
+                    { value: 'ALL', label: 'Semua Cabang Toko (Konsolidasi)' },
+                    ...stores.map((s) => ({
+                      value: s.id,
+                      label: `${s.name} ${s.city ? `(${s.city})` : ''}`,
+                    })),
+                  ]}
+                  size="sm"
+                />
+              </div>
+            ) : (
+              <span className="font-semibold text-orange-600 dark:text-orange-400">
+                {currentStoreName}
+              </span>
+            )}
+            <span>•</span>
+            <span>{filteredProducts.length} Produk ditampilkan</span>
           </div>
         </div>
 
-        {/* Right: Search, Sort, Export, & Add CTA */}
-        <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
-          {/* Search Input */}
-          <div className="relative min-w-[200px] flex-1 xl:w-64">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari merek, seri, kapasitas, warna..."
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            />
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Sort Dropdown (for flat view) */}
-          {viewMode === 'flat' && (
-            <CustomSelect
-              value={sortBy}
-              onChange={(val) => setSortBy(val as any)}
-              size="sm"
-              icon={<ArrowUpDown className="h-3.5 w-3.5" />}
-              options={[
-                { value: 'latest', label: 'Terbaru (Default)' },
-                { value: 'oldest', label: 'Terlama' },
-                { value: 'price_desc', label: 'Harga: Tertinggi' },
-                { value: 'price_asc', label: 'Harga: Terendah' },
-                { value: 'stock_desc', label: 'Stok: Terbanyak' },
-                { value: 'stock_asc', label: 'Stok: Tersedikit' },
-                { value: 'name_asc', label: 'Nama (A - Z)' },
-              ]}
-            />
-          )}
-
-          {/* Bulk Excel Actions (Superadmin & Store Admin) */}
-          {(isSuperAdmin || isStoreAdmin) && (
-            <>
-              <button
-                type="button"
-                onClick={onExportExcelClick}
-                disabled={isExporting}
-                className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                title={
-                  isSuperAdmin
-                    ? 'Pilih cabang toko dan unduh data katalog serta SKU ke format Excel (.xlsx)'
-                    : 'Unduh seluruh data katalog dan SKU toko Anda ke format Excel (.xlsx)'
-                }
-              >
-                {isExporting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
-                ) : (
-                  <Download className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                )}
-                <span className="hidden sm:inline">Export Excel</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsBulkUpdateOpen(true)}
-                className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl border border-emerald-200/90 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition-all hover:bg-emerald-100 active:scale-95 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
-                title={
-                  isSuperAdmin
-                    ? 'Perbarui harga & stok massal berdasarkan SKU untuk toko terpilih atau semua toko'
-                    : 'Perbarui harga & stok massal berdasarkan SKU untuk toko Anda sendiri'
-                }
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="hidden sm:inline">Update Massal (Excel)</span>
-              </button>
-            </>
-          )}
+        {/* Action Buttons: Update Massal & Tambah Gadget */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsBulkUpdateOpen(true)}
+            className="shadow-xs inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50/30 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-orange-600" />
+            <span>Update massal</span>
+          </button>
 
           <Link
             href="/dashboard/admin/products/new"
-            className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all hover:bg-orange-600 active:scale-95"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95"
           >
-            <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>Tambah Gadget</span>
+            <Plus className="h-4 w-4" />
+            <span>Tambah gadget</span>
           </Link>
         </div>
       </div>
 
-      {/* 2. Main Body: Mode Hirarki Dropdown vs Mode Tabel Datar */}
-      {loading ? (
-        <div className="rounded-3xl border border-slate-200/80 bg-white py-24 text-center text-slate-400 dark:border-slate-800 dark:bg-slate-900">
-          <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-orange-500" />
-          <p className="text-xs font-medium">
-            Memuat katalog gadget bertingkat...
-          </p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-3xl border border-slate-200/80 bg-white py-20 text-center text-slate-500 dark:border-slate-800 dark:bg-slate-900">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-100 dark:bg-slate-800">
-            <Smartphone className="h-7 w-7 text-slate-400" />
-          </div>
-          <div className="mt-3 space-y-1">
-            <p className="text-sm font-bold text-slate-900 dark:text-white">
-              Belum ada produk gadget yang sesuai
-            </p>
-            <p className="text-xs text-slate-400">
-              Silakan ubah kata kunci pencarian atau daftarkan produk baru toko
-              Anda.
-            </p>
-          </div>
-          <Link
-            href="/dashboard/admin/products/new"
-            className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+      {/* 2. Shopee Navigation Tabs: Semua, Live, Perlu Tindakan, Disembunyikan */}
+      <div className="flex flex-col gap-3 border-b border-slate-200 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="no-scrollbar flex overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('ALL')
+              setActiveIssueFilter('ALL_ISSUES')
+            }}
+            className={`relative min-h-[44px] shrink-0 px-4 py-2.5 text-xs font-bold transition ${
+              activeTab === 'ALL'
+                ? 'border-b-2 border-orange-500 text-orange-600 dark:text-orange-400'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
           >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Tambah Gadget Sekarang</span>
-          </Link>
+            <span>Semua</span>
+            <span
+              className={`ml-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                activeTab === 'ALL'
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}
+            >
+              {tabCounts.allCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('LIVE')
+              setActiveIssueFilter('ALL_ISSUES')
+            }}
+            className={`relative min-h-[44px] shrink-0 px-4 py-2.5 text-xs font-bold transition ${
+              activeTab === 'LIVE'
+                ? 'border-b-2 border-orange-500 text-orange-600 dark:text-orange-400'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <span>Live</span>
+            <span
+              className={`ml-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                activeTab === 'LIVE'
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}
+            >
+              {tabCounts.liveCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('ACTION_REQUIRED')}
+            className={`relative min-h-[44px] shrink-0 px-4 py-2.5 text-xs font-bold transition ${
+              activeTab === 'ACTION_REQUIRED'
+                ? 'border-b-2 border-orange-500 text-orange-600 dark:text-orange-400'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <span>Perlu tindakan</span>
+            <span
+              className={`ml-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                tabCounts.actionRequiredCount > 0
+                  ? 'bg-rose-500 text-white'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}
+            >
+              {tabCounts.actionRequiredCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('HIDDEN')
+              setActiveIssueFilter('ALL_ISSUES')
+            }}
+            className={`relative min-h-[44px] shrink-0 px-4 py-2.5 text-xs font-bold transition ${
+              activeTab === 'HIDDEN'
+                ? 'border-b-2 border-orange-500 text-orange-600 dark:text-orange-400'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <span>Disembunyikan</span>
+            <span
+              className={`ml-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                activeTab === 'HIDDEN'
+                  ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}
+            >
+              {tabCounts.hiddenCount}
+            </span>
+          </button>
         </div>
-      ) : viewMode === 'hierarchy' ? (
-        /* ========================================================================= */
-        /* MODE HIRARKI: Merek -> Seri -> Varian RAM/Storage -> Varian Warna         */
-        /* ========================================================================= */
-        <div className="space-y-4">
-          {hierarchy.map((brandGroup) => {
-            const isBrandOpen =
-              expandedBrands[brandGroup.brand] ??
-              (selectedBrand === brandGroup.brand || hierarchy.length === 1)
+
+        {/* View Mode Switcher: Mode Daftar vs Mode Per Merek */}
+        <div className="flex items-center gap-1 self-end pb-1.5 sm:self-center sm:pb-0">
+          <span className="mr-1 text-[11px] font-semibold text-slate-400">
+            Tampilan:
+          </span>
+          <div className="flex rounded-xl border border-slate-200 bg-slate-100/80 p-0.5 dark:border-slate-800 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                viewMode === 'list'
+                  ? 'shadow-xs bg-white text-orange-600 dark:bg-slate-800 dark:text-orange-400'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              <List className="h-3.5 w-3.5" />
+              <span>Mode Daftar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewMode('hierarchy')}
+              className={`flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                viewMode === 'hierarchy'
+                  ? 'shadow-xs bg-white text-orange-600 dark:bg-slate-800 dark:text-orange-400'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              <span>Mode Per merek</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-filters for "Perlu Tindakan" */}
+      {activeTab === 'ACTION_REQUIRED' && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-rose-200/60 bg-rose-50/40 p-2.5 dark:border-rose-950/40 dark:bg-rose-950/10">
+          <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
+            Filter Masalah:
+          </span>
+          {[
+            { key: 'ALL_ISSUES', label: 'Semua Masalah' },
+            { key: 'NO_SKU', label: 'Tanpa SKU' },
+            { key: 'PRICE_BELOW_COST', label: 'Harga < HPP' },
+            { key: 'PRICE_RATIO_EXCEEDED', label: 'Rasio Harga > 7x' },
+            { key: 'OUT_OF_STOCK_ACTIVE', label: 'Stok Habis (Live)' },
+            { key: 'SKU_STOCK_DESYNC', label: 'Stok SKU Berbeda' },
+          ].map((sub) => (
+            <button
+              key={sub.key}
+              type="button"
+              onClick={() => setActiveIssueFilter(sub.key as IssueFilter)}
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
+                activeIssueFilter === sub.key
+                  ? 'shadow-xs bg-rose-600 text-white'
+                  : 'bg-white/80 text-rose-800 hover:bg-white dark:bg-slate-900 dark:text-rose-300'
+              }`}
+            >
+              {sub.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 3. Search & Sort Controls Toolbar */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+        {/* Search Input */}
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari nama produk, SKU, variasi warna..."
+            className="focus:outline-hidden min-h-[44px] w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-9 text-xs font-medium text-slate-900 transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Brand & Sort Controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Brand Dropdown */}
+          <div className="w-36">
+            <CustomSelect
+              value={selectedBrand}
+              onChange={(b) => setSelectedBrand(b)}
+              options={brandsList.map((b) => ({
+                value: b,
+                label: b === 'ALL' ? 'Semua Merek' : b,
+              }))}
+              size="sm"
+            />
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="w-44">
+            <CustomSelect
+              value={sortBy}
+              onChange={(s: any) => setSortBy(s)}
+              options={[
+                { value: 'latest', label: 'Urutan Terbaru' },
+                { value: 'price_desc', label: 'Harga Tertinggi' },
+                { value: 'price_asc', label: 'Harga Terendah' },
+                { value: 'stock_desc', label: 'Stok Terbanyak' },
+                { value: 'stock_asc', label: 'Stok Terendah' },
+                { value: 'name_asc', label: 'Nama A - Z' },
+              ]}
+              size="sm"
+            />
+          </div>
+
+          {/* Refresh button */}
+          <button
+            type="button"
+            onClick={fetchProducts}
+            disabled={loading}
+            className="flex min-h-[44px] w-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300"
+            title="Muat Ulang Katalog"
+          >
+            <RotateCcw
+              className={`h-4 w-4 ${loading ? 'animate-spin text-orange-500' : ''}`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {loading ? (
+        <div className="flex min-h-[40vh] items-center justify-center rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        </div>
+      ) : sortedProducts.length === 0 ? (
+        /* Empty State */
+        <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+            Tidak ada produk yang sesuai kriteria
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            {activeTab === 'ACTION_REQUIRED'
+              ? 'Bagus sekali! Tidak ada produk yang memerlukan tindakan atau bermasalah saat ini.'
+              : 'Ubah kata kunci pencarian atau ganti filter tab untuk melihat produk lainnya.'}
+          </p>
+          {activeTab !== 'ALL' && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('ALL')
+                setSearch('')
+                setSelectedBrand('ALL')
+              }}
+              className="shadow-xs mt-4 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-600"
+            >
+              Lihat Semua Produk
+            </button>
+          )}
+        </div>
+      ) : viewMode === 'list' ? (
+        /* 4. MODE DAFTAR (SHOPEE SELLER CENTRE STYLE) */
+        <div className="space-y-3">
+          {/* Header Row Desktop */}
+          <div className="hidden grid-cols-12 items-center gap-3 rounded-xl bg-slate-100/90 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:bg-slate-800/80 dark:text-slate-400 md:grid">
+            <div className="col-span-5 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="text-slate-400 hover:text-slate-700"
+                title="Pilih Semua Variasi"
+              >
+                {selectedVariantIds.size > 0 ? (
+                  <CheckSquare className="h-4 w-4 text-orange-600" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
+              </button>
+              <span>Nama Produk &amp; Informasi</span>
+            </div>
+            <div className="col-span-3">Rentang Harga (Rp)</div>
+            <div className="col-span-1 text-center">Stok</div>
+            <div className="col-span-2 text-center">Status</div>
+            <div className="col-span-1 text-right">Aksi</div>
+          </div>
+
+          {/* Product Items List */}
+          {sortedProducts.map((p) => {
+            const isExpanded = Boolean(expandedProductIds[p.id])
+            const showAllVars = Boolean(showAllVariantsMap[p.id])
+            const displayedVariants = showAllVars
+              ? p.variants
+              : p.variants.slice(0, 3)
 
             return (
               <div
-                key={brandGroup.brand}
-                className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                key={p.id}
+                className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition-all hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
               >
-                {/* 1. Level 1: Merek Accordion Header */}
-                <div
-                  onClick={() => toggleBrand(brandGroup.brand)}
-                  className="flex cursor-pointer select-none items-center justify-between border-b border-slate-100 bg-slate-50/70 px-5 py-4 transition hover:bg-slate-100/70 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800/70"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500 font-black text-white shadow-sm shadow-orange-500/20">
-                      {brandGroup.brand.slice(0, 2).toUpperCase()}
+                {/* Surface Baris Utama Produk */}
+                <div className="p-3.5 sm:p-4">
+                  <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-12 md:items-center">
+                    {/* Kolom 1: Checkbox, Thumbnail, Nama Produk, SKU Induk */}
+                    <div className="col-span-1 flex min-w-0 items-start gap-3 md:col-span-5">
+                      <div className="pt-1 md:pt-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (p.variants.length > 0) {
+                              p.variants.forEach((v) => {
+                                if (v.id) toggleSelectVariant(v.id)
+                              })
+                            } else {
+                              toggleSelectVariant(`prod-only-${p.id}`)
+                            }
+                          }}
+                          className="text-slate-400 hover:text-slate-700"
+                        >
+                          {p.variants.some(
+                            (v) => v.id && selectedVariantIds.has(v.id)
+                          ) || selectedVariantIds.has(`prod-only-${p.id}`) ? (
+                            <CheckSquare className="h-4 w-4 text-orange-600" />
+                          ) : (
+                            <Square className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Thumbnail */}
+                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+                        {p.images?.[0] ? (
+                          <img
+                            src={p.images[0]}
+                            alt={p.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-slate-400">
+                            Gadget
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Title & Metadata */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {p.brand}
+                          </span>
+                          {p.storeName && (
+                            <span className="text-[10px] text-slate-400">
+                              • {p.storeName}
+                            </span>
+                          )}
+                        </div>
+
+                        <Link
+                          href={`/dashboard/admin/products/${p.id}/edit`}
+                          className="mt-0.5 block truncate text-xs font-bold text-slate-900 transition hover:text-orange-600 dark:text-white dark:hover:text-orange-400"
+                        >
+                          {p.name}
+                        </Link>
+
+                        {/* Variasi Button Counter Toggle */}
+                        <div className="mt-1 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedProductIds((prev) => ({
+                                ...prev,
+                                [p.id]: !prev[p.id],
+                              }))
+                            }
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-orange-600 transition hover:underline dark:text-orange-400"
+                          >
+                            <span>
+                              {p.variantCount > 0
+                                ? `${p.variantCount} Variasi`
+                                : '1 Variasi Standar'}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUp className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )}
+                          </button>
+
+                          {/* SKU Induk Preview */}
+                          {(p.model || p.raw.sku) && (
+                            <span className="font-mono text-[10px] text-slate-400">
+                              SKU: {p.model || p.raw.sku}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-base font-black text-slate-900 dark:text-white">
-                          {brandGroup.brand}
-                        </h2>
-                        <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-[10px] font-bold text-orange-700 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-400">
-                          {brandGroup.totalSeries} Seri Gadget
+
+                    {/* Kolom 2: Rentang Harga Shopee Style (Warna Oranye) */}
+                    <div className="col-span-1 md:col-span-3">
+                      <div className="flex items-center justify-between md:block">
+                        <span className="text-[11px] font-medium text-slate-400 md:hidden">
+                          Harga:
+                        </span>
+                        <div>
+                          <p className="text-xs font-extrabold text-orange-600 dark:text-orange-400">
+                            {formatPriceDisplay(p.minPrice, p.maxPrice)}
+                          </p>
+                          {p.minCostPrice !== null && (
+                            <p className="text-[10px] font-medium text-slate-400">
+                              HPP: Rp {p.minCostPrice.toLocaleString('id-ID')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Kolom 3: Total Stok Terpadu */}
+                    <div className="col-span-1 md:col-span-1 md:text-center">
+                      <div className="flex items-center justify-between md:block">
+                        <span className="text-[11px] font-medium text-slate-400 md:hidden">
+                          Total Stok:
+                        </span>
+                        <span
+                          className={`text-xs font-bold ${
+                            p.totalStock <= 0
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : p.totalStock <= 5
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-slate-900 dark:text-white'
+                          }`}
+                        >
+                          {p.totalStock}
                         </span>
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-400">
-                        {brandGroup.totalVariants} varian warna • Total stok:{' '}
-                        <strong className="font-semibold text-slate-700 dark:text-slate-300">
-                          {brandGroup.totalStock} unit
-                        </strong>
-                      </p>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-400">
-                      {isBrandOpen ? 'Tutup Merek' : 'Buka Seri'}
-                    </span>
-                    <div className="rounded-full bg-slate-200/60 p-1.5 text-slate-600 transition dark:bg-slate-700 dark:text-slate-200">
-                      <ChevronDown
-                        className={`h-4 w-4 transition-transform duration-200 ${
-                          isBrandOpen ? 'rotate-180' : ''
-                        }`}
-                      />
+                    {/* Kolom 4: Indikator Status Tunggal */}
+                    <div className="col-span-1 md:col-span-2 md:text-center">
+                      <div className="flex items-center justify-between md:block">
+                        <span className="text-[11px] font-medium text-slate-400 md:hidden">
+                          Status:
+                        </span>
+                        <div>
+                          {!p.isActive ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                              <span>Disembunyikan</span>
+                            </span>
+                          ) : p.issues.length > 0 ? (
+                            <div className="inline-flex flex-col items-center">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                                <AlertTriangle className="h-3 w-3 text-rose-600" />
+                                <span>Perlu tindakan</span>
+                              </span>
+                              <span className="mt-0.5 text-[10px] font-medium text-rose-600">
+                                {p.issues[0].label}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              <span>Live</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Kolom 5: Aksi (Ubah + Menu ...) */}
+                    <div className="col-span-1 flex items-center justify-end gap-1.5 md:col-span-1">
+                      <Link
+                        href={`/dashboard/admin/products/${p.id}/edit`}
+                        className="shadow-2xs inline-flex min-h-[36px] items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                        <span>Ubah</span>
+                      </Link>
+
+                      {/* Dropdown Menu ... */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveMenuId(activeMenuId === p.id ? null : p.id)
+                          }
+                          className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+                          title="Menu Tindakan Lainnya"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+
+                        {activeMenuId === p.id && (
+                          <div className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                            <Link
+                              href={`/gadget/${p.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={() => setActiveMenuId(null)}
+                              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                              <span>Lihat di Web Publik</span>
+                            </Link>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null)
+                                handleToggleProductActive(p.id, p.isActive)
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                            >
+                              {p.isActive ? (
+                                <>
+                                  <EyeOff className="h-3.5 w-3.5 text-slate-400" />
+                                  <span>Sembunyikan</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                                  <span>Tampilkan (Live)</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null)
+                                handleToggleProductTaxable(p.id, p.isTaxable)
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                            >
+                              <Percent className="h-3.5 w-3.5 text-slate-400" />
+                              <span>
+                                {p.isTaxable
+                                  ? 'Matikan PPN 11%'
+                                  : 'Aktifkan PPN 11%'}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null)
+                                setProductToDelete(p.raw)
+                                setIsDeleteOpen(true)
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/20"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Hapus Produk</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Level 2: List of Series under this Brand */}
-                {isBrandOpen && (
-                  <div className="divide-y divide-slate-100 p-4 dark:divide-slate-800/60 sm:p-5">
-                    {brandGroup.series.map((series) => {
-                      const seriesKey = `${brandGroup.brand}-${series.seriesName}`
-                      const isSeriesOpen =
-                        expandedSeries[seriesKey] ??
-                        (search.trim().length > 0 ||
-                          brandGroup.series.length === 1)
+                {/* Sub-baris Variasi (Expandable accordion) */}
+                {isExpanded && p.variants.length > 0 && (
+                  <div className="border-t border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                    <div className="space-y-2">
+                      <div className="hidden grid-cols-12 gap-2 text-[10px] font-bold uppercase text-slate-400 md:grid">
+                        <div className="col-span-4">Variasi &amp; Warna</div>
+                        <div className="col-span-2">Harga Jual (Rp)</div>
+                        <div className="col-span-2">HPP Modal (Rp)</div>
+                        <div className="col-span-1">Stok</div>
+                        <div className="col-span-2">SKU Variasi</div>
+                        <div className="col-span-1 text-right">Aksi</div>
+                      </div>
+
+                      {displayedVariants.map((v, vIdx) => {
+                        const variantKey = v.id || `v-${p.id}-${vIdx}`
+                        const editData = editingVariant[variantKey] || {
+                          price: String(v.price || p.price),
+                          costPrice: String(v.costPrice || p.costPrice || ''),
+                          stock: String(v.stock ?? 0),
+                          sku: v.sku || '',
+                        }
+                        const isEdited = Boolean(editingVariant[variantKey])
+                        const isSaving = savingVariantId === variantKey
+
+                        return (
+                          <div
+                            key={variantKey}
+                            className="shadow-2xs grid grid-cols-1 items-center gap-2 rounded-xl border border-slate-200/60 bg-white p-2.5 text-xs dark:border-slate-800 dark:bg-slate-800/60 md:grid-cols-12"
+                          >
+                            {/* Nama Variasi & Checkbox */}
+                            <div className="col-span-1 flex items-center gap-2 md:col-span-4">
+                              {v.id && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSelectVariant(v.id!)}
+                                  className="text-slate-400 hover:text-slate-700"
+                                >
+                                  {selectedVariantIds.has(v.id!) ? (
+                                    <CheckSquare className="h-3.5 w-3.5 text-orange-600" />
+                                  ) : (
+                                    <Square className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              )}
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                {v.name ||
+                                  `${v.ram || ''}/${v.storage || ''} ${v.color || ''}`}
+                              </span>
+                            </div>
+
+                            {/* Input Inline Harga Jual */}
+                            <div className="col-span-1 md:col-span-2">
+                              <span className="text-[10px] font-medium text-slate-400 md:hidden">
+                                Harga Jual:
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={editData.price}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '')
+                                  setEditingVariant((prev) => ({
+                                    ...prev,
+                                    [variantKey]: {
+                                      ...editData,
+                                      price: val,
+                                    },
+                                  }))
+                                }}
+                                className="focus:outline-hidden w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-bold text-orange-600 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-900"
+                              />
+                            </div>
+
+                            {/* Input Inline HPP */}
+                            <div className="col-span-1 md:col-span-2">
+                              <span className="text-[10px] font-medium text-slate-400 md:hidden">
+                                HPP:
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="HPP (Rp)"
+                                value={editData.costPrice}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '')
+                                  setEditingVariant((prev) => ({
+                                    ...prev,
+                                    [variantKey]: {
+                                      ...editData,
+                                      costPrice: val,
+                                    },
+                                  }))
+                                }}
+                                className="focus:outline-hidden w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                              />
+                            </div>
+
+                            {/* Input Inline Stok */}
+                            <div className="col-span-1 md:col-span-1">
+                              <span className="text-[10px] font-medium text-slate-400 md:hidden">
+                                Stok:
+                              </span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={editData.stock}
+                                onChange={(e) => {
+                                  setEditingVariant((prev) => ({
+                                    ...prev,
+                                    [variantKey]: {
+                                      ...editData,
+                                      stock: e.target.value,
+                                    },
+                                  }))
+                                }}
+                                className="focus:outline-hidden w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-center text-xs font-semibold text-slate-900 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                              />
+                            </div>
+
+                            {/* SKU Variasi */}
+                            <div className="col-span-1 md:col-span-2">
+                              <span className="text-[10px] font-medium text-slate-400 md:hidden">
+                                SKU:
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  placeholder="SKU..."
+                                  value={editData.sku}
+                                  onChange={(e) => {
+                                    setEditingVariant((prev) => ({
+                                      ...prev,
+                                      [variantKey]: {
+                                        ...editData,
+                                        sku: e.target.value,
+                                      },
+                                    }))
+                                  }}
+                                  className="focus:outline-hidden w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                                />
+
+                                {/* 1-Click Samakan Stok SKU jika SKU sama tapi stok beda */}
+                                {p.hasSkuStockDesync && v.sku && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleSyncSkuStock(
+                                        v.sku!,
+                                        parseInt(editData.stock) || 0
+                                      )
+                                    }
+                                    disabled={syncingSku === v.sku}
+                                    title="Samakan stok seluruh variasi ber-SKU ini"
+                                    className="shrink-0 rounded-md bg-amber-100 p-1 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300"
+                                  >
+                                    <RotateCcw
+                                      className={`h-3 w-3 ${syncingSku === v.sku ? 'animate-spin' : ''}`}
+                                    />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Tombol Simpan Baris Inline */}
+                            <div className="col-span-1 text-right md:col-span-1">
+                              {isEdited ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleSaveInlineVariant(p.id, variantKey)
+                                  }
+                                  disabled={isSaving}
+                                  className="shadow-xs rounded-lg bg-orange-500 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-orange-600"
+                                >
+                                  {isSaving ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    'Simpan'
+                                  )}
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-slate-300">
+                                  Tersimpan
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {/* Tautan Lihat Variasi Lainnya jika > 3 */}
+                      {p.variants.length > 3 && (
+                        <div className="pt-1 text-center">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowAllVariantsMap((prev) => ({
+                                ...prev,
+                                [p.id]: !prev[p.id],
+                              }))
+                            }
+                            className="shadow-2xs inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-orange-600 hover:bg-orange-50/50 dark:border-slate-700 dark:bg-slate-800 dark:text-orange-400"
+                          >
+                            <span>
+                              {showAllVars
+                                ? 'Tampilkan lebih sedikit'
+                                : `Lihat ${p.variants.length - 3} variasi lainnya`}
+                            </span>
+                            {showAllVars ? (
+                              <ChevronUp className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        /* 5. MODE PER MEREK (HIERARKI 4-LEVEL BERSTANDAR IDENTIK) */
+        <div className="space-y-4">
+          {hierarchyTree.map((b) => {
+            const isBrandExp = Boolean(expandedBrands[b.brand])
+            return (
+              <div
+                key={b.brand}
+                className="shadow-2xs overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900"
+              >
+                {/* Level 1: Header Merek */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedBrands((prev) => ({
+                      ...prev,
+                      [b.brand]: !prev[b.brand],
+                    }))
+                  }
+                  className="flex w-full items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-3 text-left transition hover:bg-slate-100/70 dark:border-slate-800 dark:bg-slate-800/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="shadow-xs rounded-lg bg-orange-500 px-2.5 py-0.5 text-xs font-black uppercase text-white">
+                      {b.brand}
+                    </span>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {b.series.length} Model Produk
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      • {b.totalStock} Unit Total Stok
+                    </span>
+                  </div>
+                  {isBrandExp ? (
+                    <ChevronUp className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                  )}
+                </button>
+
+                {/* Level 2: Daftar Produk / Seri */}
+                {isBrandExp && (
+                  <div className="divide-y divide-slate-100 p-3 dark:divide-slate-800">
+                    {b.series.map((s) => {
+                      const seriesKey = `${b.brand}-${s.seriesName}`
+                      const isSeriesExp = Boolean(expandedSeries[seriesKey])
 
                       return (
                         <div
                           key={seriesKey}
                           className="py-3 first:pt-0 last:pb-0"
                         >
-                          {/* 2. Level 2: Seri Accordion Header */}
-                          <div className="shadow-2xs flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-3.5 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/80">
-                            <div
-                              onClick={() => toggleSeries(seriesKey)}
-                              className="flex flex-1 cursor-pointer items-center gap-3"
-                            >
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
-                                <Smartphone className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                                    {series.seriesName}
-                                  </h3>
-                                  <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                    {series.capacities.length} Kapasitas
-                                  </span>
-                                  <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-400">
-                                    {series.totalVariants} Varian Warna
-                                  </span>
-                                </div>
-                                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-                                  <span className="font-semibold text-slate-600 dark:text-slate-300">
-                                    Mulai Rp{' '}
-                                    {series.minPrice.toLocaleString('id-ID')}
-                                  </span>
-                                  <span>•</span>
-                                  <span>
-                                    {series.storeName ||
-                                      'Affiliate Gadget Pusat'}
-                                  </span>
-                                  <span>•</span>
-                                  <span>{series.condition || 'BARU'}</span>
-                                  <span>•</span>
-                                  <span
-                                    className={`font-bold ${
-                                      series.totalStock > 0
-                                        ? 'text-emerald-600 dark:text-emerald-400'
-                                        : 'text-rose-500'
-                                    }`}
-                                  >
-                                    Stok: {series.totalStock} unit
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Series Action Buttons & Expand Toggle */}
-                            <div className="flex items-center gap-2">
-                              {series.productId && (
-                                <>
-                                  {/* Direct PPN Checkbox Toggle */}
-                                  <button
-                                    type="button"
-                                    disabled={
-                                      updatingTaxId === series.productId
-                                    }
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleToggleProductTaxable(
-                                        series.productId!,
-                                        series.isTaxable !== false,
-                                        series.seriesName
-                                      )
-                                    }}
-                                    className={`shadow-2xs inline-flex select-none items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition ${
-                                      series.isTaxable !== false
-                                        ? 'border-blue-200 bg-blue-50/90 text-blue-700 hover:bg-blue-100 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300'
-                                        : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400'
-                                    } ${updatingTaxId === series.productId ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}
-                                    title={
-                                      series.isTaxable !== false
-                                        ? `Dikenakan PPN (Inklusif ${series.storeVatRate ?? 11}% jika PKP). Klik untuk ubah jadi Bebas PPN.`
-                                        : 'Bebas PPN (PPN Rp 0). Klik untuk ubah jadi Dikenakan PPN.'
-                                    }
-                                  >
-                                    {updatingTaxId === series.productId ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : series.isTaxable !== false ? (
-                                      <CheckSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                                    ) : (
-                                      <Square className="h-3.5 w-3.5 text-slate-400" />
-                                    )}
-                                    <span>
-                                      {series.isTaxable !== false
-                                        ? series.storeIsPkp
-                                          ? `PPN ${series.storeVatRate ?? 11}%`
-                                          : 'PPN Aktif'
-                                        : 'Bebas PPN'}
-                                    </span>
-                                  </button>
-
-                                  <Link
-                                    href={`/dashboard/admin/products/${series.productId}/edit`}
-                                    className="shadow-2xs inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                                    title="Edit Detail Produk"
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                    <span>Edit</span>
-                                  </Link>
-
-                                  <Link
-                                    href={`/gadget/${series.productId}`}
-                                    target="_blank"
-                                    className="shadow-2xs inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                                    title="Buka Halaman Publik"
-                                  >
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                  </Link>
-                                </>
-                              )}
-
+                          {/* Baris Seri / Produk */}
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-2.5">
                               <button
-                                onClick={() => toggleSeries(seriesKey)}
-                                className="rounded-xl border border-slate-200 bg-slate-100/80 p-1.5 text-slate-600 transition hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                                title="Buka / Tutup Varian RAM"
+                                type="button"
+                                onClick={() =>
+                                  setExpandedSeries((prev) => ({
+                                    ...prev,
+                                    [seriesKey]: !prev[seriesKey],
+                                  }))
+                                }
+                                className="flex items-center gap-1.5 text-xs font-bold text-slate-900 transition hover:text-orange-600 dark:text-white"
                               >
-                                <ChevronDown
-                                  className={`h-4 w-4 transition-transform duration-200 ${
-                                    isSeriesOpen ? 'rotate-180' : ''
-                                  }`}
-                                />
+                                {isSeriesExp ? (
+                                  <ChevronUp className="h-4 w-4 text-orange-500" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-orange-500" />
+                                )}
+                                <span>{s.seriesName}</span>
                               </button>
+
+                              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                {s.capacities.length} Pilihan Kapasitas
+                              </span>
+
+                              <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                                {formatPriceDisplay(s.minPrice, s.maxPrice)}
+                              </span>
                             </div>
+
+                            {/* Tombol Ubah Produk */}
+                            {s.productId && (
+                              <Link
+                                href={`/dashboard/admin/products/${s.productId}/edit`}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:underline"
+                              >
+                                <span>Edit Detail Produk →</span>
+                              </Link>
+                            )}
                           </div>
 
-                          {/* Level 3: Capacities under this Series */}
-                          {isSeriesOpen && (
-                            <div className="ml-2 mt-3 space-y-3 border-l-2 border-orange-200 pl-3 dark:border-orange-950 sm:ml-4 sm:pl-4">
-                              {series.capacities.map((cap) => {
-                                const capKeyIdentifier = `${seriesKey}-${cap.capacityKey}`
-                                const isCapOpen =
-                                  expandedCapacities[capKeyIdentifier] ?? true
+                          {/* Level 3: Kapasitas & Varian Warna */}
+                          {isSeriesExp && (
+                            <div className="mt-3 space-y-3 pl-4 sm:pl-6">
+                              {s.capacities.map((cap) => {
+                                const capKey = `${seriesKey}-${cap.capacityKey}`
+                                const isCapExp = Boolean(
+                                  expandedCapacities[capKey]
+                                )
+                                const inputVal =
+                                  capacityPriceInputs[cap.capacityKey] ??
+                                  (cap.commonPrice
+                                    ? String(cap.commonPrice)
+                                    : '')
 
                                 return (
                                   <div
-                                    key={capKeyIdentifier}
-                                    className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 dark:border-slate-800 dark:bg-slate-800/30"
+                                    key={capKey}
+                                    className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/40"
                                   >
-                                    {/* 3. Level 3: Varian RAM/Storage Accordion Header + Inline Bulk Price Updater */}
-                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                      {/* Left: Capacity Title, Price Consistency Status, & Select All */}
-                                      <div className="flex flex-wrap items-center gap-2.5">
-                                        <button
-                                          onClick={() =>
-                                            selectAllCapacityVariants(cap)
-                                          }
-                                          className="text-slate-400 hover:text-orange-600"
-                                          title="Pilih / Batalkan semua warna di kapasitas ini"
-                                        >
-                                          {cap.variants.every((v) =>
-                                            selectedVariantIds.has(v.id)
-                                          ) ? (
-                                            <CheckSquare className="h-4 w-4 text-orange-600" />
-                                          ) : (
-                                            <Square className="h-4 w-4" />
-                                          )}
-                                        </button>
-
-                                        <div
-                                          onClick={() =>
-                                            toggleCapacity(capKeyIdentifier)
-                                          }
-                                          className="flex cursor-pointer items-center gap-2"
-                                        >
-                                          <span className="shadow-2xs rounded-xl border border-slate-300 bg-white px-2.5 py-1 text-xs font-black text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-                                            {cap.capacityKey}
-                                          </span>
-
-                                          {/* Status Harga Konsisten (Semua warna sama atau beda) */}
-                                          {cap.isAllSamePrice ? (
-                                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-400">
-                                              <Check className="h-3 w-3 stroke-[2.5]" />
-                                              Harga Seragam: Rp{' '}
-                                              {cap.commonPrice?.toLocaleString(
-                                                'id-ID'
-                                              )}
-                                            </span>
-                                          ) : (
-                                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-400">
-                                              <AlertTriangle className="h-3 w-3" />
-                                              Harga Bervariasi (Rp{' '}
-                                              {cap.minPrice.toLocaleString(
-                                                'id-ID'
-                                              )}{' '}
-                                              - Rp{' '}
-                                              {cap.maxPrice.toLocaleString(
-                                                'id-ID'
-                                              )}
-                                              )
-                                            </span>
-                                          )}
-
-                                          <span className="text-[11px] text-slate-400">
-                                            {cap.variants.length} warna • Stok:{' '}
-                                            {cap.totalStock} unit
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      {/* Right: Direct 1-Click Inline Bulk Price Updater */}
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        <div className="relative">
-                                          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                                            Rp
-                                          </span>
-                                          <input
-                                            type="number"
-                                            placeholder={
-                                              cap.commonPrice
-                                                ? String(cap.commonPrice)
-                                                : 'Ubah harga...'
-                                            }
-                                            value={
-                                              capacityPriceInputs[
-                                                capKeyIdentifier
-                                              ] || ''
-                                            }
-                                            onChange={(e) =>
-                                              setCapacityPriceInputs(
-                                                (prev) => ({
-                                                  ...prev,
-                                                  [capKeyIdentifier]:
-                                                    e.target.value,
-                                                })
-                                              )
-                                            }
-                                            className="h-8 w-36 rounded-xl border border-slate-300 bg-white py-1 pl-8 pr-2 text-xs font-bold text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                                          />
-                                        </div>
-
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                      <div className="flex items-center gap-2">
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            handleUpdateCapacityColors(
-                                              capKeyIdentifier,
-                                              cap
+                                            setExpandedCapacities((prev) => ({
+                                              ...prev,
+                                              [capKey]: !prev[capKey],
+                                            }))
+                                          }
+                                          className="text-xs font-bold text-slate-800 hover:text-orange-600 dark:text-slate-200"
+                                        >
+                                          {cap.capacityKey}
+                                        </button>
+                                        <span className="text-[11px] text-slate-400">
+                                          ({cap.variants.length} Warna • Stok:{' '}
+                                          {cap.totalStock})
+                                        </span>
+                                      </div>
+
+                                      {/* Terapkan ke semua warna bar */}
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="text"
+                                          inputMode="numeric"
+                                          placeholder="Harga kapasitas (Rp)"
+                                          value={inputVal}
+                                          onChange={(e) => {
+                                            const v = e.target.value.replace(
+                                              /\D/g,
+                                              ''
+                                            )
+                                            setCapacityPriceInputs((prev) => ({
+                                              ...prev,
+                                              [cap.capacityKey]: v,
+                                            }))
+                                          }}
+                                          className="focus:outline-hidden w-36 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-orange-600 focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleApplyCapacityPrice(
+                                              cap,
+                                              inputVal
                                             )
                                           }
                                           disabled={
-                                            updatingCapacity ===
-                                            capKeyIdentifier
+                                            updatingCapacity === cap.capacityKey
                                           }
-                                          className="shadow-2xs inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-3 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
-                                          title="Update serempak harga untuk semua varian warna di kapasitas ini"
+                                          className="shadow-xs rounded-lg bg-orange-500 px-3 py-1 text-xs font-bold text-white hover:bg-orange-600 active:scale-95"
                                         >
                                           {updatingCapacity ===
-                                          capKeyIdentifier ? (
-                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          cap.capacityKey ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
                                           ) : (
-                                            <Sparkles className="h-3.5 w-3.5" />
+                                            'Terapkan ke semua warna'
                                           )}
-                                          <span>Ubah Harga Semua Warna</span>
-                                        </button>
-
-                                        <button
-                                          onClick={() =>
-                                            toggleCapacity(capKeyIdentifier)
-                                          }
-                                          className="rounded-lg p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                          title="Buka / Tutup Tabel Warna"
-                                        >
-                                          <ChevronDown
-                                            className={`h-4 w-4 transition-transform duration-200 ${
-                                              isCapOpen ? 'rotate-180' : ''
-                                            }`}
-                                          />
                                         </button>
                                       </div>
                                     </div>
 
-                                    {/* 4. Level 4: Varian Warna Table under this Capacity */}
-                                    {isCapOpen && (
-                                      <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200/90 bg-white dark:border-slate-700/80 dark:bg-slate-900">
-                                        <table className="w-full text-left text-xs">
-                                          <thead>
-                                            <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-800/40">
-                                              <th className="w-10 px-3 py-2 text-center">
-                                                Pilih
-                                              </th>
-                                              <th className="px-3 py-2">
-                                                Varian Warna
-                                              </th>
-                                              <th className="px-3 py-2">SKU</th>
-                                              <th className="px-3 py-2">
-                                                Harga Satuan
-                                              </th>
-                                              <th className="px-3 py-2 text-center">
-                                                Stok
-                                              </th>
-                                              <th className="px-3 py-2">
-                                                Status
-                                              </th>
-                                              <th className="px-3 py-2 text-right">
-                                                Aksi
-                                              </th>
-                                            </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                            {cap.variants.map((v) => {
-                                              const isSelected =
-                                                selectedVariantIds.has(v.id)
+                                    {/* Level 4: Varian Warna */}
+                                    {isCapExp && (
+                                      <div className="mt-2.5 divide-y divide-slate-100 rounded-lg border border-slate-200/60 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+                                        {cap.variants.map((v) => (
+                                          <div
+                                            key={v.id}
+                                            className="flex flex-wrap items-center justify-between gap-2 p-2.5 text-xs"
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  toggleSelectVariant(v.id)
+                                                }
+                                                className="text-slate-400 hover:text-slate-700"
+                                              >
+                                                {selectedVariantIds.has(
+                                                  v.id
+                                                ) ? (
+                                                  <CheckSquare className="h-3.5 w-3.5 text-orange-600" />
+                                                ) : (
+                                                  <Square className="h-3.5 w-3.5" />
+                                                )}
+                                              </button>
+                                              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                                {v.color}
+                                              </span>
+                                              {v.sku && (
+                                                <span className="font-mono text-[10px] text-slate-400">
+                                                  ({v.sku})
+                                                </span>
+                                              )}
+                                            </div>
 
-                                              return (
-                                                <tr
-                                                  key={v.id}
-                                                  className={`transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/50 ${
-                                                    isSelected
-                                                      ? 'bg-orange-50/40 dark:bg-orange-950/20'
-                                                      : ''
-                                                  }`}
-                                                >
-                                                  <td className="px-3 py-2 text-center">
-                                                    <button
-                                                      onClick={() =>
-                                                        toggleVariantSelection(
-                                                          v.id
-                                                        )
-                                                      }
-                                                      className="text-slate-400 hover:text-orange-600"
-                                                    >
-                                                      {isSelected ? (
-                                                        <CheckSquare className="h-4 w-4 text-orange-600" />
-                                                      ) : (
-                                                        <Square className="h-4 w-4" />
-                                                      )}
-                                                    </button>
-                                                  </td>
-                                                  <td className="px-3 py-2">
-                                                    <div className="flex items-center gap-2">
-                                                      <span className="shadow-2xs h-3 w-3 rounded-full border border-slate-300 bg-gradient-to-tr from-slate-200 to-slate-400" />
-                                                      <span className="font-bold text-slate-900 dark:text-white">
-                                                        {v.color}
-                                                      </span>
-                                                      <span className="text-[10px] text-slate-400">
-                                                        ({v.name})
-                                                      </span>
-                                                    </div>
-                                                  </td>
-                                                  <td className="px-3 py-2">
-                                                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                                      {v.sku || '-'}
-                                                    </span>
-                                                  </td>
-                                                  <td className="px-3 py-2">
-                                                    <span className="font-black text-slate-950 dark:text-white">
-                                                      Rp{' '}
-                                                      {v.price.toLocaleString(
-                                                        'id-ID'
-                                                      )}
-                                                    </span>
-                                                    {Boolean(
-                                                      v.costPrice &&
-                                                      v.costPrice > 0
-                                                    ) && (
-                                                      <div className="text-[10px] font-medium text-slate-400">
-                                                        HPP:{' '}
-                                                        <span className="font-mono text-slate-600 dark:text-slate-300">
-                                                          Rp{' '}
-                                                          {Number(
-                                                            v.costPrice
-                                                          ).toLocaleString(
-                                                            'id-ID'
-                                                          )}
-                                                        </span>
-                                                        <span className="ml-1 font-bold text-emerald-600 dark:text-emerald-400">
-                                                          (+
-                                                          {Math.round(
-                                                            ((v.price -
-                                                              Number(
-                                                                v.costPrice
-                                                              )) /
-                                                              v.price) *
-                                                              100
-                                                          )}
-                                                          %)
-                                                        </span>
-                                                      </div>
-                                                    )}
-                                                  </td>
-                                                  <td className="px-3 py-2 text-center">
-                                                    <span
-                                                      className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                                        v.stock > 0
-                                                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                                          : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                                                      }`}
-                                                    >
-                                                      {v.stock > 0
-                                                        ? `${v.stock} unit`
-                                                        : 'Habis'}
-                                                    </span>
-                                                  </td>
-                                                  <td className="px-3 py-2">
-                                                    <div className="flex flex-col gap-1">
-                                                      <span
-                                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                                          v.productActive
-                                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                                        }`}
-                                                      >
-                                                        <span
-                                                          className={`h-1.5 w-1.5 rounded-full ${
-                                                            v.productActive
-                                                              ? 'bg-emerald-500'
-                                                              : 'bg-slate-400'
-                                                          }`}
-                                                        />
-                                                        {v.productActive
-                                                          ? 'Aktif'
-                                                          : 'Nonaktif'}
-                                                      </span>
-                                                      <span
-                                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                                                          v.isTaxable !==
-                                                            false &&
-                                                          v.storeIsPkp
-                                                            ? 'border border-blue-200/80 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300'
-                                                            : 'border border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400'
-                                                        }`}
-                                                      >
-                                                        {v.isTaxable !== false
-                                                          ? `PPN ${v.storeVatRate ?? 11}%`
-                                                          : 'Bebas PPN'}
-                                                      </span>
-                                                    </div>
-                                                  </td>
-                                                  <td className="px-3 py-2 text-right">
-                                                    <Link
-                                                      href={`/dashboard/admin/products/${v.productId}/edit`}
-                                                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline dark:text-blue-400"
-                                                    >
-                                                      <Edit className="h-3 w-3" />
-                                                      <span>Edit</span>
-                                                    </Link>
-                                                  </td>
-                                                </tr>
-                                              )
-                                            })}
-                                          </tbody>
-                                        </table>
+                                            <div className="flex items-center gap-3">
+                                              <span className="font-bold text-orange-600">
+                                                Rp{' '}
+                                                {v.price.toLocaleString(
+                                                  'id-ID'
+                                                )}
+                                              </span>
+                                              <span className="text-[11px] text-slate-400">
+                                                Stok: {v.stock}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        ))}
                                       </div>
                                     )}
                                   </div>
@@ -1343,466 +1701,118 @@ export default function ProductsPage() {
             )
           })}
         </div>
-      ) : (
-        /* ========================================================================= */
-        /* MODE TABEL DATAR (TRADISIONAL)                                            */
-        /* ========================================================================= */
-        <div className="shadow-xs rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
-                  <th className="px-3 pb-3">Unit Gadget</th>
-                  <th className="px-3 pb-3">Toko Cabang</th>
-                  <th className="px-3 pb-3">Harga Unit</th>
-                  <th className="px-3 pb-3 text-center">Stok Unit</th>
-                  <th className="px-3 pb-3">Status & Garansi</th>
-                  <th className="px-3 pb-3 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {paginatedProducts.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
-                  >
-                    <td className="px-3 py-4">
-                      <div className="flex items-center gap-3.5">
-                        <img
-                          src={
-                            (item.images && item.images[0]) ||
-                            'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
-                          }
-                          alt={item.name}
-                          className="shadow-2xs h-12 w-12 shrink-0 rounded-2xl border border-slate-100 object-cover dark:border-slate-800"
-                        />
-                        <div className="min-w-0">
-                          <p className="line-clamp-1 font-bold text-slate-900 dark:text-white">
-                            {item.name}
-                          </p>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
-                            <span className="font-semibold text-slate-600 dark:text-slate-300">
-                              {item.brand || 'Gadget'}
-                            </span>
-                            <span>•</span>
-                            <span>{item.condition || 'BARU'}</span>
-                            {item.variants && item.variants.length > 0 && (
-                              <>
-                                <span>•</span>
-                                <span className="font-medium text-orange-600 dark:text-orange-400">
-                                  {item.variants.length} Varian
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-4">
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">
-                        {item.store
-                          ? item.store.name
-                          : 'Affiliate Gadget Pusat'}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        {item.store ? item.store.city : 'Jakarta Pusat'}
-                      </p>
-                    </td>
-                    <td className="px-3 py-4">
-                      <span className="text-sm font-black text-slate-950 dark:text-white">
-                        Rp {item.price.toLocaleString('id-ID')}
-                      </span>
-                      {Boolean(
-                        item.costPrice && Number(item.costPrice) > 0
-                      ) && (
-                        <div className="mt-0.5 text-[11px] font-medium text-slate-400">
-                          HPP:{' '}
-                          <span className="font-mono text-slate-600 dark:text-slate-300">
-                            Rp {Number(item.costPrice).toLocaleString('id-ID')}
-                          </span>
-                          <span className="ml-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                            (+
-                            {Math.round(
-                              ((item.price - Number(item.costPrice)) /
-                                item.price) *
-                                100
-                            )}
-                            %)
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-4 text-center">
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                          item.stock > 0
-                            ? 'border border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                            : 'border border-rose-200/60 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                        }`}
-                      >
-                        {item.stock > 0 ? `${item.stock} Unit` : 'Stok Habis'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4">
-                      <div className="flex flex-col gap-1 text-[11px]">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                              item.isActive
-                                ? 'border border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                : 'border border-slate-200 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                            }`}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                item.isActive
-                                  ? 'bg-emerald-500'
-                                  : 'bg-slate-400'
-                              }`}
-                            />
-                            {item.isActive ? 'Aktif di Web' : 'Nonaktif'}
-                          </span>
-                        </div>
-                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
-                          <ShieldCheck className="h-3.5 w-3.5" /> Garansi{' '}
-                          {item.warrantyDays || 30} Hari
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-500">
-                          <Gift className="h-3 w-3 text-orange-500" /> Free
-                          Bonus 3-in-1
-                        </span>
-                        {/* PPN Badge & Interactive Toggle (Internal Admin View) */}
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            disabled={updatingTaxId === item.id}
-                            onClick={() =>
-                              handleToggleProductTaxable(
-                                item.id,
-                                item.isTaxable !== false,
-                                item.name
-                              )
-                            }
-                            className={`inline-flex select-none items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10px] font-bold transition ${
-                              item.isTaxable !== false
-                                ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400'
-                                : 'border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400'
-                            } ${updatingTaxId === item.id ? 'cursor-wait opacity-50' : 'cursor-pointer'}`}
-                            title="Klik untuk mengubah status PPN produk ini"
-                          >
-                            {updatingTaxId === item.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : item.isTaxable !== false ? (
-                              <CheckSquare className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                            ) : (
-                              <Square className="h-3 w-3 text-slate-400" />
-                            )}
-                            <span>
-                              {item.isTaxable !== false
-                                ? item.store?.isPkp
-                                  ? `PPN: Inklusif ${item.store?.vatRate ?? 11}%`
-                                  : 'PPN Aktif'
-                                : 'Bebas PPN (Rp 0)'}
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-4 text-right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <Link
-                          href={`/dashboard/admin/products/${item.id}/edit`}
-                          className="shadow-2xs inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                        >
-                          <Edit className="h-3 w-3" />
-                          <span>Edit</span>
-                        </Link>
+      )}
 
-                        <button
-                          onClick={() => handleOpenDelete(item)}
-                          className="shadow-2xs inline-flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50/60 p-1.5 text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-400"
-                          title="Hapus Produk"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-
-                        <Link
-                          href={`/gadget/${item.id}`}
-                          target="_blank"
-                          className="shadow-2xs inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                          title="Buka Halaman Publik"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Footer (Flat Table) */}
-          <div className="mt-5 flex flex-col items-center justify-between gap-4 border-t border-slate-100 pt-5 dark:border-slate-800 sm:flex-row">
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <span>
-                Menampilkan{' '}
-                <strong className="font-bold text-slate-900 dark:text-white">
-                  {totalItems === 0 ? 0 : startIndex + 1} - {endIndex}
-                </strong>{' '}
-                dari{' '}
-                <strong className="font-bold text-slate-900 dark:text-white">
-                  {totalItems}
-                </strong>{' '}
-                unit gadget
+      {/* 6. Sticky Bottom Action Bar saat Multi-Select Terpilih */}
+      {selectedVariantIds.size > 0 && (
+        <div className="fixed inset-x-0 bottom-4 z-40 mx-auto max-w-4xl px-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/95 p-3.5 text-white shadow-2xl backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-orange-500 px-2.5 py-0.5 text-xs font-black">
+                {selectedVariantIds.size}
+              </span>
+              <span className="text-xs font-semibold">
+                Variasi terpilih untuk di-update massal
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <span className="hidden sm:inline">Per halaman:</span>
-                <CustomSelect
-                  value={String(itemsPerPage)}
-                  onChange={(val) => setItemsPerPage(Number(val))}
-                  size="sm"
-                  options={[
-                    { value: '10', label: '10' },
-                    { value: '20', label: '20' },
-                    { value: '50', label: '50' },
-                    { value: '100', label: '100' },
-                  ]}
-                />
-              </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Harga baru (Rp)"
+                value={bulkNewPrice}
+                onChange={(e) =>
+                  setBulkNewPrice(e.target.value.replace(/\D/g, ''))
+                }
+                className="focus:outline-hidden w-32 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-bold text-orange-400 focus:border-orange-500"
+              />
 
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={safeCurrentPage <= 1}
-                  className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
+              <input
+                type="number"
+                min={0}
+                placeholder="Stok baru"
+                value={bulkNewStock}
+                onChange={(e) => setBulkNewStock(e.target.value)}
+                className="focus:outline-hidden w-24 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-white focus:border-orange-500"
+              />
 
-                {getPageNumbers().map((page, idx) =>
-                  typeof page === 'number' ? (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentPage(page)}
-                      className={`h-8 w-8 rounded-xl text-xs font-bold transition-all ${
-                        safeCurrentPage === page
-                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                          : 'border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ) : (
-                    <span
-                      key={idx}
-                      className="px-1 text-xs text-slate-400 dark:text-slate-600"
-                    >
-                      {page}
-                    </span>
-                  )
+              <button
+                type="button"
+                onClick={handleBulkUpdateSelected}
+                disabled={bulkUpdating}
+                className="rounded-lg bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
+              >
+                {bulkUpdating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  'Terapkan'
                 )}
+              </button>
 
-                <button
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
-                  }
-                  disabled={safeCurrentPage >= totalPages}
-                  className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedVariantIds(new Set())}
+                className="rounded-lg border border-slate-700 bg-transparent px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800"
+              >
+                Batal
+              </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Floating Action Bar for Multi-Selected Color Variants */}
-      {selectedVariantIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 flex-wrap items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/95 px-5 py-3 text-white shadow-2xl backdrop-blur-md">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-xs font-black text-white">
-              {selectedVariantIds.size}
-            </span>
-            <span className="text-xs font-bold text-slate-200">
-              Varian Warna Terpilih
-            </span>
-          </div>
-
-          <div className="h-4 w-px bg-slate-700" />
-
-          {/* New Price Input */}
-          <div className="relative">
-            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">
-              Rp
-            </span>
-            <input
-              type="number"
-              placeholder="Harga baru..."
-              value={bulkNewPrice}
-              onChange={(e) => setBulkNewPrice(e.target.value)}
-              className="h-8 w-32 rounded-xl border border-slate-700 bg-slate-900 py-1 pl-8 pr-2 text-xs font-bold text-white outline-none focus:border-orange-500"
-            />
-          </div>
-
-          {/* New Stock Input (Optional) */}
-          <input
-            type="number"
-            placeholder="Stok (opsional)..."
-            value={bulkNewStock}
-            onChange={(e) => setBulkNewStock(e.target.value)}
-            className="h-8 w-28 rounded-xl border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs font-bold text-white outline-none focus:border-orange-500"
-          />
-
-          {/* Apply Bulk Update */}
-          <button
-            onClick={handleApplySelectedBulkUpdate}
-            disabled={bulkUpdating}
-            className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-4 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
-          >
-            {bulkUpdating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-            <span>Terapkan ke Pilihan</span>
-          </button>
-
-          {/* Clear / Reset Selection */}
-          <button
-            onClick={() => setSelectedVariantIds(new Set())}
-            className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-700 bg-slate-800 px-3 text-xs font-semibold text-slate-300 transition hover:bg-slate-700"
-          >
-            <RotateCcw className="h-3 w-3" />
-            <span>Batal</span>
-          </button>
         </div>
       )}
 
       {/* Delete Confirmation Modal */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="max-w-md rounded-3xl border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col items-center text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
-              <AlertTriangle className="h-7 w-7" />
-            </div>
-
-            <DialogTitle className="text-base font-black text-slate-900 dark:text-white">
-              Hapus Produk Gadget?
-            </DialogTitle>
-            <DialogDescription className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Tindakan ini permanen. Produk{' '}
-              <strong className="text-slate-800 dark:text-slate-200">
-                "{productToDelete?.name}"
-              </strong>{' '}
-              dan semua variannya akan dihapus dari katalog.
-            </DialogDescription>
-
-            <div className="mt-6 flex w-full gap-2">
-              <button
-                type="button"
-                onClick={() => setIsDeleteOpen(false)}
-                className="flex-1 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={deleteLoading}
-                className="flex-1 rounded-xl bg-rose-600 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/20 hover:bg-rose-700 disabled:opacity-50"
-              >
-                {deleteLoading ? (
-                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-                ) : (
-                  'Ya, Hapus'
-                )}
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Superadmin Store Selector for Export Excel */}
-      <Dialog
-        open={isExportStoreModalOpen}
-        onOpenChange={(open) => !isExporting && setIsExportStoreModalOpen(open)}
-      >
-        <DialogContent className="max-w-md rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 sm:p-7">
-          <DialogTitle className="flex items-center gap-2.5 text-base font-bold text-slate-950 dark:text-white">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-              <Download className="h-5 w-5" />
-            </div>
-            <span>Pilih Cabang Toko untuk Ekspor Excel</span>
+        <DialogContent className="max-w-md rounded-2xl bg-white p-6 dark:bg-slate-900">
+          <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">
+            Konfirmasi Hapus Produk
           </DialogTitle>
-
-          <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Superadmin wajib memilih salah satu cabang toko untuk mengunduh data
-            katalog dan SKU format Shopee.
+          <DialogDescription className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+            Apakah Anda yakin ingin menghapus produk{' '}
+            <strong className="text-slate-900 dark:text-white">
+              {productToDelete?.name}
+            </strong>
+            ? Tindakan ini akan menghapus seluruh data variasi, stok, dan
+            riwayat produk secara permanen.
           </DialogDescription>
 
-          <div className="mt-4 space-y-4">
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                <Store className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <span>Pilih Cabang Toko:</span>
-              </label>
-              <CustomSelect
-                value={selectedExportStoreId}
-                onChange={(val) => setSelectedExportStoreId(val)}
-                options={stores.map((s) => ({
-                  value: s.id,
-                  label: `${s.name}${s.city ? ` (${s.city})` : ''}`,
-                }))}
-                placeholder="Pilih salah satu toko..."
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsExportStoreModalOpen(false)}
-                disabled={isExporting}
-                className="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => handleExportExcel(selectedExportStoreId)}
-                disabled={!selectedExportStoreId || isExporting}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-blue-600/25 transition hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isExporting ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Mengekspor...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Download Excel</span>
-                  </>
-                )}
-              </button>
-            </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={deleteLoading}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteProduct}
+              disabled={deleteLoading}
+              className="shadow-xs rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95"
+            >
+              {deleteLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                'Hapus Permanen'
+              )}
+            </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Excel Bulk Update Modal */}
-      {(isSuperAdmin || isStoreAdmin) && (
-        <BulkPriceUpdateModal
-          isOpen={isBulkUpdateOpen}
-          onClose={() => setIsBulkUpdateOpen(false)}
-          onSuccess={() => fetchProducts()}
-          stores={stores}
-        />
-      )}
+      {/* Modal Mass Update Excel Shopee (Phase 2 Component) */}
+      <BulkPriceUpdateModal
+        isOpen={isBulkUpdateOpen}
+        onClose={() => setIsBulkUpdateOpen(false)}
+        onSuccess={() => {
+          fetchProducts()
+        }}
+        isSuperAdmin={isSuperAdmin}
+        userStoreId={userStoreId || undefined}
+        stores={stores}
+      />
     </div>
   )
 }

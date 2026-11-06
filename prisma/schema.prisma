@@ -68,6 +68,7 @@ model User {
   liveStreamComments               LiveStreamComment[]
   managedGroup                     StoreGroup?              @relation("GroupAfterSalesUser")
   chatTemplates                    ChatTemplate[]
+  massUpdateTasks                  MassUpdateTask[]
 
   @@index([email])
   @@index([phone])
@@ -169,6 +170,7 @@ model Store {
   adminChatRooms       AdminChatRoom[]
   vouchers             Voucher[]
   chatTemplates        ChatTemplate[]
+  massUpdateTasks      MassUpdateTask[]
   groupId              String?
   group                StoreGroup?        @relation(fields: [groupId], references: [id])
 
@@ -260,6 +262,7 @@ model Product {
   totalReview             Int              @default(0)
   isActive                Boolean          @default(true)
   isTaxable               Boolean          @default(true) // Apakah produk kena PPN (true) atau bebas PPN (false)
+  isBatchLocked           Boolean          @default(false)
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
   store                   Store?           @relation(fields: [storeId], references: [id])
@@ -1410,4 +1413,45 @@ model ChatTemplate {
   @@index([userId])
   @@index([storeId])
   @@map("chat_templates")
+}
+
+enum MassUpdateType {
+  DOWNLOAD
+  UPLOAD
+}
+
+enum MassUpdateStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model MassUpdateTask {
+  id             String           @id @default(cuid())
+  type           MassUpdateType   @default(DOWNLOAD)
+  templateType   String           @default("SALES_INFO") // "BASIC_INFO", "SALES_INFO"
+  storeId        String?
+  userId         String
+  status         MassUpdateStatus @default(PENDING)
+  fileName       String
+  fileUrl        String?
+  errorLogUrl    String?
+  processedCount Int              @default(0)
+  totalCount     Int              @default(0)
+  successCount   Int              @default(0)
+  failedCount    Int              @default(0)
+  summaryMessage String?
+  fileHash       String?
+  snapshotAt     DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store          Store?           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@index([userId])
+  @@index([status])
+  @@map("mass_update_tasks")
 }

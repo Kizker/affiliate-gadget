@@ -124,53 +124,123 @@ export async function GET(request: Request) {
     workbook.created = new Date()
 
     // ─────────────────────────────────────────────────────────────
-    // SHEET 1: Sheet1 (Shopee Official Mass Update Template)
+    // SHEET 1: Sheet1 (Shopee Official Mass Update Template - 15 Columns with HPP)
     // ─────────────────────────────────────────────────────────────
     const worksheet = workbook.addWorksheet('Sheet1', {
-      views: [{ state: 'frozen', ySplit: 2 }],
+      views: [{ state: 'frozen', ySplit: 6 }],
     })
 
-    // Exact 14 Shopee Columns
+    // 15 Columns including HPP
     worksheet.columns = [
-      { header: 'Kode Produk', key: 'kodeProduk', width: 20 }, // Col A (1)
-      { header: 'Nama Produk', key: 'namaProduk', width: 44 }, // Col B (2)
-      { header: 'Kode Variasi', key: 'kodeVariasi', width: 20 }, // Col C (3)
-      { header: 'Nama Variasi', key: 'namaVariasi', width: 32 }, // Col D (4)
-      { header: 'SKU Induk', key: 'skuInduk', width: 24 }, // Col E (5)
-      { header: 'SKU', key: 'sku', width: 20 }, // Col F (6)
-      { header: 'Harga', key: 'harga', width: 18 }, // Col G (7)
-      { header: 'GTIN', key: 'gtin', width: 16 }, // Col H (8)
-      { header: 'Stok', key: 'stok', width: 12 }, // Col I (9)
-      { header: 'Min. Jumlah Pembelian', key: 'minBeli', width: 24 }, // Col J (10)
-      { header: 'Maks. Jumlah Pembelian', key: 'maksBeli', width: 24 }, // Col K (11)
-      {
-        header: 'Maks. Jumlah Pembelian - Tanggal Mulai',
-        key: 'tglMulai',
-        width: 26,
-      }, // Col L (12)
-      {
-        header: 'Maks. Jumlah Pembelian - Jumlah Hari',
-        key: 'jmlHari',
-        width: 26,
-      }, // Col M (13)
-      {
-        header: 'Maks. Jumlah Pembelian - Tanggal Berakhir',
-        key: 'tglAkhir',
-        width: 28,
-      }, // Col N (14)
+      { key: 'kodeProduk', width: 20 }, // Col A (1)
+      { key: 'namaProduk', width: 44 }, // Col B (2)
+      { key: 'kodeVariasi', width: 20 }, // Col C (3)
+      { key: 'namaVariasi', width: 32 }, // Col D (4)
+      { key: 'skuInduk', width: 24 }, // Col E (5)
+      { key: 'sku', width: 22 }, // Col F (6)
+      { key: 'harga', width: 18 }, // Col G (7)
+      { key: 'costPrice', width: 26 }, // Col H (8) - Khusus Affiliate Gadget HPP Modal
+      { key: 'gtin', width: 16 }, // Col I (9)
+      { key: 'stok', width: 12 }, // Col J (10)
+      { key: 'minBeli', width: 24 }, // Col K (11)
+      { key: 'maksBeli', width: 24 }, // Col L (12)
+      { key: 'tglMulai', width: 26 }, // Col M (13)
+      { key: 'jmlHari', width: 26 }, // Col N (14)
+      { key: 'tglAkhir', width: 28 }, // Col O (15)
     ]
 
     // ─────────────────────────────────────────────────────────────
-    // ROW 1: Header Row (Shopee Brand Orange #EE4D2D)
+    // ROW 1: Technical Key Row (Shopee Spec)
     // ─────────────────────────────────────────────────────────────
-    const headerRow = worksheet.getRow(1)
-    headerRow.height = 36
-    headerRow.eachCell((cell) => {
+    const row1 = worksheet.addRow([
+      'item_id',
+      'item_name',
+      'model_id',
+      'model_name',
+      'parent_sku',
+      'sku',
+      'price',
+      'cost_price',
+      'gtin',
+      'stock',
+      'min_purchase_limit',
+      'max_purchase_limit',
+      'start_date',
+      'days',
+      'end_date',
+    ])
+    row1.height = 18
+    row1.eachCell((cell) => {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFEE4D2D' }, // Shopee Orange
+        fgColor: { argb: 'FFF1F5F9' },
       }
+      cell.font = {
+        name: 'Segoe UI',
+        size: 8,
+        color: { argb: 'FF94A3B8' },
+        italic: true,
+      }
+    })
+
+    // ─────────────────────────────────────────────────────────────
+    // ROW 2: Data Type Metadata
+    // ─────────────────────────────────────────────────────────────
+    const row2 = worksheet.addRow([
+      'int',
+      'string',
+      'int',
+      'string',
+      'string',
+      'string',
+      'float',
+      'float',
+      'string',
+      'int',
+      'int',
+      'int',
+      'date',
+      'int',
+      'date',
+    ])
+    row2.height = 18
+    row2.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF8FAFC' },
+      }
+      cell.font = { name: 'Segoe UI', size: 8, color: { argb: 'FF94A3B8' } }
+    })
+
+    // ─────────────────────────────────────────────────────────────
+    // ROW 3: Column Labels (Shopee Orange Header)
+    // ─────────────────────────────────────────────────────────────
+    const row3 = worksheet.addRow([
+      'Kode Produk',
+      'Nama Produk',
+      'Kode Variasi',
+      'Nama Variasi',
+      'SKU Induk',
+      'SKU',
+      'Harga',
+      'HPP Modal (Affiliate Gadget)',
+      'GTIN',
+      'Stok',
+      'Min. Jumlah Pembelian',
+      'Maks. Jumlah Pembelian',
+      'Maks. Jumlah Pembelian - Tanggal Mulai',
+      'Maks. Jumlah Pembelian - Jumlah Hari',
+      'Maks. Jumlah Pembelian - Tanggal Berakhir',
+    ])
+    row3.height = 32
+    row3.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFEE4D2D' },
+      } // Shopee Orange
       cell.font = {
         name: 'Segoe UI',
         color: { argb: 'FFFFFFFF' },
@@ -191,54 +261,103 @@ export async function GET(request: Request) {
     })
 
     // ─────────────────────────────────────────────────────────────
-    // ROW 2: Shopee Validation & Hint Instruction Row
+    // ROW 4: Mandatory / Optional Indicator Row
     // ─────────────────────────────────────────────────────────────
-    const hintRow = worksheet.addRow({
-      kodeProduk: '',
-      namaProduk: '',
-      kodeVariasi: '',
-      namaVariasi: '',
-      skuInduk: '',
-      sku: '',
-      harga:
-        'Mohon masukkan 99 sampai 1000000000 untuk harga produk. Batas harga produk termahal dibagi harga harga produk termurah: 7',
-      gtin: '',
-      stok: '',
-      minBeli:
-        'Min. jumlah pembelian merupakan isi dari tingkatan produk. Pembeli dapat memesan variasi yang berbeda untuk mencapai min. jumlah pembelian. Jika dikosongkan, min. jumlah pembelian akan otomatis bernilai 1. Pastikan stok lebih besar dari min. jumlah pembelian agar Pembeli dapat membuat pesanan.',
-      maksBeli:
-        '[Per Pesanan + Per Periode] Pengaturan ini akan membatasi Maks. jumlah pembelian yang dapat dibeli per pesanan atau per periode. Mohon masukkan input dari 1 hingga 999,999.',
-      tglMulai:
-        '[Hanya untuk Pengaturan Per Periode] Mohon tentukan tanggal mulai. Tanggal mulai tercepat adalah besok. Mohon masukkan format tanggal dalam YYYY-MM-DD.',
-      jmlHari:
-        '[Hanya untuk Pengaturan Per Periode] Batas Maks. jumlah pembelian akan berakhir (untuk tipe periode "Tidak Berulang") atau mulai kembali (untuk tipe periode "Berulang") setelah jumlah hari yang ditentukan. Mohon masukkan 1 sampai 365.',
-      tglAkhir:
-        '[Hanya untuk Pengaturan Per Periode] Mohon masukkan tanggal dalam format YYY-MM-DD.\n\nUntuk tipe periode "Tidak Berulang", tanggal berakhir = tanggal mulai + jumlah hari - 1.\n\nUntuk tipe periode "Berulang", tanggal berakhir harus kelipatan dari jumlah hari.',
+    const row4 = worksheet.addRow([
+      'Wajib',
+      'Hanya Baca',
+      'Wajib',
+      'Hanya Baca',
+      'Opsional',
+      'Opsional',
+      'Wajib',
+      'Opsional',
+      'Opsional',
+      'Wajib',
+      'Opsional',
+      'Opsional',
+      'Opsional',
+      'Opsional',
+      'Opsional',
+    ])
+    row4.height = 20
+    row4.eachCell((cell) => {
+      const isReq = cell.value === 'Wajib'
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: isReq ? 'FFFFF1F0' : 'FFF8FAFC' },
+      }
+      cell.font = {
+        name: 'Segoe UI',
+        size: 8.5,
+        bold: isReq,
+        color: { argb: isReq ? 'FFE02424' : 'FF64748B' },
+      }
+      cell.alignment = { vertical: 'middle', horizontal: 'center' }
     })
 
-    hintRow.height = 70
-    hintRow.eachCell((cell) => {
+    // ─────────────────────────────────────────────────────────────
+    // ROW 5: Short Validation Rules
+    // ─────────────────────────────────────────────────────────────
+    const row5 = worksheet.addRow([
+      'Angka unik 11 digit',
+      'Maks 255 karakter',
+      'Angka unik 12 digit',
+      'Nama varian warna/RAM',
+      'Kode model seragam',
+      'Kode SKU bebas & unik',
+      'Min Rp 99, rasio maks 7x',
+      'Harga modal unit (HPP)',
+      'Barcode EAN/UPC',
+      'Angka bulat >= 0',
+      'Minimal 1',
+      'Maks 999.999',
+      'Format YYYY-MM-DD',
+      '1 - 365 hari',
+      'Format YYYY-MM-DD',
+    ])
+    row5.height = 22
+    row5.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF1F5F9' },
+      }
+      cell.font = { name: 'Segoe UI', size: 8, color: { argb: 'FF475569' } }
+      cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    })
+
+    // ─────────────────────────────────────────────────────────────
+    // ROW 6: Detailed Instruction & Constraints Row
+    // ─────────────────────────────────────────────────────────────
+    const row6 = worksheet.addRow([
+      'Jangan ubah Kode Produk untuk menjaga integritas sinkronisasi.',
+      'Nama produk hanya referensi tampilan, ubah di panel jika perlu.',
+      'Kosongkan bila produk tidak memiliki variasi.',
+      'Nama variasi spesifik.',
+      'SKU Induk mempermudah pengelompokan produk.',
+      'Satu SKU dapat dipakai bersama oleh beberapa variasi.',
+      'Harga jual produk. Batas harga termahal dibagi termurah maks 7x.',
+      'Kolom HPP modal Affiliate Gadget. Harga jual sebaiknya tidak di bawah HPP.',
+      'Nomor identifikasi produk global standar industri.',
+      'Jumlah unit fisik yang tersedia di toko cabang.',
+      'Batas minimum order pembelian per transaksi.',
+      'Batas maksimum kuantitas yang dapat dipesan.',
+      'Tanggal mulai pembatasan order.',
+      'Durasi periode pembatasan.',
+      'Tanggal akhir pembatasan pembelian.',
+    ])
+    row6.height = 42
+    row6.eachCell((cell) => {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
         fgColor: { argb: 'FFF8FAFC' },
       }
-      cell.font = {
-        name: 'Segoe UI',
-        size: 8,
-        color: { argb: 'FF64748B' },
-      }
-      cell.alignment = {
-        vertical: 'top',
-        horizontal: 'left',
-        wrapText: true,
-      }
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-        bottom: { style: 'medium', color: { argb: 'FFCBD5E1' } },
-        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-        right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-      }
+      cell.font = { name: 'Segoe UI', size: 7.5, color: { argb: 'FF64748B' } }
+      cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true }
+      cell.border = { bottom: { style: 'medium', color: { argb: 'FFCBD5E1' } } }
     })
 
     // ─────────────────────────────────────────────────────────────
@@ -275,6 +394,7 @@ export async function GET(request: Request) {
             skuInduk: prodModel,
             sku: variantSku,
             harga: Number(v.price) || 0,
+            costPrice: v.costPrice ?? prod.costPrice ?? '',
             gtin: '',
             stok: Number(v.stock) || 0,
             minBeli: index === 0 ? 1 : '',
@@ -296,6 +416,7 @@ export async function GET(request: Request) {
           skuInduk: prodModel,
           sku: singleSku,
           harga: Number(prod.price) || 0,
+          costPrice: prod.costPrice ?? '',
           gtin: '',
           stok: Number(prod.stock) || 0,
           minBeli: 1,
@@ -316,6 +437,27 @@ export async function GET(request: Request) {
       .replace(/_+/g, '_')
       .replace(/^_|_$/g, '')
     const filename = `mass_update_sales_info_${storeSlug}_${nowStr}.xlsx`
+
+    // Log this download task in PostgreSQL
+    if (session?.user?.id) {
+      await prisma.massUpdateTask
+        .create({
+          data: {
+            type: 'DOWNLOAD',
+            templateType: 'SALES_INFO',
+            storeId: targetStoreId,
+            userId: session.user.id,
+            status: 'COMPLETED',
+            fileName: filename,
+            totalCount: products.length,
+            processedCount: products.length,
+            successCount: products.length,
+            summaryMessage: `Template berhasil diekspor (${products.length} produk).`,
+            snapshotAt: new Date(),
+          },
+        })
+        .catch((e) => console.error('Failed to log mass update task:', e))
+    }
 
     return new NextResponse(buffer, {
       status: 200,
