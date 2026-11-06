@@ -80,8 +80,7 @@ export function ChatHeader({
                 {selectedRoom.store?.name || selectedRoom.claimedBy?.name}
               </span>
             ) : (selectedRoom.claimedBy as any)?.role === 'AFTER_SALES' ||
-              (selectedRoom.store as any)?.isAfterSales ||
-              selectedRoom.order?.status === 'COMPLETED' ? (
+              (selectedRoom.store as any)?.isAfterSales ? (
               <span className="font-semibold text-orange-600 dark:text-orange-400">
                 Layanan Purna Jual &amp; Garansi Terpusat
                 {activeOrderContext?.orderNumber

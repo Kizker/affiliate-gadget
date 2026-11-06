@@ -898,7 +898,11 @@ function CustomerChatContent() {
             if (exists) {
               return prev.map((r) => (r.id === targetRoom.id ? targetRoom : r))
             }
-            return [targetRoom, ...prev]
+            // Hanya masukkan ke daftar sidebar jika room sudah memiliki riwayat pesan
+            if (targetRoom.messages && targetRoom.messages.length > 0) {
+              return [targetRoom, ...prev]
+            }
+            return prev
           })
           setLoading(false)
 
@@ -1160,8 +1164,24 @@ function CustomerChatContent() {
       )
       setShouldScrollToBottom(true)
 
-      setRooms((prev) =>
-        prev.map((r) =>
+      setRooms((prev) => {
+        const roomExists = prev.some((r) => r.id === selectedRoom.id)
+        if (!roomExists) {
+          const newRoomInList: ChatRoom = {
+            ...selectedRoom,
+            lastMessageAt: new Date().toISOString(),
+            messages: [
+              {
+                content: contentToSend,
+                messageType,
+                createdAt: new Date().toISOString(),
+                senderId: session?.user?.id,
+              },
+            ],
+          }
+          return [newRoomInList, ...prev]
+        }
+        return prev.map((r) =>
           r.id === selectedRoom.id
             ? {
                 ...r,
@@ -1177,7 +1197,7 @@ function CustomerChatContent() {
               }
             : r
         )
-      )
+      })
     } catch (error) {
       console.error('Error sending message:', error)
       toast.error('Gagal mengirim pesan')
@@ -1349,6 +1369,32 @@ function CustomerChatContent() {
       const data = await res.json()
       setMessages((prev) => [...prev, data.message])
       setShouldScrollToBottom(true)
+
+      if (data?.message) {
+        setRooms((prev) => {
+          const roomExists = prev.some((r) => r.id === selectedRoom.id)
+          if (!roomExists) {
+            return [
+              {
+                ...selectedRoom,
+                lastMessageAt: new Date().toISOString(),
+                messages: [data.message],
+              },
+              ...prev,
+            ]
+          }
+          return prev.map((r) =>
+            r.id === selectedRoom.id
+              ? {
+                  ...r,
+                  lastMessageAt: new Date().toISOString(),
+                  messages: [data.message],
+                }
+              : r
+          )
+        })
+      }
+
       toast.success(
         isVideo ? 'Video berhasil dikirim' : 'Foto berhasil dikirim'
       )
@@ -1446,10 +1492,11 @@ function CustomerChatContent() {
 
   const isAfterSalesActive =
     !isMitraActive &&
-    ((activeStore as any)?.isAfterSales ||
-      (selectedRoom?.claimedBy as any)?.role === 'AFTER_SALES' ||
-      selectedRoom?.order?.status === 'COMPLETED' ||
-      selectedRoom?.order?.status === 'RETURNED')
+    (selectedRoom?.claimedBy as any)?.role !== 'STORE_ADMIN' &&
+    Boolean(
+      (activeStore as any)?.isAfterSales ||
+      (selectedRoom?.claimedBy as any)?.role === 'AFTER_SALES'
+    )
 
   // Online status akurat: Hanya hijau jika lawan bicara aktif mengirim pesan < 10 menit terakhir
   const isStoreOnline = (() => {

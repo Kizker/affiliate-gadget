@@ -15,7 +15,6 @@ export async function GET() {
       .deleteMany({
         where: {
           messages: { none: {} },
-          createdAt: { lt: new Date(Date.now() - 30 * 1000) },
         },
       })
       .catch(() => {})
@@ -325,12 +324,15 @@ export async function GET() {
       const totalUnreadCount = unreadMap.get(room.id) || 0
       const hasOrder = !!resolvedOrder
 
+      // Room After Sales: HANYA jika di-claim oleh AFTER_SALES atau room spesifik pesanan purna jual yang BUKAN room toko reguler
       const isAfterSalesRoom = Boolean(
-        resolvedOrder?.status === 'COMPLETED' ||
-        resolvedOrder?.status === 'RETURNED' ||
-        (resolvedOrder?.returnRequests &&
-          resolvedOrder.returnRequests.length > 0) ||
-        room.claimedBy?.role === 'AFTER_SALES'
+        room.claimedBy?.role === 'AFTER_SALES' ||
+        (room.orderId &&
+          (resolvedOrder?.status === 'COMPLETED' ||
+            resolvedOrder?.status === 'RETURNED' ||
+            (resolvedOrder?.returnRequests &&
+              resolvedOrder.returnRequests.length > 0)) &&
+          room.claimedBy?.role !== 'STORE_ADMIN')
       )
 
       const storeGroupAfterSales = (room.store as any)?.group?.afterSalesUser
@@ -354,7 +356,9 @@ export async function GET() {
             name: baseStore
               ? `Layanan Purna Jual (${baseStore.name})`
               : 'Layanan Purna Jual Resmi',
-            companyName: 'Admin After Sales & Garansi Terpusat',
+            companyName: resolvedOrder?.orderNumber
+              ? `Pesanan #${resolvedOrder.orderNumber}`
+              : 'Admin After Sales & Garansi Terpusat',
             phone: '0812-3456-7890',
             city: 'Pusat Garansi',
             logo: (resolvedClaimedBy as any)?.image || null,
@@ -409,9 +413,9 @@ export async function GET() {
     })
 
     // Deduplikasi defensif:
-    // 1. After Sales: 1 Pelanggan + 1 After Sales Grup Cabang = 1 Room
-    // 2. Mitra: 1 Pelanggan + 1 Mitra Servis = 1 Room
-    // 3. Toko: 1 Pelanggan + 1 Toko = 1 Room
+    // 1. After Sales: 1 Room PER PESANAN SELESAI (5 pesanan selesai = 5 room After Sales terpisah)
+    // 2. Toko: 1 Pelanggan + 1 Toko = 1 Room tunggal
+    // 3. Mitra: 1 Pelanggan + 1 Mitra Servis = 1 Room
     // 4. CS: 1 Pelanggan + CS = 1 Room
     const seenStoreKeys = new Set<string>()
     const deduplicatedRooms: typeof enrichedRooms = []
@@ -422,7 +426,7 @@ export async function GET() {
         (room.store as any)?.isMitra ||
         (room.claimedBy as any)?.role === 'MITRA'
       const key = isAfterSales
-        ? `${room.customerId}_aftersales_${room.claimedById || 'group'}`
+        ? `${room.customerId}_aftersales_order_${room.orderId || room.id}`
         : isMitra
           ? `${room.customerId}_mitra_${room.claimedById || room.store?.id}`
           : `${room.customerId}_${room.storeId || room.store?.id || 'cs'}`

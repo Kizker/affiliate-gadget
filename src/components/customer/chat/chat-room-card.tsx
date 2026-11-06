@@ -27,10 +27,11 @@ export function ChatRoomCard({
       (room.type === 'admin' && !room.storeId && !room.technician))
   const isAfterSalesRoom =
     !isMitraRoom &&
-    ((storeObj as any)?.isAfterSales ||
-      (room.claimedBy as any)?.role === 'AFTER_SALES' ||
-      room.order?.status === 'COMPLETED' ||
-      room.order?.status === 'RETURNED')
+    (room.claimedBy as any)?.role !== 'STORE_ADMIN' &&
+    Boolean(
+      (storeObj as any)?.isAfterSales ||
+      (room.claimedBy as any)?.role === 'AFTER_SALES'
+    )
 
   // Online status akurat: Hanya hijau jika lawan bicara aktif mengirim pesan < 10 menit terakhir
   const roomIsOnline = (() => {
@@ -152,6 +153,12 @@ export function ChatRoomCard({
           <div className="mt-0.5 flex items-center gap-1">
             <span className="rounded bg-blue-50 px-1 text-[9px] font-bold text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
               CS Superadmin
+            </span>
+          </div>
+        ) : isAfterSalesRoom ? (
+          <div className="mt-0.5 flex items-center gap-1">
+            <span className="rounded bg-orange-50 px-1 text-[9px] font-bold text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
+              After Sales & Garansi
             </span>
           </div>
         ) : null}

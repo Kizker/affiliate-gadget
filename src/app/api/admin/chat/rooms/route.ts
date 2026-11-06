@@ -28,7 +28,6 @@ export async function GET() {
       .deleteMany({
         where: {
           messages: { none: {} },
-          createdAt: { lt: new Date(Date.now() - 30 * 1000) },
         },
       })
       .catch(() => {})
@@ -320,12 +319,18 @@ export async function GET() {
       }
     })
 
-    // Deduplikasi defensif: 1 Pelanggan + 1 Toko/CS = 1 Unified Chat Room di antarmuka
+    // Deduplikasi defensif:
+    // 1. After Sales: 1 Room per pesanan selesai (5 pesanan selesai = 5 room After Sales)
+    // 2. Admin Toko / CS: 1 Pelanggan + 1 Toko/CS = 1 Unified Chat Room
     const seenRoomKeys = new Set<string>()
     const deduplicatedRooms: typeof enrichedRooms = []
 
     for (const room of enrichedRooms) {
-      const key = `${room.customerId}_${room.storeId || 'CS'}`
+      const isAfterSalesRole = user.role === 'AFTER_SALES'
+      const key = isAfterSalesRole
+        ? `${room.customerId}_aftersales_order_${room.orderId || room.id}`
+        : `${room.customerId}_${room.storeId || 'CS'}`
+
       if (!seenRoomKeys.has(key)) {
         seenRoomKeys.add(key)
         deduplicatedRooms.push(room)

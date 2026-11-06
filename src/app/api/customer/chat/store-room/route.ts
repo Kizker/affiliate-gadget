@@ -283,13 +283,16 @@ export async function POST(req: NextRequest) {
       latestReturn?.status || returnStatus || 'PENDING'
     const effectiveReturnType = latestReturn?.type || returnType || 'REFUND'
     const effectiveReturnId = latestReturn?.id || returnId || null
+
+    // Pemisahan tegas alur: Hanya masuk After Sales jika memang diakses dari alur pesanan selesai / klaim retur purna jual
     const isReturnInquiry = Boolean(
+      reqType === 'after_sales' ||
       effectiveReturnId ||
       effectiveReturnReason ||
       returnReason ||
-      reqType === 'after_sales' ||
-      resolvedOrder?.status === 'COMPLETED' ||
-      (resolvedOrder?.returnRequests && resolvedOrder.returnRequests.length > 0)
+      ((resolvedOrder?.status === 'COMPLETED' ||
+        resolvedOrder?.status === 'RETURNED') &&
+        (reqType === 'after_sales' || Boolean(latestReturn)))
     )
     const isOrderInquiry = Boolean(orderId || effectiveOrderNumber)
 
@@ -386,183 +389,112 @@ export async function POST(req: NextRequest) {
       assignedAdmin = groupAfterSales || fallbackAfterSales || storeAdmin
     }
 
-    // Customer + Store / After Sales Group = SINGLE CHAT ROOM
+    // Pemisahan tegas Jalur Room:
+    // 1. After Sales: 1 room terpisah per pesanan selesai (5 pesanan selesai = 5 room After Sales)
+    // 2. Admin Toko: 1 room chat tunggal per customer + store (semua konsultasi/produk/order berlangsung masuk ke sini)
     let room: any = null
 
-    // Jika percakapan purna jual (retur/garansi), gunakan 1 room terpadu per customer + grup after sales
     if (isReturnInquiry && assignedAdmin?.role === 'AFTER_SALES') {
-      room = await prisma.adminChatRoom.findFirst({
-        where: {
-          customerId: session.user.id,
-          claimedById: assignedAdmin.id,
-        },
-        include: {
-          claimedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              role: true,
-            },
+      const targetOrderId = resolvedOrder?.id || orderId || null
+      if (targetOrderId) {
+        room = await prisma.adminChatRoom.findFirst({
+          where: {
+            customerId: session.user.id,
+            orderId: targetOrderId,
+            claimedBy: { role: 'AFTER_SALES' },
           },
-          order: {
-            select: {
-              id: true,
-              orderNumber: true,
-              status: true,
-              total: true,
-              returnRequests: {
-                orderBy: { createdAt: 'desc' },
-                take: 1,
+          include: {
+            claimedBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+                role: true,
               },
             },
-          },
-        },
-        orderBy: { lastMessageAt: 'desc' },
-      })
-    }
-
-    if (!room) {
-      room = await prisma.adminChatRoom.findFirst({
-        where: {
-          customerId: session.user.id,
-          storeId: store.id,
-        },
-        include: {
-          claimedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              role: true,
-            },
-          },
-          order: {
-            select: {
-              id: true,
-              orderNumber: true,
-              status: true,
-              total: true,
-              returnRequests: {
-                orderBy: { createdAt: 'desc' },
-                take: 1,
-              },
-            },
-          },
-        },
-        orderBy: { lastMessageAt: 'desc' },
-      })
-    }
-
-    if (!room && orderId) {
-      room = await prisma.adminChatRoom.findFirst({
-        where: {
-          customerId: session.user.id,
-          orderId: orderId,
-        },
-        include: {
-          claimedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              role: true,
-            },
-          },
-          order: {
-            select: {
-              id: true,
-              orderNumber: true,
-              status: true,
-              total: true,
-              returnRequests: {
-                orderBy: { createdAt: 'desc' },
-                take: 1,
-              },
-            },
-          },
-        },
-        orderBy: { lastMessageAt: 'desc' },
-      })
-    }
-
-    // Jika room yang ditemukan sudah memiliki order berstatus COMPLETED atau di-claim oleh AFTER_SALES,
-    // pastikan percakapan tetap berada di jalur After Sales
-    const isExistingRoomAfterSales = Boolean(
-      room?.order?.status === 'COMPLETED' ||
-      room?.order?.status === 'RETURNED' ||
-      (room?.order?.returnRequests && room.order.returnRequests.length > 0) ||
-      room?.claimedBy?.role === 'AFTER_SALES'
-    )
-    const effectiveIsReturnInquiry = isReturnInquiry || isExistingRoomAfterSales
-
-    if (effectiveIsReturnInquiry && assignedAdmin?.role !== 'AFTER_SALES') {
-      const storeWithGroup = await prisma.store.findUnique({
-        where: { id: store.id },
-        include: {
-          group: {
-            include: {
-              afterSalesUser: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                  role: true,
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+                status: true,
+                total: true,
+                returnRequests: {
+                  orderBy: { createdAt: 'desc' },
+                  take: 1,
                 },
               },
             },
           },
+          orderBy: { lastMessageAt: 'desc' },
+        })
+      }
+    } else {
+      // Jalur Admin Toko: Cari 1 room chat tunggal toko (bukan room after sales)
+      room = await prisma.adminChatRoom.findFirst({
+        where: {
+          customerId: session.user.id,
+          storeId: store.id,
+          NOT: {
+            claimedBy: { role: 'AFTER_SALES' },
+          },
         },
-      })
-      const groupAfterSales = storeWithGroup?.group?.afterSalesUser
-      const fallbackAfterSales = await prisma.user.findFirst({
-        where: { role: 'AFTER_SALES', isActive: true },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          role: true,
+        include: {
+          claimedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              role: true,
+            },
+          },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              total: true,
+              returnRequests: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          },
         },
+        orderBy: { lastMessageAt: 'desc' },
       })
-      assignedAdmin = groupAfterSales || fallbackAfterSales || storeAdmin
     }
 
+    const effectiveIsReturnInquiry = isReturnInquiry
     const isNew = !room
     let effectiveClaimedBy = assignedAdmin
 
     if (!room) {
-      // Create new direct room connected with appropriate admin
+      // Create new direct room
+      const targetOrderId = isReturnInquiry
+        ? resolvedOrder?.id || orderId || null
+        : orderId || null
+
       room = await prisma.adminChatRoom.create({
         data: {
           customerId: session.user.id,
           storeId: store.id,
-          orderId: orderId || null,
+          orderId: targetOrderId,
           claimedById: assignedAdmin?.id || null,
           claimedAt: assignedAdmin ? new Date() : null,
           lastMessageAt: new Date(),
         } as any,
       })
     } else {
-      // If customer asks about another order from the same store, update orderId to the latest order context
+      // Room sudah ada
       const updates: any = {}
-      if (orderId && room.orderId !== orderId) {
+      if (!isReturnInquiry && orderId && room.orderId !== orderId) {
         updates.orderId = orderId
         updates.lastMessageAt = new Date()
       }
-      if (
-        effectiveIsReturnInquiry &&
-        assignedAdmin &&
-        assignedAdmin.role === 'AFTER_SALES'
-      ) {
-        updates.claimedById = assignedAdmin.id
-        updates.claimedAt = new Date()
-        effectiveClaimedBy = assignedAdmin
-      } else if (!room.claimedById && assignedAdmin) {
+
+      if (!room.claimedById && assignedAdmin) {
         updates.claimedById = assignedAdmin.id
         updates.claimedAt = new Date()
         effectiveClaimedBy = assignedAdmin

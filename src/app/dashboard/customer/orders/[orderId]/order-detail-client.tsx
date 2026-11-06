@@ -332,6 +332,14 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     chatParams.set('productImage', firstProduct.images[0])
   if (firstItem?.price) chatParams.set('productPrice', String(firstItem.price))
 
+  const isAfterSalesOrder =
+    Boolean(latestReturnRequest) ||
+    order.status === 'COMPLETED' ||
+    order.status === 'RETURNED'
+  if (isAfterSalesOrder) {
+    chatParams.set('type', 'after_sales')
+  }
+
   // Resolusi rute kembali yang akurat: mempertahankan tab status yang dikunjungi customer sebelumnya
   const backHref = useMemo(() => {
     if (fromStatus) {

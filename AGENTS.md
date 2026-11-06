@@ -67,6 +67,19 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-06 (Pemisahan Total Jalur Chat Admin Toko [1 Room Tunggal] vs After Sales [1 Room per Pesanan Selesai] & Otomatisasi Pembersihan Room Kosong [`src/app/api/customer/chat/store-room/route.ts`, `src/app/api/customer/chat/all-rooms/route.ts`, `src/app/api/admin/chat/rooms/route.ts`, `src/app/dashboard/customer/chat/page.tsx`, `src/components/customer/chat/chat-header.tsx`, `src/components/customer/chat/chat-room-card.tsx`, `src/app/dashboard/customer/orders/[orderId]/order-detail-client.tsx`, `tests/unit/store-admin-vs-after-sales-chat-routing.test.ts`]):**
+  - **1. Jalur Chat Admin Toko (1 Customer + 1 Toko = 1 Room Chat Tunggal):**
+    - Chat yang dibuka dari tombol toko manapun (seperti "Chat Konsultasi" di `/toko/[slug]`, "Chat Toko" di detail produk, maupun pesanan yang belum selesai `PAID`/`IN_PROGRESS`/`SHIPPED`) **100% murni masuk ke Admin Toko** (`STORE_ADMIN`).
+    - Mengeliminasi bug di mana chat konsultasi toko tertimpa/teralihkan ke After Sales hanya karena customer pernah memiliki transaksi lama yang berstatus `COMPLETED`.
+    - Admin Toko hanya memiliki tepat **1 room chat saja** dengan customer tersebut, dan Admin Toko yang menjawab percakapan di room ini.
+  - **2. Jalur Chat After Sales (Multi-Room Terpisah per Pesanan Selesai):**
+    - Chat After Sales **HANYA** dibuat jika diakses dari pesanan yang sudah selesai (`COMPLETED`, `RETURNED`, atau klaim garansi/retur purna jual).
+    - Room chat After Sales terbuat **berdasarkan pesanan apa yang sudah selesai**: jika 1 customer memiliki 5 pesanan selesai dan membuka chat untuk masing-masing pesanan, sistem secara presisi membuat/menampilkan **5 room chat After Sales terpisah** (masing-masing terikat dengan `orderId` pesanan selesai terkait).
+    - Kunci deduplikasi After Sales diubah menjadi `${room.customerId}_aftersales_order_${room.orderId || room.id}`, memastikan seluruh room pesanan selesai tampil utuh tanpa terbuang.
+  - **3. Otomatisasi Pembersihan Room Kosong (Auto-Cleanup Empty / Abandoned Rooms):**
+    - Jika room dibuat (misal saat membuka link) tetapi tidak ada pesan yang pernah dikirim (kosong / tidak jadi chat), room tersebut **100% tidak dimunculkan di sidebar** dan otomatis dihapus bersih oleh background cleanup (`deleteMany: { messages: { none: {} } }`).
+    - Begitu customer mengirim pesan pertama, barulah room tersebut aktif masuk ke daftar percakapan sidebar.
+  - **4. Health Verification:** Unit test suite baru `tests/unit/store-admin-vs-after-sales-chat-routing.test.ts` dan 4 test suite chat terkait lulus 100% (22/22 tests pass).
 - **2026-11-06 (Audit Menyeluruh Keamanan Multi-Tenant & Penutupan Total Seluruh Celah IDOR Antar-Toko & Antar-Pengguna [`src/app/api/complaints/[id]/route.ts`, `src/app/api/complaints/route.ts`, `src/app/api/returns/[id]/route.ts`, `src/app/api/admin/ads/[id]/route.ts`, `src/app/api/orders/[orderId]/route.ts`, `src/app/api/orders/[orderId]/status/route.ts`, `src/app/api/orders/[orderId]/cancel/route.ts`, `src/app/api/orders/[orderId]/confirm/route.ts`, `src/app/api/orders/[orderId]/review/route.ts`, `src/app/api/cart/[itemId]/route.ts`, `src/app/api/admin/finance/route.ts`, `src/app/api/admin/finance/withdraw/route.ts`, `src/app/api/admin/reports/route.ts`, `src/app/api/admin/reports/export/route.ts`, `src/app/api/admin/vouchers/[id]/route.ts`, `src/app/api/admin/vouchers/route.ts`, `src/app/api/admin/chat/orders/route.ts`, `src/app/api/admin/chat/catalog/route.ts`, `src/app/api/admin/chat/rooms/[roomId]/messages/route.ts`, `tests/unit/security-audit-idor-cross-tenant.test.ts`]):**
   - **1. Audit & Penutupan Celah Komplain & Garansi (`/api/complaints`):**
     - Memperbaiki celah kritis di mana `session.user.role === 'STORE_ADMIN'` sebelumnya diizinkan membaca (`GET`) dan menyelesaikan/menolak (`PATCH`) komplain milik cabang toko lain.

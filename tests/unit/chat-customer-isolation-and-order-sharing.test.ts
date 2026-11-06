@@ -49,12 +49,12 @@ describe('Isolasi Chat Customer, Click-Outside Dropdown, Unified Purna Jual, & B
     expect(navbarContent).toContain('setUserDropdownOpen(false)')
   })
 
-  it('3. Image 3 - Unified Purna Jual: 1 customer + 1 grup after sales toko serumpun = 1 room purna jual terpadu', () => {
+  it('3. Image 3 - After Sales: Room chat terbuat berdasarkan pesanan selesai (5 pesanan selesai = 5 room after sales)', () => {
     const storeRoomApi = fs.readFileSync(storeRoomApiPath, 'utf8')
     expect(storeRoomApi).toContain(
       "isReturnInquiry && assignedAdmin?.role === 'AFTER_SALES'"
     )
-    expect(storeRoomApi).toContain('claimedById: assignedAdmin.id')
+    expect(storeRoomApi).toContain('claimedById: assignedAdmin?.id || null')
 
     const allRoomsApi = fs.readFileSync(allRoomsApiPath, 'utf8')
     expect(allRoomsApi).toContain('aftersales')
