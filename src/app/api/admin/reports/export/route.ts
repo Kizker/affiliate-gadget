@@ -138,13 +138,25 @@ export async function GET(request: NextRequest) {
     let sheetName = typeLabel.toUpperCase()
 
     // STORE_ADMIN scope isolation — restrict export to their own store
-    const isStoreAdmin = session.user.role === 'STORE_ADMIN'
+    const isStoreAdmin =
+      session.user.role === 'STORE_ADMIN' || session.user.role === 'STORE_SALES'
     const queryStoreId = searchParams.get('storeId')
-    const effectiveStoreId: string | undefined = isStoreAdmin
-      ? ((session.user as { storeId?: string }).storeId ?? undefined)
-      : queryStoreId && queryStoreId !== 'ALL'
-        ? queryStoreId
-        : undefined
+    let effectiveStoreId: string | undefined = undefined
+
+    if (isStoreAdmin) {
+      let userStoreId = (session.user as { storeId?: string }).storeId
+      if (!userStoreId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        userStoreId = u?.storeId || undefined
+      }
+      effectiveStoreId = userStoreId || 'none'
+    } else if (session.user.role === 'SUPER_ADMIN') {
+      effectiveStoreId =
+        queryStoreId && queryStoreId !== 'ALL' ? queryStoreId : undefined
+    }
     const storeScope = effectiveStoreId ? { storeId: effectiveStoreId } : {}
 
     // Dynamic filename with store PT name if isolated to a store

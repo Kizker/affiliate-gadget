@@ -162,10 +162,7 @@ export async function GET(
         (userStoreId && room.claimedById === session.user.id) ||
         room.customerId === session.user.id
       if (!isStoreRoom) {
-        return NextResponse.json(
-          { error: 'Akses percakapan toko lain ditolak' },
-          { status: 403 }
-        )
+        return NextResponse.json({ error: 'Room not found' }, { status: 404 })
       }
     }
 
@@ -378,10 +375,7 @@ export async function POST(
         (userStoreId && room.claimedById === session.user.id) ||
         room.customerId === session.user.id
       if (!isStoreRoom) {
-        return NextResponse.json(
-          { error: 'Akses percakapan toko lain ditolak' },
-          { status: 403 }
-        )
+        return NextResponse.json({ error: 'Room not found' }, { status: 404 })
       }
     }
 

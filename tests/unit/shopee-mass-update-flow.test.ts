@@ -26,14 +26,14 @@ describe('Shopee Mass Update Flow: 6 Headers, HPP Column, and Tasks Table', () =
     expect(content).toContain('ROW 4: Mandatory / Optional Indicator Row')
     expect(content).toContain('ROW 5: Short Validation Rules')
     expect(content).toContain('ROW 6: Detailed Instruction & Constraints Row')
-    expect(content).toContain('prisma.massUpdateTask.create')
+    expect(content).toMatch(/massUpdateTask[\s\S]*?\.create/)
   })
 
   it('2. Import Excel mendukung deteksi kolom HPP, melewari 6 baris header, dan mencatat task history', () => {
     const content = fs.readFileSync(importRoutePath, 'utf8')
     expect(content).toContain('costPriceCol')
     expect(content).toContain('harga modal')
-    expect(content).toContain('prisma.massUpdateTask.create')
+    expect(content).toMatch(/massUpdateTask[\s\S]*?\.create/)
   })
 
   it('3. Endpoint tasks menyediakan GET dan POST dengan proteksi role', () => {

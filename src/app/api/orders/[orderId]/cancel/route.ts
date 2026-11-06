@@ -29,14 +29,10 @@ export async function POST(
       },
     })
 
-    if (!order) {
-      return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
-    }
-
-    if (order.userId !== session.user.id) {
+    if (!order || order.userId !== session.user.id) {
       return NextResponse.json(
-        { error: 'Anda hanya dapat membatalkan pesanan milik Anda sendiri' },
-        { status: 403 }
+        { error: 'Pesanan tidak ditemukan' },
+        { status: 404 }
       )
     }
 

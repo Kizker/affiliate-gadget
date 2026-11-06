@@ -37,8 +37,19 @@ export async function GET(request: NextRequest) {
     const paramStoreId = searchParams.get('storeId') || ''
     const limit = parseInt(searchParams.get('limit') || '100')
 
-    // Determine target store
-    const targetStoreId = paramStoreId || user.storeId || undefined
+    const isStoreStaff =
+      user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES'
+
+    // Determine target store strictly: Store staff CANNOT query other stores
+    let targetStoreId: string | undefined = undefined
+    if (isStoreStaff) {
+      targetStoreId = user.storeId || undefined
+      if (!targetStoreId) {
+        return NextResponse.json({ items: [], products: [], total: 0 })
+      }
+    } else {
+      targetStoreId = paramStoreId || user.storeId || undefined
+    }
 
     // Build Product Where Clause
     const productWhere: any = {
@@ -93,14 +104,11 @@ export async function GET(request: NextRequest) {
         },
       },
       take: limit,
-      orderBy: [
-        { stock: 'desc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ stock: 'desc' }, { name: 'asc' }],
     })
 
-    // If store specifically requested had no products yet, fallback to all active products
-    if (products.length === 0 && targetStoreId) {
+    // If store specifically requested had no products yet, fallback to all active products (ONLY for Superadmin / Platform Admin)
+    if (products.length === 0 && targetStoreId && !isStoreStaff) {
       const fallbackWhere: any = {
         isActive: true,
       }
@@ -147,10 +155,7 @@ export async function GET(request: NextRequest) {
           },
         },
         take: limit,
-        orderBy: [
-          { stock: 'desc' },
-          { name: 'asc' },
-        ],
+        orderBy: [{ stock: 'desc' }, { name: 'asc' }],
       })
     }
 

@@ -26,7 +26,10 @@ export async function GET() {
       )
     }
 
-    if (session.user.role === 'STORE_ADMIN') {
+    if (
+      session.user.role === 'STORE_ADMIN' ||
+      session.user.role === 'STORE_SALES'
+    ) {
       let storeId = (session.user as any).storeId
       if (!storeId && session.user.email) {
         const dbUser = await prisma.user.findUnique({

@@ -21,15 +21,25 @@ export async function GET(request: NextRequest) {
     if (session.user.role === 'CUSTOMER') {
       // Customers only see their own complaints
       where.userId = session.user.id
-    } else if (session.user.role === 'STORE_ADMIN') {
+    } else if (
+      session.user.role === 'STORE_ADMIN' ||
+      session.user.role === 'STORE_SALES'
+    ) {
       // Store Admins see complaints for their store branch orders
-      if (session.user.storeId) {
+      let storeId = session.user.storeId
+      if (!storeId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        storeId = u?.storeId || null
+      }
+      if (storeId) {
         where.order = {
-          OR: [
-            { storeId: session.user.storeId },
-            { items: { some: { product: { storeId: session.user.storeId } } } }
-          ]
+          OR: [{ storeId }, { items: { some: { product: { storeId } } } }],
         }
+      } else {
+        where.id = 'none'
       }
     } else if (session.user.role === 'TECHNICIAN') {
       // Technicians see complaints for orders they handled

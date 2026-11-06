@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true },
+      select: { role: true, storeId: true },
     })
 
     if (!user || !isAdminStaffRole(user.role)) {
@@ -27,13 +27,30 @@ export async function GET(request: NextRequest) {
     const customerId = searchParams.get('customerId')
     const limit = parseInt(searchParams.get('limit') || '10')
 
+    const isStoreStaff =
+      user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES'
+    const userStoreId = user.storeId || (session.user as any).storeId
+
+    if (isStoreStaff && !userStoreId) {
+      return NextResponse.json({ orders: [] })
+    }
+
+    const where: any = {
+      ...(customerId && { userId: customerId }),
+      ...(search && {
+        orderNumber: { contains: search, mode: 'insensitive' },
+      }),
+    }
+
+    if (isStoreStaff && userStoreId) {
+      where.OR = [
+        { storeId: userStoreId },
+        { items: { some: { product: { storeId: userStoreId } } } },
+      ]
+    }
+
     const orders = await prisma.order.findMany({
-      where: {
-        ...(customerId && { userId: customerId }),
-        ...(search && {
-          OR: [{ orderNumber: { contains: search, mode: 'insensitive' } }],
-        }),
-      },
+      where,
       select: {
         id: true,
         orderNumber: true,

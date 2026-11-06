@@ -67,6 +67,24 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-06 (Audit Menyeluruh Keamanan Multi-Tenant & Penutupan Total Seluruh Celah IDOR Antar-Toko & Antar-Pengguna [`src/app/api/complaints/[id]/route.ts`, `src/app/api/complaints/route.ts`, `src/app/api/returns/[id]/route.ts`, `src/app/api/admin/ads/[id]/route.ts`, `src/app/api/orders/[orderId]/route.ts`, `src/app/api/orders/[orderId]/status/route.ts`, `src/app/api/orders/[orderId]/cancel/route.ts`, `src/app/api/orders/[orderId]/confirm/route.ts`, `src/app/api/orders/[orderId]/review/route.ts`, `src/app/api/cart/[itemId]/route.ts`, `src/app/api/admin/finance/route.ts`, `src/app/api/admin/finance/withdraw/route.ts`, `src/app/api/admin/reports/route.ts`, `src/app/api/admin/reports/export/route.ts`, `src/app/api/admin/vouchers/[id]/route.ts`, `src/app/api/admin/vouchers/route.ts`, `src/app/api/admin/chat/orders/route.ts`, `src/app/api/admin/chat/catalog/route.ts`, `src/app/api/admin/chat/rooms/[roomId]/messages/route.ts`, `tests/unit/security-audit-idor-cross-tenant.test.ts`]):**
+  - **1. Audit & Penutupan Celah Komplain & Garansi (`/api/complaints`):**
+    - Memperbaiki celah kritis di mana `session.user.role === 'STORE_ADMIN'` sebelumnya diizinkan membaca (`GET`) dan menyelesaikan/menolak (`PATCH`) komplain milik cabang toko lain.
+    - Menegakkan penguncian `complaint.order.storeId === userStoreId`. Jika komplain milik cabang lain, server seketika menolak dengan **HTTP 404** (menghilangkan kebocoran informasi ID).
+    - Memastikan daftar komplain toko terisolasi secara ketat ke cabang miliknya (`where.order.storeId`).
+  - **2. Audit & Penutupan Celah Retur Antar-Cabang & Antar-Grup (`/api/returns/[id]`):**
+    - Mencegah Admin Toko A membaca pengajuan retur cabang B dengan pengecekan kepemilikan `returnRequest.order?.storeId === userStoreId`.
+    - Mencegah Admin After Sales dari Grup A menelaah/menyetujui pengajuan retur milik Grup Cabang B (`storeIds.includes(orderStoreId)`). Jika bukan binaannya, server menolak dengan **HTTP 404**.
+  - **3. Audit & Penguncian Iklan Internal Toko (`/api/admin/ads/[id]`):**
+    - Menutup celah di mana Store Admin dapat membaca detail iklan internal toko lain pada `GET`.
+    - Mengunci hak baca, edit, dan hapus iklan hanya pada toko pemiliknya (`ad.storeId === userStoreId`), mengembalikan **HTTP 404** jika mencoba mengakses iklan toko lain.
+  - **4. Penguncian Akses Finansial & Penarikan Saldo Anti-Manipulasi (`/api/admin/finance`):**
+    - Mengeliminasi celah di mana `STORE_ADMIN` atau `STORE_SALES` dapat membobol saldo toko lain via query parameter `?storeId=...`. Akses kas, mutasi, rekening penampungan, dan laporan finansial dikunci permanen murni ke `userStoreId` milik sesi toko.
+    - Menolak hak penarikan dana (`withdraw`) untuk role non-admin toko (`STORE_SALES`, `ADMIN`, `CONTENT_EDITOR`), serta mengunci penarikan dana murni hanya dari saldo rekening toko yang bersangkutan.
+  - **5. Penguncian Pesanan & Aksi Konsumen Anti-IDOR (`/api/orders/[orderId]`):**
+    - Menutup celah di mana pengguna dapat membatalkan (`/cancel`), mengonfirmasi selesai (`/confirm`), atau mengulas (`/review`) pesanan milik pengguna lain. Server seketika mengembalikan **HTTP 404**.
+    - Membatasi pencarian order pada live chat admin (`/api/admin/chat/orders`) murni hanya untuk pesanan di tokonya sendiri.
+  - **6. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite audit keamanan `tests/unit/security-audit-idor-cross-tenant.test.ts` (7 skenario komprehensif) lulus 100%.
 - **2026-11-06 (Rancang Ulang Besar-Besaran Menu Katalog Gadget Bergaya Shopee Seller Centre & Alur Mass Update 2-Tab [`src/app/dashboard/admin/products/page.tsx`, `src/lib/shopee-product-utils.ts`, `src/app/api/admin/products/variants/sync-sku-stock/route.ts`, `src/components/admin/bulk-price-update-modal.tsx`, `src/app/api/admin/products/export-excel/route.ts`, `src/app/api/admin/products/import-excel/route.ts`, `src/app/api/admin/products/mass-update/tasks/route.ts`, `prisma/schema.prisma`, `tests/unit/shopee-catalog-page.test.ts`, `tests/unit/shopee-product-utils.test.ts`, `tests/unit/shopee-mass-update-flow.test.ts`]):**
   - **1. Struktur Antarmuka Shopee Seller Centre ("Produk Saya"):**
     - Judul halaman "Katalog Gadget" disertai nama cabang yang sedang dikelola.

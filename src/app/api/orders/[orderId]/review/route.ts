@@ -37,13 +37,8 @@ export async function POST(
       },
     })
 
-    if (!order) {
+    if (!order || order.userId !== session.user.id) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
-    }
-
-    // Verify user owns this order
-    if (order.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Verify order is completed

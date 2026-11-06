@@ -21,8 +21,29 @@ export async function GET(
 
     if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
       whereClause = { id: orderId }
-    } else if (role === 'STORE_ADMIN' && storeId) {
-      whereClause = { id: orderId, storeId }
+    } else if (role === 'STORE_ADMIN' || role === 'STORE_SALES') {
+      let userStoreId = storeId
+      if (!userStoreId) {
+        const u = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { storeId: true },
+        })
+        userStoreId = u?.storeId || null
+      }
+      whereClause = {
+        id: orderId,
+        storeId: userStoreId || 'none',
+      }
+    } else if (role === 'AFTER_SALES') {
+      const group = await prisma.storeGroup.findFirst({
+        where: { afterSalesUserId: userId },
+        include: { stores: { select: { id: true } } },
+      })
+      const storeIds = group?.stores.map((s) => s.id) || []
+      whereClause = {
+        id: orderId,
+        storeId: storeIds.length > 0 ? { in: storeIds } : undefined,
+      }
     } else {
       whereClause = {
         id: orderId,

@@ -89,8 +89,16 @@ export async function GET() {
       })
     }
 
-    const isStoreAdmin = user.role === 'STORE_ADMIN'
-    const storeId = isStoreAdmin ? user.storeId : undefined
+    const isStoreAdmin =
+      user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES'
+    let storeId = isStoreAdmin ? user.storeId : undefined
+    if (isStoreAdmin && !storeId) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { storeId: true },
+      })
+      storeId = dbUser?.storeId || undefined
+    }
 
     // Run all count queries concurrently for maximum performance
     const [

@@ -31,16 +31,38 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const isStoreAdmin = session.user.role === 'STORE_ADMIN'
+    const isStoreStaff =
+      session.user.role === 'STORE_ADMIN' || session.user.role === 'STORE_SALES'
 
-    // Tentukan storeId yang menjadi target
-    const rawStoreId = isStoreAdmin
-      ? (session.user as { storeId?: string }).storeId ||
-        searchParams.get('storeId') ||
-        undefined
-      : searchParams.get('storeId') || undefined
+    // Strict multi-tenant isolation: Store staff can ONLY view their own store finances
+    let targetStoreId: string | undefined = undefined
 
-    const targetStoreId = rawStoreId === 'ALL' ? undefined : rawStoreId
+    if (isStoreStaff) {
+      let userStoreId = (session.user as { storeId?: string }).storeId
+      if (!userStoreId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        userStoreId = u?.storeId || undefined
+      }
+
+      if (!userStoreId) {
+        return NextResponse.json(
+          { error: 'Toko cabang belum terhubung' },
+          { status: 403 }
+        )
+      }
+
+      // Strictly lock to user's store - NEVER allow overriding via searchParams query!
+      targetStoreId = userStoreId
+    } else if (session.user.role === 'SUPER_ADMIN') {
+      const qStoreId = searchParams.get('storeId')
+      targetStoreId = qStoreId === 'ALL' || !qStoreId ? undefined : qStoreId
+    } else {
+      // Other roles cannot access finance
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     // Jika Superadmin tanpa query param storeId atau storeId === 'ALL', tampilkan konsolidasi seluruh cabang
     let targetStore: any = null

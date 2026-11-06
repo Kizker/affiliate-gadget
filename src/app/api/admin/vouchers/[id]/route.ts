@@ -67,11 +67,20 @@ export async function GET(
       )
     }
 
-    // Scoping check for Store Admin
-    if (isStoreAdmin && (voucher as any).storeId !== session.user.storeId) {
+    // Scoping check for Store Admin (IDOR Protection)
+    let userStoreId = session.user.storeId
+    if (isStoreAdmin && !userStoreId && session.user.id) {
+      const u = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { storeId: true },
+      })
+      userStoreId = u?.storeId || null
+    }
+
+    if (isStoreAdmin && (voucher as any).storeId !== userStoreId) {
       return NextResponse.json(
-        { error: 'Akses ditolak. Voucher ini milik cabang lain.' },
-        { status: 403 }
+        { error: 'Voucher tidak ditemukan' },
+        { status: 404 }
       )
     }
 
@@ -124,11 +133,20 @@ export async function PATCH(
       )
     }
 
-    // Scoping check for Store Admin
-    if (isStoreAdmin && (existing as any).storeId !== session.user.storeId) {
+    // Scoping check for Store Admin (IDOR Protection)
+    let userStoreId = session.user.storeId
+    if (isStoreAdmin && !userStoreId && session.user.id) {
+      const u = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { storeId: true },
+      })
+      userStoreId = u?.storeId || null
+    }
+
+    if (isStoreAdmin && (existing as any).storeId !== userStoreId) {
       return NextResponse.json(
-        { error: 'Akses ditolak. Anda tidak berhak mengubah voucher ini.' },
-        { status: 403 }
+        { error: 'Voucher tidak ditemukan' },
+        { status: 404 }
       )
     }
 
@@ -343,11 +361,20 @@ export async function DELETE(
       )
     }
 
-    // Scoping check for Store Admin
-    if (isStoreAdmin && (voucher as any).storeId !== session.user.storeId) {
+    // Scoping check for Store Admin (IDOR Protection)
+    let userStoreId = session.user.storeId
+    if (isStoreAdmin && !userStoreId && session.user.id) {
+      const u = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { storeId: true },
+      })
+      userStoreId = u?.storeId || null
+    }
+
+    if (isStoreAdmin && (voucher as any).storeId !== userStoreId) {
       return NextResponse.json(
-        { error: 'Akses ditolak. Anda tidak berhak menghapus voucher ini.' },
-        { status: 403 }
+        { error: 'Voucher tidak ditemukan' },
+        { status: 404 }
       )
     }
 

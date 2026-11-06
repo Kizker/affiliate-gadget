@@ -60,15 +60,8 @@ export async function POST(
       },
     })
 
-    if (!order) {
+    if (!order || order.userId !== session.user.id) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
-    }
-
-    if (order.userId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'You can only confirm your own orders' },
-        { status: 403 }
-      )
     }
 
     if (order.status === 'CANCELLED') {

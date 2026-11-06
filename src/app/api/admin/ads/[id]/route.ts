@@ -38,6 +38,28 @@ export async function GET(
       )
     }
 
+    // IDOR Protection: Store Admin can only view ads belonging to their store
+    if (
+      session.user.role === 'STORE_ADMIN' ||
+      session.user.role === 'STORE_SALES'
+    ) {
+      let storeId = (session.user as any).storeId
+      if (!storeId) {
+        const userStore = await prisma.store.findFirst({
+          where: { users: { some: { id: session.user.id } } },
+          select: { id: true },
+        })
+        storeId = userStore?.id
+      }
+
+      if (!storeId || ad.storeId !== storeId) {
+        return NextResponse.json(
+          { success: false, message: 'Iklan tidak ditemukan' },
+          { status: 404 }
+        )
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -126,9 +148,9 @@ export async function PATCH(
         return NextResponse.json(
           {
             success: false,
-            message: 'Anda tidak memiliki hak akses atas iklan ini',
+            message: 'Iklan tidak ditemukan',
           },
-          { status: 403 }
+          { status: 404 }
         )
       }
 
@@ -317,9 +339,9 @@ export async function DELETE(
         return NextResponse.json(
           {
             success: false,
-            message: 'Anda tidak memiliki hak akses atas iklan ini',
+            message: 'Iklan tidak ditemukan',
           },
-          { status: 403 }
+          { status: 404 }
         )
       }
     }

@@ -63,17 +63,51 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isStoreAdmin = session.user.role === 'STORE_ADMIN'
-    let storeId = isStoreAdmin
-      ? (session.user as { storeId?: string }).storeId
-      : requestStoreId || undefined
+    // Only STORE_ADMIN (for their own store) or SUPER_ADMIN can execute withdrawals
+    if (
+      session.user.role !== 'STORE_ADMIN' &&
+      session.user.role !== 'SUPER_ADMIN'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Akses ditolak: Hanya Admin Toko Cabang atau Superadmin yang dapat mengajukan penarikan dana',
+        },
+        { status: 403 }
+      )
+    }
 
-    if (!storeId) {
-      // Fallback untuk Superadmin jika tidak kirim storeId
-      const firstStore = await prisma.store.findFirst({
-        where: { isActive: true },
-      })
-      storeId = firstStore?.id
+    const isStoreAdmin = session.user.role === 'STORE_ADMIN'
+    let storeId: string | undefined = undefined
+
+    if (isStoreAdmin) {
+      let userStoreId = (session.user as { storeId?: string }).storeId
+      if (!userStoreId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        userStoreId = u?.storeId || undefined
+      }
+
+      if (!userStoreId) {
+        return NextResponse.json(
+          { error: 'Akun Admin Toko belum terikat dengan cabang manapun' },
+          { status: 403 }
+        )
+      }
+
+      // IDOR Protection: Store Admin is strictly bound to their own store
+      storeId = userStoreId
+    } else {
+      // Superadmin must explicitly specify the store
+      storeId = requestStoreId || undefined
+      if (!storeId) {
+        const firstStore = await prisma.store.findFirst({
+          where: { isActive: true },
+        })
+        storeId = firstStore?.id
+      }
     }
 
     if (!storeId) {

@@ -47,12 +47,54 @@ export async function GET(
       )
     }
 
-    // Access check: Customer can only view own, Store Admin can view store's, Admin/Superadmin can view all
+    // Access & IDOR check: Customer can only view own, Store Admin can view store's, After Sales can view group's
     if (
       session.user.role === 'CUSTOMER' &&
       returnRequest.userId !== session.user.id
     ) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json(
+        { error: 'Pengajuan pengembalian tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    if (
+      session.user.role === 'STORE_ADMIN' ||
+      session.user.role === 'STORE_SALES'
+    ) {
+      let storeId = session.user.storeId
+      if (!storeId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        storeId = u?.storeId || null
+      }
+      const orderStoreId = returnRequest.order?.storeId || returnRequest.storeId
+      if (!storeId || orderStoreId !== storeId) {
+        return NextResponse.json(
+          { error: 'Pengajuan pengembalian tidak ditemukan' },
+          { status: 404 }
+        )
+      }
+    }
+
+    if (session.user.role === 'AFTER_SALES') {
+      const group = await prisma.storeGroup.findFirst({
+        where: { afterSalesUserId: session.user.id },
+        include: { stores: { select: { id: true } } },
+      })
+      const storeIds = group?.stores.map((s) => s.id) || []
+      const orderStoreId = returnRequest.order?.storeId || returnRequest.storeId
+      if (
+        storeIds.length > 0 &&
+        (!orderStoreId || !storeIds.includes(orderStoreId))
+      ) {
+        return NextResponse.json(
+          { error: 'Pengajuan pengembalian tidak ditemukan' },
+          { status: 404 }
+        )
+      }
     }
 
     return NextResponse.json({ success: true, data: returnRequest })
@@ -115,6 +157,25 @@ export async function PUT(
         { error: 'Pengajuan pengembalian tidak ditemukan' },
         { status: 404 }
       )
+    }
+
+    // IDOR Protection: After Sales can only manage returns within their store group
+    if (session.user.role === 'AFTER_SALES') {
+      const group = await prisma.storeGroup.findFirst({
+        where: { afterSalesUserId: session.user.id },
+        include: { stores: { select: { id: true } } },
+      })
+      const storeIds = group?.stores.map((s) => s.id) || []
+      const orderStoreId = existing.order?.storeId || existing.storeId
+      if (
+        storeIds.length > 0 &&
+        (!orderStoreId || !storeIds.includes(orderStoreId))
+      ) {
+        return NextResponse.json(
+          { error: 'Pengajuan pengembalian tidak ditemukan' },
+          { status: 404 }
+        )
+      }
     }
 
     // After Sales Recommendation Action: AFTER_SALES_CONFIRM or FORWARD_TO_SUPERADMIN

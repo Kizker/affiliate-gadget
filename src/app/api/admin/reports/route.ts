@@ -73,15 +73,26 @@ export async function GET(request: NextRequest) {
           }
         : {}
 
-    // STORE_ADMIN scope isolation — restrict all queries to their own store, or filter by storeId for platform admins
-    const isStoreAdmin = session.user.role === 'STORE_ADMIN'
+    // STORE_ADMIN scope isolation — restrict all queries to their own store
+    const isStoreAdmin =
+      session.user.role === 'STORE_ADMIN' || session.user.role === 'STORE_SALES'
     const queryStoreId = searchParams.get('storeId')
-    const effectiveStoreId: string | undefined = isStoreAdmin
-      ? ((session.user as { storeId?: string }).storeId ?? undefined)
-      : queryStoreId && queryStoreId !== 'ALL'
-        ? queryStoreId
-        : undefined
-    const storeId: string | undefined = effectiveStoreId
+    let storeId: string | undefined = undefined
+
+    if (isStoreAdmin) {
+      let userStoreId = (session.user as { storeId?: string }).storeId
+      if (!userStoreId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        userStoreId = u?.storeId || undefined
+      }
+      storeId = userStoreId || 'none'
+    } else if (session.user.role === 'SUPER_ADMIN') {
+      storeId =
+        queryStoreId && queryStoreId !== 'ALL' ? queryStoreId : undefined
+    }
 
     // Shared store scope filter for order-level queries
     const storeScope = storeId ? { storeId } : {}

@@ -61,7 +61,7 @@ export async function GET(request: Request) {
     const andConditions: import('@prisma/client').Prisma.OrderWhereInput[] = []
 
     // 1. Store Admin scoping (Akun Toko Mandiri)
-    if (user.role === 'STORE_ADMIN') {
+    if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
       if (!user.storeId) {
         return NextResponse.json(
           {

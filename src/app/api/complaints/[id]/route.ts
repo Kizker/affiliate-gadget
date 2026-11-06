@@ -21,6 +21,7 @@ export async function GET(
         order: {
           select: {
             id: true,
+            storeId: true,
             orderNumber: true,
             status: true,
             total: true,
@@ -58,16 +59,43 @@ export async function GET(
       )
     }
 
-    // Authorization check
+    // Authorization & IDOR check
     const isOwner = complaint.userId === session.user.id
     const isAssigned = complaint.assignedToId === session.user.id
     const isTechnicianForOrder =
       complaint.order.technician?.user.id === session.user.id
-    const isAdmin =
-      session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN' || session.user.role === 'STORE_ADMIN'
+    const isPlatformAdmin =
+      session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN'
 
-    if (!isOwner && !isAssigned && !isTechnicianForOrder && !isAdmin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    let isStoreAdminForOrder = false
+    if (
+      session.user.role === 'STORE_ADMIN' ||
+      session.user.role === 'STORE_SALES'
+    ) {
+      let storeId = session.user.storeId
+      if (!storeId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        storeId = u?.storeId || null
+      }
+      isStoreAdminForOrder = Boolean(
+        storeId && complaint.order.storeId === storeId
+      )
+    }
+
+    if (
+      !isOwner &&
+      !isAssigned &&
+      !isTechnicianForOrder &&
+      !isPlatformAdmin &&
+      !isStoreAdminForOrder
+    ) {
+      return NextResponse.json(
+        { error: 'Complaint not found' },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json({ complaint })
@@ -100,6 +128,7 @@ export async function PATCH(
       include: {
         order: {
           select: {
+            storeId: true,
             technicianId: true,
             technician: { select: { userId: true } },
             claimedById: true,
@@ -116,18 +145,42 @@ export async function PATCH(
       )
     }
 
-    // Check authorization - only technician, assigned person, or admin can update
+    // Check authorization - only technician, assigned person, or authorized admin can update
     const isTechnicianForOrder =
       complaint.order.technician?.userId === session.user.id
     const isAssigned = complaint.assignedToId === session.user.id
     const isClaimedAdmin = complaint.order.claimedById === session.user.id
-    const isAdmin =
-      session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN' || session.user.role === 'STORE_ADMIN'
+    const isPlatformAdmin =
+      session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN'
 
-    if (!isTechnicianForOrder && !isAssigned && !isClaimedAdmin && !isAdmin) {
+    let isStoreAdminForOrder = false
+    if (
+      session.user.role === 'STORE_ADMIN' ||
+      session.user.role === 'STORE_SALES'
+    ) {
+      let storeId = session.user.storeId
+      if (!storeId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        storeId = u?.storeId || null
+      }
+      isStoreAdminForOrder = Boolean(
+        storeId && complaint.order.storeId === storeId
+      )
+    }
+
+    if (
+      !isTechnicianForOrder &&
+      !isAssigned &&
+      !isClaimedAdmin &&
+      !isPlatformAdmin &&
+      !isStoreAdminForOrder
+    ) {
       return NextResponse.json(
-        { error: 'You are not authorized to update this complaint' },
-        { status: 403 }
+        { error: 'Complaint not found' },
+        { status: 404 }
       )
     }
 

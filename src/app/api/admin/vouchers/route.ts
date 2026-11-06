@@ -38,7 +38,16 @@ export async function GET(request: NextRequest) {
 
     // Store Admin scoping: only see vouchers of their store
     if (isStoreAdmin) {
-      if (!session.user.storeId) {
+      let storeId = session.user.storeId
+      if (!storeId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        storeId = u?.storeId || null
+      }
+
+      if (!storeId) {
         return NextResponse.json({
           success: true,
           vouchers: [],
@@ -55,7 +64,7 @@ export async function GET(request: NextRequest) {
           },
         })
       }
-      where.storeId = session.user.storeId
+      where.storeId = storeId
     } else if (searchParams.get('storeId')) {
       const filterStoreId = searchParams.get('storeId')
       if (filterStoreId === 'GLOBAL') {
@@ -281,13 +290,22 @@ export async function POST(request: NextRequest) {
     // Scoping resolution
     let targetStoreId: string | null = null
     if (isStoreAdmin) {
-      if (!session.user.storeId) {
+      let storeId = session.user.storeId
+      if (!storeId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        storeId = u?.storeId || null
+      }
+
+      if (!storeId) {
         return NextResponse.json(
           { error: 'Akun admin toko tidak terikat dengan toko manapun.' },
           { status: 400 }
         )
       }
-      targetStoreId = session.user.storeId
+      targetStoreId = storeId
     } else if (isSuperAdmin && storeId) {
       targetStoreId = storeId === 'GLOBAL' ? null : storeId
     }

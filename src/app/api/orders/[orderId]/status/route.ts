@@ -37,10 +37,26 @@ export async function PATCH(
 
     // Check authorization
     const isSuperOrAdmin = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN'
+    let userStoreId = user.storeId
+    if (
+      !userStoreId &&
+      (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES')
+    ) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { storeId: true },
+      })
+      userStoreId = dbUser?.storeId || null
+    }
+
+    const isStoreStaff =
+      user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES'
     const isStoreAdminOfOrder =
-      user.role === 'STORE_ADMIN' &&
-      user.storeId &&
-      order.storeId === user.storeId
+      isStoreStaff && userStoreId && order.storeId === userStoreId
+
+    if (isStoreStaff && !isStoreAdminOfOrder) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
 
     if (!isSuperOrAdmin && !isStoreAdminOfOrder) {
       const technician = await prisma.technician.findUnique({
@@ -48,10 +64,7 @@ export async function PATCH(
       })
 
       if (!technician || order.technicianId !== technician.id) {
-        return NextResponse.json(
-          { error: 'Forbidden - not authorized to update this order' },
-          { status: 403 }
-        )
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
     }
 
