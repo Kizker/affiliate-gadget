@@ -147,6 +147,12 @@ export default function EditProductPage() {
         }
         setStores(storeList)
 
+        if (!productRes.ok) {
+          toast.error('Produk tidak ditemukan atau akses ditolak')
+          router.push('/dashboard/admin/products')
+          return
+        }
+
         const productData = await productRes.json()
         const p = productData.data || productData
 

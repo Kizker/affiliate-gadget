@@ -67,6 +67,20 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-06 (Penutupan Total Celah IDOR Produk & Turunannya [Baca, Edit, Hapus, Varian, Stok]: Penegakan Kepemilikan Server-Side `where: { id, storeId: session.user.storeId }` & Response 404 [`src/app/api/products/[id]/route.ts`, `src/app/api/admin/products/[id]/route.ts`, `src/app/api/admin/products/variants/bulk-color-update/route.ts`, `src/app/dashboard/admin/products/[id]/edit/page.tsx`, `src/app/dashboard/admin/products/[id]/page.tsx`, `tests/unit/product-idor-store-isolation.test.ts`]):**
+  - **1. Penegakan Kepemilikan Server-Side di Endpoint Publik/Admin Produk (`/api/products/[id]`):**
+    - `GET`: Jika diakses oleh akun `STORE_ADMIN` atau `STORE_SALES`, sistem secara ketat membatasi query menggunakan `where: { id, storeId: userStoreId }`. Jika produk milik toko cabang lain, sistem seketika menolak dan mengembalikan status **HTTP 404** (`Product not found`) sehingga data rahasia produk toko lain (harga modal HPP `costPrice`, varian, inventori) 100% tidak pernah terkirim ke browser.
+    - `PATCH`: Store Admin hanya dapat mengupdate produk miliknya sendiri (`where: { id, storeId: userStoreId }`). Upaya manipulasi ID produk toko lain otomatis ditolak dengan **HTTP 404**, dan `storeId` dikunci permanen agar tidak bisa dialihkan ke toko lain.
+    - `DELETE`: Store Admin hanya dapat menghapus produk miliknya sendiri. Upaya menghapus ID produk toko lain otomatis ditolak dengan **HTTP 404**.
+  - **2. Penutupan Celah di Endpoint Internal Admin (`/api/admin/products/[id]`):**
+    - Menerapkan penguncian kepemilikan `where: { id, storeId: userStoreId }` pada seluruh operasi `GET`, `PATCH`, dan `DELETE`.
+    - Pada pembaruan varian massal (`variants`), setiap update varian dikunci dengan relasi ganda `where: { id: v.id, productId: id }` untuk menjamin varian milik produk lain tidak dapat diinjeksikan.
+  - **3. Isolasi Varian & Stok Massal (`/api/admin/products/variants/bulk-color-update`):**
+    - Memvalidasi seluruh `variantIds` dan `standaloneProductIds` agar hanya mengizinkan modifikasi harga/stok jika produk induknya dimiliki oleh cabang toko terkait (`storeId === userStoreId`). Jika ditemukan varian/produk toko lain, sistem seketika menolak dengan **HTTP 404**.
+  - **4. Proteksi Navigasi Frontend & Pengalihan Rute URL (`/dashboard/admin/products/[id]`):**
+    - Di `[id]/edit/page.tsx`: Mengevaluasi `!productRes.ok` secara instan; jika status 404 diterima, form dikosongkan seketika dan pengguna dialihkan kembali ke daftar produk dengan notifikasi error.
+    - Menghadirkan `src/app/dashboard/admin/products/[id]/page.tsx` untuk menangani navigasi URL langsung dan meneruskannya ke alur validasi kepemilikan.
+  - **5. Health & Security Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite IDOR `tests/unit/product-idor-store-isolation.test.ts` (8 skenario serangan Toko A vs Toko B) lulus 100%.
 - **2026-11-05 (Resolusi Error Akses Chat Pesanan Selesai Store Admin & Penguatan Dashboard After Sales [`src/app/api/admin/chat/rooms/[roomId]/messages/route.ts`, `src/app/api/after-sales/dashboard/route.ts`, `src/app/dashboard/after-sales/page.tsx`, `tests/unit/store-admin-return-chat-isolation.test.ts`, `tests/unit/after-sales-dashboard-integrity.test.ts`]):**
   - **1. Resolusi Error 403 Chat Pesanan Selesai Admin Toko:**
     - Menghilangkan pemblokiran `room.order?.status === 'COMPLETED'` pada handler `GET /api/admin/chat/rooms/[roomId]/messages`.

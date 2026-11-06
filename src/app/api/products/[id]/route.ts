@@ -9,37 +9,87 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const session = await auth()
+    const role = session?.user?.role
+    const isStoreStaff = role === 'STORE_ADMIN' || role === 'STORE_SALES'
 
-    // Try to find by ID first (CUID format)
-    let product = await prisma.product.findUnique({
-      where: { id },
-      include: {
-        variants: true,
-        store: true,
-      },
-    })
+    let product: any = null
 
-    // If not found by ID, try finding by converting slug-like ID back to name
-    if (!product) {
-      let searchName = id
-      if (searchName.startsWith('product-')) {
-        searchName = searchName.substring(8)
+    if (isStoreStaff) {
+      let userStoreId = session?.user?.storeId
+      if (!userStoreId && session?.user?.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        userStoreId = dbUser?.storeId || null
       }
-      if (searchName.endsWith('-')) {
-        searchName = searchName.slice(0, -1)
-      }
-      searchName = searchName.replace(/-/g, ' ')
 
+      if (!userStoreId) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        )
+      }
+
+      // IDOR Protection: Store Admin only views products belonging to their store
       product = await prisma.product.findFirst({
-        where: {
-          name: { contains: searchName, mode: 'insensitive' },
-          isActive: true,
-        },
+        where: { id, storeId: userStoreId },
         include: {
           variants: true,
           store: true,
         },
       })
+    } else if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+      product = await prisma.product.findUnique({
+        where: { id },
+        include: {
+          variants: true,
+          store: true,
+        },
+      })
+    } else {
+      // Public / Customer: Only fetch active products, fallback by name/slug
+      product = await prisma.product.findFirst({
+        where: { id, isActive: true },
+        include: {
+          variants: true,
+          store: true,
+        },
+      })
+
+      if (!product) {
+        let searchName = id
+        if (searchName.startsWith('product-')) {
+          searchName = searchName.substring(8)
+        }
+        if (searchName.endsWith('-')) {
+          searchName = searchName.slice(0, -1)
+        }
+        searchName = searchName.replace(/-/g, ' ')
+
+        product = await prisma.product.findFirst({
+          where: {
+            name: { contains: searchName, mode: 'insensitive' },
+            isActive: true,
+          },
+          include: {
+            variants: true,
+            store: true,
+          },
+        })
+      }
+
+      // Sembunyikan field rahasia HPP toko (costPrice) untuk publik
+      if (product) {
+        product.costPrice = undefined
+        if (Array.isArray(product.variants)) {
+          product.variants = product.variants.map((v: any) => ({
+            ...v,
+            costPrice: undefined,
+          }))
+        }
+      }
     }
 
     if (!product) {
@@ -67,19 +117,26 @@ export async function PATCH(
 ) {
   try {
     const session = await auth()
-    if (!session?.user?.email) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(session.user.id ? [{ id: session.user.id }] : []),
+          ...(session.user.email ? [{ email: session.user.email }] : []),
+        ],
+      },
+      select: { id: true, role: true, storeId: true },
     })
 
     if (
       !user ||
       (user.role !== 'SUPER_ADMIN' &&
         user.role !== 'ADMIN' &&
-        user.role !== 'STORE_ADMIN')
+        user.role !== 'STORE_ADMIN' &&
+        user.role !== 'STORE_SALES')
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -87,26 +144,17 @@ export async function PATCH(
     const { id } = await params
     const body = await request.json()
 
-    // Find existing product
-    const existing = await prisma.product.findUnique({
-      where: { id },
+    const isStoreStaff =
+      user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES'
+    const userStoreId = user.storeId || session.user.storeId
+
+    // IDOR Protection: Store Admin can only edit products belonging to their store
+    const existing = await prisma.product.findFirst({
+      where: isStoreStaff ? { id, storeId: userStoreId || '' } : { id },
     })
 
     if (!existing) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
-    }
-
-    // Store Admin can only edit products belonging to their own store
-    if (user.role === 'STORE_ADMIN') {
-      if (!user.storeId || existing.storeId !== user.storeId) {
-        return NextResponse.json(
-          {
-            error:
-              'Akses ditolak: Anda hanya dapat mengelola produk milik toko Anda sendiri.',
-          },
-          { status: 403 }
-        )
-      }
     }
 
     const {
@@ -249,43 +297,42 @@ export async function DELETE(
 ) {
   try {
     const session = await auth()
-    if (!session?.user?.email) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(session.user.id ? [{ id: session.user.id }] : []),
+          ...(session.user.email ? [{ email: session.user.email }] : []),
+        ],
+      },
+      select: { id: true, role: true, storeId: true },
     })
 
     if (
       !user ||
       (user.role !== 'SUPER_ADMIN' &&
         user.role !== 'ADMIN' &&
-        user.role !== 'STORE_ADMIN')
+        user.role !== 'STORE_ADMIN' &&
+        user.role !== 'STORE_SALES')
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { id } = await params
+    const isStoreStaff =
+      user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES'
+    const userStoreId = user.storeId || session.user.storeId
 
-    const existing = await prisma.product.findUnique({
-      where: { id },
+    // IDOR Protection: Store Admin can only delete products belonging to their store
+    const existing = await prisma.product.findFirst({
+      where: isStoreStaff ? { id, storeId: userStoreId || '' } : { id },
     })
 
     if (!existing) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
-    }
-
-    // Store Admin can only delete products belonging to their store
-    if (
-      user.role === 'STORE_ADMIN' &&
-      user.storeId &&
-      existing.storeId !== user.storeId
-    ) {
-      return NextResponse.json(
-        { error: 'Forbidden: Cannot delete product of another store' },
-        { status: 403 }
-      )
     }
 
     // Perform deletion

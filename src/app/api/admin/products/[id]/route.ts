@@ -17,9 +17,25 @@ export async function GET(
     }
 
     const { id } = await context.params
+    const isStoreStaff =
+      session.user.role === 'STORE_ADMIN' || session.user.role === 'STORE_SALES'
 
-    const product = await prisma.product.findUnique({
-      where: { id },
+    let userStoreId = session.user.storeId
+    if (isStoreStaff && !userStoreId && session.user.id) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { storeId: true },
+      })
+      userStoreId = dbUser?.storeId || null
+    }
+
+    if (isStoreStaff && !userStoreId) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    }
+
+    // IDOR Protection: Store Admin can only view products belonging to their store
+    const product = await prisma.product.findFirst({
+      where: isStoreStaff ? { id, storeId: userStoreId } : { id },
       include: {
         variants: {
           orderBy: { price: 'asc' },
@@ -74,10 +90,25 @@ export async function PATCH(
 
     const { id } = await context.params
     const body = await request.json()
+    const isStoreStaff =
+      session.user.role === 'STORE_ADMIN' || session.user.role === 'STORE_SALES'
 
-    // Check if product exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { id },
+    let userStoreId = session.user.storeId
+    if (isStoreStaff && !userStoreId && session.user.id) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { storeId: true },
+      })
+      userStoreId = dbUser?.storeId || null
+    }
+
+    if (isStoreStaff && !userStoreId) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    }
+
+    // IDOR Protection: Check if product exists and belongs to the store
+    const existingProduct = await prisma.product.findFirst({
+      where: isStoreStaff ? { id, storeId: userStoreId } : { id },
     })
 
     if (!existingProduct) {
@@ -112,12 +143,12 @@ export async function PATCH(
       )
     }
 
-    // Update variants if provided
+    // Update variants if provided (locked to this product)
     if (Array.isArray(body.variants)) {
       for (const v of body.variants) {
         if (v.id) {
-          await prisma.productVariant.update({
-            where: { id: v.id },
+          await prisma.productVariant.updateMany({
+            where: { id: v.id, productId: id },
             data: {
               ...(v.price !== undefined && { price: parseFloat(v.price) }),
               ...(v.stock !== undefined && { stock: parseInt(v.stock) }),
@@ -182,25 +213,48 @@ export async function DELETE(
   try {
     const session = await auth()
 
-    // Only SUPER_ADMIN can delete products
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Only SUPER_ADMIN, ADMIN, or STORE_ADMIN can delete products
+    if (
+      session.user.role !== 'SUPER_ADMIN' &&
+      session.user.role !== 'ADMIN' &&
+      session.user.role !== 'STORE_ADMIN'
+    ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id } = await context.params
+    const isStoreStaff = session.user.role === 'STORE_ADMIN'
 
-    // Check if product exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { id },
+    let userStoreId = session.user.storeId
+    if (isStoreStaff && !userStoreId && session.user.id) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { storeId: true },
+      })
+      userStoreId = dbUser?.storeId || null
+    }
+
+    // IDOR Protection: Check if product exists and belongs to the store
+    const existingProduct = await prisma.product.findFirst({
+      where: isStoreStaff ? { id, storeId: userStoreId || '' } : { id },
     })
 
     if (!existingProduct) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
-    // Delete product
-    await prisma.product.delete({
-      where: { id },
+    // Delete product and variants
+    await prisma.$transaction(async (tx) => {
+      await tx.productVariant.deleteMany({
+        where: { productId: id },
+      })
+      await tx.product.delete({
+        where: { id },
+      })
     })
 
     return NextResponse.json({ message: 'Product deleted successfully' })

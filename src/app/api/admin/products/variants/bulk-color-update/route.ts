@@ -118,9 +118,17 @@ export async function PATCH(request: Request) {
       )
     }
 
-    // Store admin isolation
+    // Store admin isolation (IDOR Protection)
     if (role === 'STORE_ADMIN') {
-      const userStoreId = session.user.storeId
+      let userStoreId = session.user.storeId
+      if (!userStoreId && session.user.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        userStoreId = dbUser?.storeId || null
+      }
+
       const unauthorizedVariant = existingVariants.some(
         (v) => v.product?.storeId !== userStoreId
       )
@@ -130,10 +138,9 @@ export async function PATCH(request: Request) {
       if (unauthorizedVariant || unauthorizedProd) {
         return NextResponse.json(
           {
-            error:
-              'Akses ditolak: Anda hanya dapat mengubah varian milik toko fisik cabang Anda.',
+            error: 'Product not found',
           },
-          { status: 403 }
+          { status: 404 }
         )
       }
     }
