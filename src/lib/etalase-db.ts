@@ -7,7 +7,6 @@ import {
   getProductEffectiveMinPrice,
   getProductEffectiveStock,
 } from '@/lib/etalase-utils'
-import { analyzeSmartQuery } from '@/lib/smart-search'
 
 let isSeededCache = false
 let publicGadgetsCacheVersion = 0
@@ -405,16 +404,9 @@ export async function getEtalases(options?: {
     )
   }
 
-  // Filter pencarian pintar (mencakup judul etalase maupun nama/model produk di dalamnya!)
+  // Filter pencarian (mencakup judul etalase maupun nama/model produk di dalamnya)
   if (search && search.trim()) {
-    const smart = analyzeSmartQuery(search.trim())
     const terms = [search.trim().toLowerCase()]
-    if (
-      smart.hasCorrection &&
-      !terms.includes(smart.effectiveQuery.toLowerCase())
-    ) {
-      terms.push(smart.effectiveQuery.toLowerCase())
-    }
 
     evaluatedList = evaluatedList.filter((e) => {
       return terms.some((t) => {
