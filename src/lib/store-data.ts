@@ -1,5 +1,6 @@
 import prisma from '@/lib/db'
 import { StorePublicProfile } from '@/types/store-public'
+import { getEtalases } from '@/lib/etalase-db'
 
 export interface StoreDirectoryItem {
   id: string
@@ -148,6 +149,19 @@ export async function getStoreDetailData(
           rawErr
         )
       }
+    }
+
+    // Tampilkan Etalase Aktif toko di halaman publik /toko/[slug]
+    try {
+      const storeEtalases = await getEtalases({
+        storeId: String((store as any).id),
+        onlyActive: true,
+      })
+      if (storeEtalases.length > 0) {
+        ;(store as any).products = storeEtalases
+      }
+    } catch (etaErr) {
+      console.warn('Store etalase load warning:', etaErr)
     }
 
     return JSON.parse(JSON.stringify(store))

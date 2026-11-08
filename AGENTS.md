@@ -31,11 +31,11 @@
 
 Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegasikan tugas ke subagent (`subagent_ide`) dengan parameter `model` yang sesuai berdasarkan tingkat kompleksitas tugas:
 
-| Tier                                | Bobot Tugas                                                                                                                                  | Contoh Pekerjaan                                                                     | Subagent & Model ID (`9router-go`)                                                                               |
-| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
-| **Tier 1 (Ringan / Cepat)**         | Eksplorasi codebase, cari file/grep, ganti teks/copywriting, ubah class Tailwind minor, cek log                                              | Cari referensi fungsi, ubah warna/padding, baca struktur folder                      | Kerjakan langsung di Main Session ATAU spawn `agent: "explore"` dengan `model: "9router-go/ag/gemini-3.8-flash"` |
-| **Tier 2 (Menengah / Balanced)**    | Pembuatan komponen UI standar, CRUD API route, form validation, penulisan unit test                                                          | Buat modal baru, tambah endpoint GET/POST sederhana, update test Vitest              | Main Session (`9router-go/ag/gemini-3.8-flash`)                                                                  |
-| **Tier 3 (Berat / Deep Reasoning)** | Arsitektur kompleks, refactor multi-file, sinkronisasi stok/escrow/keuangan, debugging race-condition / hydration pelik, optimasi Lighthouse | Alur bisnis End-to-End, mutasi database atomik, dekomposisi monolith, audit keamanan | Spawn `agent: "general"` dengan `model: "9router-go/ag/gemini-3.8-flash"`                                        |
+| Tier                                | Bobot Tugas                                                                                                                                  | Contoh Pekerjaan                                                                     | Subagent & Model ID (`9router-go`)                                                                                                                             |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Tier 1 (Ringan / Cepat)**         | Eksplorasi codebase, cari file/grep, ganti teks/copywriting, ubah class Tailwind minor, cek log                                              | Cari referensi fungsi, ubah warna/padding, baca struktur folder                      | Kerjakan langsung di Main Session ATAU spawn `agent: "explore"` dengan `model: "9router-go/ag/gemini-3.8-flash"` / `"9router-go/cc/claude-haiku-4-5-20251001"` |
+| **Tier 2 (Menengah / Balanced)**    | Pembuatan komponen UI standar, CRUD API route, form validation, penulisan unit test                                                          | Buat modal baru, tambah endpoint GET/POST sederhana, update test Vitest              | Main Session (`9router-go/cc/claude-sonnet-5`)                                                                                                                 |
+| **Tier 3 (Berat / Deep Reasoning)** | Arsitektur kompleks, refactor multi-file, sinkronisasi stok/escrow/keuangan, debugging race-condition / hydration pelik, optimasi Lighthouse | Alur bisnis End-to-End, mutasi database atomik, dekomposisi monolith, audit keamanan | Spawn `agent: "general"` dengan `model: "9router-go/cc/claude-opus-5-5"`                                                                                       |
 
 ### Aturan Eksekusi Dinamis:
 
@@ -67,6 +67,20 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-08 (Implementasi Fitur Etalase Toko Ala Shopee & Rancang Ulang Dashboard Admin Mobile Sederhana [`prisma/schema.prisma`, `src/lib/etalase-db.ts`, `src/lib/etalase-utils.ts`, `src/app/api/admin/etalase/route.ts`, `src/app/api/admin/etalase/[id]/route.ts`, `src/app/dashboard/admin/etalase/page.tsx`, `src/components/admin/etalase-form-modal.tsx`, `src/app/gadget/[id]/gadget-detail-client.tsx`, `src/components/gadget/shopee-mobile-product-detail.tsx`, `src/components/gadget/product-reviews-section.tsx`, `src/components/dashboard/store-admin-mobile-view.tsx`, `src/app/dashboard/admin/page.tsx`]):**
+  - **1. Arsitektur Data Etalase (Showcase Ala Shopee):**
+    - Skema database relasi Many-to-Many: `Etalase` dan `EtalaseProduct` (1 etalase menampung banyak produk, dan 1 produk bisa masuk banyak etalase).
+    - Fleksibilitas cover 3 mode: Otomatis Termurah (`LOWEST`), Ikut Barang Cover (`COVER_PRODUCT`), dan Harga Sendiri / Pancingan (`CUSTOM`).
+    - Aturan _"Tetap Tampil & Auto-Switch"_: etalase tetap tayang meski cover habis, dan otomatis mengarahkan pilihan pertama ke produk yang _ready stock_.
+    - Otomatisasi seeding & migrasi awal seluruh produk existing ke dalam 90 Etalase aktif per cabang toko.
+  - **2. Tampilan Detail Produk Ala Shopee yang Ramping & Sinkron:**
+    - Pemilih _Tipe & Memory_ berupa tombol pil sederhana tanpa thumbnail, dan pilihan varian di bawahnya mengalir bersih dengan perubahan harga real-time di atas.
+    - Sinkronisasi dua arah: mengklik foto galeri secara otomatis memilih produk & varian terkait di etalase.
+    - Pemindahan kotak bonus 3-in-1 ke kolom kiri bawah toko di desktop untuk menjaga kolom pembelian lapang dan bersih.
+    - Bagian ulasan terintegrasi 3 pilihan scope (_Ulasan Etalase_ [default], _Ulasan Produk_, _Ulasan Toko_) dan dropdown rating bintang di kiri _Paling Baru_.
+  - **3. Rancang Ulang Dashboard Admin Toko Mobile (Screenshot 1, 2, 3):**
+    - Komponen khusus `StoreAdminMobileView` (`sm:hidden`): Kartu Omset Hari Ini, baris 3 metrik esensial (_Perlu Proses, Stok Kritis, Retur/Batal_), kartu Status Pesanan grid 2x2, kartu Pesanan Masuk dengan search bar dan tab filter, serta kartu Pengembalian & Retur tabbed switcher.
+  - **4. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suites terkait lulus 100%.
 - **2026-11-08 (Rancang Ulang UI Manajemen Pesanan Menjadi Simple & Sederhana Sesuai Screenshot 2 [Desktop] & Screenshot 3 [Mobile] [`src/app/dashboard/admin/orders/page.tsx`, `src/app/api/admin/orders/route.ts`, `tests/unit/admin-orders-simple-ui-redesign.test.ts`]):**
   - **1. Sederhanakan Bilah Kontrol Atas (Eliminasi Tab-Tab Panjang):**
     - Mengganti seluruh deretan tab status horizontal panjang dengan **Dropdown Status** yang ringkas (`[ 🝖 Status: Semua Status ▾ ]`).

@@ -1,5 +1,6 @@
 import prisma from '@/lib/db'
 import { sortRelatedProductsByRelevance } from '@/lib/relevance-scoring'
+import { getEtalaseByIdOrProductId, getEtalases } from '@/lib/etalase-db'
 
 export interface GadgetDetailData {
   id: string
@@ -28,17 +29,96 @@ export interface GadgetDetailData {
   store: any
   variants: any[]
   relatedProducts: any[]
+  isEtalase?: boolean
+  etalaseId?: string
+  etalaseName?: string
+  etalaseCustomTitle?: string | null
+  etalaseCustomCoverImage?: string | null
+  etalasePriceMode?: string
+  etalaseCustomPrice?: number | null
+  etalaseDisplayPrice?: number
+  etalaseTotalStock?: number
+  etalaseSoldCount?: number
+  activeProductId?: string
+  etalaseItems?: any[]
   createdAt?: string
   updatedAt?: string
 }
 
 /**
- * Fetch complete gadget detail and scored related products for instant SSR hydration.
+ * Fetch complete gadget/etalase detail and scored related etalases/products for instant SSR hydration.
  */
 export async function getGadgetDetail(
   id: string
 ): Promise<GadgetDetailData | null> {
   try {
+    // 1. Cek apakah ID adalah Etalase ID atau Product ID yang terdaftar di Etalase
+    const etalase = await getEtalaseByIdOrProductId(id)
+    if (etalase && etalase.defaultProduct) {
+      const defProd = etalase.defaultProduct
+      const allEtalases = await getEtalases({ onlyActive: true })
+      const otherEtalases = allEtalases.filter((e) => e.id !== etalase.id)
+
+      // Produk lain dari toko yang sama (Etalase lain milik toko ini)
+      const sameStoreEtalases = otherEtalases
+        .filter((e) => e.storeId === etalase.storeId)
+        .slice(0, 6)
+
+      const relatedEtalases = sortRelatedProductsByRelevance(
+        otherEtalases.map((e) => ({
+          ...e,
+          has3in1Bonus: Boolean(
+            e.includesCharger && e.includesScreenProtector && e.includesCase
+          ),
+        })),
+        etalase
+      )
+
+      const storeWithProducts = etalase.store
+        ? {
+            ...etalase.store,
+            products:
+              sameStoreEtalases.length > 0
+                ? sameStoreEtalases
+                : etalase.etalaseItems
+                    .filter((i) => i.productId !== defProd.id)
+                    .map((i) => i.product)
+                    .slice(0, 6),
+          }
+        : null
+
+      return JSON.parse(
+        JSON.stringify({
+          ...defProd,
+          id: etalase.id,
+          activeProductId: defProd.id,
+          name: etalase.name,
+          description: etalase.description || defProd.description,
+          brand: etalase.brand || defProd.brand,
+          category: etalase.category || defProd.category,
+          price: defProd.price,
+          originalPrice: defProd.originalPrice || etalase.originalPrice,
+          stock: defProd.stock,
+          images: etalase.images.length > 0 ? etalase.images : defProd.images,
+          rating: etalase.rating,
+          totalReview: etalase.totalReview,
+          store: storeWithProducts,
+          variants: defProd.variants || [],
+          relatedProducts: relatedEtalases,
+          isEtalase: true,
+          etalaseId: etalase.id,
+          etalaseName: etalase.name,
+          etalaseCustomTitle: etalase.customTitle,
+          etalaseCustomCoverImage: etalase.customCoverImage,
+          etalasePriceMode: etalase.priceMode,
+          etalaseCustomPrice: etalase.customPrice,
+          etalaseDisplayPrice: etalase.price,
+          etalaseTotalStock: etalase.stock,
+          etalaseSoldCount: etalase.soldCount,
+          etalaseItems: etalase.etalaseItems,
+        })
+      )
+    }
     let product = await prisma.product.findUnique({
       where: { id },
       include: {

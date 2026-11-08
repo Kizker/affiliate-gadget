@@ -2,9 +2,14 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { auth } from '@/auth'
 import { analyzeSmartQuery } from '@/lib/smart-search'
+import { getEtalases, getPublicGadgetsCacheVersion } from '@/lib/etalase-db'
 
 // In-memory cache for public default gadget catalog requests (drops latency from 2s to <5ms)
-let publicGadgetsCache: { data: any[]; timestamp: number } | null = null
+let publicGadgetsCache: {
+  data: any[]
+  timestamp: number
+  version: number
+} | null = null
 let salesMapCache: { map: Map<string, number>; timestamp: number } | null = null
 const CACHE_TTL_MS = 60 * 1000 // 60 seconds
 
@@ -15,6 +20,8 @@ export async function GET(request: Request) {
     const brand = searchParams.get('brand') || ''
     let storeId = searchParams.get('storeId') || ''
     const scoped = searchParams.get('scoped') === 'true'
+    const rawProducts = searchParams.get('rawProducts') === 'true'
+    const sort = searchParams.get('sort') || ''
     const minPrice = searchParams.get('minPrice')
       ? parseFloat(searchParams.get('minPrice')!)
       : undefined
@@ -24,6 +31,7 @@ export async function GET(request: Request) {
 
     const isDefaultPublicRequest =
       !scoped &&
+      !rawProducts &&
       !search &&
       (!brand || brand === 'ALL') &&
       !storeId &&
@@ -33,6 +41,7 @@ export async function GET(request: Request) {
     if (
       isDefaultPublicRequest &&
       publicGadgetsCache &&
+      publicGadgetsCache.version === getPublicGadgetsCacheVersion() &&
       Date.now() - publicGadgetsCache.timestamp < CACHE_TTL_MS
     ) {
       return NextResponse.json(
@@ -47,6 +56,41 @@ export async function GET(request: Request) {
           },
         }
       )
+    }
+
+    // Tampilan Depan Publik (!scoped & !rawProducts): Hanya menampilkan Etalase Aktif!
+    if (!scoped && !rawProducts) {
+      const etalases = await getEtalases({
+        storeId,
+        brand,
+        search,
+        onlyActive: true,
+        minPrice,
+        maxPrice,
+        sort,
+      })
+
+      if (etalases.length > 0) {
+        if (isDefaultPublicRequest) {
+          publicGadgetsCache = {
+            data: etalases,
+            timestamp: Date.now(),
+            version: getPublicGadgetsCacheVersion(),
+          }
+        }
+        return NextResponse.json(
+          {
+            success: true,
+            data: etalases,
+          },
+          {
+            headers: {
+              'Cache-Control':
+                'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+            },
+          }
+        )
+      }
     }
 
     if (scoped && !storeId) {
@@ -68,7 +112,6 @@ export async function GET(request: Request) {
       }
     }
 
-    const sort = searchParams.get('sort') || ''
     const statusParam = searchParams.get('status') || ''
 
     const where: any = {}
@@ -187,7 +230,11 @@ export async function GET(request: Request) {
     }))
 
     if (isDefaultPublicRequest) {
-      publicGadgetsCache = { data: enrichedProducts, timestamp: Date.now() }
+      publicGadgetsCache = {
+        data: enrichedProducts,
+        timestamp: Date.now(),
+        version: getPublicGadgetsCacheVersion(),
+      }
     }
 
     const cacheHeaders = scoped

@@ -18,8 +18,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: productId } = await params
+    const { id: rawId } = await params
     const { searchParams } = new URL(req.url)
+    const scope = searchParams.get('scope') || 'ETALASE' // "ETALASE" | "PRODUCT" | "STORE"
+    const etalaseIdParam = searchParams.get('etalaseId') || ''
+    const storeIdParam = searchParams.get('storeId') || ''
     const ratingFilter = searchParams.get('rating')
       ? parseInt(searchParams.get('rating')!)
       : null
@@ -31,23 +34,72 @@ export async function GET(
       Math.max(1, parseInt(searchParams.get('limit') || '20'))
     )
 
-    // Verify product exists
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
+    // Deteksi apakah rawId atau etalaseIdParam adalah Etalase
+    const targetEtalaseId = etalaseIdParam || rawId
+    let etalaseProducts: string[] = []
+    let resolvedStoreId = storeIdParam
+
+    if (
+      targetEtalaseId &&
+      typeof (prisma as any).$queryRawUnsafe === 'function'
+    ) {
+      try {
+        const etaRows: any[] = await prisma.$queryRawUnsafe(
+          `SELECT "id", "storeId" FROM "etalases" WHERE "id" = $1 LIMIT 1`,
+          targetEtalaseId
+        )
+        if (etaRows && etaRows.length > 0) {
+          if (!resolvedStoreId) resolvedStoreId = etaRows[0].storeId
+          const itemRows: any[] = await prisma.$queryRawUnsafe(
+            `SELECT "productId" FROM "etalase_products" WHERE "etalaseId" = $1`,
+            targetEtalaseId
+          )
+          etalaseProducts = itemRows.map((r) => r.productId).filter(Boolean)
+        }
+      } catch (err) {
+        console.warn('Etalase review query warning:', err)
+      }
+    }
+
+    // Lookup single product as fallback/default
+    let product = await prisma.product.findUnique({
+      where: { id: rawId },
       select: { id: true, name: true, storeId: true },
     })
 
-    if (!product) {
-      return NextResponse.json(
-        { success: false, error: 'Produk tidak ditemukan' },
-        { status: 404 }
-      )
+    if (!product && etalaseProducts.length > 0) {
+      product = await prisma.product.findUnique({
+        where: { id: etalaseProducts[0] },
+        select: { id: true, name: true, storeId: true },
+      })
     }
 
-    // Build Prisma query condition
-    const baseWhere: any = {
-      productId: productId,
-      type: 'PRODUCT',
+    if (!resolvedStoreId && product?.storeId) {
+      resolvedStoreId = product.storeId
+    }
+
+    const productId = product?.id || rawId
+
+    // Tentukan Base Where berdasarkan Scope Ulasan yang dipilih pengguna
+    let baseWhere: any = {}
+    if (scope === 'STORE' && resolvedStoreId) {
+      baseWhere = {
+        OR: [
+          { storeId: resolvedStoreId },
+          { product: { storeId: resolvedStoreId } },
+          { order: { storeId: resolvedStoreId } },
+        ],
+      }
+    } else if (scope === 'ETALASE' && etalaseProducts.length > 0) {
+      // Default: Seluruh ulasan produk di dalam Etalase tersebut!
+      baseWhere = {
+        productId: { in: etalaseProducts },
+      }
+    } else {
+      // Scope: PRODUCT satuan
+      baseWhere = {
+        productId: productId,
+      }
     }
 
     // Star filter
@@ -273,6 +325,7 @@ export async function GET(
           total: totalFiltered,
           totalPages: Math.ceil(totalFiltered / limit),
         },
+        scope,
         statistics: {
           averageRating,
           totalReviews,

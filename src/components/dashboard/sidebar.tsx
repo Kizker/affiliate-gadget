@@ -63,6 +63,11 @@ const superAdminNavSections: NavSection[] = [
     title: 'Katalog & Toko',
     items: [
       {
+        icon: Layers,
+        label: 'Etalase Toko',
+        href: '/dashboard/admin/etalase',
+      },
+      {
         icon: Smartphone,
         label: 'Katalog Gadget',
         href: '/dashboard/admin/products',
@@ -124,6 +129,11 @@ const adminPlatformNavSections: NavSection[] = [
   {
     title: 'Katalog & Toko',
     items: [
+      {
+        icon: Layers,
+        label: 'Etalase Toko',
+        href: '/dashboard/admin/etalase',
+      },
       {
         icon: Smartphone,
         label: 'Katalog Gadget',
@@ -194,6 +204,11 @@ const storeAdminNavSections: NavSection[] = [
   {
     title: 'Operasional',
     items: [
+      {
+        icon: Layers,
+        label: 'Etalase Toko',
+        href: '/dashboard/admin/etalase',
+      },
       {
         icon: Smartphone,
         label: 'Katalog Gadget',

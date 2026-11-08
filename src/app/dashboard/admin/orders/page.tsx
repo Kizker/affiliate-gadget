@@ -530,7 +530,6 @@ export default function AdminOrdersPage() {
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false)
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false)
   const [dateRangeFilter, setDateRangeFilter] = useState<string>('ALL')
-  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
 
   const statusDropdownRef = useRef<HTMLDivElement>(null)
   const dateDropdownRef = useRef<HTMLDivElement>(null)
@@ -554,20 +553,6 @@ export default function AdminOrdersPage() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
-  const handleToggleSelectAll = () => {
-    if (selectedOrderIds.length === orders.length && orders.length > 0) {
-      setSelectedOrderIds([])
-    } else {
-      setSelectedOrderIds(orders.map((o) => o.id))
-    }
-  }
-
-  const handleToggleSelectOrder = (id: string) => {
-    setSelectedOrderIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    )
-  }
 
   const handleConfirmPackageArrivalInOrdersDrawer = async (
     returnId: string
@@ -947,8 +932,8 @@ export default function AdminOrdersPage() {
     <div className="mx-auto max-w-7xl space-y-4 pb-16">
       {/* 1. Simple & Clean Control Bar (Screenshot 2 & 3) */}
       <div className="shadow-2xs flex flex-col gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left: Status Filter Dropdown & Date Range Dropdown */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Mobile: 2 Kolom Berdampingan (Filter Status di Kiri, Rentang Waktu di Kanan) */}
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
           {/* Status Dropdown */}
           <div className="relative" ref={statusDropdownRef}>
             <button
@@ -957,16 +942,13 @@ export default function AdminOrdersPage() {
                 setStatusDropdownOpen(!statusDropdownOpen)
                 setDateDropdownOpen(false)
               }}
-              className="shadow-2xs flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="shadow-2xs flex w-full items-center justify-between gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:w-auto sm:justify-start"
             >
-              <Filter className="h-3.5 w-3.5 text-slate-400" />
-              <span>
-                Status:{' '}
-                <strong className="font-semibold text-slate-900 dark:text-white">
-                  {currentStatusLabel}
-                </strong>
-              </span>
-              <ChevronDown className="ml-0.5 h-3.5 w-3.5 text-slate-400" />
+              <div className="flex min-w-0 items-center gap-1.5 truncate">
+                <Filter className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                <span className="truncate">{currentStatusLabel}</span>
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
             </button>
 
             {statusDropdownOpen && (
@@ -1009,20 +991,17 @@ export default function AdminOrdersPage() {
                 setDateDropdownOpen(!dateDropdownOpen)
                 setStatusDropdownOpen(false)
               }}
-              className="shadow-2xs flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="shadow-2xs flex w-full items-center justify-between gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:w-auto sm:justify-start"
             >
-              <Calendar className="h-3.5 w-3.5 text-slate-400" />
-              <span>
-                Rentang:{' '}
-                <strong className="font-semibold text-slate-900 dark:text-white">
-                  {currentDateRangeLabel}
-                </strong>
-              </span>
-              <ChevronDown className="ml-0.5 h-3.5 w-3.5 text-slate-400" />
+              <div className="flex min-w-0 items-center gap-1.5 truncate">
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                <span className="truncate">{currentDateRangeLabel}</span>
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
             </button>
 
             {dateDropdownOpen && (
-              <div className="absolute left-0 top-full z-30 mt-1 w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+              <div className="absolute right-0 top-full z-30 mt-1 w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-800 sm:left-0 sm:right-auto">
                 {DATE_RANGE_OPTIONS.map((opt) => (
                   <button
                     key={opt.id}
@@ -1050,8 +1029,8 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Right: Search & Refresh */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:w-64 sm:flex-initial">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative flex-1 sm:w-72">
             <input
               type="text"
               value={searchInput}
@@ -1113,22 +1092,11 @@ export default function AdminOrdersPage() {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
-                    <th className="w-10 px-3 pb-3">
-                      <input
-                        type="checkbox"
-                        checked={
-                          selectedOrderIds.length === orders.length &&
-                          orders.length > 0
-                        }
-                        onChange={handleToggleSelectAll}
-                        className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-0"
-                      />
-                    </th>
-                    <th className="px-3 pb-3">UNIT GADGET</th>
-                    <th className="px-3 pb-3">PEMBELI</th>
-                    <th className="px-3 pb-3">TOTAL TAGIHAN</th>
-                    <th className="px-3 pb-3">STATUS</th>
-                    <th className="px-3 pb-3 text-right">AKSI</th>
+                    <th className="px-4 pb-3">UNIT GADGET</th>
+                    <th className="px-4 pb-3">PEMBELI</th>
+                    <th className="px-4 pb-3">TOTAL TAGIHAN</th>
+                    <th className="px-4 pb-3">STATUS</th>
+                    <th className="px-4 pb-3 text-right">AKSI</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -1160,18 +1128,8 @@ export default function AdminOrdersPage() {
                         key={order.id}
                         className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
                       >
-                        {/* Checkbox */}
-                        <td className="px-3 py-3.5 align-middle">
-                          <input
-                            type="checkbox"
-                            checked={selectedOrderIds.includes(order.id)}
-                            onChange={() => handleToggleSelectOrder(order.id)}
-                            className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-0"
-                          />
-                        </td>
-
                         {/* Kolom 1: Unit Gadget */}
-                        <td className="px-3 py-3.5 align-middle">
+                        <td className="px-4 py-3.5 align-middle">
                           <div className="flex items-center gap-3">
                             <img
                               src={productImg}
@@ -1277,15 +1235,9 @@ export default function AdminOrdersPage() {
                     key={order.id}
                     className="shadow-2xs space-y-2.5 rounded-2xl border border-slate-200/80 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900"
                   >
-                    {/* Header Kartu: Checkbox, Order No, Tanggal, dan Status */}
+                    {/* Header Kartu: Order No, Tanggal, dan Status */}
                     <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrderIds.includes(order.id)}
-                          onChange={() => handleToggleSelectOrder(order.id)}
-                          className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-0"
-                        />
+                      <div className="flex min-w-0 items-center gap-1.5">
                         <span className="truncate font-mono text-[10px] font-semibold text-slate-500">
                           #
                           {order.orderNumber.length > 18
@@ -1773,13 +1725,13 @@ export default function AdminOrdersPage() {
                         )
                       })()}
 
-                    {/* Products Section */}
-                    <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                    {/* Products Section - Clean & Simple (Image 3) */}
+                    <div className="space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
                       <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Unit Gadget Dipesan ({selectedOrder.items?.length || 0})
+                        Produk Dipesan ({selectedOrder.items?.length || 0})
                       </span>
 
-                      <div className="space-y-2.5">
+                      <div className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-white p-1 dark:divide-slate-800 dark:border-slate-700 dark:bg-slate-900">
                         {selectedOrder.items?.map((item, idx) => {
                           const img =
                             item.product?.images?.[0] ||
@@ -1794,40 +1746,30 @@ export default function AdminOrdersPage() {
                           return (
                             <div
                               key={idx}
-                              className="shadow-2xs flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+                              className="flex items-center justify-between gap-3 p-3"
                             >
                               <div className="flex min-w-0 items-center gap-3">
                                 <img
                                   src={img}
                                   alt={title}
-                                  className="h-12 w-12 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover dark:border-slate-800 dark:bg-slate-800"
+                                  className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 object-cover dark:border-slate-800"
                                 />
                                 <div className="min-w-0">
-                                  {item.product?.brand && (
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                      {item.product.brand}
-                                    </span>
-                                  )}
-                                  <p className="break-words text-xs font-bold leading-snug text-slate-900 dark:text-white">
+                                  <p className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
                                     {title}
                                   </p>
                                   {item.variantName && (
-                                    <span className="mt-0.5 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                      Varian: {item.variantName}
-                                    </span>
-                                  )}
-                                  {item.notes && (
-                                    <p className="mt-0.5 text-[10px] italic text-slate-500">
-                                      Catatan: {item.notes}
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                      {item.variantName}
                                     </p>
                                   )}
-                                  <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                  <p className="mt-0.5 text-[10px] text-slate-400">
                                     {item.quantity} Unit × Rp{' '}
                                     {item.price.toLocaleString('id-ID')}
                                   </p>
                                 </div>
                               </div>
-                              <span className="whitespace-nowrap text-xs font-black tabular-nums text-slate-950 dark:text-white">
+                              <span className="whitespace-nowrap text-xs font-bold tabular-nums text-slate-950 dark:text-white">
                                 Rp{' '}
                                 {(item.price * item.quantity).toLocaleString(
                                   'id-ID'
@@ -1838,194 +1780,131 @@ export default function AdminOrdersPage() {
                         })}
                       </div>
 
-                      {/* Bonus 3-in-1 Callout */}
-                      <div className="dark:bg-slate-850 rounded-xl border border-slate-200 bg-white p-3 text-xs dark:border-slate-700">
-                        <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-                          <Gift className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                      {/* Bonus 3-in-1 Callout - Clean Single Line Pill */}
+                      {(selectedOrder.bonusChargerIncluded ||
+                        selectedOrder.bonusProtectorIncluded ||
+                        selectedOrder.bonusCaseIncluded ||
+                        true) && (
+                        <div className="flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white px-3 py-2 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                          <Gift className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                           <span>
-                            Paket Bonus 3-in-1 (Termasuk Gratis Rp 0):
+                            Bonus 3-in-1 Gratis: Charger, Tempered Glass &amp;
+                            Softcase
                           </span>
                         </div>
-                        <p className="mt-1 pl-5 text-[11px] font-normal leading-relaxed text-slate-500 dark:text-slate-400">
-                          Adaptor Fast Charger + Tempered Glass 9H + Softcase
-                          Presisi
-                        </p>
-                      </div>
+                      )}
                     </div>
 
-                    {/* Financial Breakdown Card */}
-                    <div className="space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                    {/* Financial Breakdown Card - Clean & Minimal */}
+                    <div className="space-y-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
                       <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Rincian Pembayaran
                       </span>
-                      <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
-                        <span>Subtotal Unit:</span>
-                        <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
-                          Rp {selectedOrder.subtotal.toLocaleString('id-ID')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
-                        <span>Ongkos Kirim Kurir:</span>
-                        <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
-                          {selectedOrder.shippingCost
-                            ? `Rp ${selectedOrder.shippingCost.toLocaleString('id-ID')}`
-                            : 'Gratis'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
-                        <span>
-                          Asuransi Pengiriman (
-                          {selectedOrder.insuranceRate ?? 0.2}%):
-                        </span>
-                        <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
-                          {selectedOrder.insuranceFee
-                            ? `Rp ${selectedOrder.insuranceFee.toLocaleString('id-ID')}`
-                            : 'Termasuk (Rp 0)'}
-                        </span>
-                      </div>
-
-                      {selectedOrder.discountAmount !== undefined &&
-                        selectedOrder.discountAmount > 0 && (
-                          <div className="flex justify-between text-xs font-medium text-slate-700 dark:text-slate-300">
-                            <span>
-                              Diskon Voucher{' '}
-                              {selectedOrder.voucherCode
-                                ? `(${selectedOrder.voucherCode})`
-                                : ''}
-                              :
-                            </span>
-                            <span className="font-semibold tabular-nums">
-                              - Rp{' '}
-                              {selectedOrder.discountAmount.toLocaleString(
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                          <span>Subtotal Unit</span>
+                          <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                            Rp {selectedOrder.subtotal.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                          <span>Ongkos Kirim</span>
+                          <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                            {selectedOrder.shippingCost
+                              ? `Rp ${selectedOrder.shippingCost.toLocaleString('id-ID')}`
+                              : 'Gratis'}
+                          </span>
+                        </div>
+                        {selectedOrder.insuranceFee > 0 && (
+                          <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                            <span>Asuransi Pengiriman</span>
+                            <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                              Rp{' '}
+                              {selectedOrder.insuranceFee.toLocaleString(
                                 'id-ID'
                               )}
                             </span>
                           </div>
                         )}
-
-                      {/* Total Highlight */}
-                      <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5 text-slate-900 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white">
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                          Total Tagihan:
+                        {selectedOrder.discountAmount !== undefined &&
+                          selectedOrder.discountAmount > 0 && (
+                            <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                              <span>
+                                Diskon Voucher{' '}
+                                {selectedOrder.voucherCode
+                                  ? `(${selectedOrder.voucherCode})`
+                                  : ''}
+                              </span>
+                              <span className="font-semibold tabular-nums">
+                                - Rp{' '}
+                                {selectedOrder.discountAmount.toLocaleString(
+                                  'id-ID'
+                                )}
+                              </span>
+                            </div>
+                          )}
+                      </div>
+                      <div className="mt-2 flex items-center justify-between border-t border-slate-200/80 pt-2 text-xs dark:border-slate-700">
+                        <span className="font-bold text-slate-700 dark:text-slate-200">
+                          Total Tagihan
                         </span>
-                        <span className="text-base font-black tabular-nums text-slate-900 dark:text-white">
+                        <span className="text-sm font-black tabular-nums text-slate-950 dark:text-white">
                           Rp {selectedOrder.total.toLocaleString('id-ID')}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Column 2: Customer & Shipping Details */}
+                  {/* Column 2: Customer & Shipping Details - Clean & Compact */}
                   <div className="space-y-4">
-                    {/* Customer Card */}
+                    {/* Destination Address & Shipping Details */}
                     <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
                       <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Informasi Pembeli
+                        Penerima &amp; Pengiriman
                       </span>
 
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                          {(selectedOrder.user?.name || 'C')
-                            .charAt(0)
-                            .toUpperCase()}
-                        </div>
-                        <div className="min-w-0 space-y-0.5">
-                          <p className="break-words text-sm font-bold text-slate-900 dark:text-white">
-                            {selectedOrder.user?.name || 'Customer'}
-                          </p>
-                          <p className="break-all text-xs text-slate-500 dark:text-slate-400">
-                            {selectedOrder.user?.email}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Hubungi Customer via Chat */}
-                      <div className="pt-1">
-                        <button
-                          type="button"
-                          disabled={isConnectingChat}
-                          onClick={() => handleChatCustomer(selectedOrder)}
-                          className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                        >
-                          {isConnectingChat ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
-                          ) : (
-                            <MessageSquare className="h-3.5 w-3.5 text-slate-500" />
-                          )}
-                          <span>
-                            {isConnectingChat
-                              ? 'Menghubungkan ke Chat...'
-                              : 'Hubungi via Chat'}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Destination Address & Recipient Card */}
-                    <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                      <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                        <span>Penerima & Alamat Pengiriman</span>
-                      </span>
-
-                      {/* Detail Nama dan Nomor Penerima */}
                       {(() => {
                         const recipient = parseRecipientInfo(selectedOrder)
-                        return (
-                          <>
-                            <div className="space-y-2 rounded-xl border border-slate-200/90 bg-white p-3 dark:border-slate-700/80 dark:bg-slate-800/80">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="min-w-0">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                                    Nama Penerima
-                                  </span>
-                                  <p className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
-                                    <User className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                                    <span className="truncate">
-                                      {recipient.recipientName}
-                                    </span>
-                                  </p>
-                                </div>
-                              </div>
+                        const courierDisplay = selectedOrder.courierCode
+                          ? `${selectedOrder.courierCode} ${selectedOrder.courierService || ''}`
+                          : 'Kurir Terproteksi'
 
-                              <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2 dark:border-slate-700/60">
-                                <div className="min-w-0">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                                    Nomor HP Penerima
-                                  </span>
-                                  <p className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-900 dark:text-white">
-                                    <Phone className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                                    <span>{recipient.recipientPhone}</span>
-                                  </p>
-                                </div>
-                                {recipient.recipientPhone &&
-                                  recipient.recipientPhone !== '-' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(
-                                          recipient.recipientPhone
-                                        )
-                                        toast.success('Nomor penerima disalin!')
-                                      }}
-                                      className="shadow-2xs inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-200"
-                                      title="Salin Nomor HP Penerima"
-                                    >
-                                      <Copy className="h-3 w-3" />
-                                      <span>Salin</span>
-                                    </button>
-                                  )}
+                        return (
+                          <div className="space-y-2.5 rounded-xl border border-slate-200/80 bg-white p-3 text-xs dark:border-slate-700 dark:bg-slate-900">
+                            {/* Nama & Telepon */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <p className="font-bold text-slate-900 dark:text-white">
+                                  {recipient.recipientName}
+                                </p>
+                                <p className="font-mono text-[11px] text-slate-500">
+                                  {recipient.recipientPhone}
+                                </p>
                               </div>
+                              {recipient.recipientPhone &&
+                                recipient.recipientPhone !== '-' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(
+                                        recipient.recipientPhone
+                                      )
+                                      toast.success('Nomor penerima disalin!')
+                                    }}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                    <span>Salin</span>
+                                  </button>
+                                )}
                             </div>
 
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                                Alamat Lengkap
-                              </span>
-                              <p className="text-xs font-semibold leading-relaxed text-slate-800 dark:text-slate-200">
+                            {/* Alamat Lengkap */}
+                            <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
+                              <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-300">
                                 {recipient.deliveryAddress}
                               </p>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                              <p className="mt-0.5 text-[10.5px] text-slate-400">
                                 {[
                                   selectedOrder.user?.city,
                                   selectedOrder.user?.province,
@@ -2035,104 +1914,83 @@ export default function AdminOrdersPage() {
                                   .join(', ')}
                               </p>
                             </div>
-                          </>
+
+                            {/* Kurir & AWB */}
+                            <div className="flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+                              <div>
+                                <span className="block text-[10px] uppercase tracking-wider text-slate-400">
+                                  Ekspedisi
+                                </span>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                  {courierDisplay}
+                                </span>
+                              </div>
+                              {selectedOrder.trackingNumber ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                                    {selectedOrder.trackingNumber}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleCopyAWB(
+                                        selectedOrder.trackingNumber!
+                                      )
+                                    }
+                                    className="rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                                    title="Salin Resi"
+                                  >
+                                    {copiedAWB ? (
+                                      <Check className="h-3 w-3 text-emerald-600" />
+                                    ) : (
+                                      <Copy className="h-3 w-3" />
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Cetak Label Thermal"
+                                    onClick={() =>
+                                      handleOpenThermalLabel(selectedOrder)
+                                    }
+                                    className="rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                                  >
+                                    <Printer className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-slate-400">
+                                  Menunggu Pick Up
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         )
                       })()}
                     </div>
 
-                    {/* Courier & Logistic Protection Card */}
-                    <div className="space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Ekspedisi & Garansi Logistik
-                      </span>
-
-                      <div className="flex items-center gap-2.5 font-bold text-slate-900 dark:text-white">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          <Truck className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold">
-                            {selectedOrder.courierCode || 'JNE'}{' '}
-                            {selectedOrder.courierService ||
-                              'YES (Yakin Esok Sampai)'}
-                          </p>
-                          <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                            Layanan Pengiriman Cepat Terlindungi
-                          </p>
-                        </div>
+                    {/* Customer Account & Chat */}
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 text-xs dark:border-slate-800 dark:bg-slate-800/30">
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-slate-900 dark:text-white">
+                          {selectedOrder.user?.name || 'Customer'}
+                        </p>
+                        <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                          {selectedOrder.user?.email}
+                        </p>
                       </div>
-
-                      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                        <ShieldCheck className="h-4 w-4 shrink-0 text-slate-500" />
-                        <span className="text-[11px]">
-                          Asuransi 100% Proteksi Kerusakan & Kehilangan Fisik
-                        </span>
-                      </div>
-
-                      {selectedOrder.trackingNumber ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
-                            <span className="text-xs font-bold text-slate-500">
-                              Resi / AWB:
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs font-black text-slate-900 dark:text-white">
-                                {selectedOrder.trackingNumber}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleCopyAWB(selectedOrder.trackingNumber!)
-                                }
-                                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-white"
-                                title="Salin Resi"
-                              >
-                                {copiedAWB ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-600" />
-                                ) : (
-                                  <Copy className="h-3.5 w-3.5" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleOpenThermalLabel(selectedOrder)
-                              }
-                              className="shadow-2xs inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                            >
-                              <Printer className="ml-1.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
-                              <span>Cetak Label Thermal</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setShowLiveTracker(!showLiveTracker)
-                              }
-                              className="shadow-2xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/90 bg-blue-50/80 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100 active:scale-[0.98] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
-                            >
-                              <Navigation className="h-3.5 w-3.5" />
-                              <span>
-                                {showLiveTracker
-                                  ? 'Tutup Pelacakan'
-                                  : 'Lacak Kurir Live'}
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-2.5 dark:border-slate-700 dark:bg-slate-800/60">
-                          <Clock className="h-4 w-4 shrink-0 text-amber-500" />
-                          <span className="text-xs text-slate-600 dark:text-slate-300">
-                            Resi AWB resmi diterbitkan otomatis via Biteship
-                            saat Anda menekan tombol{' '}
-                            <strong>Request Pick Up</strong> di bawah.
-                          </span>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        disabled={isConnectingChat}
+                        onClick={() => handleChatCustomer(selectedOrder)}
+                        className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        {isConnectingChat ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
+                        ) : (
+                          <MessageSquare className="h-3.5 w-3.5 text-slate-500" />
+                        )}
+                        <span>Hubungi via Chat</span>
+                      </button>
                     </div>
                   </div>
                 </div>

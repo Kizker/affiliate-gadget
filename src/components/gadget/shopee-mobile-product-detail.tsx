@@ -41,6 +41,12 @@ const RECOMMENDATIONS_BATCH_SIZE = 8
 
 interface ShopeeMobileProductDetailProps {
   product: any
+  etalaseId?: string
+  storeId?: string
+  etalaseTitle?: string
+  etalaseItems?: any[]
+  selectedEtalaseItem?: any
+  onSelectEtalaseItem?: (item: any) => void
   selectedVariant: any
   onSelectVariant: (variant: any) => void
   selectedImage: string
@@ -197,6 +203,12 @@ function ProductCatalogMiniCard({ item }: { item: any }) {
 
 export function ShopeeMobileProductDetail({
   product,
+  etalaseId,
+  storeId,
+  etalaseTitle,
+  etalaseItems = [],
+  selectedEtalaseItem,
+  onSelectEtalaseItem,
   selectedVariant,
   onSelectVariant,
   selectedImage,
@@ -375,6 +387,45 @@ export function ShopeeMobileProductDetail({
     const matchingVariant = findVariantForImage(nextImg)
     if (matchingVariant && matchingVariant.id !== selectedVariant?.id) {
       onSelectVariant(matchingVariant)
+    }
+
+    // Jika gambar adalah milik salah satu item di dalam etalase, otomatis sinkronkan pilihan produk etalase!
+    if (
+      Array.isArray(etalaseItems) &&
+      etalaseItems.length > 0 &&
+      onSelectEtalaseItem
+    ) {
+      const baseImg = nextImg.split('?')[0]
+      const matchingEtalaseItem = etalaseItems.find((item: any) => {
+        const p = item.product
+        if (!p) return false
+        if (
+          Array.isArray(p.images) &&
+          p.images.some(
+            (u: string) => u === nextImg || u.split('?')[0] === baseImg
+          )
+        ) {
+          return true
+        }
+        if (
+          Array.isArray(p.variants) &&
+          p.variants.some(
+            (v: any) =>
+              v.image &&
+              (v.image === nextImg || v.image.split('?')[0] === baseImg)
+          )
+        ) {
+          return true
+        }
+        return false
+      })
+      if (
+        matchingEtalaseItem &&
+        matchingEtalaseItem.productId !== selectedEtalaseItem?.productId &&
+        matchingEtalaseItem.id !== selectedEtalaseItem?.id
+      ) {
+        onSelectEtalaseItem(matchingEtalaseItem)
+      }
     }
   }
 
@@ -708,9 +759,6 @@ export function ShopeeMobileProductDetail({
             <span className="rounded-md bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
               {product.brand || 'Gadget'}
             </span>
-            <span className="rounded-md bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-              {product.condition === 'BARU' ? 'Baru' : 'Like New 99%'}
-            </span>
           </div>
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
             {availableStock > 0 ? `Stok: ${availableStock} Unit` : 'Stok Habis'}
@@ -719,7 +767,7 @@ export function ShopeeMobileProductDetail({
 
         {/* Row 2: Product Title */}
         <h1 className="text-base font-extrabold leading-snug text-slate-950 dark:text-white sm:text-lg">
-          {product.name}
+          {etalaseTitle || product.name}
         </h1>
 
         {/* Row 3: Price Row */}
@@ -745,30 +793,59 @@ export function ShopeeMobileProductDetail({
         </div>
       </div>
 
-      {/* 4. Variant Selector matching Screenshot 1 */}
+      {/* 3B. Shopee-Style Etalase Selector (Cukup Nama Produk Simpel Saja) */}
+      {etalaseItems && etalaseItems.length > 0 && onSelectEtalaseItem && (
+        <div
+          id="etalase-product-selector-mobile"
+          className="space-y-2.5 border-b border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+        >
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-slate-900 dark:text-white">
+              Tipe &amp; Memory ({etalaseItems.length} Pilihan)
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {etalaseItems.map((item: any) => {
+              const isSelected =
+                selectedEtalaseItem?.id === item.id ||
+                selectedEtalaseItem?.productId === item.productId
+              const itemStock = Number(item.totalStock) || 0
+              const isItemOut = itemStock <= 0
+
+              return (
+                <button
+                  key={item.id || item.productId}
+                  type="button"
+                  onClick={() => onSelectEtalaseItem(item)}
+                  className={`flex items-center justify-center rounded-xl px-3 py-1.5 text-center text-xs font-semibold transition-all ${
+                    isSelected
+                      ? 'shadow-xs border-2 border-orange-500 bg-orange-50 text-orange-600'
+                      : isItemOut
+                        ? 'border border-slate-200 bg-slate-100/70 text-slate-400 opacity-60 dark:border-slate-800 dark:bg-slate-900'
+                        : 'border border-slate-200 bg-slate-50 text-slate-700 hover:border-orange-400 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Variant Selector (Cukup Nama Varian Saja, Harga berubah di atas) */}
       {product.variants && product.variants.length > 0 && (
         <div className="space-y-2.5 border-b border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-slate-900 dark:text-white">
               Pilihan Varian
             </span>
-            {selectedVariant && (
-              <span className="text-xs font-bold text-slate-900 dark:text-white">
-                Terpilih:{' '}
-                <span className="font-normal text-slate-600 dark:text-slate-300">
-                  {selectedVariant.name}
-                </span>
-              </span>
-            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="flex flex-wrap gap-2">
             {product.variants.map((v: any) => {
               const isSelected = selectedVariant?.id === v.id
-              const vImg =
-                v.image ||
-                product.images?.[0] ||
-                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&q=80'
               const vStock = Number(v.stock) || 0
 
               return (
@@ -778,33 +855,15 @@ export function ShopeeMobileProductDetail({
                   type="button"
                   onClick={() => onSelectVariant(v)}
                   disabled={vStock <= 0}
-                  className={`flex w-full items-center gap-2.5 rounded-2xl p-2.5 text-left transition-all ${
+                  className={`flex items-center justify-center rounded-xl px-3 py-1.5 text-center text-xs font-semibold transition-all ${
                     isSelected
-                      ? 'border-2 border-orange-500 bg-orange-50/10'
-                      : 'border border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
+                      ? 'shadow-xs border-2 border-orange-500 bg-orange-50 text-orange-600'
+                      : vStock <= 0
+                        ? 'border border-slate-200 bg-slate-100/70 text-slate-400 opacity-50 dark:border-slate-800 dark:bg-slate-900'
+                        : 'border border-slate-200 bg-slate-50 text-slate-700 hover:border-orange-400 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300'
                   }`}
                 >
-                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                    <Image
-                      src={vImg}
-                      alt={v.name}
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={`truncate text-xs ${isSelected ? 'font-bold text-slate-900 dark:text-white' : 'font-semibold text-slate-700 dark:text-slate-300'}`}
-                    >
-                      {v.name}
-                    </p>
-                    <p
-                      className={`text-xs ${isSelected ? 'font-bold text-orange-500' : 'text-slate-500 dark:text-slate-400'}`}
-                    >
-                      Rp {v.price.toLocaleString('id-ID')}
-                    </p>
-                  </div>
+                  <span>{v.name}</span>
                 </button>
               )
             })}
@@ -1066,6 +1125,9 @@ export function ShopeeMobileProductDetail({
               productId={product.id}
               productName={product.name}
               storeName={product.store?.name}
+              storeId={storeId || product.store?.id}
+              etalaseId={etalaseId}
+              etalaseName={etalaseTitle || product.name}
               onReviewModalChange={setIsReviewModalOpen}
               className="mt-0 border-t-0 pt-0"
               compact

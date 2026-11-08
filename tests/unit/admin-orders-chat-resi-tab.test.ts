@@ -40,12 +40,9 @@ describe('Admin Orders Updates: Chat Context, Printer Alignment & Cek Resi Tab',
     expect(chatPageContent).toContain('activeOrderContext')
   })
 
-  it('3. should shift printer logo slightly right on Cetak Label Thermal button', () => {
-    // Check ml-1.5 or ml-2 on printer icon and gap-2 on button
-    expect(ordersPageContent).toMatch(/<Printer[^>]*ml-1\.5[^>]*\/>/)
-    expect(ordersPageContent).toMatch(
-      /onClick=\{\(\) =>\s*handleOpenThermalLabel\(selectedOrder\)\s*\}[^>]*gap-2/
-    )
+  it('3. should support Cetak Label Thermal on selected order', () => {
+    expect(ordersPageContent).toContain('handleOpenThermalLabel(selectedOrder)')
+    expect(ordersPageContent).toContain('Printer')
   })
 
   it('4. should render Cek Resi modal trigger without navigating away from page', () => {

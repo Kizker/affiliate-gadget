@@ -25,6 +25,7 @@ import {
   AlertCircle,
   XCircle,
 } from 'lucide-react'
+import { StoreAdminMobileView } from '@/components/dashboard/store-admin-mobile-view'
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -238,6 +239,14 @@ export default function AdminDashboardPage() {
   const [productInsightTab, setProductInsightTab] = useState<
     'TOP_SELLING' | 'CRITICAL_STOCK'
   >('TOP_SELLING')
+  const [recentReturnsList, setRecentReturnsList] = useState<any[]>([])
+  const [recentCancellationsList, setRecentCancellationsList] = useState<any[]>(
+    []
+  )
+  const [mobileReturnTab, setMobileReturnTab] = useState<'RETUR' | 'BATAL'>(
+    'RETUR'
+  )
+  const [mobileOrderSearch, setMobileOrderSearch] = useState('')
   const [orderFilter, setOrderFilter] = useState<
     'ALL' | 'PAID' | 'IN_PROGRESS' | 'SHIPPED' | 'COMPLETED'
   >('PAID')
@@ -251,6 +260,14 @@ export default function AdminDashboardPage() {
 
   const filteredOrders = useMemo(() => {
     return recentOrders.filter((order) => {
+      if (mobileOrderSearch.trim()) {
+        const q = mobileOrderSearch.toLowerCase().trim()
+        const matchNum = order.orderNumber.toLowerCase().includes(q)
+        const matchName = order.user?.name?.toLowerCase().includes(q)
+        const matchEmail = order.user?.email?.toLowerCase().includes(q)
+        const matchProd = getFirstItemName(order).toLowerCase().includes(q)
+        if (!matchNum && !matchName && !matchEmail && !matchProd) return false
+      }
       if (orderFilter === 'ALL') return true
       if (orderFilter === 'PAID') return order.status === 'PAID'
       if (orderFilter === 'IN_PROGRESS') {
@@ -262,7 +279,7 @@ export default function AdminDashboardPage() {
       }
       return true
     })
-  }, [recentOrders, orderFilter])
+  }, [recentOrders, orderFilter, mobileOrderSearch])
 
   const totalOrderPages = Math.max(
     1,
@@ -338,6 +355,8 @@ export default function AdminDashboardPage() {
             const stats = dash.stats || {}
             setTopSellingProducts(dash.topSellingProducts || [])
             setCriticalStockList(dash.criticalProductsList || [])
+            setRecentReturnsList(dash.recentReturns || [])
+            setRecentCancellationsList(dash.recentCancellations || [])
             setStoreStats({
               todayRevenue: stats.todayRevenue ?? 0,
               todayOrdersCount: stats.todayOrdersCount ?? 0,
@@ -524,295 +543,317 @@ export default function AdminDashboardPage() {
 
       {/* STORE ADMIN METRICS */}
       {isStoreAdmin && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
-            {/* 1. Omset Toko Hari Ini */}
-            <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-emerald-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Omset Toko Hari Ini
-                </span>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
-                  <DollarSign className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-2.5">
-                {loadingData ? (
-                  <div className="h-6 w-32 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-                ) : (
-                  <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
-                    <span className="mr-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      Rp
-                    </span>
-                    {(storeStats?.todayRevenue ?? 0).toLocaleString('id-ID')}
-                  </p>
-                )}
-                <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-                  <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
-                    ● Hari Ini
-                  </span>
-                  <span className="text-slate-400 dark:text-slate-500">
-                    · {storeStats?.todayOrdersCount ?? 0} pesanan masuk
-                  </span>
-                </div>
-              </div>
-            </div>
+        <div>
+          {/* TAMPILAN MOBILE KHUSUS (PERSIS SCREENSHOT 1, 2, 3) */}
+          <StoreAdminMobileView
+            storeStats={storeStats}
+            recentOrders={recentOrders}
+            filteredOrders={filteredOrders}
+            orderFilter={orderFilter}
+            setOrderFilter={setOrderFilter}
+            mobileOrderSearch={mobileOrderSearch}
+            setMobileOrderSearch={setMobileOrderSearch}
+            recentReturnsList={recentReturnsList}
+            recentCancellationsList={recentCancellationsList}
+            mobileReturnTab={mobileReturnTab}
+            setMobileReturnTab={setMobileReturnTab}
+            getFirstItemName={getFirstItemName}
+            timeAgo={timeAgo}
+          />
 
-            {/* 2. Pesanan Butuh Proses Cepat (Prioritas Utama) */}
-            <Link
-              href="/dashboard/admin/orders?status=PAID"
-              className="shadow-2xs hover:shadow-xs group relative flex flex-col justify-between rounded-2xl border border-orange-200/90 bg-orange-50/40 p-4 transition-all duration-200 hover:border-orange-400 hover:bg-orange-50/70 dark:border-orange-900/50 dark:bg-orange-950/20 sm:p-5"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-orange-700 dark:text-orange-300">
-                    Perlu Proses Cepat
+          {/* TAMPILAN DESKTOP (PRESERVED SM:BLOCK KE ATAS) */}
+          <div className="hidden space-y-4 sm:block">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
+              {/* 1. Omset Toko Hari Ini */}
+              <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-emerald-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Omset Toko Hari Ini
                   </span>
-                  {(storeStats?.orderStatusCounts?.paid ?? 0) > 0 && (
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
-                    </span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                    <DollarSign className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  {loadingData ? (
+                    <div className="h-6 w-32 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+                  ) : (
+                    <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
+                      <span className="mr-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        Rp
+                      </span>
+                      {(storeStats?.todayRevenue ?? 0).toLocaleString('id-ID')}
+                    </p>
                   )}
-                </div>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400">
-                  <PackageCheck className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-2.5">
-                {loadingData ? (
-                  <div className="h-6 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-                ) : (
-                  <p className="text-lg font-black tabular-nums tracking-tight text-orange-950 dark:text-orange-200 sm:text-xl">
-                    {storeStats?.orderStatusCounts?.paid ?? 0} Pesanan
-                  </p>
-                )}
-                <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-                  <span className="font-semibold text-orange-700 dark:text-orange-300">
-                    Siap Packing &amp; Kirim
-                  </span>
-                  <span className="text-orange-600/70 dark:text-orange-400/70">
-                    · JNE &amp; Gojek
-                  </span>
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                      ● Hari Ini
+                    </span>
+                    <span className="text-slate-400 dark:text-slate-500">
+                      · {storeStats?.todayOrdersCount ?? 0} pesanan masuk
+                    </span>
+                  </div>
                 </div>
               </div>
-            </Link>
 
-            {/* 3. Alert Stok Cabang */}
-            <Link
-              href="/dashboard/admin/products"
-              className={`shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border p-4 transition-all duration-200 sm:p-5 ${
-                (storeStats?.lowStockCount ?? 0) +
-                  (storeStats?.outOfStockCount ?? 0) >
-                0
-                  ? 'border-amber-200/90 bg-amber-50/30 hover:border-amber-400 hover:bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20'
-                  : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Alert Stok Cabang
-                </span>
-                <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-lg ${
-                    (storeStats?.lowStockCount ?? 0) +
-                      (storeStats?.outOfStockCount ?? 0) >
-                    0
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
-                      : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                  }`}
-                >
-                  <AlertCircle className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-2.5">
-                {loadingData ? (
-                  <div className="h-6 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-                ) : (
-                  <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
-                    {(storeStats?.lowStockCount ?? 0) +
-                      (storeStats?.outOfStockCount ?? 0) >
-                    0 ? (
-                      <span className="text-amber-900 dark:text-amber-200">
-                        {(storeStats?.lowStockCount ?? 0) +
-                          (storeStats?.outOfStockCount ?? 0)}{' '}
-                        Unit Kritis
-                      </span>
-                    ) : (
-                      <span className="text-emerald-600 dark:text-emerald-400">
-                        Stok Aman
-                      </span>
-                    )}
-                  </p>
-                )}
-                <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-                  <span className="font-semibold text-amber-700 dark:text-amber-400">
-                    {storeStats?.outOfStockCount ?? 0} Habis ·{' '}
-                    {storeStats?.lowStockCount ?? 0} Menipis (≤2)
-                  </span>
-                </div>
-              </div>
-            </Link>
-
-            {/* 4. Katalog & Inventori Aktif */}
-            <Link
-              href="/dashboard/admin/products"
-              className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-blue-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Katalog &amp; Inventori
-                </span>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
-                  <Smartphone className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-2.5">
-                {loadingData ? (
-                  <div className="h-6 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-                ) : (
-                  <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
-                    {storeStats?.totalProducts ?? 0} Model Gadget
-                  </p>
-                )}
-                <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-                  <span className="inline-flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                    {(storeStats?.totalStock ?? 0).toLocaleString('id-ID')} Unit
-                    Ready
-                  </span>
-                  <span className="text-slate-400 dark:text-slate-500">
-                    · Etalase Aktif
-                  </span>
-                </div>
-              </div>
-            </Link>
-          </div>
-
-          {/* STATUS PESANAN DI DASHBOARD */}
-          <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
-            <div className="mb-3.5 flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                Status Pesanan di Dashboard
-              </h3>
-              <Link
-                href="/dashboard/admin/orders"
-                className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 transition hover:text-orange-700 dark:text-orange-400"
-              >
-                <span>Kelola Semua Pesanan</span>
-                <ChevronRight className="h-3.5 w-3.5 stroke-[2.5]" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-              {/* 1. Perlu Diproses (PAID) - Prioritas Utama */}
+              {/* 2. Pesanan Butuh Proses Cepat (Prioritas Utama) */}
               <Link
                 href="/dashboard/admin/orders?status=PAID"
-                className="hover:shadow-xs group relative flex flex-col justify-between rounded-xl border border-orange-200/90 bg-orange-50/60 p-3 transition-all hover:border-orange-400 hover:bg-orange-50/80 dark:border-orange-900/50 dark:bg-orange-950/20"
+                className="shadow-2xs hover:shadow-xs group relative flex flex-col justify-between rounded-2xl border border-orange-200/90 bg-orange-50/40 p-4 transition-all duration-200 hover:border-orange-400 hover:bg-orange-50/70 dark:border-orange-900/50 dark:bg-orange-950/20 sm:p-5"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-700 dark:text-orange-300">
-                    Perlu Diproses
-                  </span>
-                  {(storeStats?.orderStatusCounts?.paid ?? 0) > 0 && (
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-orange-700 dark:text-orange-300">
+                      Perlu Proses Cepat
                     </span>
-                  )}
+                    {(storeStats?.orderStatusCounts?.paid ?? 0) > 0 && (
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400">
+                    <PackageCheck className="h-4 w-4" />
+                  </div>
                 </div>
-                <p className="mt-2 text-xl font-black tabular-nums text-orange-950 dark:text-orange-200">
-                  {storeStats?.orderStatusCounts?.paid ?? 0}
-                </p>
-                <p className="mt-0.5 text-[10px] font-medium text-orange-700/80 dark:text-orange-400">
-                  Siap packing &amp; kirim
-                </p>
+                <div className="mt-2.5">
+                  {loadingData ? (
+                    <div className="h-6 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+                  ) : (
+                    <p className="text-lg font-black tabular-nums tracking-tight text-orange-950 dark:text-orange-200 sm:text-xl">
+                      {storeStats?.orderStatusCounts?.paid ?? 0} Pesanan
+                    </p>
+                  )}
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+                    <span className="font-semibold text-orange-700 dark:text-orange-300">
+                      Siap Packing &amp; Kirim
+                    </span>
+                    <span className="text-orange-600/70 dark:text-orange-400/70">
+                      · JNE &amp; Gojek
+                    </span>
+                  </div>
+                </div>
               </Link>
 
-              {/* 2. Sedang Diproses (IN_PROGRESS) */}
+              {/* 3. Alert Stok Cabang */}
               <Link
-                href="/dashboard/admin/orders?status=IN_PROGRESS"
-                className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 transition-all hover:border-indigo-300 hover:bg-indigo-50/70 dark:border-indigo-900/40 dark:bg-indigo-950/20"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
-                  Sedang Diproses
-                </span>
-                <p className="mt-2 text-xl font-black tabular-nums text-indigo-950 dark:text-indigo-200">
-                  {storeStats?.orderStatusCounts?.inProgress ?? 0}
-                </p>
-                <p className="mt-0.5 text-[10px] text-indigo-500 dark:text-indigo-400">
-                  Menunggu pickup kurir
-                </p>
-              </Link>
-
-              {/* 3. Sedang Dikirim (SHIPPED) */}
-              <Link
-                href="/dashboard/admin/orders?status=SHIPPED"
-                className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-blue-100 bg-blue-50/40 p-3 transition-all hover:border-blue-300 hover:bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/20"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
-                  Sedang Dikirim
-                </span>
-                <p className="mt-2 text-xl font-black tabular-nums text-blue-950 dark:text-blue-200">
-                  {storeStats?.orderStatusCounts?.shipped ?? 0}
-                </p>
-                <p className="mt-0.5 text-[10px] text-blue-500 dark:text-blue-400">
-                  JNE / Gojek asuransi
-                </p>
-              </Link>
-
-              {/* 4. Selesai (COMPLETED) */}
-              <Link
-                href="/dashboard/admin/orders?status=COMPLETED"
-                className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 transition-all hover:border-emerald-300 hover:bg-emerald-50/70 dark:border-emerald-900/40 dark:bg-emerald-950/20"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                  Selesai
-                </span>
-                <p className="mt-2 text-xl font-black tabular-nums text-emerald-950 dark:text-emerald-200">
-                  {storeStats?.orderStatusCounts?.completed ?? 0}
-                </p>
-                <p className="mt-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
-                  Pesanan sukses
-                </p>
-              </Link>
-
-              {/* 5. Menunggu Bayar (PENDING_PAYMENT) */}
-              <Link
-                href="/dashboard/admin/orders?status=PENDING_PAYMENT"
-                className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-amber-100 bg-amber-50/40 p-3 transition-all hover:border-amber-300 hover:bg-amber-50/70 dark:border-amber-900/40 dark:bg-amber-950/20"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                  Menunggu Bayar
-                </span>
-                <p className="mt-2 text-xl font-black tabular-nums text-amber-950 dark:text-amber-200">
-                  {storeStats?.orderStatusCounts?.pendingPayment ?? 0}
-                </p>
-                <p className="mt-0.5 text-[10px] text-amber-600 dark:text-amber-400">
-                  Belum transfer
-                </p>
-              </Link>
-
-              {/* 6. Dibatalkan (CANCELLED) */}
-              <Link
-                href="/dashboard/admin/orders?status=CANCELLED"
-                className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-rose-100 bg-rose-50/40 p-3 transition-all hover:border-rose-300 hover:bg-rose-50/70 dark:border-rose-900/40 dark:bg-rose-950/20"
+                href="/dashboard/admin/products"
+                className={`shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border p-4 transition-all duration-200 sm:p-5 ${
+                  (storeStats?.lowStockCount ?? 0) +
+                    (storeStats?.outOfStockCount ?? 0) >
+                  0
+                    ? 'border-amber-200/90 bg-amber-50/30 hover:border-amber-400 hover:bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20'
+                    : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
+                }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
-                    Dibatalkan
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Alert Stok Cabang
                   </span>
-                  {(storeStats?.orderStatusCounts?.cancelled ?? 0) > 0 && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                  )}
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                      (storeStats?.lowStockCount ?? 0) +
+                        (storeStats?.outOfStockCount ?? 0) >
+                      0
+                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                  </div>
                 </div>
-                <p className="mt-2 text-xl font-black tabular-nums text-rose-950 dark:text-rose-200">
-                  {storeStats?.orderStatusCounts?.cancelled ?? 0}
-                </p>
-                <p className="mt-0.5 text-[10px] text-rose-600 dark:text-rose-400">
-                  Transaksi batal
-                </p>
+                <div className="mt-2.5">
+                  {loadingData ? (
+                    <div className="h-6 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+                  ) : (
+                    <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
+                      {(storeStats?.lowStockCount ?? 0) +
+                        (storeStats?.outOfStockCount ?? 0) >
+                      0 ? (
+                        <span className="text-amber-900 dark:text-amber-200">
+                          {(storeStats?.lowStockCount ?? 0) +
+                            (storeStats?.outOfStockCount ?? 0)}{' '}
+                          Unit Kritis
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 dark:text-emerald-400">
+                          Stok Aman
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+                    <span className="font-semibold text-amber-700 dark:text-amber-400">
+                      {storeStats?.outOfStockCount ?? 0} Habis ·{' '}
+                      {storeStats?.lowStockCount ?? 0} Menipis (≤2)
+                    </span>
+                  </div>
+                </div>
               </Link>
+
+              {/* 4. Katalog & Inventori Aktif */}
+              <Link
+                href="/dashboard/admin/products"
+                className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-blue-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Katalog &amp; Inventori
+                  </span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                    <Smartphone className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  {loadingData ? (
+                    <div className="h-6 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+                  ) : (
+                    <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
+                      {storeStats?.totalProducts ?? 0} Model Gadget
+                    </p>
+                  )}
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+                    <span className="inline-flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                      {(storeStats?.totalStock ?? 0).toLocaleString(
+                        'id-ID'
+                      )}{' '}
+                      Unit Ready
+                    </span>
+                    <span className="text-slate-400 dark:text-slate-500">
+                      · Etalase Aktif
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </div>
+
+            {/* STATUS PESANAN DI DASHBOARD */}
+            <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+              <div className="mb-3.5 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Status Pesanan di Dashboard
+                </h3>
+                <Link
+                  href="/dashboard/admin/orders"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 transition hover:text-orange-700 dark:text-orange-400"
+                >
+                  <span>Kelola Semua Pesanan</span>
+                  <ChevronRight className="h-3.5 w-3.5 stroke-[2.5]" />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+                {/* 1. Perlu Diproses (PAID) - Prioritas Utama */}
+                <Link
+                  href="/dashboard/admin/orders?status=PAID"
+                  className="hover:shadow-xs group relative flex flex-col justify-between rounded-xl border border-orange-200/90 bg-orange-50/60 p-3 transition-all hover:border-orange-400 hover:bg-orange-50/80 dark:border-orange-900/50 dark:bg-orange-950/20"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-orange-700 dark:text-orange-300">
+                      Perlu Diproses
+                    </span>
+                    {(storeStats?.orderStatusCounts?.paid ?? 0) > 0 && (
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xl font-black tabular-nums text-orange-950 dark:text-orange-200">
+                    {storeStats?.orderStatusCounts?.paid ?? 0}
+                  </p>
+                  <p className="mt-0.5 text-[10px] font-medium text-orange-700/80 dark:text-orange-400">
+                    Siap packing &amp; kirim
+                  </p>
+                </Link>
+
+                {/* 2. Sedang Diproses (IN_PROGRESS) */}
+                <Link
+                  href="/dashboard/admin/orders?status=IN_PROGRESS"
+                  className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 transition-all hover:border-indigo-300 hover:bg-indigo-50/70 dark:border-indigo-900/40 dark:bg-indigo-950/20"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                    Sedang Diproses
+                  </span>
+                  <p className="mt-2 text-xl font-black tabular-nums text-indigo-950 dark:text-indigo-200">
+                    {storeStats?.orderStatusCounts?.inProgress ?? 0}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-indigo-500 dark:text-indigo-400">
+                    Menunggu pickup kurir
+                  </p>
+                </Link>
+
+                {/* 3. Sedang Dikirim (SHIPPED) */}
+                <Link
+                  href="/dashboard/admin/orders?status=SHIPPED"
+                  className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-blue-100 bg-blue-50/40 p-3 transition-all hover:border-blue-300 hover:bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/20"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                    Sedang Dikirim
+                  </span>
+                  <p className="mt-2 text-xl font-black tabular-nums text-blue-950 dark:text-blue-200">
+                    {storeStats?.orderStatusCounts?.shipped ?? 0}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-blue-500 dark:text-blue-400">
+                    JNE / Gojek asuransi
+                  </p>
+                </Link>
+
+                {/* 4. Selesai (COMPLETED) */}
+                <Link
+                  href="/dashboard/admin/orders?status=COMPLETED"
+                  className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 transition-all hover:border-emerald-300 hover:bg-emerald-50/70 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                    Selesai
+                  </span>
+                  <p className="mt-2 text-xl font-black tabular-nums text-emerald-950 dark:text-emerald-200">
+                    {storeStats?.orderStatusCounts?.completed ?? 0}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
+                    Pesanan sukses
+                  </p>
+                </Link>
+
+                {/* 5. Menunggu Bayar (PENDING_PAYMENT) */}
+                <Link
+                  href="/dashboard/admin/orders?status=PENDING_PAYMENT"
+                  className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-amber-100 bg-amber-50/40 p-3 transition-all hover:border-amber-300 hover:bg-amber-50/70 dark:border-amber-900/40 dark:bg-amber-950/20"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                    Menunggu Bayar
+                  </span>
+                  <p className="mt-2 text-xl font-black tabular-nums text-amber-950 dark:text-amber-200">
+                    {storeStats?.orderStatusCounts?.pendingPayment ?? 0}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-amber-600 dark:text-amber-400">
+                    Belum transfer
+                  </p>
+                </Link>
+
+                {/* 6. Dibatalkan (CANCELLED) */}
+                <Link
+                  href="/dashboard/admin/orders?status=CANCELLED"
+                  className="hover:shadow-xs group flex flex-col justify-between rounded-xl border border-rose-100 bg-rose-50/40 p-3 transition-all hover:border-rose-300 hover:bg-rose-50/70 dark:border-rose-900/40 dark:bg-rose-950/20"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                      Dibatalkan
+                    </span>
+                    {(storeStats?.orderStatusCounts?.cancelled ?? 0) > 0 && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                    )}
+                  </div>
+                  <p className="mt-2 text-xl font-black tabular-nums text-rose-950 dark:text-rose-200">
+                    {storeStats?.orderStatusCounts?.cancelled ?? 0}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-rose-600 dark:text-rose-400">
+                    Transaksi batal
+                  </p>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -1059,9 +1100,9 @@ export default function AdminDashboardPage() {
       {/* 2. 2-COLUMN BENTO SECTION                                          */}
       {/* ================================================================= */}
 
-      {/* STORE ADMIN: Pesanan Masuk + Informasi Pengembalian & Pembatalan */}
+      {/* STORE ADMIN: Pesanan Masuk + Informasi Pengembalian & Pembatalan (DESKTOP ONLY) */}
       {isStoreAdmin && (
-        <div className="grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-12">
+        <div className="hidden grid-cols-1 gap-5 sm:grid sm:gap-6 lg:grid-cols-12">
           {/* Left / Main: Pesanan Masuk Cabang Toko (PESANAN PENTING) */}
           <div
             id="pesanan-masuk-toko"

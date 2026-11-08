@@ -558,8 +558,9 @@ function GadgetKatalogContent() {
                       }
 
                       const item = gridItem.data
-                      const totalStock =
-                        item.variants && item.variants.length > 0
+                      const totalStock = item.isEtalase
+                        ? Number(item.stock) || 0
+                        : item.variants && item.variants.length > 0
                           ? item.variants.reduce(
                               (sum: number, v: any) =>
                                 sum + (Number(v.stock) || 0),
@@ -666,11 +667,16 @@ function GadgetKatalogContent() {
                                   Rp {item.price.toLocaleString('id-ID')}
                                 </span>
 
-                                {item.variants && item.variants.length > 1 && (
+                                {item.isEtalase && item.productCount > 1 ? (
+                                  <span className="shrink-0 rounded-md bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400 sm:text-[10px]">
+                                    {item.productCount} Tipe
+                                  </span>
+                                ) : item.variants &&
+                                  item.variants.length > 1 ? (
                                   <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-700 dark:bg-slate-800 sm:text-[10px]">
                                     {item.variants.length} Varian
                                   </span>
-                                )}
+                                ) : null}
                               </div>
 
                               {/* Bottom Row: Strikethrough Price (Left) & Terjual (Right) */}

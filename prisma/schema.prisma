@@ -171,6 +171,7 @@ model Store {
   vouchers             Voucher[]
   chatTemplates        ChatTemplate[]
   massUpdateTasks      MassUpdateTask[]
+  etalases             Etalase[]
   groupId              String?
   group                StoreGroup?        @relation(fields: [groupId], references: [id])
 
@@ -270,6 +271,8 @@ model Product {
   cartItems               CartItem[]       @relation("CartItemToProduct")
   orderItems              OrderItem[]      @relation("OrderItemToProduct")
   reviews                 Review[]
+  etalaseItems            EtalaseProduct[]
+  coveredEtalases         Etalase[]        @relation("EtalaseCoverProduct")
 
   @@index([storeId])
   @@index([category])
@@ -1455,3 +1458,53 @@ model MassUpdateTask {
   @@index([status])
   @@map("mass_update_tasks")
 }
+
+model Etalase {
+  id                  String           @id @default(cuid())
+  storeId             String
+  name                String // Judul etalase (misal: "SAMSUNG GALAXY Z FOLD & FLIP 5 | 4 | 3 5G SEIN")
+  description         String?          @db.Text
+  brand               String?
+  category            String           @default("Smartphone")
+  coverProductId      String?
+  customCoverImage    String?
+  customTitle         String?
+  priceMode           String           @default("LOWEST") // "LOWEST" | "COVER_PRODUCT" | "CUSTOM"
+  customPrice         Float?
+  customOriginalPrice Float?
+  isActive            Boolean          @default(true)
+  isPromoted          Boolean          @default(false)
+  promotionPriority   Int              @default(0)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  store        Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  coverProduct Product?         @relation("EtalaseCoverProduct", fields: [coverProductId], references: [id], onDelete: SetNull)
+  items        EtalaseProduct[]
+
+  @@index([storeId])
+  @@index([isActive])
+  @@index([brand])
+  @@index([category])
+  @@index([isActive, storeId])
+  @@index([isActive, brand])
+  @@map("etalases")
+}
+
+model EtalaseProduct {
+  id        String   @id @default(cuid())
+  etalaseId String
+  productId String
+  label     String? // Label singkat di tombol Tipe Shopee (misal: "Fold 5 12/512GB")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  etalase Etalase @relation(fields: [etalaseId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([etalaseId, productId])
+  @@index([etalaseId])
+  @@index([productId])
+  @@map("etalase_products")
+}
+

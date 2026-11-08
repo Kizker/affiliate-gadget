@@ -90,25 +90,54 @@ export default function GadgetDetailClient({
   const { status } = useSession()
   const id = ((params?.id as string) || initialProduct?.id) as string
 
-  // Compute default selected variant and image from initialProduct
-  const defaultVariant = useMemo(() => {
-    if (!initialProduct?.variants || initialProduct.variants.length === 0)
+  // Compute default selected etalase item, variant and image from initialProduct
+  const defaultEtalaseItem = useMemo(() => {
+    if (
+      !initialProduct?.etalaseItems ||
+      !Array.isArray(initialProduct.etalaseItems) ||
+      initialProduct.etalaseItems.length === 0
+    ) {
       return null
-    const firstWithStock = initialProduct.variants.find(
-      (v: any) => (Number(v.stock) || 0) > 0
+    }
+    if (initialProduct.activeProductId) {
+      const byActive = initialProduct.etalaseItems.find(
+        (i: any) => i.productId === initialProduct.activeProductId
+      )
+      if (byActive && (Number(byActive.totalStock) || 0) > 0) return byActive
+    }
+    const firstWithStock = initialProduct.etalaseItems.find(
+      (i: any) => (Number(i.totalStock) || 0) > 0
     )
-    return firstWithStock || initialProduct.variants[0]
+    return firstWithStock || initialProduct.etalaseItems[0]
   }, [initialProduct])
 
+  const defaultVariant = useMemo(() => {
+    const targetProd = defaultEtalaseItem?.product || initialProduct
+    if (!targetProd?.variants || targetProd.variants.length === 0) return null
+    const firstWithStock = targetProd.variants.find(
+      (v: any) => (Number(v.stock) || 0) > 0
+    )
+    return firstWithStock || targetProd.variants[0]
+  }, [initialProduct, defaultEtalaseItem])
+
   const defaultImage = useMemo(() => {
+    if (initialProduct?.etalaseCustomCoverImage) {
+      return initialProduct.etalaseCustomCoverImage
+    }
     if (defaultVariant?.image) return defaultVariant.image
+    const targetProd = defaultEtalaseItem?.product || initialProduct
+    if (targetProd?.images && targetProd.images.length > 0)
+      return targetProd.images[0]
     if (initialProduct?.images && initialProduct.images.length > 0)
       return initialProduct.images[0]
     return ''
-  }, [initialProduct, defaultVariant])
+  }, [initialProduct, defaultEtalaseItem, defaultVariant])
 
   const [product, setProduct] = useState<any>(() => initialProduct || null)
   const [loading, setLoading] = useState(() => !initialProduct)
+  const [selectedEtalaseItem, setSelectedEtalaseItem] = useState<any>(
+    () => defaultEtalaseItem
+  )
   const [selectedVariant, setSelectedVariant] = useState<any>(
     () => defaultVariant
   )
@@ -191,22 +220,50 @@ export default function GadgetDetailClient({
     }
   }
 
-  // Aggregate all unique images from product and variants for thumbnails (must be before early returns)
+  const activeUnit = useMemo(() => {
+    if (selectedEtalaseItem?.product) {
+      return {
+        ...product,
+        ...selectedEtalaseItem.product,
+        store: product?.store || selectedEtalaseItem.product?.store,
+      }
+    }
+    return product
+  }, [product, selectedEtalaseItem])
+
+  // Aggregate all unique images from etalase, active product, and variants for thumbnails
   const allImages = useMemo(() => {
     if (!product) return []
     const list: string[] = []
-    if (Array.isArray(product.images)) {
-      product.images.forEach((img: string) => {
-        if (img && !list.includes(img)) list.push(img)
-      })
+    const pushImg = (url?: string | null) => {
+      if (url && typeof url === 'string' && !list.includes(url)) {
+        list.push(url)
+      }
     }
-    if (Array.isArray(product.variants)) {
-      product.variants.forEach((v: any) => {
-        if (v.image && !list.includes(v.image)) list.push(v.image)
+    if (product.etalaseCustomCoverImage) {
+      pushImg(product.etalaseCustomCoverImage)
+    }
+    if (Array.isArray(activeUnit?.images)) {
+      activeUnit.images.forEach(pushImg)
+    }
+    if (Array.isArray(activeUnit?.variants)) {
+      activeUnit.variants.forEach((v: any) => pushImg(v.image))
+    }
+    if (Array.isArray(product.images)) {
+      product.images.forEach(pushImg)
+    }
+    if (Array.isArray(product.etalaseItems)) {
+      product.etalaseItems.forEach((item: any) => {
+        if (Array.isArray(item.product?.images)) {
+          item.product.images.forEach(pushImg)
+        }
+        if (Array.isArray(item.product?.variants)) {
+          item.product.variants.forEach((v: any) => pushImg(v.image))
+        }
       })
     }
     return list
-  }, [product])
+  }, [product, activeUnit])
 
   useEffect(() => {
     if (id && (!initialProduct || initialProduct.id !== id)) {
@@ -222,20 +279,41 @@ export default function GadgetDetailClient({
       })
       const data = await res.json()
       if (data.success && data.data) {
-        setProduct(data.data)
+        const d = data.data
+        setProduct(d)
+        let chosenEtalaseItem: any = null
+        if (Array.isArray(d.etalaseItems) && d.etalaseItems.length > 0) {
+          chosenEtalaseItem =
+            d.etalaseItems.find(
+              (i: any) =>
+                i.productId === d.activeProductId &&
+                (Number(i.totalStock) || 0) > 0
+            ) ||
+            d.etalaseItems.find((i: any) => (Number(i.totalStock) || 0) > 0) ||
+            d.etalaseItems[0]
+          setSelectedEtalaseItem(chosenEtalaseItem)
+        } else {
+          setSelectedEtalaseItem(null)
+        }
+
+        const targetProd = chosenEtalaseItem?.product || d
         let initialImage =
-          data.data.images && data.data.images.length > 0
-            ? data.data.images[0]
-            : ''
-        if (data.data.variants && data.data.variants.length > 0) {
-          const firstWithStock = data.data.variants.find(
+          d.etalaseCustomCoverImage ||
+          (targetProd.images && targetProd.images.length > 0
+            ? targetProd.images[0]
+            : d.images?.[0] || '')
+
+        if (targetProd.variants && targetProd.variants.length > 0) {
+          const firstWithStock = targetProd.variants.find(
             (v: any) => (v.stock || 0) > 0
           )
-          const chosenVariant = firstWithStock || data.data.variants[0]
+          const chosenVariant = firstWithStock || targetProd.variants[0]
           setSelectedVariant(chosenVariant)
-          if (chosenVariant.image) {
+          if (chosenVariant.image && !d.etalaseCustomCoverImage) {
             initialImage = chosenVariant.image
           }
+        } else {
+          setSelectedVariant(null)
         }
         if (initialImage) {
           setSelectedImage(initialImage)
@@ -281,7 +359,7 @@ export default function GadgetDetailClient({
   }, [dealToken])
 
   const handleAddToCart = () => {
-    if (!product) return
+    if (!product || !activeUnit) return
 
     if (status === 'unauthenticated') {
       toast.error(
@@ -291,11 +369,14 @@ export default function GadgetDetailClient({
       return
     }
 
-    const priceToUse = selectedVariant ? selectedVariant.price : product.price
+    const priceToUse = selectedVariant
+      ? selectedVariant.price
+      : activeUnit.price
     const variantName = selectedVariant ? selectedVariant.name : undefined
     const variantId = selectedVariant ? selectedVariant.id : undefined
     const imageToUse =
       selectedVariant?.image ||
+      (activeUnit.images && activeUnit.images[0]) ||
       selectedImage ||
       (product.images && product.images[0]) ||
       ''
@@ -315,18 +396,19 @@ export default function GadgetDetailClient({
 
     addItem({
       type: 'PRODUCT',
-      productId: product.id,
+      productId: activeUnit.id,
       variantId: variantId,
       variantName: variantName,
-      name: `${product.name} ${variantName ? `(${variantName})` : ''}`,
+      name: `${activeUnit.name} ${variantName ? `(${variantName})` : ''}`,
       price: priceToUse,
       image: imageToUse,
       quantity: quantity,
-      stock: selectedVariant?.stock || product.stock,
-      weightGram: product.weightGram ?? 500,
-      pricePerKg: product.pricePerKg ?? 20000,
-      notes: `${product.warrantyDays || 30} Hari Garansi Toko + Free Bonus 3-in-1`,
-      storeId: product.storeId || product.store?.id || null,
+      stock: selectedVariant?.stock || activeUnit.stock,
+      weightGram: activeUnit.weightGram ?? 500,
+      pricePerKg: activeUnit.pricePerKg ?? 20000,
+      notes: `${activeUnit.warrantyDays || 30} Hari Garansi Toko + Free Bonus 3-in-1`,
+      storeId:
+        activeUnit.storeId || product.storeId || product.store?.id || null,
       store: storeInfo,
     })
 
@@ -336,15 +418,19 @@ export default function GadgetDetailClient({
   }
 
   const handleBuyNow = () => {
-    if (!product) return
+    if (!product || !activeUnit) return
 
-    const hasLiveDeal = activeDeal && activeDeal.productId === product.id
-    const basePrice = selectedVariant ? selectedVariant.price : product.price
+    const hasLiveDeal =
+      activeDeal &&
+      (activeDeal.productId === activeUnit.id ||
+        activeDeal.productId === product.id)
+    const basePrice = selectedVariant ? selectedVariant.price : activeUnit.price
     const priceToUse = hasLiveDeal ? activeDeal.discountPrice : basePrice
     const variantName = selectedVariant ? selectedVariant.name : undefined
     const variantId = selectedVariant ? selectedVariant.id : undefined
     const imageToUse =
       selectedVariant?.image ||
+      (activeUnit.images && activeUnit.images[0]) ||
       selectedImage ||
       (product.images && product.images[0]) ||
       ''
@@ -363,20 +449,21 @@ export default function GadgetDetailClient({
       : null
 
     const directItem = {
-      id: `buynow-${product.id}-${variantId || 'base'}-${Date.now()}`,
+      id: `buynow-${activeUnit.id}-${variantId || 'base'}-${Date.now()}`,
       type: 'PRODUCT' as const,
-      productId: product.id,
+      productId: activeUnit.id,
       variantId: variantId,
       variantName: variantName,
-      name: `${product.name} ${variantName ? `(${variantName})` : ''}`,
+      name: `${activeUnit.name} ${variantName ? `(${variantName})` : ''}`,
       price: priceToUse,
       image: imageToUse,
       quantity: quantity,
-      stock: selectedVariant?.stock || product.stock,
-      weightGram: product.weightGram ?? 500,
-      pricePerKg: product.pricePerKg ?? 20000,
-      notes: `${product.warrantyDays || 30} Hari Garansi Toko + Free Bonus 3-in-1`,
-      storeId: product.storeId || product.store?.id || null,
+      stock: selectedVariant?.stock || activeUnit.stock,
+      weightGram: activeUnit.weightGram ?? 500,
+      pricePerKg: activeUnit.pricePerKg ?? 20000,
+      notes: `${activeUnit.warrantyDays || 30} Hari Garansi Toko + Free Bonus 3-in-1`,
+      storeId:
+        activeUnit.storeId || product.storeId || product.store?.id || null,
       store: storeInfo,
     }
 
@@ -454,23 +541,51 @@ export default function GadgetDetailClient({
     )
   }
 
+  const unitVariants = activeUnit?.variants || product.variants || []
+
   const totalStock =
-    product.variants && product.variants.length > 0
-      ? product.variants.reduce(
+    unitVariants.length > 0
+      ? unitVariants.reduce(
           (acc: number, v: any) => acc + (Number(v.stock) || 0),
           0
         )
-      : Number(product.stock) || 0
+      : Number(activeUnit?.stock ?? product.stock) || 0
 
   const availableStock = selectedVariant
     ? Number(selectedVariant.stock) || 0
     : totalStock
   const isOutOfStock = availableStock <= 0
 
+  const handleSelectEtalaseItem = (item: any) => {
+    setSelectedEtalaseItem(item)
+    const targetProd = item?.product || product
+    if (targetProd?.variants && targetProd.variants.length > 0) {
+      const firstWithStock = targetProd.variants.find(
+        (v: any) => (Number(v.stock) || 0) > 0
+      )
+      const chosen = firstWithStock || targetProd.variants[0]
+      setSelectedVariant(chosen)
+      if (chosen?.image) {
+        setSelectedImage(chosen.image)
+      } else if (targetProd.images && targetProd.images.length > 0) {
+        setSelectedImage(targetProd.images[0])
+      }
+      setQuantity((Number(chosen?.stock) || 0) > 0 ? 1 : 0)
+    } else {
+      setSelectedVariant(null)
+      if (targetProd?.images && targetProd.images.length > 0) {
+        setSelectedImage(targetProd.images[0])
+      }
+      setQuantity((Number(targetProd?.stock) || 0) > 0 ? 1 : 0)
+    }
+  }
+
   const handleSelectVariant = (variant: any) => {
     setSelectedVariant(variant)
     if (variant.image) {
       setSelectedImage(variant.image)
+    } else if (activeUnit?.images && activeUnit.images.length > 0) {
+      setSelectedImage(activeUnit.images[0])
     } else if (product?.images && product.images.length > 0) {
       setSelectedImage(product.images[0])
     }
@@ -482,20 +597,47 @@ export default function GadgetDetailClient({
     }
   }
 
-  // Find matching variant that corresponds to the given image
+  // Find matching variant or etalase item that corresponds to the given image
   const findVariantForImage = (imgUrl: string) => {
-    if (!product?.variants || product.variants.length === 0) return null
-    const exactMatch = product.variants.find(
-      (v: any) => v.image && v.image === imgUrl
-    )
-    if (exactMatch) return exactMatch
-
     const baseImg = imgUrl.split('?')[0]
-    return (
-      product.variants.find(
-        (v: any) => v.image && v.image.split('?')[0] === baseImg
-      ) || null
-    )
+    if (unitVariants && unitVariants.length > 0) {
+      const exactMatch = unitVariants.find(
+        (v: any) =>
+          v.image && (v.image === imgUrl || v.image.split('?')[0] === baseImg)
+      )
+      if (exactMatch) return exactMatch
+    }
+    if (Array.isArray(product?.etalaseItems)) {
+      for (const item of product.etalaseItems) {
+        const p = item.product
+        if (!p) continue
+        if (
+          Array.isArray(p.images) &&
+          p.images.some(
+            (u: string) => u === imgUrl || u.split('?')[0] === baseImg
+          )
+        ) {
+          if (selectedEtalaseItem?.id !== item.id) {
+            handleSelectEtalaseItem(item)
+          }
+          return null
+        }
+        if (Array.isArray(p.variants)) {
+          const matchedV = p.variants.find(
+            (v: any) =>
+              v.image &&
+              (v.image === imgUrl || v.image.split('?')[0] === baseImg)
+          )
+          if (matchedV) {
+            if (selectedEtalaseItem?.id !== item.id) {
+              setSelectedEtalaseItem(item)
+            }
+            return matchedV
+          }
+        }
+      }
+    }
+    return null
   }
 
   // Desktop handlers for next and previous images with instant variant sync
@@ -528,14 +670,27 @@ export default function GadgetDetailClient({
     }
   }
 
+  const handleSelectThumbnail = (img: string) => {
+    setSelectedImage(img)
+    const matchingVar = findVariantForImage(img)
+    if (matchingVar) {
+      handleSelectVariant(matchingVar)
+    }
+  }
+
   const rawCurrentPrice = selectedVariant
     ? selectedVariant.price
-    : product.price
-  const hasLiveDeal = activeDeal && activeDeal.productId === product.id
+    : (activeUnit?.price ?? product.price)
+  const hasLiveDeal =
+    activeDeal &&
+    (activeDeal.productId === activeUnit?.id ||
+      activeDeal.productId === product.id)
   const currentPrice = hasLiveDeal ? activeDeal.discountPrice : rawCurrentPrice
+  const activeOriginalPrice =
+    activeUnit?.originalPrice ?? product.originalPrice ?? null
   const discountAmount =
-    product.originalPrice && product.originalPrice > currentPrice
-      ? product.originalPrice - currentPrice
+    activeOriginalPrice && activeOriginalPrice > currentPrice
+      ? activeOriginalPrice - currentPrice
       : hasLiveDeal && rawCurrentPrice > currentPrice
         ? rawCurrentPrice - currentPrice
         : 0
@@ -544,12 +699,14 @@ export default function GadgetDetailClient({
     if (!product?.store?.id) return
 
     const storeId = product.store.id
-    const productId = product.id
-    const productName = encodeURIComponent(product.name || '')
-    const productPrice = currentPrice || product.price || 0
+    const productId = activeUnit?.id || product.id
+    const productName = encodeURIComponent(
+      activeUnit?.name || product.name || ''
+    )
+    const productPrice = currentPrice || activeUnit?.price || product.price || 0
     const variantName = encodeURIComponent(selectedVariant?.name || '')
     const productImage = encodeURIComponent(
-      selectedImage || (product.images && product.images[0]) || ''
+      selectedImage || (activeUnit?.images && activeUnit.images[0]) || ''
     )
 
     const chatUrl = `/dashboard/customer/chat?storeId=${storeId}&productId=${productId}&productName=${productName}&productPrice=${productPrice}&variantName=${variantName}&productImage=${productImage}`
@@ -570,7 +727,15 @@ export default function GadgetDetailClient({
           className={`block lg:hidden ${mounted && !isMobile ? '!hidden' : ''}`}
         >
           <ShopeeMobileProductDetail
-            product={product}
+            product={activeUnit || product}
+            etalaseId={
+              product.etalaseId || (product.isEtalase ? product.id : undefined)
+            }
+            storeId={product.store?.id}
+            etalaseTitle={product.etalaseName || product.name}
+            etalaseItems={product.etalaseItems || []}
+            selectedEtalaseItem={selectedEtalaseItem}
+            onSelectEtalaseItem={handleSelectEtalaseItem}
             selectedVariant={selectedVariant}
             onSelectVariant={handleSelectVariant}
             selectedImage={selectedImage}
@@ -718,13 +883,7 @@ export default function GadgetDetailClient({
                           <button
                             key={i}
                             type="button"
-                            onClick={() => {
-                              setSelectedImage(img)
-                              const matchingVar = findVariantForImage(img)
-                              if (matchingVar) {
-                                handleSelectVariant(matchingVar)
-                              }
-                            }}
+                            onClick={() => handleSelectThumbnail(img)}
                             className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border transition-all duration-200 ${
                               isSelected
                                 ? 'border-slate-950 ring-2 ring-slate-950/20 dark:border-white dark:ring-white/20'
@@ -836,6 +995,34 @@ export default function GadgetDetailClient({
                       </div>
                     </div>
                   )}
+
+                  {/* 3-in-1 Bonus Package Reassurance Box (Desktop: Dipindahkan ke bawah info toko) */}
+                  <div className="shadow-xs space-y-2.5 rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                        <Gift className="h-4 w-4 text-orange-500" /> Paket
+                        Aksesoris 3-in-1 Otomatis Disertakan
+                      </span>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        GRATIS (Rp 0)
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-3">
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                        <span>Charger GaN 20W</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                        <span>Antigores 9D HD</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                        <span>Matte Case Presisi</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Right Column: Unified Showcase Bento (7 cols) */}
@@ -874,39 +1061,20 @@ export default function GadgetDetailClient({
                   <div className="shadow-xs space-y-6 rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
                     {/* 1. Header & Price */}
                     <div className="space-y-3 border-b border-slate-100 pb-5 dark:border-slate-800">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {product.brand || 'Smartphone'}
-                        </span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          Kondisi:{' '}
-                          {product.condition === 'SECOND_MULUS'
-                            ? 'Second Mulus (95% - 98%)'
-                            : product.condition === 'GRADE_A'
-                              ? 'Second Grade A (Normal 100%)'
-                              : 'Second Like New (Mulus 99%)'}
-                        </span>
-
-                        {/* Total Product Stock Badge */}
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          <Package className="h-3 w-3 shrink-0 text-slate-500" />
-                          <span>Total Stok: {totalStock} Unit</span>
-                        </span>
-                      </div>
-
                       <h1 className="text-xl font-bold leading-snug tracking-tight text-slate-950 dark:text-white sm:text-2xl">
-                        {product.name}
+                        {product.etalaseName || product.name}
                       </h1>
 
                       <div className="flex flex-wrap items-baseline gap-3 pt-0.5">
                         <span className="text-2xl font-bold tabular-nums tracking-tight text-slate-950 dark:text-white sm:text-3xl">
                           Rp {currentPrice.toLocaleString('id-ID')}
                         </span>
-                        {product.originalPrice && (
-                          <span className="text-xs tabular-nums text-slate-500 line-through">
-                            Rp {product.originalPrice.toLocaleString('id-ID')}
-                          </span>
-                        )}
+                        {activeOriginalPrice &&
+                          activeOriginalPrice > currentPrice && (
+                            <span className="text-xs tabular-nums text-slate-500 line-through">
+                              Rp {activeOriginalPrice.toLocaleString('id-ID')}
+                            </span>
+                          )}
                         {discountAmount > 0 && (
                           <span className="rounded-full border border-emerald-200/50 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                             Hemat Rp {discountAmount.toLocaleString('id-ID')}
@@ -915,156 +1083,97 @@ export default function GadgetDetailClient({
                       </div>
                     </div>
 
+                    {/* 1B. Shopee-Style Etalase Selector (Cukup Nama Produk Simpel Saja) */}
+                    {product.etalaseItems &&
+                      product.etalaseItems.length > 0 && (
+                        <div
+                          id="etalase-product-selector"
+                          className="space-y-2.5 border-b border-slate-100 pb-5 dark:border-slate-800"
+                        >
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold text-slate-500">
+                              Tipe &amp; Memory ({product.etalaseItems.length}{' '}
+                              Pilihan)
+                            </label>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            {product.etalaseItems.map((item: any) => {
+                              const isSelected =
+                                selectedEtalaseItem?.id === item.id ||
+                                selectedEtalaseItem?.productId ===
+                                  item.productId
+                              const itemStock = Number(item.totalStock) || 0
+                              const isItemOut = itemStock <= 0
+
+                              return (
+                                <button
+                                  key={item.id || item.productId}
+                                  type="button"
+                                  onClick={() => handleSelectEtalaseItem(item)}
+                                  className={`group relative flex items-center justify-center rounded-xl px-3.5 py-2 text-center text-xs font-semibold transition-all duration-150 ${
+                                    isSelected
+                                      ? 'shadow-xs border-2 border-orange-500 bg-orange-50 text-orange-600 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'
+                                      : isItemOut
+                                        ? 'border border-slate-200 bg-slate-100/70 text-slate-400 opacity-60 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/50'
+                                        : 'border border-slate-200 bg-slate-50 text-slate-700 hover:border-orange-400 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200'
+                                  }`}
+                                >
+                                  <span>{item.label}</span>
+                                  {isItemOut && (
+                                    <span className="ml-1 text-[10px] font-normal text-slate-400">
+                                      (Habis)
+                                    </span>
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                     {/* 2. Hardware Variants Selector with Individual Variant Stock */}
-                    {product.variants && product.variants.length > 0 && (
+                    {unitVariants && unitVariants.length > 0 && (
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-semibold text-slate-500">
-                            Pilihan Varian & Ketersediaan Stok
+                            Pilihan Varian
                           </label>
-                          {selectedVariant && (
-                            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-900 dark:text-white">
-                              <span className="max-w-[160px] truncate sm:max-w-[220px]">
-                                {selectedVariant.name}
-                              </span>
-                              <span
-                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
-                                  (selectedVariant.stock || 0) <= 0
-                                    ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
-                                    : (selectedVariant.stock || 0) <= 3
-                                      ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400'
-                                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                }`}
-                              >
-                                {(selectedVariant.stock || 0) > 0
-                                  ? `Sisa ${selectedVariant.stock} unit`
-                                  : 'Stok Habis'}
-                              </span>
-                            </span>
-                          )}
                         </div>
 
-                        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                          {product.variants.map((variant: any) => {
+                        <div className="flex flex-wrap gap-2">
+                          {unitVariants.map((variant: any) => {
                             const isSelected =
                               selectedVariant?.id === variant.id
                             const variantStock = Number(variant.stock) || 0
                             const isVarOutOfStock = variantStock <= 0
-                            const hasDuplicateColorInName =
-                              variant.color &&
-                              variant.name
-                                .toLowerCase()
-                                .includes(variant.color.toLowerCase())
 
                             return (
                               <button
                                 key={variant.id}
                                 type="button"
                                 onClick={() => handleSelectVariant(variant)}
-                                className={`relative rounded-2xl border p-3 text-left transition-all duration-200 ${
+                                disabled={isVarOutOfStock}
+                                className={`relative flex items-center justify-center rounded-xl px-3.5 py-2 text-center text-xs font-semibold transition-all duration-150 ${
                                   isSelected
-                                    ? 'shadow-xs border-orange-500 bg-orange-50/20 text-slate-900 ring-1 ring-orange-500/40 dark:border-orange-500 dark:bg-orange-950/15 dark:text-white'
+                                    ? 'shadow-xs border-2 border-orange-500 bg-orange-50 text-orange-600 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'
                                     : isVarOutOfStock
-                                      ? 'border-slate-200/60 bg-slate-100/40 text-slate-400 opacity-50 dark:border-slate-800 dark:bg-slate-900/40'
-                                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
+                                      ? 'border border-slate-200 bg-slate-100/70 text-slate-400 opacity-50 dark:border-slate-800 dark:bg-slate-900/40'
+                                      : 'border border-slate-200 bg-slate-50 text-slate-700 hover:border-orange-400 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300'
                                 }`}
                               >
-                                <div className="flex items-center gap-2.5">
-                                  {variant.image && (
-                                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-800">
-                                      <Image
-                                        src={variant.image}
-                                        alt={variant.name}
-                                        fill
-                                        sizes="44px"
-                                        className="object-cover"
-                                      />
-                                    </div>
-                                  )}
-
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div
-                                        className={`truncate text-xs leading-tight ${
-                                          isSelected
-                                            ? 'font-bold text-slate-900 dark:text-white'
-                                            : 'font-semibold text-slate-800 dark:text-slate-200'
-                                        }`}
-                                      >
-                                        {variant.name}
-                                      </div>
-                                      {/* Variant Stock Badge */}
-                                      <span
-                                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                          variantStock <= 0
-                                            ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
-                                            : variantStock <= 3
-                                              ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400'
-                                              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                        }`}
-                                      >
-                                        {variantStock > 5
-                                          ? `Stok: ${variantStock}`
-                                          : variantStock > 0
-                                            ? `Sisa ${variantStock}`
-                                            : 'Habis'}
-                                      </span>
-                                    </div>
-
-                                    <div className="mt-1 flex items-center justify-between gap-2">
-                                      <span
-                                        className={`text-[11px] ${
-                                          isSelected
-                                            ? 'font-bold text-orange-600 dark:text-orange-400'
-                                            : 'font-medium text-slate-500 dark:text-slate-400'
-                                        }`}
-                                      >
-                                        Rp{' '}
-                                        {variant.price.toLocaleString('id-ID')}
-                                      </span>
-                                      {variant.color &&
-                                        !hasDuplicateColorInName && (
-                                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                            {variant.color}
-                                          </span>
-                                        )}
-                                    </div>
-                                  </div>
-                                </div>
+                                <span>{variant.name}</span>
+                                {isVarOutOfStock && (
+                                  <span className="ml-1 text-[10px] font-normal text-slate-400">
+                                    (Habis)
+                                  </span>
+                                )}
                               </button>
                             )
                           })}
                         </div>
                       </div>
                     )}
-
-                    {/* 3. 3-in-1 Bonus Package Reassurance Box */}
-                    <div className="space-y-2.5 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/50">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
-                          <Gift className="h-4 w-4 text-orange-500" /> Paket
-                          Aksesoris 3-in-1 Otomatis Disertakan
-                        </span>
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                          GRATIS (Rp 0)
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-3">
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                          <span>Charger GaN 20W</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                          <span>Antigores 9D HD</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                          <span>Matte Case Presisi</span>
-                        </div>
-                      </div>
-                    </div>
 
                     {/* 4. Purchase Action Row */}
                     <div className="space-y-3 pt-1">
@@ -1332,9 +1441,15 @@ export default function GadgetDetailClient({
 
               {/* Buyer Reviews & Testimonials Section */}
               <ProductReviewsSection
-                productId={product.id}
-                productName={product.name}
+                productId={activeUnit?.id || product.id}
+                productName={activeUnit?.name || product.name}
                 storeName={product.store?.name}
+                storeId={product.store?.id}
+                etalaseId={
+                  product.etalaseId ||
+                  (product.isEtalase ? product.id : undefined)
+                }
+                etalaseName={product.etalaseName || product.name}
               />
 
               {/* Rekomendasi Gadget Lainnya (Desktop) */}

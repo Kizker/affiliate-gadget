@@ -39,6 +39,12 @@ const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
     'STORE_SALES',
     'AFTER_SALES',
   ],
+  '/dashboard/admin/etalase': [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'STORE_ADMIN',
+    'CONTENT_EDITOR',
+  ],
   '/dashboard/admin/products': [
     'SUPER_ADMIN',
     'ADMIN',

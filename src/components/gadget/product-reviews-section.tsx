@@ -31,6 +31,9 @@ interface ProductReviewsSectionProps {
   productId: string
   productName: string
   storeName?: string
+  storeId?: string
+  etalaseId?: string
+  etalaseName?: string
   onReviewModalChange?: (isOpen: boolean) => void
   className?: string
   compact?: boolean
@@ -82,6 +85,9 @@ export function ProductReviewsSection({
   productId,
   productName,
   storeName,
+  storeId,
+  etalaseId,
+  etalaseName,
   onReviewModalChange,
   className,
   compact = false,
@@ -91,13 +97,16 @@ export function ProductReviewsSection({
   const [selectedRating, setSelectedRating] = useState<number | null>(null)
   const [hasMediaOnly, setHasMediaOnly] = useState(false)
   const [sortBy, setSortBy] = useState('newest')
+  const [reviewScope, setReviewScope] = useState<
+    'ETALASE' | 'PRODUCT' | 'STORE'
+  >(etalaseId ? 'ETALASE' : 'PRODUCT')
   const [page, setPage] = useState(1)
   const [isExpanded, setIsExpanded] = useState(false)
 
-  // Reset collapse when filters or sorting change
+  // Reset collapse when filters, sorting or scope change
   useEffect(() => {
     setIsExpanded(false)
-  }, [selectedRating, hasMediaOnly, sortBy])
+  }, [selectedRating, hasMediaOnly, sortBy, reviewScope])
 
   // Display only top 3 newest comments by default; expand all on "Lainnya"
   const displayedReviews = useMemo(() => {
@@ -149,6 +158,7 @@ export function ProductReviewsSection({
       selectedRating !== null ||
       hasMediaOnly ||
       sortBy !== 'newest' ||
+      reviewScope !== (etalaseId ? 'ETALASE' : 'PRODUCT') ||
       page > 1
     ) {
       setShouldFetchReviews(true)
@@ -178,6 +188,9 @@ export function ProductReviewsSection({
     }
   }, [
     productId,
+    etalaseId,
+    storeId,
+    reviewScope,
     selectedRating,
     hasMediaOnly,
     sortBy,
@@ -189,6 +202,9 @@ export function ProductReviewsSection({
     setLoading(true)
     try {
       const params = new URLSearchParams()
+      params.set('scope', reviewScope)
+      if (etalaseId) params.set('etalaseId', etalaseId)
+      if (storeId) params.set('storeId', storeId)
       if (selectedRating) params.set('rating', selectedRating.toString())
       if (hasMediaOnly) params.set('hasMedia', 'true')
       if (sortBy) params.set('sort', sortBy)
@@ -509,8 +525,58 @@ export function ProductReviewsSection({
 
           {/* 3. Filter & Sort Toolbar */}
           <div className="mt-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            {/* Filter Pills */}
+            {/* Filter Pills: Scope & Media */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Scope Switcher: Etalase vs Produk vs Toko */}
+              <div className="flex rounded-full border border-slate-200 bg-slate-100/90 p-0.5 dark:border-slate-800 dark:bg-slate-800/80">
+                {etalaseId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReviewScope('ETALASE')
+                      setSelectedRating(null)
+                    }}
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                      reviewScope === 'ETALASE'
+                        ? 'shadow-xs bg-white text-orange-600 dark:bg-slate-900 dark:text-orange-400'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    }`}
+                  >
+                    Ulasan Etalase
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewScope('PRODUCT')
+                    setSelectedRating(null)
+                  }}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                    reviewScope === 'PRODUCT'
+                      ? 'shadow-xs bg-white text-orange-600 dark:bg-slate-900 dark:text-orange-400'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  Ulasan Produk
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewScope('STORE')
+                    setSelectedRating(null)
+                  }}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                    reviewScope === 'STORE'
+                      ? 'shadow-xs bg-white text-orange-600 dark:bg-slate-900 dark:text-orange-400'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  Ulasan Toko
+                </button>
+              </div>
+
               {/* Semua */}
               <button
                 type="button"
@@ -545,43 +611,55 @@ export function ProductReviewsSection({
                   <span>Dengan Foto & Video ({statistics.mediaCount})</span>
                 </button>
               )}
-
-              {/* Star Rating Pills (Only show ratings with count > 0 to eliminate clutter) */}
-              {[5, 4, 3, 2, 1]
-                .filter((star) => (statistics.starCounts[star] || 0) > 0)
-                .map((star) => {
-                  const count = statistics.starCounts[star] || 0
-                  const isSelected = selectedRating === star
-                  return (
-                    <button
-                      key={`btn-star-${star}`}
-                      type="button"
-                      onClick={() => {
-                        setSelectedRating(isSelected ? null : star)
-                        setHasMediaOnly(false)
-                      }}
-                      className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition-all duration-200 ${
-                        isSelected
-                          ? 'bg-amber-400 text-slate-950 shadow-sm'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
-                      <span>{star} Bintang</span>
-                      <span className="text-[11px] font-semibold tabular-nums opacity-70">
-                        ({count})
-                      </span>
-                    </button>
-                  )
-                })}
             </div>
 
-            {/* Sort Dropdown Pill */}
-            <div className="flex shrink-0 items-center gap-2 self-start md:self-auto">
+            {/* Dropdown Filters on Right: Dropdown Bintang di Samping Kiri "Paling Baru" */}
+            <div className="flex shrink-0 items-center gap-2.5 self-start md:self-auto">
+              {/* Dropdown Filter Bintang */}
+              <CustomSelect
+                value={selectedRating !== null ? String(selectedRating) : 'ALL'}
+                onChange={(val) => {
+                  setSelectedRating(val === 'ALL' ? null : parseInt(val))
+                  setHasMediaOnly(false)
+                }}
+                size="sm"
+                className="w-auto"
+                triggerClassName="min-w-[9.5rem] px-3.5"
+                options={[
+                  {
+                    value: 'ALL',
+                    label: `Semua Bintang (${statistics.totalReviews})`,
+                  },
+                  {
+                    value: '5',
+                    label: `★ 5 Bintang (${statistics.starCounts[5] || 0})`,
+                  },
+                  {
+                    value: '4',
+                    label: `★ 4 Bintang (${statistics.starCounts[4] || 0})`,
+                  },
+                  {
+                    value: '3',
+                    label: `★ 3 Bintang (${statistics.starCounts[3] || 0})`,
+                  },
+                  {
+                    value: '2',
+                    label: `★ 2 Bintang (${statistics.starCounts[2] || 0})`,
+                  },
+                  {
+                    value: '1',
+                    label: `★ 1 Bintang (${statistics.starCounts[1] || 0})`,
+                  },
+                ]}
+              />
+
+              {/* Sort Dropdown Pill */}
               <CustomSelect
                 value={sortBy}
                 onChange={(val) => setSortBy(val)}
                 size="sm"
+                className="w-auto"
+                triggerClassName="min-w-[8.5rem] px-3.5"
                 options={[
                   { value: 'newest', label: 'Paling Baru' },
                   { value: 'highest', label: 'Rating Tertinggi' },

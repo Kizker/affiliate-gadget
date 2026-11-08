@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 
-describe('Admin Orders Simple & Sederhana UI Redesign (Screenshot 2 & 3)', () => {
+describe('Admin Orders Simple & Sederhana UI Redesign (Screenshot 1, 2, 3)', () => {
   const pagePath = path.join(
     process.cwd(),
     'src/app/dashboard/admin/orders/page.tsx'
@@ -11,37 +11,38 @@ describe('Admin Orders Simple & Sederhana UI Redesign (Screenshot 2 & 3)', () =>
   const content = fs.readFileSync(pagePath, 'utf8')
   const apiContent = fs.readFileSync(apiPath, 'utf8')
 
-  it('1. Header Control Bar: Memiliki Dropdown Status dan Dropdown Rentang Tanggal (bukan deretan tab panjang)', () => {
-    // Dropdown Status
-    expect(content).toContain('statusDropdownOpen')
-    expect(content).toContain('Status:')
-    expect(content).toContain('currentStatusLabel')
+  it('1. Header Control Bar Mobile: Filter status & rentang waktu berdampingan 1 baris, cukup ikon + nama tanpa kata "Status" atau "Rentang"', () => {
+    // Grid 2 kolom di mobile
+    expect(content).toContain('grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto')
 
-    // Dropdown Rentang Tanggal
+    // Dropdown Status: ikon + nama (tanpa kata "Status:")
+    expect(content).toContain('statusDropdownOpen')
+    expect(content).toContain('{currentStatusLabel}')
+
+    // Dropdown Rentang: ikon + nama (tanpa kata "Rentang:")
     expect(content).toContain('dateDropdownOpen')
-    expect(content).toContain('Rentang:')
-    expect(content).toContain('currentDateRangeLabel')
+    expect(content).toContain('{currentDateRangeLabel}')
     expect(content).toContain('DATE_RANGE_OPTIONS')
 
-    // Input Search & Refresh
+    // Input Search & Refresh di bawahnya membentang penuh
     expect(content).toContain('Cari no. order, customer, produk...')
     expect(content).toContain('fetchOrders')
   })
 
-  it('2. Desktop Table View: Sederhana & Bersih sesuai Screenshot 2 (Tanpa kolom proteksi & kurir berantakan)', () => {
-    // Kolom header tabel: Checkbox, Unit Gadget, Pembeli, Total Tagihan, Status, Aksi
+  it('2. Eliminasi Total Checkbox: Tidak ada checkbox pada desktop maupun mobile', () => {
+    // Header tabel desktop tidak punya checkbox
+    expect(content).not.toContain('selectedOrderIds')
+    expect(content).not.toContain('handleToggleSelectAll')
+    expect(content).not.toContain('handleToggleSelectOrder')
+
+    // Kolom header tabel: Unit Gadget, Pembeli, Total Tagihan, Status, Aksi
     expect(content).toContain('UNIT GADGET')
     expect(content).toContain('PEMBELI')
     expect(content).toContain('TOTAL TAGIHAN')
     expect(content).toContain('STATUS')
     expect(content).toContain('AKSI')
 
-    // Checkbox support
-    expect(content).toContain('selectedOrderIds')
-    expect(content).toContain('handleToggleSelectAll')
-    expect(content).toContain('handleToggleSelectOrder')
-
-    // Kolom Pembeli hanya menampilkan nama & kota (tanpa nomor HP atau icon WA di tabel utama)
+    // Kolom Pembeli hanya menampilkan nama & kota
     expect(content).toContain('customerName')
     expect(content).toContain('customerCity')
 
@@ -49,7 +50,7 @@ describe('Admin Orders Simple & Sederhana UI Redesign (Screenshot 2 & 3)', () =>
     expect(content).toContain('renderSimpleStatusBadge')
   })
 
-  it('3. Mobile Cards View: Sederhana & Ringkas sesuai Screenshot 2 & 3', () => {
+  it('3. Mobile Cards View: Sederhana, bersih, dan bebas checkbox', () => {
     // Mode mobile menggunakan cards
     expect(content).toContain('space-y-3 md:hidden')
 
@@ -57,22 +58,39 @@ describe('Admin Orders Simple & Sederhana UI Redesign (Screenshot 2 & 3)', () =>
     expect(content).toContain('• {formatDate(order.createdAt)}')
     expect(content).toContain('renderSimpleStatusBadge(order)')
 
-    // Thumbnail dan nama produk
-    expect(content).toContain('h-12 w-12 rounded-xl')
+    // Nama produk dan total
     expect(content).toContain('fullName')
+    expect(content).toContain('order.total.toLocaleString')
 
     // Tombol aksi Rincian
     expect(content).toContain('Rincian')
   })
 
-  it('4. Footer Paginasi: Minimalis, format {length}/{totalCount} dan navigasi satu baris', () => {
+  it('4. Modal Drawer Rincian Pesanan: Sederhana & bersih tanpa tulisan menumpuk atau box-in-box bersarang', () => {
+    // Tidak ada kotak bersarang tebal paket bonus
+    expect(content).toContain(
+      'Bonus 3-in-1 Gratis: Charger, Tempered Glass &amp; Softcase'
+    )
+
+    // Penerima & Pengiriman disatukan rapi
+    expect(content).toContain('Penerima &amp; Pengiriman')
+    expect(content).toContain('recipient.recipientName')
+    expect(content).toContain('recipient.recipientPhone')
+    expect(content).toContain('recipient.deliveryAddress')
+    expect(content).toContain('courierDisplay')
+
+    // Customer & tombol chat
+    expect(content).toContain('Hubungi via Chat')
+  })
+
+  it('5. Footer Paginasi: Minimalis, format {length}/{totalCount} dan navigasi satu baris', () => {
     expect(content).toContain('{orders.length}/{totalCount}')
     expect(content).toContain('Sebelumnya')
     expect(content).toContain('{page}/{totalPages}')
     expect(content).toContain('Selanjutnya')
   })
 
-  it('5. Backend API: Mendukung parameter startDate dan endDate untuk filter rentang tanggal', () => {
+  it('6. Backend API: Mendukung parameter startDate dan endDate untuk filter rentang tanggal', () => {
     expect(apiContent).toContain("searchParams.get('startDate')")
     expect(apiContent).toContain("searchParams.get('endDate')")
     expect(apiContent).toContain('createdAt: {')

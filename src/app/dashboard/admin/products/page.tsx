@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dialog'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { BulkPriceUpdateModal } from '@/components/admin/bulk-price-update-modal'
+import { EtalaseFormModal } from '@/components/admin/etalase-form-modal'
 import { buildCatalogHierarchy, BrandGroup } from '@/lib/catalog-hierarchy'
 import {
   evaluateProduct,
@@ -67,6 +68,15 @@ export default function ProductsPage() {
 
   // Data states
   const [rawProducts, setRawProducts] = useState<any[]>([])
+  const [etalases, setEtalases] = useState<any[]>([])
+  const [catalogSection, setCatalogSection] = useState<'ETALASE' | 'PRODUCTS'>(
+    'ETALASE'
+  )
+  const [expandedEtalaseIds, setExpandedEtalaseIds] = useState<
+    Record<string, boolean>
+  >({})
+  const [isEtalaseModalOpen, setIsEtalaseModalOpen] = useState(false)
+  const [editingEtalase, setEditingEtalase] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [stores, setStores] = useState<
     Array<{ id: string; name: string; city?: string }>
@@ -150,6 +160,12 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setMounted(true)
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search)
+      const sec = sp.get('section')
+      if (sec === 'products') setCatalogSection('PRODUCTS')
+      else if (sec === 'etalase') setCatalogSection('ETALASE')
+    }
   }, [])
 
   // Load stores list
@@ -182,16 +198,25 @@ export default function ProductsPage() {
         params.set('storeId', selectedStoreId)
       }
 
-      const res = await fetch(`/api/admin/products?${params.toString()}`, {
-        cache: 'no-store',
-      })
+      const [res, etaRes] = await Promise.all([
+        fetch(`/api/admin/products?${params.toString()}`, {
+          cache: 'no-store',
+        }),
+        fetch(`/api/admin/etalase?${params.toString()}`, {
+          cache: 'no-store',
+        }),
+      ])
       const data = await res.json()
+      const etaData = await etaRes.json().catch(() => ({}))
+      if (etaRes.ok && Array.isArray(etaData.etalases)) {
+        setEtalases(etaData.etalases)
+      }
       if (res.ok && data.products) {
         setRawProducts(data.products)
       } else {
         // Fallback to gadgets API if admin products fails
         const fbRes = await fetch(
-          `/api/gadgets?scoped=true&${isStoreAdmin && userStoreId ? `storeId=${userStoreId}&` : ''}limit=200`
+          `/api/gadgets?scoped=true&rawProducts=true&${isStoreAdmin && userStoreId ? `storeId=${userStoreId}&` : ''}limit=200`
         )
         const fbData = await fbRes.json()
         if (fbData.success) {
@@ -325,6 +350,91 @@ export default function ProductsPage() {
       setExpandedSeries(allS)
     }
   }, [selectedBrand, search, hierarchyTree])
+
+  // Toggle Etalase active/hidden
+  const handleToggleEtalaseActive = async (
+    etalaseId: string,
+    currentActive: boolean
+  ) => {
+    try {
+      const res = await fetch(`/api/admin/etalase/${etalaseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !currentActive }),
+      })
+      if (!res.ok) throw new Error('Gagal memperbarui status etalase')
+      toast.success(
+        !currentActive
+          ? 'Etalase diaktifkan ke halaman depan!'
+          : 'Etalase disembunyikan dari halaman depan.'
+      )
+      fetchProducts()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengubah status etalase')
+    }
+  }
+
+  // 1-Click Jadikan Produk sebagai Cover Etalase
+  const handleSetEtalaseCoverProduct = async (
+    etalaseId: string,
+    productId: string
+  ) => {
+    try {
+      const res = await fetch(`/api/admin/etalase/${etalaseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coverProductId: productId,
+          customCoverImage: null,
+        }),
+      })
+      if (!res.ok) throw new Error('Gagal mengatur cover etalase')
+      toast.success('Barang berhasil dijadikan Cover Etalase!')
+      fetchProducts()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengubah cover etalase')
+    }
+  }
+
+  // Hapus Etalase
+  const handleDeleteEtalase = async (eta: any) => {
+    try {
+      const res = await fetch(`/api/admin/etalase/${eta.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Gagal menghapus etalase')
+      toast.success(`Etalase "${eta.name}" berhasil dihapus`)
+      fetchProducts()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menghapus etalase')
+    }
+  }
+
+  const filteredEtalases = useMemo(() => {
+    return etalases.filter((e) => {
+      if (activeTab === 'LIVE' && (!e.isActive || e.stock <= 0)) return false
+      if (activeTab === 'HIDDEN' && e.isActive) return false
+      if (
+        selectedBrand !== 'ALL' &&
+        e.brand?.toLowerCase() !== selectedBrand.toLowerCase()
+      ) {
+        return false
+      }
+      if (search.trim()) {
+        const q = search.toLowerCase().trim()
+        const matchTitle = e.name?.toLowerCase().includes(q)
+        const matchItems =
+          Array.isArray(e.etalaseItems) &&
+          e.etalaseItems.some(
+            (i: any) =>
+              i.label?.toLowerCase().includes(q) ||
+              i.product?.name?.toLowerCase().includes(q)
+          )
+        if (!matchTitle && !matchItems) return false
+      }
+      return true
+    })
+  }, [etalases, activeTab, selectedBrand, search])
 
   // Toggle single product active/hidden
   const handleToggleProductActive = async (
@@ -660,7 +770,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Action Buttons: Update Massal & Tambah Gadget */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setIsBulkUpdateOpen(true)}
@@ -1812,6 +1922,23 @@ export default function ProductsPage() {
         isSuperAdmin={isSuperAdmin}
         userStoreId={userStoreId || undefined}
         stores={stores}
+      />
+
+      {/* Modal Buat / Atur Cover Etalase */}
+      <EtalaseFormModal
+        isOpen={isEtalaseModalOpen}
+        onClose={() => {
+          setIsEtalaseModalOpen(false)
+          setEditingEtalase(null)
+        }}
+        onSuccess={() => {
+          fetchProducts()
+        }}
+        editingEtalase={editingEtalase}
+        availableProducts={rawProducts}
+        storeId={isStoreAdmin && userStoreId ? userStoreId : selectedStoreId}
+        stores={stores}
+        isSuperAdmin={isSuperAdmin}
       />
     </div>
   )
