@@ -50,25 +50,16 @@ describe('Admin Orders: Keterangan & Pelacakan Retur, Refund, dan Tukar Unit Bar
     expect(ordersPageContent).toContain('Klaim Retur Ditolak')
   })
 
-  it('4. Tabel Pesanan (Kolom 1 & Kolom 5): Menampilkan badge jenis & pelacakan resi kirim balik', () => {
-    // Kolom 1 badge
-    expect(ordersPageContent).toMatch(
-      /order\.returnRequests\[0\]\.type\s*===\s*'REPLACEMENT'/
-    )
-    expect(ordersPageContent).toContain('Tukar Unit')
+  it('4. Tabel Pesanan & Modal Detail: Menampilkan status minimalis & pelacakan purna jual', () => {
+    // Status minimalis purna jual
     expect(ordersPageContent).toContain('Retur/Refund')
-    expect(ordersPageContent).toContain('retMeta.shortLabel')
+    expect(ordersPageContent).toContain('Tukar Unit')
+    expect(ordersPageContent).toContain('renderSimpleStatusBadge')
 
-    // Kolom 5 pelacakan resi
+    // Modal drawer pelacakan resi kurir & purna jual
     expect(ordersPageContent).toContain('Resi Unit Pengganti:')
-    expect(ordersPageContent).toContain('Resi Kirim Balik:')
-    expect(ordersPageContent).toContain(
-      'Lacak Resi Pengiriman Balik Pembeli via Biteship'
-    )
-    expect(ordersPageContent).toContain(
-      'order.returnRequests[0].returnTrackingNumber'
-    )
-    expect(ordersPageContent).toContain('order.returnRequests[0].returnCourier')
+    expect(ordersPageContent).toContain('Pengiriman Balik dari Pembeli (Retur)')
+    expect(ordersPageContent).toContain('Lacak Resi Pembeli (Biteship)')
   })
 
   it('5. Modal Drawer Detail: Kartu lengkap keterangan & pelacakan purna jual Super Admin', () => {

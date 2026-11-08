@@ -126,7 +126,23 @@ export async function GET(request: Request) {
       })
     }
 
-    // 4. Type filter (for Superadmin)
+    // 4. Date Range filter (startDate & endDate)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    if (startDate && endDate) {
+      const s = new Date(startDate)
+      const e = new Date(endDate)
+      if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+        andConditions.push({
+          createdAt: {
+            gte: s,
+            lte: e,
+          },
+        })
+      }
+    }
+
+    // 5. Type filter (for Superadmin)
     if (user.role === 'SUPER_ADMIN' && type && type !== 'all') {
       if (type === 'service') {
         andConditions.push({ items: { some: { serviceId: { not: null } } } })

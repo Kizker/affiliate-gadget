@@ -67,6 +67,22 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-08 (Rancang Ulang UI Manajemen Pesanan Menjadi Simple & Sederhana Sesuai Screenshot 2 [Desktop] & Screenshot 3 [Mobile] [`src/app/dashboard/admin/orders/page.tsx`, `src/app/api/admin/orders/route.ts`, `tests/unit/admin-orders-simple-ui-redesign.test.ts`]):**
+  - **1. Sederhanakan Bilah Kontrol Atas (Eliminasi Tab-Tab Panjang):**
+    - Mengganti seluruh deretan tab status horizontal panjang dengan **Dropdown Status** yang ringkas (`[ 🝖 Status: Semua Status ▾ ]`).
+    - Menambahkan **Dropdown Filter Rentang Tanggal** (`[ 📅 Rentang: Semua Waktu / Hari Ini / 7 Hari / 30 Hari / Bulan Ini ▾ ]`) yang terintegrasi langsung dengan database query (`startDate` & `endDate`).
+    - Menjaga input pencarian dan tombol refresh instan tetap proporsional dan tidak mepet layar.
+  - **2. Tabel Desktop Ramping & Bebas Clutter (Screenshot 2):**
+    - Menghapus kolom `Proteksi & Kurir` yang sebelumnya memadati tabel (rincian kurir & AWB tetap lengkap diakses saat tombol _Rincian_ diklik).
+    - Menghapus badge merek oranye besar (`APPLE`, `BLACKBERRY`, dll) yang memakan ruang vertikal; nama produk dan varian kini tersaji rapi dengan subline `#ORD-ROX-... • tanggal`.
+    - Kolom `PEMBELI` disederhanakan murni hanya menampilkan nama pembeli dan kota (`Maya Kartika • Medan`) tanpa nomor HP atau tombol WA yang berantakan.
+    - Kolom `STATUS` mengadopsi dot minimalis elegan (`● Selesai` hijau, `● Retur/Refund` ungu, `● Telaah Unit` amber, `● Perlu Diproses` biru, dll).
+    - Dilengkapi dukungan multi-select checkbox (`selectedOrderIds`) di header dan baris tabel.
+  - **3. Kartu Pesanan Mobile Simple & Bersih (Screenshot 3):**
+    - Mengeliminasi tampilan memanjang dan teks meluber di layar ponsel.
+    - Setiap pesanan disajikan dalam kartu squircle bersih (`rounded-2xl`): header kartu memuat nomor pesanan, tanggal transaksi, dan status minimalis; body memuat thumbnail gadget di kiri dan nama produk + pembeli di kanan; footer memuat total tagihan dan tombol _Rincian_.
+  - **4. Footer Paginasi Ramping Satu Baris:** Format `{orders.length}/{totalCount}` di kiri dan `[ Sebelumnya ] {page}/{totalPages} [ Selanjutnya ]` di kanan terkunci dalam satu baris rapi tanpa patah baris.
+  - **5. Health Verification:** Unit test suite baru `tests/unit/admin-orders-simple-ui-redesign.test.ts` (5/5 tests) dan 4 test suite pesanan terkait lulus 100% (43/43 tests pass).
 - **2026-11-06 (Pemisahan Total Jalur Chat Admin Toko [1 Room Tunggal] vs After Sales [1 Room per Pesanan Selesai] & Otomatisasi Pembersihan Room Kosong [`src/app/api/customer/chat/store-room/route.ts`, `src/app/api/customer/chat/all-rooms/route.ts`, `src/app/api/admin/chat/rooms/route.ts`, `src/app/dashboard/customer/chat/page.tsx`, `src/components/customer/chat/chat-header.tsx`, `src/components/customer/chat/chat-room-card.tsx`, `src/app/dashboard/customer/orders/[orderId]/order-detail-client.tsx`, `tests/unit/store-admin-vs-after-sales-chat-routing.test.ts`]):**
   - **1. Jalur Chat Admin Toko (1 Customer + 1 Toko = 1 Room Chat Tunggal):**
     - Chat yang dibuka dari tombol toko manapun (seperti "Chat Konsultasi" di `/toko/[slug]`, "Chat Toko" di detail produk, maupun pesanan yang belum selesai `PAID`/`IN_PROGRESS`/`SHIPPED`) **100% murni masuk ke Admin Toko** (`STORE_ADMIN`).

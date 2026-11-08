@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -30,6 +30,9 @@ import {
   AlertTriangle,
   MessageSquare,
   Banknote,
+  Filter,
+  Calendar,
+  ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -275,7 +278,91 @@ function getReturnStatusInfo(ret: {
   }
 }
 
-const STATUS_TABS = [
+function renderSimpleStatusBadge(order: Order) {
+  const activeReturn = order.returnRequests?.[0]
+  if (activeReturn) {
+    if (activeReturn.status === 'PENDING') {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          <span>Telaah Unit</span>
+        </span>
+      )
+    }
+    if (activeReturn.type === 'REFUND') {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+          <span>Retur/Refund</span>
+        </span>
+      )
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+        <span>Tukar Unit</span>
+      </span>
+    )
+  }
+
+  if (order.status === 'COMPLETED') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <span>Selesai</span>
+      </span>
+    )
+  }
+  if (order.status === 'PAID') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+        <span>Perlu Diproses</span>
+      </span>
+    )
+  }
+  if (order.status === 'IN_PROGRESS') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+        <span>Diproses</span>
+      </span>
+    )
+  }
+  if (order.status === 'SHIPPED') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-600 dark:text-orange-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+        <span>Sedang Dikirim</span>
+      </span>
+    )
+  }
+  if (order.status === 'PENDING_PAYMENT') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+        <span>Belum Bayar</span>
+      </span>
+    )
+  }
+  if (order.status === 'CANCELLED') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+        <span>Dibatalkan</span>
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400">
+      <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+      <span>{order.status}</span>
+    </span>
+  )
+}
+
+const STATUS_OPTIONS = [
   { id: 'ALL', label: 'Semua Status' },
   { id: 'PENDING_PAYMENT', label: 'Belum Dibayar' },
   { id: 'PAID', label: 'Perlu Diproses' },
@@ -283,7 +370,19 @@ const STATUS_TABS = [
   { id: 'SHIPPED', label: 'Sedang Dikirim' },
   { id: 'COMPLETED', label: 'Selesai' },
   { id: 'CANCELLED', label: 'Dibatalkan' },
+  { id: 'CHECK_RESI', label: 'Cek Resi' },
 ] as const
+
+const DATE_RANGE_OPTIONS = [
+  { id: 'ALL', label: 'Semua Waktu' },
+  { id: 'TODAY', label: 'Hari Ini' },
+  { id: '7_DAYS', label: '7 Hari Terakhir' },
+  { id: '30_DAYS', label: '30 Hari Terakhir' },
+  { id: 'THIS_MONTH', label: 'Bulan Ini' },
+  { id: 'LAST_MONTH', label: 'Bulan Lalu' },
+] as const
+
+const STATUS_TABS = STATUS_OPTIONS
 
 function formatDate(dateStr: string, isFull = false) {
   try {
@@ -427,6 +526,49 @@ export default function AdminOrdersPage() {
     null
   )
 
+  // State untuk Filter & Tampilan Baru Sederhana (Screenshot 2 & 3)
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false)
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false)
+  const [dateRangeFilter, setDateRangeFilter] = useState<string>('ALL')
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
+
+  const statusDropdownRef = useRef<HTMLDivElement>(null)
+  const dateDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Click outside listener untuk dropdown
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        statusDropdownRef.current &&
+        !statusDropdownRef.current.contains(e.target as Node)
+      ) {
+        setStatusDropdownOpen(false)
+      }
+      if (
+        dateDropdownRef.current &&
+        !dateDropdownRef.current.contains(e.target as Node)
+      ) {
+        setDateDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleToggleSelectAll = () => {
+    if (selectedOrderIds.length === orders.length && orders.length > 0) {
+      setSelectedOrderIds([])
+    } else {
+      setSelectedOrderIds(orders.map((o) => o.id))
+    }
+  }
+
+  const handleToggleSelectOrder = (id: string) => {
+    setSelectedOrderIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
   const handleConfirmPackageArrivalInOrdersDrawer = async (
     returnId: string
   ) => {
@@ -500,6 +642,37 @@ export default function AdminOrdersPage() {
         params.append('search', searchQuery.trim())
       }
 
+      // Filter rentang tanggal
+      if (dateRangeFilter === 'TODAY') {
+        const start = new Date()
+        start.setHours(0, 0, 0, 0)
+        params.append('startDate', start.toISOString())
+        params.append('endDate', new Date().toISOString())
+      } else if (dateRangeFilter === '7_DAYS') {
+        const start = new Date(Date.now() - 7 * 86400000)
+        params.append('startDate', start.toISOString())
+        params.append('endDate', new Date().toISOString())
+      } else if (dateRangeFilter === '30_DAYS') {
+        const start = new Date(Date.now() - 30 * 86400000)
+        params.append('startDate', start.toISOString())
+        params.append('endDate', new Date().toISOString())
+      } else if (dateRangeFilter === 'THIS_MONTH') {
+        const start = new Date()
+        start.setDate(1)
+        start.setHours(0, 0, 0, 0)
+        params.append('startDate', start.toISOString())
+        params.append('endDate', new Date().toISOString())
+      } else if (dateRangeFilter === 'LAST_MONTH') {
+        const start = new Date()
+        start.setMonth(start.getMonth() - 1, 1)
+        start.setHours(0, 0, 0, 0)
+        const end = new Date()
+        end.setDate(0)
+        end.setHours(23, 59, 59, 999)
+        params.append('startDate', start.toISOString())
+        params.append('endDate', end.toISOString())
+      }
+
       const res = await fetch(`/api/admin/orders?${params.toString()}`, {
         cache: 'no-store',
         headers: {
@@ -519,7 +692,7 @@ export default function AdminOrdersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, statusFilter, searchQuery])
+  }, [page, statusFilter, searchQuery, dateRangeFilter])
 
   useEffect(() => {
     fetchOrders()
@@ -763,55 +936,128 @@ export default function AdminOrdersPage() {
     }
   }
 
-  return (
-    <div className="mx-auto max-w-7xl space-y-5 pb-16">
-      {/* 1. Unified Control Panel (Identik dengan Manajemen Produk) */}
-      <div className="shadow-2xs flex flex-col items-stretch justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:p-3 xl:flex-row xl:items-center">
-        {/* Left: Status Filter Pills */}
-        <div
-          suppressHydrationWarning
-          className="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-slate-100/80 p-1 dark:bg-slate-800/80"
-        >
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              suppressHydrationWarning
-              onClick={() => {
-                setStatusFilter(tab.id)
-                setPage(1)
-              }}
-              className={`whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 ${
-                statusFilter === tab.id
-                  ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
-                  : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+  const currentStatusLabel =
+    STATUS_OPTIONS.find((s) => s.id === statusFilter)?.label || 'Semua Status'
 
-          {/* Tombol Cek Resi (Modal Langsung Tanpa Pindah Halaman) */}
-          <button
-            type="button"
-            onClick={() => {
-              setCheckResiQuery('')
-              setShowCheckResiModal(true)
-            }}
-            className="cursor-pointer whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold text-slate-500 transition-all duration-200 hover:bg-white hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-          >
-            Cek Resi
-          </button>
+  const currentDateRangeLabel =
+    DATE_RANGE_OPTIONS.find((d) => d.id === dateRangeFilter)?.label ||
+    'Semua Waktu'
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-4 pb-16">
+      {/* 1. Simple & Clean Control Bar (Screenshot 2 & 3) */}
+      <div className="shadow-2xs flex flex-col gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+        {/* Left: Status Filter Dropdown & Date Range Dropdown */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Dropdown */}
+          <div className="relative" ref={statusDropdownRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusDropdownOpen(!statusDropdownOpen)
+                setDateDropdownOpen(false)
+              }}
+              className="shadow-2xs flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <Filter className="h-3.5 w-3.5 text-slate-400" />
+              <span>
+                Status:{' '}
+                <strong className="font-semibold text-slate-900 dark:text-white">
+                  {currentStatusLabel}
+                </strong>
+              </span>
+              <ChevronDown className="ml-0.5 h-3.5 w-3.5 text-slate-400" />
+            </button>
+
+            {statusDropdownOpen && (
+              <div className="absolute left-0 top-full z-30 mt-1 w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                {STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      if (opt.id === 'CHECK_RESI') {
+                        setCheckResiQuery('')
+                        setShowCheckResiModal(true)
+                      } else {
+                        setStatusFilter(opt.id)
+                        setPage(1)
+                      }
+                      setStatusDropdownOpen(false)
+                    }}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition ${
+                      statusFilter === opt.id
+                        ? 'bg-slate-100 font-bold text-slate-950 dark:bg-slate-700 dark:text-white'
+                        : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700/50'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {statusFilter === opt.id && (
+                      <Check className="h-3.5 w-3.5 text-slate-900 dark:text-white" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Date Range Dropdown */}
+          <div className="relative" ref={dateDropdownRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setDateDropdownOpen(!dateDropdownOpen)
+                setStatusDropdownOpen(false)
+              }}
+              className="shadow-2xs flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <Calendar className="h-3.5 w-3.5 text-slate-400" />
+              <span>
+                Rentang:{' '}
+                <strong className="font-semibold text-slate-900 dark:text-white">
+                  {currentDateRangeLabel}
+                </strong>
+              </span>
+              <ChevronDown className="ml-0.5 h-3.5 w-3.5 text-slate-400" />
+            </button>
+
+            {dateDropdownOpen && (
+              <div className="absolute left-0 top-full z-30 mt-1 w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                {DATE_RANGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setDateRangeFilter(opt.id)
+                      setPage(1)
+                      setDateDropdownOpen(false)
+                    }}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition ${
+                      dateRangeFilter === opt.id
+                        ? 'bg-slate-100 font-bold text-slate-950 dark:bg-slate-700 dark:text-white'
+                        : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700/50'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {dateRangeFilter === opt.id && (
+                      <Check className="h-3.5 w-3.5 text-slate-900 dark:text-white" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right: Search & Refresh */}
-        <div className="flex w-full items-center gap-2 xl:w-auto">
-          <div className="relative flex-1 xl:w-72">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:w-64 sm:flex-initial">
             <input
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Cari no. order, customer, produk..."
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="shadow-2xs w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             />
             <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
             {searchInput && (
@@ -828,7 +1074,7 @@ export default function AdminOrdersPage() {
             onClick={fetchOrders}
             title="Muat Ulang Data"
             disabled={loading}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            className="shadow-2xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
           >
             <RotateCcw
               className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`}
@@ -861,332 +1107,261 @@ export default function AdminOrdersPage() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
-                  <th className="px-3 pb-3">Unit Gadget</th>
-                  <th className="px-3 pb-3">Data Pembeli</th>
-                  <th className="px-3 pb-3">Total Tagihan</th>
-                  <th className="px-3 pb-3 text-center">Status Pesanan</th>
-                  <th className="px-3 pb-3">Proteksi & Kurir</th>
-                  <th className="px-3 pb-3 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {orders.map((order) => {
-                  const status = statusConfig[order.status] || {
-                    label: order.status,
-                    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
-                    dotClass: 'bg-slate-500',
-                  }
+          <>
+            {/* Desktop Table View (Screenshot 2) */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
+                    <th className="w-10 px-3 pb-3">
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedOrderIds.length === orders.length &&
+                          orders.length > 0
+                        }
+                        onChange={handleToggleSelectAll}
+                        className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-0"
+                      />
+                    </th>
+                    <th className="px-3 pb-3">UNIT GADGET</th>
+                    <th className="px-3 pb-3">PEMBELI</th>
+                    <th className="px-3 pb-3">TOTAL TAGIHAN</th>
+                    <th className="px-3 pb-3">STATUS</th>
+                    <th className="px-3 pb-3 text-right">AKSI</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {orders.map((order) => {
+                    const firstItem = order.items?.[0]
+                    const productImg =
+                      firstItem?.product?.images?.[0] ||
+                      firstItem?.rentalItem?.images?.[0] ||
+                      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
 
-                  const firstItem = order.items?.[0]
-                  const productImg =
-                    firstItem?.product?.images?.[0] ||
-                    firstItem?.rentalItem?.images?.[0] ||
-                    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
+                    const productName =
+                      firstItem?.product?.name ||
+                      firstItem?.service?.name ||
+                      firstItem?.rentalItem?.name ||
+                      'Gadget Smartphone'
 
-                  const productName =
-                    firstItem?.product?.name ||
-                    firstItem?.service?.name ||
-                    firstItem?.rentalItem?.name ||
-                    'Gadget Smartphone'
+                    const variantName = firstItem?.variantName || ''
+                    const fullName = variantName
+                      ? `${productName} ${variantName}`
+                      : productName
 
-                  const customerName =
-                    order.user?.name || order.user?.email || 'Customer'
-                  const courierDisplay = order.courierCode
-                    ? `${order.courierCode} ${order.courierService || ''}`
-                    : 'Kurir Terproteksi'
+                    const customerName =
+                      order.user?.name || order.user?.email || 'Customer'
+                    const customerCity =
+                      order.user?.city || order.user?.addresses?.[0]?.city || ''
 
-                  return (
-                    <tr
-                      key={order.id}
-                      className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
-                    >
-                      {/* Kolom 1: Unit Gadget */}
-                      <td className="px-3 py-4 align-middle">
-                        <div className="flex items-center gap-3.5">
-                          <img
-                            src={productImg}
-                            alt={productName}
-                            className="shadow-2xs h-12 w-12 shrink-0 rounded-2xl border border-slate-100 object-cover dark:border-slate-800"
+                    return (
+                      <tr
+                        key={order.id}
+                        className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
+                      >
+                        {/* Checkbox */}
+                        <td className="px-3 py-3.5 align-middle">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order.id)}
+                            onChange={() => handleToggleSelectOrder(order.id)}
+                            className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-0"
                           />
-                          <div className="min-w-0 max-w-[280px]">
-                            {firstItem?.product?.brand && (
-                              <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                                {firstItem.product.brand}
-                              </span>
-                            )}
-                            <p className="line-clamp-1 font-bold text-slate-900 dark:text-white">
-                              {productName}
-                            </p>
-                            {firstItem?.variantName && (
-                              <span className="mt-0.5 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                {firstItem.variantName}
-                              </span>
-                            )}
-                            {order.items.length > 1 && (
-                              <span className="ml-1 inline-block text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                                +{order.items.length - 1} lainnya
-                              </span>
-                            )}
-                            <div className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-[11px] text-slate-400">
-                              <span
-                                className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                                title={order.orderNumber}
-                              >
+                        </td>
+
+                        {/* Kolom 1: Unit Gadget */}
+                        <td className="px-3 py-3.5 align-middle">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={productImg}
+                              alt={productName}
+                              className="shadow-2xs h-10 w-10 shrink-0 rounded-xl border border-slate-100 object-cover dark:border-slate-800"
+                            />
+                            <div className="min-w-0 max-w-[320px]">
+                              <p className="line-clamp-1 text-xs font-bold text-slate-800 dark:text-white">
+                                {fullName}
+                              </p>
+                              <p className="mt-0.5 font-mono text-[11px] text-slate-400">
                                 #
                                 {order.orderNumber.length > 16
                                   ? `${order.orderNumber.slice(0, 16)}...`
-                                  : order.orderNumber}
-                              </span>
-                              <span
-                                suppressHydrationWarning
-                                className="font-medium text-slate-500"
-                              >
-                                {formatDate(order.createdAt)}
-                              </span>
-                              {order.returnRequests &&
-                                order.returnRequests.length > 0 &&
-                                (() => {
-                                  const activeReturn = order.returnRequests[0]
-                                  const retMeta =
-                                    getReturnStatusInfo(activeReturn)
-                                  return (
-                                    <div className="mt-1 flex flex-wrap items-center gap-1">
-                                      <span
-                                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold ${
-                                          order.returnRequests[0].type ===
-                                          'REPLACEMENT'
-                                            ? 'border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300'
-                                            : 'border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/40 dark:bg-purple-950/40 dark:text-purple-300'
-                                        }`}
-                                      >
-                                        <RotateCcw className="h-2.5 w-2.5" />
-                                        {order.returnRequests[0].type ===
-                                        'REPLACEMENT'
-                                          ? 'Tukar Unit'
-                                          : 'Retur/Refund'}
-                                      </span>
-                                      <span
-                                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold ${retMeta.badgeClass}`}
-                                      >
-                                        <span
-                                          className={`h-1.5 w-1.5 rounded-full ${retMeta.dotClass}`}
-                                        />
-                                        <span>{retMeta.shortLabel}</span>
-                                      </span>
-                                    </div>
-                                  )
-                                })()}
+                                  : order.orderNumber}{' '}
+                                • {formatDate(order.createdAt)}
+                              </p>
                             </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Kolom 2: Data Pembeli */}
-                      <td className="px-3 py-4 align-middle">
-                        <div className="space-y-0.5">
-                          <p className="font-bold text-slate-800 dark:text-slate-200">
-                            {customerName}
-                          </p>
-                          <div className="flex items-center gap-1.5 text-[11px]">
-                            {order.user?.phone && (
-                              <a
-                                href={`https://wa.me/${order.user.phone.replace(/[^0-9]/g, '')}?text=Halo%20${encodeURIComponent(customerName)},%20konfirmasi%20pesanan%20%23${order.orderNumber}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400"
-                              >
-                                <Phone className="h-3 w-3 text-emerald-600" />
-                                <span>{order.user.phone}</span>
-                              </a>
-                            )}
-                            {order.user?.city && (
-                              <span className="text-slate-400">
-                                ({order.user.city})
-                              </span>
-                            )}
+                        {/* Kolom 2: Pembeli */}
+                        <td className="px-3 py-3.5 align-middle">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              {customerName}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-slate-400">
+                              {customerCity || '-'}
+                            </p>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Kolom 3: Total Tagihan */}
-                      <td className="px-3 py-4 align-middle">
-                        <div className="space-y-0.5">
-                          <span className="whitespace-nowrap text-sm font-black tabular-nums text-slate-950 dark:text-white">
-                            Rp {order.total.toLocaleString('id-ID')}
-                          </span>
-                          <p className="text-[10px] text-slate-400">
-                            {firstItem?.quantity || 1} Unit{' '}
-                            {order.items.length > 1
-                              ? `(+${order.items.length - 1} item)`
-                              : ''}
-                          </p>
-                        </div>
-                      </td>
+                        {/* Kolom 3: Total Tagihan */}
+                        <td className="px-3 py-3.5 align-middle">
+                          <div>
+                            <p className="whitespace-nowrap text-xs font-bold tabular-nums text-slate-900 dark:text-white">
+                              Rp {order.total.toLocaleString('id-ID')}
+                            </p>
+                            <p className="text-[11px] text-slate-400">
+                              {firstItem?.quantity || 1} Unit
+                            </p>
+                          </div>
+                        </td>
 
-                      {/* Kolom 4: Status Pesanan */}
-                      <td className="px-3 py-4 text-center align-middle">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${status.badgeClass}`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${status.dotClass}`}
-                          />
-                          <span>{status.label}</span>
-                        </span>
-                      </td>
+                        {/* Kolom 4: Status (Dot + Teks Minimalis) */}
+                        <td className="px-3 py-3.5 align-middle">
+                          {renderSimpleStatusBadge(order)}
+                        </td>
 
-                      {/* Kolom 5: Proteksi & Kurir */}
-                      <td className="px-3 py-4 align-middle">
-                        <div className="flex flex-col gap-1.5 text-[11px]">
-                          <span className="inline-flex items-center gap-1 font-semibold text-blue-700 dark:text-blue-400">
-                            <Truck className="h-3.5 w-3.5 text-blue-600" />{' '}
-                            {courierDisplay}
-                          </span>
-                          {order.trackingNumber ? (
-                            <div className="flex flex-col gap-0.5">
-                              {order.returnRequests &&
-                                order.returnRequests.length > 0 &&
-                                order.returnRequests[0].type ===
-                                  'REPLACEMENT' && (
-                                  <span className="text-[9.5px] font-bold text-blue-700 dark:text-blue-300">
-                                    Resi Unit Pengganti:
-                                  </span>
-                                )}
-                              <div className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setCheckResiQuery(
-                                      order.trackingNumber || ''
-                                    )
-                                    setShowCheckResiModal(true)
-                                  }}
-                                  title="Klik untuk Lacak Resi Ini"
-                                  className="cursor-pointer rounded bg-slate-100 px-1 py-0.5 transition hover:bg-blue-100 hover:text-blue-700 dark:bg-slate-800 dark:hover:bg-blue-950/60 dark:hover:text-blue-300"
-                                >
-                                  {order.trackingNumber}
-                                </button>
-                                <button
-                                  type="button"
-                                  title="Cetak Label Thermal"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleOpenThermalLabel(order)
-                                  }}
-                                  className="rounded p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
-                                >
-                                  <Printer className="h-3 w-3" />
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-slate-400">
-                              {order.status === 'PENDING_PAYMENT'
-                                ? 'Belum Bayar'
-                                : 'Menunggu Pick Up'}
-                            </span>
-                          )}
-
-                          {/* Resi Pengiriman Balik Pembeli (Tracking Retur) */}
-                          {order.returnRequests &&
-                            order.returnRequests.length > 0 &&
-                            order.returnRequests[0].returnTrackingNumber && (
-                              <div className="mt-0.5 rounded-lg border border-purple-200/90 bg-purple-50/70 p-1.5 dark:border-purple-900/60 dark:bg-purple-950/30">
-                                <div className="flex items-center justify-between gap-1 text-[9.5px] font-bold text-purple-950 dark:text-purple-200">
-                                  <span className="inline-flex items-center gap-1">
-                                    <RotateCcw className="h-2.5 w-2.5 text-purple-600" />
-                                    Resi Kirim Balik:
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setCheckResiQuery(
-                                        order.returnRequests![0]
-                                          .returnTrackingNumber || ''
-                                      )
-                                      setShowCheckResiModal(true)
-                                    }}
-                                    title="Lacak Resi Pengiriman Balik Pembeli via Biteship"
-                                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded bg-white px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-purple-700 hover:bg-purple-100 dark:bg-slate-900 dark:text-purple-300"
-                                  >
-                                    <Search className="h-2.5 w-2.5 text-purple-600" />
-                                    <span>
-                                      {
-                                        order.returnRequests[0]
-                                          .returnTrackingNumber
-                                      }
-                                    </span>
-                                  </button>
-                                </div>
-                                <span className="mt-0.5 block text-[8.5px] text-purple-600 dark:text-purple-400">
-                                  Kurir:{' '}
-                                  {order.returnRequests[0].returnCourier ||
-                                    'JNE'}
-                                </span>
-                              </div>
-                            )}
-
-                          {/* Info Rekening & Nominal Refund untuk jenis REFUND */}
-                          {order.returnRequests &&
-                            order.returnRequests.length > 0 &&
-                            order.returnRequests[0].type === 'REFUND' &&
-                            !order.returnRequests[0].returnTrackingNumber && (
-                              <div className="rounded-md border border-purple-200/80 bg-purple-50/50 px-1.5 py-0.5 text-[9.5px] font-semibold text-purple-800 dark:border-purple-900/60 dark:bg-purple-950/30 dark:text-purple-300">
-                                <span>
-                                  Refund: Rp{' '}
-                                  {(
-                                    order.returnRequests[0].refundAmount ||
-                                    order.total
-                                  ).toLocaleString('id-ID')}
-                                </span>
-                              </div>
-                            )}
-                        </div>
-                      </td>
-
-                      {/* Kolom 6: Aksi (Hanya Rincian) */}
-                      <td className="px-3 py-4 text-right align-middle">
-                        <button
-                          onClick={() => {
-                            setSelectedOrder(order)
-                            setShowLiveTracker(
-                              Boolean(
-                                order.status === 'SHIPPED' &&
-                                order.trackingNumber
+                        {/* Kolom 5: Aksi */}
+                        <td className="px-3 py-3.5 text-right align-middle">
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order)
+                              setShowLiveTracker(
+                                Boolean(
+                                  order.status === 'SHIPPED' &&
+                                  order.trackingNumber
+                                )
                               )
+                            }}
+                            className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-slate-400" />
+                            <span>Rincian</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View (Screenshot 3 - Simple & Bersih) */}
+            <div className="space-y-3 md:hidden">
+              {orders.map((order) => {
+                const firstItem = order.items?.[0]
+                const productImg =
+                  firstItem?.product?.images?.[0] ||
+                  firstItem?.rentalItem?.images?.[0] ||
+                  'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
+
+                const productName =
+                  firstItem?.product?.name ||
+                  firstItem?.service?.name ||
+                  firstItem?.rentalItem?.name ||
+                  'Gadget Smartphone'
+
+                const variantName = firstItem?.variantName || ''
+                const fullName = variantName
+                  ? `${productName} ${variantName}`
+                  : productName
+
+                const customerName =
+                  order.user?.name || order.user?.email || 'Customer'
+                const customerCity =
+                  order.user?.city || order.user?.addresses?.[0]?.city || ''
+
+                return (
+                  <div
+                    key={order.id}
+                    className="shadow-2xs space-y-2.5 rounded-2xl border border-slate-200/80 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900"
+                  >
+                    {/* Header Kartu: Checkbox, Order No, Tanggal, dan Status */}
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrderIds.includes(order.id)}
+                          onChange={() => handleToggleSelectOrder(order.id)}
+                          className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-0"
+                        />
+                        <span className="truncate font-mono text-[10px] font-semibold text-slate-500">
+                          #
+                          {order.orderNumber.length > 18
+                            ? `${order.orderNumber.slice(0, 18)}...`
+                            : order.orderNumber}
+                        </span>
+                        <span className="shrink-0 text-[10px] text-slate-400">
+                          • {formatDate(order.createdAt)}
+                        </span>
+                      </div>
+                      <div className="shrink-0">
+                        {renderSimpleStatusBadge(order)}
+                      </div>
+                    </div>
+
+                    {/* Body: Thumbnail & Info */}
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={productImg}
+                        alt={productName}
+                        className="shadow-2xs h-12 w-12 shrink-0 rounded-xl border border-slate-100 object-cover dark:border-slate-800"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
+                          {fullName}
+                        </p>
+                        <p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                          {customerName}{' '}
+                          {customerCity ? `(${customerCity})` : ''}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Footer: Total Tagihan & Tombol Rincian */}
+                    <div className="flex items-center justify-between gap-2 border-t border-slate-50 pt-1 dark:border-slate-800/60">
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          Rp {order.total.toLocaleString('id-ID')}
+                        </span>
+                        <span className="ml-1 text-[10px] text-slate-400">
+                          ({firstItem?.quantity || 1} Unit)
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedOrder(order)
+                          setShowLiveTracker(
+                            Boolean(
+                              order.status === 'SHIPPED' && order.trackingNumber
                             )
-                          }}
-                          className="shadow-2xs inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                        >
-                          <Eye className="h-3.5 w-3.5 text-slate-400" />
-                          <span>Rincian</span>
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                          )
+                        }}
+                        className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Rincian</span>
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
         )}
 
-        {/* 3. Minimalist Pagination (Identik dengan Manajemen Produk) */}
-        {totalPages > 1 && !loading && (
+        {/* 3. Minimalist Pagination (Screenshot 2 & 3) */}
+        {!loading && orders.length > 0 && (
           <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
             <span className="whitespace-nowrap font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
               {orders.length}/{totalCount}
             </span>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="shrink-0 whitespace-nowrap rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400"
+                className="shrink-0 whitespace-nowrap rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400"
               >
                 Sebelumnya
               </button>
@@ -1196,7 +1371,7 @@ export default function AdminOrdersPage() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="shrink-0 whitespace-nowrap rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400"
+                className="shrink-0 whitespace-nowrap rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400"
               >
                 Selanjutnya
               </button>
