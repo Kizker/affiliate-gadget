@@ -8,6 +8,7 @@ import {
   generateSmartSku,
   extractModelCode,
 } from '@/lib/shopee-codes'
+import { invalidatePublicGadgetsCache } from '@/lib/etalase-db'
 
 // Helper: Extract brand from product title
 function extractBrand(productName: string): string {
@@ -1151,6 +1152,9 @@ export async function POST(request: Request) {
       },
       { timeout: 60000 }
     )
+
+    // Invalidate public gadgets & etalases cache so frontend reflects updated prices & stocks instantly
+    invalidatePublicGadgetsCache()
 
     const totalDeleted =
       deletedProductsCount + deletedVariantsCount + deactivatedProductsCount
