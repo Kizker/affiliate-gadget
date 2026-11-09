@@ -207,18 +207,12 @@ export function MobileCatalogView({
     let lAdIdx = 0
     leftProds.forEach((prod, pIdx) => {
       left.push({ type: 'product', data: prod })
-      // Live stream appears at pIdx === 0 (after 1st product) or every 3 products
-      if (
-        (pIdx === 0 || (pIdx > 0 && pIdx % 3 === 0)) &&
-        lLiveIdx < leftLive.length
-      ) {
+      // Live stream appears below initial fold (after 2 products)
+      if (pIdx === 2 && lLiveIdx < leftLive.length) {
         left.push({ type: 'live', data: leftLive[lLiveIdx++] })
       }
-      // In-feed ad appears at pIdx === 1 or every 3 products
-      if (
-        (pIdx === 1 || (pIdx > 1 && (pIdx - 1) % 3 === 0)) &&
-        lAdIdx < leftAds.length
-      ) {
+      // In-feed ad appears below initial fold (after 3 products)
+      if (pIdx === 3 && lAdIdx < leftAds.length) {
         left.push({ type: 'ad', data: leftAds[lAdIdx++] })
       }
     })
@@ -236,18 +230,12 @@ export function MobileCatalogView({
     let rAdIdx = 0
     rightProds.forEach((prod, pIdx) => {
       right.push({ type: 'product', data: prod })
-      // Live stream appears at pIdx === 0 or every 3 products
-      if (
-        (pIdx === 0 || (pIdx > 0 && pIdx % 3 === 0)) &&
-        rLiveIdx < rightLive.length
-      ) {
+      // Live stream appears below initial fold
+      if (pIdx === 2 && rLiveIdx < rightLive.length) {
         right.push({ type: 'live', data: rightLive[rLiveIdx++] })
       }
-      // In-feed ad appears at pIdx === 2 or every 3 products
-      if (
-        (pIdx === 2 || (pIdx > 2 && (pIdx - 2) % 3 === 0)) &&
-        rAdIdx < rightAds.length
-      ) {
+      // In-feed ad appears below initial fold
+      if (pIdx === 3 && rAdIdx < rightAds.length) {
         right.push({ type: 'ad', data: rightAds[rAdIdx++] })
       }
     })
