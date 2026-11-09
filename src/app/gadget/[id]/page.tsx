@@ -167,13 +167,6 @@ export default async function Page({ params }: PageProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-      {product?.isEtalase && (
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var k='eta_chunk_bust_v2';setTimeout(function(){var el=document.getElementById('etalase-product-selector');if(!el&&!sessionStorage.getItem(k)){sessionStorage.setItem(k,'1');fetch('/_next/static/chunks/app/gadget/%5Bid%5D/page.js',{cache:'reload'}).finally(function(){window.location.reload()});}},400);}catch(e){}})();`,
-          }}
-        />
-      )}
       <GadgetDetailClient
         initialProduct={product}
         initialIsMobile={isMobileDevice}

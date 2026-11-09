@@ -529,6 +529,7 @@ export default function GadgetDetailClient({
             <div className="pt-2">
               <Link
                 href="/gadget"
+                prefetch={false}
                 className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600"
               >
                 Kembali ke Katalog Produk
@@ -771,6 +772,7 @@ export default function GadgetDetailClient({
               >
                 <Link
                   href="/"
+                  prefetch={false}
                   className="transition-colors hover:text-slate-900 dark:hover:text-white"
                 >
                   Beranda
@@ -778,6 +780,7 @@ export default function GadgetDetailClient({
                 <span className="text-slate-300 dark:text-slate-700">/</span>
                 <Link
                   href="/gadget"
+                  prefetch={false}
                   className="transition-colors hover:text-slate-900 dark:hover:text-white"
                 >
                   Katalog Gadget
@@ -970,6 +973,7 @@ export default function GadgetDetailClient({
 
                         <Link
                           href={`/toko/${product.store.slug}`}
+                          prefetch={false}
                           className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:px-3 sm:text-[11px]"
                         >
                           <span>
@@ -1490,7 +1494,11 @@ export default function GadgetDetailClient({
                           key={item.id}
                           className="shadow-xs group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-3 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
                         >
-                          <Link href={`/gadget/${item.id}`} className="block">
+                          <Link
+                            href={`/gadget/${item.id}`}
+                            prefetch={false}
+                            className="block"
+                          >
                             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-slate-50 dark:bg-slate-800">
                               <Image
                                 src={

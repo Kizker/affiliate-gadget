@@ -133,7 +133,7 @@ function ProductCatalogMiniCard({ item }: { item: any }) {
 
   return (
     <div className="shadow-xs relative flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-2.5 transition-all hover:border-slate-200 dark:border-slate-800/90 dark:bg-slate-900">
-      <Link href={`/gadget/${item.id}`} className="block">
+      <Link href={`/gadget/${item.id}`} prefetch={false} className="block">
         {/* Image Box */}
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
           <Image
@@ -592,6 +592,7 @@ export function ShopeeMobileProductDetail({
           {/* Back Button: Guaranteed Link with Smart Fallback */}
           <Link
             href={backHref}
+            prefetch={false}
             onClick={handleBack}
             className={`relative z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-all active:scale-90 ${
               isScrolled
@@ -640,6 +641,7 @@ export function ShopeeMobileProductDetail({
 
             <Link
               href="/cart"
+              prefetch={false}
               className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all ${
                 isScrolled
                   ? 'bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-white'
@@ -985,6 +987,7 @@ export function ShopeeMobileProductDetail({
 
             <Link
               href={`/toko/${product.store.slug}`}
+              prefetch={false}
               className="shadow-2xs rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-bold text-slate-800 transition hover:bg-slate-50"
             >
               Lihat Toko
@@ -1002,6 +1005,7 @@ export function ShopeeMobileProductDetail({
             </h3>
             <Link
               href={`/toko/${product.store?.slug}`}
+              prefetch={false}
               className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400"
             >
               Lihat Semua &gt;

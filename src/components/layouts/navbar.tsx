@@ -225,6 +225,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch={false}
                   className={`rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide transition-all duration-200 ${
                     isActive
                       ? 'shadow-xs border border-orange-500/20 bg-orange-50 font-bold text-orange-600 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-400'
@@ -421,6 +422,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                 {/* Mobile icon button: direct link to /login on small screens */}
                 <Link
                   href="/login"
+                  prefetch={false}
                   className="shadow-xs flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-700 transition-all hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:hidden"
                   aria-label="Masuk Akun"
                   title="Masuk Akun"
@@ -432,12 +434,14 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
                 <div className="hidden items-center gap-1 sm:flex">
                   <Link
                     href="/login"
+                    prefetch={false}
                     className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
                     Masuk
                   </Link>
                   <Link
                     href="/register"
+                    prefetch={false}
                     className="shadow-xs inline-flex items-center justify-center rounded-full bg-orange-700 px-3.5 py-1.5 text-xs font-bold text-white transition-all duration-200 hover:bg-orange-800 active:scale-95"
                   >
                     Daftar

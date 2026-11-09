@@ -174,7 +174,7 @@ export function ProductReviewsSection({
       window.addEventListener(ev, enableFetch, { passive: true, once: true })
     )
 
-    const timer = setTimeout(enableFetch, 2500)
+    const timer = setTimeout(enableFetch, 8000)
 
     return () => {
       events.forEach((ev) => window.removeEventListener(ev, enableFetch))
@@ -209,7 +209,7 @@ export function ProductReviewsSection({
       if (hasMediaOnly) params.set('hasMedia', 'true')
       if (sortBy) params.set('sort', sortBy)
       params.set('page', page.toString())
-      params.set('limit', '50')
+      params.set('limit', '10')
 
       const res = await fetch(
         `/api/gadgets/${productId}/reviews?${params.toString()}`,
