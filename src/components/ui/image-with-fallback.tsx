@@ -35,6 +35,8 @@ export function ImageWithFallback({
       fill={fill}
       sizes={sizes}
       priority={priority}
+      fetchPriority={priority ? 'high' : 'auto'}
+      decoding={priority ? 'sync' : 'async'}
       unoptimized={imgSrc.startsWith('/uploads/') || imgSrc.startsWith('data:')}
       onError={() => setImgSrc(fallbackSrc)}
       className={className}
