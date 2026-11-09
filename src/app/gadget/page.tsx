@@ -323,6 +323,10 @@ function GadgetKatalogContent() {
       })
     }
 
+    if (!search.trim() && brand === 'ALL' && filtered === gadgets) {
+      return filtered
+    }
+
     // Default: 'RELEVANCE' / 'DEFAULT' (Shopee-Style Multi-Factor Relevance Scoring)
     const effectiveSearch = ignoreCorrection
       ? search

@@ -16,7 +16,7 @@ export const viewport: Viewport = {
 
 const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['300', '400', '600', '700'],
+  weight: ['400', '600', '700'],
   variable: '--font-poppins',
   display: 'swap',
   preload: true,
