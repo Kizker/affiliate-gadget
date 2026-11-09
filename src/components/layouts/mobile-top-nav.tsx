@@ -245,6 +245,7 @@ export function MobileTopNav({
         {/* Chat Icon */}
         <Link
           href={chatHref}
+          prefetch={false}
           className={`flex h-9 w-9 items-center justify-center rounded-full border transition-all active:scale-95 ${
             isChatActive
               ? 'shadow-xs border-orange-500 bg-orange-50 text-orange-600 ring-2 ring-orange-500/20 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'
@@ -259,6 +260,7 @@ export function MobileTopNav({
         {/* Cart Icon with badge */}
         <Link
           href="/cart"
+          prefetch={false}
           className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-all active:scale-95 ${
             isCartActive
               ? 'shadow-xs border-orange-500 bg-orange-50 text-orange-600 ring-2 ring-orange-500/20 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'

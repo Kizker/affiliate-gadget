@@ -111,6 +111,7 @@ export function InFeedStoreAdCard({
       >
         <Link
           href={destination}
+          prefetch={false}
           className="block cursor-pointer focus:outline-none"
         >
           {/* Media Header (Square Cropped Hero Photo like Catalog) */}
@@ -205,6 +206,7 @@ export function InFeedStoreAdCard({
     >
       <Link
         href={destination}
+        prefetch={false}
         className="absolute inset-0 z-30 block focus:outline-none"
       >
         <span className="sr-only">
