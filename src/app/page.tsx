@@ -10,10 +10,7 @@ import { SectionTrustPillars } from '@/components/landing/section-trust-pillars'
 import { SectionFeaturedGadgets } from '@/components/landing/section-featured-gadgets'
 import { SectionStoreSpotlight } from '@/components/landing/section-store-spotlight'
 import { useIsMobile } from '@/hooks/use-is-mobile'
-
-const GadgetKatalogPage = dynamic(() => import('@/app/gadget/page'), {
-  ssr: false,
-})
+import GadgetKatalogPage from '@/app/gadget/page'
 
 export default function HomePage() {
   const router = useRouter()
