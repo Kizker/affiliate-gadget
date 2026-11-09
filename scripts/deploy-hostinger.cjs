@@ -8,8 +8,8 @@ const config = {
   username: 'root',
   password: '@Dea20031802',
   keepaliveInterval: 10000,
-  keepaliveCountMax: 20,
-  readyTimeout: 120000,
+  keepaliveCountMax: 30,
+  readyTimeout: 300000,
 }
 
 function runRemoteCommand(command) {
