@@ -951,9 +951,11 @@ export default function GadgetDetailClient({
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                           {product.store.logo ? (
-                            <img
+                            <Image
                               src={product.store.logo}
                               alt={product.store.name}
+                              width={40}
+                              height={40}
                               className="shadow-2xs h-10 w-10 shrink-0 rounded-2xl border border-slate-200/60 object-cover dark:border-slate-700"
                             />
                           ) : (

@@ -962,9 +962,11 @@ export function ShopeeMobileProductDetail({
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               {product.store.logo ? (
-                <img
+                <Image
                   src={product.store.logo}
                   alt={product.store.name}
+                  width={48}
+                  height={48}
                   className="h-12 w-12 shrink-0 rounded-full border border-slate-200 object-cover"
                 />
               ) : (
