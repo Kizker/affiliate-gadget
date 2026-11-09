@@ -52,6 +52,7 @@ export function SectionStoreSpotlight() {
           </h2>
           <Link
             href="/toko"
+            prefetch={false}
             className="group inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-orange-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 active:scale-95"
           >
             <span>Lihat Semua Toko</span>
@@ -221,6 +222,7 @@ export function SectionStoreSpotlight() {
                         <div className="mt-auto pt-4">
                           <Link
                             href={`/toko/${store.slug}`}
+                            prefetch={false}
                             className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 py-2.5 text-xs font-bold text-white transition-all duration-200 hover:bg-slate-800 dark:bg-white dark:text-slate-950"
                           >
                             <Store className="h-3.5 w-3.5" />

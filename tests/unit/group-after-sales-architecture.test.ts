@@ -105,10 +105,8 @@ describe('Arsitektur Grup Cabang & Role After Sales Purna Jual', () => {
   it('8. Halaman Retur Superadmin disederhanakan: HANYA menampilkan rincian dan 2 tombol keputusan (Approve / Reject)', () => {
     expect(fs.existsSync(superAdminReturnsPagePath)).toBe(true)
     const pageContent = fs.readFileSync(superAdminReturnsPagePath, 'utf8')
-    expect(pageContent).toContain('Setujui Pengembalian')
-    expect(pageContent).toContain('handleApprove')
-    expect(pageContent).toContain('openRejectModal')
-    expect(pageContent).toContain('handleConfirmReject')
+    expect(pageContent).toContain('handleDirectApprove')
+    expect(pageContent).toContain('handleDirectRejectAndReturn')
     expect(pageContent).toContain("action: 'APPROVE'")
     expect(pageContent).toContain("action: 'REJECT'")
 

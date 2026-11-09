@@ -269,6 +269,7 @@ export function SectionFeaturedGadgets() {
 
                     <Link
                       href={`/gadget/${product.id}`}
+                      prefetch={false}
                       className="block cursor-pointer focus:outline-none"
                     >
                       {/* 1. Media Header (Square Cropped Hero Photo) */}

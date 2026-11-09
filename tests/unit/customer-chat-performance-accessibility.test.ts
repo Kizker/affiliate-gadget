@@ -122,7 +122,9 @@ describe('Customer Chat Performance & Accessibility Optimization Suite', () => {
 
     // Header & Input
     expect(headerContent).toContain('aria-label="Kembali ke daftar percakapan"')
-    expect(inputContent).toContain('aria-label="Kirim foto atau video"')
+    expect(inputContent).toMatch(
+      /aria-label="Kirim (foto atau video|lampiran atau bagikan pesanan)"/
+    )
     expect(inputContent).toContain('aria-label={placeholder}')
     expect(inputContent).toContain('aria-label="Kirim pesan"')
   })

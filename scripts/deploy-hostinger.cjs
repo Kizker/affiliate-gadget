@@ -9,7 +9,7 @@ const config = {
   password: '@Dea20031802',
   keepaliveInterval: 10000,
   keepaliveCountMax: 20,
-  readyTimeout: 60000,
+  readyTimeout: 120000,
 }
 
 function runRemoteCommand(command) {

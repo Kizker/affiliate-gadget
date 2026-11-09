@@ -260,6 +260,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
             {/* Live Chat / Pesan Button (Placed Next to Cart) */}
             <Link
               href={getChatLink()}
+              prefetch={false}
               className={`h-8.5 w-8.5 relative flex items-center justify-center rounded-full border transition-all duration-200 active:scale-95 sm:h-9 sm:w-9 ${
                 pathname.startsWith('/dashboard/customer/chat') ||
                 pathname.startsWith('/dashboard/admin/chat') ||
@@ -276,6 +277,7 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
             {/* Cart Button */}
             <Link
               href="/cart"
+              prefetch={false}
               className={`h-8.5 w-8.5 relative flex items-center justify-center rounded-full border transition-all duration-200 active:scale-95 sm:h-9 sm:w-9 ${
                 pathname === '/cart'
                   ? 'shadow-xs border-orange-500 bg-orange-50 text-orange-600 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'

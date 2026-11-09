@@ -78,7 +78,7 @@ describe('Dual-Tier Return Approval: After Sales Confirmation & Superadmin Final
 
     // Banner status rekomendasi
     expect(page).toContain('Rekomendasi Terkirim')
-    expect(page).toMatch(/Menunggu ACC[\s\S]*Final Superadmin/)
+    expect(page).toMatch(/Menunggu ACC Final[\s\S]*Superadmin/)
   })
 
   it('5. Meja Kerja Superadmin: Menampilkan tab Menunggu ACC Superadmin, nama barang lengkap, banner rekomendasi AS, dan tombol ACC Final', () => {

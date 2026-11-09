@@ -25,8 +25,14 @@ describe('Desktop Product Cards Wishlist Love Button Suite', () => {
   })
 
   it('verifies desktop gadget catalog grid has wishlist love button at top-right', () => {
+    const clientPath = path.join(
+      process.cwd(),
+      'src/app/gadget/gadget-catalog-client.tsx'
+    )
     const filePath = path.join(process.cwd(), 'src/app/gadget/page.tsx')
-    const content = fs.readFileSync(filePath, 'utf-8')
+    const content = fs.existsSync(clientPath)
+      ? fs.readFileSync(clientPath, 'utf-8')
+      : fs.readFileSync(filePath, 'utf-8')
 
     // Must import Heart, useWishlistSafe, and sonner toast
     expect(content).toContain('Heart')

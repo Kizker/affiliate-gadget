@@ -30,16 +30,19 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true)
-    if (session?.user?.role === 'AFTER_SALES') return
-    // Pada mode mobile, halaman beranda ditiadakan karena redundan dengan katalog yang kini menjadi Beranda
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      const searchStr = window.location.search || ''
-      router.replace(`/gadget${searchStr}`)
-    }
-  }, [router, session?.user?.role])
+  }, [])
 
   return (
     <>
+      {/* Media-scoped preload for Level 1 Ad poster — speeds up mobile Frame-1 LCP while preventing desktop unused preload */}
+      <link
+        rel="preload"
+        as="image"
+        href="/uploads/ads/1790671997412-zuzb6l-poster.webp"
+        media="(max-width: 768px)"
+        fetchPriority="high"
+      />
+
       {/* 1. Mobile View — Katalog Gadget sebagai Beranda Mobile Tunggal */}
       {(!mounted || isMobile) && (
         <div

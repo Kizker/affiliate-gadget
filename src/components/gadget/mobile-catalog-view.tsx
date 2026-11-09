@@ -408,6 +408,7 @@ export function MobileCatalogView({
 
         <Link
           href={`/gadget/${item.id}`}
+          prefetch={false}
           className="flex w-full flex-col gap-1.5 focus:outline-none"
         >
           <div>
@@ -447,11 +448,11 @@ export function MobileCatalogView({
 
           {/* Price Row & Sold Count */}
           <div className="pt-1.5">
-            <span className="block text-sm font-black leading-tight text-orange-500">
+            <span className="block text-sm font-black leading-tight text-orange-600 dark:text-orange-400">
               Rp {item.price.toLocaleString('id-ID')}
             </span>
             <div className="mt-0.5 flex items-center justify-between text-[10px]">
-              <span className="leading-none text-slate-400 line-through">
+              <span className="leading-none text-slate-500 line-through dark:text-slate-400">
                 Rp {strikePrice.toLocaleString('id-ID')}
               </span>
               <span className="shrink-0 whitespace-nowrap font-medium text-slate-500 dark:text-slate-400">
@@ -470,7 +471,7 @@ export function MobileCatalogView({
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-md select-none bg-white pb-24 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <main className="mx-auto min-h-screen w-full max-w-md select-none bg-white pb-24 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* 1. TOP HEADER (Komponen Terpisah Reusable dengan Smart Sticky Search saat di-scroll) */}
       <MobileTopNav
         searchable
@@ -501,7 +502,7 @@ export function MobileCatalogView({
             <button
               type="submit"
               aria-label="Cari produk smartphone"
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-500 focus:outline-none"
+              className="absolute left-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-orange-600 focus:outline-none"
             >
               <Search className="h-4 w-4" />
             </button>
@@ -659,6 +660,7 @@ export function MobileCatalogView({
           </div>
         ) : (
           <>
+            <h2 className="sr-only">Daftar Produk Smartphone Pilihan</h2>
             <div className="grid grid-cols-2 items-start gap-2.5">
               {/* Kolom Kiri */}
               <div className="flex min-w-0 flex-col gap-2.5">
@@ -747,6 +749,6 @@ export function MobileCatalogView({
           </>
         )}
       </section>
-    </div>
+    </main>
   )
 }

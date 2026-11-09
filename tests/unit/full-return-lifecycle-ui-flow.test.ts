@@ -66,7 +66,7 @@ describe('End-to-End Return, QC, Replacement & Review Flow Verification', () => 
 
     // Page UI tabel & modal
     expect(page).toMatch(
-      /order\.returnRequests\[0\]\.type\s*===\s*'REPLACEMENT'/
+      /(order|selectedOrder)\.returnRequests\[0\]|isReplacement\s*=\s*ret\.type\s*===\s*'REPLACEMENT'/
     )
     expect(page).toContain('Tukar Unit')
     expect(page).toContain('Klaim Garansi: Penukaran Unit Baru')

@@ -89,7 +89,7 @@ export function BulkPriceUpdateModal({
 
   // Upload states
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [mirrorMode, setMirrorMode] = useState(true)
+  const [mirrorMode, setMirrorMode] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [downloadingTemplate, setDownloadingTemplate] = useState(false)

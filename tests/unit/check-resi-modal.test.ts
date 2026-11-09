@@ -48,8 +48,8 @@ describe('CheckResiModal (In-Page Resi & AWB Tracking Modal)', () => {
   })
 
   it('5. should allow clicking order tracking number in table to inspect in modal directly', () => {
-    expect(ordersPageContent).toContain(
-      "setCheckResiQuery(order.trackingNumber || '')"
+    expect(ordersPageContent.replace(/\s+/g, ' ')).toMatch(
+      /setCheckResiQuery\(\s*(selectedOrder|order)\.trackingNumber/
     )
   })
 })

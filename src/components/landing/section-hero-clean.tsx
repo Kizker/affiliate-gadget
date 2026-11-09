@@ -290,6 +290,7 @@ export function SectionHeroClean() {
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href="/gadget"
+                prefetch={false}
                 className="active:scale-98 inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition-all duration-200 hover:bg-orange-600 sm:text-sm"
               >
                 <span>Jelajahi Gadget Second</span>
@@ -298,6 +299,7 @@ export function SectionHeroClean() {
 
               <Link
                 href="/toko"
+                prefetch={false}
                 className="shadow-2xs active:scale-98 inline-flex items-center justify-center gap-2 rounded-full border border-slate-200/90 bg-white px-5 py-3 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 sm:text-sm"
               >
                 <Store className="h-4 w-4 text-slate-500" />

@@ -596,6 +596,7 @@ function GadgetKatalogContent() {
 
                           <Link
                             href={`/gadget/${item.id}`}
+                            prefetch={false}
                             className="block cursor-pointer focus:outline-none"
                           >
                             {/* 1. Media Header (Square Cropped Hero Photo) */}

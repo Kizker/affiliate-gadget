@@ -59,7 +59,7 @@ describe('Alur Keputusan After Sales Murni: 2 Pilihan (Setuju & Tolak) + QC 5 Fo
 
   it('6. Backend API: Ketika Superadmin APPROVE (ACC Final), otomatis eksekusi potong stok & resi Biteship (Replacement) atau cairkan dana escrow Midtrans (Refund)', () => {
     const route = fs.readFileSync(returnsRoutePath, 'utf8')
-    expect(route).toContain(
+    expect(route.replace(/\s+/g, ' ')).toContain(
       'isSuperAdmin && isApprove && (isPackageArrived || hasAfterSalesRecommendation)'
     )
     expect(route).toContain("resolutionType === 'REPLACEMENT'")

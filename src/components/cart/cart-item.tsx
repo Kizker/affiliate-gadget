@@ -67,7 +67,10 @@ export default function CartItem({ item, embedded = false }: CartItemProps) {
         </div>
 
         {/* Product Thumbnail */}
-        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 sm:h-24 sm:w-24">
+        <Link
+          href={item.productId ? `/gadget/${item.productId}` : '/gadget'}
+          className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 transition hover:opacity-90 dark:border-slate-800 dark:bg-slate-950 sm:h-24 sm:w-24"
+        >
           <Image
             src={item.image || '/placeholder.png'}
             alt={item.name}
@@ -75,7 +78,7 @@ export default function CartItem({ item, embedded = false }: CartItemProps) {
             sizes="96px"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
-        </div>
+        </Link>
 
         {/* Product Info & Price */}
         <div className="flex min-w-0 flex-1 flex-col justify-between self-stretch">

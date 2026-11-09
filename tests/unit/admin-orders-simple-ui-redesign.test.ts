@@ -68,7 +68,7 @@ describe('Admin Orders Simple & Sederhana UI Redesign (Screenshot 1, 2, 3)', () 
 
   it('4. Modal Drawer Rincian Pesanan: Sederhana & bersih tanpa tulisan menumpuk atau box-in-box bersarang', () => {
     // Tidak ada kotak bersarang tebal paket bonus
-    expect(content).toContain(
+    expect(content.replace(/\s+/g, ' ')).toContain(
       'Bonus 3-in-1 Gratis: Charger, Tempered Glass &amp; Softcase'
     )
 

@@ -215,8 +215,9 @@ export function MobileTopNav({
         /* Brand Logo (Hanya tampil saat di posisi paling atas, tidak sticky saat di-scroll) */
         <Link
           href="/gadget"
+          prefetch={false}
           className="flex items-center gap-2.5 duration-200 animate-in fade-in"
-          aria-label="AffiliateGadget Beranda"
+          aria-label={`${subtitle} AffiliateGadget`}
         >
           <div className="shadow-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-950 p-1.5">
             <Image
@@ -229,7 +230,7 @@ export function MobileTopNav({
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-[9px] font-bold uppercase leading-none tracking-wider text-orange-500">
+            <span className="text-[9px] font-bold uppercase leading-none tracking-wider text-orange-600 dark:text-orange-400">
               {subtitle}
             </span>
             <span className="mt-0.5 text-[17px] font-extrabold leading-tight text-slate-900 dark:text-white">

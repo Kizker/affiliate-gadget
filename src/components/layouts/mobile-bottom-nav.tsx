@@ -159,6 +159,7 @@ export function MobileBottomNav({
         {/* 1. Beranda (Katalog Gadget yang kini berfungsi sebagai Beranda utama di mode mobile) */}
         <Link
           href="/gadget"
+          prefetch={false}
           aria-label="Beranda Katalog Gadget"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'beranda'
@@ -180,6 +181,7 @@ export function MobileBottomNav({
         {/* 3. Servis */}
         <Link
           href="/servis"
+          prefetch={false}
           aria-label="Layanan Servis Gadget"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'servis'
@@ -206,6 +208,7 @@ export function MobileBottomNav({
         {/* 4. Toko */}
         <Link
           href="/toko"
+          prefetch={false}
           aria-label="Daftar Toko Cabang"
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'toko'
@@ -228,17 +231,20 @@ export function MobileBottomNav({
         {showCartTab && (
           <Link
             href="/cart"
+            prefetch={false}
             aria-label="Keranjang Belanja"
             className={`relative flex flex-col items-center justify-center px-3 py-1 transition-colors ${
               currentTab === 'keranjang'
-                ? 'font-bold text-orange-500'
+                ? 'font-bold text-orange-700 dark:text-orange-400'
                 : 'font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             <div className="relative">
               <ShoppingBag
                 className={`h-5 w-5 transition-transform ${
-                  currentTab === 'keranjang' ? 'scale-110 text-orange-500' : ''
+                  currentTab === 'keranjang'
+                    ? 'scale-110 text-orange-700 dark:text-orange-400'
+                    : ''
                 }`}
                 strokeWidth={currentTab === 'keranjang' ? 2.5 : 1.8}
               />
@@ -255,10 +261,11 @@ export function MobileBottomNav({
         {/* 4 (or 5). Akun Saya / Login */}
         <Link
           href={accountHref}
+          prefetch={false}
           aria-label={accountLabel}
           className={`flex flex-col items-center justify-center px-3 py-1 transition-colors ${
             currentTab === 'akun'
-              ? 'font-bold text-orange-500'
+              ? 'font-bold text-orange-700 dark:text-orange-400'
               : 'font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >

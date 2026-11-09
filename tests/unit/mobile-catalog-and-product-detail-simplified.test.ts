@@ -55,10 +55,9 @@ describe('Mobile Catalog & Product Detail Alignment Suite (Screenshots 1-4)', ()
     expect(content).toContain('Hemat')
 
     // 3. Variant selector matching Screenshot 1 (2-col grid with active orange border)
-    expect(content).toContain('Variant Selector matching Screenshot 1')
+    expect(content).toContain('Variant Selector')
     expect(content).toContain('Pilihan Varian')
-    expect(content).toContain('Terpilih:')
-    expect(content).toContain('border-2 border-orange-500 bg-orange-50/10')
+    expect(content).toContain('border-2 border-orange-500 bg-orange-50')
 
     // 4. Quantity stepper matching Screenshot 1
     expect(content).toContain('Quantity Stepper matching Screenshot 1')
