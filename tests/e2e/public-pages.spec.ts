@@ -137,7 +137,7 @@ test.describe('Navigation', () => {
     await page.goto('/')
     await page.waitForLoadState('domcontentloaded')
 
-    const servisLink = page.locator('footer a[href="/servis"]').first()
+    const servisLink = page.locator('footer a[href="/servis"]:visible').first()
     await servisLink.scrollIntoViewIfNeeded()
     await expect(servisLink).toBeVisible()
     await servisLink.click()

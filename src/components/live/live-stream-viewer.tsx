@@ -414,7 +414,7 @@ export function LiveStreamViewer({
         >
           {/* Fullscreen Video Background */}
           <div className="absolute inset-0 z-0">{renderLiveVideo(false)}</div>
-          <FloatingHeartsOverlay triggerCount={likeCount} />
+          {likeCount > 0 && <FloatingHeartsOverlay triggerCount={likeCount} />}
 
           {/* Minimal Top Header on Mobile Landscape */}
           <div className="pointer-events-auto absolute left-3 top-3 z-30 flex items-center gap-2">
@@ -524,7 +524,7 @@ export function LiveStreamViewer({
       >
         {/* Fullscreen Video Background */}
         <div className="absolute inset-0 z-0">{renderLiveVideo(false)}</div>
-        <FloatingHeartsOverlay triggerCount={likeCount} />
+        {likeCount > 0 && <FloatingHeartsOverlay triggerCount={likeCount} />}
 
         {/* Top Header Floating Card (Store info, viewers, LIVE badge, close button) */}
         <div className="pointer-events-auto relative z-30 flex items-center justify-between gap-2 p-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))]">
