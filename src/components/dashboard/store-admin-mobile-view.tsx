@@ -19,6 +19,7 @@ interface StoreAdminMobileViewProps {
   setMobileReturnTab: (val: 'RETUR' | 'BATAL') => void
   getFirstItemName: (order: any) => string
   timeAgo: (dateStr: string) => string
+  onSelectOrder?: (order: any) => void
 }
 
 export function StoreAdminMobileView({
@@ -33,6 +34,7 @@ export function StoreAdminMobileView({
   mobileReturnTab,
   setMobileReturnTab,
   getFirstItemName,
+  onSelectOrder,
 }: StoreAdminMobileViewProps) {
   const counts = storeStats?.orderStatusCounts || {}
   const paidCount = counts.paid ?? 0
@@ -366,12 +368,14 @@ export function StoreAdminMobileView({
                       </span>
                     </div>
 
-                    <Link
-                      href={`/dashboard/admin/orders?search=${encodeURIComponent(order.orderNumber)}`}
-                      className="shadow-2xs rounded-xl border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    <button
+                      type="button"
+                      data-href={`/dashboard/admin/orders?search=${encodeURIComponent(order.orderNumber)}`}
+                      onClick={() => onSelectOrder?.(order)}
+                      className="shadow-2xs cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     >
                       Rincian
-                    </Link>
+                    </button>
                   </div>
                 </div>
               )

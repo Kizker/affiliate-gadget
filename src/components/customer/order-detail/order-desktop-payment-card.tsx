@@ -1,12 +1,7 @@
 'use client'
 
-import React from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
 import {
-  Receipt,
   ShieldCheck,
-  Tag,
   ShoppingBag,
   CreditCard,
   CheckCircle,
@@ -16,6 +11,9 @@ import {
   Ban,
   Play,
 } from 'lucide-react'
+import { CustomerPaymentBreakdown } from './customer-payment-breakdown'
+import Link from 'next/link'
+import Image from 'next/image'
 import {
   OrderData,
   OrderReturnRequest,
@@ -64,95 +62,8 @@ export function OrderDesktopPaymentCard({
 }: OrderDesktopPaymentCardProps) {
   return (
     <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-4 dark:border-slate-800">
-        <h3 className="flex min-w-0 items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          <Receipt className="h-4 w-4 shrink-0 text-slate-500" />
-          <span className="truncate">Ringkasan Pembayaran</span>
-        </h3>
-        <span
-          className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300`}
-        >
-          <span
-            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-              order.status === 'CANCELLED' ||
-              order.paymentStatus === 'CANCELLED' ||
-              order.paymentStatus === 'FAILED'
-                ? 'bg-rose-500'
-                : order.paymentStatus === 'PENDING'
-                  ? 'bg-amber-500'
-                  : 'bg-emerald-500'
-            }`}
-          />
-          <span>
-            {order.status === 'CANCELLED' ||
-            order.paymentStatus === 'CANCELLED' ||
-            order.paymentStatus === 'FAILED'
-              ? 'Dibatalkan'
-              : order.paymentStatus === 'PENDING'
-                ? 'Menunggu Bayar'
-                : 'Lunas'}
-          </span>
-        </span>
-      </div>
-
-      {/* Line Item Breakdown */}
-      <div className="mt-4 space-y-3 text-xs">
-        <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-          <span>Subtotal Produk</span>
-          <span className="font-mono font-semibold text-slate-900 dark:text-white">
-            {formatPrice(order.subtotal || order.total)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-          <span>Ongkos Kirim Kurir</span>
-          <span className="font-mono font-bold text-slate-900 dark:text-white">
-            {order.shippingCost && order.shippingCost > 0
-              ? formatPrice(order.shippingCost)
-              : 'Gratis'}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-          <span className="flex items-center gap-1">
-            Asuransi Pengiriman ({order.insuranceRate ?? 0.2}%)
-            <ShieldCheck className="h-3 w-3 text-slate-400" />
-          </span>
-          <span className="font-mono font-semibold text-slate-900 dark:text-white">
-            {order.insuranceFee && order.insuranceFee > 0
-              ? formatPrice(order.insuranceFee)
-              : 'Rp 0'}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between font-medium text-slate-600 dark:text-slate-400">
-          <span>Paket Bonus 3-in-1</span>
-          <span>Gratis (Rp 0)</span>
-        </div>
-
-        {Boolean(order.discountAmount && order.discountAmount > 0) && (
-          <div className="flex items-center justify-between font-semibold text-slate-700 dark:text-slate-300">
-            <span className="flex items-center gap-1">
-              <Tag className="h-3 w-3 text-slate-400" />
-              Diskon Voucher {order.voucherCode ? `(${order.voucherCode})` : ''}
-            </span>
-            <span className="font-mono">
-              - {formatPrice(order.discountAmount)}
-            </span>
-          </div>
-        )}
-
-        {/* Total Tagihan Bar */}
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-          <span className="whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white">
-            Total Tagihan
-          </span>
-          <span className="whitespace-nowrap font-mono text-xl font-black tracking-tight text-slate-950 dark:text-white">
-            {formatPrice(order.total)}
-          </span>
-        </div>
-      </div>
+      {/* Informasi Pembayaran Transparan */}
+      <CustomerPaymentBreakdown order={order} showStatusBadge={true} />
 
       {/* Official Store Guarantee Strip */}
       {order.status !== 'CANCELLED' && (

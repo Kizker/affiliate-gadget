@@ -46,6 +46,7 @@ import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-lab
 import { LiveCourierTracker } from '@/components/shipping/live-courier-tracker'
 import TaxInvoiceModal from '@/components/modals/tax-invoice-modal'
 import { CheckResiModal } from '@/components/shipping/check-resi-modal'
+import { AdminOrderPaymentCard } from '@/components/admin/orders/admin-order-payment-card'
 import { usePageGuard } from '@/hooks/use-page-guard'
 
 interface OrderItem {
@@ -55,7 +56,6 @@ interface OrderItem {
   variantName?: string | null
   notes?: string | null
   productId?: string | null
-  rentalItemId?: string | null
   serviceId?: string | null
   product?: {
     id?: string
@@ -65,6 +65,7 @@ interface OrderItem {
     model?: string | null
     category?: string | null
     weightGram?: number | null
+    sku?: string | null
   } | null
   service?: {
     name: string
@@ -93,6 +94,8 @@ interface Order {
   bonusChargerIncluded: boolean
   bonusProtectorIncluded: boolean
   bonusCaseIncluded: boolean
+  commissionAmount?: number
+  commissionRate?: number
   status: string
   createdAt: string
   notes?: string | null
@@ -1356,7 +1359,7 @@ export default function AdminOrdersPage() {
               e.preventDefault()
             }
           }}
-          className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-3xl flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:w-full"
+          className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-3xl flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:w-full lg:max-w-4xl"
         >
           {selectedOrder && (
             <div className="flex max-h-[90vh] flex-1 flex-col overflow-hidden">
@@ -1423,135 +1426,143 @@ export default function AdminOrdersPage() {
 
               {/* 2. Scrollable Body: Bento Grid Details & Live Tracker */}
               <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:space-y-6 sm:p-7">
-                {/* 2-Column Bento Grid Details */}
-                <div className="grid grid-cols-1 gap-5 text-xs md:grid-cols-2">
-                  {/* Column 1: Items List & Financial Summary */}
-                  <div className="space-y-4">
-                    {/* Retur / Penukaran Unit Info Banner & Pelacakan Komprehensif */}
-                    {selectedOrder.returnRequests &&
-                      selectedOrder.returnRequests.length > 0 &&
-                      (() => {
-                        const ret = selectedOrder.returnRequests[0]
-                        const returnInfo = getReturnStatusInfo(ret)
-                        const isReplacement = ret.type === 'REPLACEMENT'
+                {/* Stacked Vertical Cards Layout (Susun Kebawah, Tidak Sampingan) */}
+                <div className="w-full space-y-4 text-xs">
+                  {/* Retur / Penukaran Unit Info Banner & Pelacakan Komprehensif */}
+                  {selectedOrder.returnRequests &&
+                    selectedOrder.returnRequests.length > 0 &&
+                    (() => {
+                      const ret = selectedOrder.returnRequests[0]
+                      const returnInfo = getReturnStatusInfo(ret)
+                      const isReplacement = ret.type === 'REPLACEMENT'
 
-                        return (
-                          <div className="space-y-3 rounded-2xl border border-blue-200/90 bg-blue-50/70 p-4 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
-                            {/* Header Retur / Garansi */}
-                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/60 pb-2.5 dark:border-blue-900/60">
-                              <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
-                                <RotateCcw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                <span className="text-sm font-bold">
-                                  {isReplacement
-                                    ? 'Klaim Garansi: Penukaran Unit Baru'
-                                    : 'Klaim Garansi: Retur & Refund Dana'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${returnInfo.badgeClass}`}
-                                >
-                                  <span
-                                    className={`h-1.5 w-1.5 rounded-full ${returnInfo.dotClass}`}
-                                  />
-                                  <span>{returnInfo.label.toUpperCase()}</span>
-                                </span>
-                                <Link
-                                  href={`/dashboard/admin/returns?search=${selectedOrder.orderNumber}`}
-                                  className="shadow-2xs inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-white px-2 py-1 text-[10.5px] font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800"
-                                >
-                                  <span>Meja Kerja Retur</span>
-                                  <ExternalLink className="h-3 w-3" />
-                                </Link>
-                              </div>
+                      return (
+                        <div className="space-y-3 rounded-2xl border border-blue-200/90 bg-blue-50/70 p-4 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                          {/* Header Retur / Garansi */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/60 pb-2.5 dark:border-blue-900/60">
+                            <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
+                              <RotateCcw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              <span className="text-sm font-bold">
+                                {isReplacement
+                                  ? 'Klaim Garansi: Penukaran Unit Baru'
+                                  : 'Klaim Garansi: Retur & Refund Dana'}
+                              </span>
                             </div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${returnInfo.badgeClass}`}
+                              >
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${returnInfo.dotClass}`}
+                                />
+                                <span>{returnInfo.label.toUpperCase()}</span>
+                              </span>
+                              <Link
+                                href={`/dashboard/admin/returns?search=${selectedOrder.orderNumber}`}
+                                className="shadow-2xs inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-white px-2 py-1 text-[10.5px] font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800"
+                              >
+                                <span>Meja Kerja Retur</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </Link>
+                            </div>
+                          </div>
 
-                            {/* Detail Kendala & Catatan Telaah */}
-                            <div className="space-y-1.5 rounded-xl bg-white/70 p-3 text-[11px] text-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
-                              <div className="flex items-start gap-1.5">
-                                <span className="shrink-0 font-bold text-slate-900 dark:text-white">
-                                  Kendala Cacat Fisik:
+                          {/* Detail Kendala & Catatan Telaah */}
+                          <div className="space-y-1.5 rounded-xl bg-white/70 p-3 text-[11px] text-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                            <div className="flex items-start gap-1.5">
+                              <span className="shrink-0 font-bold text-slate-900 dark:text-white">
+                                Kendala Cacat Fisik:
+                              </span>
+                              <span className="text-slate-700 dark:text-slate-300">
+                                {ret.reasonLabel ||
+                                  ret.reason ||
+                                  'Klaim Garansi Toko'}
+                              </span>
+                            </div>
+                            {ret.storeResponse && (
+                              <div className="flex items-start gap-1.5 border-t border-slate-100 pt-1 text-[10.5px] dark:border-slate-800">
+                                <span className="shrink-0 font-bold text-blue-700 dark:text-blue-400">
+                                  Telaah After Sales:
                                 </span>
-                                <span className="text-slate-700 dark:text-slate-300">
-                                  {ret.reasonLabel ||
-                                    ret.reason ||
-                                    'Klaim Garansi Toko'}
+                                <span className="italic text-slate-600 dark:text-slate-400">
+                                  {ret.storeResponse}
                                 </span>
                               </div>
-                              {ret.storeResponse && (
-                                <div className="flex items-start gap-1.5 border-t border-slate-100 pt-1 text-[10.5px] dark:border-slate-800">
-                                  <span className="shrink-0 font-bold text-blue-700 dark:text-blue-400">
-                                    Telaah After Sales:
-                                  </span>
-                                  <span className="italic text-slate-600 dark:text-slate-400">
-                                    {ret.storeResponse}
-                                  </span>
-                                </div>
+                            )}
+                          </div>
+
+                          {/* Pelacakan 1: Resi Kirim Balik Pembeli */}
+                          <div className="space-y-1.5 rounded-xl border border-purple-200/80 bg-white p-3 dark:border-purple-900/60 dark:bg-slate-900">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1.5 font-bold text-purple-950 dark:text-purple-200">
+                                <Package className="h-3.5 w-3.5 text-purple-600" />
+                                Pengiriman Balik dari Pembeli (Retur)
+                              </span>
+                              {ret.packageReceivedAt ? (
+                                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9.5px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                  Paket Telah Tiba di Toko (QC)
+                                </span>
+                              ) : ret.returnTrackingNumber ? (
+                                <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[9.5px] font-bold text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                                  Paket Dalam Pengiriman
+                                </span>
+                              ) : (
+                                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                  Menunggu Resi Pembeli
+                                </span>
                               )}
                             </div>
 
-                            {/* Pelacakan 1: Resi Kirim Balik Pembeli */}
-                            <div className="space-y-1.5 rounded-xl border border-purple-200/80 bg-white p-3 dark:border-purple-900/60 dark:bg-slate-900">
-                              <div className="flex items-center justify-between">
-                                <span className="inline-flex items-center gap-1.5 font-bold text-purple-950 dark:text-purple-200">
-                                  <Package className="h-3.5 w-3.5 text-purple-600" />
-                                  Pengiriman Balik dari Pembeli (Retur)
-                                </span>
-                                {ret.packageReceivedAt ? (
-                                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9.5px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                    Paket Telah Tiba di Toko (QC)
-                                  </span>
-                                ) : ret.returnTrackingNumber ? (
-                                  <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[9.5px] font-bold text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                                    Paket Dalam Pengiriman
-                                  </span>
-                                ) : (
-                                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                                    Menunggu Resi Pembeli
-                                  </span>
-                                )}
-                              </div>
-
-                              {ret.returnTrackingNumber ? (
-                                <div className="space-y-2 pt-1 text-xs">
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <div className="font-mono">
-                                      <span className="text-[10px] text-slate-400">
-                                        Kurir & Resi:{' '}
-                                      </span>
-                                      <span className="font-bold text-slate-900 dark:text-white">
-                                        {ret.returnCourier || 'JNE'} —{' '}
-                                        {ret.returnTrackingNumber}
-                                      </span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setCheckResiQuery(
-                                          ret.returnTrackingNumber || ''
-                                        )
-                                        setShowCheckResiModal(true)
-                                      }}
-                                      className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-purple-700 active:scale-95"
-                                    >
-                                      <Search className="h-3 w-3" />
-                                      <span>Lacak Resi Pembeli (Biteship)</span>
-                                    </button>
+                            {ret.returnTrackingNumber ? (
+                              <div className="space-y-2 pt-1 text-xs">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div className="font-mono">
+                                    <span className="text-[10px] text-slate-400">
+                                      Kurir & Resi:{' '}
+                                    </span>
+                                    <span className="font-bold text-slate-900 dark:text-white">
+                                      {ret.returnCourier || 'JNE'} —{' '}
+                                      {ret.returnTrackingNumber}
+                                    </span>
                                   </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCheckResiQuery(
+                                        ret.returnTrackingNumber || ''
+                                      )
+                                      setShowCheckResiModal(true)
+                                    }}
+                                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-purple-700 active:scale-95"
+                                  >
+                                    <Search className="h-3 w-3" />
+                                    <span>Lacak Resi Pembeli (Biteship)</span>
+                                  </button>
+                                </div>
 
-                                  {/* Tombol Aksi Konfirmasi Tiba di Toko untuk Super Admin */}
-                                  {ret.packageReceivedAt ||
-                                  ret.storeResponse?.includes(
-                                    '[Paket Fisik Tiba di Cabang]'
-                                  ) ? (
-                                    <div className="rounded-lg bg-emerald-50 p-2 text-[10.5px] text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
-                                      <span className="font-bold">
-                                        Diterima di Cabang:{' '}
-                                      </span>
-                                      <span>
-                                        {ret.packageReceivedAt
+                                {/* Tombol Aksi Konfirmasi Tiba di Toko untuk Super Admin */}
+                                {ret.packageReceivedAt ||
+                                ret.storeResponse?.includes(
+                                  '[Paket Fisik Tiba di Cabang]'
+                                ) ? (
+                                  <div className="rounded-lg bg-emerald-50 p-2 text-[10.5px] text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                    <span className="font-bold">
+                                      Diterima di Cabang:{' '}
+                                    </span>
+                                    <span>
+                                      {ret.packageReceivedAt
+                                        ? new Date(
+                                            ret.packageReceivedAt
+                                          ).toLocaleDateString('id-ID', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          })
+                                        : ret.createdAt
                                           ? new Date(
-                                              ret.packageReceivedAt
+                                              ret.createdAt
                                             ).toLocaleDateString('id-ID', {
                                               day: 'numeric',
                                               month: 'short',
@@ -1559,442 +1570,311 @@ export default function AdminOrdersPage() {
                                               hour: '2-digit',
                                               minute: '2-digit',
                                             })
-                                          : ret.createdAt
-                                            ? new Date(
-                                                ret.createdAt
-                                              ).toLocaleDateString('id-ID', {
-                                                day: 'numeric',
-                                                month: 'short',
-                                                year: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                              })
-                                            : 'Dikonfirmasi Tiba'}{' '}
-                                        &bull; Sedang QC Fisik
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    ret.status !== 'COMPLETED' &&
-                                    ret.status !== 'REJECTED' && (
-                                      <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 p-2 text-[10.5px] dark:bg-slate-800/50">
-                                        <span className="text-slate-500">
-                                          Barang sudah diterima staf cabang?
-                                        </span>
-                                        <button
-                                          type="button"
-                                          disabled={
-                                            confirmingArrivalId === ret.id
-                                          }
-                                          onClick={() =>
-                                            handleConfirmPackageArrivalInOrdersDrawer(
-                                              ret.id
-                                            )
-                                          }
-                                          className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-indigo-600 bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300"
-                                        >
-                                          {confirmingArrivalId === ret.id ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                          ) : (
-                                            <Check className="h-3 w-3" />
-                                          )}
-                                          <span>
-                                            Konfirmasi Paket Tiba di Toko (Mulai
-                                            QC)
-                                          </span>
-                                        </button>
-                                      </div>
-                                    )
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                                  Pembeli belum menginput nomor resi pengiriman
-                                  balik ke toko cabang.
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Pelacakan 2 (Khusus REPLACEMENT): Resi Unit Baru Pengganti */}
-                            {isReplacement && (
-                              <div className="space-y-1.5 rounded-xl border border-blue-200/80 bg-white p-3 dark:border-blue-900/60 dark:bg-slate-900">
-                                <div className="flex items-center justify-between">
-                                  <span className="inline-flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-200">
-                                    <Truck className="h-3.5 w-3.5 text-blue-600" />
-                                    Resi Unit Pengganti:
-                                  </span>
-                                  {selectedOrder.trackingNumber ? (
-                                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9.5px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                                      Unit Baru Dikirim
+                                          : 'Dikonfirmasi Tiba'}{' '}
+                                      &bull; Sedang QC Fisik
                                     </span>
-                                  ) : (
-                                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                      Menunggu Hasil QC Toko
-                                    </span>
-                                  )}
-                                </div>
-
-                                {selectedOrder.trackingNumber ? (
-                                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-                                    <div className="font-mono">
-                                      <span className="text-[10px] text-slate-400">
-                                        Kurir & Resi:{' '}
-                                      </span>
-                                      <span className="font-bold text-slate-900 dark:text-white">
-                                        {selectedOrder.courierCode || 'JNE'} —{' '}
-                                        {selectedOrder.trackingNumber}
-                                      </span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setCheckResiQuery(
-                                          selectedOrder.trackingNumber || ''
-                                        )
-                                        setShowCheckResiModal(true)
-                                      }}
-                                      className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-blue-700 active:scale-95"
-                                    >
-                                      <Search className="h-3 w-3" />
-                                      <span>
-                                        Lacak Unit Pengganti (Biteship)
-                                      </span>
-                                    </button>
                                   </div>
                                 ) : (
-                                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                                    Nomor resi unit baru pengganti akan
-                                    diterbitkan toko setelah pemeriksaan fisik
-                                    (QC) selesai dan dinyatakan lolos.
-                                  </p>
+                                  ret.status !== 'COMPLETED' &&
+                                  ret.status !== 'REJECTED' && (
+                                    <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 p-2 text-[10.5px] dark:bg-slate-800/50">
+                                      <span className="text-slate-500">
+                                        Barang sudah diterima staf cabang?
+                                      </span>
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          confirmingArrivalId === ret.id
+                                        }
+                                        onClick={() =>
+                                          handleConfirmPackageArrivalInOrdersDrawer(
+                                            ret.id
+                                          )
+                                        }
+                                        className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-indigo-600 bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300"
+                                      >
+                                        {confirmingArrivalId === ret.id ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <Check className="h-3 w-3" />
+                                        )}
+                                        <span>
+                                          Konfirmasi Paket Tiba di Toko (Mulai
+                                          QC)
+                                        </span>
+                                      </button>
+                                    </div>
+                                  )
                                 )}
                               </div>
-                            )}
-
-                            {/* Pelacakan 3 (Khusus REFUND): Rincian Rekening & Pengembalian Dana */}
-                            {!isReplacement && (
-                              <div className="space-y-1.5 rounded-xl border border-emerald-200/80 bg-white p-3 dark:border-emerald-900/60 dark:bg-slate-900">
-                                <div className="flex items-center justify-between">
-                                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-950 dark:text-emerald-200">
-                                    <Banknote className="h-3.5 w-3.5 text-emerald-600" />
-                                    Rincian Pengembalian Dana (Refund Escrow)
-                                  </span>
-                                  <span
-                                    className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold ${
-                                      ret.status === 'COMPLETED'
-                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                    }`}
-                                  >
-                                    {ret.status === 'COMPLETED'
-                                      ? 'DANA TELAH DICAIRKAN'
-                                      : 'DANA ESCROW DITAHAN'}
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-2 pt-1 text-[11px] sm:grid-cols-2">
-                                  <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/60">
-                                    <span className="text-[10px] text-slate-400">
-                                      Nominal Refund:
-                                    </span>
-                                    <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">
-                                      Rp{' '}
-                                      {(
-                                        ret.refundAmount || selectedOrder.total
-                                      ).toLocaleString('id-ID')}
-                                    </p>
-                                  </div>
-                                  <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/60">
-                                    <span className="text-[10px] text-slate-400">
-                                      Rekening Tujuan:
-                                    </span>
-                                    <p className="font-bold text-slate-800 dark:text-slate-200">
-                                      {ret.bankName || 'Bank Pembeli'} —{' '}
-                                      {ret.bankAccountNumber || '-'}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500">
-                                      a.n.{' '}
-                                      {ret.bankAccountName ||
-                                        selectedOrder.user?.name ||
-                                        '-'}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
+                            ) : (
+                              <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                                Pembeli belum menginput nomor resi pengiriman
+                                balik ke toko cabang.
+                              </p>
                             )}
                           </div>
-                        )
-                      })()}
 
-                    {/* Products Section - Clean & Simple (Image 3) */}
-                    <div className="space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Produk Dipesan ({selectedOrder.items?.length || 0})
-                      </span>
-
-                      <div className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-white p-1 dark:divide-slate-800 dark:border-slate-700 dark:bg-slate-900">
-                        {selectedOrder.items?.map((item, idx) => {
-                          const img =
-                            item.product?.images?.[0] ||
-                            item.rentalItem?.images?.[0] ||
-                            'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
-                          const title =
-                            item.product?.name ||
-                            item.service?.name ||
-                            item.rentalItem?.name ||
-                            'Gadget Smartphone'
-
-                          return (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between gap-3 p-3"
-                            >
-                              <div className="flex min-w-0 items-center gap-3">
-                                <img
-                                  src={img}
-                                  alt={title}
-                                  className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 object-cover dark:border-slate-800"
-                                />
-                                <div className="min-w-0">
-                                  <p className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
-                                    {title}
-                                  </p>
-                                  {item.variantName && (
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                      {item.variantName}
-                                    </p>
-                                  )}
-                                  <p className="mt-0.5 text-[10px] text-slate-400">
-                                    {item.quantity} Unit × Rp{' '}
-                                    {item.price.toLocaleString('id-ID')}
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="whitespace-nowrap text-xs font-bold tabular-nums text-slate-950 dark:text-white">
-                                Rp{' '}
-                                {(item.price * item.quantity).toLocaleString(
-                                  'id-ID'
+                          {/* Pelacakan 2 (Khusus REPLACEMENT): Resi Unit Baru Pengganti */}
+                          {isReplacement && (
+                            <div className="space-y-1.5 rounded-xl border border-blue-200/80 bg-white p-3 dark:border-blue-900/60 dark:bg-slate-900">
+                              <div className="flex items-center justify-between">
+                                <span className="inline-flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-200">
+                                  <Truck className="h-3.5 w-3.5 text-blue-600" />
+                                  Resi Unit Pengganti:
+                                </span>
+                                {selectedOrder.trackingNumber ? (
+                                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9.5px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                    Unit Baru Dikirim
+                                  </span>
+                                ) : (
+                                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                    Menunggu Hasil QC Toko
+                                  </span>
                                 )}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-
-                      {/* Bonus 3-in-1 Callout - Clean Single Line Pill */}
-                      {(selectedOrder.bonusChargerIncluded ||
-                        selectedOrder.bonusProtectorIncluded ||
-                        selectedOrder.bonusCaseIncluded ||
-                        true) && (
-                        <div className="flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white px-3 py-2 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                          <Gift className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                          <span>
-                            Bonus 3-in-1 Gratis: Charger, Tempered Glass &amp;
-                            Softcase
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Financial Breakdown Card - Clean & Minimal */}
-                    <div className="space-y-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Rincian Pembayaran
-                      </span>
-                      <div className="space-y-1.5 text-xs">
-                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Subtotal Unit</span>
-                          <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
-                            Rp {selectedOrder.subtotal.toLocaleString('id-ID')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Ongkos Kirim</span>
-                          <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
-                            {selectedOrder.shippingCost
-                              ? `Rp ${selectedOrder.shippingCost.toLocaleString('id-ID')}`
-                              : 'Gratis'}
-                          </span>
-                        </div>
-                        {selectedOrder.insuranceFee > 0 && (
-                          <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                            <span>Asuransi Pengiriman</span>
-                            <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
-                              Rp{' '}
-                              {selectedOrder.insuranceFee.toLocaleString(
-                                'id-ID'
-                              )}
-                            </span>
-                          </div>
-                        )}
-                        {selectedOrder.discountAmount !== undefined &&
-                          selectedOrder.discountAmount > 0 && (
-                            <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                              <span>
-                                Diskon Voucher{' '}
-                                {selectedOrder.voucherCode
-                                  ? `(${selectedOrder.voucherCode})`
-                                  : ''}
-                              </span>
-                              <span className="font-semibold tabular-nums">
-                                - Rp{' '}
-                                {selectedOrder.discountAmount.toLocaleString(
-                                  'id-ID'
-                                )}
-                              </span>
-                            </div>
-                          )}
-                      </div>
-                      <div className="mt-2 flex items-center justify-between border-t border-slate-200/80 pt-2 text-xs dark:border-slate-700">
-                        <span className="font-bold text-slate-700 dark:text-slate-200">
-                          Total Tagihan
-                        </span>
-                        <span className="text-sm font-black tabular-nums text-slate-950 dark:text-white">
-                          Rp {selectedOrder.total.toLocaleString('id-ID')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Column 2: Customer & Shipping Details - Clean & Compact */}
-                  <div className="space-y-4">
-                    {/* Destination Address & Shipping Details */}
-                    <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Penerima &amp; Pengiriman
-                      </span>
-
-                      {(() => {
-                        const recipient = parseRecipientInfo(selectedOrder)
-                        const courierDisplay = selectedOrder.courierCode
-                          ? `${selectedOrder.courierCode} ${selectedOrder.courierService || ''}`
-                          : 'Kurir Terproteksi'
-
-                        return (
-                          <div className="space-y-2.5 rounded-xl border border-slate-200/80 bg-white p-3 text-xs dark:border-slate-700 dark:bg-slate-900">
-                            {/* Nama & Telepon */}
-                            <div className="flex items-center justify-between gap-2">
-                              <div>
-                                <p className="font-bold text-slate-900 dark:text-white">
-                                  {recipient.recipientName}
-                                </p>
-                                <p className="font-mono text-[11px] text-slate-500">
-                                  {recipient.recipientPhone}
-                                </p>
                               </div>
-                              {recipient.recipientPhone &&
-                                recipient.recipientPhone !== '-' && (
+
+                              {selectedOrder.trackingNumber ? (
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                                  <div className="font-mono">
+                                    <span className="text-[10px] text-slate-400">
+                                      Kurir & Resi:{' '}
+                                    </span>
+                                    <span className="font-bold text-slate-900 dark:text-white">
+                                      {selectedOrder.courierCode || 'JNE'} —{' '}
+                                      {selectedOrder.trackingNumber}
+                                    </span>
+                                  </div>
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      navigator.clipboard.writeText(
-                                        recipient.recipientPhone
+                                      setCheckResiQuery(
+                                        selectedOrder.trackingNumber || ''
                                       )
-                                      toast.success('Nomor penerima disalin!')
+                                      setShowCheckResiModal(true)
                                     }}
-                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-blue-700 active:scale-95"
                                   >
-                                    <Copy className="h-3 w-3" />
-                                    <span>Salin</span>
-                                  </button>
-                                )}
-                            </div>
-
-                            {/* Alamat Lengkap */}
-                            <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
-                              <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-300">
-                                {recipient.deliveryAddress}
-                              </p>
-                              <p className="mt-0.5 text-[10.5px] text-slate-400">
-                                {[
-                                  selectedOrder.user?.city,
-                                  selectedOrder.user?.province,
-                                  selectedOrder.user?.postalCode,
-                                ]
-                                  .filter(Boolean)
-                                  .join(', ')}
-                              </p>
-                            </div>
-
-                            {/* Kurir & AWB */}
-                            <div className="flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
-                              <div>
-                                <span className="block text-[10px] uppercase tracking-wider text-slate-400">
-                                  Ekspedisi
-                                </span>
-                                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                  {courierDisplay}
-                                </span>
-                              </div>
-                              {selectedOrder.trackingNumber ? (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
-                                    {selectedOrder.trackingNumber}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleCopyAWB(
-                                        selectedOrder.trackingNumber!
-                                      )
-                                    }
-                                    className="rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"
-                                    title="Salin Resi"
-                                  >
-                                    {copiedAWB ? (
-                                      <Check className="h-3 w-3 text-emerald-600" />
-                                    ) : (
-                                      <Copy className="h-3 w-3" />
-                                    )}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    title="Cetak Label Thermal"
-                                    onClick={() =>
-                                      handleOpenThermalLabel(selectedOrder)
-                                    }
-                                    className="rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"
-                                  >
-                                    <Printer className="h-3 w-3" />
+                                    <Search className="h-3 w-3" />
+                                    <span>Lacak Unit Pengganti (Biteship)</span>
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-[11px] text-slate-400">
-                                  Menunggu Pick Up
-                                </span>
+                                <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                                  Nomor resi unit baru pengganti akan
+                                  diterbitkan toko setelah pemeriksaan fisik
+                                  (QC) selesai dan dinyatakan lolos.
+                                </p>
                               )}
                             </div>
-                          </div>
-                        )
-                      })()}
-                    </div>
+                          )}
 
-                    {/* Customer Account & Chat */}
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 text-xs dark:border-slate-800 dark:bg-slate-800/30">
-                      <div className="min-w-0">
-                        <p className="truncate font-bold text-slate-900 dark:text-white">
-                          {selectedOrder.user?.name || 'Customer'}
-                        </p>
-                        <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-                          {selectedOrder.user?.email}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={isConnectingChat}
-                        onClick={() => handleChatCustomer(selectedOrder)}
-                        className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      >
-                        {isConnectingChat ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
-                        ) : (
-                          <MessageSquare className="h-3.5 w-3.5 text-slate-500" />
-                        )}
-                        <span>Hubungi via Chat</span>
-                      </button>
+                          {/* Pelacakan 3 (Khusus REFUND): Rincian Rekening & Pengembalian Dana */}
+                          {!isReplacement && (
+                            <div className="space-y-1.5 rounded-xl border border-emerald-200/80 bg-white p-3 dark:border-emerald-900/60 dark:bg-slate-900">
+                              <div className="flex items-center justify-between">
+                                <span className="inline-flex items-center gap-1.5 font-bold text-emerald-950 dark:text-emerald-200">
+                                  <Banknote className="h-3.5 w-3.5 text-emerald-600" />
+                                  Rincian Pengembalian Dana (Refund Escrow)
+                                </span>
+                                <span
+                                  className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold ${
+                                    ret.status === 'COMPLETED'
+                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                  }`}
+                                >
+                                  {ret.status === 'COMPLETED'
+                                    ? 'DANA TELAH DICAIRKAN'
+                                    : 'DANA ESCROW DITAHAN'}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 gap-2 pt-1 text-[11px] sm:grid-cols-2">
+                                <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/60">
+                                  <span className="text-[10px] text-slate-400">
+                                    Nominal Refund:
+                                  </span>
+                                  <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">
+                                    Rp{' '}
+                                    {(
+                                      ret.refundAmount || selectedOrder.total
+                                    ).toLocaleString('id-ID')}
+                                  </p>
+                                </div>
+                                <div className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/60">
+                                  <span className="text-[10px] text-slate-400">
+                                    Rekening Tujuan:
+                                  </span>
+                                  <p className="font-bold text-slate-800 dark:text-slate-200">
+                                    {ret.bankName || 'Bank Pembeli'} —{' '}
+                                    {ret.bankAccountNumber || '-'}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500">
+                                    a.n.{' '}
+                                    {ret.bankAccountName ||
+                                      selectedOrder.user?.name ||
+                                      '-'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
+
+                  {/* Bonus 3-in-1 Callout - Clean Single Line Pill */}
+                  {(selectedOrder.bonusChargerIncluded ||
+                    selectedOrder.bonusProtectorIncluded ||
+                    selectedOrder.bonusCaseIncluded ||
+                    true) && (
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white px-3 py-2 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                      <Gift className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span>
+                        Bonus 3-in-1 Gratis: Charger, Tempered Glass &amp;
+                        Softcase
+                      </span>
                     </div>
+                  )}
+
+                  {/* Informasi Pembayaran Terpadu — Rincian Produk, Komponen Potongan & Estimasi Penghasilan */}
+                  <AdminOrderPaymentCard order={selectedOrder} />
+
+                  {/* Destination Address & Shipping Details */}
+                  <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                    <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Penerima &amp; Pengiriman
+                    </span>
+
+                    {(() => {
+                      const recipient = parseRecipientInfo(selectedOrder)
+                      const courierDisplay = selectedOrder.courierCode
+                        ? `${selectedOrder.courierCode} ${selectedOrder.courierService || ''}`
+                        : 'Kurir Terproteksi'
+
+                      return (
+                        <div className="space-y-2.5 rounded-xl border border-slate-200/80 bg-white p-3 text-xs dark:border-slate-700 dark:bg-slate-900">
+                          {/* Nama & Telepon */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="font-bold text-slate-900 dark:text-white">
+                                {recipient.recipientName}
+                              </p>
+                              <p className="font-mono text-[11px] text-slate-500">
+                                {recipient.recipientPhone}
+                              </p>
+                            </div>
+                            {recipient.recipientPhone &&
+                              recipient.recipientPhone !== '-' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(
+                                      recipient.recipientPhone
+                                    )
+                                    toast.success('Nomor penerima disalin!')
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>Salin</span>
+                                </button>
+                              )}
+                          </div>
+
+                          {/* Alamat Lengkap */}
+                          <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
+                            <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-300">
+                              {recipient.deliveryAddress}
+                            </p>
+                            <p className="mt-0.5 text-[10.5px] text-slate-400">
+                              {[
+                                selectedOrder.user?.city,
+                                selectedOrder.user?.province,
+                                selectedOrder.user?.postalCode,
+                              ]
+                                .filter(Boolean)
+                                .join(', ')}
+                            </p>
+                          </div>
+
+                          {/* Kurir & AWB */}
+                          <div className="flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+                            <div>
+                              <span className="block text-[10px] uppercase tracking-wider text-slate-400">
+                                Ekspedisi
+                              </span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                {courierDisplay}
+                              </span>
+                            </div>
+                            {selectedOrder.trackingNumber ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                                  {selectedOrder.trackingNumber}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleCopyAWB(selectedOrder.trackingNumber!)
+                                  }
+                                  className="rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                                  title="Salin Resi"
+                                >
+                                  {copiedAWB ? (
+                                    <Check className="h-3 w-3 text-emerald-600" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Cetak Label Thermal"
+                                  onClick={() =>
+                                    handleOpenThermalLabel(selectedOrder)
+                                  }
+                                  className="rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                                >
+                                  <Printer className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-400">
+                                Menunggu Pick Up
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+
+                  {/* Customer Account & Chat */}
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 text-xs dark:border-slate-800 dark:bg-slate-800/30">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-slate-900 dark:text-white">
+                        {selectedOrder.user?.name || 'Customer'}
+                      </p>
+                      <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                        {selectedOrder.user?.email}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isConnectingChat}
+                      onClick={() => handleChatCustomer(selectedOrder)}
+                      className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      {isConnectingChat ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
+                      ) : (
+                        <MessageSquare className="h-3.5 w-3.5 text-slate-500" />
+                      )}
+                      <span>Hubungi via Chat</span>
+                    </button>
                   </div>
                 </div>
-
                 {/* Live Tracking Card (if toggled) */}
                 {showLiveTracker && (
                   <div className="mt-4 space-y-2 rounded-3xl border border-blue-100 bg-blue-50/20 p-3.5 dark:border-blue-950 dark:bg-blue-950/10 sm:p-4">

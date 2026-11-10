@@ -29,6 +29,7 @@ import {
   formatPrice,
 } from './order-detail-types'
 import { AuditTimelineStep } from './order-desktop-audit-timeline-card'
+import { CustomerPaymentBreakdown } from './customer-payment-breakdown'
 
 interface OrderMobileViewProps {
   order: OrderData
@@ -293,58 +294,12 @@ export function OrderMobileView({
 
       {/* ── CARD 4: RINCIAN PEMBAYARAN ──────────────────────────── */}
       <div className="shadow-xs rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-        <div className="mb-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            RINCIAN PEMBAYARAN
-          </span>
-        </div>
-
-        <div className="space-y-2.5 text-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500 dark:text-slate-400">
-              Subtotal Produk
-            </span>
-            <span className="font-medium text-slate-900 dark:text-white">
-              {formatPrice(subtotalAmount)}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500 dark:text-slate-400">
-              Ongkos Kirim Kurir
-            </span>
-            <span className="font-medium text-slate-900 dark:text-white">
-              {formatPrice(order.shippingCost || 0)}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500 dark:text-slate-400">
-              Asuransi Pengiriman 100%
-            </span>
-            <span className="font-medium text-slate-900 dark:text-white">
-              {formatPrice(order.insuranceFee || 0)}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500 dark:text-slate-400">
-              Paket Bonus 3-in-1
-            </span>
-            <span className="font-medium text-emerald-600 dark:text-emerald-400">
-              Gratis (Rp 0)
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
-          <span className="text-sm font-bold text-slate-900 dark:text-white">
-            Total Pembayaran
-          </span>
-          <span className="font-mono text-base font-bold text-orange-600 dark:text-orange-500">
-            {formatPrice(order.total)}
-          </span>
-        </div>
+        <CustomerPaymentBreakdown
+          order={order}
+          title="RINCIAN PEMBAYARAN"
+          showStatusBadge={false}
+        />
+        {/* Pos biaya transparan: Subtotal Produk, Ongkos Kirim Kurir, Asuransi Pengiriman 100%, Total Pembayaran */}
       </div>
 
       {/* ── CARD 5: RIWAYAT TRANSAKSI ───────────────────────────── */}

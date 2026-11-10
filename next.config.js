@@ -101,6 +101,16 @@ const nextConfig = {
         destination: '/rekomendasi/:id',
         permanent: true,
       },
+      {
+        source: '/riwayat',
+        destination: '/dashboard/customer/orders',
+        permanent: true,
+      },
+      {
+        source: '/transaksi',
+        destination: '/dashboard/customer/orders',
+        permanent: true,
+      },
     ]
   },
   async headers() {

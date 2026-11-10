@@ -26,6 +26,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { StoreAdminMobileView } from '@/components/dashboard/store-admin-mobile-view'
+import { AdminOrderDetailModal } from '@/components/admin/orders/admin-order-detail-modal'
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -242,6 +243,9 @@ export default function AdminDashboardPage() {
   const [recentReturnsList, setRecentReturnsList] = useState<any[]>([])
   const [recentCancellationsList, setRecentCancellationsList] = useState<any[]>(
     []
+  )
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(
+    null
   )
   const [mobileReturnTab, setMobileReturnTab] = useState<'RETUR' | 'BATAL'>(
     'RETUR'
@@ -559,6 +563,7 @@ export default function AdminDashboardPage() {
             setMobileReturnTab={setMobileReturnTab}
             getFirstItemName={getFirstItemName}
             timeAgo={timeAgo}
+            onSelectOrder={setSelectedOrderDetail}
           />
 
           {/* TAMPILAN DESKTOP (PRESERVED SM:BLOCK KE ATAS) */}
@@ -1312,12 +1317,14 @@ export default function AdminDashboardPage() {
                             >
                               ● {label}
                             </span>
-                            <Link
-                              href={`/dashboard/admin/orders?search=${encodeURIComponent(order.orderNumber)}`}
-                              className="rounded-lg border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:border-orange-500 hover:text-orange-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-orange-400"
+                            <button
+                              type="button"
+                              data-href={`/dashboard/admin/orders?search=${encodeURIComponent(order.orderNumber)}`}
+                              onClick={() => setSelectedOrderDetail(order)}
+                              className="cursor-pointer rounded-lg border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:border-orange-500 hover:text-orange-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-orange-400"
                             >
                               Rincian
-                            </Link>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1834,6 +1841,15 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
+      )}
+      {/* Modal Rincian Pesanan Langsung di Dashboard */}
+      {selectedOrderDetail && (
+        <AdminOrderDetailModal
+          order={selectedOrderDetail}
+          isOpen={!!selectedOrderDetail}
+          onClose={() => setSelectedOrderDetail(null)}
+          onStatusUpdated={() => fetchDashboardData(true)}
+        />
       )}
     </div>
   )

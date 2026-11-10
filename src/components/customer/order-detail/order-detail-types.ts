@@ -27,6 +27,7 @@ export interface OrderDetailItem {
     brand?: string | null
     slug: string
     images?: string[]
+    sku?: string | null
   }
   rentalItem?: {
     id: string
