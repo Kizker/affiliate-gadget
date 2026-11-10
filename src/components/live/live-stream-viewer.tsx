@@ -142,14 +142,13 @@ export function LiveStreamViewer({
   }
 
   useEffect(() => {
-    if (hasLoadedInitial.current) {
-      hasLoadedInitial.current = false
+    if (initialStream) {
       return
     }
     if (streamId) {
       fetchStreamData()
     }
-  }, [streamId])
+  }, [streamId, initialStream])
 
   // 3. WebSocket Real-time Chat, Mirror & Pin Hook
   const {
@@ -168,19 +167,20 @@ export function LiveStreamViewer({
     userAvatar: session?.user?.image || undefined,
     initialViewerCount: stream?.viewerCount || 0,
     isBroadcaster: false,
+    enabled: stream?.status === 'LIVE',
   })
 
-  // Status siaran berakhir (baik dari event WebSocket real-time maupun status record)
   const isEnded = isStreamEnded || stream?.status === 'ENDED'
   const isLive = stream?.status === 'LIVE' && !isEnded
   const displayViewerCount = Math.max(viewerCount, isLive ? 1 : 0)
 
   // 2. LiveKit Viewer Token (with preloaded initialToken)
+  // Hanya fetch jika siaran masih aktif dan belum berakhir
   const {
     token: livekitToken,
     wsUrl: livekitWsUrl,
     loading: isTokenLoading,
-  } = useLiveKitToken(streamId, 'viewer', undefined, initialToken)
+  } = useLiveKitToken(streamId, 'viewer', undefined, initialToken, isLive)
 
   const { keyboardInset } = useKeyboardInset(isMobile)
 

@@ -51,7 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           canonical: `${baseUrl}/live/${id}`,
         },
         robots: {
-          index: stream.status === 'LIVE',
+          index: true,
           follow: true,
         },
         openGraph: {
@@ -89,7 +89,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       canonical: `${baseUrl}/live/${id}`,
     },
     robots: {
-      index: false,
+      index: true,
       follow: true,
     },
   }

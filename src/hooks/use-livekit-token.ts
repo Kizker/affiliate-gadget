@@ -15,7 +15,8 @@ export function useLiveKitToken(
   streamId: string,
   role: 'broadcaster' | 'viewer' = 'viewer',
   guestName?: string,
-  initialData?: { token: string; wsUrl: string; roomName?: string } | null
+  initialData?: { token: string; wsUrl: string; roomName?: string } | null,
+  enabled: boolean = true
 ) {
   const [data, setData] = useState<LiveKitTokenData | null>(
     initialData?.token
@@ -34,7 +35,7 @@ export function useLiveKitToken(
   const hasUsedInitialData = useRef<boolean>(!!initialData?.token)
 
   const fetchToken = useCallback(async () => {
-    if (!streamId) return
+    if (!streamId || !enabled) return
     setLoading(true)
     setError(null)
 
@@ -61,12 +62,16 @@ export function useLiveKitToken(
   }, [streamId, role, guestName])
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false)
+      return
+    }
     if (hasUsedInitialData.current) {
       hasUsedInitialData.current = false
       return
     }
     fetchToken()
-  }, [fetchToken])
+  }, [fetchToken, enabled])
 
   return {
     token: data?.token ?? '',

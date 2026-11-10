@@ -1972,8 +1972,10 @@ export function LiveStreamBroadcaster() {
 
   useEffect(() => {
     loadStreams()
-    loadProducts()
-  }, [session?.user])
+    if (step === 'setup' || step === 'live') {
+      loadProducts()
+    }
+  }, [session?.user, step])
 
   // Create stream session in DB
   const handleCreateStream = async (e: React.FormEvent) => {
@@ -2099,7 +2101,13 @@ export function LiveStreamBroadcaster() {
     wsUrl: livekitWsUrl,
     loading: isTokenLoading,
     error: tokenError,
-  } = useLiveKitToken(activeStream?.id || '', 'broadcaster')
+  } = useLiveKitToken(
+    activeStream?.id || '',
+    'broadcaster',
+    undefined,
+    undefined,
+    step === 'live' && Boolean(activeStream?.id)
+  )
 
   // Filter products selected for this stream
   const activeProducts = products.filter((p) =>

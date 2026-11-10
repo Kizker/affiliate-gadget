@@ -111,6 +111,11 @@ const nextConfig = {
         destination: '/dashboard/customer/orders',
         permanent: true,
       },
+      {
+        source: '/live',
+        destination: '/',
+        permanent: true,
+      },
     ]
   },
   async headers() {

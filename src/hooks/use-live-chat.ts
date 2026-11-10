@@ -30,6 +30,7 @@ export interface UseLiveChatOptions {
   token?: string
   initialViewerCount?: number
   isBroadcaster?: boolean
+  enabled?: boolean
 }
 
 export function useLiveChat({
@@ -39,6 +40,7 @@ export function useLiveChat({
   token,
   initialViewerCount = 0,
   isBroadcaster = false,
+  enabled = true,
 }: UseLiveChatOptions) {
   const [messages, setMessages] = useState<LiveChatMessage[]>([])
   const [viewerCount, setViewerCount] = useState<number>(initialViewerCount)
@@ -73,7 +75,7 @@ export function useLiveChat({
 
   // 1. Fetch initial chat history from REST API
   useEffect(() => {
-    if (!streamId) return
+    if (!streamId || !enabled) return
 
     let cancelled = false
     async function loadHistory() {
@@ -118,7 +120,7 @@ export function useLiveChat({
     return () => {
       cancelled = true
     }
-  }, [streamId])
+  }, [streamId, enabled])
 
   // 2. Resolve WebSocket Server URL
   const getWsUrl = useCallback(() => {
@@ -262,7 +264,7 @@ export function useLiveChat({
         }
 
         // Exponential backoff reconnect: 1s, 2s, 4s, 8s (max 5 tries)
-        if (reconnectAttemptsRef.current < 5 && !isStreamEnded) {
+        if (reconnectAttemptsRef.current < 5 && !isStreamEnded && enabled) {
           const timeout = Math.min(
             1000 * Math.pow(2, reconnectAttemptsRef.current),
             10000
@@ -273,14 +275,18 @@ export function useLiveChat({
       }
 
       ws.onerror = () => {
-        ws.close()
+        // Abaikan error connection refused ketika WS server tidak aktif di lingkungan tertentu
+        try {
+          ws.close()
+        } catch {}
       }
-    } catch (err) {
-      console.warn('Live chat WebSocket connection failed, will retry:', err)
+    } catch {
+      // Ignore initial connection failure
     }
   }, [streamId, getWsUrl, userName, userAvatar, isBroadcaster, isStreamEnded])
 
   useEffect(() => {
+    if (!enabled) return
     connectWs()
     return () => {
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
