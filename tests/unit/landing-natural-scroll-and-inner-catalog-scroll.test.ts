@@ -10,7 +10,11 @@ describe('Landing Page Natural Scroll & Inner Catalog Scroll Verification', () =
   )
 
   it('1. should remove snap scroll (snap-container) from homepage root (src/app/page.tsx)', () => {
-    const content = fs.readFileSync(homePagePath, 'utf-8')
+    const homePath = path.join(
+      process.cwd(),
+      'src/components/landing/home-client.tsx'
+    )
+    const content = fs.readFileSync(homePath, 'utf-8')
 
     // Verifikasi snap-container telah dihilangkan dari halaman beranda
     expect(content).not.toContain('id="snap-container"')

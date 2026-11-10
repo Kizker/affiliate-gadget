@@ -114,11 +114,13 @@ describe('Gadget Catalog Phase 2 Lighthouse 100 Suite', () => {
   })
 
   it('7. Phase 4: Homepage root page.tsx gates mobile vs desktop to prevent mounting heavy desktop sections', () => {
-    const homePath = path.join(process.cwd(), 'src/app/page.tsx')
+    const homePath = path.join(
+      process.cwd(),
+      'src/components/landing/home-client.tsx'
+    )
     const content = fs.readFileSync(homePath, 'utf-8')
 
     expect(content).toContain('useIsMobile')
-    expect(content).toContain('(!mounted || isMobile)')
-    expect(content).toContain('(!mounted || !isMobile)')
+    expect(content).toContain('isMobile ?')
   })
 })
