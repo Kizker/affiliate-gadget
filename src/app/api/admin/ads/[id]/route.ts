@@ -169,6 +169,19 @@ export async function PATCH(
         updateData.status = 'REJECTED'
         updateData.isActive = false
         updateData.rejectionReason = 'Dibatalkan oleh Admin Toko'
+      } else if (body.action === 'extend') {
+        // Toko memperpanjang masa tayang iklan yang sudah disetujui
+        const extendDays =
+          typeof body.days === 'number' && body.days > 0 ? body.days : 7
+        const currentEnd = existing.endDate
+          ? new Date(existing.endDate)
+          : new Date()
+        const baseDate = currentEnd > new Date() ? currentEnd : new Date()
+        const newEndDate = new Date(
+          baseDate.getTime() + extendDays * 24 * 60 * 60 * 1000
+        )
+        updateData.endDate = newEndDate
+        updateData.isActive = true
       } else {
         // Admin Toko mengubah foto/video atau detail iklan:
         // Setiap perubahan oleh admin toko WAJIB disetujui ulang oleh Superadmin.
@@ -229,6 +242,18 @@ export async function PATCH(
       if (body.placement) updateData.placement = body.placement as AdPlacement
       if (body.startDate) updateData.startDate = new Date(body.startDate)
       if (body.endDate) updateData.endDate = new Date(body.endDate)
+      if (body.action === 'extend') {
+        const extendDays =
+          typeof body.days === 'number' && body.days > 0 ? body.days : 7
+        const currentEnd = existing.endDate
+          ? new Date(existing.endDate)
+          : new Date()
+        const baseDate = currentEnd > new Date() ? currentEnd : new Date()
+        updateData.endDate = new Date(
+          baseDate.getTime() + extendDays * 24 * 60 * 60 * 1000
+        )
+        updateData.isActive = true
+      }
     }
 
     // Exclusivity rule: Level 1 (HOMEPAGE_HERO) is exclusive to 1 active ad at a time

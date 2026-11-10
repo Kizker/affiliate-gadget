@@ -39,6 +39,7 @@ interface AdCardProps {
   onCancel: (ad: InternalAdItem) => void
   onToggleActive: (ad: InternalAdItem) => void
   onDelete: (ad: InternalAdItem) => void
+  onExtend?: (ad: InternalAdItem) => void
 }
 
 export function AdCard({
@@ -55,6 +56,7 @@ export function AdCard({
   onCancel,
   onToggleActive,
   onDelete,
+  onExtend,
 }: AdCardProps) {
   const isPending = ad.status === 'PENDING'
   const isApproved = ad.status === 'APPROVED'
@@ -200,28 +202,32 @@ export function AdCard({
 
           <span
             className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
-              isApproved && ad.isActive
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                : isApproved && !ad.isActive
-                  ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                  : isPending
-                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+              timing.isExpired && isApproved
+                ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                : isApproved && ad.isActive
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                  : isApproved && !ad.isActive
+                    ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                    : isPending
+                      ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                      : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
             }`}
           >
-            {isApproved && ad.isActive
-              ? ad.placement === 'HOMEPAGE_HERO'
-                ? 'Disetujui & Aktif (Eksklusif)'
-                : 'Disetujui & Aktif'
-              : isApproved && !ad.isActive
-                ? 'Non-Aktif'
-                : isPending
-                  ? ad.placement === 'HOMEPAGE_HERO' &&
-                    level1Slot.isOccupied &&
-                    level1Slot.activeAd?.id !== ad.id
-                    ? 'Antrean Slot (Menunggu Expired)'
-                    : 'Menunggu Review'
-                  : 'Ditolak'}
+            {timing.isExpired && isApproved
+              ? 'Masa Tayang Habis'
+              : isApproved && ad.isActive
+                ? ad.placement === 'HOMEPAGE_HERO'
+                  ? 'Disetujui & Aktif (Eksklusif)'
+                  : 'Disetujui & Aktif'
+                : isApproved && !ad.isActive
+                  ? 'Non-Aktif'
+                  : isPending
+                    ? ad.placement === 'HOMEPAGE_HERO' &&
+                      level1Slot.isOccupied &&
+                      level1Slot.activeAd?.id !== ad.id
+                      ? 'Antrean Slot (Menunggu Expired)'
+                      : 'Menunggu Review'
+                    : 'Ditolak'}
           </span>
         </div>
 
@@ -427,6 +433,20 @@ export function AdCard({
             >
               <X className="h-3.5 w-3.5" />
               <span>Batalkan Pengajuan</span>
+            </button>
+          )}
+
+          {/* Extend / Perpanjang Masa Tayang action if expired or near expiration */}
+          {isApproved && (timing.isExpired || timing.isUrgent) && onExtend && (
+            <button
+              type="button"
+              onClick={() => onExtend(ad)}
+              disabled={actionLoading === ad.id}
+              className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-orange-600 px-3 py-1 text-xs font-bold text-white transition hover:bg-orange-700 active:scale-95 disabled:opacity-50"
+              title="Perpanjang masa tayang iklan +7 hari"
+            >
+              <Timer className="h-3.5 w-3.5" />
+              <span>Perpanjang (+7 Hari)</span>
             </button>
           )}
 

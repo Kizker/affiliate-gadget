@@ -548,6 +548,29 @@ export default function AdsManagementPage() {
     }
   }
 
+  // Handle Extend / Perpanjang Masa Tayang (+7 Hari)
+  const handleExtend = async (ad: InternalAdItem) => {
+    try {
+      setActionLoading(ad.id)
+      const res = await fetch(`/api/admin/ads/${ad.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'extend', days: 7 }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Masa tayang iklan berhasil diperpanjang +7 hari!')
+        fetchAds()
+      } else {
+        toast.error(data.message || 'Gagal memperpanjang masa tayang')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan koneksi')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   // Handle Cancel Submission Modal & Execution (Store Admin)
   const handleCancelSubmission = (ad: InternalAdItem) => {
     setCancelModalAd(ad)
@@ -837,6 +860,7 @@ export default function AdsManagementPage() {
         onCancel={handleCancelSubmission}
         onToggleActive={handleToggleActive}
         onDelete={handleDelete}
+        onExtend={handleExtend}
       />
 
       {/* 5. MODAL: AJUKAN IKLAN BARU */}

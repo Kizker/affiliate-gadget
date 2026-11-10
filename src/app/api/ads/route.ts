@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     // Level 1: Eksklusif, hanya 1 iklan yang boleh tayang pada satu waktu
     const effectiveLimit = placement === 'HOMEPAGE_HERO' ? 1 : limit
 
-    const ads = await prisma.internalAd.findMany({
+    let ads = await prisma.internalAd.findMany({
       where: whereClause,
       include: {
         store: {
@@ -60,6 +60,36 @@ export async function GET(req: NextRequest) {
       ],
       take: effectiveLimit,
     })
+
+    // Fallback: Jika penempatan PROMOTED_LIST / grid belum memiliki iklan aktif karena endDate lewat,
+    // ambil iklan berstatus APPROVED yang ada agar etalase grid tidak kosong.
+    if (ads.length === 0 && placement === 'PROMOTED_LIST') {
+      ads = await prisma.internalAd.findMany({
+        where: {
+          placement: 'PROMOTED_LIST',
+          status: 'APPROVED',
+        },
+        include: {
+          store: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              logo: true,
+              city: true,
+              companyName: true,
+              banner: true,
+            },
+          },
+        },
+        orderBy: [
+          { priority: 'desc' },
+          { startDate: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        take: effectiveLimit,
+      })
+    }
 
     // Pre-fetch related product details for product-targeted ads
     const productIds = Array.from(

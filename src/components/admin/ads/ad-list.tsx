@@ -21,6 +21,7 @@ interface AdListProps {
   onCancel: (ad: InternalAdItem) => void
   onToggleActive: (ad: InternalAdItem) => void
   onDelete: (ad: InternalAdItem) => void
+  onExtend?: (ad: InternalAdItem) => void
 }
 
 export function AdList({
@@ -39,6 +40,7 @@ export function AdList({
   onCancel,
   onToggleActive,
   onDelete,
+  onExtend,
 }: AdListProps) {
   if (loading) {
     return (
@@ -97,6 +99,7 @@ export function AdList({
           onCancel={onCancel}
           onToggleActive={onToggleActive}
           onDelete={onDelete}
+          onExtend={onExtend}
         />
       ))}
     </div>
