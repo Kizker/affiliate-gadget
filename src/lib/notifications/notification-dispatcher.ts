@@ -38,7 +38,7 @@ import {
   SecurityAlertPayload,
 } from './types'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 function getPurposeLabel(purpose: OtpPurpose | string): string {
   switch (purpose) {
@@ -84,7 +84,7 @@ export async function dispatchOtp(params: {
 
     // Log OTP ke terminal lokal di environment development untuk testing praktis akun dummy
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`
+      console.warn(`
 ==================== [DEV OTP CODE] ====================
 🎯 Tujuan   : ${params.identifier} (${params.channel})
 📋 Keperluan: ${purposeLabel}

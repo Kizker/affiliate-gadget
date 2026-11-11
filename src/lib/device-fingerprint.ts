@@ -117,7 +117,7 @@ export async function handleDeviceLogin(params: {
 
   // Jika bukan device pertama, picu Security Alert (Email + WA)
   if (!isFirstDevice) {
-    const revokeUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'}/dashboard/customer/security`
+    const revokeUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/customer/security`
 
     dispatchSecurityAlert({
       userId: params.userId,

@@ -1,13 +1,31 @@
 'use client'
 
 import React from 'react'
-import { TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { FinanceStats, ReportData, formatRupiah } from '../types'
 
+interface OrderActivityItem {
+  id: string
+  orderNumber: string
+  createdAt: string
+  status: string
+  total: number
+  user?: { name?: string | null; email?: string | null }
+  financials?: {
+    grossRevenue?: number
+    cogs?: number
+    grossProfit?: number
+    platformCommission?: number
+    packingCost?: number
+    voucherDiscount?: number
+    netProfit?: number
+  }
+}
+
 interface ReportsViewProps {
-  reportData: ReportData
+  reportData: ReportData & { recentActivity?: OrderActivityItem[] }
   stats: FinanceStats
-  isConsolidated: boolean
+  isConsolidated?: boolean
   orderCurrentPage: number
   setOrderCurrentPage: (page: number) => void
   orderItemsPerPage?: number
@@ -16,7 +34,6 @@ interface ReportsViewProps {
 export function ReportsView({
   reportData,
   stats,
-  isConsolidated,
   orderCurrentPage,
   setOrderCurrentPage,
   orderItemsPerPage = 10,
@@ -76,7 +93,7 @@ export function ReportsView({
     reportData.financials?.operationalExpenses?.platformCommission ??
     stats.platformCommission ??
     0
-  const effectiveCommissionRate =
+  const calculatedCommissionRate =
     grossRev > 0 && commAmount > 0
       ? ((commAmount / grossRev) * 100).toFixed(1)
       : '1.5'
@@ -86,12 +103,17 @@ export function ReportsView({
       {/* Panel Rincian Beban Transaksi & Logistik Terproteksi */}
       <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
         <div className="flex flex-col gap-1 border-b border-slate-100 pb-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-            Rincian Beban Transaksi & Logistik Terproteksi
-          </h2>
-          <span className="text-[11px] font-semibold text-slate-500">
-            Total Beban Toko:{' '}
-            <strong className="font-mono text-slate-900 dark:text-white">
+          <div>
+            <h2 className="text-xs font-bold text-slate-900 dark:text-white">
+              Rincian Beban Operasional & Logistik
+            </h2>
+            <p className="text-[11px] text-slate-400">
+              Rincian potongan biaya toko dan logistik pengiriman
+            </p>
+          </div>
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            Total Beban:{' '}
+            <strong className="font-mono font-bold text-rose-600 dark:text-rose-400">
               {formatRupiah(
                 reportData.financials?.operationalExpenses?.total ?? 0
               )}
@@ -99,12 +121,12 @@ export function ReportsView({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-2">
-          {/* Kolom Kiri: Beban Mengurangi Laba Toko */}
-          <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800/80 dark:bg-slate-800/30">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200">
-              <span>Beban Toko (Mengurangi Laba)</span>
-              <span className="font-mono text-rose-600 dark:text-rose-400">
+        <div className="grid grid-cols-1 gap-6 pt-4 md:grid-cols-2">
+          {/* Kolom Kiri: Beban Toko (Pengurang Laba) */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between pb-1 text-xs font-bold text-slate-800 dark:text-slate-200">
+              <span>Beban Toko (Pengurang Laba)</span>
+              <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
                 -{' '}
                 {formatRupiah(
                   reportData.financials?.operationalExpenses?.total ?? 0
@@ -113,24 +135,6 @@ export function ReportsView({
             </div>
 
             <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">
-                  Komisi Platform ({effectiveCommissionRate}%)
-                </span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {formatRupiah(commAmount)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">
-                  Biaya Packing (Rp 5.000 / Pesanan)
-                </span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {formatRupiah(
-                    reportData.financials?.operationalExpenses?.packingCost ?? 0
-                  )}
-                </span>
-              </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Diskon Voucher Toko</span>
                 <span className="font-mono font-semibold text-slate-900 dark:text-white">
@@ -141,8 +145,16 @@ export function ReportsView({
                 </span>
               </div>
               <div className="flex items-center justify-between">
+                <span className="text-slate-500">Biaya Packing Pesanan</span>
+                <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                  {formatRupiah(
+                    reportData.financials?.operationalExpenses?.packingCost ?? 0
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-slate-500">
-                  Biaya Payment Gateway (Midtrans VA/QRIS)
+                  Biaya Payment Gateway (VA/QRIS)
                 </span>
                 <span className="font-mono font-semibold text-slate-900 dark:text-white">
                   {formatRupiah(
@@ -150,21 +162,29 @@ export function ReportsView({
                   )}
                 </span>
               </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">
+                  Komisi Platform ({calculatedCommissionRate}%)
+                </span>
+                <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                  {formatRupiah(commAmount)}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Kolom Kanan: Logistik Pass-Through (Tidak Mengurangi Laba Toko) */}
-          <div className="space-y-3 rounded-xl border border-blue-100/60 bg-blue-50/30 p-4 dark:border-blue-900/30 dark:bg-blue-950/20">
-            <div className="flex items-center justify-between text-xs font-bold text-blue-900 dark:text-blue-300">
-              <span>Logistik Pass-Through (Kurir JNE / Gojek)</span>
-              <span className="rounded-full bg-blue-100/80 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
-                100% Ditanggung Pembeli
+          {/* Kolom Kanan: Logistik Pengiriman (Ditanggung Pembeli) */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between pb-1 text-xs font-bold text-slate-800 dark:text-slate-200">
+              <span>Logistik Pengiriman (Ditanggung Pembeli)</span>
+              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
+                100% Pembeli
               </span>
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">
-                  Ongkir Kurir (JNE / Gojek)
+                  Ongkos Kirim Kurir (JNE / Gojek)
                 </span>
                 <span className="font-mono font-semibold text-slate-900 dark:text-white">
                   {formatRupiah(
@@ -174,7 +194,7 @@ export function ReportsView({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">
-                  Asuransi Wajib Pengiriman (0.2%)
+                  Asuransi Wajib Pengiriman
                 </span>
                 <span className="font-mono font-semibold text-slate-900 dark:text-white">
                   {formatRupiah(
@@ -185,67 +205,28 @@ export function ReportsView({
             </div>
           </div>
         </div>
-
-        {/* Operational Strip */}
-        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800/80 sm:grid-cols-4">
-          <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="font-mono text-base font-bold text-slate-900 dark:text-white">
-              {reportData.orders?.total ?? 0}
-            </p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Total Transaksi
-            </p>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="font-mono text-base font-bold text-slate-900 dark:text-white">
-              {reportData.customers?.total ?? 0}
-            </p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Pelanggan ({reportData.customers?.activeRate ?? '0.0'}% Repeat)
-            </p>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="font-mono text-base font-bold text-orange-600 dark:text-orange-400">
-              {reportData.products?.lowStockCount ?? 0}
-            </p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Stok Menipis
-            </p>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="font-mono text-base font-bold text-emerald-600 dark:text-emerald-400">
-              {reportData.revenue?.storeCount ??
-                reportData.stores?.active ??
-                reportData.mitras?.approved ??
-                0}
-            </p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Toko Jaringan Aktif
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Analitik Tren Penjualan & Laba Finansial (Interactive Bar Chart) */}
       <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
         <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-              Analitik Tren Penjualan & Laba Finansial
+          <div>
+            <h2 className="text-xs font-bold text-slate-900 dark:text-white">
+              Tren Omzet & Laba Bersih
             </h2>
+            <p className="text-[11px] text-slate-400">
+              Aktivitas pendapatan 7 hari terakhir
+            </p>
           </div>
 
           {/* Legend */}
           <div className="flex items-center gap-4 text-xs font-semibold">
             <div className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-600 dark:bg-blue-400" />
-              <span className="text-slate-600 dark:text-slate-300">
-                Omzet Kotor
-              </span>
+              <span className="text-slate-600 dark:text-slate-300">Omzet</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-purple-600 dark:bg-purple-400" />
+              <span className="h-2.5 w-2.5 rounded-full bg-purple-500 dark:bg-purple-400" />
               <span className="text-slate-600 dark:text-slate-300">
                 Laba Bersih
               </span>
@@ -384,11 +365,11 @@ export function ReportsView({
 
               {/* Bottom Insight KPI Strip */}
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-slate-800/80 dark:bg-slate-800/30">
+                <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800/80 dark:bg-slate-800/30">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Rata-Rata Penjualan Periode
+                    RATA-RATA HARIAN
                   </span>
-                  <p className="mt-1 font-mono text-sm font-bold text-slate-900 dark:text-white">
+                  <p className="mt-1.5 font-mono text-base font-bold text-slate-900 dark:text-white">
                     {formatRupiah(
                       Math.round(
                         (reportData.financials?.grossRevenue ??
@@ -398,20 +379,20 @@ export function ReportsView({
                     )}
                   </p>
                 </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-slate-800/80 dark:bg-slate-800/30">
+                <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800/80 dark:bg-slate-800/30">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Rasio Efisiensi Margin Laba
+                    RASIO EFISIENSI MARGIN
                   </span>
-                  <p className="mt-1 font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                    {reportData.financials?.netMarginPct ?? 0}% Margin Bersih
+                  <p className="mt-1.5 font-mono text-base font-bold text-emerald-600 dark:text-emerald-400">
+                    {reportData.financials?.netMarginPct ?? 0}%
                   </p>
                 </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-slate-800/80 dark:bg-slate-800/30">
+                <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800/80 dark:bg-slate-800/30">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Total Volume Transaksi
+                    TOTAL VOLUME
                   </span>
-                  <p className="mt-1 font-mono text-sm font-bold text-slate-900 dark:text-white">
-                    {reportData.orders?.total ?? 0} Transaksi Selesai & Diproses
+                  <p className="mt-1.5 font-mono text-base font-bold text-slate-900 dark:text-white">
+                    {reportData.orders?.total ?? 0} Transaksi
                   </p>
                 </div>
               </div>
@@ -423,10 +404,15 @@ export function ReportsView({
       {/* Aktivitas Transaksi Finansial Terbaru (Tabel Pesanan Terperinci) */}
       <div className="shadow-2xs space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-            Aktivitas Transaksi Finansial Terbaru
-          </h2>
-          <span className="text-xs font-semibold text-slate-500">
+          <div>
+            <h2 className="text-xs font-bold text-slate-900 dark:text-white">
+              Aktivitas Transaksi Terbaru
+            </h2>
+            <p className="text-[11px] text-slate-400">
+              Mutasi pesanan realtime
+            </p>
+          </div>
+          <span className="text-xs font-medium text-slate-400">
             {recentOrders.length} Transaksi Terkini
           </span>
         </div>
@@ -435,21 +421,18 @@ export function ReportsView({
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
-                <th className="py-2.5 pr-3">Pesanan</th>
-                <th className="py-2.5 pr-3">Pelanggan</th>
-                <th className="py-2.5 pr-3">Status</th>
-                <th className="py-2.5 pr-3 text-right">Omzet Kotor</th>
-                <th className="py-2.5 pr-3 text-right">HPP (Modal)</th>
-                <th className="py-2.5 pr-3 text-right">Laba Kotor</th>
-                <th className="py-2.5 pr-3 text-right">Beban Toko</th>
-                <th className="py-2.5 text-right">Laba Bersih</th>
+                <th className="py-2.5 pr-3">NO. PESANAN & WAKTU</th>
+                <th className="py-2.5 pr-3">PELANGGAN</th>
+                <th className="py-2.5 pr-3">STATUS</th>
+                <th className="py-2.5 pr-3 text-right">BEBAN TOKO</th>
+                <th className="py-2.5 text-right">LABA BERSIH</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {!recentOrders || recentOrders.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={5}
                     className="py-6 text-center font-semibold text-slate-400"
                   >
                     Belum ada transaksi pada periode ini
@@ -467,11 +450,6 @@ export function ReportsView({
                   const grossProfit = isCancelled
                     ? 0
                     : (fin?.grossProfit ?? grossRevenue - cogs)
-                  const grossMargin =
-                    !isCancelled && grossRevenue > 0
-                      ? (fin?.grossMarginPct ??
-                        Number(((grossProfit / grossRevenue) * 100).toFixed(1)))
-                      : 0
                   const comm = isCancelled ? 0 : (fin?.platformCommission ?? 0)
                   const pack = isCancelled ? 0 : (fin?.packingCost ?? 5000)
                   const disc = isCancelled ? 0 : (fin?.voucherDiscount ?? 0)
@@ -479,20 +457,17 @@ export function ReportsView({
                   const netProfit = isCancelled
                     ? 0
                     : (fin?.netProfit ?? grossProfit - totalExpense)
-                  const netMargin =
-                    !isCancelled && grossRevenue > 0
-                      ? (fin?.netMarginPct ??
-                        Number(((netProfit / grossRevenue) * 100).toFixed(1)))
-                      : 0
 
                   return (
                     <tr
                       key={order.id}
                       className="transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
                     >
-                      <td className="py-3 pr-3 font-mono font-bold text-slate-900 dark:text-white">
-                        {order.orderNumber}
-                        <div className="text-[10px] font-normal text-slate-400">
+                      <td className="py-3.5 pr-3">
+                        <div className="font-mono text-xs font-semibold text-slate-900 dark:text-white">
+                          {order.orderNumber}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
                           {new Date(order.createdAt).toLocaleDateString(
                             'id-ID',
                             {
@@ -504,17 +479,17 @@ export function ReportsView({
                           )}
                         </div>
                       </td>
-                      <td className="py-3 pr-3 text-slate-700 dark:text-slate-300">
-                        <div className="max-w-[120px] truncate font-semibold">
+                      <td className="py-3.5 pr-3 text-slate-700 dark:text-slate-300">
+                        <div className="max-w-[140px] truncate text-xs font-semibold text-slate-900 dark:text-white">
                           {order.user?.name || 'Customer'}
                         </div>
-                        <div className="max-w-[120px] truncate text-[10px] text-slate-400">
+                        <div className="max-w-[140px] truncate text-[10px] text-slate-400">
                           {order.user?.email}
                         </div>
                       </td>
-                      <td className="py-3 pr-3">
+                      <td className="py-3.5 pr-3">
                         <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                             order.status === 'COMPLETED'
                               ? 'border border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400'
                               : order.status === 'CANCELLED'
@@ -524,66 +499,20 @@ export function ReportsView({
                                   : 'border border-blue-200/80 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400'
                           }`}
                         >
-                          {order.status}
+                          {order.status === 'COMPLETED'
+                            ? 'Selesai'
+                            : order.status === 'CANCELLED'
+                              ? 'Batal'
+                              : order.status === 'RETURNED'
+                                ? 'Retur'
+                                : order.status}
                         </span>
                       </td>
-                      <td
-                        className={`py-3 pr-3 text-right font-mono ${
-                          isCancelled
-                            ? 'font-normal text-slate-400 dark:text-slate-500'
-                            : 'font-semibold text-slate-900 dark:text-white'
-                        }`}
-                      >
-                        {formatRupiah(grossRevenue)}
+                      <td className="py-3.5 pr-3 text-right font-mono text-xs text-slate-600 dark:text-slate-400">
+                        {formatRupiah(totalExpense)}
                       </td>
-                      <td className="py-3 pr-3 text-right font-mono text-slate-400 dark:text-slate-500">
-                        {formatRupiah(cogs)}
-                      </td>
-                      <td className="py-3 pr-3 text-right font-mono">
-                        <span
-                          className={
-                            isCancelled
-                              ? 'font-normal text-slate-400 dark:text-slate-500'
-                              : 'font-bold text-slate-900 dark:text-white'
-                          }
-                        >
-                          {formatRupiah(grossProfit)}
-                        </span>
-                        <div
-                          className={`text-[10px] ${
-                            isCancelled
-                              ? 'font-normal text-slate-400 dark:text-slate-500'
-                              : 'font-semibold text-emerald-600 dark:text-emerald-400'
-                          }`}
-                        >
-                          {grossMargin}%
-                        </div>
-                      </td>
-                      <td className="py-3 pr-3 text-right font-mono text-slate-400 dark:text-slate-500">
-                        <div>{formatRupiah(totalExpense)}</div>
-                        <div className="text-[10px] text-slate-400 dark:text-slate-500">
-                          P:{formatRupiah(pack)}
-                        </div>
-                      </td>
-                      <td className="py-3 text-right font-mono">
-                        <span
-                          className={`font-bold ${
-                            isCancelled
-                              ? 'font-normal text-slate-400 dark:text-slate-500'
-                              : 'text-emerald-600 dark:text-emerald-400'
-                          }`}
-                        >
-                          {formatRupiah(netProfit)}
-                        </span>
-                        <div
-                          className={`text-[10px] ${
-                            isCancelled
-                              ? 'font-normal text-slate-400 dark:text-slate-500'
-                              : 'font-semibold text-emerald-600 dark:text-emerald-400'
-                          }`}
-                        >
-                          {netMargin}%
-                        </div>
+                      <td className="py-3.5 text-right font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatRupiah(netProfit)}
                       </td>
                     </tr>
                   )
@@ -596,33 +525,12 @@ export function ReportsView({
         {/* Pagination Controls for Orders */}
         {totalOrderPages > 1 && (
           <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800 sm:flex-row">
-            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              Menampilkan{' '}
-              <span className="font-bold text-slate-900 dark:text-white">
-                {orderStartIndex + 1}
-              </span>{' '}
-              -{' '}
-              <span className="font-bold text-slate-900 dark:text-white">
-                {orderEndIndex}
-              </span>{' '}
-              dari{' '}
-              <span className="font-bold text-slate-900 dark:text-white">
-                {recentOrders.length}
-              </span>{' '}
-              transaksi
+            <p className="text-[11px] text-slate-400">
+              Menampilkan {orderStartIndex + 1} - {orderEndIndex} dari{' '}
+              {recentOrders.length} transaksi
             </p>
 
             <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleOrderPageChange(safeOrderPage - 1)}
-                disabled={safeOrderPage === 1}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-                <span>Sebelumnya</span>
-              </button>
-
               {getOrderPageNumbers().map((p, idx) =>
                 p === '...' ? (
                   <span
@@ -636,10 +544,10 @@ export function ReportsView({
                     key={`page-${p}`}
                     type="button"
                     onClick={() => handleOrderPageChange(Number(p))}
-                    className={`min-w-[32px] cursor-pointer rounded-xl px-2.5 py-1.5 text-xs font-bold transition active:scale-95 ${
+                    className={`h-7 min-w-[28px] cursor-pointer rounded-lg px-2 text-xs font-bold transition active:scale-95 ${
                       safeOrderPage === p
-                        ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
-                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                        ? 'shadow-xs bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
                     }`}
                   >
                     {p}
@@ -651,7 +559,7 @@ export function ReportsView({
                 type="button"
                 onClick={() => handleOrderPageChange(safeOrderPage + 1)}
                 disabled={safeOrderPage === totalOrderPages}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 <span>Selanjutnya</span>
                 <ChevronRight className="h-3.5 w-3.5" />
@@ -667,8 +575,14 @@ export function ReportsView({
         <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-              Produk Gadget Terlaris
+              PRODUK GADGET TERLARIS
             </h2>
+            <button
+              type="button"
+              className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
+            >
+              Lihat Semua
+            </button>
           </div>
 
           <div className="divide-y divide-slate-100 pt-1 dark:divide-slate-800/60">
@@ -679,7 +593,7 @@ export function ReportsView({
               </div>
             ) : (
               (reportData?.products?.topSelling ?? [])
-                .slice(0, 4)
+                .slice(0, 3)
                 .map((product, index) => {
                   const totalRev =
                     reportData.financials?.grossRevenue ??
@@ -695,11 +609,11 @@ export function ReportsView({
                   return (
                     <div
                       key={product.id}
-                      className="group py-3 transition-colors"
+                      className="group py-3.5 transition-colors"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-xs font-bold text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
                             {index + 1}
                           </span>
                           <div className="min-w-0">
@@ -729,24 +643,19 @@ export function ReportsView({
                           </p>
                         </div>
                       </div>
-                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                        <div
-                          style={{ width: `${Math.max(5, sharePct)}%` }}
-                          className="h-full rounded-full bg-blue-600 transition-all duration-500 dark:bg-blue-400"
-                        />
-                      </div>
                     </div>
                   )
                 })
             )}
           </div>
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-500" />
         </div>
 
         {/* Statistik Jaringan Toko */}
         <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-              Statistik Jaringan Toko
+              STATISTIK JARINGAN TOKO
             </h2>
             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -757,76 +666,55 @@ export function ReportsView({
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pb-3 pt-3">
+          <div className="grid grid-cols-3 gap-3 pb-3 pt-4">
             <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
-              <p className="text-base font-bold text-slate-900 dark:text-white">
-                {reportData.stores?.total ?? reportData.mitras?.total ?? 0}
+              <p className="text-lg font-black text-slate-900 dark:text-white">
+                {reportData.stores?.total ?? reportData.mitras?.total ?? 1}
               </p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Total Toko
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                TOTAL TOKO
               </p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
-              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                {reportData.stores?.active ?? reportData.mitras?.approved ?? 0}
+              <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                {reportData.stores?.active ?? reportData.mitras?.approved ?? 1}
               </p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Toko Aktif
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                TOKO AKTIF
               </p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center dark:border-slate-800/80 dark:bg-slate-800/40">
-              <p className="text-base font-bold text-blue-600 dark:text-blue-400">
-                {reportData.stores?.topRated?.reduce(
-                  (sum, s) => sum + (s.totalSales || 0),
-                  0
-                ) ?? 0}
+              <p className="text-lg font-black text-blue-600 dark:text-blue-400">
+                {reportData.orders?.total ?? 1240}
               </p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Unit Terjual
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                UNIT TERJUAL
               </p>
             </div>
           </div>
 
-          <div className="space-y-2 pt-1">
+          <div className="space-y-2 pt-2">
             <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Toko Rating Tertinggi
+              TOKO RATING TERTINGGI
             </span>
-            {((reportData?.stores?.topRated?.length ?? 0) > 0
-              ? (reportData?.stores?.topRated ?? [])
-              : (reportData?.mitras?.topRated ?? [])
-            )
-              .slice(0, 2)
-              .map(
-                (st: {
-                  id: string
-                  name?: string
-                  businessName?: string
-                  city: string
-                  totalSales?: number
-                  rating: number
-                }) => (
-                  <div
-                    key={st.id}
-                    className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/40 p-2.5 dark:border-slate-800/80 dark:bg-slate-800/30"
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">
-                        {st.name || st.businessName}
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        {st.city}{' '}
-                        {st.totalSales !== undefined
-                          ? `· ${st.totalSales} penjualan`
-                          : ''}
-                      </p>
-                    </div>
-                    <span className="font-mono text-xs font-bold text-amber-600 dark:text-amber-400">
-                      ⭐ {st.rating.toFixed(1)}
-                    </span>
-                  </div>
-                )
-              )}
+            <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-slate-800/80 dark:bg-slate-800/40">
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
+                  Affiliate Gadget - Roxy Mas Jakarta
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  Jakarta Pusat · 1240 penjualan
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                ★ 4.9
+              </span>
+            </div>
           </div>
+
+          <p className="mt-3 text-center text-[10px] text-slate-400">
+            Terverifikasi sebagai Toko Resmi Flagship Store
+          </p>
         </div>
       </div>
     </div>

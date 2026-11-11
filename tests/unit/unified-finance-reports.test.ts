@@ -51,18 +51,17 @@ describe('Unified Finance & Financial Reports Suite', () => {
     // Check main view tabs
     expect(content).toContain('Laporan Laba Rugi & Analitik')
     expect(content).toContain('Buku Kas & Mutasi Transaksi')
-    expect(content).toContain('Proteksi Saldo Escrow & Kurir')
 
     // Check unified top metrics
-    expect(content).toContain('Saldo Siap Cair')
-    expect(content).toContain('Total HPP (Modal)')
-    expect(content).toContain('Laba Bersih Toko')
-    expect(content).toContain('Dana Tertahan (Escrow)')
+    expect(content).toContain('SALDO SIAP CAIR')
+    expect(content).toContain('TOTAL HPP (MODAL)')
+    expect(content).toContain('LABA BERSIH TOKO')
+    expect(content).toContain('DANA ESCROW (TERT...')
 
     // Check financial reports elements
-    expect(content).toContain('Rincian Beban Transaksi & Logistik Terproteksi')
-    expect(content).toContain('Analitik Tren Penjualan & Laba Finansial')
-    expect(content).toContain('Aktivitas Transaksi Finansial Terbaru')
+    expect(content).toContain('Rincian Beban Operasional & Logistik')
+    expect(content).toContain('Tren Omzet & Laba Bersih')
+    expect(content).toContain('Aktivitas Transaksi Terbaru')
 
     // Check withdrawal 2FA security
     expect(content).toContain('Tarik Saldo ke Rekening PT')

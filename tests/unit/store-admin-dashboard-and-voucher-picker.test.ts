@@ -67,6 +67,13 @@ describe('Store Admin Dashboard, Recipient Details, Thermal Label, & Voucher Pic
     'admin',
     'page.tsx'
   )
+  const desktopSimplePath = path.join(
+    rootDir,
+    'src',
+    'components',
+    'dashboard',
+    'store-admin-desktop-simple-view.tsx'
+  )
 
   const thermalContent = fs.readFileSync(thermalLabelPath, 'utf-8')
   const adminOrdersContent = fs.readFileSync(adminOrdersPagePath, 'utf-8')
@@ -76,6 +83,9 @@ describe('Store Admin Dashboard, Recipient Details, Thermal Label, & Voucher Pic
   const voucherPickerContent = fs.readFileSync(voucherPickerModalPath, 'utf-8')
   const vouchersApiContent = fs.readFileSync(vouchersApiPath, 'utf-8')
   const adminDashboardContent = fs.readFileSync(adminDashboardPagePath, 'utf-8')
+  const desktopSimpleContent = fs.existsSync(desktopSimplePath)
+    ? fs.readFileSync(desktopSimplePath, 'utf-8')
+    : ''
 
   describe('1. Thermal Label / Air Waybill Insurance Text', () => {
     it('verifies "(Ganti Unit Baru)" is eliminated and replaced with "100% Terlindungi Asuransi"', () => {
@@ -114,21 +124,21 @@ describe('Store Admin Dashboard, Recipient Details, Thermal Label, & Voucher Pic
   })
 
   describe('3. Store Admin Dashboard (Pesanan Penting & Performa Produk)', () => {
-    it('verifies Store Admin KPI cards contain Orders, Shipments, and Catalog Inventory (no returns)', () => {
+    it('verifies Store Admin KPI cards and desktop simple view exist', () => {
       expect(adminDashboardContent).not.toContain('id="stok-inventori-opsi"')
-      expect(adminDashboardContent).toContain('Katalog &amp; Inventori')
-      expect(adminDashboardContent).toContain('Status Pesanan di Dashboard')
+      expect(adminDashboardContent).toContain('StoreAdminDesktopSimpleView')
     })
 
     it('verifies Orders are prioritized as primary section for store admin', () => {
-      expect(adminDashboardContent).toContain('Pesanan Masuk Cabang Toko')
-      expect(adminDashboardContent).toContain('Prioritas Operasional')
+      expect(adminDashboardContent + desktopSimpleContent).toContain(
+        'PESANAN MASUK'
+      )
     })
 
-    it('verifies Performa & Stok Produk replaces return tracking on store admin dashboard', () => {
-      expect(adminDashboardContent).toContain('Performa &amp; Stok Produk')
-      expect(adminDashboardContent).toContain('Produk Terlaris')
-      expect(adminDashboardContent).toContain('Stok Perlu Restock')
+    it('verifies Performa & Stok Produk or Returns section exists on store admin dashboard', () => {
+      expect(adminDashboardContent + desktopSimpleContent).toContain(
+        'PENGEMBALIAN &amp; RETUR'
+      )
     })
   })
 

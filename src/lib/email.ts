@@ -9,7 +9,7 @@ import {
   orderComplainedEmailTemplate,
 } from '@/lib/notifications/templates/email-templates'
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 const fromEmail =
   process.env.RESEND_FROM_EMAIL ||
   'Affiliate Gadget <noreply@affiliategadget.id>'
@@ -152,10 +152,10 @@ export async function sendVerificationEmail({
         })
         .catch(() => {})
     } else if (process.env.NODE_ENV !== 'production' && !sendResult.success) {
-      console.info('\n======================================================')
-      console.info(`📧 [DEV EMAIL SIMULATION] To: ${to} (${name})`)
-      console.info(`🔗 Verification Link (Valid 24h): ${verificationUrl}`)
-      console.info('======================================================\n')
+      console.warn('\n======================================================')
+      console.warn(`📧 [DEV EMAIL SIMULATION] To: ${to} (${name})`)
+      console.warn(`🔗 Verification Link (Valid 24h): ${verificationUrl}`)
+      console.warn('======================================================\n')
     }
 
     return { success: sendResult.success, error: sendResult.errorMessage }
@@ -163,14 +163,6 @@ export async function sendVerificationEmail({
     console.error('[Email Error]:', err)
     return { success: false, error: (err as Error).message }
   }
-}
-
-function formatRupiah(amount: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(amount || 0)
 }
 
 /**

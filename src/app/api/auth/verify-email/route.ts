@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import prisma from '@/lib/db'
 
 export async function GET(req: NextRequest) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const token = req.nextUrl.searchParams.get('token')
 
   if (!token || typeof token !== 'string' || token.trim().length === 0) {

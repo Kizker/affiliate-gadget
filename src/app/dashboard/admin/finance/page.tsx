@@ -23,12 +23,11 @@ import {
   MutationsView,
   EscrowView,
   WithdrawalModal,
+  FinanceMobileView,
 } from '@/components/admin/finance'
 
 export default function UnifiedFinanceAndReportsPage() {
-  const { isLoading: guardLoading, isAllowed } = usePageGuard(
-    '/dashboard/admin/finance'
-  )
+  usePageGuard('/dashboard/admin/finance')
   const { data: session } = useSession()
 
   // Main unified tab navigation
@@ -332,7 +331,7 @@ export default function UnifiedFinanceAndReportsPage() {
         }),
       })
 
-      let data: any = {}
+      let data: { code?: string; error?: string } = {}
       try {
         data = await res.json()
       } catch {
@@ -353,9 +352,13 @@ export default function UnifiedFinanceAndReportsPage() {
       setWithdrawStep('STEP_2_OTP')
       setOtpExpirySeconds(300)
       setOtpCooldownSeconds(60)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error sending withdraw OTP:', err)
-      toast.error(err.message || 'Gagal mengirim kode verifikasi OTP')
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Gagal mengirim kode verifikasi OTP'
+      toast.error(msg)
     } finally {
       setIsSendingOtp(false)
     }
@@ -398,9 +401,11 @@ export default function UnifiedFinanceAndReportsPage() {
       toast.success('Kode OTP baru telah dikirimkan ke WhatsApp resmi PT')
       setOtpExpirySeconds(300)
       setOtpCooldownSeconds(60)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error resending OTP:', err)
-      toast.error(err.message || 'Gagal mengirim ulang kode OTP')
+      const msg =
+        err instanceof Error ? err.message : 'Gagal mengirim ulang kode OTP'
+      toast.error(msg)
     } finally {
       setIsSendingOtp(false)
     }
@@ -467,9 +472,11 @@ export default function UnifiedFinanceAndReportsPage() {
 
       // Refresh saldo langsung
       await fetchUnifiedData(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error withdrawing:', err)
-      toast.error(err.message || 'Gagal memproses penarikan dana')
+      const msg =
+        err instanceof Error ? err.message : 'Gagal memproses penarikan dana'
+      toast.error(msg)
     } finally {
       setIsSubmittingWithdraw(false)
     }
@@ -519,9 +526,13 @@ export default function UnifiedFinanceAndReportsPage() {
       document.body.removeChild(a)
 
       toast.success('Laporan Keuangan berhasil diunduh!')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error exporting financial report:', err)
-      toast.error(err.message || 'Gagal mengekspor laporan keuangan toko')
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Gagal mengekspor laporan keuangan toko'
+      toast.error(msg)
     } finally {
       setIsExportingExcel(false)
     }
@@ -562,9 +573,11 @@ export default function UnifiedFinanceAndReportsPage() {
       document.body.removeChild(a)
 
       toast.success('Rekap Pesanan berhasil diunduh!')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error exporting orders report:', err)
-      toast.error(err.message || 'Gagal mengekspor rekap pesanan')
+      const msg =
+        err instanceof Error ? err.message : 'Gagal mengekspor rekap pesanan'
+      toast.error(msg)
     } finally {
       setIsExportingOrders(false)
     }
@@ -644,84 +657,101 @@ export default function UnifiedFinanceAndReportsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 pb-16">
-      {/* 1. TOP HEADER & UNIFIED CONTROL BAR */}
-      <FinanceHeader
-        store={store}
-        mainView={mainView}
-        setMainView={setMainView}
+      {/* View Khusus Mobile (Sederhana & Bersih Sesuai Screenshot) */}
+      <FinanceMobileView
+        stats={stats}
+        reportData={reportData}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
         onOpenWithdrawModal={() => {
           setWithdrawStep('STEP_1_INPUT')
           setIsWithdrawModalOpen(true)
         }}
         onExportFinancialExcel={handleExportFinancialExcel}
-        onExportOrdersExcel={handleExportOrdersExcel}
         isExportingExcel={isExportingExcel}
-        isExportingOrders={isExportingOrders}
-        allStores={allStores}
-        selectedStoreId={selectedStoreId}
-        setSelectedStoreId={setSelectedStoreId}
-        dateRange={dateRange}
-        setDateRange={setDateRange}
-        lastUpdated={lastUpdated}
-        isRefreshing={isRefreshing}
-        onRefresh={() => fetchUnifiedData(false)}
-        transactionsCount={transactions.length}
-        totalEscrowOrders={stats.courierBreakdown.totalEscrowOrders}
       />
 
-      {/* 2. TOP 5 UNIFIED FINANCIAL BENTO METRIC CARDS */}
-      <FinanceKpiCards
-        stats={stats}
-        reportData={reportData}
-        isConsolidated={isConsolidated}
-        onOpenWithdrawModal={() => {
-          setWithdrawStep('STEP_1_INPUT')
-          setIsWithdrawModalOpen(true)
-        }}
-      />
-
-      {/* 3. MAIN TAB CONTENT: 1) LAPORAN LABA RUGI & ANALITIK */}
-      {mainView === 'REPORTS' && (
-        <ReportsView
-          reportData={reportData}
-          stats={stats}
-          isConsolidated={isConsolidated}
-          orderCurrentPage={orderCurrentPage}
-          setOrderCurrentPage={setOrderCurrentPage}
-          orderItemsPerPage={orderItemsPerPage}
-        />
-      )}
-
-      {/* 4. MAIN TAB CONTENT: 2) BUKU KAS & MUTASI TRANSAKSI */}
-      {mainView === 'MUTATIONS' && (
-        <MutationsView
-          filteredTransactions={filteredTransactions}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          handleExportCSV={handleExportCSV}
-          itemsPerPage={itemsPerPage}
-          setItemsPerPage={setItemsPerPage}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          mobileVisibleCount={mobileVisibleCount}
-          isLoadingMoreMobile={isLoadingMoreMobile}
-          mobileHasMore={mobileHasMore}
-          loadMoreMobile={loadMoreMobile}
-          mobileSentinelRef={mobileSentinelRef}
+      {/* View Khusus Desktop (Sesuai Screenshot 1 & 2 Desktop) */}
+      <div className="hidden space-y-5 md:block">
+        {/* 1. TOP HEADER & UNIFIED CONTROL BAR */}
+        <FinanceHeader
           store={store}
+          mainView={mainView}
+          setMainView={setMainView}
+          onOpenWithdrawModal={() => {
+            setWithdrawStep('STEP_1_INPUT')
+            setIsWithdrawModalOpen(true)
+          }}
+          onExportFinancialExcel={handleExportFinancialExcel}
+          onExportOrdersExcel={handleExportOrdersExcel}
+          isExportingExcel={isExportingExcel}
+          isExportingOrders={isExportingOrders}
+          allStores={allStores}
+          selectedStoreId={selectedStoreId}
+          setSelectedStoreId={setSelectedStoreId}
+          dateRange={dateRange}
+          setDateRange={setDateRange}
+          lastUpdated={lastUpdated}
+          isRefreshing={isRefreshing}
+          onRefresh={() => fetchUnifiedData(false)}
+          transactionsCount={transactions.length}
+          totalEscrowOrders={stats.courierBreakdown.totalEscrowOrders}
+        />
+
+        {/* 2. TOP 5 UNIFIED FINANCIAL BENTO METRIC CARDS */}
+        <FinanceKpiCards
+          stats={stats}
+          reportData={reportData}
+          isConsolidated={isConsolidated}
           onOpenWithdrawModal={() => {
             setWithdrawStep('STEP_1_INPUT')
             setIsWithdrawModalOpen(true)
           }}
         />
-      )}
 
-      {/* 5. MAIN TAB CONTENT: 3) PROTEKSI SALDO ESCROW & KURIR */}
-      {mainView === 'ESCROW' && (
-        <EscrowView courierBreakdown={stats.courierBreakdown} />
-      )}
+        {/* 3. MAIN TAB CONTENT: 1) LAPORAN LABA RUGI & ANALITIK */}
+        {mainView === 'REPORTS' && (
+          <ReportsView
+            reportData={reportData}
+            stats={stats}
+            isConsolidated={isConsolidated}
+            orderCurrentPage={orderCurrentPage}
+            setOrderCurrentPage={setOrderCurrentPage}
+            orderItemsPerPage={orderItemsPerPage}
+          />
+        )}
+
+        {/* 4. MAIN TAB CONTENT: 2) BUKU KAS & MUTASI TRANSAKSI */}
+        {mainView === 'MUTATIONS' && (
+          <MutationsView
+            filteredTransactions={filteredTransactions}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            handleExportCSV={handleExportCSV}
+            itemsPerPage={itemsPerPage}
+            setItemsPerPage={setItemsPerPage}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            mobileVisibleCount={mobileVisibleCount}
+            isLoadingMoreMobile={isLoadingMoreMobile}
+            mobileHasMore={mobileHasMore}
+            loadMoreMobile={loadMoreMobile}
+            mobileSentinelRef={mobileSentinelRef}
+            store={store}
+            onOpenWithdrawModal={() => {
+              setWithdrawStep('STEP_1_INPUT')
+              setIsWithdrawModalOpen(true)
+            }}
+          />
+        )}
+
+        {/* 5. MAIN TAB CONTENT: 3) PROTEKSI SALDO ESCROW & KURIR */}
+        {mainView === 'ESCROW' && (
+          <EscrowView courierBreakdown={stats.courierBreakdown} />
+        )}
+      </div>
 
       {/* 6. MODAL DIALOG: PENARIKAN DANA (2-STEP SECURITY GATE) */}
       <WithdrawalModal

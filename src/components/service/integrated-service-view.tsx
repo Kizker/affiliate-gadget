@@ -7,12 +7,8 @@ import { useRouter } from 'next/navigation'
 import {
   ShieldCheck,
   MapPin,
-  Phone,
   Clock,
   Wrench,
-  CheckCircle2,
-  Navigation,
-  MessageSquare,
   Search,
   Star,
   X,
@@ -136,12 +132,6 @@ function MitraBannerImage({
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-function formatReviewCount(count: number): string {
-  if (count >= 100) return `${count}+ Ulasan`
-  if (count > 0) return `${count} Ulasan`
-  return 'Belum ada ulasan'
-}
-
 function formatHours(weekday: string | null, weekend: string | null): string {
   if (weekday && weekend) return `${weekday} (Sen-Jum) | ${weekend} (Sab-Min)`
   return weekday || weekend || 'Lihat jadwal'
@@ -261,7 +251,7 @@ export function IntegratedServiceView({
   const cityFilters = useMemo(() => {
     const cities = Array.from(new Set(mitras.map((m) => m.city))).sort()
     return [
-      { key: 'all', label: 'Semua Daerah' },
+      { key: 'all', label: 'Semua' },
       ...cities.map((c) => ({ key: c, label: c })),
     ]
   }, [mitras])
@@ -365,7 +355,7 @@ export function IntegratedServiceView({
               </form>
 
               {/* Dynamic City Filter Tabs */}
-              <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto py-0.5">
+              <div className="no-scrollbar flex items-center gap-2 overflow-x-auto py-1">
                 {cityFilters.map((f) => {
                   const isActive = selectedCity === f.key
                   return (
@@ -375,10 +365,10 @@ export function IntegratedServiceView({
                       onClick={() => setSelectedCity(f.key)}
                       aria-pressed={isActive}
                       aria-label={`Filter daerah ${f.label}`}
-                      className={`shrink-0 whitespace-nowrap rounded-2xl px-3.5 py-2 text-xs font-semibold transition-all duration-200 ${
+                      className={`shrink-0 whitespace-nowrap rounded-full px-5 py-2 text-xs font-bold transition-all duration-200 ${
                         isActive
-                          ? 'shadow-xs border border-orange-600 bg-orange-50 font-bold text-orange-700 dark:border-orange-500 dark:bg-orange-950/60 dark:text-orange-300'
-                          : 'border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100/80 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                          ? 'shadow-xs bg-orange-500 text-white'
+                          : 'border border-slate-200/90 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
                       }`}
                     >
                       {f.label}
@@ -486,7 +476,7 @@ export function IntegratedServiceView({
                     return (
                       <article
                         key={mitra.id}
-                        className="shadow-xs overflow-hidden rounded-2xl border border-slate-200/90 bg-white dark:border-slate-800 dark:bg-slate-900"
+                        className="shadow-2xs overflow-hidden rounded-3xl border border-slate-200/90 bg-white dark:border-slate-800 dark:bg-slate-900"
                       >
                         {/* Mobile image banner */}
                         <Link
@@ -506,111 +496,78 @@ export function IntegratedServiceView({
                               <Wrench className="h-10 w-10 text-slate-300 dark:text-slate-600" />
                             </div>
                           )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
 
-                          {/* Top badges */}
-                          <div className="absolute left-3 right-3 top-3 flex items-center justify-between gap-2">
-                            <span className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3 py-1 text-[10px] font-bold text-white backdrop-blur-md">
-                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                              Buka Sekarang
-                            </span>
-                            <span className="shadow-xs inline-flex items-center rounded-full bg-slate-900/70 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-md">
-                              {mitra.city}
+                          {/* Top badge Buka */}
+                          <div className="absolute left-3 top-3">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                              Buka
                             </span>
                           </div>
 
-                          {/* Bottom rating (Dark Glassmorphic Pill for WCAG AAA 10:1 Contrast) */}
-                          {mitra.rating > 0 && (
-                            <div className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-slate-900/80 px-2.5 py-1 backdrop-blur-md">
-                              <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
-                              <span className="text-xs font-bold text-amber-300">
-                                {mitra.rating.toFixed(1)} (
-                                {formatReviewCount(mitra.reviewCount)})
-                              </span>
-                            </div>
-                          )}
+                          {/* Bottom right rating */}
+                          <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            <span>
+                              {mitra.rating > 0
+                                ? mitra.rating.toFixed(1)
+                                : '4.9'}
+                            </span>
+                          </div>
                         </Link>
 
                         {/* Mobile content body */}
                         <div className="space-y-3 p-4">
-                          <div>
+                          <div className="flex items-start justify-between gap-2">
                             <Link
                               href={`/rekomendasi/${mitra.id}`}
                               aria-label={`Kunjungi profil ${mitra.businessName}`}
                             >
-                              <h2 className="text-base font-bold text-slate-950 transition-colors hover:text-orange-600 dark:text-white">
+                              <h2 className="text-sm font-bold text-slate-950 transition-colors hover:text-orange-600 dark:text-white">
                                 {mitra.businessName}
                               </h2>
                             </Link>
-                            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                              {mitra.tagline ||
-                                mitra.description ||
-                                'Mitra servis gadget terpercaya.'}
-                            </p>
+                            {mitra.city && (
+                              <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                {mitra.city}
+                              </span>
+                            )}
                           </div>
 
-                          {/* Details */}
-                          <div className="space-y-1.5 border-t border-slate-100 pt-1 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300">
-                            <a
-                              href={mitra.googleMapsUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="group/addr flex items-start gap-2 transition hover:text-orange-500"
-                              title="Buka alamat di Google Maps"
-                            >
-                              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 group-hover/addr:text-orange-500" />
-                              <span className="line-clamp-2 text-[11px] group-hover/addr:underline">
-                                {mitra.address}
-                              </span>
-                            </a>
-                            <div className="flex items-center gap-2">
+                          {/* Details: Address & Hours */}
+                          <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            {mitra.address && (
+                              <div className="flex items-start gap-1.5">
+                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                <span className="line-clamp-1 text-[11px]">
+                                  {mitra.address}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1.5">
                               <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                               <span className="text-[11px]">{hours}</span>
                             </div>
                           </div>
 
-                          {/* Layanan Populer */}
-                          {mitra.services.length > 0 && (
-                            <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                                Layanan Populer:
-                              </p>
-                              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                                {mitra.services.slice(0, 3).map((service) => (
-                                  <span
-                                    key={service.name}
-                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300"
-                                  >
-                                    <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
-                                    {service.name}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Action buttons (WCAG AAA High Contrast & Disambiguated Accessible Names) */}
-                          <div className="grid grid-cols-2 gap-2.5 pt-2">
+                          {/* Action buttons (Buka Maps & Booking Servis) */}
+                          <div className="grid grid-cols-2 gap-2.5 pt-1">
                             <a
                               href={mitra.googleMapsUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               aria-label={`Petunjuk arah Google Maps menuju ${mitra.businessName}`}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                              className="shadow-2xs inline-flex items-center justify-center rounded-2xl border border-slate-200/90 bg-white py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             >
-                              <Navigation className="h-3.5 w-3.5 text-slate-500" />
-                              <span>Google Maps</span>
+                              Buka Maps
                             </a>
                             <button
                               type="button"
                               onClick={(e) => handleBookingChat(e, mitra)}
                               aria-label={`Booking servis dan konsultasi di ${mitra.businessName}`}
-                              title={`Booking Servis di ${mitra.businessName}`}
-                              className="shadow-xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-orange-700 px-3 py-2 text-center text-xs font-bold text-white transition-all hover:bg-orange-800 active:scale-95 dark:bg-orange-600"
+                              className="shadow-xs inline-flex cursor-pointer items-center justify-center rounded-2xl bg-orange-500 py-2.5 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
                             >
-                              <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                              <span>Booking Servis</span>
+                              Booking Servis
                             </button>
                           </div>
                         </div>
@@ -715,7 +672,7 @@ export function IntegratedServiceView({
                 </form>
 
                 {/* City filter — dynamic from DB */}
-                <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto border-t border-slate-100 pt-2 dark:border-slate-800 sm:border-t-0 sm:pt-0">
+                <div className="no-scrollbar flex items-center gap-2 overflow-x-auto border-t border-slate-100 pt-2 dark:border-slate-800 sm:border-t-0 sm:pt-0">
                   {cityFilters.map((f) => {
                     const isActive = selectedCity === f.key
                     return (
@@ -725,10 +682,10 @@ export function IntegratedServiceView({
                         onClick={() => setSelectedCity(f.key)}
                         aria-pressed={isActive}
                         aria-label={`Filter daerah ${f.label}`}
-                        className={`shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-semibold transition-all duration-200 sm:px-4 md:rounded-2xl ${
+                        className={`shrink-0 whitespace-nowrap rounded-full px-5 py-2 text-xs font-bold transition-all duration-200 ${
                           isActive
-                            ? 'shadow-xs border border-orange-600 bg-orange-50 font-bold text-orange-700 dark:border-orange-500 dark:bg-orange-950/60 dark:text-orange-300'
-                            : 'border border-transparent text-slate-600 hover:bg-slate-100/80 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                            ? 'shadow-xs bg-orange-500 text-white'
+                            : 'border border-slate-200/90 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
                         }`}
                       >
                         {f.label}
@@ -831,19 +788,12 @@ export function IntegratedServiceView({
                       mitra.weekdayHours,
                       mitra.weekendHours
                     )
-                    const facilities =
-                      mitra.features.length > 0
-                        ? mitra.features
-                        : mitra.services.slice(0, 3).map((s) => s.name)
-                    const specialties = mitra.services
-                      .slice(0, 4)
-                      .map((s) => s.name)
                     const isFirstCard = idx === 0
 
                     return (
                       <article
                         key={mitra.id}
-                        className="shadow-xs group flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition-all duration-300 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                        className="shadow-2xs group flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/90 bg-white transition-all duration-300 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
                       >
                         {/* Image area */}
                         <div>
@@ -864,146 +814,80 @@ export function IntegratedServiceView({
                                 <Wrench className="h-12 w-12 text-slate-300 dark:text-slate-600" />
                               </div>
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
 
-                            {/* Status badge */}
-                            <div className="absolute left-3.5 top-3.5">
-                              <span className="shadow-xs inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3 py-1 text-[11px] font-bold text-white backdrop-blur-md">
-                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                                Buka Sekarang
+                            {/* Status badge Buka */}
+                            <div className="absolute left-3 top-3">
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                Buka
                               </span>
                             </div>
 
-                            {/* City badge */}
-                            <div className="absolute right-3.5 top-3.5">
-                              <span className="shadow-xs inline-flex items-center rounded-full bg-slate-900/75 px-3 py-1 text-[11px] font-bold text-white backdrop-blur-md">
-                                {mitra.city}
+                            {/* Bottom right rating */}
+                            <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+                              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                              <span>
+                                {mitra.rating > 0
+                                  ? mitra.rating.toFixed(1)
+                                  : '4.9'}
                               </span>
                             </div>
                           </Link>
 
                           {/* Card body */}
-                          <div className="space-y-4 p-5">
-                            <div>
+                          <div className="space-y-3 p-5">
+                            <div className="flex items-start justify-between gap-2">
                               <Link
                                 href={`/rekomendasi/${mitra.id}`}
                                 aria-label={`Kunjungi profil ${mitra.businessName}`}
                               >
-                                <h2 className="text-lg font-bold leading-snug text-slate-950 transition-colors hover:text-orange-600 dark:text-white">
+                                <h2 className="text-sm font-bold text-slate-950 transition-colors hover:text-orange-600 dark:text-white">
                                   {mitra.businessName}
                                 </h2>
                               </Link>
-                              <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                                {mitra.tagline ||
-                                  mitra.description ||
-                                  'Mitra servis gadget terpercaya.'}
-                              </p>
-                            </div>
-
-                            {/* Details */}
-                            <div className="space-y-2 border-t border-slate-100 pt-1 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300">
-                              <a
-                                href={mitra.googleMapsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="group/addr flex items-start gap-2.5 transition hover:text-orange-500"
-                                title="Buka alamat di Google Maps"
-                              >
-                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 group-hover/addr:text-orange-500" />
-                                <span className="line-clamp-2 text-[11px] group-hover/addr:underline">
-                                  {mitra.address}
+                              {mitra.city && (
+                                <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  {mitra.city}
                                 </span>
-                              </a>
-                              <div className="flex items-center gap-2.5">
-                                <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                <span className="text-[11px]">{hours}</span>
-                              </div>
-                              {mitra.phone && (
-                                <div className="flex items-center gap-2.5">
-                                  <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                  <span className="text-[11px]">
-                                    {mitra.phone}
-                                  </span>
-                                </div>
                               )}
                             </div>
 
-                            {/* Specialties */}
-                            {specialties.length > 0 && (
-                              <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                                  Layanan Tersedia:
-                                </p>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {specialties.map((spec) => (
-                                    <span
-                                      key={spec}
-                                      className="inline-flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300"
-                                    >
-                                      <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                      {spec}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Facilities */}
-                            {facilities.length > 0 && (
-                              <div className="flex flex-wrap gap-1 border-t border-slate-100 pt-2 dark:border-slate-800">
-                                {facilities.map((fac) => (
-                                  <span
-                                    key={fac}
-                                    className="rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400"
-                                  >
-                                    {fac}
+                            {/* Details: Address & Hours */}
+                            <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+                              {mitra.address && (
+                                <div className="flex items-start gap-1.5">
+                                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                  <span className="line-clamp-1 text-[11px]">
+                                    {mitra.address}
                                   </span>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Rating */}
-                            <div className="flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                                </div>
+                              )}
                               <div className="flex items-center gap-1.5">
-                                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                                <span className="text-sm font-bold text-slate-900 dark:text-white">
-                                  {mitra.rating > 0
-                                    ? mitra.rating.toFixed(1)
-                                    : '5.0'}
-                                </span>
-                                <span className="text-xs text-slate-500">
-                                  ({formatReviewCount(mitra.reviewCount)})
-                                </span>
+                                <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                <span className="text-[11px]">{hours}</span>
                               </div>
-                              <span className="text-[11px] font-medium text-slate-500">
-                                Garansi Toko
-                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Action buttons (WCAG AAA High Contrast & Disambiguated Accessible Names) */}
+                        {/* Action buttons (Buka Maps & Booking Servis) */}
                         <div className="grid grid-cols-2 gap-2.5 p-5 pt-0">
                           <a
                             href={mitra.googleMapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={`Petunjuk arah Google Maps menuju ${mitra.businessName}`}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                            className="shadow-2xs inline-flex items-center justify-center rounded-2xl border border-slate-200/90 bg-white py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                           >
-                            <Navigation className="h-3.5 w-3.5 text-slate-500" />
-                            <span>Google Maps</span>
+                            Buka Maps
                           </a>
                           <button
                             type="button"
                             onClick={(e) => handleBookingChat(e, mitra)}
                             aria-label={`Booking servis dan konsultasi di ${mitra.businessName}`}
-                            title={`Booking Servis di ${mitra.businessName}`}
-                            className="shadow-xs inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-700 px-3 py-2.5 text-center text-xs font-bold text-white transition-all hover:bg-orange-800 active:scale-95 dark:bg-orange-600 dark:hover:bg-orange-500"
+                            className="shadow-xs inline-flex cursor-pointer items-center justify-center rounded-2xl bg-orange-500 py-2.5 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
                           >
-                            <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                            <span>Booking Servis</span>
+                            Booking Servis
                           </button>
                         </div>
                       </article>

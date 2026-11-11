@@ -4,7 +4,7 @@ import prisma from '@/lib/db'
 
 export async function GET(req: NextRequest) {
   const origin =
-    req.nextUrl?.origin || process.env.NEXTAUTH_URL || 'http://localhost:3002'
+    req.nextUrl?.origin || process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
   try {
     const session = await auth()

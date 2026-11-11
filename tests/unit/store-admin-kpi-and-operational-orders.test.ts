@@ -32,42 +32,49 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
     'route.ts'
   )
 
+  const desktopSimplePath = path.join(
+    rootDir,
+    'src',
+    'components',
+    'dashboard',
+    'store-admin-desktop-simple-view.tsx'
+  )
+
   const dashboardPageContent = fs
     .readFileSync(adminDashboardPagePath, 'utf-8')
     .replace(/\r\n/g, '\n')
+  const desktopSimpleContent = fs.existsSync(desktopSimplePath)
+    ? fs.readFileSync(desktopSimplePath, 'utf-8')
+    : ''
   const dashboardApiContent = fs.readFileSync(adminDashboardApiPath, 'utf-8')
   const ordersApiContent = fs.readFileSync(adminOrdersApiPath, 'utf-8')
 
   describe('1. Store Admin 4 KPI Cards Refinement', () => {
     it('verifies "Omset Toko Hari Ini" is rendered as Card 1 for STORE_ADMIN', () => {
-      expect(dashboardPageContent).toContain('Omset Toko Hari Ini')
+      expect(dashboardPageContent + desktopSimpleContent).toContain(
+        'OMSET HARI INI'
+      )
       expect(dashboardPageContent).toContain('todayRevenue')
       expect(dashboardPageContent).toContain('todayOrdersCount')
-      expect(dashboardPageContent).toContain('● Hari Ini')
     })
 
     it('verifies "Perlu Proses Cepat" is rendered as Card 2 with urgency ping badge', () => {
-      expect(dashboardPageContent).toContain('Perlu Proses Cepat')
-      expect(dashboardPageContent).toContain('Siap Packing &amp; Kirim')
-      expect(dashboardPageContent).toContain('animate-ping')
-      expect(dashboardPageContent).toContain(
+      expect(desktopSimpleContent).toContain('PERLU PROSES')
+      expect(desktopSimpleContent).toContain('animate-pulse')
+      expect(desktopSimpleContent).toContain(
         '/dashboard/admin/orders?status=PAID'
       )
     })
 
     it('verifies "Alert Stok Cabang" is rendered as Card 3 with low stock & out of stock counters', () => {
-      expect(dashboardPageContent).toContain('Alert Stok Cabang')
-      expect(dashboardPageContent).toContain('lowStockCount')
-      expect(dashboardPageContent).toContain('outOfStockCount')
-      expect(dashboardPageContent).toContain('Unit Kritis')
-      expect(dashboardPageContent).toContain('Stok Aman')
+      expect(desktopSimpleContent).toContain('STOK KRITIS')
+      expect(desktopSimpleContent).toContain('lowStockCount')
+      expect(desktopSimpleContent).toContain('outOfStockCount')
     })
 
-    it('verifies "Katalog & Inventori" is rendered as Card 4 instead of returns (which are handled by After Sales)', () => {
-      expect(dashboardPageContent).toContain('Katalog &amp; Inventori')
-      expect(dashboardPageContent).toContain('Model Gadget')
-      expect(dashboardPageContent).toContain('Unit')
-      expect(dashboardPageContent).not.toContain('Retur &amp; Pembatalan')
+    it('verifies "Retur / Batal" is rendered as Card 4 on store admin dashboard', () => {
+      expect(desktopSimpleContent).toContain('RETUR / BATAL')
+      expect(desktopSimpleContent).toContain('returBatalTotal')
     })
 
     it('verifies static Proteksi Garansi and Operasional Toko cards are eliminated from store admin KPI', () => {
@@ -83,26 +90,18 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
   })
 
   describe('2. Status Pesanan di Dashboard (Clean UI)', () => {
-    it('verifies 6 order pipeline status cards are rendered without clutter subtitles or return references', () => {
-      expect(dashboardPageContent).toContain('Status Pesanan di Dashboard')
-      expect(dashboardPageContent).not.toContain('Live Status')
-      expect(dashboardPageContent).not.toContain(
-        'Klik kartu status untuk memfilter'
-      )
-      expect(dashboardPageContent).toContain('Perlu Diproses')
-      expect(dashboardPageContent).toContain('Sedang Diproses')
-      expect(dashboardPageContent).toContain('Sedang Dikirim')
-      expect(dashboardPageContent).toContain('Selesai')
-      expect(dashboardPageContent).toContain('Menunggu Bayar')
-      expect(dashboardPageContent).toContain('Dibatalkan')
-      expect(dashboardPageContent).not.toContain('Retur &amp; Batal')
+    it('verifies 4 order pipeline status cards are rendered in desktop simple view', () => {
+      expect(desktopSimpleContent).toContain('STATUS PESANAN')
+      expect(desktopSimpleContent).toContain('Perlu Diproses')
+      expect(desktopSimpleContent).toContain('Diproses')
+      expect(desktopSimpleContent).toContain('Dikirim')
+      expect(desktopSimpleContent).toContain('Selesai')
     })
   })
 
   describe('3. Main Orders Section & Quick In-Page Filter', () => {
-    it('verifies Pesanan Masuk Cabang Toko is designated as Prioritas Operasional', () => {
-      expect(dashboardPageContent).toContain('Pesanan Masuk Cabang Toko')
-      expect(dashboardPageContent).toContain('Prioritas Operasional')
+    it('verifies Pesanan Masuk is designated on dashboard', () => {
+      expect(desktopSimpleContent).toContain('PESANAN MASUK')
     })
 
     it('verifies orderFilter defaults to PAID (Perlu Diproses) and includes pagination', () => {
@@ -189,18 +188,14 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
   })
 
   describe('6. Product Performance & Critical Stock Insights (Replaces Returns on Store Admin)', () => {
-    it('verifies Performa & Stok Produk card replaces Pengembalian & Pembatalan on store admin dashboard', () => {
-      expect(dashboardPageContent).toContain('Performa &amp; Stok Produk')
-      expect(dashboardPageContent).toContain('Produk Terlaris')
-      expect(dashboardPageContent).toContain('Stok Perlu Restock')
-      expect(dashboardPageContent).not.toContain(
-        'Pengembalian &amp; Pembatalan'
-      )
+    it('verifies Performa & Stok Produk card or desktop simple view on store admin dashboard', () => {
+      expect(desktopSimpleContent).toContain('PESANAN MASUK')
+      expect(desktopSimpleContent).toContain('PENGEMBALIAN &amp; RETUR')
     })
 
-    it('verifies list is limited to max 5 items for both top selling and critical stock products', () => {
-      expect(dashboardPageContent).toContain('topSellingProducts.slice(0, 5)')
-      expect(dashboardPageContent).toContain('criticalStockList.slice(0, 5)')
+    it('verifies list is limited to max 5 items for display orders and returns', () => {
+      expect(desktopSimpleContent).toContain('filteredOrders.slice(0, 5)')
+      expect(desktopSimpleContent).toContain('recentReturnsList.slice(0, 4)')
     })
 
     it('verifies dashboard API provides topSellingProducts and criticalProductsList', () => {
@@ -246,24 +241,21 @@ describe('Store Admin KPI & Operational Orders Suite', () => {
       expect(dashboardApiContent).toContain('+07:00')
     })
 
-    it('verifies 6 status cards link directly to orders page matching their respective status', () => {
-      expect(dashboardPageContent).toContain(
+    it('verifies status cards link directly to orders page matching their respective status', () => {
+      expect(desktopSimpleContent).toContain(
         '/dashboard/admin/orders?status=PAID'
       )
-      expect(dashboardPageContent).toContain(
+      expect(desktopSimpleContent).toContain(
         '/dashboard/admin/orders?status=IN_PROGRESS'
       )
-      expect(dashboardPageContent).toContain(
+      expect(desktopSimpleContent).toContain(
         '/dashboard/admin/orders?status=SHIPPED'
       )
-      expect(dashboardPageContent).toContain(
+      expect(desktopSimpleContent).toContain(
         '/dashboard/admin/orders?status=COMPLETED'
       )
-      expect(dashboardPageContent).toContain(
+      expect(desktopSimpleContent).toContain(
         '/dashboard/admin/orders?status=PENDING_PAYMENT'
-      )
-      expect(dashboardPageContent).toContain(
-        '/dashboard/admin/orders?status=CANCELLED'
       )
       expect(dashboardPageContent).not.toContain('handleStatusFilterClick')
       expect(dashboardPageContent).not.toContain('handleReturnsFilterClick')
