@@ -55,6 +55,8 @@ prisma/migrations/**/migration.sql
 
 # Logs
 logs/
+audit-lh/
+ux-audit-out/
 
 # Database exports & dumps
 database-exports/*.sql
