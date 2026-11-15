@@ -67,6 +67,13 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-15 (Resolusi Redirect Google OAuth 0.0.0.0:3000 & Penyelarasan Label Etalase Menjadi 'Produk'):**
+  - **1. Resolusi Error Redirect Google OAuth (`0.0.0.0:3000` Refused to Connect):**
+    - Memperbaiki `src/app/api/auth/redirect/route.ts` dan `src/middleware.ts` yang sebelumnya menggunakan `req.nextUrl.origin` / `req.url` (yang di dalam container Docker bernilai internal `http://0.0.0.0:3000`). Digantikan dengan fungsi resolver origin publik aman (`resolvePublicOrigin` dan `getSafeRedirectUrl`) yang membaca header `x-forwarded-host`, `host`, dan fallback `NEXT_PUBLIC_APP_URL` / `NEXTAUTH_URL`.
+    - Menambahkan `proxy_set_header X-Forwarded-Host $host;` dan `proxy_set_header X-Forwarded-Port 443;` di konfigurasi Nginx reverse proxy `nginx/nginx.conf`.
+    - Menambahkan callback `redirect` pada `auth.config.ts` untuk mencegat dan menormalisasi seluruh redirect OAuth agar selalu menggunakan domain publik resmi `https://affiliategadget.tech`.
+  - **2. Penyelarasan Label Pemilih Etalase Produk (`/gadget/[id]`):** Mengganti label header pemilih item etalase dari `"Tipe & Memory (X Pilihan)"` menjadi ringkas **"Produk"** baik pada tampilan Desktop (`gadget-detail-client.tsx`) maupun Mobile (`shopee-mobile-product-detail.tsx`).
+  - **3. Health Verification & Deploy VPS:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite `tests/unit/oauth-redirect-safe-origin.test.ts` dan test suite etalase lulus 100%, commit & push ke GitHub `origin/main` (commit `0670e42`), container di VPS Hostinger berhasil di-build ulang dan ter-deploy (HTTP 200 OK).
 - **2026-11-15 (Implementasi Alur Onboarding Admin Toko, Aktivasi Superadmin, Input Toko Mandiri, & Group After Sales):**
   - **1. Pilihan Role di Halaman Pendaftaran (`/register`):** Menyederhanakan pilihan registrasi publik menjadi **Customer** dan **Admin Toko** (`STORE_ADMIN`). Akun pendaftar Admin Toko baru otomatis berstatus nonaktif (`isActive: false`, `mitraStatus: 'PENDING'`).
   - **2. Alur Transisi Onboarding Mandiri (`/dashboard/admin/onboarding`):**
