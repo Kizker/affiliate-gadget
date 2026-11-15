@@ -1098,8 +1098,7 @@ export default function GadgetDetailClient({
                         >
                           <div className="flex items-center justify-between">
                             <label className="text-xs font-semibold text-slate-500">
-                              Tipe &amp; Memory ({product.etalaseItems.length}{' '}
-                              Pilihan)
+                              Produk
                             </label>
                           </div>
 

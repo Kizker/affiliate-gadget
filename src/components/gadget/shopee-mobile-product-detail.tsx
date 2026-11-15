@@ -803,7 +803,7 @@ export function ShopeeMobileProductDetail({
         >
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-slate-900 dark:text-white">
-              Tipe &amp; Memory ({etalaseItems.length} Pilihan)
+              Produk
             </span>
           </div>
 

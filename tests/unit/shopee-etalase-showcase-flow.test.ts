@@ -245,10 +245,10 @@ describe('Shopee-Style Etalase (Showcase) Architecture & Flow Test', () => {
       'utf8'
     )
 
-    expect(desktopDetail).toContain('Tipe &amp; Memory')
+    expect(desktopDetail).toContain('Produk')
     expect(desktopDetail).toContain('handleSelectEtalaseItem')
     expect(desktopDetail).toContain('productId: activeUnit.id')
-    expect(mobileDetail).toContain('Tipe &amp; Memory')
+    expect(mobileDetail).toContain('Produk')
     expect(mobileDetail).toContain('onSelectEtalaseItem')
   })
 
