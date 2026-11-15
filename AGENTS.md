@@ -67,6 +67,17 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-15 (Implementasi Alur Onboarding Admin Toko, Aktivasi Superadmin, Input Toko Mandiri, & Group After Sales):**
+  - **1. Pilihan Role di Halaman Pendaftaran (`/register`):** Menyederhanakan pilihan registrasi publik menjadi **Customer** dan **Admin Toko** (`STORE_ADMIN`). Akun pendaftar Admin Toko baru otomatis berstatus nonaktif (`isActive: false`, `mitraStatus: 'PENDING'`).
+  - **2. Alur Transisi Onboarding Mandiri (`/dashboard/admin/onboarding`):**
+    - _Tahap 1 (Menunggu Aktivasi):_ Saat login pertama kali, Admin Toko tertahan di halaman onboarding waiting state dengan polling status otomatis 4s tanpa akses ke menu toko.
+    - _Tahap 2 (Aktivasi Superadmin):_ Superadmin melihat pendaftar di `/dashboard/admin/mitras` (tab Menunggu Review) atau `/dashboard/admin/users`, lalu menekan tombol `[ Aktifkan ]`.
+    - _Tahap 3 (Input Data Toko Mandiri):_ Halaman onboarding seketika beralih ke form input toko (nama toko, PT/CV, alamat fisik, titik GPS, telepon CS, jam buka, dan rekening pencairan bank). Setelah disimpan (`POST /api/admin/onboarding`), record `Store` langsung terbuat, `storeId` tersinkronisasi, dan toko langsung beroperasi aktif di `/dashboard/admin`.
+  - **3. Aturan After Sales Mandiri vs Group (`/dashboard/admin/mitras`):**
+    - Menyediakan dropdown pemilihan Group After Sales di tabel Daftar Toko Superadmin.
+    - Jika toko tidak didaftarkan ke grup manapun, sistem secara otomatis menetapkan Admin Toko tersebut sebagai penanggung jawab After Sales mandiri untuk menangani retur dan live chat purna jual tokonya sendiri.
+  - **4. Modal Buat Akun Admin Toko oleh Superadmin:** Mengubah tombol `[ + Tambah Toko ]` di panel Superadmin menjadi modal ringkas pembuatan akun Admin Toko baru, sehingga Superadmin dapat mendaftarkan akun staf toko kapan saja dan pengisian data toko tetap dilakukan oleh Admin Toko bersangkutan.
+  - **5. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite `tests/unit/store-admin-onboarding-and-group-aftersales.test.ts` dan 5 test suite terkait lulus 100% (46/46 tests pass), serta deploy ke Hostinger VPS sukses terverifikasi HTTP 200.
 - **2026-11-15 (Perbaikan Login Super Admin & Eliminasi Dummy Top 3 Carousel Hero Live Hostinger):**
   - **1. Resolusi Login Super Admin (`/api/auth/login-2fa`):** Memperbaiki pengecekan 2FA agar akun staf admin (`SUPER_ADMIN`, `ADMIN`, `STORE_ADMIN`, dll.) yang tidak mengaktifkan 2FA secara manual otomatis melewati verifikasi OTP (`requires2FA: false`) sehingga langsung masuk dengan password `admin123`. Memperbaiki `TypeError` `loadData()` pada `two-factor-store.ts` dengan penambahan null guard objek `enabledUsers` dan `otps`.
   - **2. Eliminasi Dummy Top 3 Terlaris (`SectionHeroClean`):** Menghapus seluruh data tiruan statis (`Galaxy S24`, `iPhone 15 Pro`, `Xiaomi 14`) dan menyembunyikan carousel 3D kanan saat database memiliki 0 produk.
