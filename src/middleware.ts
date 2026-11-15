@@ -86,9 +86,16 @@ function isSubRouteAllowed(pathname: string, role: string): boolean {
 function getCmsDashboardUrl(
   role?: string | null,
   mitraStatus?: string | null,
-  storeId?: string | null
+  storeId?: string | null,
+  isActive?: boolean
 ): string {
   if (role === 'AFTER_SALES') return '/dashboard/after-sales'
+  if (role === 'STORE_ADMIN') {
+    if (!storeId || isActive === false) {
+      return '/dashboard/admin/onboarding'
+    }
+    return '/dashboard/admin'
+  }
   if (role && ADMIN_STAFF_ROLES.includes(role)) return '/dashboard/admin'
   if (role === 'TECHNICIAN') return '/dashboard/teknisi'
   if (role === 'MITRA') {
@@ -97,6 +104,34 @@ function getCmsDashboardUrl(
       : '/dashboard/mitra/pending'
   }
   return '/'
+}
+
+function getSafeRedirectUrl(targetPath: string, req: any): URL {
+  const forwardedHost =
+    req.headers.get('x-forwarded-host') || req.headers.get('host')
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https'
+
+  if (
+    forwardedHost &&
+    !forwardedHost.includes('0.0.0.0') &&
+    !forwardedHost.startsWith('app:')
+  ) {
+    const cleanHost = forwardedHost
+      .replace(/^https?:\/\//, '')
+      .replace(/\/$/, '')
+    return new URL(targetPath, `${forwardedProto}://${cleanHost}`)
+  }
+
+  const base =
+    (process.env.NEXT_PUBLIC_APP_URL &&
+      !process.env.NEXT_PUBLIC_APP_URL.includes('0.0.0.0') &&
+      process.env.NEXT_PUBLIC_APP_URL) ||
+    (process.env.NEXTAUTH_URL &&
+      !process.env.NEXTAUTH_URL.includes('0.0.0.0') &&
+      process.env.NEXTAUTH_URL) ||
+    'https://affiliategadget.tech'
+
+  return new URL(targetPath, base)
 }
 
 export default auth((req) => {
@@ -128,7 +163,7 @@ export default auth((req) => {
 
   // 1. Unauthenticated users accessing protected routes
   if (requiresAuth && !isLoggedIn) {
-    const redirectUrl = new URL('/login', req.url)
+    const redirectUrl = getSafeRedirectUrl('/login', req)
     if (pathname.startsWith('/checkout')) {
       redirectUrl.searchParams.set('redirect', pathname)
     }
@@ -137,7 +172,7 @@ export default auth((req) => {
 
   // 2. Unauthenticated user accessing generic dashboard
   if (isDashboardGenericRoute && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.redirect(getSafeRedirectUrl('/login', req))
   }
 
   // 3. Authenticated Role-Based Access Control & Automatic Redirection
@@ -147,6 +182,8 @@ export default auth((req) => {
     const mitraStatus = (req.auth.user as any).mitraStatus
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userStoreId = (req.auth.user as any).storeId
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const isActive = (req.auth.user as any).isActive
     const isAdminStaff = !!(userRole && ADMIN_STAFF_ROLES.includes(userRole))
     const isTechnician = userRole === 'TECHNICIAN'
     const isMitra = userRole === 'MITRA'
@@ -158,7 +195,8 @@ export default auth((req) => {
       const destinationCms = getCmsDashboardUrl(
         userRole,
         mitraStatus,
-        userStoreId
+        userStoreId,
+        isActive
       )
 
       // Exception: Calon mitra yang baru mendaftar (NEEDS_STORE_DATA) diizinkan tetap di /register untuk mengisi Step 2 (Form Data Toko)
@@ -172,7 +210,7 @@ export default auth((req) => {
 
       // Redirect dari halaman publik root (/), login, register, cart, checkout, atau generic dashboard
       if (isAuthRoute || isDashboardGenericRoute) {
-        return NextResponse.redirect(new URL(destinationCms, req.url))
+        return NextResponse.redirect(getSafeRedirectUrl(destinationCms, req))
       }
 
       // Khusus role AFTER_SALES: default selalu menuju ke dashboardnya (/dashboard/after-sales),
@@ -187,7 +225,7 @@ export default auth((req) => {
           pathname.startsWith('/dashboard/customer')
         ) {
           return NextResponse.redirect(
-            new URL('/dashboard/after-sales', req.url)
+            getSafeRedirectUrl('/dashboard/after-sales', req)
           )
         }
       }
@@ -195,17 +233,19 @@ export default auth((req) => {
       // Proteksi rute Admin CMS (/dashboard/admin)
       // Khusus role AFTER_SALES dialihkan ke panel khusus after-sales
       if (isAdminRoute && userRole === 'AFTER_SALES') {
-        return NextResponse.redirect(new URL('/dashboard/after-sales', req.url))
+        return NextResponse.redirect(
+          getSafeRedirectUrl('/dashboard/after-sales', req)
+        )
       }
 
       if (isAdminRoute && !isAdminStaff) {
-        return NextResponse.redirect(new URL(destinationCms, req.url))
+        return NextResponse.redirect(getSafeRedirectUrl(destinationCms, req))
       }
 
       // Proteksi rute After Sales (/dashboard/after-sales)
       if (isAfterSalesRoute) {
         if (userRole !== 'AFTER_SALES' && userRole !== 'SUPER_ADMIN') {
-          return NextResponse.redirect(new URL(destinationCms, req.url))
+          return NextResponse.redirect(getSafeRedirectUrl(destinationCms, req))
         }
       }
 
@@ -213,34 +253,37 @@ export default auth((req) => {
       if (isAdminRoute && isAdminStaff && userRole) {
         if (!isSubRouteAllowed(pathname, userRole)) {
           // Redirect ke halaman utama dashboard (bukan login) karena user memang staff yang valid
-
-          return NextResponse.redirect(new URL('/dashboard/admin', req.url))
+          return NextResponse.redirect(
+            getSafeRedirectUrl('/dashboard/admin', req)
+          )
         }
       }
 
       // Proteksi rute Teknisi (/dashboard/teknisi)
       if (isTechnicianRoute && !isTechnician) {
-        return NextResponse.redirect(new URL(destinationCms, req.url))
+        return NextResponse.redirect(getSafeRedirectUrl(destinationCms, req))
       }
 
       // Proteksi rute Mitra (/dashboard/mitra)
       if (isMitraRoute) {
         if (!isMitra) {
-          return NextResponse.redirect(new URL(destinationCms, req.url))
+          return NextResponse.redirect(getSafeRedirectUrl(destinationCms, req))
         }
         if (
           mitraStatus !== 'APPROVED' &&
           !pathname.startsWith('/dashboard/mitra/pending')
         ) {
           return NextResponse.redirect(
-            new URL('/dashboard/mitra/pending', req.url)
+            getSafeRedirectUrl('/dashboard/mitra/pending', req)
           )
         }
         if (
           mitraStatus === 'APPROVED' &&
           pathname.startsWith('/dashboard/mitra/pending')
         ) {
-          return NextResponse.redirect(new URL('/dashboard/mitra', req.url))
+          return NextResponse.redirect(
+            getSafeRedirectUrl('/dashboard/mitra', req)
+          )
         }
       }
     } else {
@@ -248,15 +291,15 @@ export default auth((req) => {
       // Jika mengakses dashboard generic (/dashboard atau /dashboard/customer) -> arahkan ke settings akun
       if (isDashboardGenericRoute) {
         return NextResponse.redirect(
-          new URL('/dashboard/customer/settings', req.url)
+          getSafeRedirectUrl('/dashboard/customer/settings', req)
         )
       }
       // Jika mengakses area dashboard internal admin/mitra/teknisi -> kembalikan ke beranda publik
       if (isAdminRoute || isMitraRoute || isTechnicianRoute) {
-        return NextResponse.redirect(new URL('/', req.url))
+        return NextResponse.redirect(getSafeRedirectUrl('/', req))
       }
       if (isAuthRoute) {
-        return NextResponse.redirect(new URL('/', req.url))
+        return NextResponse.redirect(getSafeRedirectUrl('/', req))
       }
     }
   }

@@ -80,6 +80,38 @@ export const authConfig = {
       }
       return session
     },
+    // Redirect callback - ensures OAuth redirects never use internal docker addresses (0.0.0.0:3000)
+    async redirect({ url, baseUrl }) {
+      const publicBase =
+        (process.env.NEXT_PUBLIC_APP_URL &&
+          !process.env.NEXT_PUBLIC_APP_URL.includes('0.0.0.0') &&
+          process.env.NEXT_PUBLIC_APP_URL) ||
+        (process.env.NEXTAUTH_URL &&
+          !process.env.NEXTAUTH_URL.includes('0.0.0.0') &&
+          process.env.NEXTAUTH_URL) ||
+        baseUrl
+
+      const cleanBase = publicBase.includes('0.0.0.0')
+        ? 'https://affiliategadget.tech'
+        : publicBase
+
+      if (url.startsWith('/')) {
+        return `${cleanBase.replace(/\/$/, '')}${url}`
+      }
+
+      try {
+        const parsed = new URL(url)
+        if (
+          parsed.origin.includes('0.0.0.0') ||
+          parsed.origin.startsWith('http://app:')
+        ) {
+          return `${cleanBase.replace(/\/$/, '')}${parsed.pathname}${parsed.search}`
+        }
+        return url
+      } catch {
+        return cleanBase
+      }
+    },
   },
   providers: [], // Providers are configured in auth.ts
 } satisfies NextAuthConfig
