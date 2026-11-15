@@ -18,10 +18,10 @@ interface ProductVariantItem {
 }
 
 interface ProductNewMobileViewProps {
-  form: Record<string, unknown>
-  setForm: React.Dispatch<React.SetStateAction<Record<string, unknown>>>
-  variants: ProductVariantItem[]
-  setVariants: React.Dispatch<React.SetStateAction<ProductVariantItem[]>>
+  form: any
+  setForm: React.Dispatch<React.SetStateAction<any>>
+  variants: any[]
+  setVariants: React.Dispatch<React.SetStateAction<any>>
   stores: Array<{ id: string; name: string; city?: string }>
   selectedStore: { id: string; name: string; city?: string } | undefined
   isStoreAdmin: boolean

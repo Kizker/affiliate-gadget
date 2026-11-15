@@ -20,7 +20,7 @@ interface StoreAdminDesktopSimpleViewProps {
       pendingPayment?: number
       cancelled?: number
     }
-  }
+  } | null
   recentOrders: Array<{ id: string; orderNumber: string }>
   filteredOrders: Array<{
     id: string
@@ -48,9 +48,9 @@ interface StoreAdminDesktopSimpleViewProps {
   }>
   mobileReturnTab: 'RETUR' | 'BATAL'
   setMobileReturnTab: (val: 'RETUR' | 'BATAL') => void
-  getFirstItemName: (order: unknown) => string
+  getFirstItemName: (order: any) => string
   timeAgo: (dateStr: string) => string
-  onSelectOrder?: (order: unknown) => void
+  onSelectOrder?: (order: any) => void
 }
 
 export function StoreAdminDesktopSimpleView({
