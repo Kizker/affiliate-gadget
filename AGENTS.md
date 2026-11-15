@@ -67,6 +67,13 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-15 (Reset Total Database Server Live VPS Hostinger Menjadi Fresh Nol [100% Bersih & 1 Akun Super Admin Standar]):**
+  - **1. Reset Skema Database PostgreSQL Hostinger:** Menjalankan pembersihan total schema `public` (`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`) pada container database live PostgreSQL di Hostinger VPS, dan meregenerasi seluruh tabel bersih dari `prisma/schema.prisma`.
+  - **2. Status Data Fresh 0:** Seluruh tabel transaksi, pesanan, unit produk, cabang toko, etalase, varian, ulasan, komplain, retur, voucher, voucher usage, live stream, audit log, dan iklan ter-reset murni menjadi 0 record.
+  - **3. Inisialisasi Akun Super Admin Tunggal:** Menginjeksi tepat 1 akun pengelola Super Admin (`superadmin@affiliategadget.com` / `admin123`) dengan hak akses penuh `SUPER_ADMIN` agar pengelola dapat login ke `/dashboard/admin` untuk membuat cabang toko baru, posting produk, dan verifikasi mitra.
+  - **4. Pembersihan Cache Lokal & File Upload:** Mereset file `.data/shipping-store.json`, `.data/store-withdrawals.json`, `.data/two-factor-store.json`, serta menghapus seluruh file media upload pengujian lama di `public/uploads/`.
+  - **5. Eliminasi Auto-Seeding pada Deploy Skrip:** Memperbarui `scripts/deploy-hostinger.cjs` agar rilis mendatang tidak lagi menginjeksi seed dummy secara otomatis.
+  - **6. Health Verification:** Container `affiliate-gadget-app`, `affiliate-gadget-ws`, `affiliate-gadget-nginx`, `affiliate-gadget-postgres`, dan `affiliate-gadget-redis` aktif normal dengan status HTTP 200 pada `https://affiliategadget.tech`.
 - **2026-11-11 (Penyelarasan UI Dashboard Admin [Settings, Finance, New Product, Home, Servis] Sesuai Desain Sederhana & Bersih Mobile, Audit Kecepatan Live & Deploy VPS Hostinger):**
   - **1. Halaman Pengaturan Toko Admin (`/dashboard/admin/settings`):** Rancang ulang total mengikuti screenshot desktop & mobile: top tab switcher pill berlatar oranye lembut, tombol Simpan Perubahan rounded-2xl oranye, input form putih bersih ber-fokus glow, status PPN dan KPP Pratama Terdaftar ber-border halus, serta kartu visual Bank PT debit card style dengan chip double-circle.
   - **2. Halaman Keuangan & Laporan (`/dashboard/admin/finance`):** Rancang ulang tampilan desktop & mobile: 5 kartu KPI Bento atas (`SALDO SIAP CAIR`, `PENDAPATAN KOTOR`, `TOTAL HPP`, `LABA BERSIH TOKO`, `DANA ESCROW`), rincian beban operasional & logistik 2 kolom, bar chart tren pendapatan & laba bersih, tabel aktivitas transaksi terbaru, serta produk terlaris & statistik toko.
