@@ -46,7 +46,7 @@ async function main() {
 
       // 2. Drop and recreate public schema in Postgres
       console.log('\n--- Dropping and recreating public schema in PostgreSQL ---')
-      await runRemoteCommand(`docker exec -i affiliate-gadget-db psql -U agadget -d affiliate_gadget -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO agadget; GRANT ALL ON SCHEMA public TO public;"`)
+      await runRemoteCommand(`docker exec -i affiliate-gadget-postgres psql -U agadget -d affiliate_gadget -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO agadget; GRANT ALL ON SCHEMA public TO public;"`)
 
       // 3. Re-push Prisma Schema to generate all clean tables
       console.log('\n--- Recreating all tables from Prisma schema ---')

@@ -76,6 +76,13 @@ export function SectionStoreSpotlight() {
               </div>
             ))}
           </div>
+        ) : visibleStores.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-slate-200 p-12 text-center dark:border-slate-800">
+            <Store className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" />
+            <p className="mt-2 text-sm font-bold text-slate-700 dark:text-slate-300">
+              Belum ada toko cabang yang terdaftar
+            </p>
+          </div>
         ) : (
           <>
             {/* ── DESKTOP: Grid 3 kolom dengan kartu proper ── */}
