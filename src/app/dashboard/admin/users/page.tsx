@@ -182,8 +182,11 @@ export default function UsersPage() {
       isActive: newStatus,
     }
 
-    // Jika mengaktifkan akun mitra, otomatis setujui status kemitraannya
+    // Jika mengaktifkan akun mitra / admin toko, otomatis setujui status kemitraannya
     if (user.role === 'MITRA' && newStatus) {
+      payload.mitraStatus = 'APPROVED'
+    }
+    if (user.role === 'STORE_ADMIN' && newStatus) {
       payload.mitraStatus = 'APPROVED'
     }
 

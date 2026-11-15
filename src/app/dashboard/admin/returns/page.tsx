@@ -24,6 +24,7 @@ import {
 import { toast } from 'sonner'
 import { usePageGuard } from '@/hooks/use-page-guard'
 import { CheckResiModal } from '@/components/shipping/check-resi-modal'
+import AfterSalesReturnsPage from '@/app/dashboard/after-sales/returns/page'
 
 // Backward compatibility references for legacy test runners and Biteship logistics
 const BITESHIP_COURIERS = [
@@ -250,6 +251,10 @@ export default function SuperAdminReturnsPage() {
       rejected: superAdminReturns.filter((r) => r.status === 'REJECTED').length,
     }
   }, [returns])
+
+  if (session?.user?.role === 'STORE_ADMIN') {
+    return <AfterSalesReturnsPage />
+  }
 
   if (guardLoading || loading) {
     return (

@@ -120,9 +120,11 @@ const cleanRecommendationNote = (storeResponse?: string | null): string => {
 }
 
 export default function AfterSalesReturnsPage() {
-  const { isLoading: guardLoading, isAllowed } = usePageGuard(
-    '/dashboard/after-sales'
-  )
+  const {
+    isLoading: guardLoading,
+    isAllowed,
+    session,
+  } = usePageGuard('/dashboard/after-sales')
   const router = useRouter()
   const [connectingChatId, setConnectingChatId] = useState<string | null>(null)
 
@@ -423,8 +425,12 @@ export default function AfterSalesReturnsPage() {
       if (!res.ok || !data.room?.id) {
         throw new Error(data.error || 'Gagal menghubungkan chat pembeli')
       }
+      const chatBase =
+        session?.user?.role === 'STORE_ADMIN'
+          ? '/dashboard/admin/chat?orderId='
+          : '/dashboard/after-sales/chat?orderId='
       router.push(
-        `/dashboard/after-sales/chat?orderId=${item.orderId}&roomId=${data.room.id}&returnId=${item.id}`
+        `${chatBase}${item.orderId}&roomId=${data.room.id}&returnId=${item.id}`
       )
     } catch (err: any) {
       console.error('Error connecting to customer chat:', err)

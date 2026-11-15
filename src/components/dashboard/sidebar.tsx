@@ -215,6 +215,11 @@ const storeAdminNavSections: NavSection[] = [
         href: '/dashboard/admin/products',
       },
       { icon: ShoppingCart, label: 'Pesanan', href: '/dashboard/admin/orders' },
+      {
+        icon: RotateCcw,
+        label: 'Retur & Garansi',
+        href: '/dashboard/admin/returns',
+      },
       { icon: Tag, label: 'Voucher Promo', href: '/dashboard/admin/vouchers' },
       { icon: Radio, label: 'Siaran Langsung', href: '/dashboard/admin/live' },
       {

@@ -18,7 +18,80 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 0. Check if it is a pending applicant
+    // 0a. Check if it is a StoreAdmin user waiting for onboarding
+    if (id.startsWith('user_')) {
+      const userId = id.replace('user_', '')
+      const u = await db.user.findUnique({
+        where: { id: userId },
+      })
+      if (!u) {
+        return NextResponse.json(
+          { error: 'Akun pendaftar tidak ditemukan' },
+          { status: 404 }
+        )
+      }
+      return NextResponse.json({
+        id,
+        businessName: u.isActive
+          ? `${u.name || 'Admin Toko'} (Sedang Input Data Toko)`
+          : `${u.name || 'Admin Toko'} (Menunggu Aktivasi)`,
+        name: u.name || 'Admin Toko',
+        slug: '',
+        companyName: u.isActive
+          ? 'Akun Aktif • Menunggu Input Profil Toko'
+          : 'Menunggu Persetujuan Aktivasi Superadmin',
+        taxId: null,
+        tagline: null,
+        description: null,
+        banner: '',
+        address: 'Menunggu input alamat oleh Admin Toko',
+        city: '-',
+        province: '-',
+        postalCode: null,
+        latitude: null,
+        longitude: null,
+        phone: u.phone || '-',
+        whatsapp: u.phone || null,
+        email: u.email,
+        website: null,
+        commissionRate: 2.0,
+        isOwnerStore: false,
+        rating: 5.0,
+        totalReview: 0,
+        totalSales: 0,
+        totalViews: 0,
+        totalInquiries: 0,
+        isApproved: u.isActive,
+        isActive: u.isActive,
+        source: 'pending_applicant',
+        createdAt: u.createdAt.toISOString(),
+        bankAccounts: [],
+        schedules: [],
+        features: [],
+        weekdayHours: '-',
+        weekendHours: '-',
+        services: [],
+        images: [],
+        reviews: [],
+        user: {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+          isActive: u.isActive,
+          mitraStatus: u.mitraStatus || (u.isActive ? 'APPROVED' : 'PENDING'),
+        },
+        _count: {
+          services: 0,
+          products: 0,
+          orders: 0,
+          images: 0,
+          reviews: 0,
+        },
+      })
+    }
+
+    // 0b. Check if it is a pending applicant
     if (id.startsWith('applicant_')) {
       const appId = id.replace('applicant_', '')
       const app = await (db as any).storeApplication.findUnique({
@@ -293,7 +366,50 @@ export async function PUT(
       accountName,
     } = body
 
-    // 0. Check if it is a pending applicant
+    // 0a. Check if it is a StoreAdmin user waiting for activation / onboarding
+    if (id.startsWith('user_')) {
+      const userId = id.replace('user_', '')
+      const u = await db.user.findUnique({ where: { id: userId } })
+      if (!u) {
+        return NextResponse.json(
+          { error: 'Akun pendaftar tidak ditemukan' },
+          { status: 404 }
+        )
+      }
+
+      if (isApproved !== false && isActive !== false) {
+        await db.user.update({
+          where: { id: userId },
+          data: {
+            isActive: true,
+            mitraStatus: 'APPROVED',
+            role: 'STORE_ADMIN',
+          },
+        })
+        return NextResponse.json({
+          success: true,
+          message: `Akun "${u.name || u.email}" berhasil diaktifkan! Admin Toko sekarang dapat mengisi data tokonya.`,
+          isApproved: true,
+          isActive: true,
+        })
+      } else {
+        await db.user.update({
+          where: { id: userId },
+          data: {
+            isActive: false,
+            mitraStatus: 'REJECTED',
+          },
+        })
+        return NextResponse.json({
+          success: true,
+          message: `Akun "${u.name || u.email}" dinonaktifkan / ditangguhkan.`,
+          isApproved: false,
+          isActive: false,
+        })
+      }
+    }
+
+    // 0b. Check if it is a pending applicant
     if (id.startsWith('applicant_')) {
       const appId = id.replace('applicant_', '')
       const app = await (db as any).storeApplication.findUnique({
@@ -431,6 +547,8 @@ export async function PUT(
         storeUpdateData.commissionRate = parseFloat(commissionRate)
       if (isActive !== undefined) storeUpdateData.isActive = isActive
       if (isApproved !== undefined) storeUpdateData.isActive = isApproved
+      if (body.groupId !== undefined)
+        storeUpdateData.groupId = body.groupId || null
 
       if (bankName && accountNumber) {
         const existingBank = await db.storeBankAccount.findFirst({
@@ -572,7 +690,16 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 0. Check if it is an applicant record
+    // 0a. Check if it is a StoreAdmin user record without store
+    if (id.startsWith('user_')) {
+      const userId = id.replace('user_', '')
+      await db.user.delete({ where: { id: userId } }).catch(() => {})
+      return NextResponse.json({
+        message: 'Akun pendaftar berhasil dihapus',
+      })
+    }
+
+    // 0b. Check if it is an applicant record
     if (id.startsWith('applicant_')) {
       const appId = id.replace('applicant_', '')
       const app = await (db as any).storeApplication.findUnique({

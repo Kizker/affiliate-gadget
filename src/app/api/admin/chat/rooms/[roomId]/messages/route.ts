@@ -128,13 +128,37 @@ export async function GET(
     }
 
     if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
-      // Isolasi Purna Jual: Percakapan retur / penukaran barang TIDAK masuk ke Admin Toko
+      let userStoreId = user.storeId
+      if (!userStoreId) {
+        const s = await prisma.store.findFirst({
+          where: { email: session.user.email || undefined },
+          select: { id: true },
+        })
+        userStoreId = s?.id || null
+      }
+
+      const storeWithGroup = userStoreId
+        ? await prisma.store
+            .findUnique({
+              where: { id: userStoreId },
+              select: {
+                groupId: true,
+                group: { select: { afterSalesUserId: true } },
+              },
+            })
+            .catch(() => null)
+        : null
+      const hasExternalAfterSales = Boolean(
+        storeWithGroup?.groupId && storeWithGroup?.group?.afterSalesUserId
+      )
+
+      // Isolasi Purna Jual: Percakapan retur / penukaran barang TIDAK masuk ke Admin Toko HANYA jika toko sudah memiliki Group After Sales
       const isReturnRelated =
         Boolean(
           room.order?.returnRequests && room.order.returnRequests.length > 0
         ) || room.claimedBy?.role === 'AFTER_SALES'
 
-      if (isReturnRelated) {
+      if (hasExternalAfterSales && isReturnRelated) {
         return NextResponse.json(
           {
             error:
@@ -144,14 +168,6 @@ export async function GET(
         )
       }
 
-      let userStoreId = user.storeId
-      if (!userStoreId) {
-        const s = await prisma.store.findFirst({
-          where: { email: session.user.email || undefined },
-          select: { id: true },
-        })
-        userStoreId = s?.id || null
-      }
       const isStoreRoom =
         (userStoreId && room.storeId === userStoreId) ||
         (userStoreId && (room as any).order?.storeId === userStoreId) ||
@@ -302,9 +318,25 @@ export async function POST(
       }
     }
 
-    // Cek Handover & Isolasi: Jika pesanan COMPLETED atau dalam proses retur/klaim garansi, Admin Toko tidak bisa membalas chat
+    // Cek Handover & Isolasi: Jika pesanan COMPLETED atau dalam proses retur/klaim garansi, Admin Toko tidak bisa membalas chat HANYA jika toko sudah memiliki Group After Sales
     if (user.role === 'STORE_ADMIN' || user.role === 'STORE_SALES') {
-      if (room.order?.status === 'COMPLETED') {
+      const targetStoreId = user.storeId || room.storeId || room.order?.storeId
+      const storeWithGroup = targetStoreId
+        ? await prisma.store
+            .findUnique({
+              where: { id: targetStoreId },
+              select: {
+                groupId: true,
+                group: { select: { afterSalesUserId: true } },
+              },
+            })
+            .catch(() => null)
+        : null
+      const hasExternalAfterSales = Boolean(
+        storeWithGroup?.groupId && storeWithGroup?.group?.afterSalesUserId
+      )
+
+      if (hasExternalAfterSales && room.order?.status === 'COMPLETED') {
         return NextResponse.json(
           {
             error:
@@ -319,7 +351,7 @@ export async function POST(
           room.order?.returnRequests && room.order.returnRequests.length > 0
         ) || room.claimedBy?.role === 'AFTER_SALES'
 
-      if (isReturnRelated) {
+      if (hasExternalAfterSales && isReturnRelated) {
         return NextResponse.json(
           {
             error:

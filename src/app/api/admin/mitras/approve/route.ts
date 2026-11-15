@@ -27,12 +27,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const cleanAppId = String(candidateId).replace('applicant_', '')
+    const cleanAppId = String(candidateId)
+      .replace('applicant_', '')
+      .replace('user_', '')
 
     // Find store application directly along with applicant user
     const app = await (prisma as any).storeApplication.findFirst({
       where: {
-        OR: [{ userId: candidateId }, { id: cleanAppId }],
+        OR: [{ userId: cleanAppId }, { id: cleanAppId }],
       },
       include: {
         user: true,
@@ -40,10 +42,37 @@ export async function POST(req: NextRequest) {
     })
 
     if (!app) {
-      return NextResponse.json(
-        { error: 'Data formulir toko pendaftar belum ditemukan.' },
-        { status: 404 }
-      )
+      // If no StoreApplication yet, activate the Store Admin account so they can fill out their store profile
+      const targetUser = await prisma.user.findUnique({
+        where: { id: cleanAppId },
+      })
+      if (!targetUser) {
+        return NextResponse.json(
+          { error: 'Data pendaftar tidak ditemukan.' },
+          { status: 404 }
+        )
+      }
+
+      const activatedUser = await prisma.user.update({
+        where: { id: targetUser.id },
+        data: {
+          role: 'STORE_ADMIN',
+          isActive: true,
+          mitraStatus: 'APPROVED',
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        message: `Akun Admin Toko "${activatedUser.name || activatedUser.email}" berhasil diaktifkan! Admin Toko kini dapat mengisi nama toko dan profil cabangnya.`,
+        user: {
+          id: activatedUser.id,
+          name: activatedUser.name,
+          email: activatedUser.email,
+          role: activatedUser.role,
+          isActive: activatedUser.isActive,
+        },
+      })
     }
 
     const user = app.user

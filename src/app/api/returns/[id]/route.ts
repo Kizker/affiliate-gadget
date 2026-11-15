@@ -178,6 +178,34 @@ export async function PUT(
       }
     }
 
+    // Check if Store Admin is self-managing After Sales (when store is not assigned to a Group with After Sales)
+    let isSelfManagedStoreAdmin = false
+    if (session.user.role === 'STORE_ADMIN') {
+      const userRecord = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { storeId: true },
+      })
+      const userStoreId = (session.user as any).storeId || userRecord?.storeId
+      const orderStoreId = existing.order?.storeId || existing.storeId
+      if (!userStoreId || orderStoreId !== userStoreId) {
+        return NextResponse.json(
+          { error: 'Pengajuan pengembalian tidak ditemukan' },
+          { status: 404 }
+        )
+      }
+      if (existing.order?.store?.groupId) {
+        const assignedGroup = await prisma.storeGroup
+          .findUnique({
+            where: { id: existing.order.store.groupId },
+            select: { afterSalesUserId: true },
+          })
+          .catch(() => null)
+        isSelfManagedStoreAdmin = !assignedGroup?.afterSalesUserId
+      } else {
+        isSelfManagedStoreAdmin = true
+      }
+    }
+
     // After Sales Recommendation Action: AFTER_SALES_CONFIRM or FORWARD_TO_SUPERADMIN
     if (
       body.action === 'AFTER_SALES_CONFIRM' ||
@@ -186,7 +214,8 @@ export async function PUT(
       if (
         session.user.role !== 'AFTER_SALES' &&
         session.user.role !== 'SUPER_ADMIN' &&
-        session.user.role !== 'ADMIN'
+        session.user.role !== 'ADMIN' &&
+        !isSelfManagedStoreAdmin
       ) {
         return NextResponse.json(
           {
@@ -359,7 +388,8 @@ export async function PUT(
       if (
         session.user.role !== 'SUPER_ADMIN' &&
         session.user.role !== 'ADMIN' &&
-        session.user.role !== 'AFTER_SALES'
+        session.user.role !== 'AFTER_SALES' &&
+        !isSelfManagedStoreAdmin
       ) {
         return NextResponse.json(
           {
@@ -864,7 +894,8 @@ export async function PUT(
       if (
         session.user.role !== 'AFTER_SALES' &&
         session.user.role !== 'SUPER_ADMIN' &&
-        session.user.role !== 'ADMIN'
+        session.user.role !== 'ADMIN' &&
+        !isSelfManagedStoreAdmin
       ) {
         return NextResponse.json(
           {
@@ -1109,8 +1140,9 @@ export async function PUT(
       }
     } else {
       if (
-        session.user.role === 'STORE_ADMIN' ||
-        session.user.role === 'STORE_SALES'
+        (session.user.role === 'STORE_ADMIN' ||
+          session.user.role === 'STORE_SALES') &&
+        !isSelfManagedStoreAdmin
       ) {
         return NextResponse.json(
           {

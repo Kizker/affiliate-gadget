@@ -24,6 +24,7 @@ interface MitraToolbarProps {
   serviceSearchQuery: string
   setServiceSearchQuery: (val: string) => void
   onOpenCreateMitraModal: () => void
+  onOpenCreateStoreModal?: () => void
 }
 
 export function MitraToolbar({
@@ -42,6 +43,7 @@ export function MitraToolbar({
   serviceSearchQuery,
   setServiceSearchQuery,
   onOpenCreateMitraModal,
+  onOpenCreateStoreModal,
 }: MitraToolbarProps) {
   if (mainTab === 'STORES') {
     return (
@@ -115,14 +117,15 @@ export function MitraToolbar({
             )}
           </div>
 
-          {/* Primary Action Button (+ Tambah Toko with Action Orange) */}
-          <Link
-            href="/dashboard/admin/mitras/create"
+          {/* Primary Action Button (+ Tambah Akun Toko with Action Orange) */}
+          <button
+            type="button"
+            onClick={onOpenCreateStoreModal}
             className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-600 active:scale-95"
           >
             <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>Tambah Toko</span>
-          </Link>
+            <span>Tambah Akun Toko</span>
+          </button>
         </div>
       </div>
     )

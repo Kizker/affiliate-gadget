@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
           phone: true,
           role: true,
           isActive: true,
+          mitraStatus: true,
+          storeId: true,
           twoFactorEnabled: true,
         },
       })
@@ -51,7 +53,14 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      if (!user.isActive) {
+      const isPendingStoreApplicant =
+        (user.role === 'STORE_ADMIN' || user.role === 'MITRA') &&
+        (user.mitraStatus === 'PENDING' ||
+          user.mitraStatus === 'NEEDS_STORE_DATA' ||
+          !user.mitraStatus) &&
+        !user.storeId
+
+      if (!user.isActive && !isPendingStoreApplicant) {
         return NextResponse.json(
           { error: 'Akun Anda sedang dinonaktifkan oleh administrator.' },
           { status: 403 }

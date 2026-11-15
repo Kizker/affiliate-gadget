@@ -91,11 +91,21 @@ export async function PATCH(
 
     // Otomatis sinkronisasi toko jika user diangkat menjadi STORE_ADMIN
     if (targetRole === 'STORE_ADMIN') {
+      if (isActive === true) {
+        updateData.mitraStatus = 'APPROVED'
+      }
       const fullUser = await prisma.user.findUnique({
         where: { id },
         select: { storeId: true, email: true, name: true },
       })
-      if (!fullUser?.storeId) {
+      if (fullUser?.storeId && isActive !== undefined) {
+        await prisma.store
+          .update({
+            where: { id: fullUser.storeId },
+            data: { isActive: Boolean(isActive) },
+          })
+          .catch(() => {})
+      } else if (!fullUser?.storeId) {
         const storeByEmail = await prisma.store.findFirst({
           where: { email: fullUser?.email || undefined },
           select: { id: true },
@@ -106,7 +116,7 @@ export async function PATCH(
           const app = await (prisma as any).storeApplication.findFirst({
             where: { userId: id },
           })
-          if (app) {
+          if (app && app.storeName) {
             let baseSlug = (app.storeName || 'toko-cabang')
               .toLowerCase()
               .trim()

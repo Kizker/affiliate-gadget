@@ -55,6 +55,19 @@ export async function GET() {
       }
 
       if (effectiveStoreId) {
+        const storeWithGroup = await prisma.store
+          .findUnique({
+            where: { id: effectiveStoreId },
+            select: {
+              groupId: true,
+              group: { select: { afterSalesUserId: true } },
+            },
+          })
+          .catch(() => null)
+        const hasExternalAfterSales = Boolean(
+          storeWithGroup?.groupId && storeWithGroup?.group?.afterSalesUserId
+        )
+
         whereClause = {
           messages: { some: {} },
           OR: [
@@ -73,16 +86,22 @@ export async function GET() {
             // Rooms bantuan admin toko ini langsung ke Superadmin
             { customerId: session.user.id, storeId: null },
           ],
-          NOT: [
-            // Isolasi Purna Jual: Percakapan retur, komplain, dan pertukaran barang TIDAK masuk ke Admin Toko
-            { order: { returnRequests: { some: {} } } },
-            { order: { complaints: { some: {} } } },
-            { messages: { some: { messageType: 'return_reference' } } },
-            {
-              messages: { some: { content: { contains: 'return_reference' } } },
-            },
-            { claimedBy: { role: 'AFTER_SALES' } },
-          ],
+          ...(hasExternalAfterSales
+            ? {
+                NOT: [
+                  // Isolasi Purna Jual: Percakapan retur, komplain, dan pertukaran barang TIDAK masuk ke Admin Toko jika sudah ada Group After Sales
+                  { order: { returnRequests: { some: {} } } },
+                  { order: { complaints: { some: {} } } },
+                  { messages: { some: { messageType: 'return_reference' } } },
+                  {
+                    messages: {
+                      some: { content: { contains: 'return_reference' } },
+                    },
+                  },
+                  { claimedBy: { role: 'AFTER_SALES' } },
+                ],
+              }
+            : {}),
         }
       } else {
         // Toko admin belum terhubung ke cabang fisik: HANYA lihat bantuan langsung ke Superadmin

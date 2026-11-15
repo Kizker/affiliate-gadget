@@ -57,7 +57,7 @@ export default function RegisterPage() {
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'CUSTOMER' as 'CUSTOMER' | 'MITRA',
+    role: 'CUSTOMER' as 'CUSTOMER' | 'STORE_ADMIN' | 'MITRA',
     honeypotField: '',
   })
 
@@ -213,8 +213,13 @@ export default function RegisterPage() {
         redirect: false,
       })
 
-      if (formData.role === 'MITRA') {
-        setCurrentStep(2)
+      if (formData.role === 'STORE_ADMIN' || formData.role === 'MITRA') {
+        if (result?.error) {
+          router.push('/login?registered=true')
+        } else {
+          router.push('/dashboard/admin/onboarding')
+          router.refresh()
+        }
       } else {
         if (result?.error) {
           router.push('/login?registered=true')
@@ -387,7 +392,8 @@ export default function RegisterPage() {
             </div>
 
             {/* Stepper Indicator */}
-            {(formData.role === 'MITRA' ||
+            {(formData.role === 'STORE_ADMIN' ||
+              formData.role === 'MITRA' ||
               currentStep === 'otp' ||
               currentStep === 2) && (
               <div className="mb-6 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
@@ -443,31 +449,6 @@ export default function RegisterPage() {
                     </div>
                     <span>Verifikasi OTP</span>
                   </div>
-
-                  {formData.role === 'MITRA' && (
-                    <>
-                      <div className="mx-2.5 h-0.5 flex-1 bg-slate-200 dark:bg-slate-700" />
-
-                      <div
-                        className={`flex items-center gap-2 ${
-                          currentStep === 2
-                            ? 'text-orange-600 dark:text-orange-400'
-                            : 'text-slate-400'
-                        }`}
-                      >
-                        <div
-                          className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                            currentStep === 2
-                              ? 'bg-orange-500 text-white'
-                              : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
-                          }`}
-                        >
-                          3
-                        </div>
-                        <span>Data Toko</span>
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
             )}
@@ -515,9 +496,10 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        setFormData({ ...formData, role: 'MITRA' })
+                        setFormData({ ...formData, role: 'STORE_ADMIN' })
                       }
                       className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${
+                        formData.role === 'STORE_ADMIN' ||
                         formData.role === 'MITRA'
                           ? 'shadow-xs border-orange-500 bg-orange-50/25 text-slate-950 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
                           : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'
@@ -525,6 +507,7 @@ export default function RegisterPage() {
                     >
                       <div
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                          formData.role === 'STORE_ADMIN' ||
                           formData.role === 'MITRA'
                             ? 'bg-orange-500 text-white'
                             : 'shadow-2xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
@@ -534,7 +517,7 @@ export default function RegisterPage() {
                       </div>
                       <div>
                         <p className="text-xs font-bold leading-tight">
-                          Mitra Toko
+                          Admin Toko
                         </p>
                         <p className="text-[10px] opacity-75">
                           Daftar Cabang Toko
@@ -543,12 +526,13 @@ export default function RegisterPage() {
                     </button>
                   </div>
 
-                  {formData.role === 'MITRA' && (
+                  {(formData.role === 'STORE_ADMIN' ||
+                    formData.role === 'MITRA') && (
                     <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-slate-500 duration-200 animate-in fade-in dark:text-slate-400">
                       <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
                       <span>
-                        Pendaftaran toko memerlukan kelengkapan profil toko di
-                        langkah berikutnya
+                        Akun menunggu persetujuan Superadmin sebelum pengisian
+                        data toko
                       </span>
                     </div>
                   )}

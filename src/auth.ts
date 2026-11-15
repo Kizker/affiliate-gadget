@@ -105,8 +105,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         //   throw new Error(LOGIN_ERROR_CODES.EMAIL_NOT_VERIFIED)
         // }
 
-        // 7. Check Active status (admin disable check)
-        if (!user.isActive) {
+        // 7. Check Active status (admin disable check; allow pending store/mitra applicants to enter waiting page)
+        const isPendingStoreApplicant =
+          (user.role === 'STORE_ADMIN' || user.role === 'MITRA') &&
+          (user.mitraStatus === 'PENDING' ||
+            user.mitraStatus === 'NEEDS_STORE_DATA') &&
+          !user.storeId
+
+        if (!user.isActive && !isPendingStoreApplicant) {
           throw new Error(LOGIN_ERROR_CODES.ACCOUNT_DISABLED)
         }
 

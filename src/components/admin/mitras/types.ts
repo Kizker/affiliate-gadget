@@ -13,6 +13,16 @@ export interface Schedule {
   closeTime: string
 }
 
+export interface StoreGroupOption {
+  id: string
+  name: string
+  afterSalesUser?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
+}
+
 export interface Mitra {
   id: string
   businessName: string
@@ -39,6 +49,8 @@ export interface Mitra {
   totalInquiries?: number
   isApproved: boolean
   isActive: boolean
+  groupId?: string | null
+  group?: StoreGroupOption | null
   source?: 'store' | 'pending_applicant'
   rejectionReason?: string | null
   createdAt: string

@@ -375,18 +375,21 @@ export async function POST(req: NextRequest) {
       })
 
       const groupAfterSales = storeWithGroup?.group?.afterSalesUser
-      const fallbackAfterSales = await prisma.user.findFirst({
-        where: { role: 'AFTER_SALES', isActive: true },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          role: true,
-        },
-      })
+      // Jika toko tidak didaftarkan ke salah satu group, otomatis Admin Toko sendiri yang menjadi After Sales-nya
+      const fallbackAfterSales = !storeAdmin
+        ? await prisma.user.findFirst({
+            where: { role: 'AFTER_SALES', isActive: true },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              role: true,
+            },
+          })
+        : null
 
-      assignedAdmin = groupAfterSales || fallbackAfterSales || storeAdmin
+      assignedAdmin = groupAfterSales || storeAdmin || fallbackAfterSales
     }
 
     // Pemisahan tegas Jalur Room:

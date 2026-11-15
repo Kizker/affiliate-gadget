@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 7. Strict Role Whitelist Hardening (Defense-in-depth)
-    const allowedPublicRoles = ['CUSTOMER', 'MITRA']
+    const allowedPublicRoles = ['CUSTOMER', 'STORE_ADMIN', 'MITRA']
     if (!allowedPublicRoles.includes(role)) {
       return NextResponse.json(
         { error: 'Jenis akun yang dipilih tidak diizinkan.' },
@@ -132,17 +132,23 @@ export async function POST(req: NextRequest) {
     // 10. Password Hashing with Bcrypt (Cost Factor 12)
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // 11. Create User (isActive: true & emailVerified auto-set for development mode)
+    // 11. Create User (isActive: role === 'MITRA' ? false : true; STORE_ADMIN & MITRA baru nonaktif hingga diaktifkan Superadmin)
+    const isApplicantNonActive = role === 'MITRA' || role === 'STORE_ADMIN'
     const newUser = await prisma.user.create({
       data: {
         name: sanitizedName,
         email: normalizedEmail,
         password: hashedPassword,
         phone: formattedPhone,
-        role: role as 'CUSTOMER' | 'MITRA',
-        isActive: role === 'MITRA' ? false : true, // Mitra baru otomatis nonaktif hingga diverifikasi & diaktifkan Superadmin
-        emailVerified: new Date(), // [DEV-MODE] Auto-verified (original: null)
-        mitraStatus: role === 'MITRA' ? 'NEEDS_STORE_DATA' : null,
+        role: role as 'CUSTOMER' | 'STORE_ADMIN' | 'MITRA',
+        isActive: isApplicantNonActive ? false : true,
+        emailVerified: new Date(),
+        mitraStatus:
+          role === 'STORE_ADMIN'
+            ? 'PENDING'
+            : role === 'MITRA'
+              ? 'NEEDS_STORE_DATA'
+              : null,
       },
       select: {
         id: true,

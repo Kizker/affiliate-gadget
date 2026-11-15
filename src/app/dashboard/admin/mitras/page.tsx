@@ -9,6 +9,7 @@ import {
   Stats,
   ServiceMitra,
   ServiceStats,
+  StoreGroupOption,
   MitraPrimaryTabs,
   MitraKpiCards,
   MitraToolbar,
@@ -32,6 +33,7 @@ export default function MitrasPage() {
 
   // --- STORES STATE ---
   const [mitras, setMitras] = useState<Mitra[]>([])
+  const [allGroups, setAllGroups] = useState<StoreGroupOption[]>([])
   const [stats, setStats] = useState<Stats>({
     total: 0,
     approved: 0,
@@ -84,8 +86,10 @@ export default function MitrasPage() {
   >('ALL')
   const [serviceSearchQuery, setServiceSearchQuery] = useState('')
 
-  // Create Service Mitra Modal State
+  // Create Store Admin / Service Mitra Modal State
   const [createMitraModalOpen, setCreateMitraModalOpen] = useState(false)
+  const [createStoreAdminModalOpen, setCreateStoreAdminModalOpen] =
+    useState(false)
   const [newMitraUsername, setNewMitraUsername] = useState('')
   const [newMitraEmail, setNewMitraEmail] = useState('')
   const [newMitraPassword, setNewMitraPassword] = useState('')
@@ -134,6 +138,9 @@ export default function MitrasPage() {
 
       const data = await res.json()
       setMitras(data.mitras || [])
+      if (Array.isArray(data.allGroups)) {
+        setAllGroups(data.allGroups)
+      }
       setTotalPages(data.pagination?.totalPages || 1)
 
       if (data.stats) {
@@ -260,6 +267,93 @@ export default function MitrasPage() {
       )
     } finally {
       setIsCreatingMitra(false)
+    }
+  }
+
+  // Create Store Admin Account Handler (Admin Toko will input their own store name upon login)
+  const handleCreateStoreAdmin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (
+      !newMitraUsername.trim() ||
+      !newMitraEmail.trim() ||
+      !newMitraPassword
+    ) {
+      toast.error('Mohon lengkapi nama admin toko, email, dan password.')
+      return
+    }
+
+    if (newMitraPassword.length < 6) {
+      toast.error('Password minimal 6 karakter.')
+      return
+    }
+
+    setIsCreatingMitra(true)
+    try {
+      const res = await fetch('/api/admin/mitras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          createStoreAdminOnly: true,
+          username: newMitraUsername.trim(),
+          email: newMitraEmail.trim().toLowerCase(),
+          password: newMitraPassword,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal membuat akun Admin Toko.')
+      }
+
+      toast.success(
+        data.message ||
+          `Akun Admin Toko "${newMitraUsername}" berhasil dibuat & aktif!`
+      )
+      setCreateStoreAdminModalOpen(false)
+      setNewMitraUsername('')
+      setNewMitraEmail('')
+      setNewMitraPassword('')
+      fetchMitras()
+    } catch (err) {
+      console.error('Error creating store admin:', err)
+      toast.error(
+        err instanceof Error ? err.message : 'Gagal membuat akun Admin Toko.'
+      )
+    } finally {
+      setIsCreatingMitra(false)
+    }
+  }
+
+  // Assign or unassign Store to StoreGroup
+  const handleAssignGroup = async (storeId: string, groupId: string | null) => {
+    try {
+      const res = await fetch(`/api/admin/mitras/${storeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId }),
+      })
+      if (!res.ok) {
+        throw new Error('Gagal memperbarui group toko')
+      }
+      setMitras((prev) =>
+        prev.map((m) =>
+          m.id === storeId
+            ? {
+                ...m,
+                groupId,
+                group: allGroups.find((g) => g.id === groupId) || null,
+              }
+            : m
+        )
+      )
+      toast.success(
+        groupId
+          ? 'Toko berhasil didaftarkan ke Group After Sales!'
+          : 'Toko diatur ke After Sales Mandiri (dikelola Admin Toko sendiri).'
+      )
+    } catch (err) {
+      console.error('Error assigning group:', err)
+      toast.error('Gagal memperbarui pengaturan Group After Sales')
     }
   }
 
@@ -534,6 +628,7 @@ export default function MitrasPage() {
         serviceSearchQuery={serviceSearchQuery}
         setServiceSearchQuery={setServiceSearchQuery}
         onOpenCreateMitraModal={() => setCreateMitraModalOpen(true)}
+        onOpenCreateStoreModal={() => setCreateStoreAdminModalOpen(true)}
       />
 
       {/* 3. TABLE LIST (Displays either Stores or Service Mitras) */}
@@ -543,6 +638,8 @@ export default function MitrasPage() {
             mounted={mounted}
             loading={loading}
             mitras={mitras}
+            allGroups={allGroups}
+            onAssignGroup={handleAssignGroup}
             approvalFilter={approvalFilter}
             searchQuery={searchQuery}
             cityFilter={cityFilter}
@@ -627,6 +724,28 @@ export default function MitrasPage() {
           }
         }}
         onSubmit={handleCreateMitra}
+      />
+
+      <CreateServiceMitraModal
+        open={createStoreAdminModalOpen}
+        username={newMitraUsername}
+        setUsername={setNewMitraUsername}
+        email={newMitraEmail}
+        setEmail={setNewMitraEmail}
+        password={newMitraPassword}
+        setPassword={setNewMitraPassword}
+        showPassword={showMitraPassword}
+        setShowPassword={setShowMitraPassword}
+        isCreating={isCreatingMitra}
+        onClose={() => {
+          if (!isCreatingMitra) {
+            setCreateStoreAdminModalOpen(false)
+            setNewMitraUsername('')
+            setNewMitraEmail('')
+            setNewMitraPassword('')
+          }
+        }}
+        onSubmit={handleCreateStoreAdmin}
       />
 
       <DeleteServiceMitraModal

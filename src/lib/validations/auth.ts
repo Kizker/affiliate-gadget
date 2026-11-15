@@ -89,7 +89,7 @@ export const registerSchema = z
       )
       .optional()
       .or(z.literal('')),
-    role: z.enum(['CUSTOMER', 'MITRA']).default('CUSTOMER'),
+    role: z.enum(['CUSTOMER', 'STORE_ADMIN', 'MITRA']).default('CUSTOMER'),
     honeypotField: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {

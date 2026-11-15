@@ -16,12 +16,14 @@ import {
   ExternalLink,
   Trash2,
 } from 'lucide-react'
-import { Mitra } from './types'
+import { Mitra, StoreGroupOption } from './types'
 
 interface StoreTableProps {
   mounted: boolean
   loading: boolean
   mitras: Mitra[]
+  allGroups?: StoreGroupOption[]
+  onAssignGroup?: (storeId: string, groupId: string | null) => void
   approvalFilter: 'ALL' | 'APPROVED' | 'PENDING'
   searchQuery: string
   cityFilter: string
@@ -41,6 +43,8 @@ export function StoreTable({
   mounted,
   loading,
   mitras,
+  allGroups = [],
+  onAssignGroup,
   approvalFilter,
   searchQuery,
   cityFilter,
@@ -255,33 +259,64 @@ export function StoreTable({
                   </div>
                 </td>
 
-                {/* 5. Status Badge */}
+                {/* 5. Status & Group After Sales */}
                 <td className="px-3 py-3.5">
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <span
                       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                        isApplicant
+                        isApplicant && !mitra.isApproved
                           ? 'border-amber-200/80 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/50 dark:text-amber-300'
-                          : mitra.isApproved
-                            ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-300'
-                            : 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                          : isApplicant && mitra.isApproved
+                            ? 'border-blue-200/80 bg-blue-50 text-blue-700 dark:border-blue-800/60 dark:bg-blue-950/50 dark:text-blue-300'
+                            : mitra.isApproved
+                              ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-300'
+                              : 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
                       }`}
                     >
                       <span
                         className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                          isApplicant
+                          isApplicant && !mitra.isApproved
                             ? 'bg-amber-500'
-                            : mitra.isApproved
-                              ? 'bg-emerald-500'
-                              : 'bg-slate-400'
+                            : isApplicant && mitra.isApproved
+                              ? 'bg-blue-500'
+                              : mitra.isApproved
+                                ? 'bg-emerald-500'
+                                : 'bg-slate-400'
                         }`}
                       />
-                      {isApplicant
-                        ? 'Pendaftar Baru'
-                        : mitra.isApproved
-                          ? 'Terverifikasi'
-                          : 'Nonaktif'}
+                      {isApplicant && !mitra.isApproved
+                        ? 'Menunggu Aktivasi'
+                        : isApplicant && mitra.isApproved
+                          ? 'Menunggu Input Toko'
+                          : mitra.isApproved
+                            ? 'Terverifikasi'
+                            : 'Nonaktif'}
                     </span>
+
+                    {!isApplicant && (
+                      <div>
+                        <select
+                          value={mitra.groupId || ''}
+                          onChange={(e) =>
+                            onAssignGroup?.(
+                              mitra.id,
+                              e.target.value ? e.target.value : null
+                            )
+                          }
+                          title="Atur Group After Sales (Jika tidak dipilih, Admin Toko otomatis menjadi After Sales mandiri)"
+                          className="max-w-[165px] cursor-pointer truncate rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700 outline-none transition hover:border-orange-300 focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          <option value="">
+                            After Sales: Mandiri (Admin Toko)
+                          </option>
+                          {allGroups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              Group: {g.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </td>
 
@@ -299,17 +334,17 @@ export function StoreTable({
                     </Link>
 
                     {/* 2. Tombol Aksi Spesifik */}
-                    {isApplicant ? (
+                    {isApplicant && !mitra.isApproved ? (
                       <>
                         <button
                           type="button"
                           onClick={() => onOpenApproveModal(mitra)}
                           disabled={isProcessingAction}
                           className="shadow-2xs inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-emerald-600 px-3.5 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                          title="Setujui pendaftaran mitra dan buat toko resmi"
+                          title="Aktifkan akun Admin Toko agar dapat mengisi data toko"
                         >
                           <Check className="h-3.5 w-3.5 shrink-0" />
-                          <span>Setujui</span>
+                          <span>Aktifkan</span>
                         </button>
 
                         <button
@@ -317,7 +352,7 @@ export function StoreTable({
                           onClick={() => onOpenRejectModal(mitra)}
                           disabled={isProcessingAction}
                           className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-rose-200/80 bg-rose-50/80 px-3.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
-                          title="Tolak pendaftaran dengan instruksi perbaikan"
+                          title="Tolak pendaftaran"
                         >
                           <X className="h-3.5 w-3.5 shrink-0" />
                           <span>Tolak</span>
@@ -341,29 +376,33 @@ export function StoreTable({
                           }`}
                           title={
                             mitra.isApproved
-                              ? 'Tangguhkan toko ini'
+                              ? 'Tangguhkan toko / akun ini'
                               : 'Setujui & aktifkan toko'
                           }
                         >
                           {mitra.isApproved ? 'Tangguhkan' : 'Aktifkan'}
                         </button>
 
-                        <Link
-                          href={`/dashboard/admin/mitras/${mitra.id}/edit`}
-                          className="shadow-2xs inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-500 transition hover:border-orange-300 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-orange-400"
-                          title="Ubah Profil Toko"
-                        >
-                          <Edit className="h-3.5 w-3.5 shrink-0" />
-                        </Link>
+                        {!isApplicant && (
+                          <>
+                            <Link
+                              href={`/dashboard/admin/mitras/${mitra.id}/edit`}
+                              className="shadow-2xs inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-500 transition hover:border-orange-300 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-orange-400"
+                              title="Ubah Profil Toko"
+                            >
+                              <Edit className="h-3.5 w-3.5 shrink-0" />
+                            </Link>
 
-                        <Link
-                          href={`/toko/${mitra.slug || mitra.id}`}
-                          target="_blank"
-                          className="shadow-2xs hidden h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-500 transition hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white xl:inline-flex"
-                          title="Buka halaman publik toko"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                        </Link>
+                            <Link
+                              href={`/toko/${mitra.slug || mitra.id}`}
+                              target="_blank"
+                              className="shadow-2xs hidden h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-500 transition hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white xl:inline-flex"
+                              title="Buka halaman publik toko"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                            </Link>
+                          </>
+                        )}
 
                         <button
                           type="button"
