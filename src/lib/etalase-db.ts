@@ -248,6 +248,145 @@ export async function ensureInitialEtalasesSeeded(): Promise<void> {
 }
 
 /**
+ * Otomatis menyinkronkan 1 Produk (+ seluruh variannya) menjadi 1 Etalase tersendiri (1:1).
+ * Digunakan saat Mass Update (Excel import) dan saat penambahan produk baru.
+ */
+export async function syncProductTo1to1Etalase(
+  client: any,
+  productId: string
+): Promise<string | null> {
+  if (!productId) return null
+  const db = client || prisma
+
+  const prod = await db.product.findUnique({
+    where: { id: productId },
+    include: { variants: true },
+  })
+
+  if (!prod || !prod.storeId) return null
+
+  const minPrice = getProductEffectiveMinPrice(prod)
+  const now = new Date()
+
+  // Cek apakah produk ini sudah terhubung ke suatu etalase
+  const existingItem = await db.etalaseProduct.findFirst({
+    where: { productId: prod.id },
+    select: { etalaseId: true },
+  })
+
+  let etalaseId = existingItem?.etalaseId || null
+
+  if (!etalaseId) {
+    const existingCover = await db.etalase.findFirst({
+      where: { coverProductId: prod.id, storeId: prod.storeId },
+      select: { id: true },
+    })
+    etalaseId = existingCover?.id || null
+  }
+
+  if (etalaseId) {
+    // Update etalase yang sudah ada agar sinkron dengan data produk & varian terbaru
+    await db.etalase.update({
+      where: { id: etalaseId },
+      data: {
+        name: prod.name,
+        brand: prod.brand || 'Smartphone',
+        category: prod.category || 'Smartphone',
+        description: prod.description || null,
+        coverProductId: prod.id,
+        customTitle: prod.name,
+        priceMode: 'LOWEST',
+        customPrice: minPrice > 0 ? minPrice : prod.price,
+        customOriginalPrice: prod.originalPrice || null,
+        isActive: prod.isActive,
+        isPromoted: Boolean(prod.isPromoted),
+        promotionPriority: Number(prod.promotionPriority) || 0,
+        updatedAt: now,
+      },
+    })
+
+    await db.etalaseProduct.upsert({
+      where: {
+        etalaseId_productId: {
+          etalaseId,
+          productId: prod.id,
+        },
+      },
+      create: {
+        etalaseId,
+        productId: prod.id,
+        label: prod.name,
+        sortOrder: 0,
+        createdAt: now,
+      },
+      update: {
+        label: prod.name,
+        sortOrder: 0,
+      },
+    })
+  } else {
+    // Buat etalase baru 1:1 untuk produk ini
+    const newEta = await db.etalase.create({
+      data: {
+        name: prod.name,
+        storeId: prod.storeId,
+        brand: prod.brand || 'Smartphone',
+        category: prod.category || 'Smartphone',
+        description: prod.description || null,
+        coverProductId: prod.id,
+        customTitle: prod.name,
+        priceMode: 'LOWEST',
+        customPrice: minPrice > 0 ? minPrice : prod.price,
+        customOriginalPrice: prod.originalPrice || null,
+        isActive: prod.isActive,
+        isPromoted: Boolean(prod.isPromoted),
+        promotionPriority: Number(prod.promotionPriority) || 0,
+        createdAt: now,
+        updatedAt: now,
+      },
+    })
+
+    etalaseId = newEta.id
+
+    await db.etalaseProduct.create({
+      data: {
+        etalaseId,
+        productId: prod.id,
+        label: prod.name,
+        sortOrder: 0,
+        createdAt: now,
+      },
+    })
+  }
+
+  return etalaseId
+}
+
+/**
+ * Menyinkronkan seluruh produk aktif ke dalam etalase 1:1
+ */
+export async function syncAllProductsTo1to1Etalases(
+  storeId?: string | null
+): Promise<{ count: number }> {
+  const where: any = { storeId: { not: null } }
+  if (storeId && storeId !== 'ALL') {
+    where.storeId = storeId
+  }
+
+  const products = await prisma.product.findMany({
+    where,
+    select: { id: true },
+  })
+
+  for (const p of products) {
+    await syncProductTo1to1Etalase(prisma, p.id)
+  }
+
+  invalidatePublicGadgetsCache()
+  return { count: products.length }
+}
+
+/**
  * Mengambil daftar Etalase yang sudah dievaluasi lengkap untuk Katalog Publik maupun Dashboard Admin
  */
 export async function getEtalases(options?: {

@@ -33,11 +33,6 @@ function baseEmailLayout(title: string, bodyContent: string): string {
     <div class="content">
       ${bodyContent}
     </div>
-    <div class="footer">
-      <p style="margin: 0 0 4px 0; font-weight: 600; color: #334155;">Affiliate Gadget Indonesia</p>
-      <p style="margin: 0 0 4px 0;">Marketplace Gadget Terverifikasi Multi-PT &bull; ITC Roxy Mas, Jakarta Pusat</p>
-      <p style="margin: 0; color: #94a3b8; font-size: 11px;">Email ini dikirim secara otomatis untuk tanda bukti transaksi resmi.</p>
-    </div>
   </div>
 </body>
 </html>`

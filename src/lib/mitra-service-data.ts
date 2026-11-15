@@ -111,34 +111,7 @@ export async function getMitraServiceListData(): Promise<MitraData[]> {
     console.error('Error fetching mitras in getMitraServiceListData:', error)
   }
 
-  // Resilient fallback to DEFAULT_MITRAS if database is empty or during cold boot
-  const fallback = DEFAULT_MITRAS.map((m, idx) => ({
-    id: `seed-mitra-${idx + 1}`,
-    businessName: m.businessName,
-    tagline: m.tagline,
-    description: m.description,
-    banner: m.banner,
-    city: m.city,
-    province: m.province,
-    address: m.address,
-    phone: m.phone,
-    whatsapp: m.whatsapp,
-    rating: m.rating,
-    totalReview: m.totalReview,
-    reviewCount: m.totalReview,
-    features: m.features || [],
-    services: m.services.map((s, sIdx) => ({
-      id: `svc-seed-${idx}-${sIdx}`,
-      name: s.name,
-      icon: s.icon,
-      price: s.price,
-    })),
-    weekdayHours: m.weekdayHours,
-    weekendHours: m.weekendHours,
-    latitude: m.latitude,
-    longitude: m.longitude,
-    googleMapsUrl: `https://maps.google.com/?q=${m.latitude},${m.longitude}`,
-  }))
-  cachedMitras = { data: fallback, timestamp: now }
-  return fallback
+  // Jika belum ada mitra yang terdaftar di database, kembalikan array kosong agar tidak menampilkan data palsu
+  cachedMitras = { data: [], timestamp: now }
+  return []
 }

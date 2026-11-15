@@ -333,6 +333,7 @@ export async function GET(req: NextRequest) {
         store: resolvedStore,
         order: resolvedOrder,
         hasOrder: !!resolvedOrder,
+        type: 'admin',
       },
       messages,
     })

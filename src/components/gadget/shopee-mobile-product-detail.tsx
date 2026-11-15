@@ -795,8 +795,8 @@ export function ShopeeMobileProductDetail({
         </div>
       </div>
 
-      {/* 3B. Shopee-Style Etalase Selector (Cukup Nama Produk Simpel Saja) */}
-      {etalaseItems && etalaseItems.length > 0 && onSelectEtalaseItem && (
+      {/* 3B. Shopee-Style Etalase Selector (Cukup Nama Produk Simpel Saja bila ada > 1 produk) */}
+      {etalaseItems && etalaseItems.length > 1 && onSelectEtalaseItem && (
         <div
           id="etalase-product-selector-mobile"
           className="space-y-2.5 border-b border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"

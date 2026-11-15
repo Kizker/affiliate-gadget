@@ -8,7 +8,10 @@ import {
   generateSmartSku,
   extractModelCode,
 } from '@/lib/shopee-codes'
-import { invalidatePublicGadgetsCache } from '@/lib/etalase-db'
+import {
+  invalidatePublicGadgetsCache,
+  syncProductTo1to1Etalase,
+} from '@/lib/etalase-db'
 
 // Helper: Extract brand from product title
 function extractBrand(productName: string): string {
@@ -1148,7 +1151,23 @@ export async function POST(request: Request) {
               },
             })
           }
+
+          // ─── Otomatis Jadikan Setiap Produk 1:1 Etalase Tersendiri ────
+          try {
+            await syncProductTo1to1Etalase(tx, prodId)
+          } catch (etaErr) {
+            console.warn(`[Auto-Etalase Error for ${prodId}]:`, etaErr)
+          }
         }
+
+        // Bersihkan etalase yang item produknya sudah terhapus
+        try {
+          await tx.etalase.deleteMany({
+            where: {
+              items: { none: {} },
+            },
+          })
+        } catch {}
       },
       { timeout: 60000 }
     )

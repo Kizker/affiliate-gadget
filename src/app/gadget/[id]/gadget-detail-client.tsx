@@ -1089,9 +1089,9 @@ export default function GadgetDetailClient({
                       </div>
                     </div>
 
-                    {/* 1B. Shopee-Style Etalase Selector (Cukup Nama Produk Simpel Saja) */}
+                    {/* 1B. Shopee-Style Etalase Selector (Cukup Nama Produk Simpel Saja bila ada > 1 produk) */}
                     {product.etalaseItems &&
-                      product.etalaseItems.length > 0 && (
+                      product.etalaseItems.length > 1 && (
                         <div
                           id="etalase-product-selector"
                           className="space-y-2.5 border-b border-slate-100 pb-5 dark:border-slate-800"

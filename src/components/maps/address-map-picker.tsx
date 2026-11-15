@@ -202,14 +202,141 @@ export default function AddressMapPicker({
     return (
       <div
         onClick={handleFallbackMapClick}
-        className="relative flex w-full cursor-crosshair select-none flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100"
+        className="relative flex w-full cursor-crosshair select-none flex-col justify-between overflow-hidden rounded-2xl border border-slate-300 bg-[#e8ecef] shadow-inner dark:border-slate-800 dark:bg-slate-900"
         style={{ height }}
         title="Klik di mana saja pada peta untuk mengubah titik lokasi toko"
       >
-        {/* Real OpenStreetMap Visual Map Layer */}
+        {/* Realistic Vector Street Map Background Layer */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[#e5e9ec]">
+          {/* Water channel / river */}
+          <svg
+            className="absolute inset-0 h-full w-full"
+            preserveAspectRatio="none"
+            viewBox="0 0 400 300"
+          >
+            <defs>
+              <pattern
+                id="street-grid"
+                width="60"
+                height="60"
+                patternUnits="userSpaceOnUse"
+              >
+                {/* City Blocks */}
+                <rect
+                  x="2"
+                  y="2"
+                  width="26"
+                  height="26"
+                  fill="#f8fafc"
+                  rx="2"
+                />
+                <rect
+                  x="32"
+                  y="2"
+                  width="26"
+                  height="26"
+                  fill="#edf2f7"
+                  rx="2"
+                />
+                <rect
+                  x="2"
+                  y="32"
+                  width="26"
+                  height="26"
+                  fill="#edf2f7"
+                  rx="2"
+                />
+                <rect
+                  x="32"
+                  y="32"
+                  width="26"
+                  height="26"
+                  fill="#f8fafc"
+                  rx="2"
+                />
+                {/* Secondary roads */}
+                <line
+                  x1="0"
+                  y1="30"
+                  x2="60"
+                  y2="30"
+                  stroke="#ffffff"
+                  strokeWidth="4"
+                />
+                <line
+                  x1="30"
+                  y1="0"
+                  x2="30"
+                  y2="60"
+                  stroke="#ffffff"
+                  strokeWidth="4"
+                />
+              </pattern>
+            </defs>
+
+            {/* Base map grid */}
+            <rect width="100%" height="100%" fill="url(#street-grid)" />
+
+            {/* Green park zones */}
+            <path
+              d="M 10 10 Q 50 20 80 70 L 20 90 Z"
+              fill="#dcfce7"
+              opacity="0.8"
+            />
+            <path
+              d="M 320 180 Q 370 200 390 270 L 300 290 Z"
+              fill="#dcfce7"
+              opacity="0.8"
+            />
+            <path
+              d="M 280 20 Q 340 10 380 60 L 310 80 Z"
+              fill="#dcfce7"
+              opacity="0.7"
+            />
+
+            {/* Water body / River */}
+            <path
+              d="M 0 160 C 90 150, 140 210, 220 190 C 300 170, 350 230, 400 220 L 400 245 C 350 255, 300 195, 220 215 C 140 235, 90 175, 0 185 Z"
+              fill="#bae6fd"
+              opacity="0.85"
+            />
+
+            {/* Main Primary Highway (Yellow / Orange Arterial Road) */}
+            <path
+              d="M -20 80 Q 150 140 420 100"
+              stroke="#fbbf24"
+              strokeWidth="10"
+              fill="none"
+              strokeLinecap="round"
+            />
+            <path
+              d="M -20 80 Q 150 140 420 100"
+              stroke="#fef3c7"
+              strokeWidth="6"
+              fill="none"
+              strokeLinecap="round"
+            />
+
+            {/* Secondary Avenue (White Major Road) */}
+            <path
+              d="M 190 -10 L 210 320"
+              stroke="#ffffff"
+              strokeWidth="9"
+              fill="none"
+            />
+            <path
+              d="M 190 -10 L 210 320"
+              stroke="#fed7aa"
+              strokeWidth="4"
+              fill="none"
+            />
+          </svg>
+        </div>
+
+        {/* Real OpenStreetMap Visual Map Layer with seamless blend */}
         <iframe
           src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.007}%2C${lat - 0.004}%2C${lng + 0.007}%2C${lat + 0.004}&layer=mapnik&marker=${lat}%2C${lng}`}
-          className="pointer-events-none absolute inset-0 h-full w-full border-0 opacity-80"
+          className="pointer-events-none absolute inset-0 h-full w-full border-0 opacity-85 transition-opacity duration-500"
           title="Peta Interaktif Lokasi Toko"
         />
 

@@ -65,6 +65,130 @@ export const JNE_BASE_COST_EAST_INDONESIA = 85_000 // Tarif dasar Indonesia Timu
 export const JNE_YES_MULTIPLIER = 1.75 // Pengali paket YES (1 Hari / Esok Sampai)
 export const JNE_OKE_MULTIPLIER = 0.85 // Pengali paket OKE (Ekonomis)
 
+export const REGIONAL_CENTROIDS: Record<string, { lat: number; lng: number }> =
+  {
+    // DKI Jakarta & Jabodetabek
+    'dki jakarta': { lat: -6.2088, lng: 106.8456 },
+    jakarta: { lat: -6.2088, lng: 106.8456 },
+    'jakarta pusat': { lat: -6.1805, lng: 106.8284 },
+    'jakarta selatan': { lat: -6.2615, lng: 106.8106 },
+    'jakarta barat': { lat: -6.1683, lng: 106.7588 },
+    'jakarta timur': { lat: -6.225, lng: 106.9004 },
+    'jakarta utara': { lat: -6.1384, lng: 106.864 },
+    bogor: { lat: -6.5971, lng: 106.806 },
+    depok: { lat: -6.4025, lng: 106.7942 },
+    tangerang: { lat: -6.1783, lng: 106.6319 },
+    'tangerang selatan': { lat: -6.2889, lng: 106.7179 },
+    bekasi: { lat: -6.2383, lng: 106.9756 },
+
+    // Pulau Jawa
+    'jawa barat': { lat: -6.9175, lng: 107.6191 },
+    bandung: { lat: -6.9175, lng: 107.6191 },
+    'jawa tengah': { lat: -6.9667, lng: 110.4167 },
+    semarang: { lat: -6.9667, lng: 110.4167 },
+    'di yogyakarta': { lat: -7.7956, lng: 110.3695 },
+    yogyakarta: { lat: -7.7956, lng: 110.3695 },
+    'jawa timur': { lat: -7.2575, lng: 112.7521 },
+    surabaya: { lat: -7.2575, lng: 112.7521 },
+    banten: { lat: -6.12, lng: 106.1503 },
+    serang: { lat: -6.12, lng: 106.1503 },
+
+    // Sumatera
+    'sumatera selatan': { lat: -3.5, lng: 104.25 },
+    palembang: { lat: -2.9761, lng: 104.7754 },
+    'ogan komering ulu': { lat: -4.13, lng: 104.17 },
+    baturaja: { lat: -4.13, lng: 104.17 },
+    lampung: { lat: -5.4297, lng: 105.2625 },
+    'bandar lampung': { lat: -5.4297, lng: 105.2625 },
+    'sumatera utara': { lat: 3.5952, lng: 98.6722 },
+    medan: { lat: 3.5952, lng: 98.6722 },
+    'sumatera barat': { lat: -0.9471, lng: 100.4172 },
+    padang: { lat: -0.9471, lng: 100.4172 },
+    riau: { lat: 0.5071, lng: 101.4478 },
+    pekanbaru: { lat: 0.5071, lng: 101.4478 },
+    jambi: { lat: -1.6101, lng: 103.6131 },
+    bengkulu: { lat: -3.8004, lng: 102.2655 },
+    'kepulauan bangka belitung': { lat: -2.1333, lng: 106.1167 },
+    'kepulauan riau': { lat: 0.9167, lng: 104.45 },
+    batam: { lat: 1.0456, lng: 104.0305 },
+    aceh: { lat: 5.5483, lng: 95.3238 },
+    'banda aceh': { lat: 5.5483, lng: 95.3238 },
+
+    // Bali & Nusa Tenggara
+    bali: { lat: -8.6705, lng: 115.2126 },
+    denpasar: { lat: -8.6705, lng: 115.2126 },
+    'nusa tenggara barat': { lat: -8.5833, lng: 116.1167 },
+    mataram: { lat: -8.5833, lng: 116.1167 },
+    'nusa tenggara timur': { lat: -10.1772, lng: 123.607 },
+    kupang: { lat: -10.1772, lng: 123.607 },
+
+    // Kalimantan
+    'kalimantan barat': { lat: -0.0263, lng: 109.3425 },
+    pontianak: { lat: -0.0263, lng: 109.3425 },
+    'kalimantan tengah': { lat: -2.2105, lng: 113.9213 },
+    palangkaraya: { lat: -2.2105, lng: 113.9213 },
+    'kalimantan selatan': { lat: -3.3194, lng: 114.5908 },
+    banjarmasin: { lat: -3.3194, lng: 114.5908 },
+    'kalimantan timur': { lat: -0.5022, lng: 117.1536 },
+    samarinda: { lat: -0.5022, lng: 117.1536 },
+    balikpapan: { lat: -1.2654, lng: 116.8312 },
+    'kalimantan utara': { lat: 2.8333, lng: 117.3833 },
+
+    // Sulawesi
+    'sulawesi selatan': { lat: -5.1477, lng: 119.4327 },
+    makassar: { lat: -5.1477, lng: 119.4327 },
+    'sulawesi utara': { lat: 1.4748, lng: 124.8421 },
+    manado: { lat: 1.4748, lng: 124.8421 },
+    'sulawesi tengah': { lat: -0.9003, lng: 119.878 },
+    palu: { lat: -0.9003, lng: 119.878 },
+    'sulawesi tenggara': { lat: -3.9985, lng: 122.5126 },
+    kendari: { lat: -3.9985, lng: 122.5126 },
+    gorontalo: { lat: 0.5435, lng: 123.0568 },
+    'sulawesi barat': { lat: -2.6773, lng: 118.889 },
+
+    // Maluku & Papua
+    maluku: { lat: -3.6547, lng: 128.1906 },
+    ambon: { lat: -3.6547, lng: 128.1906 },
+    'maluku utara': { lat: 0.7893, lng: 127.361 },
+    papua: { lat: -2.5337, lng: 140.7181 },
+    jayapura: { lat: -2.5337, lng: 140.7181 },
+    'papua barat': { lat: -0.8615, lng: 134.062 },
+  }
+
+export function findRegionalCoord(
+  city?: string | null,
+  province?: string | null
+): { lat: number; lng: number } | null {
+  const normCity = normalizeRegion(city)
+  const normProv = normalizeRegion(province)
+
+  if (normCity) {
+    for (const [key, coord] of Object.entries(REGIONAL_CENTROIDS)) {
+      if (
+        normCity === key ||
+        normCity.includes(key) ||
+        key.includes(normCity)
+      ) {
+        return coord
+      }
+    }
+  }
+
+  if (normProv) {
+    for (const [key, coord] of Object.entries(REGIONAL_CENTROIDS)) {
+      if (
+        normProv === key ||
+        normProv.includes(key) ||
+        key.includes(normProv)
+      ) {
+        return coord
+      }
+    }
+  }
+
+  return null
+}
+
 /**
  * Hitung jarak lurus (Great Circle Distance) dengan Haversine Formula dalam Kilometer.
  */
@@ -357,19 +481,56 @@ export async function calculateShippingOptions(
   const billedKg = Math.max(1, Math.ceil(safeTotalWeight / 1000))
 
   // 2. Cek apakah ada koordinat untuk perhitungan jarak
+  const isSameMetro = isSameMetropolitanArea(
+    origin.city,
+    destination.city,
+    origin.province,
+    destination.province
+  )
+
   let distanceKm: number | null = null
+  const origLat = typeof origin.latitude === 'number' ? origin.latitude : null
+  const origLng = typeof origin.longitude === 'number' ? origin.longitude : null
+  const destLat =
+    typeof destination.latitude === 'number' ? destination.latitude : null
+  const destLng =
+    typeof destination.longitude === 'number' ? destination.longitude : null
+
+  // Geographical sanity check:
+  // If regions are clearly in different metropolitan areas / provinces, but GPS coordinates are virtually identical (< 50 km),
+  // coordinates are mismatched (e.g. laptop GPS captured in Jakarta while store is in Palembang/Ogan Komering Ulu).
+  let hasCoordMismatch = false
   if (
-    typeof origin.latitude === 'number' &&
-    typeof origin.longitude === 'number' &&
-    typeof destination.latitude === 'number' &&
-    typeof destination.longitude === 'number'
+    origLat !== null &&
+    origLng !== null &&
+    destLat !== null &&
+    destLng !== null
   ) {
-    distanceKm = calculateHaversineDistance(
-      origin.latitude,
-      origin.longitude,
-      destination.latitude,
-      destination.longitude
+    const rawDist = calculateHaversineDistance(
+      origLat,
+      origLng,
+      destLat,
+      destLng
     )
+    if (!isSameMetro && rawDist < 50) {
+      hasCoordMismatch = true
+    } else {
+      distanceKm = rawDist
+    }
+  }
+
+  // If coordinates are missing or mismatched, fallback to regional centroid coordinates
+  if (distanceKm === null || hasCoordMismatch) {
+    const oCoord = findRegionalCoord(origin.city, origin.province)
+    const dCoord = findRegionalCoord(destination.city, destination.province)
+    if (oCoord && dCoord) {
+      distanceKm = calculateHaversineDistance(
+        oCoord.lat,
+        oCoord.lng,
+        dCoord.lat,
+        dCoord.lng
+      )
+    }
   }
 
   // 3. Coba Live Biteship API
@@ -400,19 +561,11 @@ export async function calculateShippingOptions(
   // 4. Shopee-Calibrated Fallback Engine
   const options: ShippingOption[] = []
 
-  // --- Opsi A: Gojek Instant (Jarak Dekat, Radius <= 40 km) ---
-  const isSameMetro = isSameMetropolitanArea(
-    origin.city,
-    destination.city,
-    origin.province,
-    destination.province
-  )
-
+  // --- Opsi A: Gojek Instant (Jarak Dekat, Radius <= 40 km, dan WAJIB dalam wilayah metropolitan yang sama) ---
   const effectiveGojekDistance =
-    distanceKm !== null ? distanceKm : isSameMetro ? 10 : 80
+    distanceKm !== null ? distanceKm : isSameMetro ? 10 : 150
   const isGojekAvailable =
-    effectiveGojekDistance <= GOJEK_MAX_DISTANCE_KM &&
-    (isSameMetro || distanceKm !== null)
+    isSameMetro && effectiveGojekDistance <= GOJEK_MAX_DISTANCE_KM
 
   let gojekCost = GOJEK_BASE_FARE
   if (effectiveGojekDistance > 4) {

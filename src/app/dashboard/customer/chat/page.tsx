@@ -364,7 +364,7 @@ function CustomerChatContent() {
                 (curr.claimedBy?.image !== data.room.claimedBy?.image ||
                   curr.store?.logo !== data.room.store?.logo)
               ) {
-                return { ...curr, ...data.room }
+                return { ...curr, ...data.room, type: 'admin' }
               }
               return curr
             })
@@ -1136,7 +1136,7 @@ function CustomerChatContent() {
 
     try {
       let res
-      if (selectedRoom.type === 'admin') {
+      if (selectedRoom.type !== 'technician') {
         res = await fetch('/api/customer/chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

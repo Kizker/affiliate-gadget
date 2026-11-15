@@ -431,8 +431,10 @@ export function IntegratedServiceView({
                       </>
                     ) : searchQuery ? (
                       `Tidak ada mitra yang cocok dengan pencarian "${searchQuery}". Coba gunakan kata kunci lain seperti nama toko, layanan (LCD, baterai), atau nama kota.`
-                    ) : (
+                    ) : selectedCity && selectedCity !== 'all' ? (
                       `Belum ada mitra servis untuk filter kota ${selectedCity}.`
+                    ) : (
+                      'Belum ada mitra bengkel servis terdaftar saat ini.'
                     )}
                   </p>
                   {matchesInOtherCities.length > 0 ? (
@@ -746,8 +748,10 @@ export function IntegratedServiceView({
                       </>
                     ) : searchQuery ? (
                       `Tidak ada mitra yang cocok dengan pencarian "${searchQuery}". Coba gunakan kata kunci lain seperti nama toko, layanan (LCD, baterai), atau nama kota.`
-                    ) : (
+                    ) : selectedCity && selectedCity !== 'all' ? (
                       `Belum ada mitra servis untuk filter kota ${selectedCity}.`
+                    ) : (
+                      'Belum ada mitra bengkel servis terdaftar saat ini.'
                     )}
                   </p>
                   {matchesInOtherCities.length > 0 ? (

@@ -198,15 +198,15 @@ export default function StoreDetailClient({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          1A. DESKTOP HERO VIEWPORT: EXACTLY 100vh FULL VIEWPORT (pt-16 h-screen)
+          1A. DESKTOP HERO VIEWPORT: FLUID MIN-HEIGHT (SAFE ON ALL VIEWPORTS)
       ───────────────────────────────────────────────────────────── */}
       {showDesktop && (
         <section
           id="hero"
-          className="relative hidden h-screen w-full overflow-hidden bg-[#FBFBFD] pt-16 dark:bg-neutral-950 md:flex"
+          className="relative hidden min-h-[calc(100vh-4rem)] w-full items-center justify-between overflow-hidden bg-[#FBFBFD] pb-12 pt-20 dark:bg-neutral-950 md:flex"
         >
-          {/* Left Column (58%): Flagship Cutout Phones Artwork */}
-          <div className="relative flex h-full w-[58%] items-center justify-start overflow-hidden pl-4 lg:pl-8">
+          {/* Left Column (52%): Flagship Cutout Phones Artwork */}
+          <div className="relative flex min-h-[460px] w-[52%] items-center justify-start overflow-hidden pl-4 lg:min-h-[520px] lg:pl-8">
             <Image
               src={content.hero.desktopImage}
               alt={content.hero.title}
@@ -214,22 +214,22 @@ export default function StoreDetailClient({
               priority
               fetchPriority="high"
               loading="eager"
-              sizes="60vw"
-              className="hover:scale-130 origin-left scale-110 object-cover object-left transition-transform duration-700 lg:scale-125"
+              sizes="55vw"
+              className="origin-left object-contain object-left transition-transform duration-700"
             />
           </div>
 
-          {/* Right Column (42%): Sleek Typography & Actions */}
-          <div className="z-10 flex h-full w-[42%] flex-col items-start justify-center space-y-5 pl-2 pr-8 lg:pl-6 lg:pr-16">
+          {/* Right Column (48%): Sleek Typography & Actions */}
+          <div className="z-10 flex w-[48%] flex-col items-start justify-center space-y-4 py-8 pl-4 pr-8 lg:pl-8 lg:pr-16">
             <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400 sm:text-sm">
               {content.hero.kicker}
             </span>
 
-            <h1 className="text-4xl font-black leading-[1.06] tracking-tight text-neutral-950 dark:text-white lg:text-5xl xl:text-6xl">
+            <h1 className="line-clamp-3 text-2xl font-black leading-tight tracking-tight text-neutral-950 dark:text-white sm:text-3xl lg:text-4xl xl:text-5xl">
               {content.hero.title}
             </h1>
 
-            <p className="max-w-lg text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 lg:text-base">
+            <p className="line-clamp-3 max-w-lg text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 lg:text-base">
               {content.hero.desktopDesc}
             </p>
 
@@ -284,7 +284,7 @@ export default function StoreDetailClient({
             </div>
 
             {/* Main Flagship Title */}
-            <h1 className="text-3xl font-black leading-[1.08] tracking-tight text-neutral-950 dark:text-white">
+            <h1 className="line-clamp-3 text-2xl font-black leading-tight tracking-tight text-neutral-950 dark:text-white sm:text-3xl">
               {content.hero.title}
             </h1>
 
