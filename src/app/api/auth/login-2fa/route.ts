@@ -70,7 +70,33 @@ export async function POST(req: NextRequest) {
       }
 
       // ───────────────────────────────────────────────────────────────────────
-      // Wajib Verifikasi 2FA via EMAIL untuk Seluruh Akun Login
+      // Bypass 2FA untuk Super Admin, Admin Platform, Staf Toko, dan akun sistem @affiliategadget.com
+      // yang tidak mengaktifkan 2FA secara manual (login langsung via password)
+      // ───────────────────────────────────────────────────────────────────────
+      const exemptRoles = [
+        'SUPER_ADMIN',
+        'ADMIN',
+        'STORE_ADMIN',
+        'STORE_SALES',
+        'FINANCE_ADMIN',
+        'CONTENT_EDITOR',
+        'AFTER_SALES',
+      ]
+
+      const isStaffOrExempt =
+        exemptRoles.includes(user.role) ||
+        cleanEmail.endsWith('@affiliategadget.com') ||
+        cleanEmail.endsWith('@test.com')
+
+      if (isStaffOrExempt && !user.twoFactorEnabled) {
+        return NextResponse.json({
+          requires2FA: false,
+          role: user.role,
+        })
+      }
+
+      // ───────────────────────────────────────────────────────────────────────
+      // Wajib Verifikasi 2FA via EMAIL untuk Akun yang mengaktifkan 2FA / Customer
       // (WhatsApp dialokasikan khusus otorisasi penarikan dana / withdrawal)
       // ───────────────────────────────────────────────────────────────────────
       const otpData = createLoginOtp(user.email, user.email)

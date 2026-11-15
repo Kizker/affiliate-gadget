@@ -66,18 +66,46 @@ function loadData(): TwoFactorData {
         const content = fs.readFileSync(dataFile, 'utf-8')
         if (content.trim()) {
           const parsed = JSON.parse(content)
-          cachedData = parsed
-          return parsed
+          if (!parsed || typeof parsed !== 'object') {
+            cachedData = { enabledUsers: {}, otps: {} }
+          } else {
+            if (
+              !parsed.enabledUsers ||
+              typeof parsed.enabledUsers !== 'object'
+            ) {
+              parsed.enabledUsers = {}
+            }
+            if (!parsed.otps || typeof parsed.otps !== 'object') {
+              parsed.otps = {}
+            }
+            cachedData = parsed
+          }
+          return cachedData
         }
       }
-      return cachedData || { enabledUsers: {}, otps: {} }
+      if (!cachedData || typeof cachedData !== 'object') {
+        cachedData = { enabledUsers: {}, otps: {} }
+      }
+      if (!cachedData.enabledUsers) cachedData.enabledUsers = {}
+      if (!cachedData.otps) cachedData.otps = {}
+      return cachedData
     } catch {
       if (attempt === 2) {
-        return cachedData || { enabledUsers: {}, otps: {} }
+        if (!cachedData || typeof cachedData !== 'object') {
+          cachedData = { enabledUsers: {}, otps: {} }
+        }
+        if (!cachedData.enabledUsers) cachedData.enabledUsers = {}
+        if (!cachedData.otps) cachedData.otps = {}
+        return cachedData
       }
     }
   }
-  return cachedData || { enabledUsers: {}, otps: {} }
+  if (!cachedData || typeof cachedData !== 'object') {
+    cachedData = { enabledUsers: {}, otps: {} }
+  }
+  if (!cachedData.enabledUsers) cachedData.enabledUsers = {}
+  if (!cachedData.otps) cachedData.otps = {}
+  return cachedData
 }
 
 function saveData(data: TwoFactorData) {
@@ -168,6 +196,7 @@ export function createWhatsAppOtp(
   const code =
     customCode || Math.floor(100000 + Math.random() * 900000).toString()
   const data = loadData()
+  if (!data.otps) data.otps = {}
   const cleanId = identifier.toLowerCase()
   const scopedKey = `${cleanId}:${purpose}`
 
