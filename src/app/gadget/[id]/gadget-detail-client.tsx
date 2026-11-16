@@ -41,6 +41,7 @@ import { toast } from 'sonner'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { isVideoMedia } from '@/types/ads'
 import { useIsMobile } from '@/hooks/use-is-mobile'
+import { ProductGalleryLightbox } from '@/components/gadget/product-gallery-lightbox'
 
 function getDesktopConditionBadge(item: any) {
   switch (item.condition) {
@@ -147,6 +148,7 @@ export default function GadgetDetailClient({
   const [isDesktopDescExpanded, setIsDesktopDescExpanded] = useState(false)
   const [activeDeal, setActiveDeal] = useState<any>(null)
   const [dealError, setDealError] = useState<string | null>(null)
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -798,7 +800,10 @@ export default function GadgetDetailClient({
                   {/* Main Image Container — Desktop only */}
                   <div className="shadow-xs group relative hidden aspect-square select-none overflow-hidden rounded-3xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 lg:block">
                     {/* Image/Video clipped with padding effect via absolute inset */}
-                    <div className="absolute inset-5 flex items-center justify-center overflow-hidden rounded-2xl">
+                    <div
+                      onClick={() => setIsLightboxOpen(true)}
+                      className="absolute inset-5 flex cursor-pointer items-center justify-center overflow-hidden rounded-2xl"
+                    >
                       {isVideoMedia(selectedImage || product.images?.[0]) ? (
                         <video
                           key={selectedImage}
@@ -823,7 +828,7 @@ export default function GadgetDetailClient({
                           sizes="500px"
                           priority
                           fetchPriority="high"
-                          className="object-contain transition-all duration-300"
+                          className="hover:scale-102 object-contain transition-all duration-300"
                         />
                       )}
                     </div>
@@ -1611,6 +1616,17 @@ export default function GadgetDetailClient({
           </main>
 
           <Footer variant="light" />
+
+          {/* Fullscreen Product Gallery Lightbox Desktop */}
+          <ProductGalleryLightbox
+            isOpen={isLightboxOpen}
+            onClose={() => setIsLightboxOpen(false)}
+            images={
+              allImages && allImages.length > 0 ? allImages : [selectedImage]
+            }
+            initialIndex={Math.max(0, allImages.indexOf(selectedImage))}
+            productName={product.name}
+          />
         </div>
       )}
     </>

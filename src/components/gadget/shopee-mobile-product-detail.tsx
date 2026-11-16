@@ -35,6 +35,7 @@ import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { isVideoMedia } from '@/types/ads'
 import { ProductReviewsSection } from './product-reviews-section'
 import { ProductShareModal } from './product-share-modal'
+import { ProductGalleryLightbox } from './product-gallery-lightbox'
 
 const INITIAL_RECOMMENDATIONS = 8
 const RECOMMENDATIONS_BATCH_SIZE = 8
@@ -266,6 +267,7 @@ export function ShopeeMobileProductDetail({
   const [isSpecsExpanded, setIsSpecsExpanded] = useState(false)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false)
 
   // Scroll listener for sticky header styling and back-to-top button
   useEffect(() => {
@@ -698,7 +700,8 @@ export function ShopeeMobileProductDetail({
               return (
                 <div
                   key={imgUrl + idx}
-                  className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center overflow-hidden"
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="relative flex h-full w-full min-w-full shrink-0 cursor-pointer snap-center items-center justify-center overflow-hidden"
                 >
                   {isVid ? (
                     <div className="relative flex h-full w-full items-center justify-center bg-black/5 dark:bg-black/20">
@@ -731,7 +734,10 @@ export function ShopeeMobileProductDetail({
               )
             })
           ) : (
-            <div className="relative flex h-full w-full min-w-full shrink-0 snap-center items-center justify-center overflow-hidden">
+            <div
+              onClick={() => setIsLightboxOpen(true)}
+              className="relative flex h-full w-full min-w-full shrink-0 cursor-pointer snap-center items-center justify-center overflow-hidden"
+            >
               <Image
                 src={
                   selectedImage ||
@@ -1216,6 +1222,15 @@ export function ShopeeMobileProductDetail({
         selectedVariant={selectedVariant}
         currentPrice={currentPrice}
         selectedImage={selectedImage}
+      />
+
+      {/* Fullscreen Product Gallery Lightbox */}
+      <ProductGalleryLightbox
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={allImages && allImages.length > 0 ? allImages : [selectedImage]}
+        initialIndex={Math.max(0, currentImageIdx)}
+        productName={product.name}
       />
     </div>
   )
