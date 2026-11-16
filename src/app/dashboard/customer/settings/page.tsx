@@ -14,6 +14,7 @@ import {
 } from '@/components/customer/address-modal'
 import { MobileCustomerAccountView } from '@/components/customer/mobile-customer-account-view'
 import { isReturnOrder } from '@/lib/order-return-utils'
+import { normalizeToLocalPhone } from '@/lib/utils'
 import {
   User,
   Lock,
@@ -160,7 +161,7 @@ function CustomerSettingsContent() {
         setUsername(data.user.username || '')
         setEmail(data.user.email || '')
         setInitialEmail(data.user.email || '')
-        setPhone(data.user.phone || '')
+        setPhone(normalizeToLocalPhone(data.user.phone || ''))
         setGender(data.user.gender || '')
         if (data.user.birthDate) {
           const date = new Date(data.user.birthDate)
@@ -989,7 +990,12 @@ function CustomerSettingsContent() {
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) =>
+                  setPhone(normalizeToLocalPhone(e.target.value))
+                }
+                onBlur={() => {
+                  if (phone) setPhone(normalizeToLocalPhone(phone))
+                }}
                 placeholder="Contoh: 081234567890"
                 required
                 className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
@@ -1259,7 +1265,12 @@ function CustomerSettingsContent() {
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) =>
+                        setPhone(normalizeToLocalPhone(e.target.value))
+                      }
+                      onBlur={() => {
+                        if (phone) setPhone(normalizeToLocalPhone(phone))
+                      }}
                       placeholder="Contoh: 081234567890"
                       required
                       className="focus:shadow-xs w-full rounded-full border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"

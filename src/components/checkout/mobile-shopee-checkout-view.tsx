@@ -363,8 +363,12 @@ export function MobileShopeeCheckoutView({
           const pkgJneRegCost = pkg.jneRegCost ?? 15_000
           const pkgJneYesCost = pkg.jneYesCost ?? 28_000
           const pkgGojekCost = pkg.gojekCost ?? 20_000
-          const pkgIsGojekAvailable = pkg.isGojekAvailable ?? true
-          const pkgGojekReason = pkg.gojekUnavailableReason
+          const pkgIsGojekAvailable = pkg.isGojekAvailable ?? false
+          const pkgGojekReason =
+            pkg.gojekUnavailableReason ||
+            (!pkgIsGojekAvailable
+              ? 'Di luar area jangkauan pengiriman instan Gojek (maksimal 40 km).'
+              : undefined)
           const shippingDistanceKm =
             pkg.shippingDistanceKm ?? propShippingDistanceKm ?? null
           const pkgSubtotal = pkg.items.reduce(

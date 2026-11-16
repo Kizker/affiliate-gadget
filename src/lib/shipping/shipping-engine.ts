@@ -542,6 +542,40 @@ export async function calculateShippingOptions(
   )
 
   if (liveOptions && liveOptions.length > 0) {
+    // Ensure Gojek option is present with accurate availability based on distance & metropolitan area
+    const hasGojek = liveOptions.some((o) => o.courierCode === 'GOJEK')
+    if (!hasGojek) {
+      liveOptions.push({
+        courierCode: 'GOJEK',
+        courierService: 'INSTANT',
+        serviceName: 'Gojek Instant Kurir',
+        courierName: 'Gojek',
+        description:
+          'Di luar area jangkauan pengiriman instan Gojek (Biteship)',
+        cost: 0,
+        etd: '1-2 Jam',
+        available: false,
+        unavailableReason:
+          distanceKm !== null && distanceKm > GOJEK_MAX_DISTANCE_KM
+            ? `Jarak pengiriman (${distanceKm.toFixed(1)} km) melebihi batas maksimal Gojek Instant (40 km).`
+            : 'Di luar area jangkauan pengiriman instan Gojek (maksimal 40 km).',
+        distanceKm: distanceKm ?? undefined,
+      })
+    } else {
+      // Validate Gojek in live options against distance & metropolitan boundary
+      for (const opt of liveOptions) {
+        if (opt.courierCode === 'GOJEK') {
+          if (
+            !isSameMetro ||
+            (distanceKm !== null && distanceKm > GOJEK_MAX_DISTANCE_KM)
+          ) {
+            opt.available = false
+            opt.unavailableReason = `Jarak pengiriman (${(distanceKm ?? 80).toFixed(1)} km) melebihi batas maksimal Gojek Instant (40 km).`
+          }
+        }
+      }
+    }
+
     return {
       options: liveOptions,
       distanceKm,

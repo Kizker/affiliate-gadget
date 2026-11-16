@@ -46,9 +46,7 @@ export function MobileTopHeroBanner({
 }: MobileTopHeroBannerProps) {
   const router = useRouter()
   const [slides, setSlides] = useState<HeroSlideData[]>(
-    initialSlides && initialSlides.length > 0
-      ? initialSlides
-      : DEFAULT_BANNER_SLIDES
+    initialSlides && initialSlides.length > 0 ? initialSlides : []
   )
   const [currentSlide, setCurrentSlide] = useState(0)
   const [touchStart, setTouchStart] = useState<number | null>(null)
@@ -143,49 +141,18 @@ export function MobileTopHeroBanner({
           )
 
           if (isSubscribed) {
-            setSlides((prev) => {
-              if (
-                prev.length === mapped.length &&
-                prev[0]?.id === mapped[0]?.id &&
-                prev[0]?.image === mapped[0]?.image
-              ) {
-                return prev
-              }
-              return mapped
-            })
+            setSlides(mapped)
           }
         }
       } catch {
-        // Fallback safely to default slides
+        // Safe catch
       }
     }
 
-    let triggered = false
-    const triggerLoad = () => {
-      if (triggered) return
-      triggered = true
-      loadHeroAds()
-      cleanup()
-    }
-
-    const cleanup = () => {
-      window.removeEventListener('scroll', triggerLoad)
-      window.removeEventListener('touchstart', triggerLoad)
-      window.removeEventListener('pointerdown', triggerLoad)
-    }
-
-    window.addEventListener('scroll', triggerLoad, { passive: true })
-    window.addEventListener('touchstart', triggerLoad, { passive: true })
-    window.addEventListener('pointerdown', triggerLoad, { passive: true })
-
-    const timer = setTimeout(() => {
-      triggerLoad()
-    }, 6000)
+    loadHeroAds()
 
     return () => {
       isSubscribed = false
-      cleanup()
-      clearTimeout(timer)
     }
   }, [])
 

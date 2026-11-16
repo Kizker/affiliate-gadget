@@ -53,6 +53,20 @@ interface AddressModalProps {
   defaultPhone?: string
 }
 
+export function normalizeToLocalPhone(raw: string): string {
+  let cleaned = String(raw || '')
+    .trim()
+    .replace(/[^\d+]/g, '')
+  if (cleaned.startsWith('+62')) {
+    cleaned = '0' + cleaned.slice(3)
+  } else if (cleaned.startsWith('62')) {
+    cleaned = '0' + cleaned.slice(2)
+  } else if (cleaned.startsWith('+')) {
+    cleaned = cleaned.slice(1)
+  }
+  return cleaned.replace(/\D/g, '')
+}
+
 export function AddressModal({
   isOpen,
   onClose,
@@ -87,6 +101,7 @@ export function AddressModal({
   const [phone, setPhone] = useState('')
   const [label, setLabel] = useState<'Rumah' | 'Kantor'>('Rumah')
   const [fullAddress, setFullAddress] = useState('')
+  const [emptyFields, setEmptyFields] = useState<Record<string, boolean>>({})
 
   // Administrative Region names
   const [province, setProvince] = useState('')
@@ -432,54 +447,43 @@ export function AddressModal({
       (session?.user as any)?.phone?.trim() ||
       ''
 
-    if (!resolvedRecipientName) {
+    const validationErrors: Record<string, boolean> = {}
+    if (!resolvedRecipientName) validationErrors.recipientName = true
+    if (!resolvedPhone) validationErrors.phone = true
+    if (!fullAddress.trim()) validationErrors.fullAddress = true
+    if (!province.trim()) validationErrors.province = true
+    if (!city.trim()) validationErrors.city = true
+    if (!postalCode.trim()) validationErrors.postalCode = true
+
+    if (Object.keys(validationErrors).length > 0) {
+      setEmptyFields(validationErrors)
+      const firstError = Object.keys(validationErrors)[0]
+      let errTitle = 'Mohon lengkapi formulir alamat'
+      if (firstError === 'recipientName') errTitle = 'Nama penerima wajib diisi'
+      else if (firstError === 'phone')
+        errTitle = 'Nomor WhatsApp / telepon wajib diisi'
+      else if (firstError === 'fullAddress')
+        errTitle = 'Detail alamat lengkap wajib diisi'
+      else if (firstError === 'province') errTitle = 'Provinsi wajib dipilih'
+      else if (firstError === 'city')
+        errTitle = 'Kota atau kabupaten wajib dipilih'
+      else if (firstError === 'postalCode') errTitle = 'Kode pos wajib diisi'
+
       toast({
-        title: 'Nama penerima wajib diisi',
+        title: errTitle,
+        description: 'Periksa kolom yang berkedip merah pada formulir.',
         variant: 'destructive',
       })
-      formContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+
+      if (firstError === 'recipientName' || firstError === 'phone') {
+        formContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+      } else {
+        formContainerRef.current?.scrollTo({ top: 120, behavior: 'smooth' })
+      }
       return
     }
-    if (!resolvedPhone) {
-      toast({
-        title: 'Nomor WhatsApp / telepon wajib diisi',
-        variant: 'destructive',
-      })
-      formContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
-    if (!fullAddress.trim()) {
-      toast({
-        title: 'Detail alamat wajib diisi',
-        variant: 'destructive',
-      })
-      formContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
-    if (!province.trim()) {
-      toast({
-        title: 'Provinsi wajib dipilih',
-        variant: 'destructive',
-      })
-      formContainerRef.current?.scrollTo({ top: 120, behavior: 'smooth' })
-      return
-    }
-    if (!city.trim()) {
-      toast({
-        title: 'Kota atau kabupaten wajib dipilih',
-        variant: 'destructive',
-      })
-      formContainerRef.current?.scrollTo({ top: 120, behavior: 'smooth' })
-      return
-    }
-    if (!postalCode.trim()) {
-      toast({
-        title: 'Kode pos wajib diisi',
-        variant: 'destructive',
-      })
-      formContainerRef.current?.scrollTo({ top: 200, behavior: 'smooth' })
-      return
-    }
+
+    setEmptyFields({})
 
     if (!recipientName.trim() && resolvedRecipientName) {
       setRecipientName(resolvedRecipientName)
@@ -632,9 +636,24 @@ export function AddressModal({
                       <input
                         type="text"
                         value={recipientName}
-                        onChange={(e) => setRecipientName(e.target.value)}
+                        onChange={(e) => {
+                          setRecipientName(e.target.value)
+                          if (
+                            emptyFields.recipientName &&
+                            e.target.value.trim()
+                          ) {
+                            setEmptyFields((prev) => ({
+                              ...prev,
+                              recipientName: false,
+                            }))
+                          }
+                        }}
                         placeholder="Nama lengkap penerima"
-                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                        className={`w-full rounded-2xl border bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
+                          emptyFields.recipientName
+                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
+                            : 'border-slate-200/80 focus:border-slate-300'
+                        }`}
                       />
                     </div>
 
@@ -646,9 +665,29 @@ export function AddressModal({
                       <input
                         type="tel"
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        onChange={(e) => {
+                          const normalized = normalizeToLocalPhone(
+                            e.target.value
+                          )
+                          setPhone(normalized)
+                          if (emptyFields.phone && normalized.trim()) {
+                            setEmptyFields((prev) => ({
+                              ...prev,
+                              phone: false,
+                            }))
+                          }
+                        }}
+                        onBlur={() => {
+                          if (phone) {
+                            setPhone(normalizeToLocalPhone(phone))
+                          }
+                        }}
                         placeholder="081234567890"
-                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                        className={`w-full rounded-2xl border bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
+                          emptyFields.phone
+                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
+                            : 'border-slate-200/80 focus:border-slate-300'
+                        }`}
                       />
                     </div>
 
@@ -660,10 +699,25 @@ export function AddressModal({
                       </label>
                       <textarea
                         value={fullAddress}
-                        onChange={(e) => setFullAddress(e.target.value)}
+                        onChange={(e) => {
+                          setFullAddress(e.target.value)
+                          if (
+                            emptyFields.fullAddress &&
+                            e.target.value.trim()
+                          ) {
+                            setEmptyFields((prev) => ({
+                              ...prev,
+                              fullAddress: false,
+                            }))
+                          }
+                        }}
                         rows={2}
                         placeholder="Nama jalan, nomor rumah/gedung, RT/RW, blok, patokan spesifik..."
-                        className="w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/40 p-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                        className={`w-full resize-none rounded-2xl border bg-slate-50/40 p-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
+                          emptyFields.fullAddress
+                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
+                            : 'border-slate-200/80 focus:border-slate-300'
+                        }`}
                       />
                     </div>
 
@@ -675,9 +729,21 @@ export function AddressModal({
                         searchPlaceholder="Cari provinsi se-Indonesia..."
                         options={provinceList}
                         value={province}
-                        onChange={handleProvinceChange}
+                        onChange={(name, opt) => {
+                          handleProvinceChange(name, opt)
+                          if (emptyFields.province && name.trim()) {
+                            setEmptyFields((prev) => ({
+                              ...prev,
+                              province: false,
+                            }))
+                          }
+                        }}
                         isLoading={loadingProvinces}
-                        triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-4 py-2.5 text-xs font-medium"
+                        triggerClassName={`rounded-2xl bg-slate-50/40 px-4 py-2.5 text-xs font-medium ${
+                          emptyFields.province
+                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400'
+                            : 'border-slate-200/80'
+                        }`}
                         required
                       />
                     </div>
@@ -694,10 +760,22 @@ export function AddressModal({
                         searchPlaceholder="Cari kota atau kabupaten..."
                         options={cityList}
                         value={city}
-                        onChange={handleCityChange}
+                        onChange={(name, opt) => {
+                          handleCityChange(name, opt)
+                          if (emptyFields.city && name.trim()) {
+                            setEmptyFields((prev) => ({
+                              ...prev,
+                              city: false,
+                            }))
+                          }
+                        }}
                         isLoading={loadingCities}
                         disabled={!province && cityList.length === 0}
-                        triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-4 py-2.5 text-xs font-medium"
+                        triggerClassName={`rounded-2xl bg-slate-50/40 px-4 py-2.5 text-xs font-medium ${
+                          emptyFields.city
+                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400'
+                            : 'border-slate-200/80'
+                        }`}
                         required
                       />
                     </div>
@@ -746,10 +824,25 @@ export function AddressModal({
                       <input
                         type="text"
                         value={postalCode}
-                        onChange={(e) => setPostalCode(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value
+                            .replace(/\D/g, '')
+                            .slice(0, 5)
+                          setPostalCode(val)
+                          if (emptyFields.postalCode && val.trim()) {
+                            setEmptyFields((prev) => ({
+                              ...prev,
+                              postalCode: false,
+                            }))
+                          }
+                        }}
                         placeholder="Contoh: 12810"
                         maxLength={5}
-                        className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+                        className={`w-full rounded-2xl border bg-slate-50/40 px-4 py-3 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
+                          emptyFields.postalCode
+                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
+                            : 'border-slate-200/80 focus:border-slate-300'
+                        }`}
                       />
                     </div>
 

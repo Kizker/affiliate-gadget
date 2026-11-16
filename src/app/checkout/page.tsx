@@ -514,13 +514,24 @@ function CheckoutContent() {
       const currentJneRegCost = jneRegOpt ? jneRegOpt.cost : fallbackReg
       const currentJneYesCost = jneYesOpt ? jneYesOpt.cost : fallbackYes
       const currentGojekCost = gojekOpt ? gojekOpt.cost : fallbackGojek
-      const isGojekAvailable = gojekOpt ? gojekOpt.available : true
-      const gojekUnavailableReason = gojekOpt?.unavailableReason
+      const isGojekAvailable = gojekOpt ? gojekOpt.available : false
+      const gojekUnavailableReason =
+        gojekOpt?.unavailableReason ||
+        (isGojekAvailable
+          ? undefined
+          : 'Di luar area jangkauan pengiriman instan Gojek (maksimal 40 km).')
+
+      let effectiveCourier = settings.courier
+      let effectiveService = settings.courierService
+      if (effectiveCourier === 'GOJEK' && !isGojekAvailable) {
+        effectiveCourier = 'JNE'
+        effectiveService = 'REG'
+      }
 
       let cost = currentJneRegCost
-      if (settings.courier === 'GOJEK') {
+      if (effectiveCourier === 'GOJEK') {
         cost = currentGojekCost
-      } else if (settings.courierService === 'YES') {
+      } else if (effectiveService === 'YES') {
         cost = currentJneYesCost
       } else {
         cost = currentJneRegCost
@@ -541,8 +552,8 @@ function CheckoutContent() {
         city: group.city,
         province: group.province,
         items: group.items,
-        courier: settings.courier,
-        courierService: settings.courierService,
+        courier: effectiveCourier,
+        courierService: effectiveService,
         notes: settings.notes,
         shippingCost: cost,
         insuranceFee: insFee,

@@ -45,7 +45,6 @@ import {
   LiveBannerCard,
   LiveBannerData,
 } from '@/components/live/live-banner-card'
-import INITIAL_CATALOG_GADGETS from '@/lib/initial-gadgets.json'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 
 function GadgetKatalogContent() {
@@ -54,13 +53,13 @@ function GadgetKatalogContent() {
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
-  const [gadgets, setGadgets] = useState<any[]>(() => INITIAL_CATALOG_GADGETS)
+  const [gadgets, setGadgets] = useState<any[]>([])
   const [promotedAds, setPromotedAds] = useState<InFeedAdData[]>([])
   const [liveStreams, setLiveStreams] = useState<LiveBannerData[]>([])
   const promotedAd = promotedAds[0] || null
   const GADGET_BRAND_STORAGE_KEY = 'affiliate_gadget_selected_brand'
 
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [brand, setBrandState] = useState<string>(
     () => searchParams.get('brand') || 'ALL'
   )
@@ -158,40 +157,7 @@ function GadgetKatalogContent() {
   }, [searchParams])
 
   useEffect(() => {
-    const query = searchParams.get('search')
-    if (query) {
-      fetchGadgets()
-      return
-    }
-
-    let triggered = false
-    const triggerSync = () => {
-      if (triggered) return
-      triggered = true
-      fetchGadgets()
-      cleanup()
-    }
-
-    const cleanup = () => {
-      window.removeEventListener('scroll', triggerSync)
-      window.removeEventListener('touchstart', triggerSync)
-      window.removeEventListener('pointerdown', triggerSync)
-      window.removeEventListener('keydown', triggerSync)
-    }
-
-    window.addEventListener('scroll', triggerSync, { passive: true })
-    window.addEventListener('touchstart', triggerSync, { passive: true })
-    window.addEventListener('pointerdown', triggerSync, { passive: true })
-    window.addEventListener('keydown', triggerSync, { passive: true })
-
-    const timer = setTimeout(() => {
-      triggerSync()
-    }, 6000)
-
-    return () => {
-      cleanup()
-      clearTimeout(timer)
-    }
+    fetchGadgets()
   }, [searchParams])
 
   const fetchGadgets = async () => {
@@ -802,8 +768,8 @@ export default function GadgetKatalogPage() {
             {/* Mobile Shell Fallback (Instant SSR HTML for Frame-1 LCP without spinner delay) */}
             <div className="block md:hidden">
               <MobileCatalogView
-                gadgets={INITIAL_CATALOG_GADGETS}
-                loading={false}
+                gadgets={[]}
+                loading={true}
                 brand="ALL"
                 setBrand={() => {}}
                 search=""
