@@ -512,6 +512,7 @@ function CheckoutContent() {
       )
 
       const currentJneRegCost = jneRegOpt ? jneRegOpt.cost : fallbackReg
+      const isJneYesAvailable = Boolean(jneYesOpt && jneYesOpt.available)
       const currentJneYesCost = jneYesOpt ? jneYesOpt.cost : fallbackYes
       const currentGojekCost = gojekOpt ? gojekOpt.cost : fallbackGojek
       const isGojekAvailable = gojekOpt ? gojekOpt.available : false
@@ -527,11 +528,18 @@ function CheckoutContent() {
         effectiveCourier = 'JNE'
         effectiveService = 'REG'
       }
+      if (
+        effectiveCourier === 'JNE' &&
+        effectiveService === 'YES' &&
+        !isJneYesAvailable
+      ) {
+        effectiveService = 'REG'
+      }
 
       let cost = currentJneRegCost
       if (effectiveCourier === 'GOJEK') {
         cost = currentGojekCost
-      } else if (effectiveService === 'YES') {
+      } else if (effectiveService === 'YES' && isJneYesAvailable) {
         cost = currentJneYesCost
       } else {
         cost = currentJneRegCost
@@ -563,6 +571,7 @@ function CheckoutContent() {
         shippingDistanceKm: shippingInfo?.distanceKm ?? null,
         jneRegCost: currentJneRegCost,
         jneYesCost: currentJneYesCost,
+        isJneYesAvailable,
         gojekCost: currentGojekCost,
         isGojekAvailable,
         gojekUnavailableReason,
@@ -1407,25 +1416,27 @@ function CheckoutContent() {
                                     Reguler (Rp{' '}
                                     {pkgJneRegCost.toLocaleString('id-ID')})
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleUpdateStoreCourier(
-                                        pkg.storeId,
-                                        'JNE',
-                                        'YES'
-                                      )
-                                    }}
-                                    className={`rounded px-2 py-1 text-[10px] font-bold ${
-                                      pkgService === 'YES'
-                                        ? 'bg-orange-500 text-white'
-                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800'
-                                    }`}
-                                  >
-                                    YES Kilat (Rp{' '}
-                                    {pkgJneYesCost.toLocaleString('id-ID')})
-                                  </button>
+                                  {pkg.isJneYesAvailable && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleUpdateStoreCourier(
+                                          pkg.storeId,
+                                          'JNE',
+                                          'YES'
+                                        )
+                                      }}
+                                      className={`rounded px-2 py-1 text-[10px] font-bold ${
+                                        pkgService === 'YES'
+                                          ? 'bg-orange-500 text-white'
+                                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800'
+                                      }`}
+                                    >
+                                      YES Kilat (Rp{' '}
+                                      {pkgJneYesCost.toLocaleString('id-ID')})
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>

@@ -155,6 +155,50 @@ export const REGIONAL_CENTROIDS: Record<string, { lat: number; lng: number }> =
     'papua barat': { lat: -0.8615, lng: 134.062 },
   }
 
+import { REGIONAL_POSTAL_CODES } from '@/data/indonesia-postal-codes'
+
+/**
+ * Resolusi kode pos regional jika belum ada atau tidak sinkron dengan wilayah
+ */
+export function resolveAccuratePostalCode(
+  postalCode?: string | number | null,
+  city?: string | null,
+  province?: string | null
+): string | undefined {
+  const normCity = normalizeRegion(city)
+  const normProv = normalizeRegion(province)
+
+  if (normCity) {
+    for (const [key, code] of Object.entries(REGIONAL_POSTAL_CODES)) {
+      if (
+        normCity === key ||
+        normCity.includes(key) ||
+        key.includes(normCity)
+      ) {
+        return code
+      }
+    }
+  }
+
+  if (normProv) {
+    for (const [key, code] of Object.entries(REGIONAL_POSTAL_CODES)) {
+      if (
+        normProv === key ||
+        normProv.includes(key) ||
+        key.includes(normProv)
+      ) {
+        return code
+      }
+    }
+  }
+
+  if (postalCode) {
+    return String(postalCode).trim()
+  }
+
+  return undefined
+}
+
 export function findRegionalCoord(
   city?: string | null,
   province?: string | null
@@ -361,13 +405,30 @@ async function fetchBiteshipRates(
   if (!apiKey) return null
 
   try {
+    const originPostal =
+      resolveAccuratePostalCode(
+        origin.postalCode,
+        origin.city,
+        origin.province
+      ) || origin.postalCode
+    const destinationPostal =
+      resolveAccuratePostalCode(
+        destination.postalCode,
+        destination.city,
+        destination.province
+      ) || destination.postalCode
+
     const payload = {
       origin_latitude: origin.latitude,
       origin_longitude: origin.longitude,
-      origin_postal_code: origin.postalCode,
+      origin_postal_code: originPostal
+        ? Number(originPostal) || originPostal
+        : undefined,
       destination_latitude: destination.latitude,
       destination_longitude: destination.longitude,
-      destination_postal_code: destination.postalCode,
+      destination_postal_code: destinationPostal
+        ? Number(destinationPostal) || destinationPostal
+        : undefined,
       couriers: 'jne,gojek',
       items: items.map((i) => ({
         name: i.name || 'Gadget Unit',
@@ -435,6 +496,10 @@ async function fetchBiteshipRates(
             available: true,
           })
         } else if (serviceLower.includes('reg')) {
+          const etdRange =
+            rate.shipment_duration_range && rate.shipment_duration_unit
+              ? `${rate.shipment_duration_range} ${rate.shipment_duration_unit === 'days' ? 'Hari' : rate.shipment_duration_unit}`
+              : rate.duration || '2-4 Hari'
           options.push({
             courierCode: 'JNE',
             courierService: 'REG',
@@ -442,7 +507,7 @@ async function fetchBiteshipRates(
             courierName: 'JNE Express',
             description: 'Layanan Pengiriman Reguler Berasuransi',
             cost: rate.price || 19_000,
-            etd: rate.shipment_duration_range || '2-3 Hari',
+            etd: etdRange,
             available: true,
           })
         }
@@ -657,21 +722,25 @@ export async function calculateShippingOptions(
   })
 
   // --- Opsi C: JNE YES (1 Hari / Esok Sampai) ---
-  // JNE YES tersedia untuk sebagian besar kota tujuan
+  // JNE YES hanya tersedia untuk intra-metro atau antar-kota besar pulau yang sama (< 350 km)
+  const isYesEligible =
+    isSameMetro || (distanceKm !== null && distanceKm <= 350)
   const jneYesCost = Math.round(jneRegCost * JNE_YES_MULTIPLIER)
   const roundedJneYesCost = Math.ceil(jneYesCost / 1000) * 1000
 
-  options.push({
-    courierCode: 'JNE',
-    courierService: 'YES',
-    serviceName: 'JNE YES (Yakin Esok Sampai)',
-    courierName: 'JNE Express',
-    description: 'Layanan Kilat 1 Hari Sampai (Besok Pasti Tiba)',
-    cost: roundedJneYesCost,
-    etd: '1 Hari (Esok Sampai)',
-    available: true,
-    distanceKm: distanceKm ?? undefined,
-  })
+  if (isYesEligible) {
+    options.push({
+      courierCode: 'JNE',
+      courierService: 'YES',
+      serviceName: 'JNE YES (Yakin Esok Sampai)',
+      courierName: 'JNE Express',
+      description: 'Layanan Kilat 1 Hari Sampai (Besok Pasti Tiba)',
+      cost: roundedJneYesCost,
+      etd: '1 Hari (Esok Sampai)',
+      available: true,
+      distanceKm: distanceKm ?? undefined,
+    })
+  }
 
   // --- Opsi D: JNE OKE (3-5 Hari Kerja / Ekonomis) ---
   const jneOkeCost = Math.round(jneRegCost * JNE_OKE_MULTIPLIER)

@@ -42,6 +42,7 @@ export interface CheckoutStorePackage {
   shippingDistanceKm?: number | null
   jneRegCost?: number
   jneYesCost?: number
+  isJneYesAvailable?: boolean
   gojekCost?: number
   isGojekAvailable?: boolean
   gojekUnavailableReason?: string
@@ -114,6 +115,7 @@ interface MobileShopeeCheckoutViewProps {
   shippingDistanceKm?: number | null
   jneRegCost?: number
   jneYesCost?: number
+  isJneYesAvailable?: boolean
   gojekCost?: number
   isGojekAvailable?: boolean
   gojekUnavailableReason?: string
@@ -352,6 +354,7 @@ export function MobileShopeeCheckoutView({
                 shippingDistanceKm: propShippingDistanceKm,
                 jneRegCost,
                 jneYesCost,
+                isJneYesAvailable: false,
                 gojekCost,
                 isGojekAvailable,
                 gojekUnavailableReason,
@@ -360,8 +363,17 @@ export function MobileShopeeCheckoutView({
         ).map((pkg, pIdx) => {
           const pkgCourier = pkg.courier
           const pkgService = pkg.courierService
-          const pkgJneRegCost = pkg.jneRegCost ?? 15_000
-          const pkgJneYesCost = pkg.jneYesCost ?? 28_000
+          const pkgJneRegCost = pkg.jneRegCost ?? 28_000
+          const pkgJneYesCost = pkg.jneYesCost ?? 35_000
+          const isJneYesAvailable = Boolean(
+            pkg.isJneYesAvailable ??
+            pkg.shippingOptions?.some(
+              (o) =>
+                o.courierCode === 'JNE' &&
+                o.courierService === 'YES' &&
+                o.available
+            )
+          )
           const pkgGojekCost = pkg.gojekCost ?? 20_000
           const pkgIsGojekAvailable = pkg.isGojekAvailable ?? false
           const pkgGojekReason =
@@ -599,7 +611,11 @@ export function MobileShopeeCheckoutView({
 
                   {/* Sub-Pilihan Paket JNE */}
                   {pkgCourier === 'JNE' && (
-                    <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800">
+                    <div
+                      className={`mt-2.5 grid gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800 ${
+                        isJneYesAvailable ? 'grid-cols-2' : 'grid-cols-1'
+                      }`}
+                    >
                       <button
                         type="button"
                         onClick={(e) => {
@@ -615,7 +631,7 @@ export function MobileShopeeCheckoutView({
                         <div className="flex items-center justify-between text-[11px]">
                           <span>JNE Reguler</span>
                           <span className="text-[9px] font-normal text-slate-500">
-                            2-3 Hari
+                            2-4 Hari
                           </span>
                         </div>
                         <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
@@ -623,33 +639,35 @@ export function MobileShopeeCheckoutView({
                         </span>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleCourierChange('JNE', 'YES')
-                        }}
-                        className={`flex flex-col rounded-lg p-2 text-left transition-all ${
-                          pkgService === 'YES'
-                            ? 'border border-emerald-500 bg-emerald-500/10 font-bold text-emerald-950 dark:text-emerald-300'
-                            : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="flex items-center gap-1">
-                            JNE YES
-                            <span className="py-0.2 rounded bg-orange-100 px-1 text-[8px] font-bold text-orange-700 dark:bg-orange-950/50 dark:text-orange-300">
-                              Kilat
+                      {isJneYesAvailable && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCourierChange('JNE', 'YES')
+                          }}
+                          className={`flex flex-col rounded-lg p-2 text-left transition-all ${
+                            pkgService === 'YES'
+                              ? 'border border-emerald-500 bg-emerald-500/10 font-bold text-emerald-950 dark:text-emerald-300'
+                              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="flex items-center gap-1">
+                              JNE YES
+                              <span className="py-0.2 rounded bg-orange-100 px-1 text-[8px] font-bold text-orange-700 dark:bg-orange-950/50 dark:text-orange-300">
+                                Kilat
+                              </span>
                             </span>
+                            <span className="text-[9px] font-normal text-slate-500">
+                              1 Hari
+                            </span>
+                          </div>
+                          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                            Rp {pkgJneYesCost.toLocaleString('id-ID')}
                           </span>
-                          <span className="text-[9px] font-normal text-slate-500">
-                            1 Hari
-                          </span>
-                        </div>
-                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                          Rp {pkgJneYesCost.toLocaleString('id-ID')}
-                        </span>
-                      </button>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

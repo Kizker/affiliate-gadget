@@ -111,7 +111,6 @@ export function CustomPaymentModal({
         ) {
           setIsSuccess(true)
           if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-          toast.success('Pembayaran berhasil dikonfirmasi!')
           if (onPaymentSuccess) onPaymentSuccess()
         } else if (
           data.isExpired ||

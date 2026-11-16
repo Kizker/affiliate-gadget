@@ -201,75 +201,117 @@ export function MobileTopHeroBanner({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {slides.map((slide, idx) => (
-        <div
-          key={slide.id}
-          role="button"
-          tabIndex={0}
-          aria-label={`Advertisement - ${slide.storeName || 'Affiliate Gadget'}`}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              handleSlideClick(slide)
-            }
-          }}
-          onClick={() => handleSlideClick(slide)}
-          className={`absolute inset-0 cursor-pointer transition-opacity duration-700 ease-in-out ${
-            idx === currentSlide
-              ? 'z-10 opacity-100'
-              : 'pointer-events-none z-0 opacity-0'
-          }`}
-        >
-          {/* Base Poster Layer (Always rendered immediately for instant frame-1 LCP) */}
-          <Image
-            src={slide.image}
-            alt={`${slide.storeName || 'Affiliate Gadget'} - ${slide.title}`}
-            fill
-            sizes="(max-width: 768px) 100vw, 1200px"
-            quality={70}
-            unoptimized={slide.image.endsWith('.webp')}
-            className="object-cover"
-            priority={idx === 0}
-            fetchPriority={idx === 0 ? 'high' : 'auto'}
-            loading={idx === 0 ? 'eager' : 'lazy'}
-          />
+      {slides.length === 0 ? (
+        <div className="relative flex h-full w-full flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-5 sm:p-7 md:p-8">
+          {/* Subtle Ambient Radial Glow */}
+          <div className="pointer-events-none absolute -right-12 -top-12 h-64 w-64 rounded-full bg-orange-500/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-64 w-64 rounded-full bg-blue-600/15 blur-3xl" />
 
-          {/* Deferred Video Layer: Loaded only on user interaction to prevent critical network saturation */}
-          {slide.isVideo && slide.videoUrl && canLoadVideo && (
-            <video
-              src={slide.videoUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              poster={slide.image}
-              preload="none"
-              title={slide.title || 'Video Promo Iklan Toko'}
-              aria-label={slide.title || 'Video Promo Iklan Toko'}
-              className="absolute inset-0 h-full w-full object-cover"
-            >
-              <track kind="captions" src="/captions/live-empty.vtt" />
-            </video>
-          )}
-
-          {/* Vignette gradients for editorial readability */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/30" />
-
-          {/* Top-Left: Advertisement Label (Tulisannya saja, tanpa efek background, agak ke kanan) */}
-          <div className="pointer-events-none absolute left-5 top-3.5 z-20 sm:left-7 sm:top-5 md:left-8 md:top-6">
-            <span className="text-[11px] font-medium tracking-wider text-white/80 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] sm:text-xs">
-              Advertisement
+          {/* Top Row: Mini Tagline & Live Shield */}
+          <div className="relative z-10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 sm:text-xs">
+                Official Marketplace
+              </span>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[9px] font-semibold text-slate-300 backdrop-blur-md sm:text-[10px]">
+              Garansi 30 Hari
             </span>
           </div>
 
-          {/* Bottom-Left: Store Name (Tulisannya saja, tanpa efek background, agak ke kanan) */}
-          <div className="pointer-events-none absolute bottom-3.5 left-5 z-20 sm:bottom-5 sm:left-7 md:bottom-6 md:left-8">
-            <span className="text-xs font-semibold tracking-wide text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] sm:text-sm md:text-base">
-              {slide.storeName || 'Affiliate Gadget'}
+          {/* Center Content: Animated Brand & Slogan */}
+          <div className="relative z-10 my-auto py-2">
+            <h2 className="text-lg font-black tracking-tight text-white sm:text-2xl md:text-3xl">
+              Affiliate{' '}
+              <span className="bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
+                Gadget
+              </span>
+            </h2>
+            <p className="mt-1 text-xs font-medium text-slate-300 sm:text-sm">
+              Gadget Second Terpercaya &middot; Teruji Teknisi Resmi
+            </p>
+          </div>
+
+          {/* Bottom Footnote */}
+          <div className="relative z-10 flex items-center justify-between text-[10px] text-slate-400 sm:text-xs">
+            <span>Jaringan Toko Fisik Se-Indonesia</span>
+            <span className="font-semibold text-orange-400">
+              100% Original &bull; Asuransi Kurir
             </span>
           </div>
         </div>
-      ))}
+      ) : (
+        slides.map((slide, idx) => (
+          <div
+            key={slide.id}
+            role="button"
+            tabIndex={0}
+            aria-label={`Advertisement - ${slide.storeName || 'Affiliate Gadget'}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                handleSlideClick(slide)
+              }
+            }}
+            onClick={() => handleSlideClick(slide)}
+            className={`absolute inset-0 cursor-pointer transition-opacity duration-700 ease-in-out ${
+              idx === currentSlide
+                ? 'z-10 opacity-100'
+                : 'pointer-events-none z-0 opacity-0'
+            }`}
+          >
+            {/* Base Poster Layer (Always rendered immediately for instant frame-1 LCP) */}
+            <Image
+              src={slide.image}
+              alt={`${slide.storeName || 'Affiliate Gadget'} - ${slide.title}`}
+              fill
+              sizes="(max-width: 768px) 100vw, 1200px"
+              quality={70}
+              unoptimized={slide.image.endsWith('.webp')}
+              className="object-cover"
+              priority={idx === 0}
+              fetchPriority={idx === 0 ? 'high' : 'auto'}
+              loading={idx === 0 ? 'eager' : 'lazy'}
+            />
+
+            {/* Deferred Video Layer: Loaded only on user interaction to prevent critical network saturation */}
+            {slide.isVideo && slide.videoUrl && canLoadVideo && (
+              <video
+                src={slide.videoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                poster={slide.image}
+                preload="none"
+                title={slide.title || 'Video Promo Iklan Toko'}
+                aria-label={slide.title || 'Video Promo Iklan Toko'}
+                className="absolute inset-0 h-full w-full object-cover"
+              >
+                <track kind="captions" src="/captions/live-empty.vtt" />
+              </video>
+            )}
+
+            {/* Vignette gradients for editorial readability */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/30" />
+
+            {/* Top-Left: Advertisement Label (Tulisannya saja, tanpa efek background, agak ke kanan) */}
+            <div className="pointer-events-none absolute left-5 top-3.5 z-20 sm:left-7 sm:top-5 md:left-8 md:top-6">
+              <span className="text-[11px] font-medium tracking-wider text-white/80 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] sm:text-xs">
+                Advertisement
+              </span>
+            </div>
+
+            {/* Bottom-Left: Store Name (Tulisannya saja, tanpa efek background, agak ke kanan) */}
+            <div className="pointer-events-none absolute bottom-3.5 left-5 z-20 sm:bottom-5 sm:left-7 md:bottom-6 md:left-8">
+              <span className="text-xs font-semibold tracking-wide text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] sm:text-sm md:text-base">
+                {slide.storeName || 'Affiliate Gadget'}
+              </span>
+            </div>
+          </div>
+        ))
+      )}
 
       {/* Indicator Dots */}
       {slides.length > 1 && (
