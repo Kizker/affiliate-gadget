@@ -202,27 +202,14 @@ export function MobileTopHeroBanner({
       onTouchEnd={handleTouchEnd}
     >
       {slides.length === 0 ? (
-        <div className="relative flex h-full w-full flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-5 sm:p-7 md:p-8">
+        <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-6 py-4 text-center">
           {/* Subtle Ambient Radial Glow */}
-          <div className="pointer-events-none absolute -right-12 -top-12 h-64 w-64 rounded-full bg-orange-500/15 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-12 -left-12 h-64 w-64 rounded-full bg-blue-600/15 blur-3xl" />
+          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-orange-500/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-blue-600/15 blur-3xl" />
 
-          {/* Top Row: Mini Tagline & Live Shield */}
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 sm:text-xs">
-                Official Marketplace
-              </span>
-            </div>
-            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[9px] font-semibold text-slate-300 backdrop-blur-md sm:text-[10px]">
-              Garansi 30 Hari
-            </span>
-          </div>
-
-          {/* Center Content: Animated Brand & Slogan */}
-          <div className="relative z-10 my-auto py-2">
-            <h2 className="text-lg font-black tracking-tight text-white sm:text-2xl md:text-3xl">
+          {/* Centered Brand Name & Clean Slogan */}
+          <div className="relative z-10 flex flex-col items-center justify-center">
+            <h2 className="text-xl font-black tracking-tight text-white sm:text-2xl md:text-3xl">
               Affiliate{' '}
               <span className="bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
                 Gadget
@@ -231,14 +218,6 @@ export function MobileTopHeroBanner({
             <p className="mt-1 text-xs font-medium text-slate-300 sm:text-sm">
               Gadget Second Terpercaya &middot; Teruji Teknisi Resmi
             </p>
-          </div>
-
-          {/* Bottom Footnote */}
-          <div className="relative z-10 flex items-center justify-between text-[10px] text-slate-400 sm:text-xs">
-            <span>Jaringan Toko Fisik Se-Indonesia</span>
-            <span className="font-semibold text-orange-400">
-              100% Original &bull; Asuransi Kurir
-            </span>
           </div>
         </div>
       ) : (

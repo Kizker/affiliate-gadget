@@ -301,30 +301,30 @@ export function ThermalShippingLabel({
   const modalContent = (
     <div
       id="thermal-modal-root"
-      className="fixed inset-0 z-[999999] flex flex-col overflow-hidden bg-slate-950/85 backdrop-blur-md sm:items-center sm:justify-center sm:p-4"
+      className="fixed inset-0 z-[999999] flex items-center justify-center overflow-hidden bg-slate-950/80 p-3 backdrop-blur-md sm:p-4"
     >
-      {/* Container */}
-      <div className="flex h-[100dvh] max-h-none w-full flex-col overflow-hidden rounded-none bg-white shadow-2xl dark:bg-slate-900 sm:h-auto sm:max-h-[92vh] sm:max-w-xl sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-slate-800">
+      {/* Container as genuine floating modal */}
+      <div className="flex max-h-[90vh] w-full max-w-[440px] flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:max-w-xl">
         {/* Header Bar (Not printed) */}
-        <div className="flex min-h-[3.75rem] shrink-0 items-center justify-between gap-3 border-b border-slate-200/90 bg-white px-3.5 py-2.5 dark:border-slate-800 dark:bg-slate-900 sm:min-h-[4rem] sm:px-5 print:hidden">
-          <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex min-h-[3.5rem] shrink-0 items-center justify-between gap-2 border-b border-slate-200/90 bg-white px-3.5 py-2.5 dark:border-slate-800 dark:bg-slate-900 sm:px-5 print:hidden">
+          <div className="flex min-w-0 items-center gap-2">
             {onBackToOrder && (
               <button
                 type="button"
                 onClick={onBackToOrder}
-                className="shadow-xs inline-flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="shadow-xs inline-flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 <span>Kembali</span>
               </button>
             )}
             <div className="flex min-w-0 items-center gap-2">
-              <div className="shadow-xs flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
-                <Printer className="h-4 w-4" />
+              <div className="shadow-xs flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white sm:h-8 sm:w-8">
+                <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
               <div className="min-w-0">
                 <h3 className="truncate text-xs font-bold text-slate-900 dark:text-white sm:text-sm">
-                  Label Thermal (100 × 150 mm)
+                  Label Thermal
                 </h3>
                 <p className="hidden whitespace-nowrap text-[11px] leading-tight text-slate-500 dark:text-slate-400 sm:block">
                   Standar Ekspedisi Resmi E-Commerce Indonesia
@@ -336,7 +336,7 @@ export function ThermalShippingLabel({
             <button
               type="button"
               onClick={handlePrint}
-              className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950"
+              className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950 sm:px-3.5 sm:py-2"
             >
               <Printer className="h-3.5 w-3.5" />
               <span>Cetak Label</span>
@@ -345,15 +345,15 @@ export function ThermalShippingLabel({
               type="button"
               onClick={onClose}
               aria-label="Tutup"
-              className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 active:scale-95 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 active:scale-95 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* Scrollable Printable Label Area with pb-28 to prevent any clipping on mobile */}
-        <div className="flex-1 overflow-y-auto overscroll-contain p-2.5 pb-28 pt-3 sm:p-5 sm:pb-6 print:overflow-visible print:p-0">
+        {/* Scrollable Printable Label Area */}
+        <div className="no-scrollbar flex-1 overflow-y-auto p-3 pb-6 pt-2.5 sm:p-5 print:overflow-visible print:p-0">
           <div
             ref={printRef}
             id="printable-shipping-label"

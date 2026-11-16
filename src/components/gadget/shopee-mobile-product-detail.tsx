@@ -932,27 +932,6 @@ export function ShopeeMobileProductDetail({
               Matte Case
             </div>
           </div>
-
-          <div className="space-y-2 border-t border-slate-200/60 pt-2.5 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Logistik Terproteksi
-              </span>
-              <span className="text-slate-500 dark:text-slate-400">
-                JNE & Gojek (Dari {product.store?.city || 'Indonesia'})
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                Garansi 30 Hari
-              </span>
-              <span className="text-slate-500 dark:text-slate-400">
-                Tukar unit & IMEI bebas blokir
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 

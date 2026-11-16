@@ -108,15 +108,21 @@ export function AdminOrderPaymentCard({ order }: AdminOrderPaymentCardProps) {
       </div>
 
       {/* ── 2. TABEL DAFTAR PRODUK YANG TERJUAL ─────────────────── */}
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-left text-xs">
+      <div className="no-scrollbar mt-4 overflow-x-auto">
+        <table className="w-full min-w-[500px] text-left text-xs">
           <thead>
-            <tr className="border-b border-slate-100 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:text-slate-500">
-              <th className="w-8 pb-2 text-center">No.</th>
-              <th className="min-w-[200px] pb-2">Produk</th>
-              <th className="pb-2 text-right">Harga Satuan</th>
-              <th className="w-16 pb-2 text-center">Jumlah</th>
-              <th className="pb-2 text-right">Subtotal</th>
+            <tr className="border-b border-slate-100 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:text-slate-500 sm:text-[11px]">
+              <th className="w-7 pb-2 text-center">No.</th>
+              <th className="min-w-[180px] pb-2">Produk</th>
+              <th className="whitespace-nowrap px-3 pb-2 text-right">
+                Harga Satuan
+              </th>
+              <th className="w-14 whitespace-nowrap px-2 pb-2 text-center">
+                Jumlah
+              </th>
+              <th className="whitespace-nowrap pb-2 pl-3 text-right">
+                Subtotal
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -162,13 +168,13 @@ export function AdminOrderPaymentCard({ order }: AdminOrderPaymentCardProps) {
                       </div>
                     </div>
                   </td>
-                  <td className="py-3 text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
+                  <td className="whitespace-nowrap px-3 py-3 text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                     {item.price.toLocaleString('id-ID')}
                   </td>
-                  <td className="py-3 text-center font-mono tabular-nums text-slate-700 dark:text-slate-300">
+                  <td className="whitespace-nowrap px-2 py-3 text-center font-mono tabular-nums text-slate-700 dark:text-slate-300">
                     {item.quantity}
                   </td>
-                  <td className="py-3 text-right font-mono font-semibold tabular-nums text-slate-900 dark:text-white">
+                  <td className="whitespace-nowrap py-3 pl-3 text-right font-mono font-semibold tabular-nums text-slate-900 dark:text-white">
                     {itemSubtotal.toLocaleString('id-ID')}
                   </td>
                 </tr>

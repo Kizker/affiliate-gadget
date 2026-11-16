@@ -252,9 +252,12 @@ function isReturnOrder(order: {
 function getStatusMeta(order: Order) {
   const latestReturn = order.returnRequests?.[0]
   if (order.status === 'RETURNED' || latestReturn) {
+    const isRefund = latestReturn?.type === 'REFUND'
+    const actionLabel = isRefund ? 'Refund' : 'Retur'
+
     if (latestReturn?.status === 'PENDING') {
       return {
-        label: 'Menunggu Verifikasi Retur',
+        label: `Menunggu Verifikasi ${actionLabel}`,
         badgeBg:
           'bg-orange-50/90 text-orange-700 border-orange-200/80 dark:bg-orange-950/40 dark:border-orange-900/60 dark:text-orange-300',
         dotColor: 'bg-orange-500',
@@ -263,7 +266,7 @@ function getStatusMeta(order: Order) {
     }
     if (latestReturn?.status === 'IN_REVIEW') {
       return {
-        label: 'Retur Sedang Ditinjau',
+        label: `${actionLabel} Sedang Ditinjau`,
         badgeBg:
           'bg-indigo-50/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/40 dark:border-indigo-900/60 dark:text-indigo-300',
         dotColor: 'bg-indigo-500',
@@ -272,7 +275,7 @@ function getStatusMeta(order: Order) {
     }
     if (latestReturn?.status === 'APPROVED') {
       return {
-        label: 'Retur Disetujui',
+        label: `${actionLabel} Disetujui`,
         badgeBg:
           'bg-emerald-50/90 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300',
         dotColor: 'bg-emerald-500',
@@ -281,15 +284,24 @@ function getStatusMeta(order: Order) {
     }
     if (latestReturn?.status === 'REJECTED') {
       return {
-        label: 'Pengajuan Retur Ditolak',
+        label: `Pengajuan ${actionLabel} Ditolak`,
         badgeBg:
           'bg-rose-50/90 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300',
         dotColor: 'bg-rose-500',
         icon: RotateCcw,
       }
     }
+    if (latestReturn?.status === 'COMPLETED') {
+      return {
+        label: isRefund ? 'Refund Selesai' : 'Tukar Unit Selesai',
+        badgeBg:
+          'bg-emerald-50/90 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300',
+        dotColor: 'bg-emerald-500',
+        icon: RotateCcw,
+      }
+    }
     return {
-      label: 'Dikembalikan (Retur)',
+      label: isRefund ? 'Pengembalian Dana (Refund)' : 'Dikembalikan (Retur)',
       badgeBg:
         'bg-purple-50/90 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:border-purple-900/60 dark:text-purple-300',
       dotColor: 'bg-purple-500',

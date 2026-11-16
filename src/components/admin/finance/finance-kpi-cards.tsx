@@ -25,9 +25,9 @@ export function FinanceKpiCards({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="no-scrollbar flex items-stretch gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:pb-0 lg:grid-cols-5">
       {/* Card 1: Saldo Siap Ditarik */}
-      <div className="shadow-xs rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+      <div className="shadow-xs min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             SALDO SIAP CAIR
@@ -58,7 +58,7 @@ export function FinanceKpiCards({
       </div>
 
       {/* Card 2: Pendapatan Kotor / GMV */}
-      <div className="shadow-xs rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+      <div className="shadow-xs min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             {isConsolidated ? 'TOTAL OMZET (GMV)' : 'PENDAPATAN KOTOR'}
@@ -82,7 +82,7 @@ export function FinanceKpiCards({
       </div>
 
       {/* Card 3: Total HPP (Modal) */}
-      <div className="shadow-xs rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+      <div className="shadow-xs min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             TOTAL HPP (MODAL)
@@ -102,7 +102,7 @@ export function FinanceKpiCards({
       </div>
 
       {/* Card 4: Laba Bersih Toko */}
-      <div className="shadow-xs rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+      <div className="shadow-xs min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             {isConsolidated ? 'LABA KOMISI PLATFORM' : 'LABA BERSIH TOKO'}
@@ -126,9 +126,8 @@ export function FinanceKpiCards({
         </div>
       </div>
 
-      {/* Card 5: Dana Tertahan (Escrow) */}
       {/* Card 5: Dana Escrow (Tertahan) */}
-      <div className="shadow-xs rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+      <div className="shadow-xs min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             DANA ESCROW (TERT...

@@ -453,10 +453,9 @@ export function OrderMobileView({
               <div className="flex items-center gap-2">
                 <RotateCcw className="h-4 w-4 text-orange-500" />
                 <span className="text-xs font-bold text-slate-900 dark:text-white">
-                  Pengajuan Retur:{' '}
                   {latestReturnRequest.type === 'REFUND'
-                    ? 'Pengembalian Dana'
-                    : 'Tukar Unit'}
+                    ? 'Pengajuan Refund: Pengembalian Dana'
+                    : 'Pengajuan Retur: Tukar Unit'}
                 </span>
               </div>
               <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-300">

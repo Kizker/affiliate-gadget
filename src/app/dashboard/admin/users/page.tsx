@@ -217,41 +217,41 @@ export default function UsersPage() {
   const getRoleBadge = (user: User) => {
     if (user.technician) {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full border border-orange-200/60 bg-orange-50 px-2.5 py-0.5 text-[10px] font-semibold text-orange-700 dark:border-orange-800/40 dark:bg-orange-950/40 dark:text-orange-300">
+        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-orange-200/60 bg-orange-50 px-2.5 py-0.5 text-[10px] font-semibold text-orange-700 dark:border-orange-800/40 dark:bg-orange-950/40 dark:text-orange-300">
           Teknisi
         </span>
       )
     }
     if (user.role === 'SUPER_ADMIN') {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full border border-purple-200/60 bg-purple-50 px-2.5 py-0.5 text-[10px] font-semibold text-purple-700 dark:border-purple-800/40 dark:bg-purple-950/40 dark:text-purple-300">
+        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-purple-200/60 bg-purple-50 px-2.5 py-0.5 text-[10px] font-semibold text-purple-700 dark:border-purple-800/40 dark:bg-purple-950/40 dark:text-purple-300">
           Super Admin
         </span>
       )
     }
     if (user.role === 'ADMIN') {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full border border-blue-200/60 bg-blue-50 px-2.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:border-blue-800/40 dark:bg-blue-950/40 dark:text-blue-300">
+        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-blue-200/60 bg-blue-50 px-2.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:border-blue-800/40 dark:bg-blue-950/40 dark:text-blue-300">
           Admin Platform
         </span>
       )
     }
     if (user.role === 'AFTER_SALES') {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full border border-teal-200/60 bg-teal-50 px-2.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:border-teal-800/40 dark:bg-teal-950/40 dark:text-teal-300">
+        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-teal-200/60 bg-teal-50 px-2.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:border-teal-800/40 dark:bg-teal-950/40 dark:text-teal-300">
           After Sales
         </span>
       )
     }
     if (user.role === 'STORE_ADMIN' || user.role === 'MITRA') {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200/60 bg-indigo-50 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-300">
+        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-indigo-200/60 bg-indigo-50 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-300">
           Admin Toko
         </span>
       )
     }
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/60 bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:border-slate-700/60 dark:bg-slate-800 dark:text-slate-300">
+      <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-slate-200/60 bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:border-slate-700/60 dark:bg-slate-800 dark:text-slate-300">
         Customer
       </span>
     )
@@ -282,22 +282,22 @@ export default function UsersPage() {
       {/* ========================================================================= */}
       {/* 1. TOP KPI METRIC CARDS (Bento Metric Grid)                               */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
+      <div className="no-scrollbar flex items-stretch gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:pb-0 lg:grid-cols-4">
         {/* 1. Total Pengguna (Action Orange Highlight) */}
-        <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-orange-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="shadow-2xs hover:shadow-xs group flex min-w-[200px] flex-1 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-orange-200 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 sm:text-[11px]">
               Total Pengguna
             </span>
-            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-              <Users className="h-3.5 w-3.5" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+              <Users className="h-3 w-3" />
             </div>
           </div>
-          <div className="mt-2.5">
-            <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
+          <div className="mt-2">
+            <p className="text-base font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-lg">
               {totalUsers} Pengguna
             </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+            <div className="mt-1 flex items-center gap-1.5 text-[10px] sm:text-[11px]">
               <span className="inline-flex items-center gap-1 font-semibold text-orange-600 dark:text-orange-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
                 Semua Akun
@@ -310,20 +310,20 @@ export default function UsersPage() {
         </div>
 
         {/* 2. Customer Pembeli */}
-        <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="shadow-2xs hover:shadow-xs group flex min-w-[200px] flex-1 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 sm:text-[11px]">
               Customer Pembeli
             </span>
-            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
-              <ShoppingBag className="h-3.5 w-3.5" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+              <ShoppingBag className="h-3 w-3" />
             </div>
           </div>
-          <div className="mt-2.5">
-            <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
+          <div className="mt-2">
+            <p className="text-base font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-lg">
               {stats.byRole.CUSTOMER || 0} Member
             </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+            <div className="mt-1 flex items-center gap-1.5 text-[10px] sm:text-[11px]">
               <span className="inline-flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
                 Member Aktif
@@ -336,20 +336,20 @@ export default function UsersPage() {
         </div>
 
         {/* 3. Admin Toko */}
-        <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="shadow-2xs hover:shadow-xs group flex min-w-[200px] flex-1 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 sm:text-[11px]">
               Admin Toko
             </span>
-            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
-              <Store className="h-3.5 w-3.5" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+              <Store className="h-3 w-3" />
             </div>
           </div>
-          <div className="mt-2.5">
-            <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
+          <div className="mt-2">
+            <p className="text-base font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-lg">
               {stats.byRole.STORE_ADMIN || 0} Akun
             </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+            <div className="mt-1 flex items-center gap-1.5 text-[10px] sm:text-[11px]">
               <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                 Pengelola Toko
               </span>
@@ -361,20 +361,20 @@ export default function UsersPage() {
         </div>
 
         {/* 4. Superadmin & Admin */}
-        <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="shadow-2xs hover:shadow-xs group flex min-w-[200px] flex-1 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 sm:text-[11px]">
               Superadmin & Admin
             </span>
-            <div className="h-6.5 w-6.5 flex items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
-              <ShieldCheck className="h-3.5 w-3.5" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
+              <ShieldCheck className="h-3 w-3" />
             </div>
           </div>
-          <div className="mt-2.5">
-            <p className="text-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-xl">
+          <div className="mt-2">
+            <p className="text-base font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-lg">
               {totalSuperAndAdmin} Akun
             </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+            <div className="mt-1 flex items-center gap-1.5 text-[10px] sm:text-[11px]">
               <span className="font-medium text-slate-700 dark:text-slate-300">
                 Pengelola Platform
               </span>
@@ -574,7 +574,9 @@ export default function UsersPage() {
                       </td>
 
                       {/* 2. Role Badge */}
-                      <td className="px-4 py-3.5">{getRoleBadge(user)}</td>
+                      <td className="whitespace-nowrap px-4 py-3.5">
+                        {getRoleBadge(user)}
+                      </td>
 
                       {/* 3. Phone / WA */}
                       <td className="hidden px-4 py-3.5 sm:table-cell">

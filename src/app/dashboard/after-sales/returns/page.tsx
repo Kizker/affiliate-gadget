@@ -157,6 +157,13 @@ export default function AfterSalesReturnsPage() {
     useState<ReturnItem | null>(null)
   const [packageReceivedNotes, setPackageReceivedNotes] = useState('')
   const [isReceivingPackage, setIsReceivingPackage] = useState(false)
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
+    {}
+  )
+
+  const toggleExpandItem = (id: string) => {
+    setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -452,64 +459,60 @@ export default function AfterSalesReturnsPage() {
     <div className="mx-auto max-w-6xl space-y-6 pb-12">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <ShieldCheck className="h-6 w-6 text-orange-600" />
           <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
-            Meja Kerja Admin After Sales &bull; Manajemen Retur &amp; Garansi
+            Manajemen Retur &amp; Garansi After Sales
           </h1>
         </div>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Eksekutor tunggal validasi bukti cacat produk, persetujuan pencairan
-          dana refund, dan penerbitan resi penggantian unit baru.
-        </p>
       </div>
 
       {/* Metric Tabs */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="no-scrollbar flex items-stretch gap-2.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:pb-0">
         <button
           onClick={() => setStatusFilter('ALL')}
-          className={`rounded-2xl border p-4 text-left transition ${
+          className={`min-w-[150px] flex-1 rounded-2xl border p-3 text-left transition sm:min-w-0 sm:p-3.5 ${
             statusFilter === 'ALL'
               ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20'
               : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
           }`}
         >
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 sm:text-xs">
             Semua Pengajuan
           </span>
-          <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+          <p className="mt-1 text-lg font-black text-slate-900 dark:text-white sm:text-xl">
             {counts.all}
           </p>
         </button>
 
         <button
           onClick={() => setStatusFilter('PENDING')}
-          className={`rounded-2xl border p-4 text-left transition ${
+          className={`min-w-[150px] flex-1 rounded-2xl border p-3 text-left transition sm:min-w-0 sm:p-3.5 ${
             statusFilter === 'PENDING'
               ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20'
               : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
           }`}
         >
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-            Perlu Tindakan Eksekusi
+          <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 sm:text-xs">
+            Perlu Tindakan
           </span>
-          <p className="mt-1 text-2xl font-black text-orange-600">
+          <p className="mt-1 text-lg font-black text-orange-600 sm:text-xl">
             {counts.pending}
           </p>
         </button>
 
         <button
           onClick={() => setStatusFilter('DECIDED')}
-          className={`rounded-2xl border p-4 text-left transition ${
+          className={`min-w-[150px] flex-1 rounded-2xl border p-3 text-left transition sm:min-w-0 sm:p-3.5 ${
             statusFilter === 'DECIDED'
               ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20'
               : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
           }`}
         >
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Selesai Dieksekusi / Diputuskan
+          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 sm:text-xs">
+            Selesai / Diputuskan
           </span>
-          <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+          <p className="mt-1 text-lg font-black text-slate-900 dark:text-white sm:text-xl">
             {counts.decided}
           </p>
         </button>
@@ -636,219 +639,284 @@ export default function AfterSalesReturnsPage() {
                       <XCircle className="h-3.5 w-3.5 text-rose-600" /> Ditolak
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => toggleExpandItem(item.id)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    <span>
+                      {expandedItems[item.id]
+                        ? 'Tutup Rincian'
+                        : 'Buka Rincian'}
+                    </span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${
+                        expandedItems[item.id] ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
 
-              {/* Card Body */}
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                {/* Buyer & Gadget Column */}
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Pembeli
-                    </p>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      {item.user.name || 'Pembeli'}
-                    </p>
-                    <p className="text-xs text-slate-500">{item.user.email}</p>
-                    <p className="text-xs text-slate-500">
-                      {item.user.phone || '-'}
-                    </p>
+              {/* Collapsible Details Card Body */}
+              {expandedItems[item.id] && (
+                <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-3 dark:border-slate-800 sm:grid-cols-3">
+                  {/* Buyer & Gadget Column */}
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Pembeli
+                      </p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        {item.user.name || 'Pembeli'}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {item.user.email}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {item.user.phone || '-'}
+                      </p>
+                    </div>
+
+                    {/* Unit Gadget / Barang yang Diretur */}
+                    <div className="border-t border-slate-100 pt-2.5 dark:border-slate-800">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Unit Gadget / Barang
+                      </p>
+                      {item.order.items && item.order.items.length > 0 ? (
+                        <div className="mt-1.5 space-y-2">
+                          {item.order.items.map((orderItem, idx) => {
+                            const prod = orderItem.product
+                            const prodName =
+                              prod?.name ||
+                              orderItem.rentalItem?.name ||
+                              orderItem.service?.name ||
+                              'Gadget Smartphone'
+                            const prodImg =
+                              prod?.images?.[0] ||
+                              orderItem.rentalItem?.images?.[0] ||
+                              'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
+
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/80 p-2 dark:border-slate-800 dark:bg-slate-800/40"
+                              >
+                                <img
+                                  src={prodImg}
+                                  alt={prodName}
+                                  className="h-10 w-10 shrink-0 rounded-lg border border-slate-200/80 object-cover dark:border-slate-700"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  {prod?.brand && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-500">
+                                      {prod.brand}
+                                    </span>
+                                  )}
+                                  <p
+                                    className="line-clamp-2 text-xs font-bold leading-snug text-slate-900 dark:text-white"
+                                    title={prodName}
+                                  >
+                                    {prodName}
+                                  </p>
+                                  {orderItem.variantName && (
+                                    <p className="mt-0.5 text-[10.5px] text-slate-500 dark:text-slate-400">
+                                      Varian:{' '}
+                                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {orderItem.variantName}
+                                      </span>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-xs italic text-slate-400">
+                          Unit gadget pesanan
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-2.5 dark:border-slate-800">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Nominal Transaksi
+                      </p>
+                      <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                        Rp{' '}
+                        {Math.round(item.order.total).toLocaleString('id-ID')}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Unit Gadget / Barang yang Diretur */}
-                  <div className="border-t border-slate-100 pt-2.5 dark:border-slate-800">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Unit Gadget / Barang
-                    </p>
-                    {item.order.items && item.order.items.length > 0 ? (
-                      <div className="mt-1.5 space-y-2">
-                        {item.order.items.map((orderItem, idx) => {
-                          const prod = orderItem.product
-                          const prodName =
-                            prod?.name ||
-                            orderItem.rentalItem?.name ||
-                            orderItem.service?.name ||
-                            'Gadget Smartphone'
-                          const prodImg =
-                            prod?.images?.[0] ||
-                            orderItem.rentalItem?.images?.[0] ||
-                            'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
+                  {/* Issue Details & Proof Column */}
+                  <div className="space-y-2 sm:col-span-2">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Alasan &amp; Bukti Cacat Produk
+                      </p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        {item.reasonLabel || item.reason}
+                      </p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                        &ldquo;{item.description}&rdquo;
+                      </p>
+                    </div>
 
-                          return (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/80 p-2 dark:border-slate-800 dark:bg-slate-800/40"
+                    {/* Bukti Foto & Video Cacat Produk */}
+                    <div className="pt-1">
+                      <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        Bukti Unboxing / Kerusakan:
+                      </p>
+                      {(!item.images || item.images.length === 0) &&
+                      !item.videoUrl ? (
+                        <p className="text-[11px] italic text-slate-400">
+                          Tidak ada lampiran foto/video bukti
+                        </p>
+                      ) : (
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {/* Photos */}
+                          {item.images?.map((imgUrl, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setActiveImage(imgUrl)}
+                              className="group relative h-14 w-14 overflow-hidden rounded-xl border border-slate-200 hover:opacity-85 dark:border-slate-700"
                             >
                               <img
-                                src={prodImg}
-                                alt={prodName}
-                                className="h-10 w-10 shrink-0 rounded-lg border border-slate-200/80 object-cover dark:border-slate-700"
+                                src={imgUrl}
+                                alt={`Bukti ${i + 1}`}
+                                className="h-full w-full object-cover transition group-hover:scale-105"
                               />
-                              <div className="min-w-0 flex-1">
-                                {prod?.brand && (
-                                  <span className="text-[9px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-500">
-                                    {prod.brand}
-                                  </span>
-                                )}
-                                <p
-                                  className="line-clamp-2 text-xs font-bold leading-snug text-slate-900 dark:text-white"
-                                  title={prodName}
-                                >
-                                  {prodName}
-                                </p>
-                                {orderItem.variantName && (
-                                  <p className="mt-0.5 text-[10.5px] text-slate-500 dark:text-slate-400">
-                                    Varian:{' '}
-                                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                      {orderItem.variantName}
-                                    </span>
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <p className="mt-1 text-xs italic text-slate-400">
-                        Unit gadget pesanan
-                      </p>
-                    )}
-                  </div>
+                            </button>
+                          ))}
 
-                  <div className="border-t border-slate-100 pt-2.5 dark:border-slate-800">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Nominal Transaksi
-                    </p>
-                    <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">
-                      Rp {Math.round(item.order.total).toLocaleString('id-ID')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Issue Details & Proof Column */}
-                <div className="space-y-2 sm:col-span-2">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Alasan &amp; Bukti Cacat Produk
-                    </p>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      {item.reasonLabel || item.reason}
-                    </p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                      &ldquo;{item.description}&rdquo;
-                    </p>
-                  </div>
-
-                  {/* Bukti Foto & Video Cacat Produk */}
-                  <div className="pt-1">
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                      Bukti Unboxing / Kerusakan:
-                    </p>
-                    {(!item.images || item.images.length === 0) &&
-                    !item.videoUrl ? (
-                      <p className="text-[11px] italic text-slate-400">
-                        Tidak ada lampiran foto/video bukti
-                      </p>
-                    ) : (
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        {/* Photos */}
-                        {item.images?.map((imgUrl, i) => (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => setActiveImage(imgUrl)}
-                            className="group relative h-14 w-14 overflow-hidden rounded-xl border border-slate-200 hover:opacity-85 dark:border-slate-700"
-                          >
-                            <img
-                              src={imgUrl}
-                              alt={`Bukti ${i + 1}`}
-                              className="h-full w-full object-cover transition group-hover:scale-105"
-                            />
-                          </button>
-                        ))}
-
-                        {/* Video */}
-                        {item.videoUrl && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setActiveVideo(item.videoUrl || null)
-                            }
-                            className="flex h-14 w-20 cursor-pointer items-center justify-center gap-1 rounded-xl border border-orange-300 bg-slate-900 text-white transition hover:bg-slate-800"
-                          >
-                            <Play className="h-4 w-4 fill-orange-400 text-orange-400" />
-                            <span className="text-[10px] font-bold">Video</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Rekening Refund Info */}
-                  {item.type === 'REFUND' && item.bankName && (
-                    <div className="mt-2 rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300">
-                      <span className="font-semibold text-slate-900 dark:text-white">
-                        Rekening Tujuan Refund:
-                      </span>{' '}
-                      {item.bankName} - {item.bankAccountNumber} (a.n.{' '}
-                      {item.bankAccountName}) &bull; Estimasi:{' '}
-                      <strong className="text-orange-600">
-                        Rp{' '}
-                        {Math.round(
-                          item.refundAmount || item.order.total
-                        ).toLocaleString('id-ID')}
-                      </strong>
+                          {/* Video */}
+                          {item.videoUrl && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setActiveVideo(item.videoUrl || null)
+                              }
+                              className="flex h-14 w-20 cursor-pointer items-center justify-center gap-1 rounded-xl border border-orange-300 bg-slate-900 text-white transition hover:bg-slate-800"
+                            >
+                              <Play className="h-4 w-4 fill-orange-400 text-orange-400" />
+                              <span className="text-[10px] font-bold">
+                                Video
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
 
-                  {/* Status Resi Pengiriman Balik dari Pembeli */}
-                  {(item.returnTrackingNumber ||
-                    item.packageReceivedAt ||
-                    item.storeResponse?.includes(
-                      '[Paket Fisik Tiba di Cabang]'
-                    )) &&
-                    (item.packageReceivedAt ||
-                    item.storeResponse?.includes(
-                      '[Paket Fisik Tiba di Cabang]'
-                    ) ? (
-                      <div className="mt-2.5 rounded-xl border border-indigo-200/90 bg-indigo-50/70 p-3 text-xs text-indigo-950 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-200">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 font-bold text-indigo-950 dark:text-indigo-100">
-                            <CheckCircle2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                            <span>
-                              Paket Fisik Telah Diterima di Cabang &bull; Sedang
-                              QC
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-md border border-indigo-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-indigo-800 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-200">
-                              Diterima:{' '}
-                              {item.packageReceivedAt
-                                ? new Date(
-                                    item.packageReceivedAt
-                                  ).toLocaleDateString('id-ID', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
-                                : item.updatedAt
-                                  ? new Date(item.updatedAt).toLocaleDateString(
-                                      'id-ID',
-                                      {
+                    {/* Rekening Refund Info */}
+                    {item.type === 'REFUND' && item.bankName && (
+                      <div className="mt-2 rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300">
+                        <span className="font-semibold text-slate-900 dark:text-white">
+                          Rekening Tujuan Refund:
+                        </span>{' '}
+                        {item.bankName} - {item.bankAccountNumber} (a.n.{' '}
+                        {item.bankAccountName}) &bull; Estimasi:{' '}
+                        <strong className="text-orange-600">
+                          Rp{' '}
+                          {Math.round(
+                            item.refundAmount || item.order.total
+                          ).toLocaleString('id-ID')}
+                        </strong>
+                      </div>
+                    )}
+
+                    {/* Status Resi Pengiriman Balik dari Pembeli */}
+                    {(item.returnTrackingNumber ||
+                      item.packageReceivedAt ||
+                      item.storeResponse?.includes(
+                        '[Paket Fisik Tiba di Cabang]'
+                      )) &&
+                      (item.packageReceivedAt ||
+                      item.storeResponse?.includes(
+                        '[Paket Fisik Tiba di Cabang]'
+                      ) ? (
+                        <div className="mt-2.5 rounded-xl border border-indigo-200/90 bg-indigo-50/70 p-3 text-xs text-indigo-950 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-200">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 font-bold text-indigo-950 dark:text-indigo-100">
+                              <CheckCircle2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                              <span>
+                                Paket Fisik Telah Diterima di Cabang &bull;
+                                Sedang QC
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-md border border-indigo-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-indigo-800 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-200">
+                                Diterima:{' '}
+                                {item.packageReceivedAt
+                                  ? new Date(
+                                      item.packageReceivedAt
+                                    ).toLocaleDateString('id-ID', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : item.updatedAt
+                                    ? new Date(
+                                        item.updatedAt
+                                      ).toLocaleDateString('id-ID', {
                                         day: 'numeric',
                                         month: 'short',
                                         year: 'numeric',
                                         hour: '2-digit',
                                         minute: '2-digit',
-                                      }
+                                      })
+                                    : 'Dikonfirmasi Tiba'}
+                              </span>
+                              {item.returnTrackingNumber && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveTrackingQuery(
+                                      item.returnTrackingNumber || ''
                                     )
-                                  : 'Dikonfirmasi Tiba'}
-                            </span>
-                            {item.returnTrackingNumber && (
+                                    setResiModalOpen(true)
+                                  }}
+                                  className="shadow-2xs inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-0.5 text-[10.5px] font-semibold text-indigo-800 hover:bg-indigo-200 dark:bg-slate-800 dark:text-indigo-300"
+                                >
+                                  <Search className="h-3 w-3" />
+                                  <span>Lacak Biteship</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          {(item.qcNotes ||
+                            item.storeResponse?.match(
+                              /Catatan QC:\s*([^\n]+)/
+                            )?.[1]) && (
+                            <p className="mt-1 text-[11px] leading-relaxed text-indigo-900/80 dark:text-indigo-200/80">
+                              <strong>Catatan QC Awal:</strong> &ldquo;
+                              {item.qcNotes ||
+                                item.storeResponse
+                                  ?.match(/Catatan QC:\s*([^\n]+)/)?.[1]
+                                  ?.trim()}
+                              &rdquo;
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-2.5 rounded-xl border border-blue-200/90 bg-blue-50/70 p-3 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
+                              <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              <span>
+                                Unit Retur Sedang Dikirim Balik oleh Pembeli
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-md border border-blue-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
+                                {item.returnCourier || 'Ekspedisi'} —{' '}
+                                {item.returnTrackingNumber}
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -857,119 +925,77 @@ export default function AfterSalesReturnsPage() {
                                   )
                                   setResiModalOpen(true)
                                 }}
-                                className="shadow-2xs inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-0.5 text-[10.5px] font-semibold text-indigo-800 hover:bg-indigo-200 dark:bg-slate-800 dark:text-indigo-300"
+                                className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 active:scale-95"
                               >
-                                <Search className="h-3 w-3" />
+                                <Search className="h-3.5 w-3.5" />
                                 <span>Lacak Biteship</span>
                               </button>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                        {(item.qcNotes ||
-                          item.storeResponse?.match(
-                            /Catatan QC:\s*([^\n]+)/
-                          )?.[1]) && (
-                          <p className="mt-1 text-[11px] leading-relaxed text-indigo-900/80 dark:text-indigo-200/80">
-                            <strong>Catatan QC Awal:</strong> &ldquo;
-                            {item.qcNotes ||
-                              item.storeResponse
-                                ?.match(/Catatan QC:\s*([^\n]+)/)?.[1]
-                                ?.trim()}
-                            &rdquo;
+                          <p className="mt-1 text-[11px] leading-relaxed text-blue-800/80 dark:text-blue-300/80">
+                            Paket fisik sedang menuju{' '}
+                            {item.order.store?.name || 'Toko Cabang'}. Silakan
+                            lakukan verifikasi fisik (QC) setelah paket tiba di
+                            toko sebelum memproses unit pengganti atau pencairan
+                            refund.
                           </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="mt-2.5 rounded-xl border border-blue-200/90 bg-blue-50/70 p-3 text-xs text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 font-bold text-blue-950 dark:text-blue-100">
-                            <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                            <span>
-                              Unit Retur Sedang Dikirim Balik oleh Pembeli
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-md border border-blue-200 bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-blue-900 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-200">
-                              {item.returnCourier || 'Ekspedisi'} —{' '}
-                              {item.returnTrackingNumber}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveTrackingQuery(
-                                  item.returnTrackingNumber || ''
-                                )
-                                setResiModalOpen(true)
-                              }}
-                              className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 active:scale-95"
-                            >
-                              <Search className="h-3.5 w-3.5" />
-                              <span>Lacak Biteship</span>
-                            </button>
-                          </div>
                         </div>
-                        <p className="mt-1 text-[11px] leading-relaxed text-blue-800/80 dark:text-blue-300/80">
-                          Paket fisik sedang menuju{' '}
-                          {item.order.store?.name || 'Toko Cabang'}. Silakan
-                          lakukan verifikasi fisik (QC) setelah paket tiba di
-                          toko sebelum memproses unit pengganti atau pencairan
-                          refund.
+                      ))}
+
+                    {/* Banner jika tiket dikembalikan oleh Superadmin */}
+                    {item.storeResponse?.includes(
+                      '[Dikembalikan Superadmin ke After Sales]'
+                    ) && (
+                      <div className="mt-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
+                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                          <span>
+                            ⚠️ Dikembalikan oleh Superadmin untuk Ditinjau Ulang
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed">
+                          <strong>Catatan Superadmin:</strong> &ldquo;
+                          {item.storeResponse.replace(
+                            /.*\[Dikembalikan Superadmin ke After Sales\]\s*/,
+                            ''
+                          )}
+                          &rdquo;
                         </p>
                       </div>
-                    ))}
+                    )}
 
-                  {/* Banner jika tiket dikembalikan oleh Superadmin */}
-                  {item.storeResponse?.includes(
-                    '[Dikembalikan Superadmin ke After Sales]'
-                  ) && (
-                    <div className="mt-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-                      <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
-                        <AlertCircle className="h-4 w-4 text-amber-600" />
-                        <span>
-                          ⚠️ Dikembalikan oleh Superadmin untuk Ditinjau Ulang
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[11px] leading-relaxed">
-                        <strong>Catatan Superadmin:</strong> &ldquo;
-                        {item.storeResponse.replace(
-                          /.*\[Dikembalikan Superadmin ke After Sales\]\s*/,
-                          ''
-                        )}
-                        &rdquo;
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Foto Bukti QC yang telah dilampirkan */}
-                  {(() => {
-                    const qcImages = extractQcImages(item.storeResponse)
-                    if (qcImages.length === 0) return null
-                    return (
-                      <div className="mt-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-2.5 text-xs dark:border-slate-800 dark:bg-slate-800/40">
-                        <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                          📸 Foto Bukti Pemeriksaan QC ({qcImages.length} Foto):
-                        </p>
-                        <div className="mt-1.5 flex flex-wrap gap-2">
-                          {qcImages.map((imgUrl, qIdx) => (
-                            <button
-                              key={qIdx}
-                              type="button"
-                              onClick={() => setActiveImage(imgUrl)}
-                              className="shadow-2xs group relative h-12 w-12 overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:scale-105 hover:border-indigo-500 dark:border-slate-700 dark:bg-slate-800"
-                            >
-                              <img
-                                src={imgUrl}
-                                alt={`Bukti QC ${qIdx + 1}`}
-                                className="h-full w-full object-cover"
-                              />
-                            </button>
-                          ))}
+                    {/* Foto Bukti QC yang telah dilampirkan */}
+                    {(() => {
+                      const qcImages = extractQcImages(item.storeResponse)
+                      if (qcImages.length === 0) return null
+                      return (
+                        <div className="mt-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-2.5 text-xs dark:border-slate-800 dark:bg-slate-800/40">
+                          <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            📸 Foto Bukti Pemeriksaan QC ({qcImages.length}{' '}
+                            Foto):
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap gap-2">
+                            {qcImages.map((imgUrl, qIdx) => (
+                              <button
+                                key={qIdx}
+                                type="button"
+                                onClick={() => setActiveImage(imgUrl)}
+                                className="shadow-2xs group relative h-12 w-12 overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:scale-105 hover:border-indigo-500 dark:border-slate-700 dark:bg-slate-800"
+                              >
+                                <img
+                                  src={imgUrl}
+                                  alt={`Bukti QC ${qIdx + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })()}
+                      )
+                    })()}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Action Buttons: Dual Decision (Setuju / Tolak) + Live Chat */}
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">

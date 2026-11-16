@@ -20,6 +20,7 @@ import {
   Truck,
   Play,
   ShieldCheck,
+  ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePageGuard } from '@/hooks/use-page-guard'
@@ -129,6 +130,13 @@ export default function SuperAdminReturnsPage() {
   const [activeImage, setActiveImage] = useState<string | null>(null)
   const [resiModalOpen, setResiModalOpen] = useState(false)
   const [activeTrackingQuery, setActiveTrackingQuery] = useState('')
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
+    {}
+  )
+
+  const toggleExpandItem = (id: string) => {
+    setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
 
   const fetchReturns = useCallback(async () => {
     try {
@@ -153,13 +161,17 @@ export default function SuperAdminReturnsPage() {
   const handleDirectApprove = async (item: ReturnItem) => {
     try {
       setProcessingId(item.id)
+      const isRecRejected = Boolean(
+        item.storeResponse?.includes('[Rekomendasi After Sales: DITOLAK]')
+      )
       const res = await fetch(`/api/returns/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'APPROVE',
-          adminNotes:
-            item.type === 'REFUND'
+          adminNotes: isRecRejected
+            ? '[ACC Superadmin: Penolakan Disetujui] Superadmin mengonfirmasi rekomendasi penolakan After Sales. Klaim ditolak final.'
+            : item.type === 'REFUND'
               ? '[Disetujui Superadmin] ACC Final Refund disetujui.'
               : '[Disetujui Superadmin] ACC Final Tukar Unit disetujui.',
         }),
@@ -167,13 +179,15 @@ export default function SuperAdminReturnsPage() {
       const json = await res.json()
       if (res.ok && json.success) {
         toast.success(
-          item.type === 'REFUND'
-            ? 'ACC Final berhasil! Dana refund otomatis dicairkan.'
-            : 'ACC Final berhasil! Unit baru otomatis diproses kirim.'
+          isRecRejected
+            ? 'Penolakan klaim berhasil di-ACC final! Dana tidak dicairkan.'
+            : item.type === 'REFUND'
+              ? 'ACC Final berhasil! Dana refund otomatis dicairkan.'
+              : 'ACC Final berhasil! Unit baru otomatis diproses kirim.'
         )
         fetchReturns()
       } else {
-        toast.error(json.error || 'Gagal menyetujui pengembalian')
+        toast.error(json.error || 'Gagal memproses pengembalian')
       }
     } catch {
       toast.error('Terjadi kesalahan koneksi')
@@ -267,58 +281,54 @@ export default function SuperAdminReturnsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-12">
       <div>
-        <h1 className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
           <RotateCcw className="h-6 w-6 text-orange-600" />
-          Persetujuan Retur &amp; Pengembalian Dana &bull; Meja Kerja Superadmin
+          Persetujuan Retur &amp; Pengembalian Dana
         </h1>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Otoritas Superadmin untuk meninjau rekomendasi After Sales dan
-          memutuskan persetujuan ACC Final (Approve) atau penolakan (Reject).
-        </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="no-scrollbar flex items-stretch gap-2.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:pb-0">
         <button
           onClick={() => setStatusFilter('ALL')}
-          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'ALL' ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
+          className={`min-w-[150px] flex-1 rounded-2xl border p-3 text-left transition sm:min-w-0 sm:p-3.5 ${statusFilter === 'ALL' ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
-          <span className="text-[11px] font-semibold text-slate-500">
-            Semua Pengajuan Masuk
+          <span className="text-[10px] font-semibold text-slate-500 sm:text-[11px]">
+            Semua Pengajuan
           </span>
-          <p className="mt-1 text-xl font-black text-slate-900 dark:text-white">
+          <p className="mt-1 text-lg font-black text-slate-900 dark:text-white sm:text-xl">
             {counts.all}
           </p>
         </button>
         <button
           onClick={() => setStatusFilter('IN_REVIEW')}
-          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'IN_REVIEW' ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
+          className={`min-w-[150px] flex-1 rounded-2xl border p-3 text-left transition sm:min-w-0 sm:p-3.5 ${statusFilter === 'IN_REVIEW' ? 'border-orange-500 bg-orange-50/70 dark:border-orange-500 dark:bg-orange-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
-          <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400">
-            Menunggu ACC Superadmin
+          <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 sm:text-[11px]">
+            Menunggu ACC
           </span>
-          <p className="mt-1 text-xl font-black text-orange-600">
+          <p className="mt-1 text-lg font-black text-orange-600 sm:text-xl">
             {counts.inReview}
           </p>
         </button>
         <button
           onClick={() => setStatusFilter('APPROVED')}
-          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'APPROVED' ? 'border-emerald-500 bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
+          className={`min-w-[150px] flex-1 rounded-2xl border p-3 text-left transition sm:min-w-0 sm:p-3.5 ${statusFilter === 'APPROVED' ? 'border-emerald-500 bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
-          <span className="text-[11px] font-semibold text-emerald-600">
+          <span className="text-[10px] font-semibold text-emerald-600 sm:text-[11px]">
             Disetujui Final
           </span>
-          <p className="mt-1 text-xl font-black text-emerald-600">
+          <p className="mt-1 text-lg font-black text-emerald-600 sm:text-xl">
             {counts.approved}
           </p>
         </button>
         <button
           onClick={() => setStatusFilter('REJECTED')}
-          className={`rounded-2xl border p-3.5 text-left transition ${statusFilter === 'REJECTED' ? 'border-rose-500 bg-rose-50/70 dark:border-rose-500 dark:bg-rose-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
+          className={`min-w-[150px] flex-1 rounded-2xl border p-3 text-left transition sm:min-w-0 sm:p-3.5 ${statusFilter === 'REJECTED' ? 'border-rose-500 bg-rose-50/70 dark:border-rose-500 dark:bg-rose-950/20' : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
         >
-          <span className="text-[11px] font-semibold text-rose-600">
+          <span className="text-[10px] font-semibold text-rose-600 sm:text-[11px]">
             Ditolak Final
           </span>
-          <p className="mt-1 text-xl font-black text-rose-600">
+          <p className="mt-1 text-lg font-black text-rose-600 sm:text-xl">
             {counts.rejected}
           </p>
         </button>
@@ -442,143 +452,164 @@ export default function SuperAdminReturnsPage() {
                         Ditolak
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => toggleExpandItem(item.id)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      <span>
+                        {expandedItems[item.id]
+                          ? 'Tutup Rincian'
+                          : 'Buka Rincian'}
+                      </span>
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 transition-transform ${
+                          expandedItems[item.id] ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Informasi Pembeli
-                    </p>
-                    <div className="text-xs">
-                      <p className="font-bold text-slate-900 dark:text-white">
-                        {item.user.name || 'Pembeli'}
-                      </p>
-                      <p className="text-slate-500">{item.user.email}</p>
-                      <p className="text-slate-500">{item.user.phone || '-'}</p>
-                    </div>
-                    <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
+                {/* Collapsible Details Body */}
+                {expandedItems[item.id] && (
+                  <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-3 dark:border-slate-800 sm:grid-cols-3">
+                    <div className="space-y-2">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                        Nominal Transaksi
+                        Informasi Pembeli
                       </p>
-                      <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">
-                        Rp{' '}
-                        {Math.round(item.order.total).toLocaleString('id-ID')}
+                      <div className="text-xs">
+                        <p className="font-bold text-slate-900 dark:text-white">
+                          {item.user.name || 'Pembeli'}
+                        </p>
+                        <p className="text-slate-500">{item.user.email}</p>
+                        <p className="text-slate-500">
+                          {item.user.phone || '-'}
+                        </p>
+                      </div>
+                      <div className="border-t border-slate-100 pt-2 dark:border-slate-800">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                          Nominal Transaksi
+                        </p>
+                        <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                          Rp{' '}
+                          {Math.round(item.order.total).toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Unit Gadget / Barang Dipesan
                       </p>
+                      {item.order.items && item.order.items.length > 0 ? (
+                        <div className="space-y-2">
+                          {item.order.items.map((orderItem, idx) => {
+                            const prod = orderItem.product
+                            const prodName =
+                              prod?.name ||
+                              orderItem.rentalItem?.name ||
+                              orderItem.service?.name ||
+                              'Unit Gadget'
+                            const prodImg =
+                              prod?.images?.[0] ||
+                              orderItem.rentalItem?.images?.[0] ||
+                              'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/80 p-2 dark:border-slate-800 dark:bg-slate-800/40"
+                              >
+                                <img
+                                  src={prodImg}
+                                  alt={prodName}
+                                  className="h-10 w-10 shrink-0 rounded-lg border border-slate-200/80 object-cover dark:border-slate-700"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  {prod?.brand && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-500">
+                                      {prod.brand}
+                                    </span>
+                                  )}
+                                  <p
+                                    className="line-clamp-2 text-xs font-bold leading-snug text-slate-900 dark:text-white"
+                                    title={prodName}
+                                  >
+                                    {prodName}
+                                  </p>
+                                  {orderItem.variantName && (
+                                    <p className="mt-0.5 text-[10.5px] text-slate-500 dark:text-slate-400">
+                                      Varian:{' '}
+                                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {orderItem.variantName}
+                                      </span>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs italic text-slate-400">
+                          Unit pesanan
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Alasan &amp; Keterangan Kendala
+                      </p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        {item.reasonLabel || item.reason}
+                      </p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        &ldquo;{item.description}&rdquo;
+                      </p>
+                      {item.images && item.images.length > 0 && (
+                        <div className="pt-1">
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.images.map((imgUrl, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => setActiveImage(imgUrl)}
+                                className="relative h-11 w-11 overflow-hidden rounded-lg border border-slate-200 transition hover:opacity-80 dark:border-slate-700"
+                              >
+                                <img
+                                  src={imgUrl}
+                                  alt={`Bukti ${i + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {item.type === 'REFUND' && item.bankName && (
+                        <div className="mt-2 rounded-xl border border-orange-100 bg-orange-50/60 p-2 text-xs dark:border-slate-800 dark:bg-slate-800/40">
+                          <div className="flex items-center gap-1 font-bold text-orange-900 dark:text-orange-300">
+                            <CreditCard className="h-3.5 w-3.5" />
+                            <span>Rekening Refund:</span>
+                          </div>
+                          <p className="font-mono text-slate-900 dark:text-white">
+                            {item.bankName} - {item.bankAccountNumber} (a.n.{' '}
+                            {item.bankAccountName})
+                          </p>
+                          {item.refundAmount && (
+                            <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                              Estimasi Refund: Rp{' '}
+                              {Math.round(item.refundAmount).toLocaleString(
+                                'id-ID'
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Unit Gadget / Barang Dipesan
-                    </p>
-                    {item.order.items && item.order.items.length > 0 ? (
-                      <div className="space-y-2">
-                        {item.order.items.map((orderItem, idx) => {
-                          const prod = orderItem.product
-                          const prodName =
-                            prod?.name ||
-                            orderItem.rentalItem?.name ||
-                            orderItem.service?.name ||
-                            'Unit Gadget'
-                          const prodImg =
-                            prod?.images?.[0] ||
-                            orderItem.rentalItem?.images?.[0] ||
-                            'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&q=80'
-                          return (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/80 p-2 dark:border-slate-800 dark:bg-slate-800/40"
-                            >
-                              <img
-                                src={prodImg}
-                                alt={prodName}
-                                className="h-10 w-10 shrink-0 rounded-lg border border-slate-200/80 object-cover dark:border-slate-700"
-                              />
-                              <div className="min-w-0 flex-1">
-                                {prod?.brand && (
-                                  <span className="text-[9px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-500">
-                                    {prod.brand}
-                                  </span>
-                                )}
-                                <p
-                                  className="line-clamp-2 text-xs font-bold leading-snug text-slate-900 dark:text-white"
-                                  title={prodName}
-                                >
-                                  {prodName}
-                                </p>
-                                {orderItem.variantName && (
-                                  <p className="mt-0.5 text-[10.5px] text-slate-500 dark:text-slate-400">
-                                    Varian:{' '}
-                                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                      {orderItem.variantName}
-                                    </span>
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs italic text-slate-400">
-                        Unit pesanan
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Alasan &amp; Keterangan Kendala
-                    </p>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      {item.reasonLabel || item.reason}
-                    </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-300">
-                      &ldquo;{item.description}&rdquo;
-                    </p>
-                    {item.images && item.images.length > 0 && (
-                      <div className="pt-1">
-                        <div className="flex flex-wrap gap-1.5">
-                          {item.images.map((imgUrl, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => setActiveImage(imgUrl)}
-                              className="relative h-11 w-11 overflow-hidden rounded-lg border border-slate-200 transition hover:opacity-80 dark:border-slate-700"
-                            >
-                              <img
-                                src={imgUrl}
-                                alt={`Bukti ${i + 1}`}
-                                className="h-full w-full object-cover"
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {item.type === 'REFUND' && item.bankName && (
-                      <div className="mt-2 rounded-xl border border-orange-100 bg-orange-50/60 p-2 text-xs dark:border-slate-800 dark:bg-slate-800/40">
-                        <div className="flex items-center gap-1 font-bold text-orange-900 dark:text-orange-300">
-                          <CreditCard className="h-3.5 w-3.5" />
-                          <span>Rekening Refund:</span>
-                        </div>
-                        <p className="font-mono text-slate-900 dark:text-white">
-                          {item.bankName} - {item.bankAccountNumber} (a.n.{' '}
-                          {item.bankAccountName})
-                        </p>
-                        {item.refundAmount && (
-                          <p className="font-bold text-emerald-600 dark:text-emerald-400">
-                            Estimasi Refund: Rp{' '}
-                            {Math.round(item.refundAmount).toLocaleString(
-                              'id-ID'
-                            )}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
 
                 {hasRecommendation ? (
                   <div
@@ -672,13 +703,21 @@ export default function SuperAdminReturnsPage() {
                         ) : (
                           <X className="h-3.5 w-3.5" />
                         )}
-                        <span>Tolak &amp; Kembalikan</span>
+                        <span>
+                          {isRecRejected
+                            ? 'Kembalikan ke After Sales'
+                            : 'Tolak & Kembalikan'}
+                        </span>
                       </button>
                       <button
                         type="button"
                         disabled={processingId === item.id}
                         onClick={() => handleDirectApprove(item)}
-                        className="shadow-xs inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                        className={`shadow-xs inline-flex items-center gap-1 rounded-xl px-4 py-1.5 text-xs font-bold text-white transition disabled:opacity-50 ${
+                          isRecRejected
+                            ? 'bg-rose-600 hover:bg-rose-700'
+                            : 'bg-emerald-600 hover:bg-emerald-700'
+                        }`}
                       >
                         {processingId === item.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -686,9 +725,11 @@ export default function SuperAdminReturnsPage() {
                           <Check className="h-3.5 w-3.5" />
                         )}
                         <span>
-                          {item.type === 'REFUND'
-                            ? 'ACC Final: Cairkan Dana'
-                            : 'ACC Final: Kirim Unit Baru'}
+                          {isRecRejected
+                            ? 'ACC Final: Tolak Klaim'
+                            : item.type === 'REFUND'
+                              ? 'ACC Final: Cairkan Dana'
+                              : 'ACC Final: Kirim Unit Baru'}
                         </span>
                       </button>
                     </div>

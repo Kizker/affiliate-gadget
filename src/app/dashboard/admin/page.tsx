@@ -585,8 +585,8 @@ export default function AdminDashboardPage() {
 
       {/* SUPER ADMIN METRICS */}
       {isSuperAdmin && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
-          <div className="shadow-2xs hover:shadow-xs group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-200 hover:border-orange-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="no-scrollbar flex items-stretch gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:pb-0 lg:grid-cols-4">
+          <div className="shadow-2xs hover:shadow-xs group flex min-w-[200px] flex-1 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-orange-200 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Total Omzet Jaringan

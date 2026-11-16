@@ -500,7 +500,7 @@ export function Sidebar({
       {/* Sidebar Container */}
       <aside
         suppressHydrationWarning
-        className={`fixed left-0 top-0 z-40 h-screen transform border-r transition-all duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-40 h-[100dvh] max-h-[100dvh] transform border-r transition-all duration-300 ease-in-out ${
           isMobileOpen
             ? 'w-64 translate-x-0'
             : '-translate-x-full lg:translate-x-0'
@@ -510,7 +510,7 @@ export function Sidebar({
             : 'border-slate-800 bg-slate-950 text-white'
         }`}
       >
-        <div className="flex h-full flex-col">
+        <div className="flex h-full min-h-full flex-col pb-[env(safe-area-inset-bottom,0px)]">
           {/* Brand Header with Desktop Collapse Button */}
           <div
             className={`flex h-16 items-center border-b border-slate-100 dark:border-slate-800/80 ${

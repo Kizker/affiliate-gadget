@@ -1986,22 +1986,22 @@ function AdminChatContent() {
             </div>
 
             {/* Segmented Filter Pills */}
-            <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
+            <div className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
               {(isSuperAdmin
                 ? [
-                    { id: 'CUSTOMER_CS', label: '🎧 CS Saya' },
-                    { id: 'STORE_HELP', label: '🏢 Bantuan Toko' },
-                    { id: 'ALL', label: 'Semua (Pantau)' },
+                    { id: 'CUSTOMER_CS', label: 'CS Saya' },
+                    { id: 'STORE_HELP', label: 'Bantuan' },
+                    { id: 'ALL', label: 'Semua' },
                     {
                       id: 'UNREAD',
-                      label: `Belum Dibaca (${stats.unreadRooms})`,
+                      label: `Unread (${stats.unreadRooms})`,
                     },
                   ]
                 : [
                     { id: 'ALL', label: 'Semua' },
                     {
                       id: 'UNREAD',
-                      label: `Belum Dibaca (${stats.unreadRooms})`,
+                      label: `Unread (${stats.unreadRooms})`,
                     },
                     { id: 'ORDER', label: 'Pesanan' },
                   ]
@@ -2009,7 +2009,7 @@ function AdminChatContent() {
                 <button
                   key={tab.id}
                   onClick={() => setRoomFilter(tab.id as any)}
-                  className={`flex-1 rounded-lg py-1 text-center text-[11px] font-bold transition-all ${
+                  className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-center text-[11px] font-bold transition-all ${
                     roomFilter === tab.id
                       ? 'shadow-xs bg-white text-slate-950 dark:bg-slate-900 dark:text-white'
                       : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'

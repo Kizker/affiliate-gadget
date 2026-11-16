@@ -129,7 +129,7 @@ export default function AfterSalesDashboardPage() {
   const stats = data?.stats
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 pb-12">
+    <div className="mx-auto max-w-7xl space-y-5 pb-12">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -142,15 +142,11 @@ export default function AfterSalesDashboardPage() {
             <Headphones className="h-6 w-6 text-orange-600" />
             {group?.name || 'Layanan Purna Jual & Garansi'}
           </h1>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Pintu tunggal penanganan pesan purna jual dan validasi retur barang
-            setelah pesanan selesai.
-          </p>
         </div>
 
         {/* Group Badges */}
         {group && group.stores.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900 sm:p-3">
             <span className="text-[11px] font-bold text-slate-400">
               Menaungi Cabang:
             </span>
@@ -168,51 +164,51 @@ export default function AfterSalesDashboardPage() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="no-scrollbar flex items-stretch gap-2.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:pb-0">
         <Link
           href="/dashboard/after-sales/chat"
-          className="hover:shadow-xs group rounded-2xl border border-slate-200/80 bg-white p-5 transition hover:border-orange-300 dark:border-slate-800 dark:bg-slate-900"
+          className="hover:shadow-xs group min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition hover:border-orange-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4"
         >
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Live Chat Pesanan Selesai</span>
-            <MessageSquare className="h-4 w-4 text-orange-500" />
+          <div className="flex items-center justify-between text-[11px] text-slate-400 sm:text-xs">
+            <span>Live Chat Selesai</span>
+            <MessageSquare className="h-3.5 w-3.5 text-orange-500 sm:h-4 sm:w-4" />
           </div>
-          <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">
+          <p className="mt-1.5 text-xl font-black text-slate-900 dark:text-white sm:text-2xl">
             {stats?.activeChats ?? 0}
           </p>
-          <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-orange-600">
-            Buka Inbox Chat Selesai{' '}
-            <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
+          <p className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 sm:text-[11px]">
+            Buka Inbox Chat{' '}
+            <ArrowRight className="h-2.5 w-2.5 transition group-hover:translate-x-0.5" />
           </p>
         </Link>
 
         <Link
           href="/dashboard/after-sales/returns"
-          className="hover:shadow-xs group rounded-2xl border border-slate-200/80 bg-white p-5 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900"
+          className="hover:shadow-xs group min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4"
         >
-          <div className="flex items-center justify-between text-xs text-slate-400">
+          <div className="flex items-center justify-between text-[11px] text-slate-400 sm:text-xs">
             <span>Retur &amp; Komplain Aktif</span>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <Clock className="h-3.5 w-3.5 text-amber-500 sm:h-4 sm:w-4" />
           </div>
-          <p className="mt-2 text-3xl font-black text-amber-600 dark:text-amber-400">
+          <p className="mt-1.5 text-xl font-black text-amber-600 dark:text-amber-400 sm:text-2xl">
             {stats?.pendingReturns ?? 0}
           </p>
-          <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
-            Tinjau Pengajuan Retur{' '}
-            <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
+          <p className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 sm:text-[11px]">
+            Tinjau Pengajuan{' '}
+            <ArrowRight className="h-2.5 w-2.5 transition group-hover:translate-x-0.5" />
           </p>
         </Link>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between text-xs text-slate-400">
+        <div className="min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
+          <div className="flex items-center justify-between text-[11px] text-slate-400 sm:text-xs">
             <span>Pengembalian Disetujui</span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 sm:h-4 sm:w-4" />
           </div>
-          <p className="mt-2 text-3xl font-black text-emerald-600 dark:text-emerald-400">
+          <p className="mt-1.5 text-xl font-black text-emerald-600 dark:text-emerald-400 sm:text-2xl">
             {stats?.approvedReturns ?? 0}
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">
-            Disetujui oleh Superadmin
+          <p className="mt-1 text-[10px] text-slate-400 sm:text-[11px]">
+            Disetujui Superadmin
           </p>
         </div>
       </div>

@@ -404,8 +404,54 @@ export async function PUT(
       const isSuperAdmin =
         session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN'
 
-      // Jika Superadmin menolak pengajuan yang sedang dalam tahap rekomendasi After Sales:
-      // Status dikembalikan ke After Sales agar After Sales dapat menelaah dan memutuskan ulang
+      // Periksa apakah After Sales merekomendasikan Penolakan (REJECT)
+      const isAfterSalesRecommendingReject = Boolean(
+        existing.storeResponse?.includes('[Rekomendasi After Sales: DITOLAK]')
+      )
+
+      // Jika After Sales merekomendasikan DITOLAK, dan Superadmin menyetujui rekomendasi tersebut:
+      // Status pengajuan harus menjadi REJECTED (Ditolak Final), dan dana escrow TIDAK boleh dicairkan!
+      if (isSuperAdmin && isAfterSalesRecommendingReject) {
+        const finalRejectNote =
+          body.adminNotes?.trim() ||
+          body.rejectionReason?.trim() ||
+          '[ACC Superadmin: Penolakan Disetujui] Superadmin mengonfirmasi rekomendasi penolakan dari After Sales. Klaim garansi / pengembalian ditolak final.'
+
+        const updatedReturn = await prisma.returnRequest.update({
+          where: { id },
+          data: {
+            status: 'REJECTED',
+            resolvedAt: new Date(),
+            storeResponse: finalRejectNote,
+          },
+          include: {
+            order: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
+        })
+
+        // Notifikasi ke pembeli bahwa klaim ditolak final
+        await prisma.notification
+          .create({
+            data: {
+              userId: existing.userId,
+              type: 'COMPLAINT_RESOLVED',
+              title: 'Pengajuan Klaim Ditolak Final oleh Superadmin',
+              message: `Pengajuan garansi/pengembalian pesanan #${existing.order.orderNumber} telah ditolak secara final oleh Superadmin: ${finalRejectNote}`,
+              link: `/dashboard/customer/orders/${existing.orderId}`,
+            },
+          })
+          .catch(() => {})
+
+        return NextResponse.json({
+          success: true,
+          message:
+            'Rekomendasi penolakan After Sales telah disetujui Superadmin (Klaim Ditolak Final). Dana tidak dicairkan.',
+          data: updatedReturn,
+        })
+      }
+
+      // Jika Superadmin menolak rekomendasi After Sales (mengembalikan tiket ke After Sales untuk ditinjau ulang)
       if (isSuperAdmin && !isApprove) {
         const rejectReason = (
           body.rejectionReason ||
@@ -454,22 +500,20 @@ export async function PUT(
         })
       }
 
-      // Jika Superadmin menyetujui (ACC Final) dan barang fisik telah tiba / tiket dalam IN_REVIEW After Sales:
+      // Jika Superadmin menyetujui (ACC Final) rekomendasi DISETUJUI dan barang fisik telah tiba / tiket dalam IN_REVIEW After Sales:
       // Lakukan eksekusi otomatis: potong stok & kirim unit baru (REPLACEMENT) atau cairkan escrow Midtrans (REFUND)
       const isPackageArrived = Boolean(
         existing.packageReceivedAt ||
         existing.storeResponse?.includes('[Paket Fisik Tiba di Cabang]')
       )
-      const hasAfterSalesRecommendation = Boolean(
-        existing.storeResponse?.includes(
-          '[Rekomendasi After Sales: DISETUJUI]'
-        ) || existing.status === 'IN_REVIEW'
+      const hasAfterSalesApproval = Boolean(
+        existing.storeResponse?.includes('[Rekomendasi After Sales: DISETUJUI]')
       )
 
       if (
         isSuperAdmin &&
         isApprove &&
-        (isPackageArrived || hasAfterSalesRecommendation)
+        (isPackageArrived || hasAfterSalesApproval)
       ) {
         const resolutionType = existing.type || 'REPLACEMENT'
 

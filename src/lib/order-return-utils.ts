@@ -68,32 +68,41 @@ export function getOrderStatusMeta(order: BaseOrderForReturn): {
 } {
   const latestReturn = order.returnRequests?.[0]
   if (order.status === 'RETURNED' || latestReturn) {
+    const isRefund = latestReturn?.type === 'REFUND'
+    const actionLabel = isRefund ? 'Refund' : 'Retur'
+
     if (latestReturn?.status === 'PENDING') {
       return {
-        label: 'Menunggu Verifikasi Retur',
+        label: `Menunggu Verifikasi ${actionLabel}`,
         textClass: 'text-orange-600 dark:text-orange-400 font-bold',
       }
     }
     if (latestReturn?.status === 'IN_REVIEW') {
       return {
-        label: 'Retur Sedang Ditinjau',
+        label: `${actionLabel} Sedang Ditinjau`,
         textClass: 'text-indigo-600 dark:text-indigo-400 font-bold',
       }
     }
     if (latestReturn?.status === 'APPROVED') {
       return {
-        label: 'Retur Disetujui',
+        label: `${actionLabel} Disetujui`,
         textClass: 'text-emerald-600 dark:text-emerald-400 font-bold',
       }
     }
     if (latestReturn?.status === 'REJECTED') {
       return {
-        label: 'Pengajuan Retur Ditolak',
+        label: `Pengajuan ${actionLabel} Ditolak`,
         textClass: 'text-rose-600 dark:text-rose-400 font-bold',
       }
     }
+    if (latestReturn?.status === 'COMPLETED') {
+      return {
+        label: isRefund ? 'Refund Selesai' : 'Tukar Unit Selesai',
+        textClass: 'text-emerald-600 dark:text-emerald-400 font-bold',
+      }
+    }
     return {
-      label: 'Dikembalikan (Retur)',
+      label: isRefund ? 'Pengembalian Dana (Refund)' : 'Dikembalikan (Retur)',
       textClass: 'text-purple-600 dark:text-purple-400 font-bold',
     }
   }
