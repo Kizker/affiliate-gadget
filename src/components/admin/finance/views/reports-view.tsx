@@ -697,19 +697,45 @@ export function ReportsView({
             <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
               TOKO RATING TERTINGGI
             </span>
-            <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-slate-800/80 dark:bg-slate-800/40">
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">
-                  Affiliate Gadget - Roxy Mas Jakarta
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  Jakarta Pusat · 1240 penjualan
-                </p>
-              </div>
-              <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                ★ 4.9
-              </span>
-            </div>
+            {(() => {
+              const topStore =
+                (reportData.stores?.topRated &&
+                  reportData.stores.topRated[0]) ||
+                (reportData.mitras?.topRated &&
+                  reportData.mitras.topRated[0]) ||
+                null
+
+              if (!topStore) {
+                return (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-3 text-center text-xs text-slate-400 dark:border-slate-800">
+                    Belum ada data toko
+                  </div>
+                )
+              }
+
+              const rawStore: any = topStore
+              const storeName =
+                rawStore.name || rawStore.businessName || 'Toko Resmi'
+              const storeCity = rawStore.city || 'Indonesia'
+              const salesCount = rawStore.totalSales || rawStore.totalViews || 0
+              const rating = rawStore.rating || 5.0
+
+              return (
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-slate-800/80 dark:bg-slate-800/40">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      {storeName}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      {storeCity} &bull; {salesCount} penjualan
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                    ★ {rating.toFixed(1)}
+                  </span>
+                </div>
+              )
+            })()}
           </div>
 
           <p className="mt-3 text-center text-[10px] text-slate-400">

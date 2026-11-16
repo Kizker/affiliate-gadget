@@ -55,9 +55,9 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
   return (
     <div
       key={tx.id}
-      className="group flex flex-col gap-3 py-3.5 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 sm:flex-row sm:items-center sm:justify-between"
+      className="group flex items-center justify-between gap-4 py-3.5 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3">
         <div
           className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
             isPayout
@@ -118,9 +118,9 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center">
+      <div className="flex shrink-0 flex-col items-end justify-center text-right">
         <p
-          className={`font-mono text-xs font-bold sm:text-sm ${
+          className={`whitespace-nowrap font-mono text-xs font-bold sm:text-sm ${
             isPayout
               ? 'text-rose-600 dark:text-rose-400'
               : isEscrow
@@ -130,7 +130,7 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
         >
           {isPayout ? '-' : '+'} {formatRupiah(tx.amount)}
         </p>
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+        <div className="flex items-center gap-1.5 whitespace-nowrap text-[10px] text-slate-400">
           <span>{tx.date}</span>
           <span>·</span>
           <span
@@ -300,8 +300,8 @@ export function MutationsView({
           ) : (
             <>
               {/* Desktop View */}
-              <div className="hidden md:block">
-                <div className="divide-y divide-slate-100 pt-2 dark:divide-slate-800/60">
+              <div className="no-scrollbar hidden overflow-x-auto md:block">
+                <div className="min-w-[560px] divide-y divide-slate-100 pt-2 dark:divide-slate-800/60">
                   {paginatedDesktopTransactions.map((tx) => (
                     <TransactionItemRow key={tx.id} tx={tx} />
                   ))}

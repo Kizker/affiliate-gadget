@@ -2356,6 +2356,8 @@ export function LiveStreamBroadcaster() {
   }
 
   // 3. STEP: IDLE (DAFTAR SIARAN & TOMBOL MULAI)
+  const isSuperAdmin = (session?.user as any)?.role === 'SUPER_ADMIN'
+
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100">
       {/* Header Banner */}
@@ -2364,15 +2366,21 @@ export function LiveStreamBroadcaster() {
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100/80 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span>Live Shopping Studio</span>
+              <span>
+                {isSuperAdmin
+                  ? 'Pemantauan Siaran Langsung Platform'
+                  : 'Live Shopping Studio'}
+              </span>
             </div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
-              Studio Siaran Langsung Toko
+              {isSuperAdmin
+                ? 'Monitoring Siaran Langsung Toko'
+                : 'Studio Siaran Langsung Toko'}
             </h1>
             <p className="max-w-xl text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
-              Siarkan produk gadget langsung dari toko fisik Anda dengan latensi
-              rendah, interaksi chat pelanggan real-time, dan sematkan produk
-              langsung ke keranjang belanja.
+              {isSuperAdmin
+                ? 'Pantau aktivitas siaran live streaming seluruh cabang toko resmi di platform secara real-time.'
+                : 'Siarkan produk gadget langsung dari toko fisik Anda dengan latensi rendah, interaksi chat pelanggan real-time, dan sematkan produk langsung ke keranjang belanja.'}
             </p>
           </div>
 
@@ -2385,13 +2393,15 @@ export function LiveStreamBroadcaster() {
               <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
               <span>Katalog Beranda Publik</span>
             </Link>
-            <button
-              onClick={() => setStep('setup')}
-              className="shadow-2xs active:scale-98 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
-            >
-              <Radio className="h-3.5 w-3.5" />
-              <span>Mulai Siaran Baru</span>
-            </button>
+            {!isSuperAdmin && (
+              <button
+                onClick={() => setStep('setup')}
+                className="shadow-2xs active:scale-98 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+              >
+                <Radio className="h-3.5 w-3.5" />
+                <span>Mulai Siaran Baru</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -2401,7 +2411,9 @@ export function LiveStreamBroadcaster() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
-              Daftar Sesi Siaran Toko
+              {isSuperAdmin
+                ? 'Aktivitas Siaran Langsung Seluruh Toko'
+                : 'Daftar Sesi Siaran Toko'}
             </h2>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
               {streams.length}
@@ -2415,19 +2427,22 @@ export function LiveStreamBroadcaster() {
               <Radio className="stroke-1.5 h-6 w-6" />
             </div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              Belum Ada Sesi Siaran
+              Belum Ada Sesi Siaran Aktif
             </h3>
             <p className="mx-auto mb-5 mt-1 max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              Mulai live streaming pertama toko cabang Anda untuk mempromosikan
-              katalog gadget dengan interaksi real-time kepada pembeli.
+              {isSuperAdmin
+                ? 'Saat ini belum ada toko cabang yang memulai siaran langsung (live streaming).'
+                : 'Mulai live streaming pertama toko cabang Anda untuk mempromosikan katalog gadget dengan interaksi real-time kepada pembeli.'}
             </p>
-            <button
-              onClick={() => setStep('setup')}
-              className="shadow-2xs active:scale-98 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
-            >
-              <Radio className="h-3.5 w-3.5" />
-              <span>Buat Sesi Siaran Sekarang</span>
-            </button>
+            {!isSuperAdmin && (
+              <button
+                onClick={() => setStep('setup')}
+                className="shadow-2xs active:scale-98 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+              >
+                <Radio className="h-3.5 w-3.5" />
+                <span>Buat Sesi Siaran Sekarang</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

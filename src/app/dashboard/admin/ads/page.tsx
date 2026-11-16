@@ -803,15 +803,15 @@ export default function AdsManagementPage() {
             />
             <span>Refresh</span>
           </button>
-          <button
-            onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            <span>
-              {isSuperAdmin ? 'Buat Iklan Baru' : 'Ajukan Iklan Baru'}
-            </span>
-          </button>
+          {!isSuperAdmin && (
+            <button
+              onClick={handleOpenCreateModal}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Ajukan Iklan Baru</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -68,15 +68,17 @@ export function AdList({
             ? `Belum ada iklan ${levelFilter === 'LEVEL_1' ? 'Hero Carousel' : 'In-Feed Grid'} pada filter status ini.`
             : `Ajukan banner promosi ${levelFilter === 'LEVEL_1' ? 'Hero Carousel' : 'In-Feed Grid'} sekarang untuk cabang toko Anda.`}
         </p>
-        <button
-          onClick={onOpenCreateModal}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-600"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          <span>
-            Ajukan Iklan {levelFilter === 'LEVEL_1' ? 'Level 1' : 'Level 2'}
-          </span>
-        </button>
+        {!isSuperAdmin && (
+          <button
+            onClick={onOpenCreateModal}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-600"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>
+              Ajukan Iklan {levelFilter === 'LEVEL_1' ? 'Level 1' : 'Level 2'}
+            </span>
+          </button>
+        )}
       </div>
     )
   }
