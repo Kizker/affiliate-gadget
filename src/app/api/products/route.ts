@@ -389,7 +389,11 @@ export async function POST(request: NextRequest) {
           ? parseFloat(String(originalPrice).replace(/\./g, ''))
           : null,
         stock: parseInt(String(stock)) || 0,
-        weightGram: parseInt(String(weightGram)) || 500,
+        weightGram:
+          !isNaN(parseInt(String(weightGram), 10)) &&
+          parseInt(String(weightGram), 10) >= 0
+            ? parseInt(String(weightGram), 10)
+            : 500,
         pricePerKg: parseFloat(String(pricePerKg).replace(/\./g, '')) || 20000,
         images:
           images.length > 0

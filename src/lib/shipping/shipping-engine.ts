@@ -534,10 +534,49 @@ export async function calculateShippingOptions(
   destination: ShippingLocation,
   items: ShippingItem[] = []
 ): Promise<ShippingCalculationResult> {
-  // 1. Hitung akumulasi berat
+  // 1. Cek apakah seluruh item adalah produk non-fisik / jasa (berat 0 gram)
+  const isAllZeroWeight =
+    items.length > 0 &&
+    items.every(
+      (item) => typeof item.weightGram === 'number' && item.weightGram === 0
+    )
+
+  if (isAllZeroWeight) {
+    return {
+      options: [
+        {
+          courierCode: 'JNE',
+          courierService: 'REG',
+          serviceName: 'Layanan Jasa / Non-Fisik (Bebas Ongkir)',
+          courierName: 'Tanpa Kurir Fisik',
+          description: 'Layanan jasa & produk digital (Bebas Biaya Pengiriman)',
+          cost: 0,
+          etd: 'Instan / Online',
+          available: true,
+          isRecommended: true,
+        },
+      ],
+      distanceKm: 0,
+      origin: {
+        name: origin.city || 'Toko',
+        city: origin.city || '',
+        province: origin.province || '',
+      },
+      destination: {
+        city: destination.city || '',
+        province: destination.province || '',
+      },
+      billedKg: 0,
+      totalWeightGram: 0,
+    }
+  }
+
+  // 1b. Hitung akumulasi berat
   const totalWeightGram = items.reduce((sum, item) => {
     const itemWeight =
-      item.weightGram && item.weightGram > 0 ? item.weightGram : 500
+      typeof item.weightGram === 'number' && item.weightGram >= 0
+        ? item.weightGram
+        : 500
     const qty = item.quantity && item.quantity > 0 ? item.quantity : 1
     return sum + itemWeight * qty
   }, 0)

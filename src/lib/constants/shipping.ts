@@ -63,6 +63,10 @@ export function calculateWeightShipping(
   courierCode: string = 'JNE',
   courierService: string = 'REG'
 ): number {
+  if (typeof totalWeightGram === 'number' && totalWeightGram === 0) {
+    return 0
+  }
+
   const safeWeight =
     typeof totalWeightGram === 'number' &&
     !isNaN(totalWeightGram) &&

@@ -433,9 +433,16 @@ export default function EditProductPage() {
   // Submit edit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const numericPrice = parseRupiahInput(form.price)
-    if (!form.name || !numericPrice) {
-      toast.error('Nama gadget dan harga wajib diisi')
+    const variantPrices = variants
+      .map((v) => parseRupiahInput(v.price))
+      .filter((p) => p > 0)
+    const effectivePrice =
+      variantPrices.length > 0
+        ? Math.min(...variantPrices)
+        : parseRupiahInput(form.price)
+
+    if (!form.name || !effectivePrice) {
+      toast.error('Nama produk dan harga pada varian wajib diisi')
       return
     }
 
@@ -450,18 +457,41 @@ export default function EditProductPage() {
 
       const finalStoreId =
         isStoreAdmin && userStoreId ? userStoreId : form.storeId
+
+      const variantCosts = variants
+        .map((v) => parseRupiahInput(v.costPrice))
+        .filter((c) => c > 0)
+      const effectiveCostPrice =
+        variantCosts.length > 0
+          ? variantCosts[0]
+          : form.costPrice
+            ? parseRupiahInput(form.costPrice)
+            : 0
+
+      const effectiveStock =
+        variants.length > 0
+          ? variants.reduce(
+              (sum, v) => sum + (parseInt(String(v.stock), 10) || 0),
+              0
+            )
+          : parseInt(String(form.stock), 10) || 0
+
+      const rawWeight = parseInt(String(form.weightGram), 10)
+      const effectiveWeightGram =
+        !isNaN(rawWeight) && rawWeight >= 0 ? rawWeight : 0
+
       const payload = {
         ...form,
         storeId: finalStoreId,
         images: finalImages,
-        price: numericPrice,
-        costPrice: form.costPrice ? parseRupiahInput(form.costPrice) : 0,
+        price: effectivePrice,
+        costPrice: effectiveCostPrice,
         originalPrice: form.originalPrice
           ? parseRupiahInput(form.originalPrice)
           : undefined,
-        stock: parseInt(String(form.stock), 10) || 0,
-        weightGram: parseInt(String(form.weightGram), 10) || 500,
-        pricePerKg: parseRupiahInput(form.pricePerKg) || 20000,
+        stock: effectiveStock,
+        weightGram: effectiveWeightGram,
+        pricePerKg: 20000,
         warrantyDays: parseInt(String(form.warrantyDays), 10) || 30,
         variants: variants.map((v) => ({
           name:
@@ -472,12 +502,10 @@ export default function EditProductPage() {
           storage: v.storage,
           color: v.color,
           image: v.image || undefined,
-          price: v.price ? parseRupiahInput(v.price) : numericPrice,
+          price: v.price ? parseRupiahInput(v.price) : effectivePrice,
           costPrice: v.costPrice
             ? parseRupiahInput(v.costPrice)
-            : form.costPrice
-              ? parseRupiahInput(form.costPrice)
-              : 0,
+            : effectiveCostPrice,
           stock: parseInt(String(v.stock), 10) || 0,
           sku: v.sku?.trim() || form.sku?.trim() || undefined,
         })),
@@ -665,53 +693,6 @@ export default function EditProductPage() {
               )}
             </div>
 
-            {/* Baris 3: Harga Jual & Harga Modal / HPP */}
-            <div className="space-y-1.5">
-              <div className="flex h-5 items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Harga Jual (Rp) <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400">
-                  Harga Konsumen
-                </span>
-              </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                required
-                value={formatRupiahInput(form.price)}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, '')
-                  setForm({ ...form, price: raw })
-                }}
-                placeholder="18.999.000"
-                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex h-5 items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Harga Modal / HPP (Rp)
-                </label>
-                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  Dasar Laba Bersih
-                </span>
-              </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formatRupiahInput(form.costPrice)}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, '')
-                  setForm({ ...form, costPrice: raw })
-                }}
-                placeholder="16.500.000"
-                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
-                title="Harga pokok modal unit untuk kalkulasi laba toko"
-              />
-            </div>
-
             {/* Status PPN Produk (Bebas PPN vs Dikenakan PPN) */}
             <div
               className={`rounded-2xl border p-5 transition-all duration-200 sm:col-span-2 sm:p-6 ${
@@ -740,7 +721,7 @@ export default function EditProductPage() {
                   <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
                     {form.isTaxable
                       ? selectedStore?.isPkp
-                        ? `Harga jual di atas sudah termasuk PPN ${selectedStore?.vatRate ?? 11}% (Inklusif). DPP dan PPN Keluaran akan otomatis dipisahkan pada pelaporan akuntansi internal ${selectedStore?.companyName || selectedStore?.name || 'Toko'}.`
+                        ? `Harga jual varian sudah termasuk PPN ${selectedStore?.vatRate ?? 11}% (Inklusif). DPP dan PPN Keluaran akan otomatis dipisahkan pada pelaporan akuntansi internal ${selectedStore?.companyName || selectedStore?.name || 'Toko'}.`
                         : `Dikenakan PPN aktif, namun cabang toko (${selectedStore?.name || 'Toko'}) saat ini berstatus Non-PKP sehingga pemotongan PPN bernilai Rp 0.`
                       : 'Produk ini ditandai BEBAS PPN (Tax-Exempt). Penjualan produk tidak memotong PPN, nilai DPP dicatat 100% penuh harga produk, dan PPN tercatat Rp 0 pada faktur pembukuan.'}
                   </p>
@@ -764,91 +745,37 @@ export default function EditProductPage() {
               </div>
             </div>
 
-            {/* Baris 4: Harga Coret Pembanding & Total Stok Unit */}
-            <div className="space-y-1.5">
-              <div className="flex h-5 items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Harga Coret Pembanding (Rp)
-                </label>
-                <span className="text-[10px] text-slate-400">
-                  Coret Diskon (Opsional)
-                </span>
-              </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formatRupiahInput(form.originalPrice)}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, '')
-                  setForm({ ...form, originalPrice: raw })
-                }}
-                placeholder="20.999.000"
-                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex h-5 items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Total Stok Unit <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-[10px] text-slate-400">
-                  Kuantitas Fisik Siap Jual
-                </span>
-              </div>
-              <input
-                type="number"
-                min={0}
-                value={form.stock}
-                onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                placeholder="10"
-                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
-              />
-            </div>
-
-            {/* Baris 5: Berat Produk & Tarif Ongkir Dasar */}
+            {/* Berat Produk & Info Ongkir Otomatis Biteship */}
             <div className="space-y-1.5">
               <div className="flex h-5 items-center justify-between">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Berat Produk (gram) <span className="text-rose-500">*</span>
                 </label>
                 <span className="text-[10px] text-slate-400">
-                  Contoh: 500 = 0,5 kg
+                  Bisa 0 (Jasa / Digital)
                 </span>
               </div>
               <input
                 type="number"
-                min={1}
+                min={0}
                 value={form.weightGram}
                 onChange={(e) =>
                   setForm({ ...form, weightGram: e.target.value })
                 }
-                placeholder="500"
+                placeholder="500 (isi 0 jika produk jasa/digital)"
                 className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex h-5 items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Tarif Ongkir Dasar per Kg (Rp){' '}
-                  <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-[10px] text-slate-400">
-                  Default: Rp 20.000 / kg
-                </span>
-              </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formatRupiahInput(form.pricePerKg)}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, '')
-                  setForm({ ...form, pricePerKg: raw })
-                }}
-                placeholder="20.000"
-                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs font-medium outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
-              />
+            <div className="flex h-full flex-col justify-center rounded-xl border border-slate-200/80 bg-slate-50/60 p-2.5 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                ⚡ Ongkos Kirim Otomatis (Biteship API)
+              </span>
+              <span>
+                Tarif JNE & Gojek dihitung otomatis saat checkout berdasarkan
+                berat produk & jarak pengiriman. Jika berat 0, pengiriman
+                otomatis Rp 0 (Layanan Jasa / Non-Fisik).
+              </span>
             </div>
           </div>
 
@@ -872,11 +799,37 @@ export default function EditProductPage() {
             <div
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
-              className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 transition hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-blue-700"
+              className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-4 transition hover:border-orange-300 dark:border-slate-700 dark:bg-slate-800/40"
             >
-              {/* Media grid */}
-              {uploadedImages.length > 0 && (
-                <div className="mb-4 grid grid-cols-3 gap-3 sm:grid-cols-5">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,video/mp4"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+
+              {uploadedImages.length === 0 ? (
+                /* KOSONG: Tanda "+" di tengah */
+                <div className="flex items-center justify-center py-6">
+                  <button
+                    type="button"
+                    disabled={uploadingImages}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="group flex aspect-square h-24 w-24 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white transition hover:border-orange-500 hover:bg-orange-50/40 active:scale-95 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 sm:h-28 sm:w-28"
+                    title="Tambah Foto / Video"
+                  >
+                    {uploadingImages ? (
+                      <Loader2 className="h-7 w-7 animate-spin text-orange-500" />
+                    ) : (
+                      <Plus className="h-8 w-8 text-slate-400 transition group-hover:text-orange-500" />
+                    )}
+                  </button>
+                </div>
+              ) : (
+                /* ADA ISINYA: Grid foto dengan tombol "+" di kanan gambar terakhir */
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
                   {uploadedImages.map((url, i) => {
                     const isVid = isVideoMedia(imagePreviews[i] || url)
                     return (
@@ -908,7 +861,7 @@ export default function EditProductPage() {
                         )}
                         {/* Cover badge */}
                         {i === 0 && (
-                          <span className="absolute left-1 top-1 z-10 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">
+                          <span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-bold text-white shadow">
                             Cover
                           </span>
                         )}
@@ -924,50 +877,24 @@ export default function EditProductPage() {
                       </div>
                     )
                   })}
-                </div>
-              )}
 
-              {/* Upload trigger */}
-              {uploadedImages.length < 5 ? (
-                <div className="flex flex-col items-center justify-center py-4 text-center">
-                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-700">
-                    {uploadingImages ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                    ) : (
-                      <Video className="h-5 w-5 text-slate-400" />
-                    )}
-                  </div>
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                    {uploadingImages
-                      ? 'Mengupload media ke server...'
-                      : 'Tarik & lepas foto/video di sini, atau klik tombol di bawah'}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-slate-400">
-                    Foto JPG, PNG (Maks 2MB, auto-kompres) • Video MP4 (Maks
-                    30MB, 10–60 dtk) • Sisa {5 - uploadedImages.length} slot
-                  </p>
-                  <button
-                    type="button"
-                    disabled={uploadingImages}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="shadow-xs mt-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
-                  >
-                    <Upload className="h-3.5 w-3.5" />
-                    <span>Pilih Foto / Video dari Perangkat</span>
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,video/mp4"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
+                  {/* Tombol "+" di sebelah kanan gambar (jika slot < 5) */}
+                  {uploadedImages.length < 5 && (
+                    <button
+                      type="button"
+                      disabled={uploadingImages}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="group flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-white transition hover:border-orange-500 hover:bg-orange-50/40 active:scale-95 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800"
+                      title="Tambah Foto / Video"
+                    >
+                      {uploadingImages ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                      ) : (
+                        <Plus className="h-7 w-7 text-slate-400 transition group-hover:text-orange-500" />
+                      )}
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <p className="text-center text-xs text-slate-500">
-                  Maksimal 5 media telah tercapai. Hapus media untuk mengganti.
-                </p>
               )}
             </div>
           </div>

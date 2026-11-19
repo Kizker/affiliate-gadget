@@ -480,7 +480,11 @@ function CheckoutContent() {
 
       const storeWeightGram = group.items.reduce(
         (sum, item) =>
-          sum + (item.weightGram ?? DEFAULT_WEIGHT_GRAM) * item.quantity,
+          sum +
+          (typeof item.weightGram === 'number' && item.weightGram >= 0
+            ? item.weightGram
+            : DEFAULT_WEIGHT_GRAM) *
+            item.quantity,
         0
       )
       const storeMaxPricePerKg =
@@ -492,26 +496,36 @@ function CheckoutContent() {
             )
           : DEFAULT_PRICE_PER_KG
 
-      const fallbackReg = calculateWeightShipping(
-        storeWeightGram,
-        storeMaxPricePerKg,
-        'JNE',
-        'REG'
-      )
-      const fallbackYes = calculateWeightShipping(
-        storeWeightGram,
-        storeMaxPricePerKg,
-        'JNE',
-        'YES'
-      )
-      const fallbackGojek = calculateWeightShipping(
-        storeWeightGram,
-        storeMaxPricePerKg,
-        'GOJEK',
-        'INSTANT'
-      )
+      const fallbackReg =
+        storeWeightGram === 0
+          ? 0
+          : calculateWeightShipping(
+              storeWeightGram,
+              storeMaxPricePerKg,
+              'JNE',
+              'REG'
+            )
+      const fallbackYes =
+        storeWeightGram === 0
+          ? 0
+          : calculateWeightShipping(
+              storeWeightGram,
+              storeMaxPricePerKg,
+              'JNE',
+              'YES'
+            )
+      const fallbackGojek =
+        storeWeightGram === 0
+          ? 0
+          : calculateWeightShipping(
+              storeWeightGram,
+              storeMaxPricePerKg,
+              'GOJEK',
+              'INSTANT'
+            )
 
-      const currentJneRegCost = jneRegOpt ? jneRegOpt.cost : fallbackReg
+      const currentJneRegCost =
+        storeWeightGram === 0 ? 0 : jneRegOpt ? jneRegOpt.cost : fallbackReg
       const isJneYesAvailable = Boolean(jneYesOpt && jneYesOpt.available)
       const currentJneYesCost = jneYesOpt ? jneYesOpt.cost : fallbackYes
       const currentGojekCost = gojekOpt ? gojekOpt.cost : fallbackGojek

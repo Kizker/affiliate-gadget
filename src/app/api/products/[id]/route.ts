@@ -243,7 +243,11 @@ export async function PATCH(
           }),
           ...(stock !== undefined && { stock: parseInt(String(stock)) || 0 }),
           ...(weightGram !== undefined && {
-            weightGram: parseInt(String(weightGram)) || 500,
+            weightGram:
+              !isNaN(parseInt(String(weightGram), 10)) &&
+              parseInt(String(weightGram), 10) >= 0
+                ? parseInt(String(weightGram), 10)
+                : 500,
           }),
           ...(pricePerKg !== undefined && {
             pricePerKg:

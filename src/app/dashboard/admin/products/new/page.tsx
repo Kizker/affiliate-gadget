@@ -354,12 +354,19 @@ export default function NewGadgetProductPage() {
   // ─── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const numericPrice = parseRupiahInput(form.price)
+    const variantPrices = variants
+      .map((v) => parseRupiahInput(v.price))
+      .filter((p) => p > 0)
+    const effectivePrice =
+      variantPrices.length > 0
+        ? Math.min(...variantPrices)
+        : parseRupiahInput(form.price)
+
     const finalStoreId =
       isStoreAdmin && userStoreId ? userStoreId : form.storeId
 
-    if (!form.name || !numericPrice) {
-      toast.error('Nama gadget dan harga wajib diisi')
+    if (!form.name || !effectivePrice) {
+      toast.error('Nama produk dan harga pada varian wajib diisi')
       return
     }
 
@@ -367,6 +374,28 @@ export default function NewGadgetProductPage() {
       toast.error('Toko pemilik wajib dipilih')
       return
     }
+
+    const variantCosts = variants
+      .map((v) => parseRupiahInput(v.costPrice))
+      .filter((c) => c > 0)
+    const effectiveCostPrice =
+      variantCosts.length > 0
+        ? variantCosts[0]
+        : form.costPrice
+          ? parseRupiahInput(form.costPrice)
+          : 0
+
+    const effectiveStock =
+      variants.length > 0
+        ? variants.reduce(
+            (sum, v) => sum + (parseInt(String(v.stock), 10) || 0),
+            0
+          )
+        : parseInt(String(form.stock), 10) || 0
+
+    const rawWeight = parseInt(String(form.weightGram), 10)
+    const effectiveWeightGram =
+      !isNaN(rawWeight) && rawWeight >= 0 ? rawWeight : 0
 
     setLoading(true)
     try {
@@ -384,13 +413,14 @@ export default function NewGadgetProductPage() {
           ...form,
           storeId: finalStoreId,
           images: finalImages,
-          price: numericPrice,
-          costPrice: form.costPrice ? parseRupiahInput(form.costPrice) : 0,
+          price: effectivePrice,
+          costPrice: effectiveCostPrice,
           originalPrice: form.originalPrice
             ? parseRupiahInput(form.originalPrice)
             : undefined,
-          weightGram: parseInt(form.weightGram, 10) || 500,
-          pricePerKg: parseRupiahInput(form.pricePerKg) || 20000,
+          stock: effectiveStock,
+          weightGram: effectiveWeightGram,
+          pricePerKg: 20000,
           variants: variants.map((v) => ({
             name:
               v.name ||
@@ -400,12 +430,10 @@ export default function NewGadgetProductPage() {
             storage: v.storage,
             color: v.color,
             image: v.image || undefined,
-            price: v.price ? parseRupiahInput(v.price) : numericPrice,
+            price: v.price ? parseRupiahInput(v.price) : effectivePrice,
             costPrice: v.costPrice
               ? parseRupiahInput(v.costPrice)
-              : form.costPrice
-                ? parseRupiahInput(form.costPrice)
-                : 0,
+              : effectiveCostPrice,
             stock: parseInt(String(v.stock), 10) || 0,
             sku: v.sku?.trim() || form.sku?.trim() || undefined,
           })),
@@ -675,25 +703,19 @@ export default function NewGadgetProductPage() {
                       onChange={(e) =>
                         setForm({ ...form, weightGram: e.target.value })
                       }
+                      placeholder="Contoh: 500 = 0,5 kg"
                       className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">
-                      Tarif Ongkir Dasar per Kg (Rp){' '}
-                      <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={formatRupiahInput(form.pricePerKg)}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, '')
-                        setForm({ ...form, pricePerKg: raw })
-                      }}
-                      className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
+                  <div className="flex h-full flex-col justify-center rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      ⚡ Ongkos Kirim Otomatis (Biteship API)
+                    </span>
+                    <span className="mt-0.5 text-[11px]">
+                      Tarif JNE & Gojek dihitung otomatis saat checkout
+                      berdasarkan berat produk & jarak ke pembeli.
+                    </span>
                   </div>
                 </div>
 
@@ -735,61 +757,83 @@ export default function NewGadgetProductPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Foto &amp; Video Produk ({uploadedImages.length}/5)
-                  </label>
-
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    onDrop={handleDrop}
-                    onDragOver={(e) => e.preventDefault()}
-                    className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/40 py-8 text-center transition hover:border-orange-300 hover:bg-orange-50/20"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
-                      <Video className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        Klik atau seret file media produk ke sini
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        Foto JPG/PNG hingga 2MB, Video MP4 maksimal 30MB
-                      </p>
-                    </div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Foto &amp; Video Produk ({uploadedImages.length}/5)
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      Media pertama tampil sebagai cover utama
+                    </span>
                   </div>
 
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,video/mp4"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-4 transition hover:border-orange-300 dark:border-slate-700 dark:bg-slate-800/40"
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,video/mp4"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
 
-                  {uploadedImages.length > 0 && (
-                    <div className="mt-3 grid grid-cols-5 gap-3">
-                      {uploadedImages.map((url, i) => (
-                        <div
-                          key={i}
-                          className="relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                    {uploadedImages.length === 0 ? (
+                      /* KOSONG: Tanda "+" di tengah */
+                      <div className="flex items-center justify-center py-6">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="group flex aspect-square h-24 w-24 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white transition hover:border-orange-500 hover:bg-orange-50/40 active:scale-95 dark:border-slate-600 dark:bg-slate-800 sm:h-28 sm:w-28"
+                          title="Tambah Foto / Video"
                         >
-                          <img
-                            src={url}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
+                          <Plus className="h-8 w-8 text-slate-400 transition group-hover:text-orange-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      /* ADA ISINYA: Grid foto dengan tombol "+" di kanan gambar terakhir */
+                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+                        {uploadedImages.map((url, i) => (
+                          <div
+                            key={i}
+                            className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+                          >
+                            <img
+                              src={url}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                            {i === 0 && (
+                              <span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-bold text-white shadow">
+                                Cover
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeImage(i)}
+                              className="shadow-xs absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                              title="Hapus media"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {uploadedImages.length < 5 && (
                           <button
                             type="button"
-                            onClick={() => removeImage(i)}
-                            className="shadow-xs absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="group flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-white transition hover:border-orange-500 hover:bg-orange-50/40 active:scale-95 dark:border-slate-600 dark:bg-slate-800"
+                            title="Tambah Foto / Video"
                           >
-                            <X className="h-3 w-3" />
+                            <Plus className="h-7 w-7 text-slate-400 transition group-hover:text-orange-500" />
                           </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Garansi 30 Hari & Bonus 3-in-1 Bawaan Banner */}

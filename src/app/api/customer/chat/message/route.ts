@@ -21,15 +21,77 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify room belongs to this customer
-    const room = await prisma.adminChatRoom.findFirst({
+    let room = await prisma.adminChatRoom.findFirst({
       where: {
         id: roomId,
         customerId: session.user.id,
       },
     })
 
+    // Self-healing fallback: jika room tidak ditemukan (misal terhapus atau mismatch session)
     if (!room) {
-      return NextResponse.json({ error: 'Room not found' }, { status: 404 })
+      // 1. Coba cari room lain milik customer ini
+      room = await prisma.adminChatRoom.findFirst({
+        where: { customerId: session.user.id },
+        orderBy: { lastMessageAt: 'desc' },
+      })
+    }
+
+    // 2. Jika tetap tidak ada, pulihkan / buatkan room baru dengan ID tersebut
+    if (!room) {
+      const latestOrder = await prisma.order.findFirst({
+        where: { userId: session.user.id },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          store: {
+            include: {
+              group: {
+                include: {
+                  afterSalesUser: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      const afterSalesUser = latestOrder?.store?.group?.afterSalesUser
+      const storeAdmin = latestOrder?.storeId
+        ? await prisma.user.findFirst({
+            where: { storeId: latestOrder.storeId, role: 'STORE_ADMIN' },
+          })
+        : null
+
+      const assignedAdmin = afterSalesUser || storeAdmin
+
+      try {
+        room = await prisma.adminChatRoom.create({
+          data: {
+            id: roomId,
+            customerId: session.user.id,
+            storeId: latestOrder?.storeId || null,
+            orderId: latestOrder?.id || null,
+            claimedById: assignedAdmin?.id || null,
+            claimedAt: assignedAdmin ? new Date() : null,
+            lastMessageAt: new Date(),
+          },
+        })
+      } catch (createErr) {
+        console.warn(
+          'Failed to auto-heal room with specific ID, creating with new ID:',
+          createErr
+        )
+        room = await prisma.adminChatRoom.create({
+          data: {
+            customerId: session.user.id,
+            storeId: latestOrder?.storeId || null,
+            orderId: latestOrder?.id || null,
+            claimedById: assignedAdmin?.id || null,
+            claimedAt: assignedAdmin ? new Date() : null,
+            lastMessageAt: new Date(),
+          },
+        })
+      }
     }
 
     // Create message

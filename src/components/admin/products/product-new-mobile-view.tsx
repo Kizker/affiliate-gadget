@@ -171,43 +171,6 @@ export function ProductNewMobileView({
         </h2>
 
         <div className="space-y-3 text-xs">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-600 dark:text-slate-400">
-                Harga Jual (Rp) <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                required
-                value={formatRupiahInput(form.price)}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, '')
-                  setForm({ ...form, price: raw })
-                }}
-                placeholder="18.999.000"
-                className="w-full rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2.5 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-600 dark:text-slate-400">
-                Harga Modal / HPP (Rp)
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formatRupiahInput(form.costPrice)}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, '')
-                  setForm({ ...form, costPrice: raw })
-                }}
-                placeholder="16.500.000"
-                className="w-full rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2.5 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-            </div>
-          </div>
-
           {/* Checkbox PPN */}
           <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3">
             <label className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300">
@@ -225,64 +188,26 @@ export function ProductNewMobileView({
           </div>
 
           <div className="space-y-1">
-            <label className="font-semibold text-slate-600 dark:text-slate-400">
-              Harga Coret Pembanding (Rp)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="font-semibold text-slate-600 dark:text-slate-400">
+                Berat Produk (gram) <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[10px] text-slate-400">
+                Bisa 0 (Jasa / Digital)
+              </span>
+            </div>
             <input
-              type="text"
-              inputMode="numeric"
-              value={formatRupiahInput(form.originalPrice)}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/\D/g, '')
-                setForm({ ...form, originalPrice: raw })
-              }}
-              placeholder="20.999.000"
-              className="w-full rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2.5 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              type="number"
+              min={0}
+              value={form.weightGram}
+              onChange={(e) => setForm({ ...form, weightGram: e.target.value })}
+              placeholder="500 (isi 0 jika produk jasa/digital)"
+              className="w-full rounded-2xl border border-slate-200/90 bg-white px-3 py-2.5 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-600 dark:text-slate-400">
-                Stok <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={form.stock}
-                onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                className="w-full rounded-2xl border border-slate-200/90 bg-white px-3 py-2.5 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-600 dark:text-slate-400">
-                Berat (gram) <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={form.weightGram}
-                onChange={(e) =>
-                  setForm({ ...form, weightGram: e.target.value })
-                }
-                className="w-full rounded-2xl border border-slate-200/90 bg-white px-3 py-2.5 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-600 dark:text-slate-400">
-                Ongkir/Kg <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formatRupiahInput(form.pricePerKg)}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, '')
-                  setForm({ ...form, pricePerKg: raw })
-                }}
-                className="w-full rounded-2xl border border-slate-200/90 bg-white px-3 py-2.5 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-            </div>
+            <p className="mt-1 text-[11px] text-slate-500">
+              ⚡ Ongkir JNE &amp; Gojek dihitung otomatis via Biteship. Jika
+              berat 0, bebas ongkir (Rp 0).
+            </p>
           </div>
         </div>
       </div>
@@ -298,16 +223,6 @@ export function ProductNewMobileView({
             <label className="mb-1.5 block font-semibold text-slate-600 dark:text-slate-400">
               Foto & Video Produk
             </label>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-6 text-center text-slate-500 hover:border-orange-300 dark:border-slate-700 dark:bg-slate-800/40"
-            >
-              <Upload className="h-5 w-5 text-slate-400" />
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Unggah Foto / Video
-              </p>
-              <p className="text-[10px] text-slate-400">Maks. 5 file</p>
-            </div>
             <input
               ref={fileInputRef}
               type="file"
@@ -317,8 +232,19 @@ export function ProductNewMobileView({
               onChange={handleFileSelect}
             />
 
-            {uploadedImages.length > 0 && (
-              <div className="mt-3 grid grid-cols-4 gap-2">
+            {uploadedImages.length === 0 ? (
+              <div className="flex items-center justify-center py-4">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex aspect-square h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white transition hover:border-orange-500 hover:bg-orange-50/40 active:scale-95 dark:border-slate-600 dark:bg-slate-800"
+                  title="Tambah Foto / Video"
+                >
+                  <Plus className="h-7 w-7 text-slate-400" />
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
                 {uploadedImages.map((url, i) => (
                   <div
                     key={i}
@@ -329,6 +255,11 @@ export function ProductNewMobileView({
                       alt=""
                       className="h-full w-full object-cover"
                     />
+                    {i === 0 && (
+                      <span className="py-0.2 absolute left-1 top-1 z-10 rounded-full bg-blue-600 px-1.5 text-[8px] font-bold text-white shadow">
+                        Cover
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -336,11 +267,23 @@ export function ProductNewMobileView({
                         removeImage(i)
                       }}
                       className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white"
+                      title="Hapus media"
                     >
                       <X className="h-2.5 w-2.5" />
                     </button>
                   </div>
                 ))}
+
+                {uploadedImages.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-white transition hover:border-orange-500 hover:bg-orange-50/40 active:scale-95 dark:border-slate-600 dark:bg-slate-800"
+                    title="Tambah Foto / Video"
+                  >
+                    <Plus className="h-6 w-6 text-slate-400" />
+                  </button>
+                )}
               </div>
             )}
           </div>
