@@ -300,7 +300,7 @@ export default function AdminEtalasePage() {
       </div>
 
       {/* 2. Tab Navigasi Etalase: Semua, Live, Disembunyikan */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
+      <div className="no-scrollbar flex overflow-x-auto border-b border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onClick={() => setActiveTab('ALL')}

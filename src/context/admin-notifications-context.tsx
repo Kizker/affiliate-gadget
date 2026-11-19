@@ -229,8 +229,12 @@ export function AdminNotificationsProvider({
           }
         }
       }
-    } catch (err) {
-      console.error('Failed to fetch admin nav notifications:', err)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      // Ignore normal unmount / page navigation fetch cancellations
+      if (!msg.includes('Failed to fetch') && !msg.includes('aborted')) {
+        console.error('Failed to fetch admin nav notifications:', err)
+      }
     } finally {
       setLoading(false)
     }

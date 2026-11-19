@@ -452,8 +452,11 @@ export default function AdminDashboardPage() {
             })
           }
         }
-      } catch (err) {
-        console.error('Dashboard fetch error:', err)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (!msg.includes('Failed to fetch') && !msg.includes('aborted')) {
+          console.error('Dashboard fetch error:', err)
+        }
       } finally {
         if (!isSilent) setLoadingData(false)
       }
