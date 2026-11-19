@@ -29,15 +29,6 @@ export function HomeClient({ initialIsMobile }: HomeClientProps) {
 
   return (
     <>
-      {/* Media-scoped preload for Level 1 Ad poster — speeds up mobile Frame-1 LCP while preventing desktop unused preload */}
-      <link
-        rel="preload"
-        as="image"
-        href="/uploads/ads/1790671997412-zuzb6l-poster.webp"
-        media="(max-width: 768px)"
-        fetchPriority="high"
-      />
-
       {/* 1. Mobile View — Katalog Gadget sebagai Beranda Mobile Tunggal */}
       {isMobile ? (
         <div className="block md:hidden">

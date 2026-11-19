@@ -1046,7 +1046,7 @@ function CustomerSettingsContent() {
                   type="date"
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
-                  className="w-full cursor-pointer rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 pr-10 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+                  className="w-full cursor-pointer rounded-2xl border border-slate-200/80 bg-slate-50/40 px-4 py-3 pr-10 text-xs font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0"
                 />
                 <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-500" />
               </div>

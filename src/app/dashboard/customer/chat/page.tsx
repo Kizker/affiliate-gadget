@@ -1750,10 +1750,10 @@ function CustomerChatContent() {
                     }
                     placeholder={
                       (selectedRoom?.claimedBy as any)?.role === 'AFTER_SALES'
-                        ? 'Ketik pesan ke Admin After Sales...'
+                        ? 'Ketik pesan ke After Sales...'
                         : isCsActive
-                          ? 'Ketik pesan ke CS Superadmin...'
-                          : 'Ketik pesan ke admin toko...'
+                          ? 'Ketik pesan ke CS...'
+                          : 'Ketik pesan ke toko...'
                     }
                   />
 

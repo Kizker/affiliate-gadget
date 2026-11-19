@@ -293,7 +293,7 @@ export function MobileStoreDirectoryView({
                             Jam Operasional
                           </span>
                           <span className="mt-0.5 block truncate text-[11px] font-bold text-slate-900 dark:text-white">
-                            10:00 – 20:30 WIB
+                            09:00 – 21:00 WIB
                           </span>
                         </div>
                       </div>

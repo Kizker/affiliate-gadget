@@ -93,7 +93,12 @@ export default function StoreDetailClient({
   const [mounted, setMounted] = useState(false)
   const [store] = useState<StorePublicProfile>(initialStore)
   const [activeCategory, setActiveCategory] = useState<string>('ALL')
+  const [visibleProductsCount, setVisibleProductsCount] = useState<number>(12)
   const [showChatPopup, setShowChatPopup] = useState<boolean>(true)
+
+  useEffect(() => {
+    setVisibleProductsCount(12)
+  }, [activeCategory])
 
   useEffect(() => {
     setMounted(true)
@@ -585,69 +590,97 @@ export default function StoreDetailClient({
 
           {/* Elevated Product Grid */}
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 lg:gap-8">
-              {filteredProducts.map((item: any) => {
-                const imageUrl =
-                  (item.images && item.images[0]) ||
-                  'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 lg:gap-8">
+                {filteredProducts
+                  .slice(0, visibleProductsCount)
+                  .map((item: any) => {
+                    const imageUrl =
+                      (item.images && item.images[0]) ||
+                      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
 
-                return (
-                  <div
-                    key={item.id}
-                    className="group relative flex flex-col justify-between rounded-2xl border border-neutral-200/90 bg-white p-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1.5 hover:border-neutral-300 hover:shadow-[0_20px_35px_rgba(0,0,0,0.1)] dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:shadow-[0_20px_35px_rgba(0,0,0,0.4)] sm:rounded-3xl sm:p-6"
+                    return (
+                      <div
+                        key={item.id}
+                        className="group relative flex flex-col justify-between rounded-2xl border border-neutral-200/90 bg-white p-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1.5 hover:border-neutral-300 hover:shadow-[0_20px_35px_rgba(0,0,0,0.1)] dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:shadow-[0_20px_35px_rgba(0,0,0,0.4)] sm:rounded-3xl sm:p-6"
+                      >
+                        {/* Top-Right: Wishlist Love Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleWishlist(item, e)}
+                          className="group/wish absolute right-3 top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-neutral-200/90 bg-white/95 text-neutral-400 shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-90 dark:border-neutral-700/80 dark:bg-neutral-900/95 dark:hover:border-rose-900/60 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 sm:right-5 sm:top-5 sm:h-8 sm:w-8"
+                          aria-label="Wishlist"
+                          title={
+                            isInWishlist(item.id)
+                              ? 'Hapus dari Wishlist'
+                              : 'Tambah ke Wishlist'
+                          }
+                        >
+                          <Heart
+                            className={`h-3.5 w-3.5 transition-colors sm:h-4 sm:w-4 ${
+                              isInWishlist(item.id)
+                                ? 'fill-rose-500 text-rose-500'
+                                : 'text-neutral-400 group-hover/wish:text-rose-500'
+                            }`}
+                          />
+                        </button>
+
+                        <Link
+                          href={`/gadget/${item.id}`}
+                          aria-label={`Lihat detail produk ${item.name}`}
+                          className="flex h-full flex-col justify-between focus:outline-none"
+                        >
+                          {/* 1. Header: Brand & Product Name */}
+                          <div className="space-y-1 pr-6 text-center sm:pr-8">
+                            <span className="block text-[9px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 sm:text-[10px]">
+                              {item.brand || 'Gadget'}
+                            </span>
+                            <h3 className="line-clamp-2 min-h-[2rem] text-xs font-bold tracking-tight text-neutral-900 transition-colors group-hover:text-black dark:text-white dark:group-hover:text-neutral-100 sm:min-h-[2.5rem] sm:text-base">
+                              {item.name}
+                            </h3>
+                          </div>
+
+                          {/* 2. Product Image Frame */}
+                          <div className="relative my-2.5 aspect-[4/3] w-full overflow-hidden rounded-xl border border-neutral-200/60 bg-[#F8F9FA] dark:border-neutral-700/60 dark:bg-neutral-800 sm:my-4 sm:rounded-2xl">
+                            <ProductCardImage src={imageUrl} alt={item.name} />
+                          </div>
+
+                          {/* 3. Understated Price */}
+                          <div className="pt-1 text-center">
+                            <p className="text-xs font-bold tabular-nums text-neutral-950 dark:text-white sm:text-base">
+                              Rp{' '}
+                              {Number(item.price || 0).toLocaleString('id-ID')}
+                            </p>
+                          </div>
+                        </Link>
+                      </div>
+                    )
+                  })}
+              </div>
+
+              {visibleProductsCount < filteredProducts.length && (
+                <div className="mt-10 flex flex-col items-center justify-center gap-3">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                    Menampilkan{' '}
+                    {Math.min(visibleProductsCount, filteredProducts.length)}{' '}
+                    dari {filteredProducts.length} produk
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setVisibleProductsCount((prev) => prev + 12)}
+                    aria-label="Muat lebih banyak produk toko"
+                    className="shadow-xs cursor-pointer rounded-full border border-neutral-300 bg-white px-8 py-3 text-xs font-bold text-neutral-900 transition hover:border-black hover:bg-neutral-50 active:scale-95 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:border-white"
                   >
-                    {/* Top-Right: Wishlist Love Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => toggleWishlist(item, e)}
-                      className="group/wish absolute right-3 top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-neutral-200/90 bg-white/95 text-neutral-400 shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-90 dark:border-neutral-700/80 dark:bg-neutral-900/95 dark:hover:border-rose-900/60 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 sm:right-5 sm:top-5 sm:h-8 sm:w-8"
-                      aria-label="Wishlist"
-                      title={
-                        isInWishlist(item.id)
-                          ? 'Hapus dari Wishlist'
-                          : 'Tambah ke Wishlist'
-                      }
-                    >
-                      <Heart
-                        className={`h-3.5 w-3.5 transition-colors sm:h-4 sm:w-4 ${
-                          isInWishlist(item.id)
-                            ? 'fill-rose-500 text-rose-500'
-                            : 'text-neutral-400 group-hover/wish:text-rose-500'
-                        }`}
-                      />
-                    </button>
-
-                    <Link
-                      href={`/gadget/${item.id}`}
-                      aria-label={`Lihat detail produk ${item.name}`}
-                      className="flex h-full flex-col justify-between focus:outline-none"
-                    >
-                      {/* 1. Header: Brand & Product Name */}
-                      <div className="space-y-1 pr-6 text-center sm:pr-8">
-                        <span className="block text-[9px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 sm:text-[10px]">
-                          {item.brand || 'Gadget'}
-                        </span>
-                        <h3 className="line-clamp-2 min-h-[2rem] text-xs font-bold tracking-tight text-neutral-900 transition-colors group-hover:text-black dark:text-white dark:group-hover:text-neutral-100 sm:min-h-[2.5rem] sm:text-base">
-                          {item.name}
-                        </h3>
-                      </div>
-
-                      {/* 2. Product Image Frame */}
-                      <div className="relative my-2.5 aspect-[4/3] w-full overflow-hidden rounded-xl border border-neutral-200/60 bg-[#F8F9FA] dark:border-neutral-700/60 dark:bg-neutral-800 sm:my-4 sm:rounded-2xl">
-                        <ProductCardImage src={imageUrl} alt={item.name} />
-                      </div>
-
-                      {/* 3. Understated Price */}
-                      <div className="pt-1 text-center">
-                        <p className="text-xs font-bold tabular-nums text-neutral-950 dark:text-white sm:text-base">
-                          Rp {Number(item.price || 0).toLocaleString('id-ID')}
-                        </p>
-                      </div>
-                    </Link>
-                  </div>
-                )
-              })}
-            </div>
+                    Muat Lebih Banyak Produk (+
+                    {Math.min(
+                      12,
+                      filteredProducts.length - visibleProductsCount
+                    )}
+                    )
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="rounded-3xl border border-dashed border-neutral-300 py-16 text-center text-xs text-neutral-500 dark:border-neutral-800">
               Belum ada produk di kategori ini.

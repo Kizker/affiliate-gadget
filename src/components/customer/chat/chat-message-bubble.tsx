@@ -540,7 +540,7 @@ export function ChatMessageBubble({
               </p>
             </div>
           )}
-          <p className="whitespace-pre-wrap break-words break-all text-xs leading-relaxed sm:text-[13px]">
+          <p className="whitespace-pre-wrap break-words text-xs leading-relaxed sm:text-[13px]">
             {msg.content}
           </p>
 

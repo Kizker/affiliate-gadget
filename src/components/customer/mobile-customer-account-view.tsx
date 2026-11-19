@@ -142,7 +142,7 @@ export function MobileCustomerAccountView({
       <MobileTopNav title="Akun Saya" showBack={false} />
 
       {/* 2. Main Content Body */}
-      <main className="space-y-3 p-3 pb-36">
+      <main className="space-y-3 p-3 pb-44">
         {/* 2. User Profile Summary Card */}
         <div className="shadow-2xs rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-3.5">

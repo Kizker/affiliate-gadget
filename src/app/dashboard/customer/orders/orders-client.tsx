@@ -204,11 +204,11 @@ const statusConfig: Record<
     icon: Package,
   },
   IN_PROGRESS: {
-    label: 'Diproses Toko',
+    label: 'Sedang Dikirim',
     badgeBg:
-      'bg-indigo-50/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/40 dark:border-indigo-900/60 dark:text-indigo-300',
-    dotColor: 'bg-indigo-500',
-    icon: Package,
+      'bg-orange-50/90 text-orange-700 border-orange-200/80 dark:bg-orange-950/40 dark:border-orange-900/60 dark:text-orange-300',
+    dotColor: 'bg-orange-500',
+    icon: Truck,
   },
   SHIPPED: {
     label: 'Sedang Dikirim',

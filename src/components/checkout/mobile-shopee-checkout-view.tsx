@@ -762,7 +762,7 @@ export function MobileShopeeCheckoutView({
                     type="text"
                     value={pkg.notes}
                     onChange={(e) => handleNotesChange(e.target.value)}
-                    placeholder="Contoh: Titip di satpam atau bubble wrap tebal..."
+                    placeholder="Catatan untuk penjual (opsional)..."
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                 </div>

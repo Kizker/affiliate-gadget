@@ -68,8 +68,12 @@ export function CustomerWishlistView({
 
   return (
     <div className="w-full space-y-4 pb-20">
-      {/* Top Header Card matching Screenshot 2 */}
-      <div className="shadow-xs flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      {/* Top Header Card matching Screenshot 2 (Hidden on standalone desktop header to prevent duplicate Kosongkan button) */}
+      <div
+        className={`shadow-xs flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 ${
+          isStandalonePage ? 'md:hidden' : ''
+        }`}
+      >
         <div>
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             {items.length} Gadget Tersimpan

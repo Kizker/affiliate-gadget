@@ -1417,34 +1417,80 @@ export default function GadgetDetailClient({
                     </div>
 
                     {/* Spesifikasi Tambahan Hardware (Jika ada) */}
-                    {product.specs && Object.keys(product.specs).length > 0 && (
-                      <div className="space-y-2.5 border-t border-slate-100 pt-2 dark:border-slate-800">
-                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                          Spesifikasi Tambahan
-                        </h3>
-                        <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-                          {Object.entries(product.specs).map(([key, value]) => {
-                            if (
-                              ['Storage', 'ROM', 'RAM', 'Warna'].includes(key)
-                            )
-                              return null
-                            return (
-                              <div
-                                key={key}
-                                className="flex items-baseline justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/30"
-                              >
-                                <span className="shrink-0 text-slate-500">
-                                  {key} :
-                                </span>
-                                <span className="truncate text-right font-medium text-slate-800 dark:text-slate-200">
-                                  {String(value)}
-                                </span>
-                              </div>
-                            )
-                          })}
+                    {product.specs &&
+                      Object.entries(product.specs).some(([key, value]) => {
+                        const k = key.toLowerCase()
+                        if (
+                          [
+                            'storage',
+                            'rom',
+                            'ram',
+                            'warna',
+                            'shopeeitemid',
+                            'shopeevariationmap',
+                            'shopeemodelid',
+                            'shopeeparentsku',
+                          ].includes(k) ||
+                          k.startsWith('shopee') ||
+                          k.startsWith('_')
+                        ) {
+                          return false
+                        }
+                        if (
+                          value === null ||
+                          value === undefined ||
+                          typeof value === 'object'
+                        ) {
+                          return false
+                        }
+                        return String(value).trim().length > 0
+                      }) && (
+                        <div className="space-y-2.5 border-t border-slate-100 pt-2 dark:border-slate-800">
+                          <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Spesifikasi Tambahan
+                          </h3>
+                          <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                            {Object.entries(product.specs).map(
+                              ([key, value]) => {
+                                const k = key.toLowerCase()
+                                if (
+                                  [
+                                    'storage',
+                                    'rom',
+                                    'ram',
+                                    'warna',
+                                    'shopeeitemid',
+                                    'shopeevariationmap',
+                                    'shopeemodelid',
+                                    'shopeeparentsku',
+                                  ].includes(k) ||
+                                  k.startsWith('shopee') ||
+                                  k.startsWith('_') ||
+                                  value === null ||
+                                  value === undefined ||
+                                  typeof value === 'object' ||
+                                  String(value).trim().length === 0
+                                ) {
+                                  return null
+                                }
+                                return (
+                                  <div
+                                    key={key}
+                                    className="flex items-baseline justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/30"
+                                  >
+                                    <span className="shrink-0 text-slate-500">
+                                      {key} :
+                                    </span>
+                                    <span className="truncate text-right font-medium text-slate-800 dark:text-slate-200">
+                                      {String(value)}
+                                    </span>
+                                  </div>
+                                )
+                              }
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 </div>
               </div>

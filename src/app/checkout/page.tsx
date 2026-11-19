@@ -1250,7 +1250,9 @@ function CheckoutContent() {
                           </div>
                           {pkg.city && (
                             <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              Kota {pkg.city}
+                              {/^(kota|kabupaten|kab\.)/i.test(pkg.city.trim())
+                                ? pkg.city.trim()
+                                : `Kota ${pkg.city.trim()}`}
                             </span>
                           )}
                         </div>

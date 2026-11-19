@@ -174,7 +174,7 @@ export function ProductReviewsSection({
       window.addEventListener(ev, enableFetch, { passive: true, once: true })
     )
 
-    const timer = setTimeout(enableFetch, 8000)
+    const timer = setTimeout(enableFetch, 1200)
 
     return () => {
       events.forEach((ev) => window.removeEventListener(ev, enableFetch))

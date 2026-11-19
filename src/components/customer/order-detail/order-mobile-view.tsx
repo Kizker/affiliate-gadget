@@ -105,6 +105,9 @@ export function OrderMobileView({
     (acc, it) => acc + (it.quantity || 1),
     0
   )
+  const isReturnedOrder =
+    order.status === 'RETURNED' || Boolean(latestReturnRequest)
+  const showCompletedBadge = isCompleted && !isReturnedOrder
   const subtotalAmount =
     order.subtotal ||
     order.items.reduce(
@@ -137,12 +140,12 @@ export function OrderMobileView({
 
           <div
             className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
-              isCompleted
+              showCompletedBadge
                 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
                 : currentStatus.badgeBg
             }`}
           >
-            {isCompleted ? 'Selesai' : currentStatus.label}
+            {showCompletedBadge ? 'Selesai' : currentStatus.label}
           </div>
         </div>
 
@@ -286,7 +289,7 @@ export function OrderMobileView({
               Status Pengiriman
             </span>
             <span className="shrink-0 whitespace-nowrap font-bold text-emerald-600 dark:text-emerald-400">
-              {isCompleted ? 'Telah Diterima' : currentStatus.label}
+              {showCompletedBadge ? 'Telah Diterima' : currentStatus.label}
             </span>
           </div>
         </div>
@@ -312,7 +315,7 @@ export function OrderMobileView({
             </span>
           </div>
           <span className="shrink-0 whitespace-nowrap text-xs font-bold text-slate-700 dark:text-slate-300">
-            {isCompleted ? 'Diterima' : currentStatus.label}
+            {showCompletedBadge ? 'Diterima' : currentStatus.label}
           </span>
         </div>
 
@@ -659,7 +662,7 @@ export function OrderMobileView({
         )}
 
         {/* Primary Action Button */}
-        {isCompleted && (
+        {showCompletedBadge && (
           <button
             type="button"
             onClick={onOpenRating}

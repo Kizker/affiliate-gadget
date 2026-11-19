@@ -36,7 +36,7 @@ export function MobileTopNav({
   onSearchChange,
   onSearchSubmit,
   onClearSearch,
-  searchPlaceholder = 'Cari tipe iPhone, Galaxy, Xiaomi...',
+  searchPlaceholder = 'Cari iPhone, Galaxy, Xiaomi...',
   scrollThreshold = 35,
 }: MobileTopNavProps) {
   const pathname = usePathname()

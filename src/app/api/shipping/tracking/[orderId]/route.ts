@@ -40,19 +40,26 @@ export async function GET(
 
     // 1. Check if booking exists in shipping store (created when admin clicks "Request Pick Up")
     let record = getShippingBooking(orderId)
+    let orderStatusFromDb: string | undefined
+
+    // Fetch actual order status to ensure tracking timeline matches database confirmation state
+    const dbOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        store: true,
+        user: true,
+        items: {
+          include: { product: true, rentalItem: true, service: true },
+        },
+      },
+    })
+    if (dbOrder) {
+      orderStatusFromDb = dbOrder.status
+    }
 
     // 2. If not found in store, fetch from database to construct dynamic record
     if (!record) {
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-        include: {
-          store: true,
-          user: true,
-          items: {
-            include: { product: true, rentalItem: true, service: true },
-          },
-        },
-      })
+      const order = dbOrder
 
       if (!order) {
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
@@ -160,7 +167,7 @@ export async function GET(
     }
 
     // 3. Apply dynamic timeline progression
-    const liveRecord = getDynamicTrackingTimeline(record)
+    const liveRecord = getDynamicTrackingTimeline(record, orderStatusFromDb)
     const exception = detectShippingException(liveRecord.checkpoints)
 
     return NextResponse.json({

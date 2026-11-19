@@ -25,7 +25,6 @@ export function Footer({ variant = 'light', className = '' }: FooterProps) {
                 alt="Affiliate Gadget Logo"
                 width={32}
                 height={32}
-                loading="lazy"
                 decoding="async"
                 className="shadow-2xs h-8 w-8 rounded-xl object-contain"
               />

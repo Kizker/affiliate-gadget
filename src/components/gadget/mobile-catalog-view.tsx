@@ -511,7 +511,7 @@ export function MobileCatalogView({
                   handleSearchSubmit()
                 }
               }}
-              placeholder="Cari tipe iPhone, Galaxy, Xiaomi..."
+              placeholder="Cari iPhone, Galaxy, Xiaomi..."
               aria-label="Cari tipe iPhone, Galaxy, Xiaomi atau model smartphone"
               className="shadow-2xs w-full rounded-2xl border border-slate-200/80 bg-slate-50/90 py-2.5 pl-9 pr-8 text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:bg-slate-900 [&::-webkit-search-cancel-button]:hidden"
             />

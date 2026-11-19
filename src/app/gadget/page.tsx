@@ -755,13 +755,6 @@ function GadgetKatalogContent() {
 export default function GadgetKatalogPage() {
   return (
     <>
-      {/* High-priority preload for instant Frame-1 LCP Hero Banner Poster */}
-      <link
-        rel="preload"
-        as="image"
-        href="/uploads/ads/1790671997412-zuzb6l-poster.webp"
-        fetchPriority="high"
-      />
       <Suspense
         fallback={
           <>

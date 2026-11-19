@@ -298,7 +298,10 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     (order.status === 'IN_PROGRESS' || order.status === 'SHIPPED') &&
     !order.customerConfirmedAt
   const isCompleted =
-    order.status === 'COMPLETED' || !!order.customerConfirmedAt
+    order.status === 'COMPLETED' ||
+    (!!order.customerConfirmedAt &&
+      order.status !== 'RETURNED' &&
+      order.status !== 'CANCELLED')
   const hasActiveClaim =
     latestReturnRequest &&
     (latestReturnRequest.status === 'PENDING' ||

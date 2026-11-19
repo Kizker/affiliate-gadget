@@ -364,7 +364,7 @@ export function MobileOrdersView({
                 key={tab.key}
                 type="button"
                 onClick={() => handleTabClick(tab.key)}
-                className={`relative flex shrink-0 items-center gap-1.5 px-3.5 py-3 text-xs font-semibold transition-colors ${
+                className={`relative flex shrink-0 items-center gap-1 px-2.5 py-3 text-[11px] font-semibold transition-colors ${
                   isActive
                     ? 'border-b-2 border-orange-500 font-bold text-orange-500'
                     : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -400,7 +400,7 @@ export function MobileOrdersView({
               setSearchQuery(e.target.value)
               setCurrentPage(1)
             }}
-            placeholder="Cari pesanan, nomor resi, atau produk..."
+            placeholder="Cari pesanan atau no. resi..."
             className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/90 py-2 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-800"
           />
           {searchQuery && (

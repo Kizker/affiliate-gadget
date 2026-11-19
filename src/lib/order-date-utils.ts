@@ -92,34 +92,7 @@ export function getOrderContextualTimestamp(order: {
     status?: string
   }>
 }): OrderTimestampInfo {
-  // 1. Status Selesai / Diterima Customer
-  const isCompleted =
-    order.status === 'COMPLETED' ||
-    Boolean(order.customerConfirmedAt) ||
-    Boolean(order.completedAt)
-
-  if (isCompleted) {
-    const rawDate =
-      order.customerConfirmedAt ||
-      order.completedAt ||
-      order.updatedAt ||
-      order.createdAt
-
-    const d = new Date(rawDate)
-    return {
-      label: 'Diterima',
-      fullLabel: 'Waktu Diterima',
-      rawDate,
-      date: d,
-      shortDate: formatOrderShortDate(d),
-      dateTime: formatOrderDateTime(d),
-      fullDateTime: formatOrderFullDateTime(d),
-      badgeColorClass:
-        'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40',
-    }
-  }
-
-  // 2. Status Retur / Pengembalian
+  // 1. Status Retur / Pengembalian (Prioritas utama sebelum Completed)
   const latestReturn = order.returnRequests?.[0]
   if (order.status === 'RETURNED' || Boolean(latestReturn)) {
     const isReturnResolved =
@@ -144,6 +117,33 @@ export function getOrderContextualTimestamp(order: {
       fullDateTime: formatOrderFullDateTime(d),
       badgeColorClass:
         'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/40',
+    }
+  }
+
+  // 2. Status Selesai / Diterima Customer
+  const isCompleted =
+    order.status === 'COMPLETED' ||
+    Boolean(order.customerConfirmedAt) ||
+    Boolean(order.completedAt)
+
+  if (isCompleted) {
+    const rawDate =
+      order.customerConfirmedAt ||
+      order.completedAt ||
+      order.updatedAt ||
+      order.createdAt
+
+    const d = new Date(rawDate)
+    return {
+      label: 'Diterima',
+      fullLabel: 'Waktu Diterima',
+      rawDate,
+      date: d,
+      shortDate: formatOrderShortDate(d),
+      dateTime: formatOrderDateTime(d),
+      fullDateTime: formatOrderFullDateTime(d),
+      badgeColorClass:
+        'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40',
     }
   }
 

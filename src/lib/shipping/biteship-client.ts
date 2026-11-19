@@ -435,14 +435,19 @@ export function getShippingBooking(
  * Simulasikan progres kurir otomatis jika waktu telah berlalu
  */
 export function getDynamicTrackingTimeline(
-  record: ShippingBookingRecord
+  record: ShippingBookingRecord,
+  orderStatus?: string
 ): ShippingBookingRecord {
   const now = Date.now()
   const bookedTime = new Date(record.bookedAt).getTime()
   const elapsedMinutes = Math.floor((now - bookedTime) / (1000 * 60))
+  const isOrderDelivered =
+    orderStatus === 'COMPLETED' || orderStatus === 'RETURNED'
 
   const isGojek = record.courierCode === 'GOJEK'
-  const checkpoints = [...record.checkpoints]
+  const checkpoints = [...record.checkpoints].filter(
+    (c) => isOrderDelivered || c.status !== 'DELIVERED'
+  )
 
   if (isGojek) {
     // Menit 1+: Driver mengambil barang di toko (PICKING_UP)
@@ -504,9 +509,9 @@ export function getDynamicTrackingTimeline(
       })
     }
 
-    // JNE: menit 10+ → delivered
+    // JNE: hanya tandai DELIVERED jika pesanan sudah dikonfirmasi selesai (COMPLETED/RETURNED) atau orderStatus tidak dikirim
     if (
-      elapsedMinutes >= 10 &&
+      (isOrderDelivered || (!orderStatus && elapsedMinutes >= 10)) &&
       !checkpoints.some((c) => c.status === 'DELIVERED')
     ) {
       checkpoints.push({
@@ -514,17 +519,22 @@ export function getDynamicTrackingTimeline(
         status: 'DELIVERED',
         description: `Paket telah berhasil diterima oleh ${record.destinationCustomer.name} di ${record.destinationCustomer.address}.`,
         location: record.destinationCustomer.city,
-        timestamp: new Date(bookedTime + 10 * 60 * 1000).toISOString(),
+        timestamp: new Date(
+          Math.min(now, bookedTime + 10 * 60 * 1000)
+        ).toISOString(),
       })
       record.status = 'DELIVERED'
       record.statusLabel = 'Paket Telah Diterima'
+    } else if (!isOrderDelivered && orderStatus) {
+      record.status = 'DROPPING_OFF'
+      record.statusLabel = 'Paket Dalam Pengiriman Kurir'
     }
   }
 
-  // Gojek: menit 8+ → delivered
+  // Gojek: hanya tandai DELIVERED jika pesanan sudah dikonfirmasi selesai
   if (
     isGojek &&
-    elapsedMinutes >= 8 &&
+    (isOrderDelivered || (!orderStatus && elapsedMinutes >= 8)) &&
     !checkpoints.some((c) => c.status === 'DELIVERED')
   ) {
     checkpoints.push({
@@ -532,10 +542,15 @@ export function getDynamicTrackingTimeline(
       status: 'DELIVERED',
       description: `Paket berhasil diterima oleh ${record.destinationCustomer.name}. Pengiriman selesai.`,
       location: record.destinationCustomer.city,
-      timestamp: new Date(bookedTime + 8 * 60 * 1000).toISOString(),
+      timestamp: new Date(
+        Math.min(now, bookedTime + 8 * 60 * 1000)
+      ).toISOString(),
     })
     record.status = 'DELIVERED'
     record.statusLabel = 'Paket Telah Diterima'
+  } else if (isGojek && !isOrderDelivered && orderStatus) {
+    record.status = 'DROPPING_OFF'
+    record.statusLabel = 'Driver Sedang Mengantar ke Alamat Anda'
   }
 
   record.checkpoints = checkpoints

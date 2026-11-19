@@ -338,7 +338,7 @@ export function IntegratedServiceView({
                       handleSearchSubmit()
                     }
                   }}
-                  placeholder="Cari nama mitra, layanan, atau kota..."
+                  placeholder="Cari mitra, layanan, atau kota..."
                   aria-label="Cari nama mitra, layanan, atau kota"
                   className="shadow-2xs w-full rounded-2xl border border-slate-200/80 bg-white py-2.5 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white [&::-webkit-search-cancel-button]:hidden"
                 />
@@ -657,7 +657,7 @@ export function IntegratedServiceView({
                         handleSearchSubmit()
                       }
                     }}
-                    placeholder="Cari nama mitra, layanan, atau kota..."
+                    placeholder="Cari mitra, layanan, atau kota..."
                     aria-label="Cari nama mitra, layanan, atau kota"
                     className="w-full rounded-xl border border-slate-200/70 bg-slate-50/80 py-2.5 pl-10 pr-9 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:text-sm md:rounded-2xl [&::-webkit-search-cancel-button]:hidden"
                   />
