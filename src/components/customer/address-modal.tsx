@@ -625,70 +625,73 @@ export function AddressModal({
               </div>
 
               <GoogleMapsProvider>
-                <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
+                <div className="grid grid-cols-1 items-start gap-3.5 lg:grid-cols-12">
                   {/* ---------------- LEFT COLUMN: FORM INPUTS (7 Cols) ---------------- */}
-                  <div className="space-y-3.5 lg:col-span-7">
-                    {/* Recipient Name */}
-                    <div>
-                      <label className="mb-1 block text-xs font-bold text-slate-700">
-                        Nama Penerima <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={recipientName}
-                        onChange={(e) => {
-                          setRecipientName(e.target.value)
-                          if (
-                            emptyFields.recipientName &&
-                            e.target.value.trim()
-                          ) {
-                            setEmptyFields((prev) => ({
-                              ...prev,
-                              recipientName: false,
-                            }))
-                          }
-                        }}
-                        placeholder="Nama lengkap penerima"
-                        className={`w-full rounded-2xl border bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
-                          emptyFields.recipientName
-                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
-                            : 'border-slate-200/80 focus:border-slate-300'
-                        }`}
-                      />
-                    </div>
+                  <div className="space-y-3 lg:col-span-7">
+                    {/* Recipient Name & Phone in 2-col on mobile/desktop */}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {/* Recipient Name */}
+                      <div>
+                        <label className="mb-1 block text-xs font-bold text-slate-700">
+                          Nama Penerima <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={recipientName}
+                          onChange={(e) => {
+                            setRecipientName(e.target.value)
+                            if (
+                              emptyFields.recipientName &&
+                              e.target.value.trim()
+                            ) {
+                              setEmptyFields((prev) => ({
+                                ...prev,
+                                recipientName: false,
+                              }))
+                            }
+                          }}
+                          placeholder="Nama lengkap penerima"
+                          className={`w-full rounded-2xl border bg-slate-50/40 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
+                            emptyFields.recipientName
+                              ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
+                              : 'border-slate-200/80 focus:border-slate-300'
+                          }`}
+                        />
+                      </div>
 
-                    {/* Phone Number */}
-                    <div>
-                      <label className="mb-1 block text-xs font-bold text-slate-700">
-                        Nomor WhatsApp <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => {
-                          const normalized = normalizeToLocalPhone(
-                            e.target.value
-                          )
-                          setPhone(normalized)
-                          if (emptyFields.phone && normalized.trim()) {
-                            setEmptyFields((prev) => ({
-                              ...prev,
-                              phone: false,
-                            }))
-                          }
-                        }}
-                        onBlur={() => {
-                          if (phone) {
-                            setPhone(normalizeToLocalPhone(phone))
-                          }
-                        }}
-                        placeholder="081234567890"
-                        className={`w-full rounded-2xl border bg-slate-50/40 px-4 py-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
-                          emptyFields.phone
-                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
-                            : 'border-slate-200/80 focus:border-slate-300'
-                        }`}
-                      />
+                      {/* Phone Number */}
+                      <div>
+                        <label className="mb-1 block text-xs font-bold text-slate-700">
+                          Nomor WhatsApp <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => {
+                            const normalized = normalizeToLocalPhone(
+                              e.target.value
+                            )
+                            setPhone(normalized)
+                            if (emptyFields.phone && normalized.trim()) {
+                              setEmptyFields((prev) => ({
+                                ...prev,
+                                phone: false,
+                              }))
+                            }
+                          }}
+                          onBlur={() => {
+                            if (phone) {
+                              setPhone(normalizeToLocalPhone(phone))
+                            }
+                          }}
+                          placeholder="081234567890"
+                          className={`w-full rounded-2xl border bg-slate-50/40 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
+                            emptyFields.phone
+                              ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
+                              : 'border-slate-200/80 focus:border-slate-300'
+                          }`}
+                        />
+                      </div>
                     </div>
 
                     {/* Full Text Address Details */}
@@ -713,7 +716,7 @@ export function AddressModal({
                         }}
                         rows={2}
                         placeholder="Nama jalan, nomor rumah/gedung, RT/RW, blok, patokan spesifik..."
-                        className={`w-full resize-none rounded-2xl border bg-slate-50/40 p-3.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
+                        className={`w-full resize-none rounded-2xl border bg-slate-50/40 p-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
                           emptyFields.fullAddress
                             ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
                             : 'border-slate-200/80 focus:border-slate-300'
@@ -721,144 +724,148 @@ export function AddressModal({
                       />
                     </div>
 
-                    {/* 1. Provinsi */}
-                    <div>
-                      <SearchableCombobox
-                        label="Provinsi"
-                        placeholder="Cari atau pilih Provinsi..."
-                        searchPlaceholder="Cari provinsi se-Indonesia..."
-                        options={provinceList}
-                        value={province}
-                        onChange={(name, opt) => {
-                          handleProvinceChange(name, opt)
-                          if (emptyFields.province && name.trim()) {
-                            setEmptyFields((prev) => ({
-                              ...prev,
-                              province: false,
-                            }))
-                          }
-                        }}
-                        isLoading={loadingProvinces}
-                        triggerClassName={`rounded-2xl bg-slate-50/40 px-4 py-2.5 text-xs font-medium ${
-                          emptyFields.province
-                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400'
-                            : 'border-slate-200/80'
-                        }`}
-                        required
-                      />
-                    </div>
-
-                    {/* 2. Kota / Kabupaten */}
-                    <div>
-                      <SearchableCombobox
-                        label="Kota / Kabupaten"
-                        placeholder={
-                          province
-                            ? 'Cari Kota atau Kabupaten...'
-                            : 'Pilih Provinsi dahulu...'
-                        }
-                        searchPlaceholder="Cari kota atau kabupaten..."
-                        options={cityList}
-                        value={city}
-                        onChange={(name, opt) => {
-                          handleCityChange(name, opt)
-                          if (emptyFields.city && name.trim()) {
-                            setEmptyFields((prev) => ({
-                              ...prev,
-                              city: false,
-                            }))
-                          }
-                        }}
-                        isLoading={loadingCities}
-                        disabled={!province && cityList.length === 0}
-                        triggerClassName={`rounded-2xl bg-slate-50/40 px-4 py-2.5 text-xs font-medium ${
-                          emptyFields.city
-                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400'
-                            : 'border-slate-200/80'
-                        }`}
-                        required
-                      />
-                    </div>
-
-                    {/* 3. Kecamatan */}
-                    <div>
-                      <SearchableCombobox
-                        label="Kecamatan"
-                        placeholder={
-                          city ? 'Cari Kecamatan...' : 'Pilih Kota dahulu...'
-                        }
-                        searchPlaceholder="Cari kecamatan..."
-                        options={districtList}
-                        value={district}
-                        onChange={handleDistrictChange}
-                        isLoading={loadingDistricts}
-                        disabled={!city && districtList.length === 0}
-                        triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-4 py-2.5 text-xs font-medium"
-                      />
-                    </div>
-
-                    {/* 4. Desa / Kelurahan */}
-                    <div>
-                      <SearchableCombobox
-                        label="Desa / Kelurahan"
-                        placeholder={
-                          district
-                            ? 'Cari Desa atau Kelurahan...'
-                            : 'Pilih Kecamatan dahulu...'
-                        }
-                        searchPlaceholder="Cari desa atau kelurahan..."
-                        options={villageList}
-                        value={village}
-                        onChange={handleVillageChange}
-                        isLoading={loadingVillages}
-                        disabled={!district && villageList.length === 0}
-                        triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-4 py-2.5 text-xs font-medium"
-                      />
-                    </div>
-
-                    {/* 5. Kode Pos */}
-                    <div>
-                      <label className="mb-1 block text-xs font-bold text-slate-700">
-                        Kode Pos <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={postalCode}
-                        onChange={(e) => {
-                          const val = e.target.value
-                            .replace(/\D/g, '')
-                            .slice(0, 5)
-                          setPostalCode(val)
-                          if (emptyFields.postalCode && val.trim()) {
-                            setEmptyFields((prev) => ({
-                              ...prev,
-                              postalCode: false,
-                            }))
-                          }
-                        }}
-                        placeholder="Contoh: 12810"
-                        maxLength={5}
-                        className={`w-full rounded-2xl border bg-slate-50/40 px-4 py-3 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
-                          emptyFields.postalCode
-                            ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
-                            : 'border-slate-200/80 focus:border-slate-300'
-                        }`}
-                      />
-                    </div>
-
-                    {/* Checkbox: Atur sebagai alamat utama */}
-                    <div className="pt-1">
-                      <label className="group inline-flex cursor-pointer select-none items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={isDefault}
-                          onChange={(e) => setIsDefault(e.target.checked)}
-                          className="h-4 w-4 cursor-pointer rounded border-slate-300 text-orange-500 accent-orange-500"
+                    {/* Provinsi & Kota/Kabupaten (2-col on mobile/desktop) */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {/* 1. Provinsi */}
+                      <div>
+                        <SearchableCombobox
+                          label="Provinsi"
+                          placeholder="Pilih Provinsi..."
+                          searchPlaceholder="Cari provinsi..."
+                          options={provinceList}
+                          value={province}
+                          onChange={(name, opt) => {
+                            handleProvinceChange(name, opt)
+                            if (emptyFields.province && name.trim()) {
+                              setEmptyFields((prev) => ({
+                                ...prev,
+                                province: false,
+                              }))
+                            }
+                          }}
+                          isLoading={loadingProvinces}
+                          triggerClassName={`rounded-2xl bg-slate-50/40 px-3 py-2 text-xs font-medium ${
+                            emptyFields.province
+                              ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400'
+                              : 'border-slate-200/80'
+                          }`}
+                          required
                         />
-                        <span className="text-xs font-medium text-slate-700 transition group-hover:text-slate-950">
-                          Atur sebagai alamat utama
-                        </span>
-                      </label>
+                      </div>
+
+                      {/* 2. Kota / Kabupaten */}
+                      <div>
+                        <SearchableCombobox
+                          label="Kota / Kabupaten"
+                          placeholder={
+                            province ? 'Pilih Kota...' : 'Pilih Provinsi...'
+                          }
+                          searchPlaceholder="Cari kota/kab..."
+                          options={cityList}
+                          value={city}
+                          onChange={(name, opt) => {
+                            handleCityChange(name, opt)
+                            if (emptyFields.city && name.trim()) {
+                              setEmptyFields((prev) => ({
+                                ...prev,
+                                city: false,
+                              }))
+                            }
+                          }}
+                          isLoading={loadingCities}
+                          disabled={!province && cityList.length === 0}
+                          triggerClassName={`rounded-2xl bg-slate-50/40 px-3 py-2 text-xs font-medium ${
+                            emptyFields.city
+                              ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400'
+                              : 'border-slate-200/80'
+                          }`}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Kecamatan & Desa/Kelurahan (2-col on mobile/desktop) */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {/* 3. Kecamatan */}
+                      <div>
+                        <SearchableCombobox
+                          label="Kecamatan"
+                          placeholder={
+                            city ? 'Pilih Kecamatan...' : 'Pilih Kota...'
+                          }
+                          searchPlaceholder="Cari kecamatan..."
+                          options={districtList}
+                          value={district}
+                          onChange={handleDistrictChange}
+                          isLoading={loadingDistricts}
+                          disabled={!city && districtList.length === 0}
+                          triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-3 py-2 text-xs font-medium"
+                        />
+                      </div>
+
+                      {/* 4. Desa / Kelurahan */}
+                      <div>
+                        <SearchableCombobox
+                          label="Desa / Kelurahan"
+                          placeholder={
+                            district ? 'Pilih Desa...' : 'Pilih Kecamatan...'
+                          }
+                          searchPlaceholder="Cari desa/kelurahan..."
+                          options={villageList}
+                          value={village}
+                          onChange={handleVillageChange}
+                          isLoading={loadingVillages}
+                          disabled={!district && villageList.length === 0}
+                          triggerClassName="rounded-2xl border-slate-200/80 bg-slate-50/40 px-3 py-2 text-xs font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 5. Kode Pos & Checkbox Alamat Utama */}
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                      <div className="w-36 sm:w-44">
+                        <label className="mb-1 block text-xs font-bold text-slate-700">
+                          Kode Pos <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={postalCode}
+                          onChange={(e) => {
+                            const val = e.target.value
+                              .replace(/\D/g, '')
+                              .slice(0, 5)
+                            setPostalCode(val)
+                            if (emptyFields.postalCode && val.trim()) {
+                              setEmptyFields((prev) => ({
+                                ...prev,
+                                postalCode: false,
+                              }))
+                            }
+                          }}
+                          placeholder="Contoh: 12810"
+                          maxLength={5}
+                          className={`w-full rounded-2xl border bg-slate-50/40 px-3.5 py-2.5 font-mono text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white ${
+                            emptyFields.postalCode
+                              ? 'animate-pulse border-red-500 bg-red-50/30 ring-2 ring-red-400 focus:border-red-500'
+                              : 'border-slate-200/80 focus:border-slate-300'
+                          }`}
+                        />
+                      </div>
+
+                      {/* Checkbox: Atur sebagai alamat utama */}
+                      <div className="pb-2">
+                        <label className="group inline-flex cursor-pointer select-none items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isDefault}
+                            onChange={(e) => setIsDefault(e.target.checked)}
+                            className="h-4 w-4 cursor-pointer rounded border-slate-300 text-orange-500 accent-orange-500"
+                          />
+                          <span className="text-xs font-medium text-slate-700 transition group-hover:text-slate-950">
+                            Atur sebagai alamat utama
+                          </span>
+                        </label>
+                      </div>
                     </div>
                   </div>
 

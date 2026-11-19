@@ -121,7 +121,18 @@ export function MobileCustomerAccountView({
           <h1 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
             {currentMeta.title}
           </h1>
-          <div className="w-5" />
+          {activeSubView === 'profile' && onSaveProfile ? (
+            <button
+              type="button"
+              onClick={onSaveProfile}
+              disabled={saving}
+              className="cursor-pointer rounded-full bg-orange-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+            >
+              {saving ? '...' : 'Simpan'}
+            </button>
+          ) : (
+            <div className="w-5" />
+          )}
         </header>
 
         {/* Scrollable Content Body with Natural In-Container Scrolling */}
