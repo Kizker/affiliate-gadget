@@ -10,12 +10,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Non-blocking cleanup of abandoned empty rooms in background (only if older than 24 hours)
-    prisma.adminChatRoom
+    // Non-blocking cleanup of abandoned empty rooms in background
+    await prisma.adminChatRoom
       .deleteMany({
         where: {
           messages: { none: {} },
-          createdAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
       })
       .catch(() => {})

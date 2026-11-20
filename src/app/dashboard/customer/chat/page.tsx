@@ -1144,6 +1144,9 @@ function CustomerChatContent() {
             roomId: selectedRoom.id,
             content: contentToSend,
             messageType,
+            orderId:
+              selectedRoom.orderId || activeOrderContext?.orderId || undefined,
+            storeId: selectedRoom.storeId || undefined,
           }),
         })
       } else {

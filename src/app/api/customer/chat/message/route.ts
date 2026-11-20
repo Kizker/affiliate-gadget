@@ -11,7 +11,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { roomId, content, messageType = 'text', mediaUrl } = body
+    const {
+      roomId,
+      content,
+      messageType = 'text',
+      mediaUrl,
+      orderId: reqOrderId,
+      storeId: reqStoreId,
+    } = body
 
     if (!roomId || (!content?.trim() && !mediaUrl)) {
       return NextResponse.json(
@@ -28,49 +35,64 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Self-healing fallback: jika room tidak ditemukan (misal terhapus atau mismatch session)
+    // Self-healing fallback: jika room tidak ditemukan (misal terhapus oleh cleanup lama)
     if (!room) {
-      // 1. Coba cari room lain milik customer ini
-      room = await prisma.adminChatRoom.findFirst({
-        where: { customerId: session.user.id },
-        orderBy: { lastMessageAt: 'desc' },
-      })
-    }
-
-    // 2. Jika tetap tidak ada, pulihkan / buatkan room baru dengan ID tersebut
-    if (!room) {
-      const latestOrder = await prisma.order.findFirst({
-        where: { userId: session.user.id },
-        orderBy: { createdAt: 'desc' },
-        include: {
-          store: {
+      // Prioritaskan order yang dikirim dari client jika ada
+      const targetOrder = reqOrderId
+        ? await prisma.order.findFirst({
+            where: { id: reqOrderId, userId: session.user.id },
             include: {
-              group: {
+              store: {
                 include: {
-                  afterSalesUser: true,
+                  group: {
+                    include: {
+                      afterSalesUser: true,
+                    },
+                  },
                 },
               },
             },
-          },
-        },
-      })
+          })
+        : await prisma.order.findFirst({
+            where: { userId: session.user.id },
+            orderBy: { createdAt: 'desc' },
+            include: {
+              store: {
+                include: {
+                  group: {
+                    include: {
+                      afterSalesUser: true,
+                    },
+                  },
+                },
+              },
+            },
+          })
 
-      const afterSalesUser = latestOrder?.store?.group?.afterSalesUser
-      const storeAdmin = latestOrder?.storeId
+      const targetStoreId = reqStoreId || targetOrder?.storeId || null
+      const afterSalesUser = targetOrder?.store?.group?.afterSalesUser
+      const storeAdmin = targetStoreId
         ? await prisma.user.findFirst({
-            where: { storeId: latestOrder.storeId, role: 'STORE_ADMIN' },
+            where: { storeId: targetStoreId, role: 'STORE_ADMIN' },
           })
         : null
 
-      const assignedAdmin = afterSalesUser || storeAdmin
+      let assignedAdmin = afterSalesUser || storeAdmin
+      if (!assignedAdmin) {
+        const superAdmin = await prisma.user.findFirst({
+          where: { role: 'SUPER_ADMIN', isActive: true },
+          select: { id: true },
+        })
+        if (superAdmin) assignedAdmin = superAdmin as any
+      }
 
       try {
         room = await prisma.adminChatRoom.create({
           data: {
             id: roomId,
             customerId: session.user.id,
-            storeId: latestOrder?.storeId || null,
-            orderId: latestOrder?.id || null,
+            storeId: targetStoreId,
+            orderId: targetOrder?.id || null,
             claimedById: assignedAdmin?.id || null,
             claimedAt: assignedAdmin ? new Date() : null,
             lastMessageAt: new Date(),
@@ -84,8 +106,8 @@ export async function POST(req: NextRequest) {
         room = await prisma.adminChatRoom.create({
           data: {
             customerId: session.user.id,
-            storeId: latestOrder?.storeId || null,
-            orderId: latestOrder?.id || null,
+            storeId: targetStoreId,
+            orderId: targetOrder?.id || null,
             claimedById: assignedAdmin?.id || null,
             claimedAt: assignedAdmin ? new Date() : null,
             lastMessageAt: new Date(),
