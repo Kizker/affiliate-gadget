@@ -191,6 +191,16 @@ const afterSalesNavSections: NavSection[] = [
       },
     ],
   },
+  {
+    title: 'Pengaturan',
+    items: [
+      {
+        icon: Settings,
+        label: 'Pengaturan Akun',
+        href: '/dashboard/after-sales/settings',
+      },
+    ],
+  },
 ]
 
 // Store Admin Navigation (Mengelola toko miliknya sendiri sesuai blueprint)
@@ -777,8 +787,16 @@ export function Sidebar({
                 suppressHydrationWarning
                 className="shadow-2xs flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-2 dark:border-slate-800 dark:bg-slate-900"
               >
-                <div
-                  className="flex min-w-0 items-center gap-2.5"
+                <Link
+                  href={
+                    effectiveRole === 'AFTER_SALES'
+                      ? '/dashboard/after-sales/settings'
+                      : effectiveRole === 'CUSTOMER'
+                        ? '/dashboard/customer/settings'
+                        : '/dashboard/admin/settings'
+                  }
+                  className="flex min-w-0 items-center gap-2.5 transition hover:opacity-80"
+                  title="Buka Pengaturan Akun"
                   suppressHydrationWarning
                 >
                   {/* User Avatar */}
@@ -833,7 +851,7 @@ export function Sidebar({
                                 : 'Customer'}
                     </span>
                   </div>
-                </div>
+                </Link>
 
                 {/* Sign Out Button */}
                 <button
