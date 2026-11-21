@@ -169,7 +169,7 @@ export async function PATCH(request: NextRequest) {
     // Check if user is admin or staff
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true, email: true, storeId: true },
+      select: { role: true, email: true, phone: true, storeId: true },
     })
 
     if (!user || !isAdminStaffRole(user.role)) {
@@ -186,6 +186,29 @@ export async function PATCH(request: NextRequest) {
       newPassword,
       storeData,
     } = body
+
+    // Sanitasi nomor telepon agar tidak melanggar unique constraint
+    let sanitizedPhone: string | null | undefined = undefined
+    if (phone !== undefined) {
+      const trimmed = typeof phone === 'string' ? phone.trim() : null
+      sanitizedPhone = trimmed && trimmed.length > 0 ? trimmed : null
+    }
+
+    if (sanitizedPhone === user.phone) {
+      sanitizedPhone = undefined
+    } else if (sanitizedPhone) {
+      const existingPhoneUser = await prisma.user.findFirst({
+        where: {
+          phone: sanitizedPhone,
+          id: { not: session.user.id },
+        },
+        select: { id: true },
+      })
+      if (existingPhoneUser) {
+        // Nomor telepon sudah digunakan akun lain, abaikan agar update foto profil & toko tetap berjalan sukses
+        sanitizedPhone = undefined
+      }
+    }
 
     // If changing email, check if it's already taken
     if (email && email !== user.email) {
@@ -241,14 +264,14 @@ export async function PATCH(request: NextRequest) {
     // Prepare update data for User
     interface UpdateData {
       name?: string
-      phone?: string
+      phone?: string | null
       image?: string
       email?: string
       password?: string
     }
     const updateData: UpdateData = {
       ...(name !== undefined && { name }),
-      ...(phone !== undefined && { phone }),
+      ...(sanitizedPhone !== undefined && { phone: sanitizedPhone }),
       ...(image !== undefined && { image }),
       ...(email !== undefined && { email }),
     }
@@ -261,19 +284,42 @@ export async function PATCH(request: NextRequest) {
 
     // Run in transaction if updating both User and Store
     const result = await prisma.$transaction(async (tx) => {
-      const updatedUser = await tx.user.update({
-        where: { id: session.user.id },
-        data: updateData,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          phone: true,
-          role: true,
-          storeId: true,
-        },
-      })
+      let updatedUser: any
+      try {
+        updatedUser = await tx.user.update({
+          where: { id: session.user.id },
+          data: updateData,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            phone: true,
+            role: true,
+            storeId: true,
+          },
+        })
+      } catch (userErr: any) {
+        if (userErr?.code === 'P2002') {
+          // Unique constraint violation (biasanya field phone), simpan data lainnya tanpa menimpa phone
+          delete updateData.phone
+          updatedUser = await tx.user.update({
+            where: { id: session.user.id },
+            data: updateData,
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              phone: true,
+              role: true,
+              storeId: true,
+            },
+          })
+        } else {
+          throw userErr
+        }
+      }
 
       let updatedStore: any = null
       if (storeData) {

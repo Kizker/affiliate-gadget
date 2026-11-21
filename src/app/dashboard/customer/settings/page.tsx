@@ -369,6 +369,13 @@ function CustomerSettingsContent() {
         const data = await res.json()
         setAvatarPreview(data.avatarUrl)
         await update()
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('profile-updated', {
+              detail: { image: data.avatarUrl },
+            })
+          )
+        }
         toast({
           title: 'Foto profil berhasil disimpan',
         })

@@ -746,6 +746,113 @@ export default function OrdersClient({
                               </div>
                             ) : null}
                           </Link>
+
+                          {/* Action Buttons for firstItem when order has multiple items and is expanded */}
+                          {order.items.length > 1 &&
+                            expandedOrders[order.id] &&
+                            (() => {
+                              const latestReturn = order.returnRequests?.[0]
+                              const prod =
+                                firstItem?.product ||
+                                firstItem?.rentalItem ||
+                                firstItem?.service
+                              const chatParams = new URLSearchParams()
+                              chatParams.set('orderId', order.id)
+                              if (order.store?.id)
+                                chatParams.set('storeId', order.store.id)
+                              if (order.orderNumber)
+                                chatParams.set('orderNumber', order.orderNumber)
+                              if (latestReturn) {
+                                chatParams.set('returnId', latestReturn.id)
+                                chatParams.set(
+                                  'returnReason',
+                                  latestReturn.reasonLabel ||
+                                    latestReturn.reason ||
+                                    ''
+                                )
+                                chatParams.set(
+                                  'returnStatus',
+                                  latestReturn.status
+                                )
+                                if (latestReturn.type)
+                                  chatParams.set(
+                                    'returnType',
+                                    latestReturn.type
+                                  )
+                              }
+                              if (prod?.name)
+                                chatParams.set('productName', prod.name)
+                              const prodImg = (prod as any)?.images?.[0]
+                              if (prodImg)
+                                chatParams.set('productImage', prodImg)
+                              if (firstItem?.price)
+                                chatParams.set(
+                                  'productPrice',
+                                  String(firstItem.price)
+                                )
+                              if (firstItem?.variantName)
+                                chatParams.set(
+                                  'variantName',
+                                  firstItem.variantName
+                                )
+
+                              const isAfterSales =
+                                Boolean(latestReturn) ||
+                                order.status === 'COMPLETED' ||
+                                order.status === 'RETURNED'
+                              if (isAfterSales) {
+                                chatParams.set('type', 'after_sales')
+                              }
+
+                              return (
+                                <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/70 pt-2 dark:border-slate-800/70">
+                                  <Link
+                                    href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition active:scale-95 ${
+                                      isAfterSales
+                                        ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
+                                        : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                                    }`}
+                                  >
+                                    <MessageSquare
+                                      className={`h-3 w-3 ${
+                                        isAfterSales
+                                          ? 'text-orange-600 dark:text-orange-400'
+                                          : 'text-blue-600 dark:text-blue-400'
+                                      }`}
+                                    />
+                                    <span>
+                                      {isAfterSales
+                                        ? 'Chat Admin After Sales'
+                                        : 'Chat Toko'}
+                                    </span>
+                                  </Link>
+
+                                  {isReturnEligible(order) && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        setReturnModal({
+                                          isOpen: true,
+                                          orderId: order.id,
+                                          orderNumber: order.orderNumber,
+                                          totalAmount:
+                                            (firstItem.price || 0) *
+                                            (firstItem.quantity || 1),
+                                        })
+                                      }}
+                                      className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3 py-1.5 text-[11px] font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                                    >
+                                      <RotateCcw className="h-3 w-3 text-orange-600" />
+                                      <span>Ajukan Pengembalian</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })()}
                         </div>
 
                         {/* Additional Items when Expanded */}
@@ -824,6 +931,122 @@ export default function OrdersClient({
                                       </div>
                                     ) : null}
                                   </Link>
+
+                                  {/* Action Buttons for extraItem when order has multiple items and is expanded */}
+                                  {(() => {
+                                    const latestReturn =
+                                      order.returnRequests?.[0]
+                                    const prod =
+                                      extraItem.product ||
+                                      extraItem.rentalItem ||
+                                      extraItem.service
+                                    const chatParams = new URLSearchParams()
+                                    chatParams.set('orderId', order.id)
+                                    if (order.store?.id)
+                                      chatParams.set('storeId', order.store.id)
+                                    if (order.orderNumber)
+                                      chatParams.set(
+                                        'orderNumber',
+                                        order.orderNumber
+                                      )
+                                    if (latestReturn) {
+                                      chatParams.set(
+                                        'returnId',
+                                        latestReturn.id
+                                      )
+                                      chatParams.set(
+                                        'returnReason',
+                                        latestReturn.reasonLabel ||
+                                          latestReturn.reason ||
+                                          ''
+                                      )
+                                      chatParams.set(
+                                        'returnStatus',
+                                        latestReturn.status
+                                      )
+                                      if (latestReturn.type)
+                                        chatParams.set(
+                                          'returnType',
+                                          latestReturn.type
+                                        )
+                                    }
+                                    if (prod?.name)
+                                      chatParams.set('productName', prod.name)
+                                    const extraProdImg = (prod as any)
+                                      ?.images?.[0]
+                                    if (extraProdImg)
+                                      chatParams.set(
+                                        'productImage',
+                                        extraProdImg
+                                      )
+                                    if (extraItem.price)
+                                      chatParams.set(
+                                        'productPrice',
+                                        String(extraItem.price)
+                                      )
+                                    if (extraItem.variantName)
+                                      chatParams.set(
+                                        'variantName',
+                                        extraItem.variantName
+                                      )
+
+                                    const isAfterSales =
+                                      Boolean(latestReturn) ||
+                                      order.status === 'COMPLETED' ||
+                                      order.status === 'RETURNED'
+                                    if (isAfterSales) {
+                                      chatParams.set('type', 'after_sales')
+                                    }
+
+                                    return (
+                                      <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/70 pt-2 dark:border-slate-800/70">
+                                        <Link
+                                          href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition active:scale-95 ${
+                                            isAfterSales
+                                              ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
+                                              : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                                          }`}
+                                        >
+                                          <MessageSquare
+                                            className={`h-3 w-3 ${
+                                              isAfterSales
+                                                ? 'text-orange-600 dark:text-orange-400'
+                                                : 'text-blue-600 dark:text-blue-400'
+                                            }`}
+                                          />
+                                          <span>
+                                            {isAfterSales
+                                              ? 'Chat Admin After Sales'
+                                              : 'Chat Toko'}
+                                          </span>
+                                        </Link>
+
+                                        {isReturnEligible(order) && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                              setReturnModal({
+                                                isOpen: true,
+                                                orderId: order.id,
+                                                orderNumber: order.orderNumber,
+                                                totalAmount:
+                                                  (extraItem.price || 0) *
+                                                  (extraItem.quantity || 1),
+                                              })
+                                            }}
+                                            className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3 py-1.5 text-[11px] font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                                          >
+                                            <RotateCcw className="h-3 w-3 text-orange-600" />
+                                            <span>Ajukan Pengembalian</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                               )
                             })}
@@ -910,98 +1133,109 @@ export default function OrdersClient({
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
-                            {(() => {
-                              const latestReturn = order.returnRequests?.[0]
-                              const firstItem = order.items?.[0]
-                              const firstProduct = firstItem?.product
-                              const chatParams = new URLSearchParams()
-                              chatParams.set('orderId', order.id)
-                              if (order.store?.id)
-                                chatParams.set('storeId', order.store.id)
-                              if (order.orderNumber)
-                                chatParams.set('orderNumber', order.orderNumber)
-                              if (latestReturn) {
-                                chatParams.set('returnId', latestReturn.id)
-                                chatParams.set(
-                                  'returnReason',
-                                  latestReturn.reasonLabel ||
-                                    latestReturn.reason ||
-                                    ''
-                                )
-                                chatParams.set(
-                                  'returnStatus',
-                                  latestReturn.status
-                                )
-                                if (latestReturn.type)
-                                  chatParams.set(
-                                    'returnType',
-                                    latestReturn.type
+                            {/* Jika pembelian satu per satu produk (items <= 1), kedua tombol tetap di luar seperti semula. Jika keranjang (items > 1), kedua tombol dipindahkan ke masing-masing produk saat di-dropdown */}
+                            {order.items.length <= 1 && (
+                              <>
+                                {(() => {
+                                  const latestReturn = order.returnRequests?.[0]
+                                  const firstItem = order.items?.[0]
+                                  const firstProduct = firstItem?.product
+                                  const chatParams = new URLSearchParams()
+                                  chatParams.set('orderId', order.id)
+                                  if (order.store?.id)
+                                    chatParams.set('storeId', order.store.id)
+                                  if (order.orderNumber)
+                                    chatParams.set(
+                                      'orderNumber',
+                                      order.orderNumber
+                                    )
+                                  if (latestReturn) {
+                                    chatParams.set('returnId', latestReturn.id)
+                                    chatParams.set(
+                                      'returnReason',
+                                      latestReturn.reasonLabel ||
+                                        latestReturn.reason ||
+                                        ''
+                                    )
+                                    chatParams.set(
+                                      'returnStatus',
+                                      latestReturn.status
+                                    )
+                                    if (latestReturn.type)
+                                      chatParams.set(
+                                        'returnType',
+                                        latestReturn.type
+                                      )
+                                  }
+                                  if (firstProduct?.name)
+                                    chatParams.set(
+                                      'productName',
+                                      firstProduct.name
+                                    )
+                                  if (firstProduct?.images?.[0])
+                                    chatParams.set(
+                                      'productImage',
+                                      firstProduct.images[0]
+                                    )
+                                  const effectiveChatPrice =
+                                    order.total || firstItem?.price
+                                  if (effectiveChatPrice)
+                                    chatParams.set(
+                                      'productPrice',
+                                      String(effectiveChatPrice)
+                                    )
+
+                                  const isAfterSales =
+                                    Boolean(latestReturn) ||
+                                    order.status === 'COMPLETED' ||
+                                    order.status === 'RETURNED'
+                                  if (isAfterSales) {
+                                    chatParams.set('type', 'after_sales')
+                                  }
+
+                                  return (
+                                    <Link
+                                      href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                                      className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold transition active:scale-95 ${
+                                        isAfterSales
+                                          ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
+                                          : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                                      }`}
+                                    >
+                                      <MessageSquare
+                                        className={`h-3.5 w-3.5 ${
+                                          isAfterSales
+                                            ? 'text-orange-600 dark:text-orange-400'
+                                            : 'text-blue-600 dark:text-blue-400'
+                                        }`}
+                                      />
+                                      <span>
+                                        {isAfterSales
+                                          ? 'Chat Admin After Sales'
+                                          : 'Chat Toko'}
+                                      </span>
+                                    </Link>
                                   )
-                              }
-                              if (firstProduct?.name)
-                                chatParams.set('productName', firstProduct.name)
-                              if (firstProduct?.images?.[0])
-                                chatParams.set(
-                                  'productImage',
-                                  firstProduct.images[0]
-                                )
-                              const effectiveChatPrice =
-                                order.total || firstItem?.price
-                              if (effectiveChatPrice)
-                                chatParams.set(
-                                  'productPrice',
-                                  String(effectiveChatPrice)
-                                )
+                                })()}
 
-                              const isAfterSales =
-                                Boolean(latestReturn) ||
-                                order.status === 'COMPLETED' ||
-                                order.status === 'RETURNED'
-                              if (isAfterSales) {
-                                chatParams.set('type', 'after_sales')
-                              }
-
-                              return (
-                                <Link
-                                  href={`/dashboard/customer/chat?${chatParams.toString()}`}
-                                  className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold transition active:scale-95 ${
-                                    isAfterSales
-                                      ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
-                                      : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
-                                  }`}
-                                >
-                                  <MessageSquare
-                                    className={`h-3.5 w-3.5 ${
-                                      isAfterSales
-                                        ? 'text-orange-600 dark:text-orange-400'
-                                        : 'text-blue-600 dark:text-blue-400'
-                                    }`}
-                                  />
-                                  <span>
-                                    {isAfterSales
-                                      ? 'Chat Admin After Sales'
-                                      : 'Chat Toko'}
-                                  </span>
-                                </Link>
-                              )
-                            })()}
-
-                            {/* Ajukan Pengembalian for COMPLETED orders with active 30-day warranty */}
-                            {isReturnEligible(order) && (
-                              <button
-                                onClick={() =>
-                                  setReturnModal({
-                                    isOpen: true,
-                                    orderId: order.id,
-                                    orderNumber: order.orderNumber,
-                                    totalAmount: order.total,
-                                  })
-                                }
-                                className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3.5 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
-                              >
-                                <RotateCcw className="h-3.5 w-3.5 text-orange-600" />
-                                <span>Ajukan Pengembalian</span>
-                              </button>
+                                {/* Ajukan Pengembalian for COMPLETED orders with active 30-day warranty */}
+                                {isReturnEligible(order) && (
+                                  <button
+                                    onClick={() =>
+                                      setReturnModal({
+                                        isOpen: true,
+                                        orderId: order.id,
+                                        orderNumber: order.orderNumber,
+                                        totalAmount: order.total,
+                                      })
+                                    }
+                                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3.5 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                                  >
+                                    <RotateCcw className="h-3.5 w-3.5 text-orange-600" />
+                                    <span>Ajukan Pengembalian</span>
+                                  </button>
+                                )}
+                              </>
                             )}
 
                             {order.status === 'PENDING_PAYMENT' ? (

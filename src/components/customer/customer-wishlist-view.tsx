@@ -152,14 +152,15 @@ export function CustomerWishlistView({
             return (
               <div
                 key={item.id}
-                className="shadow-xs rounded-2xl border border-slate-100 bg-white p-4 transition hover:border-slate-200 dark:border-slate-800 dark:bg-slate-900"
+                className="shadow-2xs hover:shadow-xs group relative flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all hover:border-orange-300 dark:border-slate-800 dark:bg-slate-900 sm:p-4"
               >
-                <div className="flex gap-3.5">
+                {/* Clickable Area: Redirects directly to product page */}
+                <Link
+                  href={productHref}
+                  className="flex min-w-0 flex-1 items-center gap-3.5 sm:gap-4"
+                >
                   {/* Clean Thumbnail Image Box */}
-                  <Link
-                    href={productHref}
-                    className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24"
-                  >
+                  <div className="h-18 w-18 relative shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800 sm:h-20 sm:w-20">
                     <img
                       src={imgSrc}
                       alt={item.name}
@@ -168,53 +169,44 @@ export function CustomerWishlistView({
                         ;(e.currentTarget as HTMLImageElement).src =
                           'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
                       }}
-                      className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
-                  </Link>
+                  </div>
 
-                  {/* Product Details & Actions */}
-                  <div className="flex min-w-0 flex-1 flex-col justify-between">
-                    <div>
-                      {/* Title */}
-                      <Link href={productHref} className="block">
-                        <h4 className="line-clamp-2 text-sm font-bold leading-snug text-slate-900 transition hover:text-orange-600 dark:text-white dark:hover:text-orange-400">
-                          {item.name}
-                        </h4>
-                      </Link>
+                  {/* Product Details */}
+                  <div className="min-w-0 flex-1">
+                    <h4 className="line-clamp-2 text-xs font-bold leading-snug text-slate-900 transition-colors group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:text-sm">
+                      {item.name}
+                    </h4>
 
-                      {/* Price Row */}
-                      <div className="mt-1 flex items-baseline gap-2">
-                        <span className="text-sm font-bold text-orange-500">
-                          {displayPrice}
+                    {/* Price Row */}
+                    <div className="mt-1 flex items-baseline gap-2 font-mono">
+                      <span className="text-xs font-bold text-orange-600 dark:text-orange-400 sm:text-sm">
+                        {displayPrice}
+                      </span>
+                      {displayOriginalPrice && (
+                        <span className="text-[11px] text-slate-400 line-through">
+                          {displayOriginalPrice}
                         </span>
-                        {displayOriginalPrice && (
-                          <span className="text-xs text-slate-400 line-through">
-                            {displayOriginalPrice}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Bottom Action Buttons: Hapus & Lihat Produk */}
-                    <div className="mt-2.5 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => handleRemove(item.id, item.name, e)}
-                        className="cursor-pointer rounded-xl border border-slate-200/80 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                        title="Hapus dari Wishlist"
-                      >
-                        Hapus
-                      </button>
-
-                      <Link
-                        href={productHref}
-                        className="shadow-xs flex-1 rounded-xl bg-orange-500 py-1.5 text-center text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
-                      >
-                        Lihat Produk
-                      </Link>
+                      )}
                     </div>
                   </div>
-                </div>
+                </Link>
+
+                {/* Simple Trash Icon Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleRemove(item.id, item.name, e)
+                  }}
+                  className="shrink-0 cursor-pointer rounded-xl p-2.5 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 active:scale-90 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                  title="Hapus dari Wishlist"
+                  aria-label={`Hapus ${item.name} dari Wishlist`}
+                >
+                  <Trash2 className="sm:h-4.5 sm:w-4.5 h-4 w-4" />
+                </button>
               </div>
             )
           })}

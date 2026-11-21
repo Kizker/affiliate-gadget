@@ -15,9 +15,10 @@ describe('Customer Settings Mobile Simplification Suite (Screenshots 2, 3, 4)', 
     expect(content).toContain('Daftar produk incaran Anda')
     expect(content).toContain('Kosongkan')
 
-    // Items list and action buttons
-    expect(content).toContain('Lihat Produk')
-    expect(content).toContain('Hapus')
+    // Items list: Clickable card redirects directly to product, simple Trash2 icon instead of bulky text button
+    expect(content).toContain('productHref')
+    expect(content).toContain('Trash2')
+    expect(content).not.toContain('Lihat Produk')
 
     // Must NOT have rating stars or store branch clutter in mobile cards
     expect(content).not.toContain('Star className="h-3 w-3 fill-amber-400')

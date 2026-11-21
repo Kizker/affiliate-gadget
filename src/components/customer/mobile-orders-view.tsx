@@ -645,63 +645,75 @@ export function MobileOrdersView({
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
-                    {(() => {
-                      const latestReturn = order.returnRequests?.[0]
-                      const firstItem = order.items?.[0]
-                      const firstProduct = firstItem?.product
-                      const chatParams = new URLSearchParams()
-                      chatParams.set('orderId', order.id)
-                      if (order.store?.id)
-                        chatParams.set('storeId', order.store.id)
-                      if (order.orderNumber)
-                        chatParams.set('orderNumber', order.orderNumber)
-                      if (latestReturn) {
-                        chatParams.set('returnId', latestReturn.id)
-                        chatParams.set(
-                          'returnReason',
-                          latestReturn.reasonLabel || latestReturn.reason || ''
-                        )
-                        chatParams.set('returnStatus', latestReturn.status)
-                        if (latestReturn.type)
-                          chatParams.set('returnType', latestReturn.type)
-                      }
-                      if (firstProduct?.name)
-                        chatParams.set('productName', firstProduct.name)
-                      if (firstProduct?.images?.[0])
-                        chatParams.set('productImage', firstProduct.images[0])
-                      if (firstItem?.price)
-                        chatParams.set('productPrice', String(firstItem.price))
+                    {order.items.length <= 1 && (
+                      <>
+                        {(() => {
+                          const latestReturn = order.returnRequests?.[0]
+                          const firstItem = order.items?.[0]
+                          const firstProduct = firstItem?.product
+                          const chatParams = new URLSearchParams()
+                          chatParams.set('orderId', order.id)
+                          if (order.store?.id)
+                            chatParams.set('storeId', order.store.id)
+                          if (order.orderNumber)
+                            chatParams.set('orderNumber', order.orderNumber)
+                          if (latestReturn) {
+                            chatParams.set('returnId', latestReturn.id)
+                            chatParams.set(
+                              'returnReason',
+                              latestReturn.reasonLabel ||
+                                latestReturn.reason ||
+                                ''
+                            )
+                            chatParams.set('returnStatus', latestReturn.status)
+                            if (latestReturn.type)
+                              chatParams.set('returnType', latestReturn.type)
+                          }
+                          if (firstProduct?.name)
+                            chatParams.set('productName', firstProduct.name)
+                          if (firstProduct?.images?.[0])
+                            chatParams.set(
+                              'productImage',
+                              firstProduct.images[0]
+                            )
+                          if (firstItem?.price)
+                            chatParams.set(
+                              'productPrice',
+                              String(firstItem.price)
+                            )
 
-                      const isAfterSales =
-                        Boolean(latestReturn) ||
-                        order.status === 'COMPLETED' ||
-                        order.status === 'RETURNED'
-                      if (isAfterSales) {
-                        chatParams.set('type', 'after_sales')
-                      }
+                          const isAfterSales =
+                            Boolean(latestReturn) ||
+                            order.status === 'COMPLETED' ||
+                            order.status === 'RETURNED'
+                          if (isAfterSales) {
+                            chatParams.set('type', 'after_sales')
+                          }
 
-                      return (
-                        <Link
-                          href={`/dashboard/customer/chat?${chatParams.toString()}`}
-                          className={`shadow-2xs rounded-full border px-4 py-1.5 text-xs font-semibold transition active:scale-95 ${
-                            isAfterSales
-                              ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
-                              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                          }`}
-                        >
-                          {isAfterSales ? 'Chat After Sales' : 'Chat'}
-                        </Link>
-                      )
-                    })()}
+                          return (
+                            <Link
+                              href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                              className={`shadow-2xs rounded-full border px-4 py-1.5 text-xs font-semibold transition active:scale-95 ${
+                                isAfterSales
+                                  ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
+                                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                              }`}
+                            >
+                              {isAfterSales ? 'Chat After Sales' : 'Chat'}
+                            </Link>
+                          )
+                        })()}
 
-                    {isReturnEligible(order) && onOpenReturnModal && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenReturnModal(order)}
-                        className="rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-xs font-semibold text-orange-700 transition active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
-                      >
-                        Retur
-                      </button>
+                        {isReturnEligible(order) && onOpenReturnModal && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenReturnModal(order)}
+                            className="rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-xs font-semibold text-orange-700 transition active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                          >
+                            Retur
+                          </button>
+                        )}
+                      </>
                     )}
 
                     {order.status === 'PENDING_PAYMENT' ? (

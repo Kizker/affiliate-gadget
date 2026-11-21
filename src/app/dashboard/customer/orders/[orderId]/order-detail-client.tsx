@@ -147,7 +147,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleOpenRating = () => {
+  const handleOpenRating = (_item?: OrderDetailItem) => {
     setRatingModal({
       isOpen: true,
       orderId: order.id,
@@ -486,6 +486,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             }}
             onOpenComplaint={() => setComplaintModalOpen(true)}
             onOpenRating={handleOpenRating}
+            onOpenRatingForItem={(item) => handleOpenRating(item)}
             onOpenCancel={() => setCancelModalOpen(true)}
           />
 
@@ -527,9 +528,15 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 <OrderDesktopItemsCard
                   order={order}
                   canRequestReturnOrComplaint={canRequestReturnOrComplaint}
+                  hasActiveClaim={Boolean(hasActiveClaim)}
+                  isCompleted={isCompleted}
+                  latestReturnRequest={latestReturnRequest}
                   onOpenReturnForItem={(item) => {
                     setSelectedReturnItem(item)
                     setReturnModalOpen(true)
+                  }}
+                  onOpenRatingForItem={(item) => {
+                    handleOpenRating(item)
                   }}
                 />
                 <OrderDesktopShippingCard

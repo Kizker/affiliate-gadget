@@ -318,7 +318,17 @@ export function Sidebar({
     if (session?.user?.image) {
       setLiveAvatar(session.user.image)
     }
-  }, [session?.user?.image])
+    if (mounted && (session?.user?.id || session?.user?.email)) {
+      fetch('/api/user/profile')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.user?.image) {
+            setLiveAvatar(data.user.image)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [mounted, session?.user?.image, session?.user?.id, session?.user?.email])
 
   useEffect(() => {
     const handleProfileUpdated = (e: Event) => {

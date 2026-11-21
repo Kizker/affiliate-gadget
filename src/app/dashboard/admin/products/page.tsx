@@ -671,45 +671,75 @@ export default function ProductsPage() {
     })
   }
 
-  const handleBulkUpdateSelected = async () => {
-    if (selectedVariantIds.size === 0) return
-    const numPrice = bulkNewPrice
-      ? parseFloat(bulkNewPrice.replace(/\./g, ''))
-      : undefined
-    const numStock = bulkNewStock ? parseInt(bulkNewStock) : undefined
+  const getSelectedProductIds = useCallback(() => {
+    const productIds = new Set<string>()
+    filteredProducts.forEach((p) => {
+      const hasSelectedVariant = p.variants.some(
+        (v) => v.id && selectedVariantIds.has(v.id)
+      )
+      const hasSelectedProdOnly = selectedVariantIds.has(`prod-only-${p.id}`)
+      if (hasSelectedVariant || hasSelectedProdOnly) {
+        productIds.add(p.id)
+      }
+    })
+    return Array.from(productIds)
+  }, [filteredProducts, selectedVariantIds])
 
-    if (numPrice === undefined && numStock === undefined) {
-      toast.error('Masukkan harga atau stok baru terlebih dahulu')
+  const handleBatchSetActive = async (setActive: boolean) => {
+    const productIds = getSelectedProductIds()
+    if (productIds.length === 0) return
+
+    setBulkUpdating(true)
+    try {
+      await Promise.all(
+        productIds.map((id) =>
+          fetch(`/api/products/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isActive: setActive }),
+          })
+        )
+      )
+      toast.success(
+        setActive
+          ? `Berhasil mengaktifkan ${productIds.length} produk!`
+          : `Berhasil menonaktifkan ${productIds.length} produk!`
+      )
+      setSelectedVariantIds(new Set())
+      fetchProducts()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengubah status produk')
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
+
+  const handleBatchDelete = async () => {
+    const productIds = getSelectedProductIds()
+    if (productIds.length === 0) return
+
+    if (
+      !confirm(
+        `Apakah Anda yakin ingin menghapus ${productIds.length} produk terpilih secara permanen?`
+      )
+    ) {
       return
     }
 
     setBulkUpdating(true)
     try {
-      const res = await fetch(
-        '/api/admin/products/variants/bulk-color-update',
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            variantIds: Array.from(selectedVariantIds),
-            newPrice: numPrice,
-            newStock: numStock,
-          }),
-        }
+      await Promise.all(
+        productIds.map((id) =>
+          fetch(`/api/products/${id}`, {
+            method: 'DELETE',
+          })
+        )
       )
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error(json.error || 'Gagal memperbarui variasi terpilih')
-      }
-      toast.success(
-        `Berhasil memperbarui ${selectedVariantIds.size} variasi terpilih!`
-      )
+      toast.success(`Berhasil menghapus ${productIds.length} produk terpilih!`)
       setSelectedVariantIds(new Set())
-      setBulkNewPrice('')
-      setBulkNewStock('')
       fetchProducts()
     } catch (err: any) {
-      toast.error(err.message || 'Gagal memperbarui massal')
+      toast.error(err.message || 'Gagal menghapus produk terpilih')
     } finally {
       setBulkUpdating(false)
     }
@@ -1813,57 +1843,66 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* 6. Sticky Bottom Action Bar saat Multi-Select Terpilih */}
+      {/* 6. Sticky Bottom Action Bar saat Multi-Select Terpilih (Bright Theme) */}
       {selectedVariantIds.size > 0 && (
         <div className="fixed inset-x-0 bottom-4 z-40 mx-auto max-w-4xl px-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/95 p-3.5 text-white shadow-2xl backdrop-blur-md">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white/95 p-3.5 text-slate-900 shadow-xl backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 dark:text-white">
             <div className="flex items-center gap-2">
-              <span className="rounded-lg bg-orange-500 px-2.5 py-0.5 text-xs font-black">
-                {selectedVariantIds.size}
+              <span className="rounded-lg bg-orange-500 px-2.5 py-0.5 text-xs font-black text-white">
+                {getSelectedProductIds().length || selectedVariantIds.size}
               </span>
-              <span className="text-xs font-semibold">
-                Variasi terpilih untuk di-update massal
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Produk terpilih
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Harga baru (Rp)"
-                value={bulkNewPrice}
-                onChange={(e) =>
-                  setBulkNewPrice(e.target.value.replace(/\D/g, ''))
-                }
-                className="focus:outline-hidden w-32 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-bold text-orange-400 focus:border-orange-500"
-              />
-
-              <input
-                type="number"
-                min={0}
-                placeholder="Stok baru"
-                value={bulkNewStock}
-                onChange={(e) => setBulkNewStock(e.target.value)}
-                className="focus:outline-hidden w-24 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-white focus:border-orange-500"
-              />
-
               <button
                 type="button"
-                onClick={handleBulkUpdateSelected}
+                onClick={() => handleBatchSetActive(true)}
                 disabled={bulkUpdating}
-                className="rounded-lg bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 active:scale-95"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95 disabled:opacity-50 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
               >
                 {bulkUpdating ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  'Terapkan'
+                  <Eye className="h-3.5 w-3.5" />
                 )}
+                <span>Aktifkan</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleBatchSetActive(false)}
+                disabled={bulkUpdating}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 active:scale-95 disabled:opacity-50 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300"
+              >
+                {bulkUpdating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5" />
+                )}
+                <span>Nonaktifkan</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleBatchDelete}
+                disabled={bulkUpdating}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 active:scale-95 disabled:opacity-50 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"
+              >
+                {bulkUpdating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                <span>Hapus</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSelectedVariantIds(new Set())}
-                className="rounded-lg border border-slate-700 bg-transparent px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800"
+                className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
               >
                 Batal
               </button>

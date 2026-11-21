@@ -68,6 +68,7 @@ interface OrderMobileViewProps {
   onOpenReturnForItem?: (item: OrderDetailItem) => void
   onOpenComplaint: () => void
   onOpenRating: () => void
+  onOpenRatingForItem?: (item: OrderDetailItem) => void
   onOpenCancel: () => void
 }
 
@@ -102,6 +103,7 @@ export function OrderMobileView({
   onOpenReturnForItem,
   onOpenComplaint,
   onOpenRating,
+  onOpenRatingForItem,
   onOpenCancel,
 }: OrderMobileViewProps) {
   const totalItemCount = order.items.reduce(
@@ -220,20 +222,71 @@ export function OrderMobileView({
                       {formatPrice(item.subtotal || item.price * item.quantity)}
                     </span>
                   </div>
-                  {canRequestReturnOrComplaint && (
-                    <div className="mt-2 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onOpenReturnForItem
-                            ? onOpenReturnForItem(item)
-                            : onOpenReturn()
-                        }
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-orange-200/80 bg-orange-50/80 px-2.5 py-1 text-[11px] font-bold text-orange-600 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        <span>Ajukan Retur Unit Ini</span>
-                      </button>
+                  {order.items.length > 1 && (
+                    <div className="mt-2.5 flex flex-wrap items-center justify-end gap-1.5 border-t border-slate-100/80 pt-2 dark:border-slate-800/80">
+                      {canRequestReturnOrComplaint &&
+                        !hasActiveClaim &&
+                        isCompleted && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onOpenReturnForItem
+                                ? onOpenReturnForItem(item)
+                                : onOpenReturn()
+                            }
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-orange-200/80 bg-orange-50/80 px-2.5 py-1 text-[11px] font-bold text-orange-600 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            <span>Ajukan Retur Unit Ini</span>
+                          </button>
+                        )}
+
+                      {isCompleted && !latestReturnRequest && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onOpenRatingForItem
+                              ? onOpenRatingForItem(item)
+                              : onOpenRating()
+                          }
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                          <span>Ulasan</span>
+                        </button>
+                      )}
+
+                      {(() => {
+                        const prod =
+                          item.product || item.rentalItem || item.service
+                        const itemChatParams = new URLSearchParams()
+                        itemChatParams.set('orderId', order.id)
+                        if (order.store?.id)
+                          itemChatParams.set('storeId', order.store.id)
+                        if (order.orderNumber)
+                          itemChatParams.set('orderNumber', order.orderNumber)
+                        if (prod?.name)
+                          itemChatParams.set('productName', prod.name)
+                        const mobileProdImg = (prod as any)?.images?.[0]
+                        if (mobileProdImg)
+                          itemChatParams.set('productImage', mobileProdImg)
+                        if (item.price)
+                          itemChatParams.set('productPrice', String(item.price))
+                        if (item.variantName)
+                          itemChatParams.set('variantName', item.variantName)
+                        if (isCompleted)
+                          itemChatParams.set('type', 'after_sales')
+
+                        return (
+                          <Link
+                            href={`/dashboard/customer/chat?${itemChatParams.toString()}`}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200"
+                          >
+                            <MessageCircle className="h-3 w-3 text-slate-500" />
+                            <span>Chat</span>
+                          </Link>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
@@ -680,72 +733,55 @@ export function OrderMobileView({
           </div>
         )}
 
-        {/* Primary Action Button */}
-        {showCompletedBadge && (
-          <button
-            type="button"
-            onClick={onOpenRating}
-            className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-[#0F172A] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.99] dark:bg-slate-900"
-          >
-            {currentReview ? 'Edit Ulasan Produk' : 'Beri Ulasan Produk'}
-          </button>
-        )}
+        {/* Tombol ulasan, komplain, dan chat di bawah HANYA tampil jika pembelian 1 produk (order.items.length <= 1). Jika multi-produk (> 1), aksi berada di masing-masing produk */}
+        {order.items.length <= 1 && (
+          <>
+            {showCompletedBadge && (
+              <button
+                type="button"
+                onClick={onOpenRating}
+                className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-[#0F172A] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.99] dark:bg-slate-900"
+              >
+                {currentReview ? 'Edit Ulasan Produk' : 'Beri Ulasan Produk'}
+              </button>
+            )}
 
-        {order.status === 'PENDING_PAYMENT' && (
-          <button
-            type="button"
-            onClick={onPayNow}
-            className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-[#0F172A] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.99]"
-          >
-            Bayar Sekarang
-          </button>
-        )}
+            {/* Primary Action: Ajukan Komplain / Klaim Garansi */}
+            {isCompleted && canRequestReturnOrComplaint && !hasActiveClaim && (
+              <button
+                type="button"
+                onClick={onOpenReturn}
+                className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-orange-500/30 bg-orange-50/70 px-4 py-3 text-sm font-bold text-orange-600 transition hover:bg-orange-100 active:scale-[0.99] dark:border-orange-500/40 dark:bg-orange-950/30 dark:text-orange-400"
+              >
+                <ShieldCheck className="h-4 w-4 text-orange-600 dark:text-orange-500" />
+                <span>Ajukan Komplain / Klaim Garansi</span>
+              </button>
+            )}
 
-        {canConfirmReceived && (
-          <button
-            type="button"
-            onClick={onConfirmReceived}
-            disabled={isConfirming}
-            className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-[#0F172A] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.99] disabled:opacity-50"
-          >
-            {isConfirming ? 'Mengonfirmasi...' : 'Konfirmasi Pesanan Diterima'}
-          </button>
-        )}
+            {!isCompleted && canRequestReturnOrComplaint && !hasActiveClaim && (
+              <button
+                type="button"
+                onClick={onOpenComplaint}
+                className="shadow-2xs flex w-full cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              >
+                Laporkan Kendala Pesanan
+              </button>
+            )}
 
-        {/* Primary Action: Ajukan Komplain / Klaim Garansi */}
-        {isCompleted && canRequestReturnOrComplaint && !hasActiveClaim && (
-          <button
-            type="button"
-            onClick={onOpenReturn}
-            className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-orange-500/30 bg-orange-50/70 px-4 py-3 text-sm font-bold text-orange-600 transition hover:bg-orange-100 active:scale-[0.99] dark:border-orange-500/40 dark:bg-orange-950/30 dark:text-orange-400"
-          >
-            <ShieldCheck className="h-4 w-4 text-orange-600 dark:text-orange-500" />
-            <span>Ajukan Komplain / Klaim Garansi</span>
-          </button>
+            {/* Chat Action */}
+            <Link
+              href={`/dashboard/customer/chat?${chatParams.toString()}${
+                isCompleted ? '&type=after_sales' : ''
+              }`}
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+            >
+              <MessageCircle className="h-3.5 w-3.5 text-slate-500" />
+              <span>
+                {isCompleted ? 'Chat Admin After Sales' : 'Chat Toko Cabang'}
+              </span>
+            </Link>
+          </>
         )}
-
-        {!isCompleted && canRequestReturnOrComplaint && !hasActiveClaim && (
-          <button
-            type="button"
-            onClick={onOpenComplaint}
-            className="shadow-2xs flex w-full cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          >
-            Laporkan Kendala Pesanan
-          </button>
-        )}
-
-        {/* Chat Action */}
-        <Link
-          href={`/dashboard/customer/chat?${chatParams.toString()}${
-            isCompleted ? '&type=after_sales' : ''
-          }`}
-          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
-        >
-          <MessageCircle className="h-3.5 w-3.5 text-slate-500" />
-          <span>
-            {isCompleted ? 'Chat Admin After Sales' : 'Chat Toko Cabang'}
-          </span>
-        </Link>
 
         {/* Cancel Order (if eligible) */}
         {canCancel && (

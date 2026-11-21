@@ -594,11 +594,6 @@ export default function AdminSettingsPage() {
       if (res.ok) {
         const data = await res.json()
         setStoreForm((prev) => ({ ...prev, logo: data.url }))
-        // Jika foto pengelola user masih kosong, otomatis pasangkan juga
-        setUserForm((prev) => ({
-          ...prev,
-          image: prev.image || data.url,
-        }))
         toast.success(
           'Foto logo toko berhasil diunggah. Klik "Simpan Perubahan" untuk menyimpan.'
         )
@@ -718,13 +713,6 @@ export default function AdminSettingsPage() {
       if (res.ok) {
         const data = await res.json()
         setUserForm((prev) => ({ ...prev, image: data.url }))
-        // Jika foto logo toko masih kosong dan ini adalah admin toko, pasangkan juga
-        if (isStoreAdmin) {
-          setStoreForm((prev) => ({
-            ...prev,
-            logo: prev.logo || data.url,
-          }))
-        }
         toast.success(
           'Foto profil berhasil diunggah. Klik "Simpan Perubahan" untuk menyimpan.'
         )

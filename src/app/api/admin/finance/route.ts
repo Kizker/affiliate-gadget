@@ -321,9 +321,46 @@ export async function GET(request: NextRequest) {
         !s || !e || (order.createdAt >= s && order.createdAt <= e)
 
       const activeReturn = (order as any).returnRequests?.[0]
-      const isUnderReturnDispute = Boolean(activeReturn)
+      const isUnderReturnDispute = Boolean(
+        activeReturn &&
+        ['PENDING', 'IN_REVIEW', 'APPROVED'].includes(activeReturn.status) &&
+        order.status !== 'RETURNED'
+      )
 
-      if (order.status === 'COMPLETED' && !isUnderReturnDispute) {
+      if (order.status === 'RETURNED') {
+        // Transaksi Retur Selesai (Refund Dana Berhasil Dikembalikan ke Customer via Escrow Midtrans)
+        if (!isCreatedInPeriod) return
+
+        const effectiveDate = order.updatedAt || order.createdAt
+        const formattedDate = new Intl.DateTimeFormat('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(new Date(effectiveDate))
+
+        const refundRequest = (order as any).returnRequests?.[0]
+        const refundAmount = refundRequest?.refundAmount || order.total || 0
+
+        mutations.push({
+          id: `refund-${order.id}`,
+          refNumber: `REFUND-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+          title: `Pengembalian Dana Refund (${firstProductName})`,
+          subtitle: `Dana escrow dikembalikan ke rekening ${refundRequest?.bankName || 'bank'} ${refundRequest?.bankAccountNumber ? `${refundRequest.bankAccountNumber} ` : ''}a.n. ${refundRequest?.bankAccountName || customerName} (#${order.orderNumber})`,
+          type: 'PAYOUT',
+          category: 'ESCROW',
+          categoryLabel: 'Pencairan Refund',
+          amount: refundAmount,
+          date: formattedDate,
+          rawDate: effectiveDate,
+          status: 'SUCCESS',
+          statusLabel: 'Dana Dikembalikan ke Pembeli',
+          orderStatus: order.status,
+          courierInfo: courierDesc,
+          trackingNumber: order.trackingNumber,
+        })
+      } else if (order.status === 'COMPLETED' && !isUnderReturnDispute) {
         if (!isCompletedInPeriod) return
 
         grossRevenue += orderTotal
@@ -514,37 +551,6 @@ export async function GET(request: NextRequest) {
           rawDate: order.createdAt,
           status: 'PENDING',
           statusLabel: statusLabel,
-          orderStatus: order.status,
-          courierInfo: courierDesc,
-          trackingNumber: order.trackingNumber,
-        })
-      } else if (order.status === 'RETURNED') {
-        // Transaksi Retur Selesai (Refund Dana Berhasil Dikembalikan ke Customer via Escrow Midtrans)
-        const effectiveDate = order.updatedAt || order.createdAt
-        const formattedDate = new Intl.DateTimeFormat('id-ID', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }).format(new Date(effectiveDate))
-
-        const refundRequest = (order as any).returnRequests?.[0]
-        const refundAmount = refundRequest?.refundAmount || order.total || 0
-
-        mutations.push({
-          id: `refund-${order.id}`,
-          refNumber: `REFUND-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
-          title: `Pengembalian Dana Refund (${firstProductName})`,
-          subtitle: `Dana escrow dikembalikan ke rekening ${refundRequest?.bankName || 'bank'} ${refundRequest?.bankAccountNumber ? `${refundRequest.bankAccountNumber} ` : ''}a.n. ${refundRequest?.bankAccountName || customerName} (#${order.orderNumber})`,
-          type: 'PAYOUT',
-          category: 'ESCROW',
-          categoryLabel: 'Pencairan Refund',
-          amount: refundAmount,
-          date: formattedDate,
-          rawDate: effectiveDate,
-          status: 'SUCCESS',
-          statusLabel: 'Dana Dikembalikan ke Pembeli',
           orderStatus: order.status,
           courierInfo: courierDesc,
           trackingNumber: order.trackingNumber,

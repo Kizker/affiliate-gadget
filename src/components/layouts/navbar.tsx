@@ -82,10 +82,14 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
 
   // Sync and fetch profile avatar for active session
   useEffect(() => {
-    if (session?.user?.image) {
-      setAvatarUrl(session.user.image)
-    } else if (session?.user?.id || session?.user?.email) {
-      // Fetch latest profile avatar from database if not in cached JWT
+    if (
+      status === 'authenticated' &&
+      (session?.user?.id || session?.user?.email)
+    ) {
+      if (session?.user?.image) {
+        setAvatarUrl(session.user.image)
+      }
+      // Always fetch latest profile avatar from database to avoid stale JWT cache mismatch
       fetch('/api/user/profile')
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
@@ -94,10 +98,24 @@ export function Navbar({ variant = 'light' }: NavbarProps) {
           }
         })
         .catch(() => {})
-    } else {
+    } else if (status === 'unauthenticated') {
       setAvatarUrl(null)
     }
-  }, [session?.user])
+  }, [status, session?.user?.id, session?.user?.email, session?.user?.image])
+
+  // Dengarkan event update foto profil real-time di seluruh komponen & tab
+  useEffect(() => {
+    const handleProfileUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ image?: string }>
+      if (customEvent.detail?.image) {
+        setAvatarUrl(customEvent.detail.image)
+      }
+    }
+    window.addEventListener('profile-updated', handleProfileUpdated)
+    return () => {
+      window.removeEventListener('profile-updated', handleProfileUpdated)
+    }
+  }, [])
 
   // Close menus on route change
   useEffect(() => {
