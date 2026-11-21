@@ -253,42 +253,36 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const storeGroupAfterSales = room.store?.group?.afterSalesUser
+
+    // Room After Sales HANYA berlaku jika toko benar-benar terdaftar pada Group
+    // After Sales. Toko mandiri (tanpa Group) tetap ditangani langsung oleh Admin
+    // Toko sebagai After Sales mandiri — tidak pernah dialihkan ke akun acak.
     const isAfterSalesRoom = Boolean(
-      resolvedOrder?.status === 'COMPLETED' ||
-      resolvedOrder?.status === 'RETURNED' ||
-      ((resolvedOrder as any)?.returnRequests &&
-        (resolvedOrder as any).returnRequests.length > 0) ||
-      room.claimedBy?.role === 'AFTER_SALES'
+      storeGroupAfterSales &&
+      (room.claimedBy?.role === 'AFTER_SALES' ||
+        resolvedOrder?.status === 'COMPLETED' ||
+        resolvedOrder?.status === 'RETURNED' ||
+        ((resolvedOrder as any)?.returnRequests &&
+          (resolvedOrder as any).returnRequests.length > 0))
     )
 
     let resolvedClaimedBy = room.claimedBy
-    if (isAfterSalesRoom && resolvedClaimedBy?.role !== 'AFTER_SALES') {
-      const storeGroupAfterSales = (room.store as any)?.group?.afterSalesUser
-      let targetAfterSales = storeGroupAfterSales
-      if (!targetAfterSales) {
-        targetAfterSales = await prisma.user.findFirst({
-          where: { role: 'AFTER_SALES', isActive: true },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            role: true,
+    if (
+      isAfterSalesRoom &&
+      storeGroupAfterSales &&
+      resolvedClaimedBy?.role !== 'AFTER_SALES'
+    ) {
+      resolvedClaimedBy = { ...storeGroupAfterSales, mitra: null }
+      await prisma.adminChatRoom
+        .update({
+          where: { id: room.id },
+          data: {
+            claimedById: storeGroupAfterSales.id,
+            claimedAt: new Date(),
           },
         })
-      }
-      if (targetAfterSales) {
-        resolvedClaimedBy = targetAfterSales as any
-        await prisma.adminChatRoom
-          .update({
-            where: { id: room.id },
-            data: {
-              claimedById: targetAfterSales.id,
-              claimedAt: new Date(),
-            },
-          })
-          .catch(() => {})
-      }
+        .catch(() => {})
     }
 
     const mitra = (resolvedClaimedBy as any)?.mitra

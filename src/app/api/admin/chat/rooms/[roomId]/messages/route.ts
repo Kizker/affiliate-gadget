@@ -180,6 +180,20 @@ export async function GET(
       if (!isStoreRoom) {
         return NextResponse.json({ error: 'Room not found' }, { status: 404 })
       }
+
+      // Self-heal: lepaskan klaim lama ke akun After Sales yang keliru/acak
+      // (bug lama auto-assign) jika pada titik ini Admin Toko memang berwenang
+      // mengelola room ini sendiri (toko mandiri atau room bukan retur).
+      if (room.claimedBy?.role === 'AFTER_SALES') {
+        await prisma.adminChatRoom
+          .update({
+            where: { id: roomId },
+            data: { claimedById: null, claimedAt: null },
+          })
+          .catch(() => {})
+        room.claimedById = null
+        room.claimedBy = null
+      }
     }
 
     // Get messages
@@ -359,6 +373,20 @@ export async function POST(
           },
           { status: 403 }
         )
+      }
+      // Self-heal: toko ini TIDAK memiliki Group After Sales (self-managed),
+      // namun room sempat ter-claim ke akun After Sales acak akibat bug lama.
+      // Lepas klaim keliru tersebut agar Admin Toko dapat membalas & auto-claim
+      // kembali sebagai pemilik sah percakapan.
+      if (!hasExternalAfterSales && room.claimedBy?.role === 'AFTER_SALES') {
+        await prisma.adminChatRoom
+          .update({
+            where: { id: roomId },
+            data: { claimedById: null, claimedAt: null },
+          })
+          .catch(() => {})
+        room.claimedById = null
+        room.claimedBy = null
       }
     }
 

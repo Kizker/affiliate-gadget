@@ -106,32 +106,26 @@ export async function POST(
       })
       .catch(() => {})
 
-    // Handover otomatis ruang chat ke Admin After Sales yang menaungi toko cabang ini
+    // Handover otomatis ruang chat ke Admin After Sales HANYA jika toko benar-benar
+    // terdaftar di Group After Sales. Toko mandiri (tanpa Group) tetap ditangani
+    // langsung oleh Admin Toko itu sendiri sebagai After Sales mandiri — JANGAN
+    // pernah mengalihkan klaim percakapan ke akun After Sales acak/global.
     try {
       const targetStoreId = order.storeId || order.store?.id
-      if (targetStoreId) {
-        let afterSalesUserId = order.store?.group?.afterSalesUserId || null
-        if (!afterSalesUserId) {
-          const fallbackAfterSales = await prisma.user.findFirst({
-            where: { role: 'AFTER_SALES', isActive: true },
-            select: { id: true },
-          })
-          afterSalesUserId = fallbackAfterSales?.id || null
-        }
+      const afterSalesUserId = order.store?.group?.afterSalesUserId || null
 
-        if (afterSalesUserId) {
-          await prisma.adminChatRoom.updateMany({
-            where: {
-              customerId: order.userId,
-              OR: [{ storeId: targetStoreId }, { orderId: order.id }],
-            },
-            data: {
-              orderId: order.id,
-              claimedById: afterSalesUserId,
-              claimedAt: now,
-            },
-          })
-        }
+      if (targetStoreId && afterSalesUserId) {
+        await prisma.adminChatRoom.updateMany({
+          where: {
+            customerId: order.userId,
+            OR: [{ storeId: targetStoreId }, { orderId: order.id }],
+          },
+          data: {
+            orderId: order.id,
+            claimedById: afterSalesUserId,
+            claimedAt: now,
+          },
+        })
       }
     } catch (handoverErr) {
       console.warn('Non-fatal chat room handover error:', handoverErr)
